@@ -15,23 +15,30 @@ Hanzo provides a comprehensive suite of AI-first platform services designed for 
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐ │
-│  │     IAM      │  │     KMS      │  │   Gateway    │  │   Vector    │ │
-│  │  iam.hanzo   │  │  kms.hanzo   │  │gateway.hanzo │  │vector.hanzo │ │
+│  │  Identity    │  │     IAM      │  │     KMS      │  │   Gateway   │ │
+│  │ identity.*   │  │  iam.hanzo   │  │  kms.hanzo   │  │gateway.hanzo│ │
 │  │              │  │              │  │              │  │             │ │
-│  │  - OAuth2    │  │  - MPC Keys  │  │  - LLM API   │  │  - Search   │ │
-│  │  - OIDC      │  │  - HSM       │  │  - Routing   │  │  - Embed    │ │
-│  │  - Web3      │  │  - Signing   │  │  - Caching   │  │  - Store    │ │
-│  │  - MPC Auth  │  │  - Custody   │  │  - Rate Lim  │  │  - Index    │ │
+│  │  - Profiles  │  │  - OAuth2    │  │  - MPC Keys  │  │  - LLM API  │ │
+│  │  - Directory │  │  - OIDC      │  │  - HSM       │  │  - Routing  │ │
+│  │  - Resolve   │  │  - Web3      │  │  - Signing   │  │  - Caching  │ │
 │  └──────────────┘  └──────────────┘  └──────────────┘  └─────────────┘ │
 │                                                                          │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐ │
-│  │    Nexus     │  │    Cloud     │  │   Commerce   │  │   Console   │ │
-│  │ nexus.hanzo  │  │ cloud.hanzo  │  │  api.hanzo   │  │console.hanzo│ │
+│  │   Engine     │  │   Vector     │  │    Nexus     │  │     ML      │ │
+│  │ engine.*     │  │ vector.hanzo │  │ nexus.hanzo  │  │   ml.hanzo  │ │
 │  │              │  │              │  │              │  │             │ │
-│  │  - RAG       │  │  - Deploy    │  │  - Orders    │  │  - Observe  │ │
-│  │  - Knowledge │  │  - Infra     │  │  - Payments  │  │  - Monitor  │ │
-│  │  - Agents    │  │  - Scaling   │  │  - Products  │  │  - Traces   │ │
-│  │  - Memory    │  │  - Serving   │  │  - Analytics │  │  - Logs     │ │
+│  │  - Runtime   │  │  - Search    │  │  - RAG       │  │  - Pipelines│ │
+│  │  - Scheduler │  │  - Embed     │  │  - Knowledge │  │  - Registry │ │
+│  │  - Observe   │  │  - Index     │  │  - Agents    │  │  - Toolkit  │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └─────────────┘ │
+│                                                                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐ │
+│  │    Cloud     │  │  Analytics   │  │   Commerce   │  │   Console   │ │
+│  │ cloud.hanzo  │  │ analytics.*  │  │  api.hanzo   │  │console.hanzo│ │
+│  │              │  │              │  │              │  │             │ │
+│  │  - Deploy    │  │  - Cost      │  │  - Orders    │  │  - Observe  │ │
+│  │  - Infra     │  │  - Usage     │  │  - Payments  │  │  - Monitor  │ │
+│  │  - Serving   │  │  - SLOs      │  │  - Products  │  │  - Traces   │ │
 │  └──────────────┘  └──────────────┘  └──────────────┘  └─────────────┘ │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -41,12 +48,16 @@ Hanzo provides a comprehensive suite of AI-first platform services designed for 
 
 | Service | Endpoint | Description |
 |---------|----------|-------------|
+| [Identity](/docs/services/identity) | `TBD` | Profiles, directories, and identity resolution |
 | [IAM](/docs/services/iam) | `iam.hanzo.ai` | Identity, authentication, OAuth2/OIDC, Web3, MPC auth |
 | [KMS](/docs/services/kms) | `kms.hanzo.ai` | Key management, MPC custody, HSM, signing |
 | [Gateway](/docs/services/gateway) | `gateway.hanzo.ai` | LLM API gateway, routing, caching, rate limiting |
+| [Engine](/docs/services/engine) | `TBD` | Core runtime, scheduling, orchestration |
 | [Vector](/docs/services/vector) | `vector.hanzo.ai` | Vector database, embeddings, similarity search |
 | [Nexus](/docs/services/nexus) | `nexus.hanzo.ai` | RAG, knowledge graphs, agents, memory |
+| [ML](/docs/services/ml) | `TBD` | Kubeflow pipelines and Rust ML toolkit |
 | [Cloud](/docs/services/cloud) | `cloud.hanzo.ai` | AI platform, deployment, infrastructure |
+| [Analytics](/docs/services/analytics) | `TBD` | Usage, cost, and performance analytics |
 | [Commerce](/docs/services/commerce) | `api.hanzo.ai` | E-commerce API, orders, payments, products |
 
 ## Authentication
@@ -89,7 +100,7 @@ curl -X POST https://gateway.hanzo.ai/key/generate \
 
 ## OpenAPI Specifications
 
-All services have comprehensive OpenAPI 3.1 specifications:
+Available OpenAPI 3.1 specifications:
 
 | Service | Spec URL |
 |---------|----------|
@@ -120,16 +131,23 @@ HANZO_TOKEN=your-oauth-token
 
 # Service Endpoints (optional, use defaults)
 HANZO_IAM_URL=https://iam.hanzo.ai
+HANZO_IDENTITY_URL=
 HANZO_GATEWAY_URL=https://gateway.hanzo.ai
+HANZO_ENGINE_URL=
 HANZO_VECTOR_URL=https://vector.hanzo.ai
 HANZO_NEXUS_URL=https://nexus.hanzo.ai
+HANZO_ML_URL=
 HANZO_CLOUD_URL=https://cloud.hanzo.ai
+HANZO_ANALYTICS_URL=
 HANZO_COMMERCE_URL=https://api.hanzo.ai
 ```
 
 ## Next Steps
 
 <Cards>
+  <Card title="Identity" href="/docs/services/identity">
+    Profiles, directories, and identity resolution
+  </Card>
   <Card title="IAM" href="/docs/services/iam">
     Identity and access management, OAuth2, Web3, MPC
   </Card>
@@ -139,7 +157,22 @@ HANZO_COMMERCE_URL=https://api.hanzo.ai
   <Card title="Gateway" href="/docs/services/gateway">
     LLM API gateway with 200+ models
   </Card>
+  <Card title="Engine" href="/docs/services/engine">
+    Core runtime, scheduling, and orchestration
+  </Card>
+</Cards>
+
+<Cards>
   <Card title="Vector" href="/docs/services/vector">
     Vector database for embeddings and search
+  </Card>
+  <Card title="Nexus" href="/docs/services/nexus">
+    Knowledge graphs, agents, and memory
+  </Card>
+  <Card title="ML" href="/docs/services/ml">
+    Kubeflow pipelines and Rust ML toolkit
+  </Card>
+  <Card title="Analytics" href="/docs/services/analytics">
+    Usage, cost, and performance analytics
   </Card>
 </Cards>

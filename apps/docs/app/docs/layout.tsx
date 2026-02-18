@@ -6,6 +6,7 @@ import { getSection } from '@/lib/source/navigation';
 import { MessageCircleIcon } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
+import { ProjectSwitcher } from '@/components/projects/project-switcher';
 import 'katex/dist/katex.min.css';
 
 export default function Layout({ children }: LayoutProps<'/docs'>) {
@@ -27,6 +28,7 @@ export default function Layout({ children }: LayoutProps<'/docs'>) {
         ),
       }}
       sidebar={{
+        banner: <ProjectSwitcher />,
         tabs: {
           transform(option, node) {
             const meta = source.getNodeMeta(node);

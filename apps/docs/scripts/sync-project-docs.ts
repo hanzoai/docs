@@ -189,11 +189,11 @@ async function listOrgRepos(octokit: Octokit, org: string) {
       repos.push({
         name: repo.name,
         description: repo.description,
-        archived: repo.archived ?? false,
+        archived: repo.archived,
         visibility: (repo as { visibility?: string }).visibility,
-        private: repo.private ?? false,
-        html_url: repo.html_url ?? '',
-        default_branch: repo.default_branch ?? 'main',
+        private: repo.private,
+        html_url: repo.html_url,
+        default_branch: repo.default_branch,
       });
     }
 
@@ -315,24 +315,6 @@ function copyDocs({ sourceDir, destDir, dryRun }: { sourceDir: string; destDir: 
       return true;
     },
   });
-  ensureFrontmatter(destDir);
-}
-
-function ensureFrontmatter(dir: string) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      ensureFrontmatter(fullPath);
-    } else if (/\.(md|mdx)$/.test(entry.name)) {
-      const content = fs.readFileSync(fullPath, 'utf8');
-      if (!content.startsWith('---')) {
-        const title = path.basename(entry.name, path.extname(entry.name))
-          .replace(/[-_]+/g, ' ')
-          .replace(/\b\w/g, (c) => c.toUpperCase());
-        fs.writeFileSync(fullPath, `---\ntitle: ${escapeYaml(title)}\n---\n\n${content}`, 'utf8');
-      }
-    }
-  }
 }
 
 async function fetchDocsFromRemote({
@@ -443,8 +425,6 @@ function writeProjectIndexFiles(outputDir: string, orgs: string[], projects: Rep
   const rootMeta = {
     title: 'Projects',
     description: 'Documentation for all Hanzo projects.',
-    icon: 'FolderGit2',
-    root: true,
     pages: ['index', ...orgs],
   };
 

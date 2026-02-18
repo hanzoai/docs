@@ -6,7 +6,7 @@ import { TooltipProvider } from '@radix-ui/react-tooltip';
 
 export function Provider({ children }: { children: ReactNode }) {
   return (
-    <RootProvider>
+    <RootProvider theme={{ defaultTheme: 'dark', enableSystem: false }}>
       <TooltipProvider>
         {children}
       </TooltipProvider>
