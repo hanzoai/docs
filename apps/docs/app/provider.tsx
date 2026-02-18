@@ -30,6 +30,10 @@ export function Provider({ children }: { children: ReactNode }) {
       search={{
         SearchDialog,
       }}
+      theme={{
+        defaultTheme: 'dark',
+        enableSystem: false,
+      }}
     >
       <TooltipProvider>
         <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: inject }} />
