@@ -1,0 +1,57 @@
+---
+title: Training Overview
+description: Train Zen models with multiple backend options
+---
+
+# Training Overview
+
+Zen models can be trained on various hardware configurations.
+
+## Training Options
+
+| Option | Hardware | Time | Cost |
+|--------|----------|------|------|
+| MLX | M1/M2/M3 | ~30 min | Free |
+| CUDA Local | 1x RTX 4090 | ~2 hours | Free |
+| HF Space | T4/A10G | ~1 hour | $0.60/hr |
+| Cloud | 8x H200 | ~8 hours | ~$288 |
+
+## Dataset
+
+Training uses `hanzoai/zen-agentic-dataset-private`:
+- **10.5B tokens** from 214K conversations
+- Claude Code interactions + git commits
+- Real-world coding scenarios
+
+## Training Framework
+
+Training is powered by [Zoo Gym](https://github.com/zooai/gym):
+- **Methods**: LoRA, QLoRA, DPO, PPO, GRPO
+- **Optimizations**: Unsloth, Flash Attention, Liger Kernel
+
+## Repository Structure
+
+```
+zen-coder-flash/
+├── training/
+│   ├── configs/
+│   │   └── 8xh200.yaml          # Nebius 8x H200 config
+│   ├── scripts/
+│   │   ├── train.py             # Main training script
+│   │   └── prepare_dataset.py   # Dataset conversion
+│   ├── train_mlx.py             # Apple Silicon training
+│   ├── train_cuda.py            # Local CUDA training
+│   ├── hf_space/
+│   │   └── app.py               # HuggingFace Spaces training
+│   └── launch_training.py       # Cloud launcher
+```
+
+## Quick Start
+
+Choose your training backend:
+
+<Cards>
+  <Card title="MLX (Apple Silicon)" href="/docs/training/mlx" />
+  <Card title="CUDA (Local GPU)" href="/docs/training/cuda" />
+  <Card title="Cloud (8x H200)" href="/docs/training/cloud" />
+</Cards>

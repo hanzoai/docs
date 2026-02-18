@@ -1,0 +1,127 @@
+---
+title: Chat Completions
+description: Generate text with Zen models using the OpenAI-compatible chat completions endpoint
+---
+
+# Chat Completions
+
+Generate text responses using any Zen model.
+
+## Endpoint
+
+```
+POST https://api.hanzo.ai/v1/chat/completions
+```
+
+## Request Body
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `model` | string | Yes | Model ID (e.g., `zen4`, `zen4-coder`, `zen3-omni`) |
+| `messages` | array | Yes | Array of message objects with `role` and `content` |
+| `temperature` | float | No | Sampling temperature (0-2). Default: 1.0 |
+| `top_p` | float | No | Nucleus sampling. Default: 1.0 |
+| `max_tokens` | integer | No | Maximum tokens to generate |
+| `stream` | boolean | No | Enable streaming responses. Default: false |
+| `stop` | string/array | No | Stop sequences |
+| `frequency_penalty` | float | No | Frequency penalty (-2.0 to 2.0). Default: 0 |
+| `presence_penalty` | float | No | Presence penalty (-2.0 to 2.0). Default: 0 |
+
+## Message Roles
+
+| Role | Description |
+|------|-------------|
+| `system` | System prompt / instructions |
+| `user` | User message |
+| `assistant` | Model response (for multi-turn) |
+
+## Example Request
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen4",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Write a haiku about programming."}
+    ],
+    "temperature": 0.7,
+    "max_tokens": 100
+  }'
+```
+
+## Example Response
+
+```json
+{
+  "id": "chatcmpl-abc123",
+  "object": "chat.completion",
+  "created": 1708000000,
+  "model": "zen4",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Lines of logic flow\nBugs hide in silent syntax\nCompile, debug, grow"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 25,
+    "completion_tokens": 18,
+    "total_tokens": 43
+  }
+}
+```
+
+## Streaming
+
+Set `stream: true` to receive server-sent events:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="https://api.hanzo.ai/v1", api_key="your-key")
+
+stream = client.chat.completions.create(
+    model="zen4",
+    messages=[{"role": "user", "content": "Tell me a story"}],
+    stream=True,
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+## Vision (zen3-vl, zen3-omni)
+
+Vision models accept image URLs or base64 images in the `content` array:
+
+```python
+response = client.chat.completions.create(
+    model="zen3-vl",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "What's in this image?"},
+            {"type": "image_url", "image_url": {"url": "https://example.com/photo.jpg"}}
+        ]
+    }],
+)
+```
+
+## Reasoning (zen4-thinking)
+
+The thinking model shows its reasoning process:
+
+```python
+response = client.chat.completions.create(
+    model="zen4-thinking",
+    messages=[{"role": "user", "content": "Solve: If 2^x = 1024, what is x?"}],
+)
+```

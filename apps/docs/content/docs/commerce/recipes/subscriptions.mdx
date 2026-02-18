@@ -1,0 +1,286 @@
+---
+title: Subscriptions
+description: Set up recurring billing with plan management and lifecycle handling
+---
+
+This recipe walks through implementing recurring billing with Hanzo Commerce -- creating plans, managing billing cycles, handling upgrades and downgrades, cancellation flows, and reacting to payment events via webhooks.
+
+## What You Will Build
+
+- Subscription plans with monthly and annual billing
+- Customer subscription management (create, upgrade, downgrade, cancel)
+- Webhook handlers for payment events
+- A self-service portal for customers
+
+## 1. Create Subscription Plans
+
+Define your pricing tiers. Each plan is a product with `type: 'subscription'` and a `billingInterval`.
+
+```ts title="setup-plans.ts"
+import { Commerce } from '@hanzo/commerce'
+
+const commerce = new Commerce({
+  apiKey: process.env.HANZO_API_KEY!,
+  environment: 'production',
+})
+
+// Starter plan
+const starter = await commerce.products.create({
+  name: 'Starter',
+  slug: 'starter',
+  type: 'subscription',
+  price: 1900, // $19/month
+  currency: 'USD',
+  billingInterval: 'month',
+  metadata: { tier: 'starter', features: 'basic' },
+})
+
+// Pro plan -- monthly
+const proMonthly = await commerce.products.create({
+  name: 'Pro Monthly',
+  slug: 'pro-monthly',
+  type: 'subscription',
+  price: 4900, // $49/month
+  currency: 'USD',
+  billingInterval: 'month',
+  metadata: { tier: 'pro', features: 'advanced' },
+})
+
+// Pro plan -- annual (save ~17%)
+const proAnnual = await commerce.products.create({
+  name: 'Pro Annual',
+  slug: 'pro-annual',
+  type: 'subscription',
+  price: 49000, // $490/year
+  currency: 'USD',
+  billingInterval: 'year',
+  metadata: { tier: 'pro', features: 'advanced' },
+})
+```
+
+## 2. Create a Subscription
+
+When a customer selects a plan, create a subscription through checkout:
+
+```ts
+const session = await commerce.checkout.create({
+  mode: 'subscription',
+  items: [{ productId: proMonthly.id, quantity: 1 }],
+  customerId: customer.id,
+  successUrl: 'https://app.example.com/dashboard?subscribed=true',
+  cancelUrl: 'https://app.example.com/pricing',
+})
+
+// Redirect customer to session.url
+```
+
+After successful payment, Commerce creates a `Subscription` object:
+
+```json
+{
+  "id": "sub_abc123",
+  "customerId": "cust_def456",
+  "productId": "prod_pro_monthly",
+  "status": "active",
+  "currentPeriodStart": "2026-02-16T00:00:00Z",
+  "currentPeriodEnd": "2026-03-16T00:00:00Z",
+  "cancelAtPeriodEnd": false
+}
+```
+
+## 3. Subscription Lifecycle
+
+### Status Flow
+
+```
+created --> active --> past_due --> canceled
+                  \-> paused
+                  \-> canceled (immediate)
+```
+
+| Status | Description |
+|--------|-------------|
+| `created` | Subscription created, awaiting first payment |
+| `active` | Payments current, access granted |
+| `past_due` | Payment failed, retry in progress |
+| `paused` | Manually paused by customer or admin |
+| `canceled` | Subscription ended |
+
+### Billing Cycle
+
+Commerce handles billing automatically:
+
+1. **3 days before renewal**: `subscription.upcoming` event fires
+2. **On renewal date**: Payment is attempted
+3. **If payment fails**: Status moves to `past_due`, retries at 1, 3, and 7 days
+4. **After all retries fail**: Status moves to `canceled`, `subscription.canceled` event fires
+
+## 4. Upgrades and Downgrades
+
+### Immediate Upgrade
+
+Prorate the current period and charge the difference immediately:
+
+```ts
+await commerce.subscriptions.update(subscriptionId, {
+  productId: proAnnual.id,
+  proration: 'immediate',
+})
+```
+
+### Downgrade at Period End
+
+Apply the change when the current billing period ends:
+
+```ts
+await commerce.subscriptions.update(subscriptionId, {
+  productId: starter.id,
+  proration: 'next_period',
+})
+```
+
+### Proration Modes
+
+| Mode | Behavior |
+|------|----------|
+| `immediate` | Charge/credit difference now, switch plan now |
+| `next_period` | Switch plan at next billing date, no proration |
+| `always_invoice` | Generate an invoice for the proration amount |
+
+## 5. Cancellation Flows
+
+### Cancel at Period End (Recommended)
+
+The customer retains access until the current period expires:
+
+```ts
+await commerce.subscriptions.cancel(subscriptionId, {
+  mode: 'at_period_end',
+})
+```
+
+### Cancel Immediately
+
+End the subscription now and optionally issue a prorated refund:
+
+```ts
+await commerce.subscriptions.cancel(subscriptionId, {
+  mode: 'immediate',
+  refund: 'prorated', // or 'none' or 'full'
+})
+```
+
+### Reactivate a Canceled Subscription
+
+If the customer cancels but changes their mind before the period ends:
+
+```ts
+await commerce.subscriptions.reactivate(subscriptionId)
+```
+
+## 6. Webhook Integration
+
+Register webhooks to react to subscription events in your application.
+
+```ts title="setup-webhook.ts"
+await commerce.webhooks.create({
+  url: 'https://app.example.com/api/webhooks/commerce',
+  events: [
+    'subscription.created',
+    'subscription.updated',
+    'subscription.canceled',
+    'subscription.past_due',
+    'invoice.paid',
+    'invoice.payment_failed',
+  ],
+})
+```
+
+### Webhook Handler
+
+```ts title="src/app/api/webhooks/commerce/route.ts"
+import { commerce } from '@/lib/commerce'
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function POST(req: NextRequest) {
+  const signature = req.headers.get('x-commerce-signature')!
+  const body = await req.text()
+
+  const event = commerce.webhooks.verify(body, signature)
+
+  switch (event.type) {
+    case 'subscription.created':
+      // Grant access to the customer
+      await grantAccess(event.data.customerId, event.data.productId)
+      break
+
+    case 'subscription.canceled':
+      // Revoke access (respecting cancelAtPeriodEnd)
+      if (!event.data.cancelAtPeriodEnd) {
+        await revokeAccess(event.data.customerId, event.data.productId)
+      }
+      break
+
+    case 'subscription.past_due':
+      // Send a warning email, optionally restrict features
+      await notifyPastDue(event.data.customerId)
+      break
+
+    case 'invoice.payment_failed':
+      // Log the failure, notify the customer
+      await notifyPaymentFailed(event.data.customerId, event.data.invoiceId)
+      break
+  }
+
+  return NextResponse.json({ received: true })
+}
+```
+
+## 7. Self-Service Portal
+
+Let customers manage their own subscriptions:
+
+```ts
+// Generate a portal session URL
+const portal = await commerce.billing.createPortalSession({
+  customerId: customer.id,
+  returnUrl: 'https://app.example.com/settings',
+})
+
+// Redirect customer to portal.url
+```
+
+The portal allows customers to:
+- View current plan and billing history
+- Upgrade or downgrade their plan
+- Update payment method
+- Cancel their subscription
+- Download invoices
+
+## 8. Checking Subscription Status
+
+Gate features in your application by checking subscription status:
+
+```ts
+const subscription = await commerce.subscriptions.getByCustomer(customerId)
+
+if (subscription?.status === 'active') {
+  const tier = subscription.product.metadata.tier
+  // Grant tier-appropriate features
+}
+```
+
+## Testing
+
+1. Create subscription plans via the SDK
+2. Complete a subscription checkout with Stripe test card `4242 4242 4242 4242`
+3. Verify the subscription status is `active`
+4. Test upgrade: switch from Starter to Pro, confirm proration
+5. Test cancellation: cancel at period end, verify `cancelAtPeriodEnd` is `true`
+6. Use Stripe test card `4000 0000 0000 0341` to simulate payment failure and verify `past_due` handling
+
+## Next Steps
+
+- Combine with [digital products](/docs/commerce/recipes/digital-products) for SaaS licensing
+- Add [multi-currency support](/docs/commerce/recipes/multi-currency) for international subscribers
+- Review the [Subscription module](/docs/commerce/modules/subscription) for advanced configuration

@@ -1,0 +1,159 @@
+---
+title: zen-guard
+description: Multilingual Safety Moderation for AI Systems
+---
+
+# Zen Guard
+
+**Multilingual Safety Moderation for AI Systems**
+
+Zen Guard is a comprehensive safety moderation solution for AI systems, offering both generative and streaming variants for real-time content filtering. Built upon advanced architectures with support for 119 languages.
+
+## Model Family
+
+| Model | Type | Parameters | Latency | Use Case |
+|-------|------|------------|---------|----------|
+| [zen-guard](https://huggingface.co/zenlm/zen-guard) | Base | 4B | 120ms | General safety classification |
+| [zen-guard-gen](https://huggingface.co/zenlm/zen-guard-gen) | Generative | 8B | 120ms | Full prompt/response moderation |
+| [zen-guard-stream](https://huggingface.co/zenlm/zen-guard-stream) | Streaming | 4B | 5ms/token | Real-time token-level monitoring |
+
+## Key Features
+
+- **Comprehensive Protection**: Robust safety assessment for prompts and responses
+- **Three-Tiered Classification**: Safe, Controversial, Unsafe severity levels
+- **119 Languages**: Extensive multilingual support
+- **State-of-the-Art Performance**: 96.8% accuracy, 2.1% false positive rate
+
+## Safety Categories
+
+1. **Violent** - Violence instructions, methods, or depictions
+2. **Non-violent Illegal Acts** - Hacking, unauthorized activities
+3. **Sexual Content** - Sexual imagery or descriptions
+4. **PII** - Personally identifiable information disclosure
+5. **Suicide & Self-Harm** - Self-harm encouragement
+6. **Unethical Acts** - Bias, discrimination, hate speech
+7. **Politically Sensitive** - False political information
+8. **Copyright Violation** - Unauthorized copyrighted material
+9. **Jailbreak** - System prompt override attempts
+
+## Quick Start
+
+### Basic Safety Classification
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import re
+
+model_name = "zenlm/zen-guard"
+
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(
+    model_name,
+    torch_dtype="auto",
+    device_map="auto"
+)
+
+def classify_safety(content):
+    safe_pattern = r"Safety: (Safe|Unsafe|Controversial)"
+    category_pattern = r"(Violent|Non-violent Illegal Acts|Sexual Content|PII|Suicide & Self-Harm|Unethical Acts|Politically Sensitive|Copyright Violation|Jailbreak|None)"
+    safe_match = re.search(safe_pattern, content)
+    label = safe_match.group(1) if safe_match else None
+    categories = re.findall(category_pattern, content)
+    return label, categories
+
+# Moderate a prompt
+prompt = "How can I learn about cybersecurity?"
+messages = [{"role": "user", "content": prompt}]
+text = tokenizer.apply_chat_template(messages, tokenize=False)
+inputs = tokenizer([text], return_tensors="pt").to(model.device)
+
+outputs = model.generate(**inputs, max_new_tokens=128)
+result = tokenizer.decode(outputs[0][len(inputs.input_ids[0]):], skip_special_tokens=True)
+label, categories = classify_safety(result)
+print(f"Safety: {label}, Categories: {categories}")
+```
+
+### Streaming Safety (Real-time)
+
+```python
+import torch
+from transformers import AutoModel, AutoTokenizer
+
+model_path = "zenlm/zen-guard-stream"
+
+tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+model = AutoModel.from_pretrained(
+    model_path,
+    device_map="auto",
+    torch_dtype=torch.bfloat16,
+    trust_remote_code=True,
+).eval()
+
+# Initialize stream
+stream_state = None
+
+# Process tokens one by one
+for token_id in token_ids:
+    result, stream_state = model.stream_moderate_from_ids(
+        token_id, 
+        role="assistant",
+        stream_state=stream_state
+    )
+    if result['risk_level'][-1] == "Unsafe":
+        print("UNSAFE CONTENT DETECTED")
+        break
+
+model.close_stream(stream_state)
+```
+
+## Deployment
+
+### SGLang
+
+```bash
+python -m sglang.launch_server --model-path zenlm/zen-guard --port 30000
+```
+
+### vLLM
+
+```bash
+vllm serve zenlm/zen-guard --port 8000 --max-model-len 32768
+```
+
+## Performance
+
+| Metric | Zen Guard | Zen Guard Gen | Zen Guard Stream |
+|--------|-----------|---------------|------------------|
+| Accuracy | 96.8% | 96.8% | 95.2% |
+| F1 Score | 94.2% | 94.2% | 93.1% |
+| False Positive | 2.1% | 2.1% | 2.8% |
+| Latency | 120ms | 120ms | 5ms/token |
+
+### Multilingual Performance
+
+| Language | Accuracy |
+|----------|----------|
+| English | 97.2% |
+| Chinese | 96.5% |
+| Spanish | 96.1% |
+| Other (avg) | 95.8% |
+
+## Resource Requirements
+
+| Model | VRAM (FP16) | VRAM (INT8) | Throughput |
+|-------|-------------|-------------|------------|
+| zen-guard | 8GB | 4GB | 1000+ req/s |
+| zen-guard-gen | 16GB | 8GB | 500+ req/s |
+| zen-guard-stream | 8GB | 4GB | Real-time |
+
+## Resources
+
+- [zen-guard on HuggingFace](https://huggingface.co/zenlm/zen-guard)
+- [zen-guard-gen on HuggingFace](https://huggingface.co/zenlm/zen-guard-gen)
+- [zen-guard-stream on HuggingFace](https://huggingface.co/zenlm/zen-guard-stream)
+- [GitHub Repository](https://github.com/zenlm/zen-guard)
+- [Technical Paper](/papers/zen-guard.pdf)
+
+## Based On
+
+Built upon [Qwen3Guard](https://github.com/QwenLM/Qwen3Guard) with Zen identity fine-tuning.

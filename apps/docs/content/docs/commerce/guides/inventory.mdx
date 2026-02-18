@@ -1,0 +1,251 @@
+---
+title: Inventory Management
+description: Set up stock locations, manage inventory levels, and handle reservations
+icon: Warehouse
+---
+
+This guide covers setting up inventory tracking in Hanzo Commerce, including stock locations, inventory levels, reservations, and multi-warehouse configurations.
+
+## Overview
+
+The inventory system tracks stock across multiple locations:
+
+```
+Stock Location → Inventory Level → Inventory Item (SKU)
+                                 → Reservations
+```
+
+- **Stock Location**: A physical warehouse or store
+- **Inventory Item**: A trackable SKU linked to a product variant
+- **Inventory Level**: Stock count at a specific location
+- **Reservation**: Temporary hold on stock for pending orders
+
+## Step 1: Create Stock Locations
+
+Define your warehouses and fulfillment centers:
+
+```bash
+curl -X POST https://api.hanzo.ai/stocklocation \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "US West Warehouse",
+    "address": {
+      "line1": "100 Warehouse Blvd",
+      "city": "Los Angeles",
+      "state": "CA",
+      "postalCode": "90001",
+      "country": "US"
+    }
+  }'
+```
+
+```typescript
+const location = await commerce.inventory.createLocation({
+  name: 'US West Warehouse',
+  address: {
+    line1: '100 Warehouse Blvd',
+    city: 'Los Angeles',
+    state: 'CA',
+    postalCode: '90001',
+    country: 'US'
+  }
+})
+```
+
+## Step 2: Create Inventory Items
+
+Link inventory items to product variants:
+
+```bash
+curl -X POST https://api.hanzo.ai/inventoryitem \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sku": "SHIRT-BLK-M",
+    "variantId": "var_xyz789",
+    "title": "Premium T-Shirt - Black / M",
+    "requiresShipping": true
+  }'
+```
+
+```typescript
+const item = await commerce.inventory.createItem({
+  sku: 'SHIRT-BLK-M',
+  variantId: 'var_xyz789',
+  title: 'Premium T-Shirt - Black / M',
+  requiresShipping: true
+})
+```
+
+## Step 3: Set Inventory Levels
+
+Set stock quantities at each location:
+
+```bash
+curl -X POST https://api.hanzo.ai/inventorylevel \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "inventoryItemId": "iitem_abc123",
+    "locationId": "sloc_wc001",
+    "stocked": 200,
+    "incoming": 50
+  }'
+```
+
+```typescript
+await commerce.inventory.createLevel({
+  inventoryItemId: item.id,
+  locationId: location.id,
+  stocked: 200,
+  incoming: 50
+})
+```
+
+## Adjusting Stock
+
+Use stock adjustments with reason codes to maintain an audit trail:
+
+```bash
+curl -X POST https://api.hanzo.ai/inventorylevel/ilvl_001/adjust \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "adjustment": 50,
+    "reason": "received",
+    "note": "Weekly restock from supplier"
+  }'
+```
+
+```typescript
+await commerce.inventory.adjustLevel('ilvl_001', {
+  adjustment: 50,
+  reason: 'received',
+  note: 'Weekly restock from supplier'
+})
+```
+
+**Adjustment Reasons:**
+
+| Reason | Use Case |
+|--------|----------|
+| `received` | New stock from supplier |
+| `returned` | Customer return restocked |
+| `damaged` | Damaged or defective items |
+| `correction` | Manual count correction |
+| `transfer` | Moved between locations |
+
+## Handling Reservations
+
+When a customer places an order, inventory is reserved automatically. Reservations prevent overselling:
+
+```json
+{
+  "stocked": 200,
+  "reserved": 15,
+  "available": 185
+}
+```
+
+Available quantity = stocked - reserved.
+
+<Callout type="info">
+Reservations expire automatically after 30 minutes if the order is not confirmed. This prevents abandoned carts from blocking inventory indefinitely.
+</Callout>
+
+For manual reservations (e.g., pre-orders):
+
+```bash
+curl -X POST https://api.hanzo.ai/reservation \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "inventoryItemId": "iitem_abc123",
+    "locationId": "sloc_wc001",
+    "quantity": 10,
+    "orderId": "order_preorder01",
+    "expiresAt": "2024-02-01T00:00:00Z"
+  }'
+```
+
+## Multi-Warehouse Setup
+
+For multiple warehouses, create inventory levels at each location for the same item:
+
+```bash
+# East Coast warehouse
+curl -X POST https://api.hanzo.ai/inventorylevel \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "inventoryItemId": "iitem_abc123",
+    "locationId": "sloc_east01",
+    "stocked": 150
+  }'
+
+# West Coast warehouse
+curl -X POST https://api.hanzo.ai/inventorylevel \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "inventoryItemId": "iitem_abc123",
+    "locationId": "sloc_west01",
+    "stocked": 200
+  }'
+```
+
+Total available is aggregated across all locations:
+
+```json
+{
+  "id": "iitem_abc123",
+  "totalStocked": 350,
+  "totalReserved": 20,
+  "totalAvailable": 330,
+  "levels": [
+    {"locationId": "sloc_east01", "stocked": 150, "reserved": 8, "available": 142},
+    {"locationId": "sloc_west01", "stocked": 200, "reserved": 12, "available": 188}
+  ]
+}
+```
+
+## Low Stock Alerts
+
+Query items that are below a stock threshold:
+
+```bash
+curl "https://api.hanzo.ai/inventoryitem?lowStock=true&display=50" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+Configure low stock thresholds per item:
+
+```bash
+curl -X PUT https://api.hanzo.ai/inventoryitem/iitem_abc123 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "lowStockThreshold": 25
+  }'
+```
+
+When stock falls below the threshold, a `inventory.low_stock` webhook event fires automatically.
+
+## Transferring Stock Between Locations
+
+Record a transfer between warehouses using paired adjustments:
+
+```bash
+# Remove from source
+curl -X POST https://api.hanzo.ai/inventorylevel/ilvl_east01/adjust \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"adjustment": -25, "reason": "transfer", "note": "Transfer to West warehouse"}'
+
+# Add to destination
+curl -X POST https://api.hanzo.ai/inventorylevel/ilvl_west01/adjust \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"adjustment": 25, "reason": "transfer", "note": "Transfer from East warehouse"}'
+```

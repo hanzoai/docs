@@ -1,0 +1,85 @@
+---
+title: Embeddings
+description: Generate vector embeddings with zen3-embedding
+---
+
+# Embeddings
+
+Generate dense vector embeddings for text using the `zen3-embedding` model.
+
+## Endpoint
+
+```
+POST https://api.hanzo.ai/v1/embeddings
+```
+
+## Request Body
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `model` | string | Yes | Must be `zen3-embedding` |
+| `input` | string/array | Yes | Text to embed (string or array of strings) |
+
+## Example
+
+```bash
+curl https://api.hanzo.ai/v1/embeddings \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen3-embedding",
+    "input": "Zen LM is a family of frontier AI models"
+  }'
+```
+
+## Python
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="https://api.hanzo.ai/v1", api_key="your-key")
+
+response = client.embeddings.create(
+    model="zen3-embedding",
+    input=["Hello world", "Zen LM models"],
+)
+
+for embedding in response.data:
+    print(f"Vector dim: {len(embedding.embedding)}")
+```
+
+## Response
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "embedding",
+      "index": 0,
+      "embedding": [0.0023, -0.0091, 0.0152, ...]
+    }
+  ],
+  "model": "zen3-embedding",
+  "usage": {
+    "prompt_tokens": 8,
+    "total_tokens": 8
+  }
+}
+```
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| Model | zen3-embedding |
+| Dimensions | 3072 |
+| Max Input | 8,191 tokens |
+| Pricing | $0.39 / 1M tokens |
+
+## Use Cases
+
+- **Semantic search**: Find similar documents by meaning
+- **RAG**: Retrieval-augmented generation pipelines
+- **Clustering**: Group similar texts together
+- **Classification**: Use embeddings as features for classifiers

@@ -1,0 +1,261 @@
+---
+title: Notification API
+description: Manage transactional notifications across email, SMS, and push channels
+icon: Bell
+---
+
+The Notification API manages transactional notifications triggered by commerce events. Notifications can be delivered via email, SMS, or push channels.
+
+## Notification Structure
+
+```json
+{
+  "id": "notif_abc123",
+  "eventName": "order.confirmed",
+  "channel": "email",
+  "to": "jane@example.com",
+  "status": "sent",
+  "subject": "Order Confirmed - HZ-10042",
+  "templateId": "tmpl_order_confirmed",
+  "data": {
+    "orderId": "order_xyz789",
+    "orderNumber": "HZ-10042",
+    "total": 6578,
+    "currency": "USD"
+  },
+  "sentAt": "2024-01-15T10:31:00Z",
+  "createdAt": "2024-01-15T10:30:45Z"
+}
+```
+
+## Endpoints
+
+### List Notifications
+
+`GET /notification`
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | number | Page number |
+| `display` | number | Items per page |
+| `sort` | string | Sort field |
+| `channel` | string | `email`, `sms`, `push` |
+| `status` | string | `pending`, `sent`, `failed` |
+| `eventName` | string | Filter by event type |
+| `to` | string | Filter by recipient |
+
+```bash
+curl "https://api.hanzo.ai/notification?channel=email&status=sent&display=20" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "count": 1250,
+  "models": [
+    {
+      "id": "notif_abc123",
+      "eventName": "order.confirmed",
+      "channel": "email",
+      "to": "jane@example.com",
+      "status": "sent",
+      "sentAt": "2024-01-15T10:31:00Z"
+    }
+  ]
+}
+```
+
+### Get Notification
+
+`GET /notification/:id`
+
+```bash
+curl https://api.hanzo.ai/notification/notif_abc123 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### Create Notification
+
+`POST /notification`
+
+Send a custom notification manually:
+
+```bash
+curl -X POST https://api.hanzo.ai/notification \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel": "email",
+    "to": "jane@example.com",
+    "templateId": "tmpl_promo_announcement",
+    "data": {
+      "customerName": "Jane",
+      "promoCode": "SUMMER25",
+      "discount": "25%"
+    }
+  }'
+```
+
+### Update Notification
+
+`PUT /notification/:id`
+
+Update metadata or scheduling on pending notifications:
+
+```bash
+curl -X PUT https://api.hanzo.ai/notification/notif_pending01 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "scheduledAt": "2024-01-16T09:00:00Z"
+  }'
+```
+
+### Delete Notification
+
+`DELETE /notification/:id`
+
+Cancel a pending notification:
+
+```bash
+curl -X DELETE https://api.hanzo.ai/notification/notif_pending01 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+## Resend Notification
+
+`POST /notification/:id/resend`
+
+```bash
+curl -X POST https://api.hanzo.ai/notification/notif_abc123/resend \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel": "email"
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "id": "notif_def456",
+  "eventName": "order.confirmed",
+  "channel": "email",
+  "to": "jane@example.com",
+  "status": "pending",
+  "parentId": "notif_abc123",
+  "createdAt": "2024-01-16T14:00:00Z"
+}
+```
+
+## Notification Channels
+
+### Email
+
+```json
+{
+  "channel": "email",
+  "to": "jane@example.com",
+  "subject": "Your order has shipped",
+  "templateId": "tmpl_order_shipped"
+}
+```
+
+### SMS
+
+```json
+{
+  "channel": "sms",
+  "to": "+15550123456",
+  "templateId": "tmpl_order_shipped_sms"
+}
+```
+
+### Push
+
+```json
+{
+  "channel": "push",
+  "to": "device_token_abc123",
+  "title": "Order Shipped",
+  "body": "Your order HZ-10042 is on its way!",
+  "data": {
+    "orderId": "order_xyz789"
+  }
+}
+```
+
+## Automatic Event Notifications
+
+These events trigger notifications automatically when enabled:
+
+| Event | Description |
+|-------|-------------|
+| `order.confirmed` | Order confirmation |
+| `order.shipped` | Shipping notification with tracking |
+| `order.delivered` | Delivery confirmation |
+| `order.cancelled` | Cancellation notice |
+| `order.refunded` | Refund confirmation |
+| `payment.failed` | Payment failure alert |
+| `subscription.created` | Subscription welcome |
+| `subscription.renewed` | Renewal confirmation |
+| `subscription.cancelled` | Cancellation confirmation |
+| `customer.password_reset` | Password reset link |
+
+<Callout type="info">
+Configure which events trigger notifications and on which channels in the Notification Settings under your dashboard, or via the `POST /notification/settings` endpoint.
+</Callout>
+
+## SDK Examples
+
+### JavaScript
+
+```typescript
+import { Commerce } from '@hanzo/commerce'
+
+const commerce = new Commerce({ apiKey: 'your_key' })
+
+// List failed notifications
+const failed = await commerce.notifications.list({
+  status: 'failed',
+  display: 50
+})
+
+// Resend notification
+await commerce.notifications.resend('notif_abc123', {
+  channel: 'email'
+})
+
+// Send custom notification
+await commerce.notifications.create({
+  channel: 'sms',
+  to: '+15550123456',
+  templateId: 'tmpl_flash_sale',
+  data: { promoCode: 'FLASH50' }
+})
+```
+
+### Go
+
+```go
+failed, err := client.Notifications.List(ctx, &sdk.NotificationListParams{
+    Status:  "failed",
+    Display: 50,
+})
+
+err = client.Notifications.Resend(ctx, "notif_abc123", &sdk.ResendInput{
+    Channel: "email",
+})
+
+notif, err := client.Notifications.Create(ctx, &sdk.NotificationInput{
+    Channel:    "sms",
+    To:         "+15550123456",
+    TemplateID: "tmpl_flash_sale",
+    Data:       map[string]interface{}{"promoCode": "FLASH50"},
+})
+```

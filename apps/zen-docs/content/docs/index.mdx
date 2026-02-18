@@ -1,0 +1,71 @@
+---
+title: Introduction
+description: Zen4 - Open foundation models from 4B to 1T+ parameters
+---
+
+# Zen4
+
+**Zen4** is a family of open, uncensored AI models built on abliterated weights from Qwen3 and frontier MoE architectures.
+
+From the 4B Mini for edge deployment to the 1.04T Ultra for cloud-scale reasoning, Zen4 models run unrestricted with no safety theater.
+
+## Model Tiers
+
+<Cards>
+  <Card title="Consumer Line" href="/docs/models#consumer">
+    5 models from 4B to 80B MoE - dense models for edge and MoE flagships for desktop
+  </Card>
+  <Card title="Coder Line" href="/docs/models#coder">
+    3 coding models from 31B to 355B for agentic programming
+  </Card>
+  <Card title="Ultra Line" href="/docs/models#ultra">
+    Trillion-parameter MoE models for cloud deployment
+  </Card>
+  <Card title="Training" href="/docs/training">
+    Fine-tune Zen4 models with MLX, Unsloth, or DeepSpeed
+  </Card>
+</Cards>
+
+## Quick Start
+
+### Use a Zen4 model
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+model = AutoModelForCausalLM.from_pretrained("zenlm/zen4")
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen4")
+
+messages = [{"role": "user", "content": "Hello, who are you?"}]
+text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+inputs = tokenizer(text, return_tensors="pt").to(model.device)
+outputs = model.generate(**inputs, max_new_tokens=512)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
+
+### Run with MLX (Apple Silicon)
+
+```bash
+pip install mlx-lm
+python -m mlx_lm.generate --model zenlm/zen4-max --prompt "Explain quantum computing"
+```
+
+### Run with Ollama
+
+```bash
+ollama run zen4
+```
+
+## Key Features
+
+- **Abliterated**: Safety restrictions removed via orthogonalization of refusal directions
+- **Efficient MoE**: Flagship models use only 3B active parameters from 30B-80B total
+- **Long Context**: Up to 256K tokens on MoE models, 32K on dense models
+- **Open Weights**: All models available on [HuggingFace](https://huggingface.co/zenlm)
+
+## Resources
+
+- [All Models on HuggingFace](https://huggingface.co/zenlm)
+- [GitHub Organization](https://github.com/zenlm)
+- [Zen LM Website](https://zenlm.org)
+- [Hanzo AI](https://hanzo.ai)

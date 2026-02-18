@@ -1,0 +1,140 @@
+---
+title: Product Module
+description: Products, variants, options, images, and collections
+icon: Package
+---
+
+The Product module manages the entire product catalog including variants, options, images, collections, and full-text search.
+
+## Data Model
+
+```json
+{
+  "id": "prod_abc123",
+  "name": "Premium T-Shirt",
+  "slug": "premium-t-shirt",
+  "description": "High-quality cotton t-shirt",
+  "status": "published",
+  "price": 2999,
+  "currency": "USD",
+  "images": [
+    { "url": "https://cdn.hanzo.ai/img/shirt.jpg", "alt": "Front view", "position": 0 }
+  ],
+  "options": [
+    { "name": "Size", "values": ["S", "M", "L", "XL"] },
+    { "name": "Color", "values": ["Black", "White"] }
+  ],
+  "variants": [],
+  "collections": ["apparel", "featured"],
+  "tags": ["cotton", "premium"],
+  "metadata": { "brand": "Hanzo" },
+  "createdAt": "2025-01-15T10:00:00Z",
+  "updatedAt": "2025-01-15T10:00:00Z"
+}
+```
+
+## Key Concepts
+
+- **Product** -- the parent entity containing shared attributes (name, description, images)
+- **Variant** -- a purchasable combination of options (e.g. Black / Medium) with its own SKU, price, and inventory
+- **Option** -- a dimension of variation (Size, Color, Material)
+- **Collection** -- a grouping of products for merchandising (manual or rule-based)
+
+## API Examples
+
+### Create a Product
+
+<Tabs items={["curl", "TypeScript", "Go"]}>
+<TabsContent value="curl">
+```bash
+curl -X POST https://api.hanzo.ai/product \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Premium T-Shirt",
+    "slug": "premium-t-shirt",
+    "price": 2999,
+    "currency": "USD",
+    "options": [
+      {"name": "Size", "values": ["S", "M", "L", "XL"]},
+      {"name": "Color", "values": ["Black", "White"]}
+    ]
+  }'
+```
+</TabsContent>
+<TabsContent value="TypeScript">
+```ts
+const product = await commerce.products.create({
+  name: 'Premium T-Shirt',
+  slug: 'premium-t-shirt',
+  price: 2999,
+  currency: 'USD',
+  options: [
+    { name: 'Size', values: ['S', 'M', 'L', 'XL'] },
+    { name: 'Color', values: ['Black', 'White'] },
+  ],
+})
+```
+</TabsContent>
+<TabsContent value="Go">
+```go
+product, err := client.Products.Create(ctx, &sdk.ProductInput{
+    Name:     "Premium T-Shirt",
+    Slug:     "premium-t-shirt",
+    Price:    2999,
+    Currency: "USD",
+    Options: []sdk.ProductOption{
+        {Name: "Size", Values: []string{"S", "M", "L", "XL"}},
+        {Name: "Color", Values: []string{"Black", "White"}},
+    },
+})
+```
+</TabsContent>
+</Tabs>
+
+### Search Products
+
+```bash
+curl "https://api.hanzo.ai/product?q=shirt&collection=apparel&minPrice=1000&sort=price:asc" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Manage Collections
+
+```bash
+# Create a collection
+curl -X POST https://api.hanzo.ai/collection \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Summer Sale",
+    "slug": "summer-sale",
+    "type": "manual",
+    "products": ["prod_abc123", "prod_def456"]
+  }'
+```
+
+## Configuration
+
+```yaml
+product:
+  search_engine: postgres   # postgres | meilisearch
+  max_variants: 100         # max variants per product
+  max_images: 20            # max images per product
+  slug_auto_generate: true  # auto-generate slug from name
+  cdn_prefix: "https://cdn.hanzo.ai"
+```
+
+## Events
+
+| Event | Payload |
+|-------|---------|
+| `product.created` | Full product object |
+| `product.updated` | Changed fields + product ID |
+| `product.deleted` | Product ID |
+| `product.published` | Product ID + timestamp |
+| `collection.updated` | Collection ID + product IDs |
+
+<Callout type="info">
+Variants are automatically generated when you provide options on product creation. You can also create variants individually for more control.
+</Callout>

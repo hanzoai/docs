@@ -30,43 +30,26 @@ The GitHub Release also contains a [DotSlash](https://dotslash-cli.com/) file fo
 ## Build from Source
 
 ```bash
-# Clone the repository and navigate to the Cargo workspace
+# Clone the repository
 git clone https://github.com/hanzoai/dev.git
-cd dev/codex-rs
+cd dev
 
 # Install the Rust toolchain if necessary
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 source "$HOME/.cargo/env"
-rustup component add rustfmt
-rustup component add clippy
 
-# Install helper tools
-cargo install just
-# Optional: install nextest for faster tests
-cargo install cargo-nextest
+# Build (~20 min cold, ~2 min incremental)
+./build-fast.sh
 
-# Build
-cargo build
-
-# Launch the TUI with a sample prompt
-cargo run --bin codex -- "explain this codebase to me"
-
-# After making changes, use the root justfile helpers:
-just fmt
-just fix -p <crate-you-touched>
-
-# Run the relevant tests
-cargo test -p codex-tui
-# Or full test suite:
-just test
-cargo test --all-features
+# Launch the TUI
+./hanzo-dev/target/dev-fast/dev
 ```
 
 ## Tracing / Verbose Logging
 
 Hanzo Dev is written in Rust and honors the `RUST_LOG` environment variable.
 
-The TUI defaults to `RUST_LOG=codex_core=info,codex_tui=info,codex_rmcp_client=info` and writes logs to `~/.hanzo/log/codex-tui.log`. Override the log directory with `-c log_dir=...` for a single run.
+The TUI defaults to `RUST_LOG=hanzo_core=info,hanzo_tui=info` and writes logs to `~/.hanzo/log/codex-tui.log`. Override the log directory with `-c log_dir=...` for a single run.
 
 ```bash
 tail -F ~/.hanzo/log/codex-tui.log

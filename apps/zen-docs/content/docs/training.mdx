@@ -1,0 +1,104 @@
+---
+title: Training
+description: Fine-tune Zen4 models with MLX, Unsloth, or DeepSpeed
+---
+
+# Training Zen4 Models
+
+## Identity Training (MLX LoRA)
+
+Light identity training teaches Zen4 models their name, creator, and capabilities. Runs locally on Apple Silicon.
+
+### Requirements
+
+- Apple Silicon Mac (M1/M2/M3/M4) with 16GB+ RAM
+- Python 3.11+
+- MLX and mlx-lm
+
+```bash
+pip install mlx mlx-lm
+```
+
+### Quick Start
+
+```bash
+git clone https://github.com/zenlm/zen-trainer
+cd zen-trainer
+
+# Train Zen4 Mini (smallest, fastest)
+python train_identity.py --model mini
+
+# Train Zen4 Pro Max (flagship)
+python train_identity.py --model maxpro
+```
+
+### Training Configuration
+
+| Model | Base Size | LoRA Layers | Iterations | Time (M1 Max 64GB) |
+|-------|----------|-------------|------------|---------------------|
+| Zen4 Mini | 4B | 8 | 200 | ~5 min |
+| Zen4 | 8B | 8 | 200 | ~10 min |
+| Zen4 Pro | 14B | 8 | 200 | ~20 min |
+| Zen4 Max | 30B MoE | 8 | 200 | ~15 min |
+| Zen4 Pro Max | 80B MoE | 8 | 200 | ~25 min |
+| Zen4 Coder Flash | 31B MoE | 8 | 200 | ~15 min |
+| Zen4 Coder | 80B MoE | 8 | 200 | ~25 min |
+
+### Training Data Format
+
+ChatML format (JSONL):
+
+```json
+{"messages": [{"role": "user", "content": "Who are you?"}, {"role": "assistant", "content": "I am Zen4, an open AI assistant created by Zen LM and Hanzo AI."}]}
+```
+
+Each model has ~736 training samples and ~39 validation samples.
+
+## Converting Models
+
+### Fuse LoRA Adapter
+
+```bash
+python -m mlx_lm.fuse \
+  --model /path/to/base/model \
+  --adapter-path /path/to/adapters \
+  --save-path /path/to/fused
+```
+
+### Convert to GGUF
+
+```bash
+python convert_hf_to_gguf.py /path/to/fused --outfile zen4.gguf --outtype f16
+llama-quantize zen4.gguf zen4-Q4_K_M.gguf Q4_K_M
+```
+
+### Convert to MLX 4-bit
+
+```bash
+python -m mlx_lm.convert \
+  --hf-path /path/to/fused \
+  --mlx-path /path/to/mlx-output \
+  --quantize --q-bits 4
+```
+
+## Full Pipeline
+
+```bash
+# Process all models
+./zen4/pipeline.sh all
+
+# Process a specific model
+./zen4/pipeline.sh mini
+```
+
+Pipeline: verify download -> push to HF -> identity train -> convert GGUF + MLX -> upload.
+
+## Hardware Requirements
+
+| Model | Minimum RAM | Recommended |
+|-------|------------|-------------|
+| Zen4 Mini (4B) | 8 GB | 16 GB |
+| Zen4 (8B) | 16 GB | 32 GB |
+| Zen4 Pro (14B) | 32 GB | 64 GB |
+| Zen4 Max/Coder Flash (30B MoE) | 32 GB | 64 GB |
+| Zen4 Pro Max/Coder (80B MoE) | 64 GB | 128 GB |

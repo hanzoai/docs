@@ -1,0 +1,290 @@
+---
+title: Marketplace
+description: Build a multi-vendor marketplace with split payments and vendor management
+---
+
+This recipe walks through building a multi-vendor marketplace on Hanzo Commerce -- vendor onboarding, product management per vendor, split payments, commission tracking, and vendor dashboards.
+
+## What You Will Build
+
+- Multi-tenant vendor system using namespaces
+- Vendor onboarding and approval flow
+- Per-vendor product catalogs
+- Split payments at checkout
+- Commission tracking and payouts
+- Vendor dashboard for order management
+
+## Architecture Overview
+
+```
+Customer --> Storefront --> Commerce API
+                              |
+              +---------------+---------------+
+              |               |               |
+           Vendor A        Vendor B        Platform
+           (namespace)     (namespace)     (owner)
+              |               |               |
+           Products        Products        Commission
+           Orders          Orders          Payouts
+           Fulfillment    Fulfillment     Analytics
+```
+
+Hanzo Commerce uses **namespaces** for multi-tenancy. Each vendor operates within an isolated namespace with their own products, orders, and fulfillment, while the platform owner controls global settings, commissions, and payouts.
+
+## 1. Enable Marketplace Mode
+
+Configure your Commerce instance for marketplace operation:
+
+```ts title="setup-marketplace.ts"
+import { Commerce } from '@hanzo/commerce'
+
+const commerce = new Commerce({
+  apiKey: process.env.HANZO_API_KEY!,
+  environment: 'production',
+})
+
+await commerce.settings.update({
+  marketplace: {
+    enabled: true,
+    commissionRate: 15,          // 15% platform commission
+    payoutSchedule: 'weekly',    // weekly vendor payouts
+    payoutMinimum: 5000,         // $50.00 minimum payout
+    vendorApproval: 'manual',    // require admin approval
+  },
+})
+```
+
+## 2. Vendor Onboarding
+
+### Registration Endpoint
+
+Create an API route for vendor applications:
+
+```ts title="src/app/api/vendors/apply/route.ts"
+import { commerce } from '@/lib/commerce'
+import { NextRequest, NextResponse } from 'next/server'
+
+export async function POST(req: NextRequest) {
+  const body = await req.json()
+
+  const vendor = await commerce.vendors.create({
+    name: body.businessName,
+    email: body.email,
+    description: body.description,
+    metadata: {
+      taxId: body.taxId,
+      address: body.address,
+    },
+  })
+
+  // Vendor is in "pending" status until admin approves
+  return NextResponse.json({ vendorId: vendor.id, status: vendor.status })
+}
+```
+
+### Admin Approval
+
+Approve vendors from the Admin dashboard or via the API:
+
+```ts
+// Approve a vendor -- creates their namespace and credentials
+const vendor = await commerce.vendors.approve(vendorId)
+
+// vendor.namespace -- unique namespace identifier
+// vendor.apiKey -- vendor-scoped API key
+// vendor.dashboardUrl -- vendor dashboard link
+```
+
+### Vendor Status Flow
+
+```
+applied --> pending_review --> approved --> active
+                           \-> rejected
+```
+
+## 3. Vendor Product Management
+
+Vendors manage products within their namespace. Use the vendor-scoped SDK:
+
+```ts title="vendor-sdk.ts"
+import { Commerce } from '@hanzo/commerce'
+
+// Vendor uses their own API key
+const vendorCommerce = new Commerce({
+  apiKey: vendor.apiKey,
+  namespace: vendor.namespace,
+})
+
+const product = await vendorCommerce.products.create({
+  name: 'Handmade Pottery Bowl',
+  slug: 'handmade-pottery-bowl',
+  price: 4500, // $45.00
+  currency: 'USD',
+  images: [{ url: 'https://...' }],
+})
+```
+
+Products created in a vendor namespace:
+- Are owned by the vendor
+- Appear in the global marketplace catalog
+- Route orders to the vendor for fulfillment
+- Apply the platform commission rate
+
+## 4. Split Payments
+
+When a customer buys from multiple vendors in one cart, Commerce splits the payment automatically.
+
+```ts
+// Customer adds items from different vendors
+const cart = await commerce.carts.create({
+  items: [
+    { productId: 'prod_vendor_a_item', quantity: 1 },
+    { productId: 'prod_vendor_b_item', quantity: 2 },
+  ],
+})
+
+// Checkout creates a single charge, Commerce handles splits
+const session = await commerce.checkout.create({
+  cartId: cart.id,
+  successUrl: 'https://marketplace.example.com/order/confirmation',
+  cancelUrl: 'https://marketplace.example.com/cart',
+})
+```
+
+The resulting order contains split information:
+
+```json
+{
+  "id": "order_abc123",
+  "total": 13500,
+  "splits": [
+    {
+      "vendorId": "vendor_a",
+      "subtotal": 4500,
+      "commission": 675,
+      "vendorPayout": 3825
+    },
+    {
+      "vendorId": "vendor_b",
+      "subtotal": 9000,
+      "commission": 1350,
+      "vendorPayout": 7650
+    }
+  ]
+}
+```
+
+## 5. Commission Configuration
+
+Set commission rates globally or per vendor:
+
+```ts
+// Global default
+await commerce.settings.update({
+  marketplace: { commissionRate: 15 },
+})
+
+// Per-vendor override (e.g., lower rate for top sellers)
+await commerce.vendors.update(vendorId, {
+  commissionRate: 10, // 10% for this vendor
+})
+
+// Per-category override
+await commerce.categories.update(categoryId, {
+  commissionRate: 20, // 20% for this category
+})
+```
+
+Commission priority: product > category > vendor > global.
+
+## 6. Vendor Payouts
+
+Commerce tracks vendor balances and handles payouts:
+
+```ts
+// Get vendor balance
+const balance = await commerce.vendors.getBalance(vendorId)
+// { available: 125000, pending: 34500, currency: 'USD' }
+
+// Trigger a manual payout
+const payout = await commerce.payouts.create({
+  vendorId,
+  amount: balance.available,
+  method: 'bank_transfer', // or 'stripe_connect'
+})
+```
+
+### Payout Methods
+
+| Method | Description |
+|--------|-------------|
+| `stripe_connect` | Direct to vendor's Stripe account |
+| `bank_transfer` | ACH/wire to vendor's bank account |
+| `paypal` | PayPal payout |
+| `manual` | Platform admin handles manually |
+
+## 7. Vendor Dashboard
+
+Vendors get a scoped view of their business:
+
+```tsx title="src/app/vendor/dashboard/page.tsx"
+import { vendorCommerce } from '@/lib/vendor-commerce'
+
+export default async function VendorDashboard() {
+  const [orders, products, balance] = await Promise.all([
+    vendorCommerce.orders.list({ limit: 10, sort: '-createdAt' }),
+    vendorCommerce.products.list({ limit: 100 }),
+    vendorCommerce.balance.get(),
+  ])
+
+  return (
+    <main className="max-w-6xl mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-6">Vendor Dashboard</h1>
+
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        <StatCard title="Products" value={products.total} />
+        <StatCard title="Orders" value={orders.total} />
+        <StatCard
+          title="Balance"
+          value={`$${(balance.available / 100).toFixed(2)}`}
+        />
+      </div>
+
+      <h2 className="text-xl font-semibold mb-4">Recent Orders</h2>
+      <OrdersTable orders={orders.data} />
+    </main>
+  )
+}
+```
+
+## 8. Vendor Fulfillment
+
+Each vendor fulfills their portion of an order independently:
+
+```ts
+// Vendor marks their items as shipped
+await vendorCommerce.fulfillments.create({
+  orderId: order.id,
+  items: [{ itemId: 'item_123', quantity: 1 }],
+  trackingNumber: '1Z999AA10123456784',
+  carrier: 'ups',
+})
+```
+
+The platform order status updates to `partially_fulfilled` until all vendors have shipped, then moves to `fulfilled`.
+
+## Testing
+
+1. Enable marketplace mode and create two vendor accounts
+2. Approve both vendors and verify namespace creation
+3. Create products under each vendor
+4. Add products from both vendors to a single cart
+5. Complete checkout -- verify the order splits and commission amounts
+6. Check vendor balances reflect the correct payout amounts
+7. Test vendor fulfillment for each split
+
+## Next Steps
+
+- Add [multi-currency support](/docs/commerce/recipes/multi-currency) for international vendors
+- Review the [Payment module](/docs/commerce/modules/payment) for Stripe Connect setup
+- Set up [analytics](/docs/commerce/guides/analytics) for marketplace-wide reporting

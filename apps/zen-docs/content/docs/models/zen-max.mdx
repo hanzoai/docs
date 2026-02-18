@@ -1,0 +1,61 @@
+---
+title: zen-max
+description: 671B MoE frontier model with 71.3% SWE-bench
+---
+
+# zen-max
+
+**Frontier Capability Model**
+
+<Cards>
+  <Card title="HuggingFace" href="https://huggingface.co/zenlm/zen-max" />
+</Cards>
+
+## Overview
+
+| Attribute | Value |
+|-----------|-------|
+| **Parameters** | 671B total (384 experts, 8 per token) |
+| **Active Parameters** | 14B |
+| **Context Length** | 256K tokens |
+| **Base Model** | Kimi K2 (DeepseekV3ForCausalLM) |
+| **License** | Apache 2.0 |
+
+## Benchmarks
+
+| Benchmark | Score |
+|-----------|-------|
+| SWE-bench Verified | **71.3%** |
+| AIME 2025 | **99.1%** |
+| BrowseComp | **60.2%** |
+| GPQA-Diamond | **84.5%** |
+
+## Capabilities
+
+- **Agentic reasoning** with extended chain-of-thought
+- **200-300 sequential tool calls** without human intervention
+- **Agentic search and browsing**
+- **Mathematical reasoning** (AIME 2025: 99.1%)
+- **Parallel reasoning** with Heavy Mode (8 simultaneous trajectories)
+
+## Training
+
+QLoRA training on HuggingFace Space:
+- INT4 quantized base model (~370GB)
+- Requires 4x A100 80GB or 8x A100 40GB
+- LoRA adapters only (~100MB output)
+
+## Usage
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+
+model = AutoModelForCausalLM.from_pretrained(
+    "zenlm/zen-max",
+    torch_dtype=torch.bfloat16,
+    device_map="auto",
+    load_in_4bit=True,
+)
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-max")
+```

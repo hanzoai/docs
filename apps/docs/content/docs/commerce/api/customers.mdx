@@ -1,0 +1,245 @@
+---
+title: Customer API
+description: Manage customer accounts, profiles, and segmentation
+icon: Users
+---
+
+The Customer API provides endpoints for managing customer accounts, profiles, addresses, and segmentation. Customers are distinct from admin users and represent buyers in your store.
+
+## Customer Structure
+
+```json
+{
+  "id": "cust_abc123",
+  "email": "jane@example.com",
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "phone": "+1-555-0123",
+  "metadata": {
+    "segment": "vip",
+    "source": "referral"
+  },
+  "addresses": [
+    {
+      "id": "addr_001",
+      "label": "Home",
+      "line1": "456 Oak Ave",
+      "city": "Portland",
+      "state": "OR",
+      "postalCode": "97201",
+      "country": "US",
+      "isDefault": true
+    }
+  ],
+  "orderCount": 12,
+  "totalSpent": 45600,
+  "tags": ["vip", "early-adopter"],
+  "createdAt": "2024-03-10T08:00:00Z",
+  "updatedAt": "2024-06-15T14:22:00Z"
+}
+```
+
+## Endpoints
+
+### List Customers
+
+`GET /user`
+
+Retrieve a paginated list of customers with optional filtering.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | number | Page number (default: 1) |
+| `display` | number | Items per page (default: 20, max: 100) |
+| `sort` | string | Sort field (e.g. `createdAt:desc`) |
+| `q` | string | Search by name or email |
+| `tag` | string | Filter by tag |
+| `since` | string | Created after ISO date |
+
+```bash
+curl "https://api.hanzo.ai/user?display=20&sort=createdAt:desc&tag=vip" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "count": 842,
+  "models": [
+    {
+      "id": "cust_abc123",
+      "email": "jane@example.com",
+      "firstName": "Jane",
+      "lastName": "Doe",
+      "orderCount": 12,
+      "totalSpent": 45600,
+      "createdAt": "2024-03-10T08:00:00Z"
+    }
+  ]
+}
+```
+
+### Get Customer
+
+`GET /user/:id`
+
+```bash
+curl https://api.hanzo.ai/user/cust_abc123 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### Create Customer
+
+`POST /user`
+
+```bash
+curl -X POST https://api.hanzo.ai/user \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "jane@example.com",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "phone": "+1-555-0123",
+    "tags": ["referral"],
+    "metadata": {
+      "source": "partner-campaign"
+    }
+  }'
+```
+
+**Response:** `201 Created`
+
+```json
+{
+  "id": "cust_abc123",
+  "email": "jane@example.com",
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "createdAt": "2024-03-10T08:00:00Z"
+}
+```
+
+### Update Customer
+
+`PUT /user/:id`
+
+```bash
+curl -X PUT https://api.hanzo.ai/user/cust_abc123 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Janet",
+    "tags": ["vip", "referral"],
+    "metadata": {
+      "segment": "vip",
+      "source": "partner-campaign"
+    }
+  }'
+```
+
+### Delete Customer
+
+`DELETE /user/:id`
+
+```bash
+curl -X DELETE https://api.hanzo.ai/user/cust_abc123 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Response:** `204 No Content`
+
+<Callout type="warn">
+Deleting a customer is permanent. Order history is retained but anonymized. Consider deactivating instead by setting `active: false`.
+</Callout>
+
+## Customer Addresses
+
+### Add Address
+
+```bash
+curl -X POST https://api.hanzo.ai/user/cust_abc123/address \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "label": "Office",
+    "line1": "789 Business Blvd",
+    "city": "San Francisco",
+    "state": "CA",
+    "postalCode": "94102",
+    "country": "US"
+  }'
+```
+
+### Delete Address
+
+```bash
+curl -X DELETE https://api.hanzo.ai/user/cust_abc123/address/addr_002 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+## Customer Groups
+
+Segment customers for targeted pricing and promotions:
+
+```bash
+curl -X POST https://api.hanzo.ai/user/cust_abc123/tag \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tags": ["wholesale", "vip"]
+  }'
+```
+
+## SDK Examples
+
+### JavaScript
+
+```typescript
+import { Commerce } from '@hanzo/commerce'
+
+const commerce = new Commerce({ apiKey: 'your_key' })
+
+// List VIP customers
+const customers = await commerce.customers.list({
+  tag: 'vip',
+  sort: 'totalSpent:desc',
+  display: 50
+})
+
+// Create customer
+const customer = await commerce.customers.create({
+  email: 'jane@example.com',
+  firstName: 'Jane',
+  lastName: 'Doe'
+})
+
+// Add address
+await commerce.customers.addAddress(customer.id, {
+  label: 'Home',
+  line1: '456 Oak Ave',
+  city: 'Portland',
+  state: 'OR',
+  postalCode: '97201',
+  country: 'US'
+})
+```
+
+### Go
+
+```go
+customers, err := client.Customers.List(ctx, &sdk.CustomerListParams{
+    Tag:     "vip",
+    Sort:    "totalSpent:desc",
+    Display: 50,
+})
+
+customer, err := client.Customers.Create(ctx, &sdk.CustomerInput{
+    Email:     "jane@example.com",
+    FirstName: "Jane",
+    LastName:  "Doe",
+})
+```

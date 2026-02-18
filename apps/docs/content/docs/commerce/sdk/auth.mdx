@@ -1,0 +1,203 @@
+---
+title: Auth Module
+description: Authentication with @hanzo/sdk -- login, register, tokens, and OAuth
+---
+
+The Auth module handles all authentication flows for both storefront customers and admin users. It integrates with **hanzo.id** for OAuth2 and supports email/password, token refresh, and session management.
+
+## Setup
+
+```typescript
+import { HanzoSDK } from '@hanzo/sdk'
+
+const sdk = new HanzoSDK({
+  baseUrl: 'https://api.hanzo.ai/v1',
+  apiKey: 'your-api-key',
+})
+```
+
+## Email / Password Authentication
+
+### Login
+
+```typescript
+const session = await sdk.auth.login({
+  email: 'customer@example.com',
+  password: 'their-password',
+})
+
+console.log(session.accessToken)  // JWT access token
+console.log(session.refreshToken) // Refresh token for renewal
+console.log(session.expiresAt)    // Token expiry timestamp
+```
+
+### Register
+
+```typescript
+const session = await sdk.auth.register({
+  email: 'newuser@example.com',
+  password: 'secure-password',
+  firstName: 'Jane',
+  lastName: 'Doe',
+})
+```
+
+Registration returns a session immediately -- the user is logged in after creation.
+
+### Logout
+
+```typescript
+await sdk.auth.logout()
+```
+
+This invalidates the current session on the server and clears local token state.
+
+## Token Management
+
+### Refresh Tokens
+
+Access tokens expire after a configurable period (default: 1 hour). Use the refresh token to obtain a new access token without requiring the user to log in again:
+
+```typescript
+const newSession = await sdk.auth.refresh()
+console.log(newSession.accessToken)
+```
+
+The SDK can handle token refresh automatically when configured:
+
+```typescript
+const sdk = new HanzoSDK({
+  baseUrl: 'https://api.hanzo.ai/v1',
+  apiKey: 'your-api-key',
+  autoRefresh: true, // Automatically refresh expired tokens
+})
+```
+
+### Get Current User
+
+Retrieve the authenticated user's profile:
+
+```typescript
+const user = await sdk.auth.me()
+
+console.log(user.id)        // "cust_abc123"
+console.log(user.email)     // "customer@example.com"
+console.log(user.firstName) // "Jane"
+console.log(user.lastName)  // "Doe"
+console.log(user.role)      // "customer" | "admin"
+```
+
+### Update Profile
+
+```typescript
+await sdk.auth.updateProfile({
+  firstName: 'Jane',
+  lastName: 'Smith',
+  phone: '+1-555-0123',
+})
+```
+
+### Change Password
+
+```typescript
+await sdk.auth.changePassword({
+  currentPassword: 'old-password',
+  newPassword: 'new-secure-password',
+})
+```
+
+## Password Reset
+
+### Request Reset
+
+```typescript
+await sdk.auth.requestPasswordReset({
+  email: 'customer@example.com',
+})
+// Sends a reset email with a one-time token
+```
+
+### Complete Reset
+
+```typescript
+await sdk.auth.resetPassword({
+  token: 'reset-token-from-email',
+  newPassword: 'new-secure-password',
+})
+```
+
+## OAuth2 / Social Login
+
+The SDK supports OAuth2 flows through hanzo.id providers:
+
+### Initiate OAuth Flow
+
+```typescript
+// Redirect the user to the OAuth provider
+const authUrl = sdk.auth.getOAuthUrl({
+  provider: 'google',    // 'google' | 'github' | 'apple' | 'discord'
+  redirectUri: 'https://yourstore.com/auth/callback',
+  scopes: ['openid', 'email', 'profile'],
+})
+
+window.location.href = authUrl
+```
+
+### Handle Callback
+
+```typescript
+// In your callback route handler
+const session = await sdk.auth.handleOAuthCallback({
+  provider: 'google',
+  code: urlParams.get('code'),
+  redirectUri: 'https://yourstore.com/auth/callback',
+})
+```
+
+### Supported Providers
+
+| Provider | Identifier | Scopes |
+|----------|-----------|--------|
+| Google | `google` | `openid`, `email`, `profile` |
+| GitHub | `github` | `user:email`, `read:user` |
+| Apple | `apple` | `email`, `name` |
+| Discord | `discord` | `identify`, `email` |
+
+## Session Storage
+
+By default, the SDK stores tokens in memory. Configure a custom storage backend for persistence:
+
+```typescript
+const sdk = new HanzoSDK({
+  baseUrl: 'https://api.hanzo.ai/v1',
+  apiKey: 'your-api-key',
+  storage: {
+    get: (key: string) => localStorage.getItem(key),
+    set: (key: string, value: string) => localStorage.setItem(key, value),
+    remove: (key: string) => localStorage.removeItem(key),
+  },
+})
+```
+
+<Callout type="warn">
+Never store tokens in localStorage for applications that handle sensitive data. Use httpOnly cookies or in-memory storage with token refresh instead.
+</Callout>
+
+## Admin Authentication
+
+Admin users authenticate through the same module but require admin role credentials:
+
+```typescript
+const session = await sdk.auth.login({
+  email: 'admin@yourstore.com',
+  password: 'admin-password',
+})
+
+// Verify the user has admin access
+const user = await sdk.auth.me()
+if (user.role !== 'admin') {
+  throw new Error('Insufficient permissions')
+}
+```
+
+For the admin dashboard, see the [Admin Setup Guide](/docs/commerce/admin/setup) for PKCE-based OAuth configuration.

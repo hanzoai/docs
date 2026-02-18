@@ -1,0 +1,289 @@
+---
+title: Subscription API
+description: Manage recurring subscriptions, plans, and billing cycles
+icon: RefreshCw
+---
+
+The Subscription API manages recurring billing, subscription plans, and subscriber lifecycle including creation, activation, pausing, resumption, and cancellation.
+
+## Subscription Structure
+
+```json
+{
+  "id": "sub_abc123",
+  "customerId": "cust_xyz789",
+  "planId": "plan_pro",
+  "status": "active",
+  "currentPeriodStart": "2024-06-01T00:00:00Z",
+  "currentPeriodEnd": "2024-07-01T00:00:00Z",
+  "cancelAtPeriodEnd": false,
+  "items": [
+    {
+      "id": "sitem_001",
+      "productId": "prod_abc123",
+      "variantId": "var_monthly",
+      "quantity": 1,
+      "price": 2999
+    }
+  ],
+  "paymentMethodId": "pm_card123",
+  "metadata": {},
+  "createdAt": "2024-01-15T10:00:00Z",
+  "updatedAt": "2024-06-01T00:00:00Z"
+}
+```
+
+## Plans
+
+### List Plans
+
+`GET /plan`
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | number | Page number |
+| `display` | number | Items per page |
+| `sort` | string | Sort field |
+| `status` | string | `active`, `archived` |
+| `interval` | string | `day`, `week`, `month`, `year` |
+
+```bash
+curl "https://api.hanzo.ai/plan?status=active" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "count": 3,
+  "models": [
+    {
+      "id": "plan_pro",
+      "name": "Pro Monthly",
+      "amount": 2999,
+      "currency": "USD",
+      "interval": "month",
+      "intervalCount": 1,
+      "trialDays": 14,
+      "status": "active"
+    }
+  ]
+}
+```
+
+### Create Plan
+
+`POST /plan`
+
+```bash
+curl -X POST https://api.hanzo.ai/plan \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Pro Monthly",
+    "amount": 2999,
+    "currency": "USD",
+    "interval": "month",
+    "intervalCount": 1,
+    "trialDays": 14,
+    "productId": "prod_pro_plan"
+  }'
+```
+
+### Get / Update / Delete Plan
+
+`GET /plan/:id` | `PUT /plan/:id` | `DELETE /plan/:id`
+
+## Subscriptions
+
+### List Subscriptions
+
+`GET /subscription`
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | number | Page number |
+| `display` | number | Items per page |
+| `status` | string | `active`, `paused`, `cancelled`, `trialing`, `past_due` |
+| `customerId` | string | Filter by customer |
+| `planId` | string | Filter by plan |
+
+```bash
+curl "https://api.hanzo.ai/subscription?status=active&display=20" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### Get Subscription
+
+`GET /subscription/:id`
+
+```bash
+curl https://api.hanzo.ai/subscription/sub_abc123 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### Create Subscription
+
+`POST /subscription`
+
+```bash
+curl -X POST https://api.hanzo.ai/subscription \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerId": "cust_xyz789",
+    "planId": "plan_pro",
+    "paymentMethodId": "pm_card123",
+    "metadata": {
+      "referral": "partner-abc"
+    }
+  }'
+```
+
+**Response:** `201 Created`
+
+```json
+{
+  "id": "sub_abc123",
+  "customerId": "cust_xyz789",
+  "planId": "plan_pro",
+  "status": "trialing",
+  "trialEnd": "2024-01-29T10:00:00Z",
+  "currentPeriodStart": "2024-01-15T10:00:00Z",
+  "currentPeriodEnd": "2024-02-15T10:00:00Z"
+}
+```
+
+### Update Subscription
+
+`PUT /subscription/:id`
+
+Change plan or update payment method:
+
+```bash
+curl -X PUT https://api.hanzo.ai/subscription/sub_abc123 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "planId": "plan_enterprise",
+    "prorate": true
+  }'
+```
+
+### Delete Subscription
+
+`DELETE /subscription/:id`
+
+## Subscription Lifecycle
+
+### Activate
+
+`POST /subscription/:id/activate`
+
+Manually activate a subscription (e.g., after manual review):
+
+```bash
+curl -X POST https://api.hanzo.ai/subscription/sub_abc123/activate \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### Pause
+
+`POST /subscription/:id/pause`
+
+```bash
+curl -X POST https://api.hanzo.ai/subscription/sub_abc123/pause \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resumeAt": "2024-03-01T00:00:00Z"
+  }'
+```
+
+### Resume
+
+`POST /subscription/:id/resume`
+
+```bash
+curl -X POST https://api.hanzo.ai/subscription/sub_abc123/resume \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### Cancel
+
+`POST /subscription/:id/cancel`
+
+```bash
+curl -X POST https://api.hanzo.ai/subscription/sub_abc123/cancel \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cancelAtPeriodEnd": true,
+    "reason": "too_expensive"
+  }'
+```
+
+**Subscription Statuses:**
+
+| Status | Description |
+|--------|-------------|
+| `trialing` | In free trial period |
+| `active` | Actively billing |
+| `paused` | Temporarily paused |
+| `past_due` | Payment failed, retrying |
+| `cancelled` | Cancelled by customer or admin |
+| `expired` | Trial or subscription ended |
+
+<Callout type="info">
+Setting `cancelAtPeriodEnd: true` allows the customer to use the subscription until the current billing period ends.
+</Callout>
+
+## SDK Examples
+
+### JavaScript
+
+```typescript
+import { Commerce } from '@hanzo/commerce'
+
+const commerce = new Commerce({ apiKey: 'your_key' })
+
+// Create subscription
+const sub = await commerce.subscriptions.create({
+  customerId: 'cust_xyz789',
+  planId: 'plan_pro',
+  paymentMethodId: 'pm_card123'
+})
+
+// Pause subscription
+await commerce.subscriptions.pause(sub.id, {
+  resumeAt: '2024-03-01T00:00:00Z'
+})
+
+// Cancel at period end
+await commerce.subscriptions.cancel(sub.id, {
+  cancelAtPeriodEnd: true
+})
+```
+
+### Go
+
+```go
+sub, err := client.Subscriptions.Create(ctx, &sdk.SubscriptionInput{
+    CustomerID:      "cust_xyz789",
+    PlanID:          "plan_pro",
+    PaymentMethodID: "pm_card123",
+})
+
+err = client.Subscriptions.Pause(ctx, sub.ID, &sdk.PauseInput{
+    ResumeAt: "2024-03-01T00:00:00Z",
+})
+
+err = client.Subscriptions.Cancel(ctx, sub.ID, &sdk.CancelInput{
+    CancelAtPeriodEnd: true,
+})
+```

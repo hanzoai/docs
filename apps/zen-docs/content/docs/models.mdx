@@ -1,0 +1,140 @@
+---
+title: Models
+description: Complete Zen4 model family - Consumer, Coder, and Ultra tiers
+---
+
+# Zen4 Models
+
+## Consumer Line {#consumer}
+
+Dense and MoE models for desktop and edge deployment. All built on abliterated Qwen3 weights.
+
+| Model | Parameters | Active | Base | Context | License |
+|-------|-----------|--------|------|---------|---------|
+| **Zen4 Mini** | 4B | 4B | Qwen3-4B-Instruct-2507 | 32K | Apache 2.0 |
+| **Zen4** | 8B | 8B | Qwen3-8B | 32K | Apache 2.0 |
+| **Zen4 Pro** | 14B | 14B | Qwen3-14B | 32K | Apache 2.0 |
+| **Zen4 Max** | 30B MoE | 3B | Qwen3-30B-A3B | 256K | Apache 2.0 |
+| **Zen4 Pro Max** | 80B MoE | 3B | Qwen3-Next-80B-A3B | 256K | Apache 2.0 |
+
+### Zen4 Mini (4B)
+
+Ultra-efficient for edge and mobile. Full Qwen3 quality at 4B parameters.
+
+- [HuggingFace](https://huggingface.co/zenlm/zen4-mini) | [GitHub](https://github.com/zenlm/zen4-mini)
+
+### Zen4 (8B)
+
+The standard model. Excellent balance of quality and efficiency.
+
+- [HuggingFace](https://huggingface.co/zenlm/zen4) | [GitHub](https://github.com/zenlm/zen4)
+
+### Zen4 Pro (14B)
+
+Professional-grade for demanding tasks. Strong reasoning and code generation.
+
+- [HuggingFace](https://huggingface.co/zenlm/zen4-pro) | [GitHub](https://github.com/zenlm/zen4-pro)
+
+### Zen4 Max (30B MoE)
+
+Flagship efficient model. 30B total with only 3B active via MoE.
+
+- [HuggingFace](https://huggingface.co/zenlm/zen4-max) | [GitHub](https://github.com/zenlm/zen4-max)
+
+### Zen4 Pro Max (80B MoE) - Flagship
+
+The ultimate consumer model. Hybrid Gated DeltaNet + Gated Attention + MoE architecture.
+
+- [HuggingFace](https://huggingface.co/zenlm/zen4-pro-max) | [GitHub](https://github.com/zenlm/zen4-pro-max)
+
+---
+
+## Coder Line {#coder}
+
+Specialized models for agentic programming and software engineering.
+
+| Model | Parameters | Active | Base | Context | License |
+|-------|-----------|--------|------|---------|---------|
+| **Zen4 Coder Flash** | 31B MoE | 3B | GLM-4.7-Flash | 131K | MIT |
+| **Zen4 Coder** | 80B MoE | 3B | Qwen3-Coder-Next | 256K | Apache 2.0 |
+| **Zen4 Coder Pro** | 355B | 355B | GLM-4.7 | 200K | MIT |
+
+### Zen4 Coder Flash (31B MoE)
+
+Fast coding model for rapid iteration. GLM-4.7-Flash base with MoE efficiency.
+
+- [HuggingFace](https://huggingface.co/zenlm/zen4-coder-flash) | [GitHub](https://github.com/zenlm/zen4-coder-flash)
+
+### Zen4 Coder (80B MoE) - Flagship Code
+
+80B with 512-expert MoE for state-of-the-art code generation and agentic programming.
+
+- [HuggingFace](https://huggingface.co/zenlm/zen4-coder) | [GitHub](https://github.com/zenlm/zen4-coder)
+
+### Zen4 Coder Pro (355B) - Cloud Only
+
+Dense 355B coding powerhouse. GLM-4.7 base for maximum code intelligence.
+
+- [HuggingFace](https://huggingface.co/zenlm/zen4-coder-pro) | [GitHub](https://github.com/zenlm/zen4-coder-pro)
+
+---
+
+## Ultra Line {#ultra}
+
+Trillion-parameter models for cloud deployment.
+
+| Model | Parameters | Active | Base | Context | Status |
+|-------|-----------|--------|------|---------|--------|
+| **Zen4 Ultra** | 1.04T MoE | 32B | Kimi K2.5 Thinking | 256K | Cloud Only |
+| **Zen4 Ultra Max** | 1T+ MoE | TBD | DeepSeek V4 | 1M | Coming Soon |
+
+### Zen4 Ultra (1.04T MoE) - Cloud
+
+Trillion-parameter frontier model with 384 experts and vision capabilities via MoonViT.
+
+- [HuggingFace](https://huggingface.co/zenlm/zen4-ultra) | [GitHub](https://github.com/zenlm/zen4-ultra)
+
+### Zen4 Ultra Max (1T+ MoE) - Coming Soon
+
+Next-generation model based on DeepSeek V4 with 1M context window.
+
+---
+
+## Formats
+
+All locally-runnable models are available in multiple formats:
+
+| Format | Use Case | Platform |
+|--------|----------|----------|
+| **SafeTensors** | Full precision, transformers | All |
+| **GGUF** | Quantized, llama.cpp/Ollama | All |
+| **MLX** | Apple Silicon optimized | macOS |
+
+## Usage
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+# Load any Zen4 model
+model = AutoModelForCausalLM.from_pretrained("zenlm/zen4-pro-max")
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen4-pro-max")
+
+messages = [{"role": "user", "content": "Hello!"}]
+text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+inputs = tokenizer(text, return_tensors="pt")
+outputs = model.generate(**inputs, max_new_tokens=512)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
+
+## Multimodal & Specialized
+
+In addition to Zen4, the Zen LM family includes multimodal and specialized models:
+
+| Model | Type | Description |
+|-------|------|-------------|
+| zen3-omni | Multimodal | Text + Vision + Audio |
+| zen3-vl | Vision-Language | Image understanding with function calling |
+| zen-video | Video | Text-to-video and image-to-video generation |
+| zen-3d | 3D Assets | 3D mesh generation from text/image |
+
+All models available at [huggingface.co/zenlm](https://huggingface.co/zenlm).

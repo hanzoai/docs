@@ -1,0 +1,200 @@
+---
+title: Error Handling
+description: Handle errors from @hanzo/sdk -- error codes, retry strategies, and validation
+---
+
+All SDK methods throw a `HanzoError` when an API call fails. This page covers the error class, error codes, and strategies for handling failures.
+
+## HanzoError Class
+
+```typescript
+import { HanzoError } from '@hanzo/sdk'
+
+try {
+  await sdk.admin.product.create(data)
+} catch (err) {
+  if (err instanceof HanzoError) {
+    console.error(err.code)     // Error code string
+    console.error(err.message)  // Human-readable message
+    console.error(err.status)   // HTTP status code
+    console.error(err.details)  // Additional error details (validation, etc.)
+    console.error(err.requestId) // Request ID for debugging
+  }
+}
+```
+
+### Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `code` | `string` | Machine-readable error code |
+| `message` | `string` | Human-readable error description |
+| `status` | `number` | HTTP status code (400, 401, 404, etc.) |
+| `details` | `Record<string, any>` | Additional context (field errors, limits) |
+| `requestId` | `string` | Unique request ID for support and debugging |
+
+## Error Codes
+
+### Authentication Errors (401)
+
+| Code | Description |
+|------|-------------|
+| `unauthorized` | Missing or invalid API key |
+| `token_expired` | Access token has expired |
+| `token_invalid` | Token is malformed or revoked |
+| `insufficient_permissions` | User lacks required role or scope |
+
+### Validation Errors (400)
+
+| Code | Description |
+|------|-------------|
+| `validation_error` | Request body failed validation |
+| `invalid_field` | A specific field has an invalid value |
+| `missing_field` | A required field is missing |
+| `invalid_format` | Field value does not match expected format |
+
+Validation errors include field-level details:
+
+```typescript
+try {
+  await sdk.admin.product.create({ name: '' })
+} catch (err) {
+  if (err instanceof HanzoError && err.code === 'validation_error') {
+    console.error(err.details)
+    // {
+    //   fields: [
+    //     { field: "name", message: "Name is required", code: "missing_field" },
+    //     { field: "price", message: "Price is required", code: "missing_field" },
+    //   ]
+    // }
+  }
+}
+```
+
+### Not Found Errors (404)
+
+| Code | Description |
+|------|-------------|
+| `not_found` | The requested resource does not exist |
+
+### Conflict Errors (409)
+
+| Code | Description |
+|------|-------------|
+| `duplicate` | A resource with the same unique field already exists |
+| `state_conflict` | The resource is in a state that prevents the operation |
+
+### Rate Limiting (429)
+
+| Code | Description |
+|------|-------------|
+| `rate_limited` | Too many requests; retry after the indicated delay |
+
+```typescript
+try {
+  await sdk.admin.product.list()
+} catch (err) {
+  if (err instanceof HanzoError && err.code === 'rate_limited') {
+    const retryAfter = err.details.retryAfter // seconds
+    console.log(`Rate limited. Retry after ${retryAfter}s`)
+  }
+}
+```
+
+### Server Errors (500)
+
+| Code | Description |
+|------|-------------|
+| `internal_error` | An unexpected server error occurred |
+| `service_unavailable` | The service is temporarily unavailable |
+
+## Retry Strategy
+
+The SDK includes built-in retry logic for transient failures:
+
+```typescript
+const sdk = new HanzoSDK({
+  baseUrl: 'https://api.hanzo.ai/v1',
+  apiKey: 'your-api-key',
+  retries: 3,       // Max retry attempts (default: 3)
+  retryDelay: 1000, // Initial delay in ms (default: 1000)
+})
+```
+
+Retries are applied to:
+
+- Network errors (connection refused, timeout)
+- `429` rate limit responses (respects `Retry-After` header)
+- `500` and `503` server errors
+
+Retries are **not** applied to:
+
+- `400` validation errors
+- `401` authentication errors
+- `404` not found errors
+- `409` conflict errors
+
+### Custom Retry Logic
+
+```typescript
+async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn()
+    } catch (err) {
+      if (err instanceof HanzoError && err.status >= 500 && attempt < maxAttempts) {
+        await new Promise(r => setTimeout(r, 1000 * attempt))
+        continue
+      }
+      throw err
+    }
+  }
+  throw new Error('Unreachable')
+}
+
+const product = await withRetry(() => sdk.admin.product.get('prod_abc123'))
+```
+
+## Network Errors
+
+Network-level failures (DNS, timeout, connection reset) throw a `HanzoError` with:
+
+- `code`: `network_error`
+- `status`: `0`
+- `message`: Description of the network failure
+
+```typescript
+try {
+  await sdk.admin.product.list()
+} catch (err) {
+  if (err instanceof HanzoError && err.code === 'network_error') {
+    console.error('Network failure:', err.message)
+  }
+}
+```
+
+## Type Guard
+
+Use the `isHanzoError` helper for concise type checking:
+
+```typescript
+import { isHanzoError } from '@hanzo/sdk'
+
+try {
+  await sdk.admin.product.create(data)
+} catch (err) {
+  if (isHanzoError(err)) {
+    // err is typed as HanzoError
+    switch (err.code) {
+      case 'validation_error':
+        handleValidation(err.details)
+        break
+      case 'unauthorized':
+        redirectToLogin()
+        break
+      default:
+        reportError(err)
+    }
+  }
+}
+```

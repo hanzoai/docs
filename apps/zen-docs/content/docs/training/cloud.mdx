@@ -1,0 +1,93 @@
+---
+title: Cloud Training
+description: Full-scale training on 8x H200 GPUs
+---
+
+# Cloud Training (8x H200)
+
+Full-scale training on Nebius or similar cloud providers.
+
+## Requirements
+
+- 8x NVIDIA H200 (141GB each)
+- SLURM cluster or Docker environment
+- ~8 hours training time
+- ~$288 estimated cost
+
+## Configuration
+
+Training config at `training/configs/8xh200.yaml`:
+
+```yaml
+# Model
+model_name: zai-org/GLM-4.7-Flash
+output_dir: ./zen-coder-flash-lora
+
+# Hardware
+num_gpus: 8
+gpu_type: h200
+total_batch_size: 128
+per_device_batch_size: 2
+gradient_accumulation_steps: 8
+
+# LoRA
+lora_rank: 64
+lora_alpha: 128
+lora_dropout: 0.05
+target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+
+# Training
+learning_rate: 1e-4
+num_train_epochs: 3
+warmup_ratio: 0.03
+max_seq_length: 8192
+
+# Dataset
+dataset: hanzoai/zen-agentic-dataset-private
+```
+
+## Launch Training
+
+```bash
+# Clone the repo
+git clone https://github.com/zenlm/zen-coder-flash
+cd zen-coder-flash
+
+# Dry run
+python training/launch_training.py --dry-run
+
+# Launch on Nebius
+python training/launch_training.py --config training/configs/8xh200.yaml
+
+# Local Docker (for testing)
+python training/launch_training.py --local
+```
+
+## SLURM Job
+
+The launcher generates a SLURM job script:
+
+```bash
+#!/bin/bash
+#SBATCH --job-name=zen-coder-flash
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --gpus-per-node=8
+#SBATCH --time=24:00:00
+
+srun python training/scripts/train.py
+```
+
+## HuggingFace Spaces Alternative
+
+For smaller scale training, use HuggingFace Spaces:
+
+1. Create a new HF Space with GPU (T4/A10G/A100)
+2. Upload `training/hf_space/app.py` and `requirements.txt`
+3. Train via Gradio UI
+
+Cost: ~$0.60/hr for T4 GPU.

@@ -1,0 +1,297 @@
+---
+title: Tax API
+description: Configure tax regions, rates, and automatic tax calculation
+icon: Receipt
+---
+
+The Tax API manages tax regions, rates, rate rules, and tax providers. It supports automatic tax calculation for carts and orders based on shipping address.
+
+## Tax Region Structure
+
+```json
+{
+  "id": "txreg_us",
+  "name": "United States",
+  "countryCode": "US",
+  "defaultTaxRate": 0,
+  "provinceCode": null,
+  "rates": [
+    {
+      "id": "txrate_ca",
+      "name": "California State Tax",
+      "rate": 0.0725,
+      "code": "US-CA",
+      "isCompound": false,
+      "rules": [
+        {
+          "id": "txrule_001",
+          "type": "province",
+          "reference": "CA"
+        }
+      ]
+    }
+  ],
+  "providerId": "txprov_auto",
+  "createdAt": "2024-01-01T00:00:00Z"
+}
+```
+
+## Tax Regions
+
+### List Tax Regions
+
+`GET /taxregion`
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | number | Page number |
+| `display` | number | Items per page |
+| `countryCode` | string | Filter by country code |
+
+```bash
+curl "https://api.hanzo.ai/taxregion" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "count": 5,
+  "models": [
+    {
+      "id": "txreg_us",
+      "name": "United States",
+      "countryCode": "US",
+      "rateCount": 51
+    }
+  ]
+}
+```
+
+### Get Tax Region
+
+`GET /taxregion/:id`
+
+```bash
+curl https://api.hanzo.ai/taxregion/txreg_us \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### Create Tax Region
+
+`POST /taxregion`
+
+```bash
+curl -X POST https://api.hanzo.ai/taxregion \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "European Union",
+    "countryCode": "EU",
+    "defaultTaxRate": 0.20,
+    "providerId": "txprov_auto"
+  }'
+```
+
+### Update / Delete Tax Region
+
+`PUT /taxregion/:id` | `DELETE /taxregion/:id`
+
+## Tax Rates
+
+### Create Tax Rate
+
+`POST /taxrate`
+
+```bash
+curl -X POST https://api.hanzo.ai/taxrate \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "taxRegionId": "txreg_us",
+    "name": "California State Tax",
+    "rate": 0.0725,
+    "code": "US-CA",
+    "isCompound": false
+  }'
+```
+
+### Get / Update / Delete Tax Rate
+
+`GET /taxrate/:id` | `PUT /taxrate/:id` | `DELETE /taxrate/:id`
+
+## Tax Rate Rules
+
+Rules determine when a tax rate applies based on location or product type.
+
+### Create Tax Rate Rule
+
+`POST /taxraterule`
+
+```bash
+curl -X POST https://api.hanzo.ai/taxraterule \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "taxRateId": "txrate_ca",
+    "type": "province",
+    "reference": "CA"
+  }'
+```
+
+**Rule Types:**
+
+| Type | Reference | Description |
+|------|-----------|-------------|
+| `province` | State/province code | Applies in specific state |
+| `zip` | Postal code pattern | Applies in specific postal codes |
+| `city` | City name | Applies in specific city |
+| `product_type` | Product type ID | Applies to specific product types |
+| `shipping` | `true` / `false` | Whether to tax shipping |
+
+### Get / Update / Delete Tax Rate Rule
+
+`GET /taxraterule/:id` | `PUT /taxraterule/:id` | `DELETE /taxraterule/:id`
+
+## Tax Providers
+
+Tax providers handle rate lookups and calculation. Use the built-in provider or integrate external services.
+
+### List Tax Providers
+
+`GET /taxprovider`
+
+```bash
+curl https://api.hanzo.ai/taxprovider \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### Create Tax Provider
+
+`POST /taxprovider`
+
+```bash
+curl -X POST https://api.hanzo.ai/taxprovider \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "TaxJar Integration",
+    "type": "external",
+    "config": {
+      "apiKey": "tj_live_abc123",
+      "endpoint": "https://api.taxjar.com/v2"
+    }
+  }'
+```
+
+**Built-in Providers:**
+
+| Provider | Description |
+|----------|-------------|
+| `manual` | Uses manually configured rates |
+| `auto` | Hanzo automatic tax calculation |
+| `external` | External tax service integration |
+
+### Update / Delete Tax Provider
+
+`PUT /taxprovider/:id` | `DELETE /taxprovider/:id`
+
+## Calculate Tax
+
+`POST /tax/calculate`
+
+Calculate tax for a set of items and shipping address without creating an order:
+
+```bash
+curl -X POST https://api.hanzo.ai/tax/calculate \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "items": [
+      {
+        "productId": "prod_abc123",
+        "quantity": 2,
+        "price": 2999
+      }
+    ],
+    "shippingAddress": {
+      "line1": "123 Main St",
+      "city": "San Francisco",
+      "state": "CA",
+      "postalCode": "94102",
+      "country": "US"
+    },
+    "shippingAmount": 599
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "taxTotal": 575,
+  "shippingTax": 0,
+  "breakdown": [
+    {"name": "State Tax", "rate": 0.0725, "amount": 435},
+    {"name": "County Tax", "rate": 0.0025, "amount": 15},
+    {"name": "City Tax", "rate": 0.0125, "amount": 75},
+    {"name": "District Tax", "rate": 0.0083, "amount": 50}
+  ],
+  "effectiveRate": 0.0958
+}
+```
+
+<Callout type="info">
+Tax calculation uses the shipping address to determine jurisdiction. For digital goods, the billing address may be used depending on your tax region configuration.
+</Callout>
+
+## SDK Examples
+
+### JavaScript
+
+```typescript
+import { Commerce } from '@hanzo/commerce'
+
+const commerce = new Commerce({ apiKey: 'your_key' })
+
+// Calculate tax
+const tax = await commerce.tax.calculate({
+  items: [{ productId: 'prod_abc123', quantity: 2, price: 2999 }],
+  shippingAddress: {
+    state: 'CA',
+    postalCode: '94102',
+    country: 'US'
+  }
+})
+
+// Create tax region
+await commerce.tax.createRegion({
+  name: 'Canada',
+  countryCode: 'CA',
+  defaultTaxRate: 0.05
+})
+```
+
+### Go
+
+```go
+tax, err := client.Tax.Calculate(ctx, &sdk.TaxCalculationInput{
+    Items: []sdk.TaxItem{
+        {ProductID: "prod_abc123", Quantity: 2, Price: 2999},
+    },
+    ShippingAddress: &sdk.Address{
+        State:      "CA",
+        PostalCode: "94102",
+        Country:    "US",
+    },
+})
+
+region, err := client.Tax.CreateRegion(ctx, &sdk.TaxRegionInput{
+    Name:        "Canada",
+    CountryCode: "CA",
+    DefaultRate: 0.05,
+})
+```

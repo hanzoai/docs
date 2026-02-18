@@ -1,0 +1,359 @@
+---
+title: Cart API
+description: Manage shopping carts, line items, promotions, and checkout preparation
+icon: ShoppingBag
+---
+
+The Cart API handles shopping cart lifecycle including line item management, coupon application, shipping method selection, and tax calculation. Carts are the foundation for the checkout flow.
+
+## Cart Structure
+
+```json
+{
+  "id": "cart_abc123",
+  "status": "active",
+  "email": "jane@example.com",
+  "currency": "USD",
+  "items": [
+    {
+      "id": "item_001",
+      "variantId": "var_xyz789",
+      "productId": "prod_abc123",
+      "title": "Premium T-Shirt - Black / M",
+      "quantity": 2,
+      "unitPrice": 2999,
+      "subtotal": 5998,
+      "thumbnail": "https://cdn.hanzo.ai/products/premium-tee-black.jpg"
+    }
+  ],
+  "subtotal": 5998,
+  "discount": 1499,
+  "shippingTotal": 599,
+  "taxTotal": 540,
+  "total": 5638,
+  "coupons": [
+    { "code": "SUMMER25", "discount": 1499 }
+  ],
+  "shippingAddress": {
+    "line1": "456 Oak Ave",
+    "city": "Portland",
+    "state": "OR",
+    "postalCode": "97201",
+    "country": "US"
+  },
+  "shippingMethod": {
+    "id": "ship_standard",
+    "name": "Standard Shipping",
+    "price": 599,
+    "estimatedDays": 5
+  },
+  "metadata": {},
+  "createdAt": "2024-06-15T10:00:00Z",
+  "updatedAt": "2024-06-15T10:15:00Z"
+}
+```
+
+## Endpoints
+
+### Create Cart
+
+`POST /cart`
+
+Create a new empty cart or initialize with items.
+
+```bash
+curl -X POST https://api.hanzo.ai/cart \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "currency": "USD",
+    "items": [
+      {
+        "variantId": "var_xyz789",
+        "quantity": 2
+      }
+    ]
+  }'
+```
+
+**Response:** `201 Created`
+
+```json
+{
+  "id": "cart_abc123",
+  "status": "active",
+  "currency": "USD",
+  "items": [
+    {
+      "id": "item_001",
+      "variantId": "var_xyz789",
+      "title": "Premium T-Shirt - Black / M",
+      "quantity": 2,
+      "unitPrice": 2999,
+      "subtotal": 5998
+    }
+  ],
+  "subtotal": 5998,
+  "total": 5998,
+  "createdAt": "2024-06-15T10:00:00Z"
+}
+```
+
+### Get Cart
+
+`GET /cart/:id`
+
+```bash
+curl https://api.hanzo.ai/cart/cart_abc123 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### Update Cart
+
+`PATCH /cart/:id`
+
+Update cart-level properties such as email, shipping address, or shipping method.
+
+```bash
+curl -X PATCH https://api.hanzo.ai/cart/cart_abc123 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "jane@example.com",
+    "shippingAddress": {
+      "line1": "456 Oak Ave",
+      "city": "Portland",
+      "state": "OR",
+      "postalCode": "97201",
+      "country": "US"
+    },
+    "shippingMethodId": "ship_standard"
+  }'
+```
+
+<Callout type="info">
+Setting a shipping address automatically triggers tax calculation based on the destination. Tax totals update in the response.
+</Callout>
+
+## Line Items
+
+### Add Item
+
+`POST /cart/:id/items`
+
+```bash
+curl -X POST https://api.hanzo.ai/cart/cart_abc123/items \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "variantId": "var_def456",
+    "quantity": 1
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "id": "item_002",
+  "variantId": "var_def456",
+  "title": "Classic Hoodie - Grey / L",
+  "quantity": 1,
+  "unitPrice": 4999,
+  "subtotal": 4999
+}
+```
+
+### Update Item Quantity
+
+`PUT /cart/:id/items/:itemId`
+
+```bash
+curl -X PUT https://api.hanzo.ai/cart/cart_abc123/items/item_001 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "quantity": 3
+  }'
+```
+
+### Remove Item
+
+`DELETE /cart/:id/items/:itemId`
+
+```bash
+curl -X DELETE https://api.hanzo.ai/cart/cart_abc123/items/item_001 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Response:** `204 No Content`
+
+## Coupons
+
+### Apply Coupon
+
+`POST /cart/:id/coupons`
+
+```bash
+curl -X POST https://api.hanzo.ai/cart/cart_abc123/coupons \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "SUMMER25"
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "code": "SUMMER25",
+  "discount": 1499,
+  "description": "25% off orders over $50",
+  "applied": true
+}
+```
+
+**Error Responses:**
+
+| Status | Code | Description |
+|--------|------|-------------|
+| `400` | `coupon_invalid` | Code does not exist |
+| `400` | `coupon_expired` | Promotion has ended |
+| `400` | `coupon_minimum_not_met` | Cart does not meet minimum requirements |
+| `400` | `coupon_usage_exceeded` | Code has reached its usage limit |
+
+### Remove Coupon
+
+`DELETE /cart/:id/coupons/:code`
+
+```bash
+curl -X DELETE https://api.hanzo.ai/cart/cart_abc123/coupons/SUMMER25 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+## Shipping Methods
+
+### List Available Methods
+
+`GET /cart/:id/shipping-methods`
+
+Returns shipping options based on the cart's shipping address and item weights.
+
+```bash
+curl https://api.hanzo.ai/cart/cart_abc123/shipping-methods \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "methods": [
+    {
+      "id": "ship_standard",
+      "name": "Standard Shipping",
+      "price": 599,
+      "estimatedDays": 5
+    },
+    {
+      "id": "ship_express",
+      "name": "Express Shipping",
+      "price": 1499,
+      "estimatedDays": 2
+    }
+  ]
+}
+```
+
+## Tax Calculation
+
+Tax is calculated automatically when a shipping address is set. The calculation uses the tax rates configured in your [Regions](/docs/commerce/api/regions) and [Tax](/docs/commerce/api/tax) settings.
+
+```json
+{
+  "subtotal": 5998,
+  "discount": 1499,
+  "shippingTotal": 599,
+  "taxTotal": 540,
+  "taxLines": [
+    { "name": "Oregon State Tax", "rate": 0.0, "amount": 0 },
+    { "name": "Multnomah County Tax", "rate": 0.0, "amount": 0 }
+  ],
+  "total": 5098
+}
+```
+
+## SDK Examples
+
+### JavaScript
+
+```typescript
+import { Commerce } from '@hanzo/commerce'
+
+const commerce = new Commerce({ apiKey: 'your_key' })
+
+// Create cart with items
+const cart = await commerce.cart.create({
+  currency: 'USD',
+  items: [{ variantId: 'var_xyz789', quantity: 2 }]
+})
+
+// Add item
+await commerce.cart.addItem(cart.id, {
+  variantId: 'var_def456',
+  quantity: 1
+})
+
+// Update quantity
+await commerce.cart.updateItem(cart.id, 'item_001', { quantity: 3 })
+
+// Apply coupon
+await commerce.cart.applyCoupon(cart.id, 'SUMMER25')
+
+// Set shipping address and method
+await commerce.cart.update(cart.id, {
+  email: 'jane@example.com',
+  shippingAddress: {
+    line1: '456 Oak Ave',
+    city: 'Portland',
+    state: 'OR',
+    postalCode: '97201',
+    country: 'US'
+  },
+  shippingMethodId: 'ship_standard'
+})
+
+// Get updated cart with totals
+const updated = await commerce.cart.get(cart.id)
+```
+
+### Go
+
+```go
+cart, err := client.Cart.Create(ctx, &sdk.CartInput{
+    Currency: "USD",
+    Items: []sdk.CartItemInput{
+        {VariantID: "var_xyz789", Quantity: 2},
+    },
+})
+
+err = client.Cart.AddItem(ctx, cart.ID, &sdk.CartItemInput{
+    VariantID: "var_def456",
+    Quantity:  1,
+})
+
+err = client.Cart.ApplyCoupon(ctx, cart.ID, "SUMMER25")
+
+err = client.Cart.Update(ctx, cart.ID, &sdk.CartUpdateInput{
+    Email:            "jane@example.com",
+    ShippingMethodID: "ship_standard",
+    ShippingAddress: &sdk.Address{
+        Line1:      "456 Oak Ave",
+        City:       "Portland",
+        State:      "OR",
+        PostalCode: "97201",
+        Country:    "US",
+    },
+})
+```

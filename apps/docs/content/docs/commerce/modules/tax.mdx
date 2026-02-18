@@ -1,0 +1,155 @@
+---
+title: Tax Module
+description: Tax regions, rates, rules, providers, and automated calculation
+icon: Receipt
+---
+
+The Tax module handles tax calculation for carts and orders, supporting both manual rate configuration and external tax providers.
+
+## Key Concepts
+
+- **Tax Rate** -- a percentage rate applied to taxable items in a specific region
+- **Tax Region** -- a geographic area with its own tax rules (country, state, province)
+- **Tax Provider** -- an external service for real-time tax calculation (e.g. TaxJar, Avalara)
+- **Tax Line** -- an individual tax charge on an order or cart item
+
+## Data Model
+
+```json
+{
+  "id": "tax_us_ca",
+  "regionId": "reg_us",
+  "name": "California Sales Tax",
+  "rate": 8.25,
+  "country": "US",
+  "state": "CA",
+  "type": "sales_tax",
+  "inclusive": false,
+  "appliesToShipping": false
+}
+```
+
+## Tax Calculation
+
+Tax is computed automatically when a cart has a shipping address:
+
+```
+Cart items ──► Determine tax region from address
+           ──► Look up applicable tax rates
+           ──► Calculate tax per item (rate * taxable amount)
+           ──► Sum tax lines into cart total
+```
+
+### Tax-Inclusive vs Tax-Exclusive
+
+| Mode | Description |
+|------|-------------|
+| **Exclusive** (default) | Tax is added on top of the item price |
+| **Inclusive** | Tax is included in the displayed price (common in EU) |
+
+## API Examples
+
+### Configure Tax Rates
+
+<Tabs items={["curl", "TypeScript"]}>
+<TabsContent value="curl">
+```bash
+curl -X POST https://api.hanzo.ai/tax-rate \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "California Sales Tax",
+    "regionId": "reg_us",
+    "rate": 8.25,
+    "country": "US",
+    "state": "CA",
+    "type": "sales_tax",
+    "inclusive": false
+  }'
+```
+</TabsContent>
+<TabsContent value="TypeScript">
+```ts
+const taxRate = await commerce.tax.createRate({
+  name: 'California Sales Tax',
+  regionId: 'reg_us',
+  rate: 8.25,
+  country: 'US',
+  state: 'CA',
+  type: 'sales_tax',
+  inclusive: false,
+})
+```
+</TabsContent>
+</Tabs>
+
+### Get Tax Breakdown for a Cart
+
+```bash
+curl "https://api.hanzo.ai/cart/cart_abc123/tax" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Response:
+
+```json
+{
+  "taxLines": [
+    {
+      "name": "California Sales Tax",
+      "rate": 8.25,
+      "amount": 494,
+      "taxableAmount": 5998
+    }
+  ],
+  "totalTax": 494,
+  "inclusive": false
+}
+```
+
+## Tax Providers
+
+For automated, jurisdiction-accurate tax calculation, connect an external provider:
+
+```yaml
+tax:
+  provider: manual  # manual | taxjar | avalara
+  taxjar:
+    api_key: ${TAXJAR_API_KEY}
+  avalara:
+    account_id: ${AVALARA_ACCOUNT}
+    license_key: ${AVALARA_LICENSE}
+    environment: production  # sandbox | production
+```
+
+When a provider is configured, it overrides manual rates and returns jurisdiction-specific calculations including county and city taxes.
+
+## Tax-Exempt Customers
+
+Mark customers or orders as tax-exempt:
+
+```bash
+curl -X PATCH https://api.hanzo.ai/customer/cust_abc123 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "taxExempt": true,
+    "taxExemptReason": "resale",
+    "taxExemptId": "CA-12345-RS"
+  }'
+```
+
+## Configuration
+
+```yaml
+tax:
+  provider: manual
+  default_rate: 0
+  tax_on_shipping: false
+  auto_detect_region: true  # detect tax region from shipping address
+  round_at: "line"          # line | total
+```
+
+<Callout type="warn">
+Tax rates vary by jurisdiction and change frequently. For production stores, we recommend using TaxJar or Avalara to ensure compliance.
+</Callout>

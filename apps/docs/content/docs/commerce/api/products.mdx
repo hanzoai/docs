@@ -1,0 +1,290 @@
+---
+title: Product API
+description: Manage product catalog, media, and metadata
+icon: Grid3X3
+---
+
+The Product API provides endpoints for managing your product catalog including creation, updates, media management, and filtering. Products can contain multiple variants with independent pricing and inventory.
+
+## Product Structure
+
+```json
+{
+  "id": "prod_abc123",
+  "name": "Premium T-Shirt",
+  "slug": "premium-t-shirt",
+  "description": "Soft cotton premium tee with a modern fit.",
+  "status": "published",
+  "price": 2999,
+  "compareAtPrice": 3999,
+  "currency": "USD",
+  "options": [
+    { "name": "Size", "values": ["S", "M", "L", "XL"] },
+    { "name": "Color", "values": ["Black", "White", "Navy"] }
+  ],
+  "media": [
+    {
+      "id": "media_001",
+      "url": "https://cdn.hanzo.ai/products/premium-tee-black.jpg",
+      "alt": "Premium T-Shirt in Black",
+      "type": "image",
+      "position": 0
+    }
+  ],
+  "tags": ["apparel", "cotton", "bestseller"],
+  "metadata": {
+    "material": "100% organic cotton",
+    "weight": "180gsm"
+  },
+  "collectionIds": ["col_summer", "col_basics"],
+  "variantCount": 12,
+  "createdAt": "2024-01-15T10:00:00Z",
+  "updatedAt": "2024-06-10T14:30:00Z"
+}
+```
+
+## Endpoints
+
+### List Products
+
+`GET /product`
+
+Retrieve a paginated list of products with optional filtering.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | number | Page number (default: 1) |
+| `display` | number | Items per page (default: 20, max: 100) |
+| `sort` | string | Sort field (e.g. `price:asc`, `createdAt:desc`) |
+| `q` | string | Full-text search by name or description |
+| `status` | string | `published`, `draft`, `archived` |
+| `tag` | string | Filter by tag |
+| `collectionId` | string | Filter by collection |
+| `priceMin` | number | Minimum price in cents |
+| `priceMax` | number | Maximum price in cents |
+| `expand` | string | Include related resources: `variants`, `media` |
+
+```bash
+curl "https://api.hanzo.ai/product?status=published&tag=bestseller&sort=price:asc&display=20" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "count": 156,
+  "models": [
+    {
+      "id": "prod_abc123",
+      "name": "Premium T-Shirt",
+      "slug": "premium-t-shirt",
+      "status": "published",
+      "price": 2999,
+      "currency": "USD",
+      "variantCount": 12,
+      "createdAt": "2024-01-15T10:00:00Z"
+    }
+  ]
+}
+```
+
+### Get Product
+
+`GET /product/:id`
+
+Retrieve a single product by ID. Use the `expand` parameter to include variants and media.
+
+```bash
+curl "https://api.hanzo.ai/product/prod_abc123?expand=variants,media" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### Create Product
+
+`POST /product`
+
+```bash
+curl -X POST https://api.hanzo.ai/product \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Premium T-Shirt",
+    "slug": "premium-t-shirt",
+    "description": "Soft cotton premium tee with a modern fit.",
+    "status": "draft",
+    "price": 2999,
+    "currency": "USD",
+    "options": [
+      { "name": "Size", "values": ["S", "M", "L", "XL"] },
+      { "name": "Color", "values": ["Black", "White", "Navy"] }
+    ],
+    "tags": ["apparel", "cotton"],
+    "metadata": {
+      "material": "100% organic cotton"
+    }
+  }'
+```
+
+**Response:** `201 Created`
+
+```json
+{
+  "id": "prod_abc123",
+  "name": "Premium T-Shirt",
+  "slug": "premium-t-shirt",
+  "status": "draft",
+  "price": 2999,
+  "currency": "USD",
+  "createdAt": "2024-01-15T10:00:00Z"
+}
+```
+
+### Update Product
+
+`PUT /product/:id`
+
+```bash
+curl -X PUT https://api.hanzo.ai/product/prod_abc123 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "published",
+    "price": 2499,
+    "compareAtPrice": 2999,
+    "tags": ["apparel", "cotton", "bestseller"]
+  }'
+```
+
+### Delete Product
+
+`DELETE /product/:id`
+
+```bash
+curl -X DELETE https://api.hanzo.ai/product/prod_abc123 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Response:** `204 No Content`
+
+<Callout type="warn">
+Deleting a product removes all associated variants and media. This action is permanent. Consider archiving instead by setting `status: "archived"`.
+</Callout>
+
+## Product Media
+
+### Add Media
+
+`POST /product/:id/media`
+
+```bash
+curl -X POST https://api.hanzo.ai/product/prod_abc123/media \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://cdn.hanzo.ai/products/premium-tee-white.jpg",
+    "alt": "Premium T-Shirt in White",
+    "type": "image",
+    "position": 1
+  }'
+```
+
+### Reorder Media
+
+`PUT /product/:id/media/reorder`
+
+```bash
+curl -X PUT https://api.hanzo.ai/product/prod_abc123/media/reorder \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "mediaIds": ["media_002", "media_001", "media_003"]
+  }'
+```
+
+### Delete Media
+
+`DELETE /product/:id/media/:mediaId`
+
+```bash
+curl -X DELETE https://api.hanzo.ai/product/prod_abc123/media/media_001 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+## Product Options
+
+Options define the axes of variation (e.g., Size, Color). Updating options can regenerate variant combinations.
+
+**Supported Option Types:**
+
+| Type | Description |
+|------|-------------|
+| `select` | Dropdown selection (default) |
+| `color` | Color swatch with hex value |
+| `image` | Image-based selection |
+
+## SDK Examples
+
+### JavaScript
+
+```typescript
+import { Commerce } from '@hanzo/commerce'
+
+const commerce = new Commerce({ apiKey: 'your_key' })
+
+// List published products
+const products = await commerce.products.list({
+  status: 'published',
+  sort: 'createdAt:desc',
+  display: 50
+})
+
+// Create product
+const product = await commerce.products.create({
+  name: 'Premium T-Shirt',
+  slug: 'premium-t-shirt',
+  price: 2999,
+  currency: 'USD',
+  options: [
+    { name: 'Size', values: ['S', 'M', 'L', 'XL'] },
+    { name: 'Color', values: ['Black', 'White'] }
+  ]
+})
+
+// Get product with variants
+const full = await commerce.products.get(product.id, {
+  expand: ['variants', 'media']
+})
+
+// Add media
+await commerce.products.addMedia(product.id, {
+  url: 'https://cdn.hanzo.ai/products/tee.jpg',
+  alt: 'Premium T-Shirt',
+  type: 'image'
+})
+```
+
+### Go
+
+```go
+products, err := client.Products.List(ctx, &sdk.ProductListParams{
+    Status:  "published",
+    Sort:    "createdAt:desc",
+    Display: 50,
+})
+
+product, err := client.Products.Create(ctx, &sdk.ProductInput{
+    Name:     "Premium T-Shirt",
+    Slug:     "premium-t-shirt",
+    Price:    2999,
+    Currency: "USD",
+})
+
+err = client.Products.AddMedia(ctx, product.ID, &sdk.MediaInput{
+    URL:  "https://cdn.hanzo.ai/products/tee.jpg",
+    Alt:  "Premium T-Shirt",
+    Type: "image",
+})
+```

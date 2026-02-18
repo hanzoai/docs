@@ -1,0 +1,125 @@
+---
+title: Fulfillment Module
+description: Shipping profiles, zones, providers, and tracking
+icon: Truck
+---
+
+The Fulfillment module manages shipping configuration, rate calculation, provider integration, and shipment tracking.
+
+## Key Concepts
+
+- **Shipping Profile** -- a set of rules mapping products to shipping options (e.g. "standard goods", "fragile items")
+- **Shipping Zone** -- a geographic region (country/state) with its own rates
+- **Fulfillment Provider** -- an external service that handles physical delivery (e.g. FedEx, UPS, manual)
+- **Shipment** -- a tracking record created when items are dispatched
+
+## Data Model
+
+```json
+{
+  "id": "ship_abc123",
+  "orderId": "order_xyz789",
+  "provider": "fedex",
+  "status": "shipped",
+  "trackingNumber": "794644790132",
+  "trackingUrl": "https://www.fedex.com/track?trknbr=794644790132",
+  "items": [
+    { "variantId": "var_001", "quantity": 2 }
+  ],
+  "shippedAt": "2025-01-16T14:00:00Z",
+  "estimatedDelivery": "2025-01-19T18:00:00Z"
+}
+```
+
+## Shipping Profiles
+
+Define how products ship:
+
+```bash
+curl -X POST https://api.hanzo.ai/shipping-profile \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Standard Goods",
+    "type": "default",
+    "zones": [
+      {
+        "name": "Domestic US",
+        "countries": ["US"],
+        "rates": [
+          {"name": "Standard", "price": 799, "minDeliveryDays": 5, "maxDeliveryDays": 7},
+          {"name": "Express", "price": 1499, "minDeliveryDays": 2, "maxDeliveryDays": 3}
+        ]
+      },
+      {
+        "name": "International",
+        "countries": ["*"],
+        "rates": [
+          {"name": "International Standard", "price": 2499, "minDeliveryDays": 10, "maxDeliveryDays": 21}
+        ]
+      }
+    ]
+  }'
+```
+
+## Create a Shipment
+
+<Tabs items={["curl", "TypeScript"]}>
+<TabsContent value="curl">
+```bash
+curl -X POST https://api.hanzo.ai/order/order_xyz789/fulfillment \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "fedex",
+    "trackingNumber": "794644790132",
+    "items": [{"variantId": "var_001", "quantity": 2}]
+  }'
+```
+</TabsContent>
+<TabsContent value="TypeScript">
+```ts
+const shipment = await commerce.fulfillments.create({
+  orderId: 'order_xyz789',
+  provider: 'fedex',
+  trackingNumber: '794644790132',
+  items: [{ variantId: 'var_001', quantity: 2 }],
+})
+```
+</TabsContent>
+</Tabs>
+
+## Supported Providers
+
+| Provider | Features |
+|----------|----------|
+| Manual | Admin marks as shipped with tracking number |
+| FedEx | Live rates, label generation, tracking |
+| UPS | Live rates, label generation, tracking |
+| USPS | Domestic US rates and tracking |
+| DHL | International shipping |
+
+## Configuration
+
+```yaml
+fulfillment:
+  providers:
+    fedex:
+      enabled: true
+      account_number: ${FEDEX_ACCOUNT}
+      api_key: ${FEDEX_API_KEY}
+    manual:
+      enabled: true  # always available as fallback
+  default_profile: "standard"
+  require_tracking: false
+  auto_notify_customer: true  # send email on shipment creation
+```
+
+## Events
+
+| Event | Description |
+|-------|-------------|
+| `fulfillment.created` | Shipment created |
+| `fulfillment.shipped` | Tracking shows in transit |
+| `fulfillment.delivered` | Delivery confirmed |
+| `fulfillment.failed` | Delivery failed or returned to sender |

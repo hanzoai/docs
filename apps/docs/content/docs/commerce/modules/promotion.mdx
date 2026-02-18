@@ -1,0 +1,155 @@
+---
+title: Promotion Module
+description: Coupons, discounts, campaigns, and automatic promotions
+icon: Tag
+---
+
+The Promotion module enables flexible discounting through coupon codes, automatic promotions, and time-bound campaigns.
+
+## Key Concepts
+
+- **Promotion** -- a discount rule with conditions and actions
+- **Coupon** -- a code that activates a promotion when applied to a cart
+- **Campaign** -- a time-bound grouping of promotions
+- **Automatic Promotion** -- a promotion that applies without a code when conditions are met
+
+## Data Model
+
+```json
+{
+  "id": "promo_summer2025",
+  "name": "Summer Sale 2025",
+  "type": "percentage",
+  "value": 15,
+  "code": "SUMMER15",
+  "conditions": {
+    "minCartTotal": 5000,
+    "validFrom": "2025-06-01T00:00:00Z",
+    "validTo": "2025-08-31T23:59:59Z",
+    "maxUses": 1000,
+    "usesPerCustomer": 1,
+    "applicableProducts": [],
+    "applicableCollections": ["summer-collection"]
+  },
+  "currentUses": 342,
+  "status": "active"
+}
+```
+
+## Discount Types
+
+| Type | Description | Example |
+|------|-------------|---------|
+| `percentage` | Percentage off cart or items | 15% off |
+| `fixed` | Fixed amount off | $10 off |
+| `buy_x_get_y` | Buy X items, get Y free | Buy 2 get 1 free |
+| `free_shipping` | Waive shipping costs | Free standard shipping |
+
+## API Examples
+
+### Create a Coupon
+
+<Tabs items={["curl", "TypeScript"]}>
+<TabsContent value="curl">
+```bash
+curl -X POST https://api.hanzo.ai/promotion \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Summer Sale 2025",
+    "type": "percentage",
+    "value": 15,
+    "code": "SUMMER15",
+    "conditions": {
+      "minCartTotal": 5000,
+      "validFrom": "2025-06-01T00:00:00Z",
+      "validTo": "2025-08-31T23:59:59Z",
+      "maxUses": 1000,
+      "usesPerCustomer": 1
+    }
+  }'
+```
+</TabsContent>
+<TabsContent value="TypeScript">
+```ts
+const promotion = await commerce.promotions.create({
+  name: 'Summer Sale 2025',
+  type: 'percentage',
+  value: 15,
+  code: 'SUMMER15',
+  conditions: {
+    minCartTotal: 5000,
+    validFrom: '2025-06-01T00:00:00Z',
+    validTo: '2025-08-31T23:59:59Z',
+    maxUses: 1000,
+    usesPerCustomer: 1,
+  },
+})
+```
+</TabsContent>
+</Tabs>
+
+### Create an Automatic Promotion
+
+Automatic promotions apply without a code when conditions are met:
+
+```bash
+curl -X POST https://api.hanzo.ai/promotion \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Free Shipping Over $50",
+    "type": "free_shipping",
+    "automatic": true,
+    "conditions": {
+      "minCartTotal": 5000
+    }
+  }'
+```
+
+### Apply Coupon to Cart
+
+```bash
+curl -X POST https://api.hanzo.ai/cart/cart_abc123/promotion \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"code": "SUMMER15"}'
+```
+
+### Bulk Generate Coupon Codes
+
+```bash
+curl -X POST https://api.hanzo.ai/promotion/promo_summer2025/codes \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "count": 500,
+    "prefix": "SUM25-",
+    "usesPerCode": 1
+  }'
+```
+
+## Stacking Rules
+
+By default, only one coupon can be applied per cart. Configure stacking:
+
+```yaml
+promotion:
+  allow_stacking: false         # allow multiple coupons
+  max_stacked: 3                # max coupons if stacking enabled
+  auto_promotions_stack: true   # automatic promos always stack
+  priority_order: "best_value"  # best_value | first_applied
+```
+
+## Events
+
+| Event | Description |
+|-------|-------------|
+| `promotion.created` | New promotion created |
+| `promotion.applied` | Promotion applied to a cart |
+| `promotion.exhausted` | Promotion reached max uses |
+| `promotion.expired` | Promotion past validity window |
+
+<Callout type="info">
+Automatic promotions are evaluated on every cart update. They appear in the cart response under the `promotions` array with `automatic: true`.
+</Callout>

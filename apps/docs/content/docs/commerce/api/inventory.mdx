@@ -1,0 +1,278 @@
+---
+title: Inventory API
+description: Track stock levels, reservations, and multi-warehouse inventory
+icon: Warehouse
+---
+
+The Inventory API provides real-time stock tracking across multiple locations, automatic reservation management, and stock adjustment workflows.
+
+## Inventory Item Structure
+
+```json
+{
+  "id": "iitem_abc123",
+  "sku": "SHIRT-BLK-M",
+  "variantId": "var_xyz789",
+  "title": "Premium T-Shirt - Black / M",
+  "requiresShipping": true,
+  "levels": [
+    {
+      "id": "ilvl_001",
+      "locationId": "sloc_wc001",
+      "locationName": "US West Warehouse",
+      "stocked": 200,
+      "reserved": 15,
+      "available": 185,
+      "incoming": 50
+    }
+  ],
+  "createdAt": "2024-01-10T08:00:00Z"
+}
+```
+
+## Inventory Items
+
+### List Inventory Items
+
+`GET /inventoryitem`
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | number | Page number |
+| `display` | number | Items per page |
+| `sort` | string | Sort field |
+| `sku` | string | Filter by SKU |
+| `locationId` | string | Filter by stock location |
+| `lowStock` | boolean | Only items below threshold |
+
+```bash
+curl "https://api.hanzo.ai/inventoryitem?lowStock=true&display=50" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "count": 23,
+  "models": [
+    {
+      "id": "iitem_abc123",
+      "sku": "SHIRT-BLK-M",
+      "totalStocked": 200,
+      "totalReserved": 15,
+      "totalAvailable": 185
+    }
+  ]
+}
+```
+
+### Get Inventory Item
+
+`GET /inventoryitem/:id`
+
+```bash
+curl https://api.hanzo.ai/inventoryitem/iitem_abc123 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### Create Inventory Item
+
+`POST /inventoryitem`
+
+```bash
+curl -X POST https://api.hanzo.ai/inventoryitem \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "sku": "HOODIE-GRY-L",
+    "variantId": "var_def456",
+    "title": "Classic Hoodie - Grey / L",
+    "requiresShipping": true
+  }'
+```
+
+### Update / Delete Inventory Item
+
+`PUT /inventoryitem/:id` | `DELETE /inventoryitem/:id`
+
+## Inventory Levels
+
+Inventory levels track stock at a specific location for a specific item.
+
+### List Inventory Levels
+
+`GET /inventorylevel`
+
+```bash
+curl "https://api.hanzo.ai/inventorylevel?inventoryItemId=iitem_abc123" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### Create Inventory Level
+
+`POST /inventorylevel`
+
+```bash
+curl -X POST https://api.hanzo.ai/inventorylevel \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "inventoryItemId": "iitem_abc123",
+    "locationId": "sloc_east01",
+    "stocked": 100,
+    "incoming": 0
+  }'
+```
+
+### Adjust Stock
+
+`POST /inventorylevel/:id/adjust`
+
+Adjust stock levels with a reason code for audit trail:
+
+```bash
+curl -X POST https://api.hanzo.ai/inventorylevel/ilvl_001/adjust \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "adjustment": -5,
+    "reason": "damaged",
+    "note": "5 units damaged in transit"
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "id": "ilvl_001",
+  "stocked": 195,
+  "reserved": 15,
+  "available": 180,
+  "adjustment": {
+    "amount": -5,
+    "reason": "damaged",
+    "note": "5 units damaged in transit",
+    "timestamp": "2024-01-16T14:00:00Z"
+  }
+}
+```
+
+**Adjustment Reasons:**
+
+| Reason | Description |
+|--------|-------------|
+| `received` | New stock received |
+| `returned` | Customer return restocked |
+| `damaged` | Items damaged or defective |
+| `correction` | Manual count correction |
+| `transfer` | Transferred between locations |
+
+### Update / Delete Inventory Level
+
+`PUT /inventorylevel/:id` | `DELETE /inventorylevel/:id`
+
+## Reservations
+
+Reservations hold inventory for pending orders.
+
+### List Reservations
+
+`GET /reservation`
+
+```bash
+curl "https://api.hanzo.ai/reservation?inventoryItemId=iitem_abc123" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### Create Reservation
+
+`POST /reservation`
+
+```bash
+curl -X POST https://api.hanzo.ai/reservation \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "inventoryItemId": "iitem_abc123",
+    "locationId": "sloc_wc001",
+    "quantity": 2,
+    "orderId": "order_xyz789",
+    "expiresAt": "2024-01-16T10:30:00Z"
+  }'
+```
+
+### Delete Reservation
+
+`DELETE /reservation/:id`
+
+Releases the reserved quantity back to available stock.
+
+## Available Quantity Calculation
+
+Available quantity is computed as:
+
+```
+available = stocked - reserved
+```
+
+Across all locations for a given item:
+
+```
+totalAvailable = SUM(level.stocked - level.reserved) for each location
+```
+
+<Callout type="info">
+Reservations automatically expire after the configured timeout (default: 30 minutes). Expired reservations release held stock back to available inventory.
+</Callout>
+
+## SDK Examples
+
+### JavaScript
+
+```typescript
+import { Commerce } from '@hanzo/commerce'
+
+const commerce = new Commerce({ apiKey: 'your_key' })
+
+// Check stock levels
+const item = await commerce.inventory.get('iitem_abc123')
+console.log(`Available: ${item.levels[0].available}`)
+
+// Adjust stock
+await commerce.inventory.adjustLevel('ilvl_001', {
+  adjustment: 50,
+  reason: 'received',
+  note: 'Weekly restock shipment'
+})
+
+// Reserve inventory
+await commerce.inventory.createReservation({
+  inventoryItemId: 'iitem_abc123',
+  locationId: 'sloc_wc001',
+  quantity: 2,
+  orderId: 'order_xyz789'
+})
+```
+
+### Go
+
+```go
+item, err := client.Inventory.Get(ctx, "iitem_abc123")
+
+err = client.Inventory.AdjustLevel(ctx, "ilvl_001", &sdk.StockAdjustment{
+    Adjustment: 50,
+    Reason:     "received",
+    Note:       "Weekly restock shipment",
+})
+
+reservation, err := client.Inventory.CreateReservation(ctx, &sdk.ReservationInput{
+    InventoryItemID: "iitem_abc123",
+    LocationID:      "sloc_wc001",
+    Quantity:        2,
+    OrderID:         "order_xyz789",
+})
+```

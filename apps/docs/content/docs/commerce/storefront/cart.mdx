@@ -1,0 +1,187 @@
+---
+title: Cart
+description: Create and manage shopping carts in your storefront
+icon: ShoppingBag
+---
+
+This guide covers cart creation, item management, and coupon application in your storefront.
+
+## Cart Context
+
+Create a React context to manage cart state across your app:
+
+```tsx
+'use client'
+
+import { createContext, useContext, useState, useEffect } from 'react'
+import { commerce } from '@/lib/commerce'
+import type { Cart } from '@hanzo/commerce'
+
+const CartContext = createContext<{
+  cart: Cart | null
+  addItem: (variantId: string, quantity?: number) => Promise<void>
+  removeItem: (itemId: string) => Promise<void>
+  updateQuantity: (itemId: string, quantity: number) => Promise<void>
+  applyCoupon: (code: string) => Promise<void>
+}>({} as any)
+
+export function CartProvider({ children, regionId }: {
+  children: React.ReactNode
+  regionId: string
+}) {
+  const [cart, setCart] = useState<Cart | null>(null)
+
+  useEffect(() => {
+    const cartId = localStorage.getItem('cartId')
+    if (cartId) {
+      commerce.carts.get(cartId).then(setCart).catch(() => {
+        localStorage.removeItem('cartId')
+      })
+    }
+  }, [])
+
+  async function getOrCreateCart() {
+    if (cart) return cart
+    const newCart = await commerce.carts.create({ regionId })
+    localStorage.setItem('cartId', newCart.id)
+    setCart(newCart)
+    return newCart
+  }
+
+  async function addItem(variantId: string, quantity = 1) {
+    const c = await getOrCreateCart()
+    const updated = await commerce.carts.addItem(c.id, { variantId, quantity })
+    setCart(updated)
+  }
+
+  async function removeItem(itemId: string) {
+    if (!cart) return
+    const updated = await commerce.carts.removeItem(cart.id, itemId)
+    setCart(updated)
+  }
+
+  async function updateQuantity(itemId: string, quantity: number) {
+    if (!cart) return
+    const updated = await commerce.carts.updateItem(cart.id, itemId, { quantity })
+    setCart(updated)
+  }
+
+  async function applyCoupon(code: string) {
+    if (!cart) return
+    const updated = await commerce.carts.applyPromotion(cart.id, { code })
+    setCart(updated)
+  }
+
+  return (
+    <CartContext.Provider value={{ cart, addItem, removeItem, updateQuantity, applyCoupon }}>
+      {children}
+    </CartContext.Provider>
+  )
+}
+
+export const useCart = () => useContext(CartContext)
+```
+
+## Add to Cart Button
+
+```tsx
+'use client'
+
+import { useCart } from '@/components/cart-provider'
+
+export function AddToCartButton({ variantId }: { variantId: string }) {
+  const { addItem } = useCart()
+  const [loading, setLoading] = useState(false)
+
+  async function handleClick() {
+    setLoading(true)
+    await addItem(variantId)
+    setLoading(false)
+  }
+
+  return (
+    <button onClick={handleClick} disabled={loading}>
+      {loading ? 'Adding...' : 'Add to Cart'}
+    </button>
+  )
+}
+```
+
+## Cart Drawer
+
+```tsx
+'use client'
+
+import { useCart } from '@/components/cart-provider'
+
+export function CartDrawer() {
+  const { cart, removeItem, updateQuantity } = useCart()
+  if (!cart || cart.items.length === 0) return <p>Your cart is empty</p>
+
+  return (
+    <div>
+      {cart.items.map(item => (
+        <div key={item.id} className="flex justify-between py-4">
+          <div>
+            <p className="font-medium">{item.productName}</p>
+            <p className="text-sm text-gray-500">
+              ${(item.unitPrice / 100).toFixed(2)} x {item.quantity}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="number" min={1} value={item.quantity}
+              onChange={e => updateQuantity(item.id, parseInt(e.target.value))}
+              className="w-16 border rounded px-2"
+            />
+            <button onClick={() => removeItem(item.id)}>Remove</button>
+          </div>
+        </div>
+      ))}
+      <div className="border-t pt-4 mt-4">
+        <p>Subtotal: ${(cart.subtotal / 100).toFixed(2)}</p>
+        {cart.discount > 0 && <p>Discount: -${(cart.discount / 100).toFixed(2)}</p>}
+        <p className="font-bold">Total: ${(cart.total / 100).toFixed(2)}</p>
+      </div>
+    </div>
+  )
+}
+```
+
+## Apply Coupon
+
+```tsx
+'use client'
+
+import { useState } from 'react'
+import { useCart } from '@/components/cart-provider'
+
+export function CouponForm() {
+  const { applyCoupon } = useCart()
+  const [code, setCode] = useState('')
+  const [error, setError] = useState('')
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    try {
+      await applyCoupon(code)
+      setCode('')
+      setError('')
+    } catch (err: any) {
+      setError(err.message || 'Invalid coupon code')
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input value={code} onChange={e => setCode(e.target.value)} placeholder="Coupon code" />
+      <button type="submit">Apply</button>
+      {error && <p className="text-red-500 text-sm">{error}</p>}
+    </form>
+  )
+}
+```
+
+<Callout type="info">
+Cart state is persisted server-side. Store only the `cartId` in `localStorage` and fetch the full cart on page load.
+</Callout>
