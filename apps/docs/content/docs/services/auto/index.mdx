@@ -1,0 +1,169 @@
+---
+title: Hanzo Auto
+description: AI-powered workflow automation platform with 600+ integrations
+---
+
+# Hanzo Auto
+
+Hanzo Auto is an enterprise workflow automation platform (based on ActivePieces) that connects 600+ services through a visual flow builder. Build automated workflows with AI-native actions, triggers, and integrations — all multi-tenant and SSO-enabled via Hanzo IAM.
+
+## Features
+
+- **600+ Integrations**: Slack, GitHub, Google Sheets, Salesforce, HubSpot, and hundreds more
+- **Visual Flow Builder**: Drag-and-drop workflow editor with real-time preview
+- **AI Actions**: Built-in AI steps using Claude, GPT, Gemini, and other models
+- **Multi-Tenant**: Platform-level tenant isolation with per-org workspaces
+- **SSO via Hanzo IAM**: Single sign-on with OAuth2/OIDC through `hanzo.id`
+- **Webhook Triggers**: HTTP webhooks, cron schedules, and event-driven triggers
+- **Code Steps**: Custom TypeScript/JavaScript code blocks within flows
+- **Enterprise Features**: Audit logs, RBAC, custom branding, dedicated workers
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          HANZO AUTO                                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐ │
+│  │  React UI    │  │  Fastify API │  │  Flow Engine │  │   Workers   │ │
+│  │  (Vite)      │  │  (REST)      │  │  (isolated)  │  │  (@hanzo/mq)│ │
+│  │              │  │              │  │              │  │             │ │
+│  │  - Builder   │  │  - Auth      │  │  - Sandbox   │  │  - Execute  │ │
+│  │  - Dashboard │  │  - CRUD      │  │  - Steps     │  │  - Schedule │ │
+│  │  - Logs      │  │  - Webhooks  │  │  - Branching │  │  - Retry    │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └─────────────┘ │
+│                                                                          │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │                     Integration Pieces (600+)                     │   │
+│  │  Slack · GitHub · Google · Salesforce · HubSpot · Stripe · ...   │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+## Endpoints
+
+| Environment | URL |
+|-------------|-----|
+| Production | `https://auto.hanzo.ai` |
+| API Base | `https://auto.hanzo.ai/v1` |
+
+## Quick Start
+
+### Create a Flow
+
+1. Navigate to [auto.hanzo.ai](https://auto.hanzo.ai)
+2. Sign in with your Hanzo account
+3. Click **New Flow** to open the visual builder
+4. Add a trigger (webhook, schedule, or app event)
+5. Chain actions from 600+ integrations
+6. Publish and monitor execution
+
+### API Access
+
+```bash
+# List flows
+curl https://auto.hanzo.ai/v1/flows \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+
+# Trigger a webhook flow
+curl -X POST https://auto.hanzo.ai/v1/webhooks/:flowId \
+  -H "Content-Type: application/json" \
+  -d '{"event": "order.created", "data": {...}}'
+
+# Get flow runs
+curl https://auto.hanzo.ai/v1/flow-runs \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+```
+
+## Integration Categories
+
+| Category | Examples | Count |
+|----------|----------|-------|
+| **Communication** | Slack, Discord, Teams, Email, Twilio | 50+ |
+| **CRM** | Salesforce, HubSpot, Pipedrive, Zoho | 30+ |
+| **Developer Tools** | GitHub, GitLab, Jira, Linear, Sentry | 40+ |
+| **AI/ML** | OpenAI, Anthropic, Google AI, Hugging Face | 20+ |
+| **Productivity** | Google Sheets, Notion, Airtable, Asana | 60+ |
+| **Marketing** | Mailchimp, SendGrid, ActiveCampaign | 30+ |
+| **E-Commerce** | Shopify, Stripe, WooCommerce, Square | 25+ |
+| **Cloud** | AWS, GCP, Azure, DigitalOcean | 20+ |
+| **Data** | PostgreSQL, MySQL, MongoDB, Supabase | 30+ |
+
+## Hanzo-Specific Enhancements
+
+### Message Queue: @hanzo/mq
+
+Hanzo Auto uses `@hanzo/mq` (our BullMQ fork) for job processing, providing:
+- Reliable job scheduling and retry
+- Priority queues for enterprise tenants
+- Dedicated worker pools per platform
+
+### Cache: @hanzo/kv-client
+
+Uses `@hanzo/kv-client` (our iovalkey fork) for:
+- Flow state caching
+- Rate limiting
+- Session storage
+
+### Multi-Tenant Platform
+
+Each organization gets isolated:
+- Workspace with separate flows and connections
+- API keys and OAuth tokens
+- Execution logs and audit trails
+- Resource quotas and rate limits
+
+## Environment Variables
+
+```bash
+# Core
+AP_FRONTEND_URL=https://auto.hanzo.ai
+AP_EDITION=ee
+AP_ENVIRONMENT=prod
+AP_EXECUTION_MODE=UNSANDBOXED
+
+# Database
+AP_POSTGRES_HOST=postgres.hanzo.svc
+AP_POSTGRES_DATABASE=auto
+AP_POSTGRES_USERNAME=hanzo
+AP_POSTGRES_PASSWORD=<from-kms>
+
+# Queue (Hanzo KV / Valkey)
+AP_REDIS_URL=redis://:password@redis.hanzo.svc:6379
+
+# Auth
+AP_ENCRYPTION_KEY=<from-kms>
+AP_JWT_SECRET=<from-kms>
+
+# SSO (Hanzo IAM)
+AP_THIRD_PARTY_AUTH_PROVIDER_NAME=Hanzo
+AP_THIRD_PARTY_AUTH_PROVIDER_REDIRECT_URL=https://auto.hanzo.ai/redirect
+```
+
+## Development
+
+```bash
+# Clone
+git clone git@github.com:hanzoai/auto.git
+cd auto
+
+# Install dependencies
+npm install
+
+# Start development
+npm run dev
+
+# Create a new integration piece
+npm run create-piece
+npm run create-action
+npm run create-trigger
+```
+
+## Related
+
+- [Bot Hub Integrations](https://hub.hanzo.bot/api/v1/integrations) — All 600+ integrations cataloged
+- [@hanzo/mq](https://github.com/hanzoai/mq) — Message queue (BullMQ fork)
+- [@hanzo/kv-client](https://github.com/hanzoai/kv-client) — KV client (iovalkey fork)
+- [ActivePieces Docs](https://www.activepieces.com/docs) — Upstream documentation
