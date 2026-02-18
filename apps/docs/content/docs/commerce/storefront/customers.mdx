@@ -1,0 +1,187 @@
+---
+title: Customers
+description: Registration, login, profile management, and order history
+icon: User
+---
+
+This guide covers customer authentication, profile management, and order history in your storefront.
+
+## Authentication
+
+Customer authentication uses Hanzo ID (OAuth2). The SDK provides a convenient wrapper.
+
+### Registration
+
+```ts
+const customer = await commerce.auth.register({
+  email: 'jane@example.com',
+  firstName: 'Jane',
+  lastName: 'Doe',
+  password: 'securePassword123',
+})
+
+// Store the token
+commerce.setToken(customer.accessToken)
+localStorage.setItem('token', customer.accessToken)
+```
+
+### Login
+
+```ts
+const session = await commerce.auth.login({
+  email: 'jane@example.com',
+  password: 'securePassword123',
+})
+
+commerce.setToken(session.accessToken)
+localStorage.setItem('token', session.accessToken)
+```
+
+### Token Refresh
+
+```ts
+const newSession = await commerce.auth.refresh({
+  refreshToken: session.refreshToken,
+})
+
+commerce.setToken(newSession.accessToken)
+```
+
+## Auth Context
+
+Wrap your app in an auth provider:
+
+```tsx
+'use client'
+
+import { createContext, useContext, useState, useEffect } from 'react'
+import { commerce } from '@/lib/commerce'
+import type { Customer } from '@hanzo/commerce'
+
+const AuthContext = createContext<{
+  customer: Customer | null
+  login: (email: string, password: string) => Promise<void>
+  logout: () => void
+  loading: boolean
+}>({} as any)
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [customer, setCustomer] = useState<Customer | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (token) {
+      commerce.setToken(token)
+      commerce.customers.me()
+        .then(setCustomer)
+        .catch(() => localStorage.removeItem('token'))
+        .finally(() => setLoading(false))
+    } else {
+      setLoading(false)
+    }
+  }, [])
+
+  async function login(email: string, password: string) {
+    const session = await commerce.auth.login({ email, password })
+    commerce.setToken(session.accessToken)
+    localStorage.setItem('token', session.accessToken)
+    const me = await commerce.customers.me()
+    setCustomer(me)
+  }
+
+  function logout() {
+    commerce.setToken('')
+    localStorage.removeItem('token')
+    setCustomer(null)
+  }
+
+  return (
+    <AuthContext.Provider value={{ customer, login, logout, loading }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export const useAuth = () => useContext(AuthContext)
+```
+
+## Profile Management
+
+### Update Profile
+
+```ts
+const updated = await commerce.customers.update({
+  firstName: 'Jane',
+  lastName: 'Smith',
+  phone: '+14155551234',
+})
+```
+
+### Manage Addresses
+
+```ts
+// Add address
+await commerce.customers.addAddress({
+  label: 'Home',
+  line1: '123 Main St',
+  city: 'San Francisco',
+  state: 'CA',
+  postalCode: '94102',
+  country: 'US',
+  isDefault: true,
+})
+
+// List addresses
+const addresses = await commerce.customers.listAddresses()
+
+// Delete address
+await commerce.customers.deleteAddress('addr_001')
+```
+
+## Order History
+
+```tsx
+export default async function OrderHistoryPage() {
+  const { data: orders } = await commerce.orders.listMine({
+    sort: 'createdAt:desc',
+    limit: 20,
+  })
+
+  return (
+    <div>
+      <h1>Your Orders</h1>
+      {orders.map(order => (
+        <div key={order.id} className="border-b py-4">
+          <p className="font-medium">Order #{order.id}</p>
+          <p className="text-sm text-gray-500">
+            {new Date(order.createdAt).toLocaleDateString()}
+          </p>
+          <p>Status: {order.status}</p>
+          <p>Total: ${(order.total / 100).toFixed(2)} {order.currency}</p>
+          <p>{order.items.length} items</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+```
+
+## Password Reset
+
+```ts
+// Request reset email
+await commerce.auth.requestPasswordReset({
+  email: 'jane@example.com',
+})
+
+// Complete reset (from email link)
+await commerce.auth.resetPassword({
+  token: resetToken,
+  password: 'newSecurePassword456',
+})
+```
+
+<Callout type="info">
+Guest checkout creates a minimal customer record linked by email. When that email later registers, orders are automatically merged.
+</Callout>

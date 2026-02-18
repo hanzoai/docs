@@ -1,0 +1,167 @@
+---
+title: Order Module
+description: Order lifecycle, status management, returns, and exchanges
+icon: ClipboardList
+---
+
+The Order module handles the complete order lifecycle from creation through fulfillment, including returns and exchanges.
+
+## Order Status Flow
+
+```
+                    ┌──────────┐
+                    │  Draft   │
+                    └────┬─────┘
+                         │ confirm
+                         ▼
+                    ┌──────────┐
+             ┌──────│ Confirmed│──────┐
+             │      └────┬─────┘      │
+             │ cancel    │ pay        │ fail
+             ▼           ▼            ▼
+        ┌─────────┐ ┌──────────┐ ┌────────┐
+        │Cancelled│ │   Paid   │ │ Failed │
+        └─────────┘ └────┬─────┘ └────────┘
+                         │ fulfill
+                         ▼
+                    ┌──────────┐
+                    │ Shipped  │
+                    └────┬─────┘
+                         │ deliver
+                         ▼
+                    ┌──────────┐
+                    │Delivered │──── return ──► Returned
+                    └──────────┘
+```
+
+## Data Model
+
+```json
+{
+  "id": "order_xyz789",
+  "status": "confirmed",
+  "customerId": "cust_abc123",
+  "items": [
+    {
+      "variantId": "var_001",
+      "productName": "Premium T-Shirt",
+      "quantity": 2,
+      "unitPrice": 2999,
+      "total": 5998
+    }
+  ],
+  "subtotal": 5998,
+  "discount": 500,
+  "tax": 494,
+  "shipping": 799,
+  "total": 6791,
+  "currency": "USD",
+  "shippingAddress": {
+    "line1": "123 Main St",
+    "city": "San Francisco",
+    "state": "CA",
+    "postalCode": "94102",
+    "country": "US"
+  },
+  "payments": [],
+  "fulfillments": [],
+  "createdAt": "2025-01-15T10:00:00Z"
+}
+```
+
+## API Examples
+
+### Create an Order
+
+<Tabs items={["curl", "TypeScript", "Go"]}>
+<TabsContent value="curl">
+```bash
+curl -X POST https://api.hanzo.ai/order \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "items": [{"variantId": "var_001", "quantity": 2}],
+    "shippingAddress": {
+      "line1": "123 Main St",
+      "city": "San Francisco",
+      "state": "CA",
+      "postalCode": "94102",
+      "country": "US"
+    }
+  }'
+```
+</TabsContent>
+<TabsContent value="TypeScript">
+```ts
+const order = await commerce.orders.create({
+  items: [{ variantId: 'var_001', quantity: 2 }],
+  shippingAddress: {
+    line1: '123 Main St',
+    city: 'San Francisco',
+    state: 'CA',
+    postalCode: '94102',
+    country: 'US',
+  },
+})
+```
+</TabsContent>
+<TabsContent value="Go">
+```go
+order, err := client.Orders.Create(ctx, &sdk.OrderInput{
+    Items: []sdk.OrderItem{
+        {VariantID: "var_001", Quantity: 2},
+    },
+    ShippingAddress: &sdk.Address{
+        Line1: "123 Main St", City: "San Francisco",
+        State: "CA", PostalCode: "94102", Country: "US",
+    },
+})
+```
+</TabsContent>
+</Tabs>
+
+### Request a Return
+
+```bash
+curl -X POST https://api.hanzo.ai/order/order_xyz789/return \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "items": [{"variantId": "var_001", "quantity": 1, "reason": "wrong_size"}],
+    "refundMethod": "original"
+  }'
+```
+
+### List Orders with Filters
+
+```bash
+curl "https://api.hanzo.ai/order?status=confirmed&since=2025-01-01&sort=createdAt:desc" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Configuration
+
+```yaml
+order:
+  auto_confirm: false          # auto-confirm after cart checkout
+  return_window_days: 30       # days allowed for returns
+  cancel_window_minutes: 60    # minutes allowed for self-cancel
+  require_payment_before_fulfill: true
+```
+
+## Events
+
+| Event | Description |
+|-------|-------------|
+| `order.created` | New order placed |
+| `order.confirmed` | Order confirmed, triggers inventory reservation |
+| `order.paid` | Payment captured |
+| `order.shipped` | Fulfillment shipped |
+| `order.delivered` | Delivery confirmed |
+| `order.cancelled` | Order cancelled, releases inventory |
+| `order.return_requested` | Customer requested return |
+| `order.refunded` | Refund processed |
+
+<Callout type="warn">
+Cancellation is only possible before fulfillment has started. Once a shipment is created, use the return flow instead.
+</Callout>

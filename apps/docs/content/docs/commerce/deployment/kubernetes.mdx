@@ -1,0 +1,382 @@
+---
+title: Kubernetes
+description: Deploy Hanzo Commerce on Kubernetes with Helm charts and autoscaling
+---
+
+Deploy Hanzo Commerce on Kubernetes for high availability, horizontal scaling, and production-grade orchestration.
+
+## Prerequisites
+
+- Kubernetes 1.27+ cluster
+- `kubectl` configured for your cluster
+- Helm 3.12+
+- A managed PostgreSQL instance (recommended) or in-cluster PostgreSQL
+- A managed Redis instance or in-cluster Redis
+
+## Helm Chart
+
+Install the Hanzo Commerce Helm chart:
+
+```bash
+helm repo add hanzo https://charts.hanzo.ai
+helm repo update
+```
+
+Create a values file:
+
+```yaml title="values.yaml"
+replicaCount: 2
+
+image:
+  repository: hanzoai/commerce
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8090
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+  hosts:
+    - host: commerce.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: commerce-tls
+      hosts:
+        - commerce.example.com
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+persistence:
+  enabled: true
+  storageClass: gp3
+  size: 50Gi
+
+env:
+  COMMERCE_ENV: production
+  COMMERCE_PORT: "8090"
+
+envFrom:
+  - secretRef:
+      name: commerce-secrets
+  - configMapRef:
+      name: commerce-config
+```
+
+Install the chart:
+
+```bash
+helm install commerce hanzo/commerce -f values.yaml -n commerce --create-namespace
+```
+
+## Secrets
+
+Create the Kubernetes Secret with sensitive values:
+
+```yaml title="commerce-secrets.yaml"
+apiVersion: v1
+kind: Secret
+metadata:
+  name: commerce-secrets
+  namespace: commerce
+type: Opaque
+stringData:
+  DATABASE_URL: "postgresql://commerce:password@postgres.database.svc:5432/commerce?sslmode=require"
+  KV_URL: "redis://:password@redis.cache.svc:6379/0"
+  HANZO_API_KEY: "hk_live_..."
+  HANZO_CLIENT_ID: "your_client_id"
+  HANZO_CLIENT_SECRET: "your_client_secret"
+  STRIPE_SECRET_KEY: "sk_live_..."
+  STRIPE_WEBHOOK_SECRET: "whsec_..."
+  MEILI_MASTER_KEY: "your-meilisearch-key"
+```
+
+```bash
+kubectl apply -f commerce-secrets.yaml
+```
+
+## ConfigMap
+
+Non-sensitive configuration:
+
+```yaml title="commerce-config.yaml"
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: commerce-config
+  namespace: commerce
+data:
+  COMMERCE_DIR: "/data"
+  COMMERCE_ENV: "production"
+  COMMERCE_LOG_LEVEL: "info"
+  S3_URL: "s3://key:secret@s3.amazonaws.com/commerce-uploads"
+  SEARCH_URL: "http://meilisearch.commerce.svc:7700"
+```
+
+```bash
+kubectl apply -f commerce-config.yaml
+```
+
+## StatefulSet (Alternative to Deployment)
+
+If you need stable network identities or ordered startup, use a StatefulSet instead of the Helm chart's Deployment:
+
+```yaml title="commerce-statefulset.yaml"
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: commerce
+  namespace: commerce
+spec:
+  serviceName: commerce
+  replicas: 2
+  selector:
+    matchLabels:
+      app: commerce
+  template:
+    metadata:
+      labels:
+        app: commerce
+    spec:
+      containers:
+        - name: commerce
+          image: hanzoai/commerce:latest
+          ports:
+            - containerPort: 8090
+          envFrom:
+            - secretRef:
+                name: commerce-secrets
+            - configMapRef:
+                name: commerce-config
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8090
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8090
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          startupProbe:
+            httpGet:
+              path: /health/startup
+              port: 8090
+            failureThreshold: 30
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: gp3
+        resources:
+          requests:
+            storage: 50Gi
+```
+
+## Ingress Configuration
+
+### Nginx Ingress
+
+```yaml title="commerce-ingress.yaml"
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: commerce
+  namespace: commerce
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - commerce.example.com
+      secretName: commerce-tls
+  rules:
+    - host: commerce.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: commerce
+                port:
+                  number: 8090
+```
+
+## Horizontal Pod Autoscaling
+
+The Helm chart includes an HPA. To configure it manually:
+
+```yaml title="commerce-hpa.yaml"
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: commerce
+  namespace: commerce
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: commerce
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+```
+
+## Supporting Services
+
+### Meilisearch
+
+```yaml title="meilisearch.yaml"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meilisearch
+  namespace: commerce
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: meilisearch
+  template:
+    metadata:
+      labels:
+        app: meilisearch
+    spec:
+      containers:
+        - name: meilisearch
+          image: getmeili/meilisearch:latest
+          ports:
+            - containerPort: 7700
+          env:
+            - name: MEILI_ENV
+              value: production
+            - name: MEILI_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: commerce-secrets
+                  key: MEILI_MASTER_KEY
+          volumeMounts:
+            - name: data
+              mountPath: /meili_data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: meilisearch-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: meilisearch
+  namespace: commerce
+spec:
+  selector:
+    app: meilisearch
+  ports:
+    - port: 7700
+```
+
+## Monitoring
+
+Deploy a ServiceMonitor for Prometheus scraping:
+
+```yaml title="commerce-servicemonitor.yaml"
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: commerce
+  namespace: commerce
+spec:
+  selector:
+    matchLabels:
+      app: commerce
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+```
+
+## Upgrading
+
+Update the image tag and apply:
+
+```bash
+helm upgrade commerce hanzo/commerce -f values.yaml -n commerce
+```
+
+Or for a rolling update:
+
+```bash
+kubectl set image deployment/commerce commerce=hanzoai/commerce:1.5.0 -n commerce
+kubectl rollout status deployment/commerce -n commerce
+```
+
+## Next Steps
+
+- Deploy your storefront to [Vercel](/docs/commerce/deployment/vercel)
+- Set up a [self-hosted](/docs/commerce/deployment/self-hosted) deployment for full control
+- Review [architecture](/docs/commerce/architecture) for scaling considerations

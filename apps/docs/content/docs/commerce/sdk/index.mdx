@@ -1,0 +1,154 @@
+---
+title: SDK Overview
+description: Install and use @hanzo/sdk to interact with the Hanzo Commerce API
+---
+
+**@hanzo/sdk** is the official TypeScript client for the Hanzo Commerce API. It provides type-safe access to all commerce operations, organized into three modules: **Admin**, **Store**, and **Auth**.
+
+## Installation
+
+```bash
+npm install @hanzo/sdk
+```
+
+## Initialization
+
+```typescript
+import { HanzoSDK } from '@hanzo/sdk'
+
+const sdk = new HanzoSDK({
+  baseUrl: 'https://api.hanzo.ai/v1',
+  apiKey: 'your-api-key',
+})
+```
+
+### Configuration Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `baseUrl` | `string` | Yes | Commerce API base URL |
+| `apiKey` | `string` | Yes | Publishable or secret API key |
+| `timeout` | `number` | No | Request timeout in ms (default: 30000) |
+| `retries` | `number` | No | Max retry attempts (default: 3) |
+| `headers` | `Record<string, string>` | No | Custom headers for all requests |
+
+## Modules
+
+The SDK is organized into three modules, each targeting a different use case:
+
+<Cards>
+  <Card title="Auth" icon="Lock" href="/docs/commerce/sdk/auth">
+    Authentication -- login, register, tokens, OAuth
+  </Card>
+  <Card title="Admin" icon="Shield" href="/docs/commerce/sdk/admin">
+    Admin operations -- products, orders, customers, settings
+  </Card>
+  <Card title="Store" icon="ShoppingBag" href="/docs/commerce/sdk/store">
+    Storefront -- browsing products, carts, checkout
+  </Card>
+</Cards>
+
+### Admin Module
+
+For server-side and dashboard use. Requires a secret API key.
+
+```typescript
+// Manage products
+const products = await sdk.admin.product.list({ limit: 20 })
+const product = await sdk.admin.product.create({ name: 'New Item', price: 1999, currency: 'USD' })
+
+// Process orders
+const orders = await sdk.admin.order.list({ status: 'pending' })
+await sdk.admin.payment.capture('pay_abc123')
+```
+
+### Store Module
+
+For storefront / client-side use. Works with publishable API keys.
+
+```typescript
+// Browse products
+const products = await sdk.store.product.list({ collectionId: 'col_featured' })
+
+// Cart operations
+const cart = await sdk.store.cart.create({ regionId: 'reg_na' })
+await sdk.store.cart.addItem(cart.id, { variantId: 'var_001', quantity: 2 })
+```
+
+### Auth Module
+
+Authentication for both admin and storefront users.
+
+```typescript
+// Login
+const session = await sdk.auth.login({ email: 'user@example.com', password: 'secret' })
+
+// Get current user
+const user = await sdk.auth.me()
+
+// Refresh token
+await sdk.auth.refresh()
+```
+
+## Tree-Shaking
+
+The SDK is fully tree-shakeable. Import only the modules you need:
+
+```typescript
+// Import only the store module for a lightweight storefront bundle
+import { HanzoSDK } from '@hanzo/sdk'
+
+const sdk = new HanzoSDK({
+  baseUrl: 'https://api.hanzo.ai/v1',
+  apiKey: 'pk_live_...',
+})
+
+// Only store methods are used -- admin code is tree-shaken away
+const products = await sdk.store.product.list()
+```
+
+## TypeScript Support
+
+The SDK is written in TypeScript and exports all types:
+
+```typescript
+import type { Product, Order, Cart, Customer } from '@hanzo/sdk'
+
+function displayProduct(product: Product) {
+  console.log(`${product.name}: $${product.price / 100}`)
+}
+```
+
+See the [Types Reference](/docs/commerce/sdk/types) for all exported interfaces.
+
+## Error Handling
+
+All SDK methods throw `HanzoError` on failure:
+
+```typescript
+import { HanzoError } from '@hanzo/sdk'
+
+try {
+  await sdk.admin.product.create(data)
+} catch (err) {
+  if (err instanceof HanzoError) {
+    console.error(`[${err.code}] ${err.message}`)
+  }
+}
+```
+
+See the [Error Handling Guide](/docs/commerce/sdk/errors) for details.
+
+## Next Steps
+
+<Cards>
+  <Card title="Auth Module" icon="Lock" href="/docs/commerce/sdk/auth">
+    Set up authentication for your application
+  </Card>
+  <Card title="Admin Module" icon="Shield" href="/docs/commerce/sdk/admin">
+    Full admin API reference
+  </Card>
+  <Card title="Store Module" icon="ShoppingBag" href="/docs/commerce/sdk/store">
+    Build your storefront
+  </Card>
+</Cards>

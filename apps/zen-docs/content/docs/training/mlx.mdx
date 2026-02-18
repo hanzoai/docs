@@ -1,0 +1,67 @@
+---
+title: MLX Training
+description: Train on Apple Silicon with MLX
+---
+
+# MLX Training (Apple Silicon)
+
+Train zen-coder-flash on M1/M2/M3 Macs using MLX.
+
+## Requirements
+
+- Apple Silicon Mac (M1/M2/M3)
+- 32GB+ unified memory recommended
+- macOS 14+
+
+## Installation
+
+```bash
+pip install mlx mlx-lm
+```
+
+## Training
+
+```bash
+# Clone the repo
+git clone https://github.com/zenlm/zen-coder-flash
+cd zen-coder-flash
+
+# Train with LoRA
+python training/train_mlx.py
+
+# With custom options
+python training/train_mlx.py --iters 500 --batch-size 2 --lr 1e-5
+```
+
+## Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--iters` | 200 | Training iterations |
+| `--batch-size` | 1 | Batch size |
+| `--lr` | 1e-4 | Learning rate |
+| `--lora-rank` | 16 | LoRA rank |
+
+## Fuse Adapters
+
+After training, fuse the LoRA adapters:
+
+```bash
+python training/train_mlx.py fuse
+```
+
+## Test
+
+Test the trained model:
+
+```bash
+python training/train_mlx.py test
+```
+
+## Expected Time
+
+~30 minutes on M3 Max with 64GB unified memory.
+
+<Callout type="info">
+  MLX training is memory-efficient and uses Apple's Metal Performance Shaders for GPU acceleration.
+</Callout>

@@ -1,0 +1,130 @@
+---
+title: Region Module
+description: Multi-region support, currencies, countries, and localization
+icon: Globe
+---
+
+The Region module enables multi-region commerce by grouping countries with shared currencies, tax rules, shipping options, and payment providers.
+
+## Key Concepts
+
+- **Region** -- a logical grouping of countries that share commerce configuration
+- **Currency** -- the monetary currency used for pricing and payment in a region
+- **Country** -- an individual country assigned to a region
+
+## Data Model
+
+```json
+{
+  "id": "reg_us",
+  "name": "North America",
+  "currency": "USD",
+  "taxInclusive": false,
+  "countries": [
+    {"iso2": "US", "name": "United States"},
+    {"iso2": "CA", "name": "Canada"}
+  ],
+  "paymentProviders": ["stripe"],
+  "fulfillmentProviders": ["fedex", "ups", "manual"],
+  "taxRates": [],
+  "metadata": {}
+}
+```
+
+## API Examples
+
+### Create a Region
+
+<Tabs items={["curl", "TypeScript"]}>
+<TabsContent value="curl">
+```bash
+curl -X POST https://api.hanzo.ai/region \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Europe",
+    "currency": "EUR",
+    "taxInclusive": true,
+    "countries": ["DE", "FR", "IT", "ES", "NL", "BE"],
+    "paymentProviders": ["stripe", "paypal"],
+    "fulfillmentProviders": ["dhl", "manual"]
+  }'
+```
+</TabsContent>
+<TabsContent value="TypeScript">
+```ts
+const region = await commerce.regions.create({
+  name: 'Europe',
+  currency: 'EUR',
+  taxInclusive: true,
+  countries: ['DE', 'FR', 'IT', 'ES', 'NL', 'BE'],
+  paymentProviders: ['stripe', 'paypal'],
+  fulfillmentProviders: ['dhl', 'manual'],
+})
+```
+</TabsContent>
+</Tabs>
+
+### List Regions
+
+```bash
+curl "https://api.hanzo.ai/region" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Update Region Countries
+
+```bash
+curl -X PATCH https://api.hanzo.ai/region/reg_eu \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "countries": ["DE", "FR", "IT", "ES", "NL", "BE", "AT", "PT"]
+  }'
+```
+
+## Region Selection
+
+Storefronts select a region at the start of a session. The region determines:
+
+1. **Currency** for all displayed prices
+2. **Tax behavior** (inclusive or exclusive)
+3. **Available payment methods**
+4. **Available shipping options**
+5. **Tax rates** applied at checkout
+
+```ts
+// Storefront: detect region from user's country
+const regions = await commerce.regions.list()
+const userRegion = regions.find(r =>
+  r.countries.some(c => c.iso2 === userCountryCode)
+)
+
+// Create a cart in that region
+const cart = await commerce.carts.create({ regionId: userRegion.id })
+```
+
+## Example Configuration
+
+A typical multi-region setup:
+
+| Region | Currency | Tax Mode | Countries |
+|--------|----------|----------|-----------|
+| North America | USD | Exclusive | US, CA |
+| Europe | EUR | Inclusive | DE, FR, IT, ES, NL, ... |
+| United Kingdom | GBP | Inclusive | GB |
+| Asia Pacific | USD | Exclusive | JP, AU, SG, KR |
+
+## Configuration
+
+```yaml
+region:
+  default: reg_us
+  auto_detect: true           # detect region from IP/browser locale
+  fallback_currency: USD      # currency when no region matches
+  require_region_for_cart: true
+```
+
+<Callout type="info">
+Each cart is scoped to a single region. To switch regions, create a new cart. Items from the old cart can be migrated automatically if the products are available in the new region.
+</Callout>

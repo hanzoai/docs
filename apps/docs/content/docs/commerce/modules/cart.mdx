@@ -1,0 +1,156 @@
+---
+title: Cart Module
+description: Shopping cart operations, line items, promotions, and tax calculation
+icon: ShoppingBag
+---
+
+The Cart module manages shopping carts with automatic price calculation, promotion application, and tax computation.
+
+## Data Model
+
+```json
+{
+  "id": "cart_abc123",
+  "regionId": "reg_us",
+  "customerId": "cust_xyz",
+  "items": [
+    {
+      "id": "item_001",
+      "variantId": "var_abc",
+      "productName": "Premium T-Shirt",
+      "quantity": 2,
+      "unitPrice": 2999,
+      "total": 5998
+    }
+  ],
+  "subtotal": 5998,
+  "discount": 500,
+  "tax": 494,
+  "shipping": 799,
+  "total": 6791,
+  "currency": "USD",
+  "promotions": ["SAVE10"],
+  "shippingAddress": null,
+  "paymentMethod": null,
+  "completedAt": null,
+  "expiresAt": "2025-01-22T10:00:00Z"
+}
+```
+
+## Key Concepts
+
+- **Cart** -- a temporary container of line items that becomes an order at checkout
+- **Line Item** -- a variant + quantity entry in the cart
+- **Promotion** -- a coupon code or automatic discount applied to the cart
+- **Cart Expiry** -- carts expire after a configurable period (default 7 days)
+
+## API Examples
+
+### Create a Cart
+
+<Tabs items={["curl", "TypeScript", "Go"]}>
+<TabsContent value="curl">
+```bash
+curl -X POST https://api.hanzo.ai/cart \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"regionId": "reg_us"}'
+```
+</TabsContent>
+<TabsContent value="TypeScript">
+```ts
+const cart = await commerce.carts.create({ regionId: 'reg_us' })
+```
+</TabsContent>
+<TabsContent value="Go">
+```go
+cart, err := client.Carts.Create(ctx, &sdk.CartInput{RegionID: "reg_us"})
+```
+</TabsContent>
+</Tabs>
+
+### Add Items
+
+```bash
+curl -X POST https://api.hanzo.ai/cart/cart_abc123/item \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"variantId": "var_abc", "quantity": 2}'
+```
+
+### Update Item Quantity
+
+```bash
+curl -X PATCH https://api.hanzo.ai/cart/cart_abc123/item/item_001 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"quantity": 3}'
+```
+
+### Apply a Promotion Code
+
+```bash
+curl -X POST https://api.hanzo.ai/cart/cart_abc123/promotion \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"code": "SAVE10"}'
+```
+
+### Set Shipping Address
+
+```bash
+curl -X PATCH https://api.hanzo.ai/cart/cart_abc123 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "shippingAddress": {
+      "line1": "123 Main St",
+      "city": "San Francisco",
+      "state": "CA",
+      "postalCode": "94102",
+      "country": "US"
+    }
+  }'
+```
+
+### Complete Cart (Convert to Order)
+
+```bash
+curl -X POST https://api.hanzo.ai/cart/cart_abc123/complete \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Calculation Pipeline
+
+When a cart is modified, totals are recalculated automatically:
+
+```
+Line Items ──► Pricing Module (unit prices)
+           ──► Promotion Module (discounts)
+           ──► Tax Module (tax amounts)
+           ──► Fulfillment Module (shipping cost)
+           ──► Final totals
+```
+
+## Configuration
+
+```yaml
+cart:
+  expiry_days: 7                # cart TTL
+  max_items: 50                 # max line items per cart
+  allow_empty_checkout: false   # require at least one item
+  auto_remove_unavailable: true # remove out-of-stock items
+```
+
+## Events
+
+| Event | Description |
+|-------|-------------|
+| `cart.created` | New cart initialized |
+| `cart.updated` | Items or address changed |
+| `cart.completed` | Cart converted to order |
+| `cart.abandoned` | Cart expired without completion |
+
+<Callout type="info">
+Abandoned cart events fire after the expiry window. Use these to trigger recovery email campaigns via the Analytics module.
+</Callout>

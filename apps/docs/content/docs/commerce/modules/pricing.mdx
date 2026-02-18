@@ -1,0 +1,147 @@
+---
+title: Pricing Module
+description: Price lists, volume tiers, rules, sale pricing, and multi-currency
+icon: DollarSign
+---
+
+The Pricing module provides flexible pricing through price lists, volume tiers, customer-group rules, and multi-currency support.
+
+## Key Concepts
+
+- **Price List** -- a named set of prices that can override default product prices (e.g. "Wholesale", "VIP")
+- **Price Rule** -- a condition-based pricing rule (customer group, quantity, date range)
+- **Volume Tier** -- quantity-based pricing breakpoints
+- **Sale Price** -- a temporary price with optional start/end dates
+
+## Data Model
+
+```json
+{
+  "id": "pl_wholesale",
+  "name": "Wholesale",
+  "description": "Prices for wholesale customers",
+  "type": "override",
+  "status": "active",
+  "customerGroups": ["wholesale"],
+  "prices": [
+    {
+      "variantId": "var_abc",
+      "amount": 1999,
+      "currency": "USD",
+      "minQuantity": 1
+    },
+    {
+      "variantId": "var_abc",
+      "amount": 1499,
+      "currency": "USD",
+      "minQuantity": 50
+    }
+  ]
+}
+```
+
+## API Examples
+
+### Create a Price List
+
+<Tabs items={["curl", "TypeScript"]}>
+<TabsContent value="curl">
+```bash
+curl -X POST https://api.hanzo.ai/price-list \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Wholesale",
+    "type": "override",
+    "customerGroups": ["wholesale"],
+    "prices": [
+      {"variantId": "var_abc", "amount": 1999, "currency": "USD"},
+      {"variantId": "var_def", "amount": 3499, "currency": "USD"}
+    ]
+  }'
+```
+</TabsContent>
+<TabsContent value="TypeScript">
+```ts
+const priceList = await commerce.pricing.createPriceList({
+  name: 'Wholesale',
+  type: 'override',
+  customerGroups: ['wholesale'],
+  prices: [
+    { variantId: 'var_abc', amount: 1999, currency: 'USD' },
+    { variantId: 'var_def', amount: 3499, currency: 'USD' },
+  ],
+})
+```
+</TabsContent>
+</Tabs>
+
+### Set Volume Tiers
+
+```bash
+curl -X PUT https://api.hanzo.ai/product/prod_abc123/pricing \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tiers": [
+      {"minQuantity": 1, "price": 2999},
+      {"minQuantity": 10, "price": 2499},
+      {"minQuantity": 50, "price": 1999},
+      {"minQuantity": 100, "price": 1499}
+    ]
+  }'
+```
+
+### Set Sale Pricing
+
+```bash
+curl -X PATCH https://api.hanzo.ai/product/prod_abc123 \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "compareAtPrice": 3999,
+    "price": 2499,
+    "saleStartsAt": "2025-06-01T00:00:00Z",
+    "saleEndsAt": "2025-06-30T23:59:59Z"
+  }'
+```
+
+## Price Resolution Order
+
+When calculating the price for a line item, the system evaluates in this order:
+
+1. **Price List** matching the customer's group (highest priority)
+2. **Sale Price** if within the active date range
+3. **Volume Tier** matching the quantity
+4. **Base Price** on the variant or product (fallback)
+
+## Multi-Currency
+
+Prices can be defined in multiple currencies per price list:
+
+```json
+{
+  "prices": [
+    {"variantId": "var_abc", "amount": 2999, "currency": "USD"},
+    {"variantId": "var_abc", "amount": 2599, "currency": "EUR"},
+    {"variantId": "var_abc", "amount": 2299, "currency": "GBP"}
+  ]
+}
+```
+
+If no explicit price exists for a currency, the system converts from the default currency using live exchange rates.
+
+## Configuration
+
+```yaml
+pricing:
+  default_currency: USD
+  auto_convert: true           # convert prices for missing currencies
+  exchange_rate_provider: ecb  # ecb | openexchangerates | fixed
+  cache_ttl_minutes: 60        # cache price calculations
+  round_to: 99                 # round converted prices to .99
+```
+
+<Callout type="info">
+All prices are stored in minor units (cents). A value of `2999` represents $29.99 USD.
+</Callout>

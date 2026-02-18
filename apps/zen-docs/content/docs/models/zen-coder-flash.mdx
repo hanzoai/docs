@@ -1,0 +1,70 @@
+---
+title: zen-coder-flash
+description: The flagship 31B MoE code-focused model with 59.2% SWE-bench
+---
+
+# ⚡ zen-coder-flash
+
+**The Flagship Zen Coder Model**
+
+<Cards>
+  <Card title="HuggingFace" href="https://huggingface.co/zenlm/zen-coder-flash" />
+  <Card title="GitHub" href="https://github.com/zenlm/zen-coder-flash" />
+</Cards>
+
+## Overview
+
+| Attribute | Value |
+|-----------|-------|
+| **Parameters** | 31B total / 3B active (MoE) |
+| **Context Length** | 131,072 tokens |
+| **Base Model** | GLM-4.7-Flash |
+| **License** | MIT |
+| **SWE-bench** | 59.2% |
+| **Languages** | 100+ programming languages |
+
+## Why zen-coder-flash?
+
+- **59.2% SWE-bench** vs 22% Qwen3-30B - nearly **3x better** at real coding tasks
+- **Efficient MoE**: 31B params but only 3B active per token
+- **131K context**: Handle entire codebases in a single prompt
+- **Native tool calling**: Built-in function execution support
+- **Reasoning mode**: Extended chain-of-thought for complex problems
+
+## Benchmarks
+
+| Benchmark | Score | vs Qwen3-30B |
+|-----------|-------|--------------|
+| SWE-bench Verified | **59.2%** | +37.2% (2.7x) |
+| AIME 2025 | **91.6%** | +6.6% |
+| GPQA | **75.2%** | +1.8% |
+| τ²-Bench | **79.5%** | +30.5% |
+
+## Quick Start
+
+```python
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+model_id = "zenlm/zen-coder-flash"
+
+tokenizer = AutoTokenizer.from_pretrained(model_id)
+model = AutoModelForCausalLM.from_pretrained(
+    model_id,
+    torch_dtype=torch.bfloat16,
+    device_map="auto",
+)
+
+messages = [{"role": "user", "content": "Write a Python function for binary search"}]
+inputs = tokenizer.apply_chat_template(messages, tokenize=True, add_generation_prompt=True, return_tensors="pt")
+outputs = model.generate(inputs.to(model.device), max_new_tokens=512, do_sample=True, temperature=0.7)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
+
+## Zen Coder Family
+
+| Tier | Model | Parameters | Active | SWE-bench | Use Case |
+|------|-------|------------|--------|-----------|----------|
+| Small | zen-coder-4b | 4B | 4B | ~15% | Edge/mobile |
+| **Flagship** | **zen-coder-flash** | **31B MoE** | **3B** | **59.2%** | **Balanced** |
+| Max | zen-max | 671B MoE | 14B | 71.3% | Frontier |

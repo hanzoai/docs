@@ -1,0 +1,164 @@
+---
+title: Subscription Module
+description: Recurring billing, plans, trials, and usage-based pricing
+icon: RefreshCw
+---
+
+The Subscription module enables recurring billing with flexible plan configurations, trial periods, and usage-based metering.
+
+<Callout type="info">
+The Subscription module is opt-in. Enable it in your `commerce.yml` by setting `modules.subscription: true`.
+</Callout>
+
+## Key Concepts
+
+- **Plan** -- a recurring billing template with price, interval, and features
+- **Subscription** -- an active instance of a plan for a specific customer
+- **Billing Cycle** -- the recurring interval (monthly, yearly, custom)
+- **Trial** -- an optional free period before billing begins
+- **Usage Record** -- metered usage for usage-based plans
+
+## Data Model
+
+```json
+{
+  "id": "sub_abc123",
+  "customerId": "cust_xyz",
+  "planId": "plan_pro",
+  "status": "active",
+  "currentPeriodStart": "2025-01-01T00:00:00Z",
+  "currentPeriodEnd": "2025-02-01T00:00:00Z",
+  "trialEnd": null,
+  "cancelAtPeriodEnd": false,
+  "price": 4999,
+  "currency": "USD",
+  "interval": "month",
+  "metadata": {}
+}
+```
+
+## Plans
+
+### Create a Plan
+
+<Tabs items={["curl", "TypeScript"]}>
+<TabsContent value="curl">
+```bash
+curl -X POST https://api.hanzo.ai/subscription/plan \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Pro",
+    "slug": "pro",
+    "price": 4999,
+    "currency": "USD",
+    "interval": "month",
+    "trialDays": 14,
+    "features": ["Unlimited products", "Priority support", "Analytics"]
+  }'
+```
+</TabsContent>
+<TabsContent value="TypeScript">
+```ts
+const plan = await commerce.subscriptions.createPlan({
+  name: 'Pro',
+  slug: 'pro',
+  price: 4999,
+  currency: 'USD',
+  interval: 'month',
+  trialDays: 14,
+  features: ['Unlimited products', 'Priority support', 'Analytics'],
+})
+```
+</TabsContent>
+</Tabs>
+
+### Plan Intervals
+
+| Interval | Description |
+|----------|-------------|
+| `day` | Daily billing |
+| `week` | Weekly billing |
+| `month` | Monthly billing |
+| `year` | Annual billing |
+
+## Subscriptions
+
+### Subscribe a Customer
+
+```bash
+curl -X POST https://api.hanzo.ai/subscription \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerId": "cust_xyz",
+    "planId": "plan_pro",
+    "paymentMethod": "stripe",
+    "paymentToken": "pm_card_visa"
+  }'
+```
+
+### Cancel a Subscription
+
+```bash
+curl -X POST https://api.hanzo.ai/subscription/sub_abc123/cancel \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"atPeriodEnd": true}'
+```
+
+### Resume a Cancelled Subscription
+
+```bash
+curl -X POST https://api.hanzo.ai/subscription/sub_abc123/resume \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Usage-Based Billing
+
+For metered plans, report usage during the billing period:
+
+```bash
+curl -X POST https://api.hanzo.ai/subscription/sub_abc123/usage \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "metric": "api_calls",
+    "quantity": 1500,
+    "timestamp": "2025-01-15T10:00:00Z"
+  }'
+```
+
+Usage is aggregated at the end of each billing cycle and charged according to the plan's per-unit price.
+
+## Subscription Lifecycle
+
+```
+Created ──► Trial (optional) ──► Active ──► Past Due ──► Cancelled
+                                    │                       ▲
+                                    └── Cancel request ─────┘
+                                         (at period end)
+```
+
+## Configuration
+
+```yaml
+subscription:
+  enabled: true
+  retry_attempts: 3              # payment retry attempts
+  retry_interval_days: 3         # days between retries
+  grace_period_days: 7           # days past due before cancel
+  prorate_on_change: true        # prorate when switching plans
+  cancel_at_period_end: true     # default cancel behavior
+```
+
+## Events
+
+| Event | Description |
+|-------|-------------|
+| `subscription.created` | New subscription started |
+| `subscription.trial_ending` | Trial ends in 3 days |
+| `subscription.renewed` | Billing cycle renewed |
+| `subscription.past_due` | Payment failed |
+| `subscription.cancelled` | Subscription cancelled |
+| `subscription.plan_changed` | Customer switched plans |

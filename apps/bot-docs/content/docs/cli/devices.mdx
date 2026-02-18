@@ -1,0 +1,64 @@
+---
+title: "`bot devices`"
+description: "CLI reference for `bot devices` (device pairing + token rotation/revocation)"
+---
+
+# `bot devices`
+
+Manage device pairing requests and device-scoped tokens.
+
+## Commands
+
+### `bot devices list`
+
+List pending pairing requests and paired devices.
+
+```
+bot devices list
+bot devices list --json
+```
+
+### `bot devices approve <requestId>`
+
+Approve a pending device pairing request.
+
+```
+bot devices approve <requestId>
+```
+
+### `bot devices reject <requestId>`
+
+Reject a pending device pairing request.
+
+```
+bot devices reject <requestId>
+```
+
+### `bot devices rotate --device <id> --role <role> [--scope <scope...>]`
+
+Rotate a device token for a specific role (optionally updating scopes).
+
+```
+bot devices rotate --device <deviceId> --role operator --scope operator.read --scope operator.write
+```
+
+### `bot devices revoke --device <id> --role <role>`
+
+Revoke a device token for a specific role.
+
+```
+bot devices revoke --device <deviceId> --role node
+```
+
+## Common options
+
+- `--url <url>`: Gateway WebSocket URL (defaults to `gateway.remote.url` when configured).
+- `--token <token>`: Gateway token (if required).
+- `--password <password>`: Gateway password (password auth).
+- `--timeout <ms>`: RPC timeout.
+- `--json`: JSON output (recommended for scripting).
+
+## Notes
+
+- Token rotation returns a new token (sensitive). Treat it like a secret.
+- These commands require `operator.pairing` (or `operator.admin`) scope.

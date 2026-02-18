@@ -1,0 +1,75 @@
+---
+title: Rust SDK
+description: The official Hanzo Rust SDK with async support and crypto/DID features.
+---
+
+# Rust SDK
+
+The `hanzo-ai` crate provides an async Rust client for the Hanzo LLM Gateway, with additional support for crypto and decentralized identity (DID) features.
+
+## Installation
+
+```toml
+# Cargo.toml
+[dependencies]
+hanzo-ai = "0.1"
+tokio = { version = "1", features = ["full"] }
+```
+
+## Quick Start
+
+```rust
+use hanzo_ai::Client;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::new("your-api-key");
+
+    let response = client
+        .chat()
+        .completions()
+        .create("gpt-4o")
+        .message("user", "Hello, world!")
+        .send()
+        .await?;
+
+    println!("{}", response.choices[0].message.content);
+
+    Ok(())
+}
+```
+
+## Streaming
+
+```rust
+use futures::StreamExt;
+use hanzo_ai::Client;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::new("your-api-key");
+
+    let mut stream = client
+        .chat()
+        .completions()
+        .create("claude-sonnet-4-5-20250929")
+        .message("user", "Write a haiku about AI")
+        .stream()
+        .await?;
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        if let Some(content) = &chunk.choices[0].delta.content {
+            print!("{content}");
+        }
+    }
+
+    Ok(())
+}
+```
+
+## Resources
+
+- [GitHub Repository](https://github.com/hanzoai/rust-sdk)
+- [crates.io](https://crates.io/crates/hanzo-ai)
+- [LLM Gateway Docs](/docs/llm)

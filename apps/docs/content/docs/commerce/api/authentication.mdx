@@ -1,0 +1,268 @@
+---
+title: Authentication API
+description: OAuth2 tokens, API keys, and session management
+icon: Shield
+---
+
+The Authentication API handles user login, registration, token management, and API key authentication. All authenticated endpoints require a Bearer token in the `Authorization` header.
+
+## Token Structure
+
+```json
+{
+  "accessToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "rt_abc123def456",
+  "tokenType": "Bearer",
+  "expiresIn": 3600,
+  "scope": "read write",
+  "userId": "user_abc123",
+  "issuedAt": "2024-06-15T10:00:00Z"
+}
+```
+
+## Authentication Methods
+
+| Method | Header | Use Case |
+|--------|--------|----------|
+| Bearer Token | `Authorization: Bearer <token>` | User sessions, OAuth2 flows |
+| API Key | `Authorization: Bearer <api_key>` | Server-to-server, SDK usage |
+| Client Credentials | OAuth2 client credentials grant | Machine-to-machine |
+
+## Endpoints
+
+### Login
+
+`POST /auth/login`
+
+Authenticate a user with email and password. Returns an access token and refresh token.
+
+```bash
+curl -X POST https://api.hanzo.ai/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "jane@example.com",
+    "password": "securePassword123"
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "accessToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "rt_abc123def456",
+  "tokenType": "Bearer",
+  "expiresIn": 3600,
+  "userId": "user_abc123"
+}
+```
+
+### Register
+
+`POST /auth/register`
+
+Create a new user account and return authentication tokens.
+
+```bash
+curl -X POST https://api.hanzo.ai/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "jane@example.com",
+    "password": "securePassword123",
+    "firstName": "Jane",
+    "lastName": "Doe"
+  }'
+```
+
+**Response:** `201 Created`
+
+```json
+{
+  "accessToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "rt_new789ghi012",
+  "tokenType": "Bearer",
+  "expiresIn": 3600,
+  "user": {
+    "id": "user_new456",
+    "email": "jane@example.com",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "createdAt": "2024-06-15T10:00:00Z"
+  }
+}
+```
+
+### Refresh Token
+
+`POST /auth/refresh`
+
+Exchange a refresh token for a new access token. Use this when the access token has expired.
+
+```bash
+curl -X POST https://api.hanzo.ai/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refreshToken": "rt_abc123def456"
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "accessToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "rt_renewed789",
+  "tokenType": "Bearer",
+  "expiresIn": 3600
+}
+```
+
+<Callout type="warn">
+Refresh tokens are single-use. Each refresh request invalidates the previous refresh token and issues a new one.
+</Callout>
+
+### Logout
+
+`POST /auth/logout`
+
+Invalidate the current access token and its associated refresh token.
+
+```bash
+curl -X POST https://api.hanzo.ai/auth/logout \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Response:** `204 No Content`
+
+### Get Current User
+
+`GET /auth/me`
+
+Retrieve the authenticated user's profile.
+
+```bash
+curl https://api.hanzo.ai/auth/me \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "id": "user_abc123",
+  "email": "jane@example.com",
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "role": "customer",
+  "permissions": ["read:orders", "write:profile"],
+  "createdAt": "2024-03-10T08:00:00Z",
+  "lastLoginAt": "2024-06-15T10:00:00Z"
+}
+```
+
+## OAuth2 Client Credentials
+
+For server-to-server authentication, use the OAuth2 client credentials grant:
+
+```bash
+curl -X POST https://api.hanzo.ai/auth/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d 'grant_type=client_credentials&client_id=YOUR_CLIENT_ID&client_secret=YOUR_CLIENT_SECRET'
+```
+
+**Response:**
+
+```json
+{
+  "accessToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "tokenType": "Bearer",
+  "expiresIn": 7200,
+  "scope": "admin"
+}
+```
+
+## API Key Authentication
+
+API keys provide persistent authentication for SDK and server integrations. Manage keys in the Hanzo dashboard or via the API:
+
+```bash
+curl -X POST https://api.hanzo.ai/apikey \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Production Server",
+    "scopes": ["read:products", "write:orders"]
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "id": "key_abc123",
+  "name": "Production Server",
+  "key": "sk_live_abc123def456ghi789",
+  "scopes": ["read:products", "write:orders"],
+  "createdAt": "2024-06-15T10:00:00Z"
+}
+```
+
+<Callout type="warn">
+The full API key is only returned once at creation time. Store it securely. If lost, revoke and create a new key.
+</Callout>
+
+## Error Responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| `401` | `invalid_credentials` | Wrong email or password |
+| `401` | `token_expired` | Access token has expired |
+| `401` | `token_revoked` | Token has been revoked |
+| `403` | `insufficient_scope` | Token lacks required permissions |
+| `429` | `rate_limited` | Too many authentication attempts |
+
+## SDK Examples
+
+### JavaScript
+
+```typescript
+import { Commerce } from '@hanzo/commerce'
+
+const commerce = new Commerce({ apiKey: 'sk_live_abc123' })
+
+// Login
+const session = await commerce.auth.login({
+  email: 'jane@example.com',
+  password: 'securePassword123'
+})
+
+// Register
+const newSession = await commerce.auth.register({
+  email: 'jane@example.com',
+  password: 'securePassword123',
+  firstName: 'Jane',
+  lastName: 'Doe'
+})
+
+// Refresh token
+const refreshed = await commerce.auth.refresh(session.refreshToken)
+
+// Get current user
+const me = await commerce.auth.me()
+
+// Logout
+await commerce.auth.logout()
+```
+
+### Go
+
+```go
+session, err := client.Auth.Login(ctx, &sdk.LoginInput{
+    Email:    "jane@example.com",
+    Password: "securePassword123",
+})
+
+me, err := client.Auth.Me(ctx)
+
+err = client.Auth.Logout(ctx)
+```

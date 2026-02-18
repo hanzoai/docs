@@ -1,0 +1,111 @@
+---
+title: API Reference
+description: Zen LM Cloud API — OpenAI-compatible endpoints for all Zen models
+---
+
+# Zen LM Cloud API
+
+Use Zen models via the Hanzo AI cloud API. Fully **OpenAI-compatible** — works with every SDK, framework, and tool that supports the OpenAI API format.
+
+## Base URL
+
+```
+https://api.hanzo.ai/v1
+```
+
+## Authentication
+
+All API requests require a `HANZO_API_KEY` obtained from [console.hanzo.ai](https://console.hanzo.ai).
+
+```bash
+Authorization: Bearer $HANZO_API_KEY
+```
+
+## Free Credit
+
+Every new account receives **$5 free credit** (expires in 30 days). A **$1 minimum balance** is required to use the API.
+
+## Quickstart
+
+### curl
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen4",
+    "messages": [{"role": "user", "content": "Hello, Zen."}]
+  }'
+```
+
+### Python
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.hanzo.ai/v1",
+    api_key="your-hanzo-api-key",
+)
+
+response = client.chat.completions.create(
+    model="zen4",
+    messages=[{"role": "user", "content": "Hello, Zen."}],
+)
+print(response.choices[0].message.content)
+```
+
+### TypeScript
+
+```typescript
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.hanzo.ai/v1',
+  apiKey: 'your-hanzo-api-key',
+});
+
+const response = await client.chat.completions.create({
+  model: 'zen4',
+  messages: [{ role: 'user', content: 'Hello, Zen.' }],
+});
+console.log(response.choices[0].message.content);
+```
+
+## Endpoints
+
+<Cards>
+  <Card title="Chat Completions" href="/docs/api/chat-completions">
+    POST /v1/chat/completions — Generate text with any Zen model
+  </Card>
+  <Card title="Models" href="/docs/api/models">
+    GET /v1/models — List all available models
+  </Card>
+  <Card title="Embeddings" href="/docs/api/embeddings">
+    POST /v1/embeddings — Generate vector embeddings
+  </Card>
+  <Card title="Pricing" href="/docs/api/pricing">
+    Model pricing and billing details
+  </Card>
+</Cards>
+
+## Supported SDKs
+
+Any SDK that supports the OpenAI API format works with Zen:
+
+| SDK | Install | Base URL |
+|-----|---------|----------|
+| **Python** (openai) | `pip install openai` | `https://api.hanzo.ai/v1` |
+| **TypeScript** (openai) | `npm install openai` | `https://api.hanzo.ai/v1` |
+| **Go** (go-openai) | `go get github.com/sashabaranov/go-openai` | `https://api.hanzo.ai/v1` |
+| **Rust** (async-openai) | `cargo add async-openai` | `https://api.hanzo.ai/v1` |
+| **LangChain** | `pip install langchain-openai` | `https://api.hanzo.ai/v1` |
+| **LlamaIndex** | `pip install llama-index-llms-openai` | `https://api.hanzo.ai/v1` |
+
+## Rate Limits
+
+| Tier | Requests/min | Tokens/min |
+|------|-------------|------------|
+| Free ($5 credit) | 60 | 100K |
+| Prepaid | 500 | 1M |

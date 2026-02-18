@@ -1,0 +1,73 @@
+---
+title: zen-vl
+description: Vision-Language models for image and video understanding
+---
+
+# zen-vl
+
+**Vision-Language Models**
+
+The Zen VL family provides vision-language capabilities at three scales.
+
+## Model Variants
+
+| Model | Params | Context | Variants |
+|-------|--------|---------|----------|
+| zen-vl-4b | 4B | 32K | instruct, agent |
+| zen-vl-8b | 8B | 256K | instruct, agent |
+| zen-vl-30b | 31B MoE | 256K | instruct, agent |
+
+## Capabilities
+
+- **Image analysis** and visual understanding
+- **Video comprehension** and temporal reasoning
+- **OCR** across 32 languages
+- **Spatial reasoning** and object detection
+- **Function calling** (agent variants)
+- **Visual agent** capabilities for GUI interaction
+
+## zen-vl-4b
+
+<Cards>
+  <Card title="instruct" href="https://huggingface.co/zenlm/zen-vl-4b-instruct" />
+  <Card title="agent" href="https://huggingface.co/zenlm/zen-vl-4b-agent" />
+</Cards>
+
+Best for edge deployment and resource-constrained environments.
+
+## zen-vl-8b
+
+<Cards>
+  <Card title="instruct" href="https://huggingface.co/zenlm/zen-vl-8b-instruct" />
+  <Card title="agent" href="https://huggingface.co/zenlm/zen-vl-8b-agent" />
+</Cards>
+
+Balanced performance and efficiency.
+
+## zen-vl-30b
+
+<Cards>
+  <Card title="instruct" href="https://huggingface.co/zenlm/zen-vl-30b-instruct" />
+  <Card title="agent" href="https://huggingface.co/zenlm/zen-vl-30b-agent" />
+</Cards>
+
+Maximum capability for complex visual reasoning.
+
+## Usage
+
+```python
+from transformers import AutoModelForCausalLM, AutoProcessor
+import torch
+
+model = AutoModelForCausalLM.from_pretrained(
+    "zenlm/zen-vl-8b-instruct",
+    torch_dtype=torch.bfloat16,
+    device_map="auto",
+)
+processor = AutoProcessor.from_pretrained("zenlm/zen-vl-8b-instruct")
+
+# Process image
+image = processor.image_processor(image_path)
+inputs = processor(text="Describe this image", images=image)
+outputs = model.generate(**inputs, max_new_tokens=256)
+```

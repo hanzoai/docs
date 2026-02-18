@@ -1,0 +1,151 @@
+---
+title: Customer Module
+description: Customer accounts, authentication, addresses, and groups
+icon: Users
+---
+
+The Customer module manages user accounts, authentication via Hanzo ID, saved addresses, and customer segmentation through groups.
+
+## Data Model
+
+```json
+{
+  "id": "cust_abc123",
+  "email": "jane@example.com",
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "phone": "+14155551234",
+  "addresses": [
+    {
+      "id": "addr_001",
+      "label": "Home",
+      "line1": "123 Main St",
+      "city": "San Francisco",
+      "state": "CA",
+      "postalCode": "94102",
+      "country": "US",
+      "isDefault": true
+    }
+  ],
+  "groups": ["vip", "wholesale"],
+  "metadata": {},
+  "orderCount": 12,
+  "totalSpent": 45800,
+  "currency": "USD",
+  "createdAt": "2024-06-01T08:00:00Z"
+}
+```
+
+## Key Concepts
+
+- **Customer** -- an authenticated user who can place orders and manage their profile
+- **Address** -- a saved shipping or billing address associated with a customer
+- **Group** -- a tag used for segmentation (VIP, wholesale, B2B) that can trigger special pricing or promotions
+- **Guest** -- unauthenticated checkout creates a minimal customer record linked by email
+
+## API Examples
+
+### Register a Customer
+
+<Tabs items={["curl", "TypeScript", "Go"]}>
+<TabsContent value="curl">
+```bash
+curl -X POST https://api.hanzo.ai/customer \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "jane@example.com",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "password": "securePassword123"
+  }'
+```
+</TabsContent>
+<TabsContent value="TypeScript">
+```ts
+const customer = await commerce.customers.create({
+  email: 'jane@example.com',
+  firstName: 'Jane',
+  lastName: 'Doe',
+  password: 'securePassword123',
+})
+```
+</TabsContent>
+<TabsContent value="Go">
+```go
+customer, err := client.Customers.Create(ctx, &sdk.CustomerInput{
+    Email:     "jane@example.com",
+    FirstName: "Jane",
+    LastName:  "Doe",
+    Password:  "securePassword123",
+})
+```
+</TabsContent>
+</Tabs>
+
+### Add an Address
+
+```bash
+curl -X POST https://api.hanzo.ai/customer/cust_abc123/address \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "label": "Office",
+    "line1": "456 Market St",
+    "city": "San Francisco",
+    "state": "CA",
+    "postalCode": "94105",
+    "country": "US"
+  }'
+```
+
+### Assign to a Group
+
+```bash
+curl -X POST https://api.hanzo.ai/customer/cust_abc123/group \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"group": "vip"}'
+```
+
+### List Customers with Filters
+
+```bash
+curl "https://api.hanzo.ai/customer?group=vip&minOrders=5&sort=totalSpent:desc" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Authentication
+
+Customer authentication is handled through Hanzo ID (OAuth2):
+
+```ts
+// Storefront login
+const session = await commerce.auth.login({
+  email: 'jane@example.com',
+  password: 'securePassword123',
+})
+
+// Use the session token for subsequent requests
+commerce.setToken(session.accessToken)
+```
+
+## Configuration
+
+```yaml
+customer:
+  require_email_verification: true
+  allow_guest_checkout: true
+  password_min_length: 8
+  max_addresses: 10
+  auto_merge_guest: true  # merge guest orders when they register
+```
+
+## Events
+
+| Event | Description |
+|-------|-------------|
+| `customer.created` | New customer registered |
+| `customer.updated` | Profile or address changed |
+| `customer.group_added` | Customer added to a group |
+| `customer.merged` | Guest account merged with registered account |

@@ -1,0 +1,71 @@
+---
+title: TypeScript SDK
+description: The official Hanzo TypeScript/JavaScript SDK for Node.js, Deno, and browsers.
+---
+
+# TypeScript SDK
+
+The `@hanzo/ai` package provides a type-safe TypeScript client for the Hanzo LLM Gateway, compatible with the OpenAI SDK interface.
+
+## Installation
+
+```bash tab="npm"
+npm install @hanzo/ai
+```
+
+```bash tab="pnpm"
+pnpm add @hanzo/ai
+```
+
+```bash tab="bun"
+bun add @hanzo/ai
+```
+
+## Quick Start
+
+```typescript
+import Hanzo from '@hanzo/ai';
+
+const client = new Hanzo({ apiKey: 'your-api-key' });
+
+const response = await client.chat.completions.create({
+  model: 'gpt-4o',
+  messages: [
+    { role: 'user', content: 'Hello, world!' }
+  ],
+});
+
+console.log(response.choices[0].message.content);
+```
+
+## Streaming
+
+```typescript
+const stream = await client.chat.completions.create({
+  model: 'claude-sonnet-4-5-20250929',
+  messages: [
+    { role: 'user', content: 'Write a haiku about AI' }
+  ],
+  stream: true,
+});
+
+for await (const chunk of stream) {
+  const content = chunk.choices[0]?.delta?.content;
+  if (content) process.stdout.write(content);
+}
+```
+
+## Configuration
+
+```typescript
+const client = new Hanzo({
+  apiKey: 'your-api-key',
+  baseURL: 'https://llm.hanzo.ai/v1', // default
+});
+```
+
+## Resources
+
+- [GitHub Repository](https://github.com/hanzoai/js-sdk)
+- [npm Package](https://www.npmjs.com/package/@hanzo/ai)
+- [LLM Gateway Docs](/docs/llm)

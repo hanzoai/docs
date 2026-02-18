@@ -1,0 +1,67 @@
+---
+title: zen-nano
+description: 0.6B edge model for embedded and IoT deployment
+---
+
+# zen-nano
+
+**Edge AI Model**
+
+<Cards>
+  <Card title="HuggingFace" href="https://huggingface.co/zenlm/zen-nano" />
+</Cards>
+
+## Overview
+
+| Attribute | Value |
+|-----------|-------|
+| **Parameters** | 0.6B (0.44B non-embedding) |
+| **Context Length** | 40K tokens |
+| **Base Model** | Qwen3-0.6B |
+| **License** | Apache 2.0 |
+| **Downloads** | 292/month |
+
+## Available Formats
+
+- **SafeTensors** (bfloat16)
+- **GGUF** (Q4_K_M, Q5_K_M, Q8_0, F16)
+- **MLX** (Apple Silicon optimized)
+
+## Use Cases
+
+- Edge deployment
+- Embedded systems
+- IoT devices
+- On-device AI
+- Mobile applications
+
+## Usage
+
+### Transformers
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
+
+model = AutoModelForCausalLM.from_pretrained(
+    "zenlm/zen-nano",
+    torch_dtype=torch.bfloat16,
+    device_map="auto",
+)
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-nano")
+```
+
+### llama.cpp (GGUF)
+
+```bash
+./llama-cli -m zen-nano-q4_k_m.gguf -p "Hello, I am Zen"
+```
+
+### MLX (Apple Silicon)
+
+```python
+from mlx_lm import load, generate
+
+model, tokenizer = load("zenlm/zen-nano")
+response = generate(model, tokenizer, prompt="Hello", max_tokens=100)
+```

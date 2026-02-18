@@ -1,0 +1,297 @@
+---
+title: Docker
+description: Deploy Hanzo Commerce with Docker and compose.yml
+---
+
+Deploy Hanzo Commerce and its dependencies using Docker containers. This is the fastest way to get a production-ready deployment.
+
+## Prerequisites
+
+- Docker 24+ with Compose v2
+- A domain name (for production)
+- SSL certificate (or use a reverse proxy that handles TLS)
+
+## Quick Start
+
+Create a project directory and add the compose file:
+
+```bash
+mkdir commerce-deploy && cd commerce-deploy
+```
+
+## compose.yml
+
+```yaml title="compose.yml"
+services:
+  commerce:
+    image: hanzoai/commerce:latest
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    environment:
+      - COMMERCE_DIR=/data
+      - COMMERCE_ENV=production
+      - COMMERCE_PORT=8090
+      - DATABASE_URL=postgresql://commerce:commerce@postgres:5432/commerce?sslmode=disable
+      - KV_URL=redis://redis:6379/0
+      - S3_URL=s3://minioadmin:minioadmin@minio:9000/commerce
+      - SEARCH_URL=http://meilisearch:7700
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - HANZO_API_KEY=${HANZO_API_KEY}
+      - HANZO_CLIENT_ID=${HANZO_CLIENT_ID}
+      - HANZO_CLIENT_SECRET=${HANZO_CLIENT_SECRET}
+    volumes:
+      - commerce_data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      meilisearch:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8090/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: commerce
+      POSTGRES_PASSWORD: commerce
+      POSTGRES_DB: commerce
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U commerce"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9001:9001"  # MinIO Console (optional, remove in production)
+    volumes:
+      - minio_data:/data
+
+  meilisearch:
+    image: getmeili/meilisearch:latest
+    restart: unless-stopped
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-your-master-key}
+    volumes:
+      - meilisearch_data:/meili_data
+
+volumes:
+  commerce_data:
+  postgres_data:
+  redis_data:
+  minio_data:
+  meilisearch_data:
+```
+
+## Environment File
+
+Create a `.env` file alongside compose.yml:
+
+```bash title=".env"
+# Hanzo
+HANZO_API_KEY=hk_live_...
+HANZO_CLIENT_ID=your_client_id
+HANZO_CLIENT_SECRET=your_client_secret
+
+# Stripe
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+
+# Meilisearch
+MEILI_MASTER_KEY=a-secure-master-key-at-least-16-chars
+```
+
+## Start the Stack
+
+```bash
+docker compose up -d
+```
+
+Verify all services are running:
+
+```bash
+docker compose ps
+```
+
+Expected output:
+
+```
+NAME                STATUS              PORTS
+commerce            Up (healthy)        0.0.0.0:8090->8090/tcp
+postgres            Up (healthy)        5432/tcp
+redis               Up (healthy)        6379/tcp
+minio               Up                  9000/tcp, 0.0.0.0:9001->9001/tcp
+meilisearch         Up                  7700/tcp
+```
+
+Test the health endpoint:
+
+```bash
+curl http://localhost:8090/health
+```
+
+## Production Hardening
+
+### 1. Change Default Credentials
+
+Never use default passwords in production. Update the compose.yml:
+
+```yaml
+postgres:
+  environment:
+    POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}  # from .env
+
+minio:
+  environment:
+    MINIO_ROOT_USER: ${MINIO_USER}
+    MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
+```
+
+### 2. Restrict Exposed Ports
+
+Only expose the Commerce API port. Remove the MinIO console port:
+
+```yaml
+services:
+  commerce:
+    ports:
+      - "127.0.0.1:8090:8090"  # bind to localhost only
+  # Remove minio port 9001 mapping
+```
+
+### 3. Add Resource Limits
+
+```yaml
+services:
+  commerce:
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+```
+
+### 4. Enable Backups
+
+Add a backup service for PostgreSQL:
+
+```yaml
+services:
+  backup:
+    image: prodrigestivill/postgres-backup-local:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: commerce
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: commerce
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: 30
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      - postgres
+```
+
+### 5. Reverse Proxy with Caddy
+
+Add Caddy for automatic HTTPS:
+
+```yaml
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+    depends_on:
+      - commerce
+```
+
+```text title="Caddyfile"
+commerce.example.com {
+    reverse_proxy commerce:8090
+}
+```
+
+## Updating
+
+Pull the latest image and recreate the container:
+
+```bash
+docker compose pull commerce
+docker compose up -d commerce
+```
+
+Commerce runs database migrations automatically on startup.
+
+## Logs
+
+View logs for any service:
+
+```bash
+# All services
+docker compose logs -f
+
+# Commerce only
+docker compose logs -f commerce
+
+# Last 100 lines
+docker compose logs --tail 100 commerce
+```
+
+## Volumes and Data Persistence
+
+| Volume | Service | Contains |
+|--------|---------|----------|
+| `commerce_data` | Commerce | Application data, config |
+| `postgres_data` | PostgreSQL | Database files |
+| `redis_data` | Redis | Cache persistence (AOF) |
+| `minio_data` | MinIO | Uploaded files, media |
+| `meilisearch_data` | Meilisearch | Search indexes |
+
+Back up these volumes regularly. For PostgreSQL, prefer `pg_dump` over volume-level backups for consistency.
+
+## Next Steps
+
+- Set up [Kubernetes](/docs/commerce/deployment/kubernetes) for high-availability deployments
+- Deploy your storefront to [Vercel](/docs/commerce/deployment/vercel)
+- Configure [monitoring](/docs/commerce/deployment) with Prometheus and Grafana

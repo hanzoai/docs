@@ -1,0 +1,274 @@
+---
+title: Variant API
+description: Manage product variants, options, pricing, and inventory links
+icon: Layers
+---
+
+The Variant API manages product variants -- specific combinations of product options (e.g., Size: M, Color: Black) with independent pricing, SKUs, and inventory tracking.
+
+## Variant Structure
+
+```json
+{
+  "id": "var_xyz789",
+  "productId": "prod_abc123",
+  "title": "Premium T-Shirt - Black / M",
+  "sku": "SHIRT-BLK-M",
+  "barcode": "1234567890123",
+  "price": 2999,
+  "compareAtPrice": 3999,
+  "currency": "USD",
+  "options": {
+    "Size": "M",
+    "Color": "Black"
+  },
+  "weight": 200,
+  "weightUnit": "g",
+  "requiresShipping": true,
+  "inventoryItemId": "iitem_abc123",
+  "inventoryQuantity": 185,
+  "allowBackorder": false,
+  "media": {
+    "id": "media_001",
+    "url": "https://cdn.hanzo.ai/products/premium-tee-black.jpg"
+  },
+  "metadata": {},
+  "position": 0,
+  "createdAt": "2024-01-15T10:00:00Z",
+  "updatedAt": "2024-06-10T14:30:00Z"
+}
+```
+
+## Endpoints
+
+### List Variants
+
+`GET /variant`
+
+Retrieve a paginated list of variants, optionally filtered by product.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `page` | number | Page number (default: 1) |
+| `display` | number | Items per page (default: 20, max: 100) |
+| `sort` | string | Sort field (e.g. `price:asc`, `position:asc`) |
+| `productId` | string | Filter by parent product |
+| `sku` | string | Filter by SKU |
+| `inStock` | boolean | Only variants with available inventory |
+
+```bash
+curl "https://api.hanzo.ai/variant?productId=prod_abc123&inStock=true" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "count": 12,
+  "models": [
+    {
+      "id": "var_xyz789",
+      "productId": "prod_abc123",
+      "title": "Premium T-Shirt - Black / M",
+      "sku": "SHIRT-BLK-M",
+      "price": 2999,
+      "inventoryQuantity": 185,
+      "position": 0
+    }
+  ]
+}
+```
+
+### Get Variant
+
+`GET /variant/:id`
+
+```bash
+curl https://api.hanzo.ai/variant/var_xyz789 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+### Create Variant
+
+`POST /variant`
+
+```bash
+curl -X POST https://api.hanzo.ai/variant \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "productId": "prod_abc123",
+    "title": "Premium T-Shirt - Navy / L",
+    "sku": "SHIRT-NAV-L",
+    "barcode": "1234567890456",
+    "price": 2999,
+    "currency": "USD",
+    "options": {
+      "Size": "L",
+      "Color": "Navy"
+    },
+    "weight": 210,
+    "weightUnit": "g",
+    "requiresShipping": true,
+    "allowBackorder": false
+  }'
+```
+
+**Response:** `201 Created`
+
+```json
+{
+  "id": "var_new456",
+  "productId": "prod_abc123",
+  "title": "Premium T-Shirt - Navy / L",
+  "sku": "SHIRT-NAV-L",
+  "price": 2999,
+  "inventoryItemId": "iitem_new456",
+  "createdAt": "2024-06-15T10:00:00Z"
+}
+```
+
+<Callout type="info">
+Creating a variant automatically creates an associated inventory item. The `inventoryItemId` is returned in the response.
+</Callout>
+
+### Update Variant
+
+`PUT /variant/:id`
+
+```bash
+curl -X PUT https://api.hanzo.ai/variant/var_xyz789 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "price": 2499,
+    "compareAtPrice": 2999,
+    "allowBackorder": true
+  }'
+```
+
+### Delete Variant
+
+`DELETE /variant/:id`
+
+```bash
+curl -X DELETE https://api.hanzo.ai/variant/var_xyz789 \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Response:** `204 No Content`
+
+<Callout type="warn">
+Deleting a variant also removes its associated inventory item and levels. This action is permanent.
+</Callout>
+
+## Variant Pricing
+
+Variants can override the parent product price. The storefront displays the variant price when a customer selects specific options.
+
+| Field | Description |
+|-------|-------------|
+| `price` | Current selling price in cents |
+| `compareAtPrice` | Original price for strikethrough display |
+| `costPrice` | Cost of goods for margin calculations |
+| `currency` | ISO 4217 currency code |
+
+## Inventory Link
+
+Each variant is linked to exactly one inventory item via `inventoryItemId`. Inventory levels are managed through the [Inventory API](/docs/commerce/api/inventory).
+
+```bash
+# Get inventory for a variant
+curl "https://api.hanzo.ai/inventoryitem?variantId=var_xyz789" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+## Bulk Operations
+
+### Bulk Update Prices
+
+`PUT /variant/bulk`
+
+```bash
+curl -X PUT https://api.hanzo.ai/variant/bulk \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "updates": [
+      { "id": "var_xyz789", "price": 2499 },
+      { "id": "var_abc456", "price": 2499 },
+      { "id": "var_def012", "price": 3499 }
+    ]
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "updated": 3,
+  "errors": []
+}
+```
+
+## SDK Examples
+
+### JavaScript
+
+```typescript
+import { Commerce } from '@hanzo/commerce'
+
+const commerce = new Commerce({ apiKey: 'your_key' })
+
+// List variants for a product
+const variants = await commerce.variants.list({
+  productId: 'prod_abc123',
+  sort: 'position:asc'
+})
+
+// Create variant
+const variant = await commerce.variants.create({
+  productId: 'prod_abc123',
+  title: 'Premium T-Shirt - Navy / L',
+  sku: 'SHIRT-NAV-L',
+  price: 2999,
+  options: { Size: 'L', Color: 'Navy' }
+})
+
+// Update variant price
+await commerce.variants.update(variant.id, {
+  price: 2499,
+  compareAtPrice: 2999
+})
+
+// Bulk update
+await commerce.variants.bulkUpdate([
+  { id: 'var_xyz789', price: 2499 },
+  { id: 'var_abc456', price: 2499 }
+])
+```
+
+### Go
+
+```go
+variants, err := client.Variants.List(ctx, &sdk.VariantListParams{
+    ProductID: "prod_abc123",
+    Sort:      "position:asc",
+})
+
+variant, err := client.Variants.Create(ctx, &sdk.VariantInput{
+    ProductID: "prod_abc123",
+    Title:     "Premium T-Shirt - Navy / L",
+    SKU:       "SHIRT-NAV-L",
+    Price:     2999,
+    Options:   map[string]string{"Size": "L", "Color": "Navy"},
+})
+
+err = client.Variants.Update(ctx, variant.ID, &sdk.VariantInput{
+    Price:          2499,
+    CompareAtPrice: 2999,
+})
+```

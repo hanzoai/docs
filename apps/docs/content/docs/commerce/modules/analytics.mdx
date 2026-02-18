@@ -1,0 +1,161 @@
+---
+title: Analytics Module
+description: Commerce events, dashboards, and ClickHouse integration
+icon: BarChart3
+---
+
+The Analytics module captures commerce events and stores them in ClickHouse for real-time dashboards, reporting, and business intelligence.
+
+## Key Concepts
+
+- **Event** -- a timestamped record of a commerce action (page view, add to cart, purchase)
+- **Dashboard** -- pre-built and custom views of aggregated metrics
+- **Funnel** -- a conversion pipeline from visitor to purchaser
+- **Cohort** -- a group of customers segmented by behavior or time period
+
+## Event Schema
+
+```json
+{
+  "id": "evt_abc123",
+  "type": "order.completed",
+  "timestamp": "2025-01-15T10:35:00Z",
+  "sessionId": "sess_xyz",
+  "customerId": "cust_abc123",
+  "properties": {
+    "orderId": "order_xyz789",
+    "total": 6791,
+    "currency": "USD",
+    "itemCount": 2,
+    "paymentMethod": "stripe"
+  },
+  "context": {
+    "ip": "203.0.113.42",
+    "userAgent": "Mozilla/5.0...",
+    "referrer": "https://google.com",
+    "country": "US"
+  }
+}
+```
+
+## Tracked Events
+
+| Event | Trigger |
+|-------|---------|
+| `page.viewed` | Storefront page load |
+| `product.viewed` | Product detail page |
+| `cart.item_added` | Item added to cart |
+| `cart.item_removed` | Item removed from cart |
+| `checkout.started` | Cart completion initiated |
+| `order.completed` | Order successfully placed |
+| `payment.captured` | Payment collected |
+| `order.refunded` | Refund processed |
+
+## API Examples
+
+### Track a Custom Event
+
+<Tabs items={["curl", "TypeScript"]}>
+<TabsContent value="curl">
+```bash
+curl -X POST https://api.hanzo.ai/analytics/event \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "product.viewed",
+    "sessionId": "sess_xyz",
+    "properties": {
+      "productId": "prod_abc123",
+      "productName": "Premium T-Shirt",
+      "price": 2999,
+      "currency": "USD"
+    }
+  }'
+```
+</TabsContent>
+<TabsContent value="TypeScript">
+```ts
+await commerce.analytics.track({
+  type: 'product.viewed',
+  sessionId: 'sess_xyz',
+  properties: {
+    productId: 'prod_abc123',
+    productName: 'Premium T-Shirt',
+    price: 2999,
+    currency: 'USD',
+  },
+})
+```
+</TabsContent>
+</Tabs>
+
+### Query Metrics
+
+```bash
+curl "https://api.hanzo.ai/analytics/metrics?metric=revenue&period=30d&granularity=day" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+Response:
+
+```json
+{
+  "metric": "revenue",
+  "period": "30d",
+  "total": 1284500,
+  "currency": "USD",
+  "dataPoints": [
+    {"date": "2025-01-01", "value": 42500},
+    {"date": "2025-01-02", "value": 38900}
+  ]
+}
+```
+
+### Conversion Funnel
+
+```bash
+curl "https://api.hanzo.ai/analytics/funnel?steps=page.viewed,product.viewed,cart.item_added,order.completed&period=7d" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Built-in Dashboards
+
+| Dashboard | Metrics |
+|-----------|---------|
+| Overview | Revenue, orders, AOV, conversion rate |
+| Products | Best sellers, views, add-to-cart rate |
+| Customers | New vs returning, LTV, retention |
+| Marketing | Traffic sources, campaign performance |
+| Inventory | Stock levels, sell-through rate |
+
+## ClickHouse Integration
+
+Events are written to ClickHouse for fast analytical queries:
+
+```sql
+SELECT
+    toDate(timestamp) AS day,
+    count() AS orders,
+    sum(JSONExtractInt(properties, 'total')) AS revenue
+FROM commerce_events
+WHERE type = 'order.completed'
+    AND timestamp >= now() - INTERVAL 30 DAY
+GROUP BY day
+ORDER BY day
+```
+
+## Configuration
+
+```yaml
+analytics:
+  enabled: true
+  provider: clickhouse         # clickhouse | bigquery
+  clickhouse_url: ${CLICKHOUSE_URL}
+  batch_size: 1000             # events per batch write
+  flush_interval_seconds: 5    # max time between flushes
+  retention_days: 365          # event retention period
+```
+
+<Callout type="info">
+Commerce events are automatically tracked for all API operations. Use the `analytics/event` endpoint to add custom storefront events like page views and product impressions.
+</Callout>

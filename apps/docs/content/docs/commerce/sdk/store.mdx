@@ -1,0 +1,264 @@
+---
+title: Store Module
+description: Storefront SDK reference -- browse products, manage carts, and complete checkout
+---
+
+The Store module provides the public-facing API for building storefronts. It works with **publishable API keys** and is safe to use in client-side code.
+
+## Setup
+
+```typescript
+import { HanzoSDK } from '@hanzo/sdk'
+
+const sdk = new HanzoSDK({
+  baseUrl: 'https://api.hanzo.ai/v1',
+  apiKey: 'pk_live_...', // Publishable key
+})
+```
+
+## Available Sub-Modules
+
+| Module | Description |
+|--------|-------------|
+| `sdk.store.product` | Browse and search products |
+| `sdk.store.collection` | Browse product collections |
+| `sdk.store.cart` | Cart creation and management |
+| `sdk.store.checkout` | Complete purchases |
+| `sdk.store.region` | Available regions and currencies |
+| `sdk.store.customer` | Authenticated customer operations |
+
+## Products
+
+### List Products
+
+```typescript
+const { data: products, count } = await sdk.store.product.list({
+  limit: 20,
+  offset: 0,
+  collectionId: 'col_featured',
+  sort: 'price:asc',
+})
+```
+
+### Search Products
+
+```typescript
+const results = await sdk.store.product.list({
+  q: 'cotton t-shirt',
+  minPrice: 1000,
+  maxPrice: 5000,
+  tags: ['apparel'],
+})
+```
+
+### Get Product Detail
+
+```typescript
+const product = await sdk.store.product.get('prod_abc123')
+
+console.log(product.name)
+console.log(product.description)
+console.log(product.variants)   // All purchasable variants
+console.log(product.options)    // Available options (size, color, etc.)
+console.log(product.images)     // Product images
+```
+
+## Collections
+
+```typescript
+// List all collections
+const collections = await sdk.store.collection.list()
+
+// Get a collection with its products
+const collection = await sdk.store.collection.get('col_summer-sale')
+const products = await sdk.store.product.list({
+  collectionId: collection.id,
+})
+```
+
+## Cart
+
+### Create a Cart
+
+```typescript
+const cart = await sdk.store.cart.create({
+  regionId: 'reg_na',
+})
+
+// Store the cart ID for the session
+sessionStorage.setItem('cartId', cart.id)
+```
+
+### Add Items
+
+```typescript
+const updatedCart = await sdk.store.cart.addItem(cart.id, {
+  variantId: 'var_hoodie_blk_m',
+  quantity: 1,
+})
+```
+
+### Update Item Quantity
+
+```typescript
+const updatedCart = await sdk.store.cart.updateItem(cart.id, 'item_001', {
+  quantity: 3,
+})
+```
+
+### Remove an Item
+
+```typescript
+const updatedCart = await sdk.store.cart.removeItem(cart.id, 'item_001')
+```
+
+### Get Cart
+
+```typescript
+const cart = await sdk.store.cart.get(cartId)
+
+console.log(cart.items)       // Line items with product details
+console.log(cart.subtotal)    // Sum of item prices
+console.log(cart.taxTotal)    // Calculated tax
+console.log(cart.shippingTotal) // Shipping cost
+console.log(cart.total)       // Grand total
+```
+
+### Apply a Discount Code
+
+```typescript
+const updatedCart = await sdk.store.cart.applyDiscount(cart.id, {
+  code: 'SUMMER20',
+})
+```
+
+### Set Shipping Address
+
+```typescript
+await sdk.store.cart.setShippingAddress(cart.id, {
+  firstName: 'Jane',
+  lastName: 'Doe',
+  line1: '123 Main St',
+  city: 'San Francisco',
+  state: 'CA',
+  postalCode: '94102',
+  country: 'US',
+})
+```
+
+### Select Shipping Method
+
+```typescript
+// Get available shipping options
+const options = await sdk.store.cart.getShippingOptions(cart.id)
+
+// Select a shipping method
+await sdk.store.cart.setShippingMethod(cart.id, {
+  shippingOptionId: options[0].id,
+})
+```
+
+## Checkout
+
+### Complete a Purchase
+
+```typescript
+// Set payment information
+await sdk.store.checkout.setPaymentMethod(cart.id, {
+  provider: 'stripe',
+})
+
+// Complete the checkout
+const order = await sdk.store.checkout.complete(cart.id, {
+  paymentToken: 'tok_visa', // Token from Stripe.js or similar
+})
+
+console.log(order.id)          // "order_xyz789"
+console.log(order.status)      // "pending"
+console.log(order.paymentStatus) // "authorized"
+```
+
+### Full Checkout Flow Example
+
+```typescript
+// 1. Create cart
+const cart = await sdk.store.cart.create({ regionId: 'reg_na' })
+
+// 2. Add items
+await sdk.store.cart.addItem(cart.id, { variantId: 'var_001', quantity: 2 })
+await sdk.store.cart.addItem(cart.id, { variantId: 'var_002', quantity: 1 })
+
+// 3. Apply discount
+await sdk.store.cart.applyDiscount(cart.id, { code: 'WELCOME10' })
+
+// 4. Set shipping address
+await sdk.store.cart.setShippingAddress(cart.id, {
+  firstName: 'Jane',
+  lastName: 'Doe',
+  line1: '123 Main St',
+  city: 'San Francisco',
+  state: 'CA',
+  postalCode: '94102',
+  country: 'US',
+})
+
+// 5. Select shipping method
+const shippingOptions = await sdk.store.cart.getShippingOptions(cart.id)
+await sdk.store.cart.setShippingMethod(cart.id, {
+  shippingOptionId: shippingOptions[0].id,
+})
+
+// 6. Set payment method
+await sdk.store.checkout.setPaymentMethod(cart.id, { provider: 'stripe' })
+
+// 7. Complete checkout
+const order = await sdk.store.checkout.complete(cart.id, {
+  paymentToken: 'tok_visa',
+})
+```
+
+## Regions
+
+Query available regions and their currencies:
+
+```typescript
+const regions = await sdk.store.region.list()
+
+regions.forEach(region => {
+  console.log(region.name)         // "North America"
+  console.log(region.currencyCode) // "USD"
+  console.log(region.countries)    // ["US", "CA", "MX"]
+})
+```
+
+## Customer (Authenticated)
+
+After login, the customer can manage their own profile:
+
+```typescript
+// Get profile
+const profile = await sdk.store.customer.getProfile()
+
+// Update profile
+await sdk.store.customer.updateProfile({
+  firstName: 'Jane',
+  phone: '+1-555-0123',
+})
+
+// List order history
+const orders = await sdk.store.customer.listOrders({ limit: 10 })
+
+// Manage saved addresses
+const addresses = await sdk.store.customer.listAddresses()
+await sdk.store.customer.addAddress({
+  line1: '456 Oak Ave',
+  city: 'Portland',
+  state: 'OR',
+  postalCode: '97201',
+  country: 'US',
+})
+```
+
+<Callout type="info">
+The Store module uses publishable API keys and is designed for client-side use. It only exposes read access to products and collections, plus write access to carts and the authenticated customer's own data.
+</Callout>

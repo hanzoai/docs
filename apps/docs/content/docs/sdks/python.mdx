@@ -1,0 +1,62 @@
+---
+title: Python SDK
+description: The official Hanzo Python SDK — OpenAI-compatible client for the LLM Gateway.
+---
+
+# Python SDK
+
+The `hanzoai` package is a drop-in replacement for the OpenAI Python SDK, routing requests through the Hanzo LLM Gateway to access 200+ models.
+
+## Installation
+
+```bash
+pip install hanzoai
+```
+
+## Quick Start
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="your-api-key")
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[
+        {"role": "user", "content": "Hello, world!"}
+    ]
+)
+
+print(response.choices[0].message.content)
+```
+
+## Streaming
+
+```python
+stream = client.chat.completions.create(
+    model="claude-sonnet-4-5-20250929",
+    messages=[
+        {"role": "user", "content": "Write a haiku about AI"}
+    ],
+    stream=True
+)
+
+for chunk in stream:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+## Configuration
+
+```python
+client = Hanzo(
+    api_key="your-api-key",
+    base_url="https://llm.hanzo.ai/v1",  # default
+)
+```
+
+## Resources
+
+- [GitHub Repository](https://github.com/hanzoai/python-sdk)
+- [PyPI Package](https://pypi.org/project/hanzoai/)
+- [LLM Gateway Docs](/docs/llm)
