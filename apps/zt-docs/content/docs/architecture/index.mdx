@@ -1,0 +1,181 @@
+---
+title: Architecture
+description: ZT fabric, transport layer, authentication flow, and network topology
+---
+
+# Architecture
+
+Hanzo ZT uses a controller-managed overlay network with a decentralized data plane. The controller handles identity, policy, and certificate management while the data plane routes traffic directly between nodes through encrypted tunnels.
+
+## Network Topology
+
+```text
+                    ZT Controller
+                   (identity + policy + certificates)
+                    /            \
+                   /              \
+            ZT Node A          ZT Node B
+           (mTLS cert)        (mTLS cert)
+                \                /
+                 \              /
+                  ZT Fabric
+              (encrypted tunnels)
+                      |
+                  ZAP Transport
+              (Cap'n Proto RPC)
+```
+
+**Key principles:**
+- The **controller** is a centralized management plane — it never sees application data
+- The **data plane** is fully decentralized — nodes connect directly via UDP hole punching
+- All traffic is **mTLS encrypted** with x509 certificates issued by the controller
+- **NAT traversal** is automatic — no open ports, no firewall rules required
+
+## Transport Stack
+
+The full transport stack from application to wire:
+
+| Layer | Protocol | Purpose |
+|-------|----------|---------|
+| **Application** | Your code | Business logic using SDK APIs |
+| **ZAP** | Cap'n Proto RPC | 4-byte BE length-prefix framing, zero-copy serialization |
+| **ZT Transport** | mTLS | x509 certificate-based encryption and authentication |
+| **ZT Fabric** | Overlay | Virtual L2/L3 network with software-defined routing |
+| **Physical** | UDP | Hole punching through NATs and firewalls |
+
+## Authentication Flow
+
+Every connection goes through this authentication sequence:
+
+```text
+ Client                      ZT Controller              Commerce API
+   |                              |                          |
+   |  1. Present JWT              |                          |
+   |----------------------------->|                          |
+   |                              |                          |
+   |  2. Validate JWT             |                          |
+   |  3. Issue x509 cert          |                          |
+   |<-----------------------------|                          |
+   |                              |                          |
+   |  4. Check balance            |                          |
+   |---------------------------------------------------->   |
+   |                              |                          |
+   |  5. Balance OK               |                          |
+   |<----------------------------------------------------|  |
+   |                              |                          |
+   |  6. Dial service (mTLS)      |                          |
+   |============================================>  Service   |
+```
+
+**Step by step:**
+
+1. **JWT presentation** — Client sends Hanzo IAM JWT to controller at `/edge/client/v1/authenticate?method=ext-jwt`
+2. **JWT validation** — Controller validates the JWT signature and claims
+3. **Certificate issuance** — Controller issues a short-lived x509 mTLS certificate bound to the client's identity
+4. **Balance check** — Client calls `GET /v1/billing/balance?service=NAME` on the Commerce API
+5. **Balance OK** — Commerce API confirms positive balance (no free tier)
+6. **Service dial** — Client establishes mTLS connection through the fabric to the target service
+
+## Billing Integration
+
+Billing is enforced at the transport layer, not the application layer. This means every `dial()` call is metered regardless of what protocol runs on top.
+
+```text
+dial() ──> balance_check ──> connect ──> [transfer data] ──> close ──> record_usage
+```
+
+| Phase | Endpoint | Method | Description |
+|-------|----------|--------|-------------|
+| **Pre-dial** | `/v1/billing/balance` | GET | Check balance is positive |
+| **Post-session** | `/v1/billing/usage` | POST | Record bytes sent/received and duration |
+
+The `UsageRecord` includes:
+- **service** — Name of the dialed service
+- **session_id** — Unique session identifier
+- **bytes_sent** / **bytes_received** — Data transferred
+- **duration_ms** — Session duration in milliseconds
+
+## ZAP Framing
+
+ZAP uses a simple 4-byte big-endian length-prefix framing protocol:
+
+```text
++---+---+---+---+---+---+---+---+---+---+---+---+---+
+| Length (4B BE) |      Cap'n Proto Payload (N bytes)  |
++---+---+---+---+---+---+---+---+---+---+---+---+---+
+```
+
+Each frame consists of:
+1. **4 bytes**: Big-endian `uint32` containing the payload length
+2. **N bytes**: Cap'n Proto serialized message
+
+This is the same framing used by all 6 SDKs, ensuring cross-language interoperability.
+
+## Service Discovery
+
+Services are registered with the ZT controller and discovered at dial time:
+
+```text
+ctx.services()       →  GET /edge/client/v1/services
+                        Returns: [{ name, id, permissions, configs }]
+
+ctx.dial("my-svc")  →  1. Lookup service by name
+                        2. Find edge routers hosting the service
+                        3. Connect to nearest edge router
+                        4. Establish tunnel to service
+```
+
+## Controller REST API
+
+The ZT controller exposes a REST API at `/edge/client/v1`:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/authenticate` | POST | Authenticate with JWT or API key |
+| `/current-api-session` | GET | Get current session info |
+| `/services` | GET | List available services |
+| `/sessions` | POST | Create a session to a service |
+| `/sessions` | GET | List active sessions |
+| `/edge-routers` | GET | List edge routers |
+
+All endpoints require a valid ZT session token in the `zt-session` header.
+
+## Security Model
+
+| Property | Implementation |
+|----------|---------------|
+| **Encryption** | x509 mTLS with controller-issued certificates |
+| **Authentication** | Hanzo IAM JWT + ZT controller ext-jwt |
+| **Authorization** | Service-level policies managed by controller |
+| **Identity** | Cryptographic identity bound to x509 certificate |
+| **Key rotation** | Automatic certificate renewal before expiry |
+| **NAT traversal** | UDP hole punching, no open ports required |
+| **Zero trust** | Every connection authenticated, no trusted networks |
+
+## Deployment Patterns
+
+### Client-to-Service
+
+The most common pattern. A client application dials a service through the ZT fabric:
+
+```text
+Client App  ──dial──>  ZT Fabric  ──>  Backend Service
+```
+
+### Service Mesh
+
+Multiple services communicate through the ZT fabric without exposing any ports:
+
+```text
+Service A  <──>  ZT Fabric  <──>  Service B
+                    |
+              Service C
+```
+
+### Gateway Bridge
+
+The Hanzo API Gateway bridges HTTP traffic to ZT services:
+
+```text
+Internet  ──HTTP──>  API Gateway  ──ZT──>  Backend Service
+```

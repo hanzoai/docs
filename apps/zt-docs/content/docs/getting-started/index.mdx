@@ -1,0 +1,221 @@
+---
+title: Getting Started
+description: Install a Hanzo ZT SDK and establish your first zero-trust connection
+---
+
+# Getting Started
+
+Get up and running with Hanzo ZT in minutes. Choose your language, authenticate, and dial your first service.
+
+## Prerequisites
+
+- A **Hanzo account** at [hanzo.id](https://hanzo.id) with a positive balance
+- An **API key** (`HANZO_API_KEY`) or JWT token from `dev login`
+
+## 1. Install the SDK
+
+```bash title="Rust"
+cargo add hanzo-zt
+```
+
+```bash title="Go"
+go get github.com/hanzozt/sdk-golang
+```
+
+```bash title="TypeScript"
+npm install @hanzo/zt
+```
+
+```bash title="Python"
+pip install hanzo-zt
+```
+
+```cmake title="C++ (CMakeLists.txt)"
+FetchContent_Declare(
+  hanzo_zt
+  GIT_REPOSITORY https://github.com/hanzozt/zt-sdk-cpp.git
+  GIT_TAG main
+)
+FetchContent_MakeAvailable(hanzo_zt)
+target_link_libraries(your_target PRIVATE hanzo_zt)
+```
+
+```bash title="C"
+cc -o app app.c -lzt -lzt_zap
+```
+
+## 2. Set Your Credentials
+
+All ZT SDKs resolve authentication from the environment:
+
+```bash
+# Option 1: API key (simplest)
+export HANZO_API_KEY="your-api-key-from-hanzo.id"
+
+# Option 2: Login via CLI (stores JWT in ~/.hanzo/auth.json)
+dev login
+```
+
+The credential resolution order for all SDKs is:
+
+1. `HANZO_API_KEY` environment variable
+2. `~/.hanzo/auth.json` file (created by `dev login`)
+
+## 3. Connect and Dial
+
+```rust title="Rust"
+use hanzo_zt::{ZtContext, ConfigBuilder, HanzoJwtCredentials};
+
+#[tokio::main]
+async fn main() -> hanzo_zt::Result<()> {
+    let creds = HanzoJwtCredentials::resolve()?;
+    let config = ConfigBuilder::new()
+        .controller_url("https://zt-api.hanzo.ai")
+        .credentials(creds)
+        .billing(true)
+        .build()?;
+
+    let ctx = ZtContext::new(config).await?;
+    ctx.authenticate().await?;
+
+    // Dial a service through the ZT fabric
+    let conn = ctx.dial("echo-service").await?;
+    conn.send(b"Hello, ZT!").await?;
+
+    let response = conn.recv().await?;
+    println!("Response: {}", String::from_utf8_lossy(&response));
+
+    conn.close().await?;
+    Ok(())
+}
+```
+
+```go title="Go"
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/hanzozt/sdk-golang/auth/hanzo"
+    "github.com/hanzozt/sdk-golang/zt"
+)
+
+func main() {
+    ctx := context.Background()
+
+    creds, err := hanzo.Resolve()
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    config := zt.NewConfigBuilder().
+        ControllerURL("https://zt-api.hanzo.ai").
+        Credentials(creds).
+        Billing(true).
+        Build()
+
+    ztCtx, err := zt.NewContext(ctx, config)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    if err := ztCtx.Authenticate(ctx); err != nil {
+        log.Fatal(err)
+    }
+
+    conn, err := ztCtx.Dial(ctx, "echo-service")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer conn.Close()
+
+    conn.Write([]byte("Hello, ZT!"))
+    buf := make([]byte, 1024)
+    n, _ := conn.Read(buf)
+    fmt.Printf("Response: %s\n", buf[:n])
+}
+```
+
+```typescript title="TypeScript"
+import { ZtContext, HanzoAuth, ZtConfig } from '@hanzo/zt';
+
+const auth = HanzoAuth.resolve();
+const config: ZtConfig = {
+  controllerUrl: 'https://zt-api.hanzo.ai',
+  credentials: auth,
+  billing: true,
+};
+
+const ctx = await ZtContext.create(config);
+await ctx.authenticate();
+
+const conn = await ctx.dial('echo-service');
+await conn.send(Buffer.from('Hello, ZT!'));
+
+const response = await conn.recv();
+console.log('Response:', response.toString());
+
+await conn.close();
+```
+
+```python title="Python"
+import asyncio
+from hanzozt import ZtContext, ConfigBuilder
+from hanzozt.auth import HanzoJwtCredentials
+
+async def main():
+    creds = HanzoJwtCredentials.resolve()
+    config = (
+        ConfigBuilder()
+        .controller_url("https://zt-api.hanzo.ai")
+        .credentials(creds)
+        .billing(True)
+        .build()
+    )
+
+    ctx = await ZtContext.create(config)
+    await ctx.authenticate()
+
+    conn = await ctx.dial("echo-service")
+    await conn.send(b"Hello, ZT!")
+
+    response = await conn.recv()
+    print(f"Response: {response.decode()}")
+
+    await conn.close()
+
+asyncio.run(main())
+```
+
+## 4. What Happens Under the Hood
+
+When you call `dial("echo-service")`, the SDK performs these steps automatically:
+
+1. **Auth** - Presents your JWT to the ZT controller via ext-jwt authentication
+2. **Identity** - Controller issues an x509 mTLS certificate for your identity
+3. **Billing** - Checks your balance via the Hanzo Commerce API (no free tier)
+4. **Resolve** - Looks up edge routers for the target service
+5. **Connect** - Establishes an mTLS tunnel through the ZT fabric with NAT traversal
+6. **Ready** - Returns a bidirectional connection for send/recv
+
+## 5. Use ZAP Transport (Optional)
+
+For Cap'n Proto RPC over ZT, use the ZAP transport:
+
+```rust title="Rust"
+use hanzo_zt::ZtTransport;
+
+let transport = ZtTransport::new("https://zt-api.hanzo.ai", "my-service").await?;
+
+// Use with ZAP client - implements the Transport trait
+transport.send(b"zap-frame").await?;
+let frame = transport.recv().await?;
+```
+
+## Next Steps
+
+- Learn about the [Architecture](/docs/architecture) and network topology
+- Explore the [SDK documentation](/docs/sdks) for your language
+- Set up [MCP integration](/docs/integration) for AI tool calling

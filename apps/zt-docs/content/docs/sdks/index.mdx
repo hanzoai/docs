@@ -1,0 +1,91 @@
+---
+title: SDKs
+description: Hanzo ZT SDK documentation for Rust, Go, TypeScript, Python, C++, and C. Consistent zero-trust networking across six languages.
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card'
+
+# SDK Reference
+
+Hanzo ZT provides SDKs for six programming languages. All follow the same pattern: resolve Hanzo IAM credentials, authenticate with the ZT controller, check billing, and dial or bind services through the ZT fabric.
+
+## Implementation Status
+
+| Language | Package | Repository | Tests | Status |
+|----------|---------|------------|-------|--------|
+| Rust | `hanzo-zt` | [hanzoai/dev](https://github.com/hanzoai/dev) | 9 pass | Production |
+| Go | `github.com/hanzozt/sdk-golang` | [hanzozt/sdk-golang](https://github.com/hanzozt/sdk-golang) | 5 pass | Production |
+| TypeScript | `@hanzo/zt` | [hanzozt/zt-sdk-nodejs](https://github.com/hanzozt/zt-sdk-nodejs) | Complete | Production |
+| Python | `hanzo-zt` | [hanzozt/zt-sdk-py](https://github.com/hanzozt/zt-sdk-py) | 11 pass | Production |
+| C++ | `hanzo-zt` (CMake) | [hanzozt/zt-sdk-cpp](https://github.com/hanzozt/zt-sdk-cpp) | Builds clean | Beta |
+| C | `libzt_zap` | [hanzozt/zt-sdk-c](https://github.com/hanzozt/zt-sdk-c) | Syntax pass | Beta |
+
+## SDK Documentation
+
+<Cards>
+  <Card
+    title="Rust"
+    description="Primary SDK. ZtContext, ConfigBuilder, ZtTransport, and ZAP integration."
+    href="/docs/sdks/rust"
+  />
+  <Card
+    title="Go"
+    description="ZAP transport with 4-byte framing, JwtCredentials, and BillingGuard."
+    href="/docs/sdks/go"
+  />
+  <Card
+    title="TypeScript"
+    description="EventEmitter-based ZtTransport, async auth, and BillingGuard class."
+    href="/docs/sdks/typescript"
+  />
+  <Card
+    title="Python"
+    description="Async transport with httpx, asyncio-native auth, and billing."
+    href="/docs/sdks/python"
+  />
+  <Card
+    title="C++"
+    description="RAII classes, Cap'n Proto ZAP framing, and CMake integration."
+    href="/docs/sdks/cpp"
+  />
+  <Card
+    title="C"
+    description="ZAP framing helpers, libcurl-based auth, and minimal API surface."
+    href="/docs/sdks/c"
+  />
+</Cards>
+
+## Common API Surface
+
+All SDKs expose the same core abstractions:
+
+| Concept | Description |
+|---------|-------------|
+| **Context** | Main entry point. Manages auth, service discovery, and connections. |
+| **Config / ConfigBuilder** | Configuration with controller URL, credentials, billing toggle, timeouts. |
+| **Credentials** | Trait/interface for auth. Implementations: HanzoJwtCredentials, ApiKeyCredentials. |
+| **Connection** | Bidirectional data channel through the ZT fabric. Supports send/recv. |
+| **Listener** | Accepts incoming connections on a bound service. |
+| **BillingGuard** | Checks balance before dial, records usage after session. |
+| **Transport** | ZAP transport implementation with `zt://` URL scheme. |
+
+## Choosing an SDK
+
+- **Rust**: Best for performance-critical applications, CLI tools, and when you need the full ZAP transport integration. The Rust SDK is the reference implementation.
+- **Go**: Best for backend services and microservices that need zero-trust networking with minimal dependencies.
+- **TypeScript**: Best for Node.js services, serverless functions, and full-stack applications.
+- **Python**: Best for ML pipelines, data processing, and scripting where async I/O is needed.
+- **C++**: Best for native applications that need RAII resource management and Cap'n Proto integration.
+- **C**: Best for embedding in existing C codebases or systems with minimal runtime requirements.
+
+## Next Steps
+
+Pick your language and dive in:
+
+- [Rust SDK](/docs/sdks/rust)
+- [Go SDK](/docs/sdks/go)
+- [TypeScript SDK](/docs/sdks/typescript)
+- [Python SDK](/docs/sdks/python)
+- [C++ SDK](/docs/sdks/cpp)
+- [C SDK](/docs/sdks/c)
