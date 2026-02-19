@@ -1,9 +1,9 @@
 ---
 title: Models
-description: Complete Zen4 model family - Consumer, Coder, and Ultra tiers
+description: Complete Zen model family — Consumer, Coder, Frontier, Embedding, and Multimodal
 ---
 
-# Zen4 Models
+# Zen Models
 
 ## Consumer Line {#consumer}
 
@@ -79,24 +79,33 @@ Dense 355B coding powerhouse. GLM-4.7 base for maximum code intelligence.
 
 ---
 
-## Ultra Line {#ultra}
+## Frontier Line {#frontier}
 
-Trillion-parameter models for cloud deployment.
+High-capacity frontier models for research and cloud deployment.
 
 | Model | Parameters | Active | Base | Context | Status |
 |-------|-----------|--------|------|---------|--------|
+| **Zen Max** | 671B MoE | 14B (8/token) | Kimi K2 | 256K | Released |
 | **Zen4 Ultra** | 1.04T MoE | 32B | Kimi K2.5 Thinking | 256K | Cloud Only |
-| **Zen4 Ultra Max** | 1T+ MoE | TBD | DeepSeek V4 | 1M | Coming Soon |
+| **Zen5** | 2T+ | TBD | — | TBD | In Training |
+
+### Zen Max (671B MoE)
+
+Frontier reasoning model. 671B total parameters with 14B active (8 per token) via 162-expert MoE. Based on Kimi K2 (DeepSeekV3 architecture). 71.3% SWE-bench verified.
+
+- [HuggingFace](https://huggingface.co/zenlm/zen-max) | [GitHub](https://github.com/zenlm/zen-max)
 
 ### Zen4 Ultra (1.04T MoE) - Cloud
 
-Trillion-parameter frontier model with 384 experts and vision capabilities via MoonViT.
+Trillion-parameter thinking model with 384 experts and vision capabilities via MoonViT. Based on Kimi K2.5 with extended reasoning.
 
 - [HuggingFace](https://huggingface.co/zenlm/zen4-ultra) | [GitHub](https://github.com/zenlm/zen4-ultra)
 
-### Zen4 Ultra Max (1T+ MoE) - Coming Soon
+### Zen5 (2T+) - In Training
 
-Next-generation model based on DeepSeek V4 with 1M context window.
+Next-generation frontier model. 2T+ parameters, trained on-chain via NVIDIA TEE confidential compute on [hanzo.network](https://hanzo.network). First publicly trained open-source model with on-chain verifiable training.
+
+**Private beta** -- request access to preprint and weights under research license at [hanzo.ai/zen5](https://hanzo.ai/zen5).
 
 ---
 
@@ -126,15 +135,43 @@ outputs = model.generate(**inputs, max_new_tokens=512)
 print(tokenizer.decode(outputs[0], skip_special_tokens=True))
 ```
 
-## Multimodal & Specialized
+## Embedding & Retrieval {#embedding}
 
-In addition to Zen4, the Zen LM family includes multimodal and specialized models:
+Models for search, RAG, and similarity matching.
+
+| Model | Type | Dimensions | Context | License |
+|-------|------|-----------|---------|---------|
+| **zen-embedding** | Bi-encoder | 7,680 | 8K | Apache 2.0 |
+| **zen-reranker** | Cross-encoder | — | 8K | Apache 2.0 |
+
+### zen-embedding
+
+High-dimensional dense vectors based on Qwen3-Embedding. 7,680-dimension output with Matryoshka dimensionality reduction support.
+
+- [HuggingFace](https://huggingface.co/zenlm/zen-embedding) | [GitHub](https://github.com/zenlm/zen-embedding)
+
+### zen-reranker
+
+Cross-encoder reranker based on Qwen3-Reranker. Re-scores query-document pairs for precise ranking in two-stage retrieval.
+
+- [HuggingFace](https://huggingface.co/zenlm/zen-reranker) | [GitHub](https://github.com/zenlm/zen-reranker)
+
+---
+
+## Multimodal & Specialized {#multimodal}
+
+Multimodal, creative, and specialized models across modalities.
 
 | Model | Type | Description |
 |-------|------|-------------|
-| zen3-omni | Multimodal | Text + Vision + Audio |
-| zen3-vl | Vision-Language | Image understanding with function calling |
-| zen-video | Video | Text-to-video and image-to-video generation |
-| zen-3d | 3D Assets | 3D mesh generation from text/image |
+| **zen3-omni** | Multimodal | Text + Vision + Audio (Qwen3 base) |
+| **zen3-vl** | Vision-Language | Image understanding with function calling |
+| **zen-scribe** | Audio | Speech-to-text transcription |
+| **zen-designer** | Image | Design and UI generation |
+| **zen-director** | Video | Text-to-video and image-to-video generation |
+| **zen-musician** | Audio | Music and sound generation |
+| **zen-3d** | 3D | 3D mesh generation from text/image |
+| **zen-agent** | Agent | Tool-calling (4B, MCP-compatible) |
+| **zen-guard** | Safety | Content moderation and filtering |
 
 All models available at [huggingface.co/zenlm](https://huggingface.co/zenlm).

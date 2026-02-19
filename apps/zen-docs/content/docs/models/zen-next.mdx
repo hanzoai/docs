@@ -1,31 +1,40 @@
 ---
 title: zen-next
-description: Professional LLM (80B)
+description: Next-generation base architecture — Qwen3-Next hybrid attention + MoE
 ---
 
 # zen-next
 
-Professional LLM (80B)
+zen-next refers to models built on the Qwen3-Next architecture — a hybrid Gated DeltaNet + Gated Attention + MoE design used in zen4-pro-max and zen4-coder.
 
-## Overview
+## Architecture
 
-[Model documentation coming from existing content]
+The Qwen3-Next base introduces a hybrid attention mechanism:
 
-## Quick Start
+| Component | Purpose |
+|-----------|---------|
+| **Gated DeltaNet** | Linear-time recurrent attention for long sequences |
+| **Gated Attention** | Standard attention with gating for quality-critical layers |
+| **MoE routing** | Mixture-of-Experts for parameter efficiency |
 
-```python
-from transformers import AutoModelForCausalLM, AutoTokenizer
+This hybrid approach enables 256K context with only 3B active parameters from 80B total.
 
-model = AutoModelForCausalLM.from_pretrained("zenlm/zen-next")
-tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-next")
+## Models Using zen-next Architecture
 
-inputs = tokenizer("Your prompt", return_tensors="pt")
-outputs = model.generate(**inputs)
-print(tokenizer.decode(outputs[0]))
-```
+| Model | Parameters | Active | Context |
+|-------|-----------|--------|---------|
+| **zen4-pro-max** | 80B MoE | 3B | 256K |
+| **zen4-coder** | 80B MoE | 3B | 256K |
+
+## Key Properties
+
+- **256K context window** via hybrid linear/quadratic attention
+- **3B active parameters** from 80B total — efficient inference
+- **Sub-linear memory scaling** for long sequences
+- **Apache 2.0 license** for all zen-next based models
 
 ## Resources
 
-- 🤗 [HuggingFace](https://huggingface.co/zenlm/zen-next)
-- 📦 [GitHub](https://github.com/zenlm/zen-next)
-- 📄 [Paper](/papers/zen-next_whitepaper.pdf)
+- [zen4-pro-max on HuggingFace](https://huggingface.co/zenlm/zen4-pro-max)
+- [zen4-coder on HuggingFace](https://huggingface.co/zenlm/zen4-coder)
+- [GitHub](https://github.com/zenlm/zen-next)
