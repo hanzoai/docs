@@ -1,31 +1,47 @@
 ---
 title: zen-eco
-description: Efficient 4B model family
+description: Efficient model family — optimized for low-resource and edge deployment
 ---
 
 # zen-eco
 
-Efficient 4B model family
+Ultra-efficient models optimized for edge, mobile, and resource-constrained environments.
 
 ## Overview
 
-[Model documentation coming from existing content]
+The zen-eco family provides the smallest Zen models for deployment where compute and memory are limited. Built on efficient architectures with aggressive quantization support.
+
+## Models
+
+| Model | Parameters | Context | Use Case |
+|-------|-----------|---------|----------|
+| **zen-nano** | 0.6B | 32K | Embedded / IoT |
+| **zen4-mini** | 4B | 32K | Mobile / Edge |
+| **zen-eco** | 4B | 32K | Resource-constrained servers |
+
+## Key Features
+
+- **Sub-2GB memory** for quantized nano models
+- **Mobile-ready**: Runs on phones via llama.cpp or MLC-LLM
+- **GGUF quantization**: Q4_K_M, Q5_K_M, Q8_0 variants
+- **MLX support**: Optimized for Apple Silicon (M1-M4)
 
 ## Quick Start
 
-```python
-from transformers import AutoModelForCausalLM, AutoTokenizer
+### Run on mobile with Ollama
 
-model = AutoModelForCausalLM.from_pretrained("zenlm/zen-eco")
-tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-eco")
+```bash
+ollama run zen-nano
+```
 
-inputs = tokenizer("Your prompt", return_tensors="pt")
-outputs = model.generate(**inputs)
-print(tokenizer.decode(outputs[0]))
+### GGUF with llama.cpp
+
+```bash
+./llama-cli -m zen-nano-Q4_K_M.gguf -p "Hello" -n 128
 ```
 
 ## Resources
 
-- 🤗 [HuggingFace](https://huggingface.co/zenlm/zen-eco)
-- 📦 [GitHub](https://github.com/zenlm/zen-eco)
-- 📄 [Paper](/papers/zen-eco_whitepaper.pdf)
+- [zen-nano on HuggingFace](https://huggingface.co/zenlm/zen-nano)
+- [zen4-mini on HuggingFace](https://huggingface.co/zenlm/zen4-mini)
+- [GitHub](https://github.com/zenlm/zen-eco)

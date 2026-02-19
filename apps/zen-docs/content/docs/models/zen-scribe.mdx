@@ -1,31 +1,44 @@
 ---
 title: zen-scribe
-description: Audio transcription
+description: Audio transcription and speech-to-text
 ---
 
 # zen-scribe
 
-Audio transcription
+Speech-to-text model for audio transcription, meeting notes, and voice processing.
 
 ## Overview
 
-[Model documentation coming from existing content]
+zen-scribe handles audio transcription with support for multiple languages, speaker diarization, and timestamp generation. Part of the Zen multimodal family alongside zen3-omni.
+
+## Capabilities
+
+- **Multi-language transcription**: Support for 50+ languages
+- **Speaker diarization**: Identify and label different speakers
+- **Timestamps**: Word-level and segment-level timing
+- **Long-form audio**: Process hours of audio content
+- **Real-time streaming**: Low-latency transcription mode
 
 ## Quick Start
 
 ```python
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import pipeline
 
-model = AutoModelForCausalLM.from_pretrained("zenlm/zen-scribe")
-tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-scribe")
+transcriber = pipeline("automatic-speech-recognition", model="zenlm/zen-scribe")
+result = transcriber("audio.wav", return_timestamps=True)
+print(result["text"])
+```
 
-inputs = tokenizer("Your prompt", return_tensors="pt")
-outputs = model.generate(**inputs)
-print(tokenizer.decode(outputs[0]))
+### Via Hanzo API
+
+```bash
+curl https://api.hanzo.ai/v1/audio/transcriptions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -F file="@audio.wav" \
+  -F model="zen-scribe"
 ```
 
 ## Resources
 
-- 🤗 [HuggingFace](https://huggingface.co/zenlm/zen-scribe)
-- 📦 [GitHub](https://github.com/zenlm/zen-scribe)
-- 📄 [Paper](/papers/zen-scribe_whitepaper.pdf)
+- [HuggingFace](https://huggingface.co/zenlm/zen-scribe)
+- [GitHub](https://github.com/zenlm/zen-scribe)

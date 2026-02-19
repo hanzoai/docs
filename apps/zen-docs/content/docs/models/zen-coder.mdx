@@ -1,31 +1,63 @@
 ---
 title: zen-coder
-description: Code generation (4B-480B)
+description: Agentic code generation family — 31B to 355B parameters
 ---
 
 # zen-coder
 
-Code generation (4B-480B)
+The Zen Coder family is a set of code-specialized models optimized for agentic programming, software engineering, and code generation tasks.
 
-## Overview
+## Models
 
-[Model documentation coming from existing content]
+| Model | Parameters | Active | Base | Context | SWE-bench |
+|-------|-----------|--------|------|---------|-----------|
+| **zen4-coder-flash** | 31B MoE | 3B | GLM-4.7-Flash | 131K | 59.2% |
+| **zen4-coder** | 80B MoE | 3B | Qwen3-Coder-Next | 256K | — |
+| **zen4-coder-pro** | 355B dense | 355B | GLM-4.7 | 200K | — |
+
+### zen4-coder-flash (31B MoE)
+
+The fastest coding model. GLM-4.7-Flash base with MoE efficiency — only 3B active parameters from 31B total. Achieves 59.2% SWE-bench resolution (2.7x Qwen3-30B-A3B). Best for rapid iteration, code review, and real-time pair programming.
+
+### zen4-coder (80B MoE)
+
+Mid-tier coding model with 512-expert MoE for strong code generation across all languages. Qwen3-Coder-Next base with 256K context for full-repository understanding.
+
+### zen4-coder-pro (355B dense)
+
+Dense 355B coding powerhouse. GLM-4.7 base for maximum code intelligence. Cloud-only deployment. Best for complex multi-file refactoring, architecture generation, and difficult debugging tasks.
 
 ## Quick Start
 
 ```python
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-model = AutoModelForCausalLM.from_pretrained("zenlm/zen-coder")
-tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-coder")
+model = AutoModelForCausalLM.from_pretrained("zenlm/zen4-coder-flash")
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen4-coder-flash")
 
-inputs = tokenizer("Your prompt", return_tensors="pt")
-outputs = model.generate(**inputs)
-print(tokenizer.decode(outputs[0]))
+messages = [{"role": "user", "content": "Write a Python function to merge two sorted arrays"}]
+text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+inputs = tokenizer(text, return_tensors="pt").to(model.device)
+outputs = model.generate(**inputs, max_new_tokens=1024)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
 ```
+
+### Run with Ollama
+
+```bash
+ollama run zen4-coder-flash
+```
+
+## Capabilities
+
+- **Agentic programming**: Tool calling, file editing, terminal commands
+- **Multi-file context**: Up to 256K tokens for full-repo understanding
+- **All languages**: Python, TypeScript, Rust, Go, C++, Java, and more
+- **SWE-bench verified**: 59.2% resolution rate on zen4-coder-flash
 
 ## Resources
 
-- 🤗 [HuggingFace](https://huggingface.co/zenlm/zen-coder)
-- 📦 [GitHub](https://github.com/zenlm/zen-coder)
-- 📄 [Paper](/papers/zen-coder_whitepaper.pdf)
+- [zen4-coder-flash on HuggingFace](https://huggingface.co/zenlm/zen4-coder-flash)
+- [zen4-coder on HuggingFace](https://huggingface.co/zenlm/zen4-coder)
+- [zen4-coder-pro on HuggingFace](https://huggingface.co/zenlm/zen4-coder-pro)
+- [GitHub](https://github.com/zenlm/zen4-coder)
