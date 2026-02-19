@@ -1,0 +1,908 @@
+---
+title: TypeScript SDK
+description: Complete documentation for @hanzo/zt, the TypeScript zero-trust networking SDK with ZAP transport, async auth, and billing integration.
+---
+
+# TypeScript SDK
+
+The TypeScript SDK (`@hanzo/zt`) provides full type safety and async-first bindings for Hanzo ZT. It uses EventEmitter-based lifecycle management, 4-byte length-prefix framing for ZAP transport, and integrates with Hanzo IAM for authentication and Hanzo Commerce for billing.
+
+**Repository**: [github.com/hanzozt/zt-sdk-nodejs](https://github.com/hanzozt/zt-sdk-nodejs)
+
+## Installation
+
+```bash
+npm install @hanzo/zt
+```
+
+Or with other package managers:
+
+```bash
+pnpm add @hanzo/zt
+yarn add @hanzo/zt
+```
+
+### Requirements
+
+- Node.js 18 or later (for native `fetch` and `Buffer` support)
+- TypeScript 5.0 or later (for full type inference)
+
+## Module Structure
+
+The SDK is organized into three modules:
+
+| Module | File | Purpose |
+|--------|------|---------|
+| `auth` | `src/auth/hanzo.ts` | Hanzo IAM authentication (JWT resolution, token refresh) |
+| `zap` | `src/zap/transport.ts` | ZAP transport with 4-byte BE length-prefix framing over ZT connections |
+| `billing` | `src/billing/guard.ts` | Balance checks and usage recording via Hanzo Commerce API |
+
+```ts
+// Import from the top-level package
+import { HanzoAuth, ZapTransport, BillingGuard } from '@hanzo/zt';
+
+// Or import specific modules
+import { HanzoAuth } from '@hanzo/zt/auth';
+import { ZapTransport } from '@hanzo/zt/zap';
+import { BillingGuard } from '@hanzo/zt/billing';
+```
+
+## Quick Start
+
+```ts
+import { HanzoAuth, ZapTransport, BillingGuard } from '@hanzo/zt';
+
+async function main() {
+  // 1. Resolve credentials from env or auth file
+  const auth = await HanzoAuth.resolve();
+  console.log(`Authenticated: ${auth.display()}`);
+
+  // 2. Authenticate with ZT controller
+  const transport = new ZapTransport({
+    controllerUrl: 'https://zt-api.hanzo.ai',
+    service: 'echo-service',
+    token: await auth.getToken(),
+  });
+
+  await transport.connect();
+
+  // 3. Send and receive ZAP frames
+  transport.sendFrame(Buffer.from('Hello, ZT!'));
+  const response = await transport.recvFrame();
+  console.log(`Response: ${response.toString()}`);
+
+  // 4. Clean up
+  await transport.close();
+}
+
+main().catch(console.error);
+```
+
+## Authentication
+
+### HanzoAuth
+
+The `HanzoAuth` class resolves and manages JWT credentials from Hanzo IAM. It supports multiple token sources with a defined resolution order.
+
+```ts
+import { HanzoAuth } from '@hanzo/zt';
+
+// Resolve from environment or auth file (recommended)
+const auth = await HanzoAuth.resolve();
+
+// From an explicit token string
+const auth = HanzoAuth.fromToken('eyJhbGciOiJSUzI1NiIs...');
+
+// From an explicit API key
+const auth = HanzoAuth.fromApiKey('hk_live_xxxxx');
+```
+
+### Token Resolution Order
+
+When you call `HanzoAuth.resolve()`, the SDK checks these sources in order:
+
+| Priority | Source | Description |
+|----------|--------|-------------|
+| 1 | `HANZO_API_KEY` env var | API key from environment |
+| 2 | `HANZO_JWT` env var | Explicit JWT from environment |
+| 3 | `~/.hanzo/auth.json` | Cached token from `hanzo login` CLI |
+| 4 | `~/.hanzo/credentials.json` | Legacy credential file |
+
+If no token is found, `resolve()` throws an `AuthError` with a descriptive message explaining where it looked.
+
+### HanzoAuth Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `HanzoAuth.resolve()` | `Promise(HanzoAuth)` | Static. Resolve credentials from env or filesystem |
+| `HanzoAuth.fromToken(jwt)` | `HanzoAuth` | Static. Create from an explicit JWT string |
+| `HanzoAuth.fromApiKey(key)` | `HanzoAuth` | Static. Create from an API key |
+| `getToken()` | `Promise(string)` | Returns the current JWT, refreshing if expired |
+| `getAuthHeader()` | `Promise(Record(string, string))` | Returns `{ Authorization: 'Bearer ...' }` |
+| `display()` | `string` | Human-readable display with masked secrets |
+| `isExpired()` | `boolean` | Check if the current token has expired |
+
+### Token Refresh
+
+The `getToken()` method automatically refreshes expired tokens when an auth file is available:
+
+```ts
+const auth = await HanzoAuth.resolve();
+
+// Token is refreshed automatically when expired
+const token = await auth.getToken();
+
+// Or check expiry explicitly
+if (auth.isExpired()) {
+  console.log('Token will be refreshed on next getToken() call');
+}
+
+// getAuthHeader() also triggers refresh
+const headers = await auth.getAuthHeader();
+// { Authorization: 'Bearer eyJhbGciOiJSUzI1NiIs...' }
+```
+
+### Display
+
+The `display()` method shows the credential type with masked secrets:
+
+```ts
+const auth = HanzoAuth.fromApiKey('hk_live_abc123xyz');
+console.log(auth.display());
+// "Hanzo API key (...3xyz)"
+
+const auth = HanzoAuth.fromToken('eyJhbGciOiJSUzI1NiIs...');
+console.log(auth.display());
+// "Hanzo IAM (user@example.com)"
+```
+
+### Auth Flow
+
+The full authentication flow with the ZT controller:
+
+```ts
+import { HanzoAuth } from '@hanzo/zt';
+
+// 1. Resolve Hanzo IAM JWT
+const auth = await HanzoAuth.resolve();
+const token = await auth.getToken();
+
+// 2. Present JWT to ZT controller via ext-jwt auth
+const response = await fetch('https://zt-api.hanzo.ai/authenticate', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    ...await auth.getAuthHeader(),
+  },
+  body: JSON.stringify({
+    method: 'ext-jwt',
+    envInfo: { os: process.platform, arch: process.arch },
+  }),
+});
+
+const session = await response.json();
+// session.token - ZT session token
+// session.identity - assigned identity
+// session.expiresAt - session expiry
+```
+
+In practice, `ZapTransport.connect()` handles this flow automatically.
+
+## ZAP Transport
+
+### ZapTransport
+
+The `ZapTransport` class wraps a ZT connection with ZAP framing: each message is prefixed with a 4-byte big-endian length header followed by a Cap'n Proto payload.
+
+```text
++-------------------+-----------------------------+
+| Length (4 bytes BE)| Payload (Cap'n Proto bytes) |
++-------------------+-----------------------------+
+```
+
+### Constructor
+
+```ts
+import { ZapTransport, ZtConfig } from '@hanzo/zt';
+
+const transport = new ZapTransport({
+  controllerUrl: 'https://zt-api.hanzo.ai',
+  service: 'my-service',
+  token: 'eyJhbGciOiJSUzI1NiIs...',
+  billingEnabled: true,
+  commerceUrl: 'https://api.hanzo.ai/commerce',
+  connectTimeout: 30_000,   // ms
+  requestTimeout: 15_000,   // ms
+});
+```
+
+### ZapTransport Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `connect()` | `Promise(void)` | Authenticate and establish the ZT connection |
+| `sendFrame(payload)` | `void` | Send a length-prefixed ZAP frame |
+| `recvFrame()` | `Promise(Buffer)` | Receive and decode the next ZAP frame |
+| `close()` | `Promise(void)` | Close the connection and emit `close` event |
+| `isConnected()` | `boolean` | Check if the transport is currently connected |
+| `localAddr()` | `string` | Returns the local ZT address (e.g. `zt://local/my-service`) |
+| `peerAddr()` | `string` | Returns the peer ZT address (e.g. `zt://my-service`) |
+| `sessionId()` | `string` | Returns the current session ID |
+
+### Sending Frames
+
+`sendFrame` writes the 4-byte big-endian length prefix followed by the payload:
+
+```ts
+const transport = new ZapTransport({ /* config */ });
+await transport.connect();
+
+// Send a text message
+transport.sendFrame(Buffer.from('Hello, ZT!'));
+
+// Send binary data
+const payload = Buffer.alloc(8);
+payload.writeDoubleBE(3.14159, 0);
+transport.sendFrame(payload);
+
+// Send JSON
+const json = JSON.stringify({ action: 'list_tools' });
+transport.sendFrame(Buffer.from(json, 'utf-8'));
+```
+
+### Receiving Frames
+
+`recvFrame` reads the 4-byte length prefix, then reads exactly that many bytes:
+
+```ts
+// Receive a single frame
+const frame = await transport.recvFrame();
+console.log(`Received ${frame.length} bytes`);
+
+// Parse as text
+const text = frame.toString('utf-8');
+
+// Parse as JSON
+const data = JSON.parse(frame.toString('utf-8'));
+
+// Receive in a loop
+while (transport.isConnected()) {
+  try {
+    const frame = await transport.recvFrame();
+    handleFrame(frame);
+  } catch (err) {
+    if (err instanceof ConnectionClosedError) break;
+    throw err;
+  }
+}
+```
+
+### Event Handling
+
+`ZapTransport` extends `EventEmitter` and emits lifecycle events:
+
+```ts
+import { ZapTransport } from '@hanzo/zt';
+
+const transport = new ZapTransport({ /* config */ });
+
+transport.on('connecting', () => {
+  console.log('Connecting to ZT controller...');
+});
+
+transport.on('authenticated', (info) => {
+  console.log(`Authenticated as ${info.identityId}`);
+});
+
+transport.on('session', (session) => {
+  console.log(`Session ${session.id} created for ${session.service}`);
+});
+
+transport.on('connected', () => {
+  console.log('ZAP transport ready');
+});
+
+transport.on('frame', (frame: Buffer) => {
+  console.log(`Received frame: ${frame.length} bytes`);
+});
+
+transport.on('error', (err: Error) => {
+  console.error(`Transport error: ${err.message}`);
+});
+
+transport.on('close', () => {
+  console.log('Transport closed');
+});
+
+await transport.connect();
+```
+
+**Events reference**:
+
+| Event | Payload | When |
+|-------|---------|------|
+| `connecting` | none | Connection attempt started |
+| `authenticated` | `{ identityId: string }` | ext-jwt auth succeeded with controller |
+| `session` | `{ id: string, service: string }` | API session created |
+| `billing` | `{ service: string, ok: boolean }` | Billing check completed |
+| `connected` | none | Transport is ready for frames |
+| `frame` | `Buffer` | A frame was received (passive listener) |
+| `error` | `Error` | An error occurred |
+| `close` | none | Transport was closed |
+
+## Billing
+
+### BillingGuard
+
+The `BillingGuard` class integrates with Hanzo Commerce to enforce paid-only access and record usage.
+
+```ts
+import { BillingGuard } from '@hanzo/zt';
+
+const guard = new BillingGuard({
+  commerceUrl: 'https://api.hanzo.ai/commerce',
+  token: await auth.getToken(),
+});
+```
+
+### Balance Check
+
+`checkBalance` queries the Commerce API before dialing a service. If the account balance is zero or negative, it throws `InsufficientBalanceError`:
+
+```ts
+try {
+  await guard.checkBalance('my-service');
+  console.log('Balance OK, proceeding to dial');
+} catch (err) {
+  if (err instanceof InsufficientBalanceError) {
+    console.error(`Add credits: ${err.message}`);
+    console.error(`Current balance: ${err.balance}`);
+    console.error(`Required minimum: ${err.minimum}`);
+  }
+}
+```
+
+### Usage Recording
+
+After a session ends, record bytes transferred and duration:
+
+```ts
+await guard.recordUsage({
+  service: 'my-service',
+  sessionId: transport.sessionId(),
+  bytesSent: 4096,
+  bytesReceived: 8192,
+  durationMs: 5000,
+});
+```
+
+### BillingGuard Methods
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `checkBalance(service)` | `Promise(void)` | Check balance, throws `InsufficientBalanceError` if insufficient |
+| `recordUsage(record)` | `Promise(void)` | Record session usage to Commerce API |
+| `getBalance()` | `Promise(BalanceInfo)` | Retrieve current balance info without enforcement |
+
+### UsageRecord Interface
+
+```ts
+interface UsageRecord {
+  service: string;
+  sessionId: string;
+  bytesSent: number;
+  bytesReceived: number;
+  durationMs: number;
+  metadata?: Record<string, string>;
+}
+```
+
+### BalanceInfo Interface
+
+```ts
+interface BalanceInfo {
+  balance: number;
+  currency: string;
+  minimum: number;
+  service: string;
+}
+```
+
+## Configuration
+
+### ZtConfig Interface
+
+The full configuration interface:
+
+```ts
+interface ZtConfig {
+  /** ZT controller URL (required) */
+  controllerUrl: string;
+
+  /** Service name to connect to (required) */
+  service: string;
+
+  /** JWT token for ext-jwt authentication (required) */
+  token: string;
+
+  /** Enable billing checks before dial. Default: true */
+  billingEnabled?: boolean;
+
+  /** Hanzo Commerce API URL. Default: 'https://api.hanzo.ai/commerce' */
+  commerceUrl?: string;
+
+  /** Connection timeout in milliseconds. Default: 30000 */
+  connectTimeout?: number;
+
+  /** Request timeout in milliseconds. Default: 15000 */
+  requestTimeout?: number;
+
+  /** Path to ZT identity file for cert-based auth */
+  identityFile?: string;
+
+  /** Custom metadata sent during authentication */
+  envInfo?: Record(string, string);
+}
+```
+
+**Config field reference**:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `controllerUrl` | `string` | Required | ZT controller URL |
+| `service` | `string` | Required | Service name to dial |
+| `token` | `string` | Required | JWT for ext-jwt auth |
+| `billingEnabled` | `boolean` | `true` | Enable billing checks |
+| `commerceUrl` | `string` | `https://api.hanzo.ai/commerce` | Commerce API URL |
+| `connectTimeout` | `number` | `30000` | Connection timeout (ms) |
+| `requestTimeout` | `number` | `15000` | Request timeout (ms) |
+| `identityFile` | `string` | `undefined` | Path to identity file |
+| `envInfo` | `Record` | `undefined` | Custom metadata for auth |
+
+### Environment Variables
+
+The SDK reads these environment variables:
+
+| Variable | Used by | Description |
+|----------|---------|-------------|
+| `HANZO_API_KEY` | `HanzoAuth` | API key (highest priority) |
+| `HANZO_JWT` | `HanzoAuth` | Explicit JWT token |
+| `ZT_CONTROLLER_URL` | `ZapTransport` | Override default controller URL |
+| `ZT_BILLING_ENABLED` | `BillingGuard` | Set to `false` to disable billing |
+| `HANZO_COMMERCE_URL` | `BillingGuard` | Override Commerce API URL |
+
+## Error Handling
+
+The SDK defines a hierarchy of typed errors for precise error handling:
+
+```ts
+import {
+  ZtError,
+  AuthError,
+  ConnectionError,
+  ConnectionClosedError,
+  ServiceNotFoundError,
+  InsufficientBalanceError,
+  BillingError,
+  ConfigError,
+  TimeoutError,
+} from '@hanzo/zt';
+```
+
+### Error Classes
+
+| Class | Extends | Description |
+|-------|---------|-------------|
+| `ZtError` | `Error` | Base class for all ZT errors |
+| `AuthError` | `ZtError` | Authentication failed (invalid token, expired, rejected) |
+| `ConnectionError` | `ZtError` | Failed to establish connection |
+| `ConnectionClosedError` | `ZtError` | Connection was closed unexpectedly |
+| `ServiceNotFoundError` | `ZtError` | Named service does not exist |
+| `InsufficientBalanceError` | `ZtError` | Billing balance is zero or negative |
+| `BillingError` | `ZtError` | Error contacting the Commerce API |
+| `ConfigError` | `ZtError` | Configuration validation failed |
+| `TimeoutError` | `ZtError` | Operation exceeded timeout |
+
+### Pattern: instanceof Checks
+
+```ts
+try {
+  await transport.connect();
+} catch (err) {
+  if (err instanceof AuthError) {
+    console.error(`Auth failed: ${err.message}`);
+    // err.reason - detailed reason string
+    // err.statusCode - HTTP status if applicable
+  } else if (err instanceof ServiceNotFoundError) {
+    console.error(`Service '${err.serviceName}' not found`);
+  } else if (err instanceof InsufficientBalanceError) {
+    console.error(`Balance: ${err.balance}, minimum: ${err.minimum}`);
+  } else if (err instanceof TimeoutError) {
+    console.error(`Timed out after ${err.timeoutMs}ms`);
+  } else if (err instanceof ZtError) {
+    console.error(`ZT error: ${err.message}`);
+  } else {
+    throw err; // re-throw unknown errors
+  }
+}
+```
+
+### Error Properties
+
+Each error class carries structured data beyond the message:
+
+```ts
+// AuthError
+interface AuthError {
+  message: string;
+  reason: string;         // 'expired' | 'invalid' | 'rejected'
+  statusCode?: number;    // HTTP status from controller
+}
+
+// ServiceNotFoundError
+interface ServiceNotFoundError {
+  message: string;
+  serviceName: string;    // the service that was not found
+}
+
+// InsufficientBalanceError
+interface InsufficientBalanceError {
+  message: string;
+  balance: number;        // current balance
+  minimum: number;        // required minimum
+  service: string;        // service that was being dialed
+}
+
+// TimeoutError
+interface TimeoutError {
+  message: string;
+  timeoutMs: number;      // timeout that was exceeded
+  operation: string;      // 'connect' | 'request' | 'recv'
+}
+```
+
+## Event System
+
+The SDK uses Node.js `EventEmitter` for lifecycle events across all classes.
+
+### Typed Events
+
+All event emitters are strongly typed:
+
+```ts
+import { ZapTransport } from '@hanzo/zt';
+
+const transport = new ZapTransport({ /* config */ });
+
+// TypeScript knows the event payload types
+transport.on('authenticated', (info) => {
+  // info is typed as { identityId: string }
+  console.log(info.identityId);
+});
+
+transport.on('error', (err) => {
+  // err is typed as Error
+  console.error(err.message);
+});
+```
+
+### One-time Listeners
+
+Use `once()` to wait for a single event:
+
+```ts
+// Wait for connection to be ready
+await new Promise<void>((resolve, reject) => {
+  transport.once('connected', resolve);
+  transport.once('error', reject);
+});
+```
+
+### Async Iterator Pattern
+
+For streaming frame processing, combine events with async generators:
+
+```ts
+async function* frames(transport: ZapTransport) {
+  while (transport.isConnected()) {
+    try {
+      yield await transport.recvFrame();
+    } catch (err) {
+      if (err instanceof ConnectionClosedError) return;
+      throw err;
+    }
+  }
+}
+
+// Usage
+for await (const frame of frames(transport)) {
+  const message = JSON.parse(frame.toString('utf-8'));
+  console.log('Received:', message);
+}
+```
+
+### Removing Listeners
+
+```ts
+const handler = (frame: Buffer) => {
+  console.log(`Frame: ${frame.length} bytes`);
+};
+
+transport.on('frame', handler);
+
+// Later: remove the listener
+transport.off('frame', handler);
+
+// Or remove all listeners for an event
+transport.removeAllListeners('frame');
+```
+
+## Complete Example
+
+End-to-end example: resolve credentials, connect with billing, send/receive frames, and record usage.
+
+```ts
+import {
+  HanzoAuth,
+  ZapTransport,
+  BillingGuard,
+  InsufficientBalanceError,
+  AuthError,
+  ZtError,
+} from '@hanzo/zt';
+
+async function main() {
+  // -- Step 1: Resolve Hanzo IAM credentials --
+  const auth = await HanzoAuth.resolve();
+  console.log(`Auth: ${auth.display()}`);
+
+  const token = await auth.getToken();
+
+  // -- Step 2: Create and connect transport --
+  const transport = new ZapTransport({
+    controllerUrl: 'https://zt-api.hanzo.ai',
+    service: 'echo-service',
+    token,
+    billingEnabled: true,
+  });
+
+  // Listen for lifecycle events
+  transport.on('authenticated', (info) => {
+    console.log(`[event] Authenticated as ${info.identityId}`);
+  });
+  transport.on('session', (session) => {
+    console.log(`[event] Session ${session.id} for ${session.service}`);
+  });
+  transport.on('billing', (billing) => {
+    console.log(`[event] Billing check: ${billing.ok ? 'OK' : 'FAILED'}`);
+  });
+  transport.on('error', (err) => {
+    console.error(`[event] Error: ${err.message}`);
+  });
+
+  await transport.connect();
+  console.log(`Connected: ${transport.peerAddr()}`);
+
+  // -- Step 3: Send a request --
+  const startTime = Date.now();
+  const request = Buffer.from(JSON.stringify({
+    action: 'echo',
+    payload: 'Hello, Hanzo ZT!',
+  }));
+  transport.sendFrame(request);
+
+  // -- Step 4: Receive the response --
+  const response = await transport.recvFrame();
+  const elapsed = Date.now() - startTime;
+  console.log(`Response (${elapsed}ms): ${response.toString('utf-8')}`);
+
+  // -- Step 5: Close and record usage --
+  const sessionId = transport.sessionId();
+  await transport.close();
+
+  const guard = new BillingGuard({
+    commerceUrl: 'https://api.hanzo.ai/commerce',
+    token,
+  });
+
+  await guard.recordUsage({
+    service: 'echo-service',
+    sessionId,
+    bytesSent: request.length,
+    bytesReceived: response.length,
+    durationMs: elapsed,
+  });
+
+  console.log('Usage recorded. Done.');
+}
+
+main().catch((err) => {
+  if (err instanceof AuthError) {
+    console.error(`Authentication failed: ${err.message}`);
+    console.error('Run `hanzo login` or set HANZO_API_KEY');
+    process.exit(1);
+  }
+  if (err instanceof InsufficientBalanceError) {
+    console.error(`Insufficient balance: ${err.balance}`);
+    console.error('Add credits at https://console.hanzo.ai/billing');
+    process.exit(1);
+  }
+  if (err instanceof ZtError) {
+    console.error(`ZT error: ${err.message}`);
+    process.exit(1);
+  }
+  throw err;
+});
+```
+
+## Testing
+
+### Running Tests
+
+```bash
+# Run all tests
+npm test
+
+# Run with verbose output
+npm test -- --verbose
+
+# Run a specific test file
+npm test -- --testPathPattern=auth
+
+# Run with coverage
+npm test -- --coverage
+```
+
+### Unit Test Examples
+
+**Auth resolution test**:
+
+```ts
+import { HanzoAuth } from '@hanzo/zt';
+
+describe('HanzoAuth', () => {
+  it('resolves from HANZO_API_KEY env', async () => {
+    process.env.HANZO_API_KEY = 'hk_test_abc123';
+    const auth = await HanzoAuth.resolve();
+    expect(auth.display()).toContain('API key');
+    expect(auth.display()).toContain('...c123');
+    delete process.env.HANZO_API_KEY;
+  });
+
+  it('creates from explicit token', () => {
+    const auth = HanzoAuth.fromToken('eyJhbGciOiJSUzI1NiIs...');
+    expect(auth.display()).toContain('Hanzo IAM');
+  });
+
+  it('throws AuthError when no credentials found', async () => {
+    delete process.env.HANZO_API_KEY;
+    delete process.env.HANZO_JWT;
+    await expect(HanzoAuth.resolve()).rejects.toThrow('No credentials found');
+  });
+});
+```
+
+**ZAP transport framing test**:
+
+```ts
+import { ZapTransport } from '@hanzo/zt';
+
+describe('ZapTransport', () => {
+  it('encodes frames with 4-byte BE length prefix', () => {
+    const payload = Buffer.from('test payload');
+    const frame = ZapTransport.encodeFrame(payload);
+
+    // 4-byte prefix + payload
+    expect(frame.length).toBe(4 + payload.length);
+
+    // Verify length prefix
+    const length = frame.readUInt32BE(0);
+    expect(length).toBe(payload.length);
+
+    // Verify payload
+    const decoded = frame.subarray(4);
+    expect(decoded.toString()).toBe('test payload');
+  });
+
+  it('decodes frames from length-prefixed buffer', () => {
+    const payload = Buffer.from('hello');
+    const frame = Buffer.alloc(4 + payload.length);
+    frame.writeUInt32BE(payload.length, 0);
+    payload.copy(frame, 4);
+
+    const decoded = ZapTransport.decodeFrame(frame);
+    expect(decoded.toString()).toBe('hello');
+  });
+
+  it('validates config requires controllerUrl', () => {
+    expect(() => new ZapTransport({
+      controllerUrl: '',
+      service: 'test',
+      token: 'tok',
+    })).toThrow('controllerUrl is required');
+  });
+});
+```
+
+**Billing guard test**:
+
+```ts
+import { BillingGuard, InsufficientBalanceError } from '@hanzo/zt';
+
+describe('BillingGuard', () => {
+  it('throws InsufficientBalanceError on zero balance', async () => {
+    // Mock the Commerce API response
+    const guard = new BillingGuard({
+      commerceUrl: 'https://api.hanzo.ai/commerce',
+      token: 'test-token',
+    });
+
+    // With a mocked fetch that returns zero balance
+    try {
+      await guard.checkBalance('paid-service');
+    } catch (err) {
+      expect(err).toBeInstanceOf(InsufficientBalanceError);
+      expect((err as InsufficientBalanceError).balance).toBe(0);
+    }
+  });
+});
+```
+
+### Integration Testing
+
+For integration tests against a real ZT controller, set the environment and run:
+
+```bash
+export HANZO_API_KEY='hk_test_...'
+export ZT_CONTROLLER_URL='https://zt-api.hanzo.ai'
+npm run test:integration
+```
+
+## Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `node:events` | EventEmitter base class for lifecycle events |
+| `node:buffer` | Binary frame encoding and decoding |
+| `node:fs/promises` | Reading auth files from filesystem |
+| `node:path` | Resolving `~/.hanzo/auth.json` path |
+| `node:net` | TCP socket for ZT connections |
+
+The SDK has zero external runtime dependencies. It uses only Node.js built-in modules.
+
+## TypeScript Support
+
+The SDK ships with complete type declarations. All public APIs are fully typed including event payloads, error classes, and configuration interfaces.
+
+```ts
+// All types are exported from the main package
+import type {
+  ZtConfig,
+  UsageRecord,
+  BalanceInfo,
+  SessionInfo,
+  ServiceInfo,
+  ZtEventMap,
+} from '@hanzo/zt';
+```
+
+### Type-safe Event Handling
+
+The `ZtEventMap` type ensures event handlers receive correctly typed payloads:
+
+```ts
+interface ZtEventMap {
+  connecting: [];
+  authenticated: [{ identityId: string }];
+  session: [{ id: string; service: string }];
+  billing: [{ service: string; ok: boolean }];
+  connected: [];
+  frame: [Buffer];
+  error: [Error];
+  close: [];
+}
+```
+
+### Strict Mode Compatibility
+
+The SDK is written with `strict: true` and all `strict*` compiler options enabled. No `any` types leak from the public API surface.

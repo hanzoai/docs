@@ -1,0 +1,655 @@
+---
+title: C SDK
+description: Complete documentation for zt-sdk-c, a stable-ABI C library providing ZAP framing helpers and billing integration over libzt.
+---
+
+# C SDK
+
+The C SDK (`zt-sdk-c`) provides a minimal, stable-ABI interface for embedding Hanzo ZT in C programs and as a foundation for FFI bindings in other languages. It wraps libzt with ZAP length-prefixed framing, billing guards, and straightforward error codes.
+
+**Repository**: [github.com/hanzozt/zt-sdk-c](https://github.com/hanzozt/zt-sdk-c)
+
+## Installation
+
+### From Source
+
+```bash
+git clone https://github.com/hanzozt/zt-sdk-c.git
+cd zt-sdk-c
+make
+sudo make install
+```
+
+This installs headers to `/usr/local/include/zt/` and the library to `/usr/local/lib/`.
+
+### Linking
+
+```bash
+cc -o app app.c -lzt -lzt_zap
+```
+
+Or with pkg-config:
+
+```bash
+cc -o app app.c $(pkg-config --cflags --libs zt_zap)
+```
+
+### CMake
+
+```cmake
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(ZT_ZAP REQUIRED zt_zap)
+
+add_executable(my_app main.c)
+target_link_libraries(my_app ${ZT_ZAP_LIBRARIES})
+target_include_directories(my_app PRIVATE ${ZT_ZAP_INCLUDE_DIRS})
+```
+
+## Project Structure
+
+```
+includes/zt/
+  zt_zap.h          ZAP framing, billing, and context functions
+
+library/
+  zt_zap.c          Implementation
+
+examples/
+  echo_client.c     Minimal echo client example
+  billing_check.c   Billing guard example
+```
+
+## API Overview
+
+All functions return `int` where 0 indicates success and negative values indicate errors. Opaque handles are used for context and guard objects to maintain ABI stability.
+
+### Return Codes
+
+| Code | Constant | Description |
+|------|----------|-------------|
+| 0 | `ZT_OK` | Success |
+| -1 | `ZT_ERR_AUTH` | Authentication failed |
+| -2 | `ZT_ERR_NOT_AUTH` | Not authenticated (call `zt_zap_authenticate` first) |
+| -3 | `ZT_ERR_SERVICE` | Service not found |
+| -4 | `ZT_ERR_NO_ROUTERS` | No edge routers available |
+| -5 | `ZT_ERR_CONNECT` | Connection failed |
+| -6 | `ZT_ERR_CLOSED` | Connection closed |
+| -7 | `ZT_ERR_BALANCE` | Insufficient balance |
+| -8 | `ZT_ERR_BILLING` | Billing API error |
+| -9 | `ZT_ERR_CONFIG` | Invalid configuration |
+| -10 | `ZT_ERR_TIMEOUT` | Operation timed out |
+| -11 | `ZT_ERR_IO` | I/O error |
+| -12 | `ZT_ERR_FRAME` | Framing error (truncated or oversized) |
+| -99 | `ZT_ERR_UNKNOWN` | Unknown error |
+
+### Error Strings
+
+Convert a return code to a human-readable string:
+
+```c
+const char *zt_zap_strerror(int code);
+```
+
+```c
+int rc = zt_zap_authenticate(ctx);
+if (rc != ZT_OK) {
+    fprintf(stderr, "Error: %s\n", zt_zap_strerror(rc));
+}
+```
+
+## Context and Connection
+
+### zt_zap_ctx_t
+
+Opaque handle for a ZT context. Manages authentication, service discovery, and connections.
+
+```c
+#include <zt/zt_zap.h>
+
+/* Configuration */
+zt_zap_config_t config = {
+    .controller_url = "https://zt-api.hanzo.ai",
+    .auth_token     = getenv("HANZO_API_KEY"),
+    .billing        = 1,
+    .commerce_url   = "https://api.hanzo.ai/commerce",
+    .connect_timeout_ms = 30000,
+    .request_timeout_ms = 15000,
+};
+
+/* Create context */
+zt_zap_ctx_t *ctx = NULL;
+int rc = zt_zap_ctx_create(&config, &ctx);
+if (rc != ZT_OK) {
+    fprintf(stderr, "Create failed: %s\n", zt_zap_strerror(rc));
+    return 1;
+}
+
+/* Authenticate */
+rc = zt_zap_authenticate(ctx);
+if (rc != ZT_OK) {
+    fprintf(stderr, "Auth failed: %s\n", zt_zap_strerror(rc));
+    zt_zap_ctx_destroy(ctx);
+    return 1;
+}
+
+/* Use context... */
+
+/* Cleanup */
+zt_zap_ctx_destroy(ctx);
+```
+
+**Context functions**:
+
+| Function | Description |
+|----------|-------------|
+| `zt_zap_ctx_create(config, out_ctx)` | Create a new context from configuration |
+| `zt_zap_authenticate(ctx)` | Authenticate with the controller |
+| `zt_zap_ctx_destroy(ctx)` | Destroy context and free all resources |
+
+### zt_zap_config_t
+
+Configuration structure:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `controller_url` | `const char *` | ZT controller URL (required) |
+| `auth_token` | `const char *` | JWT or API key (required) |
+| `billing` | `int` | Enable billing (1 = yes, 0 = no) |
+| `commerce_url` | `const char *` | Commerce API URL (NULL for default) |
+| `identity_file` | `const char *` | Path to identity file (NULL for none) |
+| `connect_timeout_ms` | `uint32_t` | Connection timeout in milliseconds (0 = default 30000) |
+| `request_timeout_ms` | `uint32_t` | Request timeout in milliseconds (0 = default 15000) |
+
+### Dialing Services
+
+```c
+int sock = -1;
+rc = zt_zap_dial(ctx, "echo-service", &sock);
+if (rc != ZT_OK) {
+    fprintf(stderr, "Dial failed: %s\n", zt_zap_strerror(rc));
+    zt_zap_ctx_destroy(ctx);
+    return 1;
+}
+
+/* Use sock for framed I/O... */
+
+zt_zap_close(sock);
+```
+
+| Function | Description |
+|----------|-------------|
+| `zt_zap_dial(ctx, service, out_sock)` | Dial a service, returns socket descriptor |
+| `zt_zap_close(sock)` | Close a connection socket |
+
+## ZAP Framing
+
+The core of the C SDK: length-prefixed message framing over ZT sockets. Every ZAP message on the wire is structured as:
+
+```
+[4 bytes: big-endian payload length][payload bytes]
+```
+
+This framing ensures message boundaries are preserved over the stream-oriented ZT transport.
+
+### zt_zap_send_frame
+
+Send a length-prefixed frame:
+
+```c
+int zt_zap_send_frame(int sock, const void *payload, uint32_t len);
+```
+
+Writes a 4-byte big-endian length header followed by `len` bytes of `payload`. Returns `ZT_OK` on success or a negative error code on failure.
+
+```c
+const char *msg = "Hello, ZAP!";
+rc = zt_zap_send_frame(sock, msg, strlen(msg));
+if (rc != ZT_OK) {
+    fprintf(stderr, "Send failed: %s\n", zt_zap_strerror(rc));
+}
+```
+
+### zt_zap_recv_frame
+
+Receive a length-prefixed frame:
+
+```c
+int zt_zap_recv_frame(int sock, void *buf, uint32_t max_len, uint32_t *out_len);
+```
+
+Reads the 4-byte length header, then reads exactly that many bytes into `buf`. The actual payload length is written to `out_len`. Returns `ZT_ERR_FRAME` if the incoming frame exceeds `max_len`.
+
+```c
+uint8_t buf[4096];
+uint32_t received = 0;
+
+rc = zt_zap_recv_frame(sock, buf, sizeof(buf), &received);
+if (rc != ZT_OK) {
+    fprintf(stderr, "Recv failed: %s\n", zt_zap_strerror(rc));
+} else {
+    printf("Received %u bytes\n", received);
+}
+```
+
+### Framing Summary
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `zt_zap_send_frame` | `(sock, payload, len)` | Send a 4-byte BE prefix + payload |
+| `zt_zap_recv_frame` | `(sock, buf, max_len, out_len)` | Read a framed message into buf |
+
+## Authentication
+
+The C SDK takes an auth token string directly. Resolution of JWT credentials from environment or files is the caller's responsibility (unlike the C++ SDK which has `HanzoAuth::resolve()`).
+
+Typical pattern:
+
+```c
+#include <zt/zt_zap.h>
+#include <stdlib.h>
+
+const char *token = getenv("HANZO_API_KEY");
+if (!token) {
+    fprintf(stderr, "Set HANZO_API_KEY\n");
+    return 1;
+}
+
+zt_zap_config_t config = {
+    .controller_url = "https://zt-api.hanzo.ai",
+    .auth_token     = token,
+};
+```
+
+For loading tokens from a JSON file, you can use a helper or parse it yourself:
+
+```c
+#include <stdio.h>
+#include <string.h>
+
+/* Minimal token reader (production code should use a JSON parser) */
+static int read_token(const char *path, char *buf, size_t buflen) {
+    FILE *f = fopen(path, "r");
+    if (!f) return -1;
+
+    /* Read file, extract "token" field value */
+    char line[1024];
+    while (fgets(line, sizeof(line), f)) {
+        char *p = strstr(line, "\"token\"");
+        if (p) {
+            p = strchr(p, ':');
+            if (p) {
+                p = strchr(p, '"');
+                if (p) {
+                    p++;
+                    char *end = strchr(p, '"');
+                    if (end && (size_t)(end - p) < buflen) {
+                        memcpy(buf, p, end - p);
+                        buf[end - p] = '\0';
+                        fclose(f);
+                        return 0;
+                    }
+                }
+            }
+        }
+    }
+    fclose(f);
+    return -1;
+}
+```
+
+## Billing
+
+### BillingGuard
+
+The billing guard checks account balance before allowing connections and records usage after sessions.
+
+```c
+/* Create a billing guard */
+zt_zap_billing_guard_t *guard = NULL;
+rc = zt_zap_create_billing_guard(
+    "https://api.hanzo.ai/commerce",
+    getenv("HANZO_API_KEY"),
+    &guard
+);
+if (rc != ZT_OK) {
+    fprintf(stderr, "Guard creation failed: %s\n", zt_zap_strerror(rc));
+    return 1;
+}
+
+/* Check balance before connecting */
+rc = zt_zap_check_balance(guard, "my-service");
+if (rc == ZT_ERR_BALANCE) {
+    fprintf(stderr, "Insufficient balance. Add credits.\n");
+    zt_zap_destroy_billing_guard(guard);
+    return 1;
+}
+
+/* ... use the service ... */
+
+/* Record usage after session */
+zt_zap_usage_record_t usage = {
+    .service       = "my-service",
+    .session_id    = "sess_abc123",
+    .bytes_sent    = 4096,
+    .bytes_received = 8192,
+    .duration_ms   = 5000,
+};
+rc = zt_zap_record_usage(guard, &usage);
+if (rc != ZT_OK) {
+    fprintf(stderr, "Usage recording failed: %s\n", zt_zap_strerror(rc));
+}
+
+/* Cleanup */
+zt_zap_destroy_billing_guard(guard);
+```
+
+**Billing functions**:
+
+| Function | Description |
+|----------|-------------|
+| `zt_zap_create_billing_guard(url, token, out_guard)` | Create a billing guard handle |
+| `zt_zap_check_balance(guard, service)` | Check balance; returns `ZT_ERR_BALANCE` if insufficient |
+| `zt_zap_record_usage(guard, record)` | Submit a usage record to Commerce API |
+| `zt_zap_destroy_billing_guard(guard)` | Destroy guard and free resources |
+
+**zt_zap_usage_record_t fields**:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `service` | `const char *` | Service name |
+| `session_id` | `const char *` | Session identifier |
+| `bytes_sent` | `uint64_t` | Total bytes sent |
+| `bytes_received` | `uint64_t` | Total bytes received |
+| `duration_ms` | `uint64_t` | Session duration in milliseconds |
+
+When billing is enabled in the context config, `zt_zap_dial` automatically calls `zt_zap_check_balance` and returns `ZT_ERR_BALANCE` if the check fails.
+
+## Error Handling
+
+Every function returns an `int` status code. Always check the return value.
+
+```c
+int rc = zt_zap_dial(ctx, "my-service", &sock);
+switch (rc) {
+    case ZT_OK:
+        /* success */
+        break;
+    case ZT_ERR_AUTH:
+        fprintf(stderr, "Authentication failed\n");
+        break;
+    case ZT_ERR_NOT_AUTH:
+        fprintf(stderr, "Not authenticated. Call zt_zap_authenticate first.\n");
+        break;
+    case ZT_ERR_SERVICE:
+        fprintf(stderr, "Service not found\n");
+        break;
+    case ZT_ERR_NO_ROUTERS:
+        fprintf(stderr, "No edge routers available\n");
+        break;
+    case ZT_ERR_BALANCE:
+        fprintf(stderr, "Insufficient balance\n");
+        break;
+    case ZT_ERR_CONNECT:
+        fprintf(stderr, "Connection failed\n");
+        break;
+    case ZT_ERR_TIMEOUT:
+        fprintf(stderr, "Connection timed out\n");
+        break;
+    default:
+        fprintf(stderr, "Error %d: %s\n", rc, zt_zap_strerror(rc));
+        break;
+}
+```
+
+### Defensive Pattern
+
+A common pattern for robust error handling:
+
+```c
+#define ZT_CHECK(expr)                                        \
+    do {                                                      \
+        int _rc = (expr);                                     \
+        if (_rc != ZT_OK) {                                   \
+            fprintf(stderr, "%s:%d: %s failed: %s\n",         \
+                    __FILE__, __LINE__, #expr,                 \
+                    zt_zap_strerror(_rc));                     \
+            goto cleanup;                                     \
+        }                                                     \
+    } while (0)
+
+int main(void) {
+    zt_zap_ctx_t *ctx = NULL;
+    int sock = -1;
+    int exit_code = 1;
+
+    zt_zap_config_t config = {
+        .controller_url = "https://zt-api.hanzo.ai",
+        .auth_token     = getenv("HANZO_API_KEY"),
+    };
+
+    ZT_CHECK(zt_zap_ctx_create(&config, &ctx));
+    ZT_CHECK(zt_zap_authenticate(ctx));
+    ZT_CHECK(zt_zap_dial(ctx, "echo-service", &sock));
+
+    /* ... */
+    exit_code = 0;
+
+cleanup:
+    if (sock >= 0) zt_zap_close(sock);
+    if (ctx) zt_zap_ctx_destroy(ctx);
+    return exit_code;
+}
+```
+
+## Quick Start
+
+Minimal program that connects to a service and exchanges a single framed message:
+
+```c
+#include <zt/zt_zap.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main(void) {
+    const char *token = getenv("HANZO_API_KEY");
+    if (!token) {
+        fprintf(stderr, "Set HANZO_API_KEY\n");
+        return 1;
+    }
+
+    zt_zap_config_t config = {
+        .controller_url = "https://zt-api.hanzo.ai",
+        .auth_token     = token,
+    };
+
+    zt_zap_ctx_t *ctx = NULL;
+    if (zt_zap_ctx_create(&config, &ctx) != ZT_OK) {
+        fprintf(stderr, "Failed to create context\n");
+        return 1;
+    }
+
+    if (zt_zap_authenticate(ctx) != ZT_OK) {
+        fprintf(stderr, "Auth failed\n");
+        zt_zap_ctx_destroy(ctx);
+        return 1;
+    }
+
+    int sock = -1;
+    if (zt_zap_dial(ctx, "echo-service", &sock) != ZT_OK) {
+        fprintf(stderr, "Dial failed\n");
+        zt_zap_ctx_destroy(ctx);
+        return 1;
+    }
+
+    /* Send a framed message */
+    const char *msg = "Hello, ZT!";
+    zt_zap_send_frame(sock, msg, strlen(msg));
+
+    /* Receive framed response */
+    uint8_t buf[4096];
+    uint32_t len = 0;
+    if (zt_zap_recv_frame(sock, buf, sizeof(buf), &len) == ZT_OK) {
+        printf("Response: %.*s\n", (int)len, buf);
+    }
+
+    zt_zap_close(sock);
+    zt_zap_ctx_destroy(ctx);
+    return 0;
+}
+```
+
+Compile and run:
+
+```bash
+cc -o echo_client echo_client.c -lzt -lzt_zap
+HANZO_API_KEY=your-token ./echo_client
+```
+
+## Complete Example
+
+Full example with context creation, authentication, billing guard, framed I/O, usage recording, and cleanup:
+
+```c
+#include <zt/zt_zap.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+
+#define ZT_CHECK(expr)                                        \
+    do {                                                      \
+        int _rc = (expr);                                     \
+        if (_rc != ZT_OK) {                                   \
+            fprintf(stderr, "%s:%d: %s -> %s\n",              \
+                    __FILE__, __LINE__, #expr,                 \
+                    zt_zap_strerror(_rc));                     \
+            goto cleanup;                                     \
+        }                                                     \
+    } while (0)
+
+int main(void) {
+    const char *token = getenv("HANZO_API_KEY");
+    if (!token) {
+        fprintf(stderr, "Set HANZO_API_KEY\n");
+        return 1;
+    }
+
+    zt_zap_ctx_t            *ctx   = NULL;
+    zt_zap_billing_guard_t  *guard = NULL;
+    int                      sock  = -1;
+    int                      ret   = 1;
+
+    /* 1. Configure */
+    zt_zap_config_t config = {
+        .controller_url     = "https://zt-api.hanzo.ai",
+        .auth_token         = token,
+        .billing            = 1,
+        .commerce_url       = "https://api.hanzo.ai/commerce",
+        .connect_timeout_ms = 30000,
+        .request_timeout_ms = 15000,
+    };
+
+    /* 2. Create context and authenticate */
+    ZT_CHECK(zt_zap_ctx_create(&config, &ctx));
+    ZT_CHECK(zt_zap_authenticate(ctx));
+    printf("Authenticated.\n");
+
+    /* 3. Create billing guard and check balance */
+    ZT_CHECK(zt_zap_create_billing_guard(
+        config.commerce_url, token, &guard));
+    ZT_CHECK(zt_zap_check_balance(guard, "echo-service"));
+    printf("Balance OK.\n");
+
+    /* 4. Dial the service */
+    ZT_CHECK(zt_zap_dial(ctx, "echo-service", &sock));
+    printf("Connected to echo-service.\n");
+
+    /* 5. Send a framed message */
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
+    const char *request = "Hello from C!";
+    uint32_t req_len = (uint32_t)strlen(request);
+    ZT_CHECK(zt_zap_send_frame(sock, request, req_len));
+
+    /* 6. Receive framed response */
+    uint8_t response[4096];
+    uint32_t resp_len = 0;
+    ZT_CHECK(zt_zap_recv_frame(sock, response, sizeof(response), &resp_len));
+
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    uint64_t elapsed_ms = (uint64_t)(
+        (end.tv_sec - start.tv_sec) * 1000 +
+        (end.tv_nsec - start.tv_nsec) / 1000000
+    );
+
+    printf("Response: %.*s (%llu ms)\n",
+           (int)resp_len, response,
+           (unsigned long long)elapsed_ms);
+
+    /* 7. Record usage */
+    zt_zap_usage_record_t usage = {
+        .service        = "echo-service",
+        .session_id     = "sess_c_001",
+        .bytes_sent     = req_len + 4,   /* payload + 4-byte header */
+        .bytes_received = resp_len + 4,
+        .duration_ms    = elapsed_ms,
+    };
+    ZT_CHECK(zt_zap_record_usage(guard, &usage));
+    printf("Usage recorded.\n");
+
+    ret = 0;
+
+cleanup:
+    if (sock >= 0)  zt_zap_close(sock);
+    if (guard)      zt_zap_destroy_billing_guard(guard);
+    if (ctx)        zt_zap_ctx_destroy(ctx);
+    return ret;
+}
+```
+
+Compile and run:
+
+```bash
+cc -o full_example full_example.c -lzt -lzt_zap
+HANZO_API_KEY=your-token ./full_example
+```
+
+Expected output:
+
+```
+Authenticated.
+Balance OK.
+Connected to echo-service.
+Response: Hello from C! (12 ms)
+Usage recorded.
+```
+
+## ABI Stability
+
+The C SDK maintains a stable ABI:
+
+- All handles (`zt_zap_ctx_t`, `zt_zap_billing_guard_t`) are opaque pointers. Internal struct layouts can change without breaking callers.
+- Config structs use fixed-layout fields. New fields are appended; zero-initialized fields use defaults.
+- Error codes are stable. New codes are added at the end of the negative range.
+- Function signatures do not change within a major version.
+
+This makes the C SDK suitable as a foundation for FFI bindings in languages like Python (ctypes/cffi), Ruby (FFI), and Lua.
+
+## Thread Safety
+
+- `zt_zap_ctx_t` is safe to share across threads after creation. `zt_zap_dial` serializes internally.
+- Individual sockets (from `zt_zap_dial`) must not be shared across threads without external synchronization.
+- `zt_zap_billing_guard_t` is safe to share across threads.
+- `zt_zap_send_frame` and `zt_zap_recv_frame` must not be called concurrently on the same socket.
+
+## Dependencies
+
+| Library | Purpose |
+|---------|---------|
+| `libzt` | ZeroTier network library |
+| C99 standard library | Core functionality |
+| POSIX sockets | Underlying I/O (Linux, macOS) |
+
+No external dependencies beyond libzt. The SDK builds with any C99-compliant compiler.

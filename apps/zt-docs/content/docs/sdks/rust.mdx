@@ -1,0 +1,436 @@
+---
+title: Rust SDK
+description: Complete documentation for hanzo-zt, the Rust zero-trust networking SDK with ZAP transport integration.
+---
+
+# Rust SDK
+
+The Rust SDK (`hanzo-zt`) is the reference implementation of Hanzo ZT. It provides the full API surface including ZAP transport integration, async I/O via Tokio, and the `zt://` URL scheme.
+
+**Repository**: [github.com/hanzoai/dev](https://github.com/hanzoai/dev) (crate at `hanzo-dev/zt/`)
+
+## Installation
+
+Add to your `Cargo.toml`:
+
+```toml
+[dependencies]
+hanzo-zt = "0.1"
+tokio = { version = "1", features = ["full"] }
+```
+
+### Features
+
+| Feature | Default | Description |
+|---------|---------|-------------|
+| `zap` | Yes | ZAP transport integration (`ZtTransport`, `zt://` scheme) |
+| `tunnel` | No | Tunnel integration for relay routing |
+
+```toml
+# Disable ZAP, use raw connections only
+hanzo-zt = { version = "0.1", default-features = false }
+
+# Enable tunnel support
+hanzo-zt = { version = "0.1", features = ["tunnel"] }
+```
+
+## Core Types
+
+### ZtContext
+
+The main entry point. Manages authentication, service discovery, and connections.
+
+```rust
+use hanzo_zt::{ZtContext, ConfigBuilder, HanzoJwtCredentials};
+
+let creds = HanzoJwtCredentials::resolve()?;
+let config = ConfigBuilder::new()
+    .controller_url("https://zt-api.hanzo.ai")
+    .credentials(creds)
+    .billing(true)
+    .build()?;
+
+let ctx = ZtContext::new(config).await?;
+```
+
+**Methods**:
+
+| Method | Description |
+|--------|-------------|
+| `new(config)` | Create a new context with the given configuration |
+| `authenticate()` | Authenticate with the ZT controller using configured credentials |
+| `dial(service)` | Dial a service by name, returns a `ZtConnection` |
+| `listen(service)` | Bind to a service, returns a `ZtListener` |
+| `services()` | List all services available to the current identity |
+| `events()` | Subscribe to lifecycle events (returns broadcast receiver) |
+| `session()` | Get the current API session info |
+
+### Config and ConfigBuilder
+
+Builder pattern for ZT configuration:
+
+```rust
+use hanzo_zt::{ConfigBuilder, HanzoJwtCredentials};
+use std::time::Duration;
+
+let config = ConfigBuilder::new()
+    .controller_url("https://zt-api.hanzo.ai")
+    .credentials(HanzoJwtCredentials::resolve()?)
+    .billing(true)
+    .commerce_url("https://api.hanzo.ai/commerce")
+    .connect_timeout(Duration::from_secs(30))
+    .request_timeout(Duration::from_secs(15))
+    .build()?;
+```
+
+**Config fields**:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `controller_url` | `String` | Required | ZT controller URL |
+| `credentials` | `Arc(dyn Credentials)` | Required | Auth credentials |
+| `billing_enabled` | `bool` | `true` | Enable billing checks |
+| `commerce_url` | `String` | `https://api.hanzo.ai/commerce` | Commerce API URL |
+| `identity_file` | `Option(PathBuf)` | `None` | Path to identity file (cert-based auth) |
+| `connect_timeout` | `Duration` | 30s | Connection timeout |
+| `request_timeout` | `Duration` | 15s | Controller API request timeout |
+
+### HanzoJwtCredentials
+
+Authenticates using a JWT from Hanzo IAM:
+
+```rust
+use hanzo_zt::HanzoJwtCredentials;
+
+// Resolve from environment (HANZO_API_KEY) or auth file (~/.hanzo/auth.json)
+let creds = HanzoJwtCredentials::resolve()?;
+
+// From an explicit token
+let creds = HanzoJwtCredentials::from_token("eyJhbGciOiJSUzI1NiIs...");
+
+// Display (masked)
+println!("{}", creds.display());
+// "Hanzo IAM (user@example.com)" or "Hanzo API key (...xxxxx)"
+```
+
+The `Credentials` trait:
+
+```rust
+pub trait Credentials: Send + Sync + std::fmt::Debug {
+    /// Returns the auth method identifier ("ext-jwt" or "password")
+    fn auth_method(&self) -> &str;
+
+    /// Returns the authentication payload for the controller
+    fn auth_payload(&self) -> Result<serde_json::Value>;
+
+    /// Human-readable display with masked secrets
+    fn display(&self) -> String;
+}
+```
+
+### ApiKeyCredentials
+
+Alternative authentication with a direct API token:
+
+```rust
+use hanzo_zt::ApiKeyCredentials;
+
+let creds = ApiKeyCredentials::new("zt-controller-api-token");
+assert_eq!(creds.auth_method(), "password");
+```
+
+### ZtConnection
+
+A bidirectional connection to a ZT service. Implements `tokio::io::AsyncRead` and `tokio::io::AsyncWrite`.
+
+```rust
+let conn = ctx.dial("my-service").await?;
+
+// Message-based API
+conn.send(b"hello").await?;
+let response = conn.recv().await?;
+
+// Stream-based API (AsyncRead/AsyncWrite)
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+conn.write_all(b"hello").await?;
+let mut buf = vec![0u8; 1024];
+let n = conn.read(&mut buf).await?;
+
+// Metadata
+println!("Service: {}", conn.service_name());
+println!("Session: {}", conn.session_id());
+println!("Connected: {}", conn.is_connected());
+
+// Close
+conn.close().await?;
+```
+
+### ZtListener
+
+Accepts incoming connections on a bound service:
+
+```rust
+let listener = ctx.listen("my-service").await?;
+
+loop {
+    let conn = listener.accept().await?;
+    println!("Accepted connection on {}", listener.service_name());
+
+    tokio::spawn(async move {
+        let data = conn.recv().await.unwrap();
+        conn.send(&data).await.unwrap(); // Echo
+    });
+}
+```
+
+### BillingGuard
+
+Enforces paid-only access:
+
+```rust
+use hanzo_zt::billing::{BillingGuard, UsageRecord};
+
+let guard = BillingGuard::new("https://api.hanzo.ai/commerce", "jwt-token");
+
+// Check balance (called automatically by ctx.dial())
+guard.check_balance("my-service").await?;
+
+// Record usage after session
+guard.record_usage(&UsageRecord {
+    service: "my-service".to_string(),
+    session_id: "sess_abc".to_string(),
+    bytes_sent: 4096,
+    bytes_received: 8192,
+    duration_ms: 5000,
+}).await?;
+```
+
+### ZtTransport (ZAP)
+
+ZAP transport over the ZT fabric. Requires the `zap` feature (enabled by default).
+
+```rust
+use hanzo_zt::ZtTransport;
+
+// Create from controller URL and service name
+let transport = ZtTransport::new(
+    "https://zt-api.hanzo.ai",
+    "my-service",
+).await?;
+
+// Or from an existing context
+use std::sync::Arc;
+let ctx = Arc::new(ctx);
+let transport = ZtTransport::from_context(ctx, "my-service").await?;
+
+// Use with ZAP client
+// The transport implements the hanzo_zap::transport::Transport trait
+transport.send(b"zap-frame").await?;
+let frame = transport.recv().await?;
+
+// Check state
+println!("Connected: {}", transport.is_connected());
+println!("Local: {:?}", transport.local_addr());   // "zt://local/my-service"
+println!("Peer: {:?}", transport.peer_addr());     // "zt://my-service"
+
+// Close
+transport.close().await?;
+```
+
+## Error Handling
+
+All fallible operations return `hanzo_zt::Result`, which is `std::result::Result` with `ZtError`.
+
+```rust
+use hanzo_zt::ZtError;
+
+match ctx.dial("my-service").await {
+    Ok(conn) => { /* use connection */ }
+    Err(ZtError::AuthFailed(msg)) => {
+        eprintln!("Auth failed: {msg}");
+    }
+    Err(ZtError::NotAuthenticated) => {
+        eprintln!("Call authenticate() first");
+    }
+    Err(ZtError::ServiceNotFound(name)) => {
+        eprintln!("Service '{name}' not found");
+    }
+    Err(ZtError::NoEdgeRouters(service)) => {
+        eprintln!("No edge routers for '{service}'");
+    }
+    Err(ZtError::InsufficientBalance(msg)) => {
+        eprintln!("Add credits: {msg}");
+    }
+    Err(ZtError::ConnectionClosed) => {
+        eprintln!("Connection was closed");
+    }
+    Err(e) => {
+        eprintln!("Other error: {e}");
+    }
+}
+```
+
+**ZtError variants**:
+
+| Variant | Description |
+|---------|-------------|
+| `AuthFailed(String)` | Authentication failed with reason |
+| `NotAuthenticated` | No active session (call `authenticate()` first) |
+| `Controller(String)` | Controller API returned an error |
+| `ServiceNotFound(String)` | Named service does not exist |
+| `NoEdgeRouters(String)` | No edge routers available for service |
+| `ConnectionFailed(String)` | Failed to establish connection |
+| `ConnectionClosed` | Connection was closed |
+| `InsufficientBalance(String)` | Billing balance is zero or negative |
+| `BillingError(String)` | Error contacting the Commerce API |
+| `InvalidConfig(String)` | Configuration validation failed |
+| `Identity(String)` | Identity-related error |
+| `Timeout(String)` | Operation timed out |
+| `Io(std::io::Error)` | I/O error |
+| `Http(reqwest::Error)` | HTTP client error |
+| `Json(serde_json::Error)` | JSON parse error |
+| `UrlParse(url::ParseError)` | URL parse error |
+
+## Events
+
+Subscribe to lifecycle events:
+
+```rust
+use hanzo_zt::ZtEvent;
+
+let mut events = ctx.events();
+tokio::spawn(async move {
+    while let Ok(event) = events.recv().await {
+        match event {
+            ZtEvent::Authenticated { identity_id } => {
+                println!("Authenticated as {identity_id}");
+            }
+            ZtEvent::SessionCreated { service, session_id } => {
+                println!("Session {session_id} for {service}");
+            }
+            ZtEvent::BillingOk { service } => {
+                println!("Billing OK for {service}");
+            }
+            _ => {}
+        }
+    }
+});
+```
+
+## Complete Example
+
+End-to-end example: authenticate, list services, dial, send/receive, and record usage.
+
+```rust
+use hanzo_zt::{
+    ZtContext, ConfigBuilder, HanzoJwtCredentials,
+    billing::UsageRecord, ZtEvent,
+};
+use std::time::Instant;
+
+#[tokio::main]
+async fn main() -> hanzo_zt::Result<()> {
+    // Setup
+    let creds = HanzoJwtCredentials::resolve()?;
+    let config = ConfigBuilder::new()
+        .controller_url("https://zt-api.hanzo.ai")
+        .credentials(creds)
+        .billing(true)
+        .build()?;
+
+    let ctx = ZtContext::new(config).await?;
+
+    // Subscribe to events
+    let mut events = ctx.events();
+    tokio::spawn(async move {
+        while let Ok(ev) = events.recv().await {
+            println!("[event] {:?}", ev);
+        }
+    });
+
+    // Authenticate
+    ctx.authenticate().await?;
+
+    // List services
+    let services = ctx.services().await?;
+    for svc in &services {
+        println!("Service: {} ({})", svc.name, svc.id);
+    }
+
+    // Dial
+    let start = Instant::now();
+    let mut conn = ctx.dial("echo-service").await?;
+
+    // Send request
+    let request = b"Hello, ZT!";
+    conn.send(request).await?;
+
+    // Receive response
+    let response = conn.recv().await?;
+    println!("Response: {}", String::from_utf8_lossy(&response));
+
+    // Close and record usage
+    let duration = start.elapsed();
+    conn.close().await?;
+
+    let guard = hanzo_zt::BillingGuard::new(
+        "https://api.hanzo.ai/commerce",
+        &std::env::var("HANZO_API_KEY").unwrap_or_default(),
+    );
+    guard.record_usage(&UsageRecord {
+        service: "echo-service".to_string(),
+        session_id: conn.session_id().to_string(),
+        bytes_sent: request.len() as u64,
+        bytes_received: response.len() as u64,
+        duration_ms: duration.as_millis() as u64,
+    }).await?;
+
+    Ok(())
+}
+```
+
+## Testing
+
+The crate includes 9 tests covering configuration, authentication, and connection:
+
+```bash
+cargo test -p hanzo-zt
+```
+
+Example test:
+
+```rust
+#[test]
+fn test_config_builder_success() {
+    let creds = HanzoJwtCredentials::from_token("test-token");
+    let config = ConfigBuilder::new()
+        .controller_url("https://zt-api.hanzo.ai")
+        .credentials(creds)
+        .billing(false)
+        .build();
+    assert!(config.is_ok());
+    let config = config.expect("config should build");
+    assert_eq!(config.controller_url, "https://zt-api.hanzo.ai");
+    assert!(!config.billing_enabled);
+}
+
+#[test]
+fn test_hanzo_jwt_from_token() {
+    let creds = HanzoJwtCredentials::from_token("test-token-123");
+    assert_eq!(creds.auth_method(), "ext-jwt");
+    assert!(creds.display().contains("...n-123"));
+}
+```
+
+## Dependencies
+
+| Crate | Purpose |
+|-------|---------|
+| `reqwest` | HTTP client for controller and billing APIs |
+| `tokio` | Async runtime (sync, time, io-util, net) |
+| `serde` / `serde_json` | Serialization |
+| `tracing` | Structured logging |
+| `thiserror` | Error derive macro |
+| `chrono` | DateTime handling for session expiry |
+| `url` | URL parsing |
+| `hanzo-zap` | ZAP transport trait (optional, `zap` feature) |
