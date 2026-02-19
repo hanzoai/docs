@@ -1,15 +1,30 @@
 ---
 title: zen-agent
-description: Tool-calling agent (4B)
+description: Tool-calling agent model — optimized for function calling and autonomous task execution
 ---
 
 # zen-agent
 
-Tool-calling agent (4B)
+Agent-specialized model fine-tuned for tool calling, function execution, and autonomous multi-step task completion.
 
 ## Overview
 
-[Model documentation coming from existing content]
+zen-agent is built on zen4-mini (4B) with additional fine-tuning for structured tool use. It excels at:
+
+- **Function calling**: Generating structured JSON tool calls
+- **Multi-step planning**: Breaking complex tasks into tool sequences
+- **MCP integration**: Native support for Model Context Protocol tool schemas
+- **ReAct loops**: Observe-think-act reasoning chains
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Parameters** | 4B |
+| **Base Model** | zen4-mini (Qwen3-4B) |
+| **Context** | 32K tokens |
+| **Tool Format** | OpenAI function calling, MCP |
+| **License** | Apache 2.0 |
 
 ## Quick Start
 
@@ -19,13 +34,35 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 model = AutoModelForCausalLM.from_pretrained("zenlm/zen-agent")
 tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-agent")
 
-inputs = tokenizer("Your prompt", return_tensors="pt")
-outputs = model.generate(**inputs)
-print(tokenizer.decode(outputs[0]))
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search",
+            "description": "Search the web",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"}
+                },
+                "required": ["query"]
+            }
+        }
+    }
+]
+
+messages = [{"role": "user", "content": "Find the latest news about AI"}]
+# Apply chat template with tools
+text = tokenizer.apply_chat_template(
+    messages, tools=tools, tokenize=False, add_generation_prompt=True
+)
+inputs = tokenizer(text, return_tensors="pt").to(model.device)
+outputs = model.generate(**inputs, max_new_tokens=512)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
 ```
 
 ## Resources
 
-- 🤗 [HuggingFace](https://huggingface.co/zenlm/zen-agent)
-- 📦 [GitHub](https://github.com/zenlm/zen-agent)
-- 📄 [Paper](/papers/zen-agent_whitepaper.pdf)
+- [HuggingFace](https://huggingface.co/zenlm/zen-agent)
+- [GitHub](https://github.com/zenlm/zen-agent)
+- [Hanzo Agent SDK](https://github.com/hanzoai/agent)
