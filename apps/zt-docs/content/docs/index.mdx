@@ -1,0 +1,89 @@
+---
+title: Hanzo Zero Trust
+description: Zero-trust overlay networking SDKs with ZAP transport for 6 programming languages
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+import { BookOpenIcon, RocketIcon, CodeIcon, NetworkIcon, ShieldIcon, ServerIcon } from 'lucide-react';
+
+# Hanzo Zero Trust
+
+**Hanzo ZT** is a zero-trust overlay networking SDK suite with ZAP transport. It provides mTLS encryption, NAT traversal, Hanzo IAM authentication, and billing enforcement across 6 programming languages.
+
+## Key Features
+
+- **Zero Trust Overlay**: x509 mTLS network with NAT traversal, no open ports required
+- **ZAP Transport**: Cap'n Proto RPC over ZT fabric with zero-copy binary framing
+- **Hanzo IAM Auth**: JWT authentication via hanzo.id with external JWT support
+- **Billing Enforcement**: Balance check before dial, usage recording after session
+- **6 Language SDKs**: Rust, Go, TypeScript, Python, C++, and C with consistent APIs
+- **MCP Integration**: ZAP transport trait impl with zt:// URL scheme
+
+<Cards>
+  <Card
+    icon={<BookOpenIcon />}
+    title="Overview"
+    description="Architecture and concepts"
+    href="/docs/overview"
+  />
+  <Card
+    icon={<RocketIcon />}
+    title="Getting Started"
+    description="Install and connect in minutes"
+    href="/docs/getting-started"
+  />
+  <Card
+    icon={<CodeIcon />}
+    title="SDKs"
+    description="Language SDK documentation"
+    href="/docs/sdks"
+  />
+  <Card
+    icon={<NetworkIcon />}
+    title="Architecture"
+    description="ZT fabric and transport details"
+    href="/docs/architecture"
+  />
+  <Card
+    icon={<ShieldIcon />}
+    title="Integration"
+    description="MCP, ZAP, and gateway integration"
+    href="/docs/integration"
+  />
+</Cards>
+
+## Quick Example
+
+```rust title="Rust"
+use hanzo_zt::{ZtClient, ZtConfig};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = ZtClient::connect(ZtConfig {
+        network_id: "your-network-id",
+        auth: Auth::hanzo_jwt("your-jwt-token"),
+    }).await?;
+
+    // ZAP transport is automatic
+    let tools = client.zap().list_tools().await?;
+    for tool in tools {
+        println!("Tool: {} - {}", tool.name, tool.description);
+    }
+
+    Ok(())
+}
+```
+
+## Architecture
+
+```text
+App --> ZAP Client --> ZT Transport --> ZT Fabric --> ZT Service
+            |                              |
+      Cap'n Proto RPC               x509 mTLS overlay
+      (zero-copy binary)            (NAT traversal built-in)
+```
+
+## Getting Help
+
+- [GitHub Issues](https://github.com/hanzozt/hanzo-zt/issues) - Bug reports and feature requests
+- [Discord](https://discord.gg/hanzo) - Community discussions

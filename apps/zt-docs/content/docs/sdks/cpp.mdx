@@ -1,0 +1,587 @@
+---
+title: C++ SDK
+description: Complete documentation for zt-sdk-cpp, a thin C++ wrapper around libzt with RAII lifecycle management, std::iostream-compatible connections, and Cap'n Proto ZAP transport.
+---
+
+# C++ SDK
+
+The C++ SDK (`zt-sdk-cpp`) is a thin wrapper around libzt that provides RAII lifecycle management, `std::iostream`-compatible connections, and native Cap'n Proto integration for ZAP transport.
+
+**Repository**: [github.com/hanzozt/zt-sdk-cpp](https://github.com/hanzozt/zt-sdk-cpp)
+
+## Installation
+
+Add to your `CMakeLists.txt` using FetchContent:
+
+```cmake
+cmake_minimum_required(VERSION 3.14)
+project(my_app)
+
+include(FetchContent)
+
+FetchContent_Declare(
+  hanzo_zt
+  GIT_REPOSITORY https://github.com/hanzozt/zt-sdk-cpp.git
+  GIT_TAG main
+)
+FetchContent_MakeAvailable(hanzo_zt)
+
+add_executable(my_app main.cpp)
+target_link_libraries(my_app PRIVATE hanzo::zt)
+```
+
+FetchContent will pull libzt and Cap'n Proto as transitive dependencies automatically.
+
+### Manual Build
+
+```bash
+git clone https://github.com/hanzozt/zt-sdk-cpp.git
+cd zt-sdk-cpp
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+sudo cmake --install build
+```
+
+After installing, use `find_package` instead of FetchContent:
+
+```cmake
+find_package(hanzo_zt REQUIRED)
+target_link_libraries(my_app PRIVATE hanzo::zt)
+```
+
+## Project Structure
+
+```
+include/hanzo/zt/
+  context.hpp         ZtContext RAII wrapper (main entry point)
+  connection.hpp      ZtConnection (std::iostream compatible)
+  config.hpp          Config struct and ConfigBuilder
+  auth.hpp            HanzoAuth (JWT credential resolution)
+  billing.hpp         BillingGuard (balance checks, usage recording)
+  zap_transport.hpp   ZapTransport (Cap'n Proto over ZT)
+
+src/
+  context.cpp         Context implementation
+  connection.cpp      Connection implementation
+  zap_transport.cpp   ZAP transport implementation
+```
+
+## Core Types
+
+### ZtContext
+
+The main entry point. Manages authentication, service discovery, and connection lifecycle. Cleans up all resources on destruction (RAII).
+
+```cpp
+#include <hanzo/zt/context.hpp>
+#include <hanzo/zt/config.hpp>
+#include <hanzo/zt/auth.hpp>
+
+auto creds = hanzo::zt::HanzoAuth::resolve();
+auto config = hanzo::zt::ConfigBuilder()
+    .controller_url("https://zt-api.hanzo.ai")
+    .credentials(std::move(creds))
+    .billing(true)
+    .build();
+
+hanzo::zt::ZtContext ctx(std::move(config));
+ctx.authenticate();
+```
+
+**Methods**:
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `ZtContext(Config)` | — | Construct context and connect to controller |
+| `authenticate()` | `void` | Authenticate with controller using configured credentials |
+| `dial(service)` | `ZtConnection` | Dial a service by name, returns an RAII connection |
+| `services()` | `std::vector(ServiceInfo)` | List all services available to the current identity |
+| `session()` | `SessionInfo` | Get the current API session info |
+| `~ZtContext()` | — | Closes all connections and releases resources |
+
+The context is move-only (non-copyable). All connections created via `dial()` hold a reference back to the context, so the context must outlive its connections.
+
+### Config and ConfigBuilder
+
+Builder pattern for ZT configuration:
+
+```cpp
+#include <hanzo/zt/config.hpp>
+
+auto config = hanzo::zt::ConfigBuilder()
+    .controller_url("https://zt-api.hanzo.ai")
+    .credentials(hanzo::zt::HanzoAuth::resolve())
+    .billing(true)
+    .commerce_url("https://api.hanzo.ai/commerce")
+    .connect_timeout(std::chrono::seconds(30))
+    .request_timeout(std::chrono::seconds(15))
+    .build();
+```
+
+**Config fields**:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `controller_url` | `std::string` | Required | ZT controller URL |
+| `credentials` | `std::unique_ptr(Credentials)` | Required | Auth credentials |
+| `billing_enabled` | `bool` | `true` | Enable billing balance checks |
+| `commerce_url` | `std::string` | `https://api.hanzo.ai/commerce` | Commerce API URL |
+| `identity_file` | `std::optional(std::filesystem::path)` | `std::nullopt` | Path to identity file for cert-based auth |
+| `connect_timeout` | `std::chrono::milliseconds` | 30000ms | Connection timeout |
+| `request_timeout` | `std::chrono::milliseconds` | 15000ms | Controller API request timeout |
+
+`build()` throws `hanzo::zt::InvalidConfig` if required fields are missing.
+
+### ZtConnection
+
+A bidirectional connection to a ZT service. Implements `std::iostream` for stream-based I/O. Automatically closes on destruction.
+
+```cpp
+// Dial a service
+auto conn = ctx.dial("echo-service");
+
+// Message-based API
+conn.send("hello");
+auto response = conn.recv();
+
+// Stream-based API (std::iostream compatible)
+conn << "hello, stream" << std::flush;
+std::string line;
+std::getline(conn, line);
+
+// Metadata
+std::cout << "Service: " << conn.service_name() << "\n";
+std::cout << "Session: " << conn.session_id() << "\n";
+std::cout << "Connected: " << conn.is_connected() << "\n";
+
+// Explicit close (also happens in destructor)
+conn.close();
+```
+
+**Methods**:
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `send(data)` | `void` | Send a message (byte buffer or string) |
+| `recv()` | `std::vector(uint8_t)` | Receive a message, blocks until data arrives |
+| `close()` | `void` | Close the connection |
+| `is_connected()` | `bool` | Check if the connection is active |
+| `service_name()` | `const std::string&` | Name of the connected service |
+| `session_id()` | `const std::string&` | Session identifier for this connection |
+| `~ZtConnection()` | — | Closes the connection if still open |
+
+Because `ZtConnection` inherits from `std::iostream`, you can pass it to any function that accepts a stream reference:
+
+```cpp
+void process(std::iostream& stream) {
+    stream << "request\n" << std::flush;
+    std::string reply;
+    std::getline(stream, reply);
+}
+
+auto conn = ctx.dial("my-service");
+process(conn);  // Works with any iostream-based code
+```
+
+## Authentication
+
+### HanzoAuth
+
+Resolves JWT credentials from the environment or a file on disk. Resolution order:
+
+1. `HANZO_API_KEY` environment variable
+2. `~/.hanzo/auth.json` file
+3. `~/.hanzo/credentials.json` file
+
+```cpp
+#include <hanzo/zt/auth.hpp>
+
+// Auto-resolve (recommended)
+auto creds = hanzo::zt::HanzoAuth::resolve();
+
+// From an explicit token
+auto creds = hanzo::zt::HanzoAuth::from_token("eyJhbGciOiJSUzI1NiIs...");
+
+// From a specific file
+auto creds = hanzo::zt::HanzoAuth::from_file("/path/to/auth.json");
+
+// Display (secrets are masked)
+std::cout << creds->display() << "\n";
+// "Hanzo IAM (user@example.com)" or "Hanzo API key (...xxxxx)"
+```
+
+**HanzoAuth static methods**:
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `resolve()` | `std::unique_ptr(Credentials)` | Auto-resolve from env or file |
+| `from_token(token)` | `std::unique_ptr(Credentials)` | Create from an explicit JWT string |
+| `from_file(path)` | `std::unique_ptr(Credentials)` | Load from a JSON credentials file |
+
+All methods throw `hanzo::zt::AuthError` if credentials cannot be resolved.
+
+### Credentials Interface
+
+Custom credential providers can implement the `Credentials` interface:
+
+```cpp
+class Credentials {
+public:
+    virtual ~Credentials() = default;
+
+    // Returns the auth method identifier ("ext-jwt" or "password")
+    virtual std::string auth_method() const = 0;
+
+    // Returns the authentication payload as JSON
+    virtual std::string auth_payload() const = 0;
+
+    // Human-readable display with masked secrets
+    virtual std::string display() const = 0;
+};
+```
+
+## ZAP Transport
+
+### ZapTransport
+
+Implements the Cap'n Proto RPC transport layer over ZT connections. Handles framing, serialization, and bidirectional message passing.
+
+```cpp
+#include <hanzo/zt/zap_transport.hpp>
+
+// Create from an existing context and service name
+auto transport = hanzo::zt::ZapTransport(ctx, "my-service");
+
+// Send a Cap'n Proto message
+capnp::MallocMessageBuilder message;
+auto root = message.initRoot<MySchema::Request>();
+root.setQuery("hello");
+transport.send(message);
+
+// Receive a Cap'n Proto message
+auto response = transport.recv();
+auto reader = response.getRoot<MySchema::Response>();
+std::cout << "Result: " << reader.getResult().cStr() << "\n";
+
+// Check state
+std::cout << "Connected: " << transport.is_connected() << "\n";
+
+// Close
+transport.close();
+```
+
+**Methods**:
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `ZapTransport(ctx, service)` | — | Construct and dial the service |
+| `send(message)` | `void` | Send a Cap'n Proto message |
+| `recv()` | `capnp::FlatArrayMessageReader` | Receive a Cap'n Proto message |
+| `is_connected()` | `bool` | Check if the transport is active |
+| `close()` | `void` | Close the underlying connection |
+| `~ZapTransport()` | — | Closes transport on destruction |
+
+### Wire Format
+
+ZAP messages are length-prefixed on the wire:
+
+```
+[4 bytes: big-endian payload length][payload bytes]
+```
+
+The `ZapTransport` handles this framing automatically. If you need raw framing without Cap'n Proto, use the C SDK's `zt_zap_send_frame` / `zt_zap_recv_frame` functions instead.
+
+## Billing
+
+### BillingGuard
+
+Enforces paid-only access by checking account balance before connections and recording usage afterward.
+
+```cpp
+#include <hanzo/zt/billing.hpp>
+
+// Create a billing guard
+auto guard = hanzo::zt::BillingGuard(
+    "https://api.hanzo.ai/commerce",
+    "your-jwt-token"
+);
+
+// Check balance before connecting
+guard.check_balance("my-service");
+// Throws hanzo::zt::InsufficientBalance if balance is zero or negative
+
+// Record usage after a session
+hanzo::zt::UsageRecord record;
+record.service = "my-service";
+record.session_id = "sess_abc123";
+record.bytes_sent = 4096;
+record.bytes_received = 8192;
+record.duration_ms = 5000;
+
+guard.record_usage(record);
+```
+
+When `billing_enabled` is set in the `Config`, `ZtContext::dial()` automatically calls `check_balance()` before establishing the connection. Manual usage recording is still your responsibility.
+
+**BillingGuard methods**:
+
+| Method | Return Type | Description |
+|--------|-------------|-------------|
+| `BillingGuard(url, token)` | — | Create guard with Commerce API URL and JWT |
+| `check_balance(service)` | `void` | Verify sufficient balance; throws on failure |
+| `record_usage(record)` | `void` | Submit a usage record to the Commerce API |
+
+**UsageRecord fields**:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `service` | `std::string` | Service name |
+| `session_id` | `std::string` | Session identifier |
+| `bytes_sent` | `uint64_t` | Total bytes sent |
+| `bytes_received` | `uint64_t` | Total bytes received |
+| `duration_ms` | `uint64_t` | Session duration in milliseconds |
+
+## Error Handling
+
+All SDK functions signal errors by throwing exceptions derived from `hanzo::zt::ZtError`. Use standard try/catch to handle them.
+
+```cpp
+#include <hanzo/zt/context.hpp>
+#include <iostream>
+
+try {
+    auto conn = ctx.dial("my-service");
+    conn.send("hello");
+    auto response = conn.recv();
+} catch (const hanzo::zt::AuthError& e) {
+    std::cerr << "Auth failed: " << e.what() << "\n";
+} catch (const hanzo::zt::ServiceNotFound& e) {
+    std::cerr << "Service not found: " << e.what() << "\n";
+} catch (const hanzo::zt::InsufficientBalance& e) {
+    std::cerr << "Add credits: " << e.what() << "\n";
+} catch (const hanzo::zt::ConnectionClosed& e) {
+    std::cerr << "Connection was closed: " << e.what() << "\n";
+} catch (const hanzo::zt::Timeout& e) {
+    std::cerr << "Operation timed out: " << e.what() << "\n";
+} catch (const hanzo::zt::ZtError& e) {
+    std::cerr << "ZT error: " << e.what() << "\n";
+}
+```
+
+**Exception hierarchy**:
+
+| Exception | Description |
+|-----------|-------------|
+| `ZtError` | Base class for all ZT errors |
+| `AuthError` | Authentication failed (invalid token, expired JWT) |
+| `NotAuthenticated` | No active session; call `authenticate()` first |
+| `InvalidConfig` | Configuration validation failed (missing fields) |
+| `ServiceNotFound` | Named service does not exist |
+| `NoEdgeRouters` | No edge routers available for the requested service |
+| `ConnectionFailed` | Failed to establish connection |
+| `ConnectionClosed` | Connection was closed unexpectedly |
+| `InsufficientBalance` | Billing balance is zero or negative |
+| `BillingError` | Error contacting the Commerce API |
+| `Timeout` | Operation exceeded the configured timeout |
+
+All exceptions carry a human-readable message accessible via `what()`.
+
+## Quick Start
+
+Minimal example that authenticates, dials a service, and exchanges a message:
+
+```cpp
+#include <hanzo/zt/context.hpp>
+#include <hanzo/zt/config.hpp>
+#include <hanzo/zt/auth.hpp>
+#include <iostream>
+
+int main() {
+    try {
+        auto config = hanzo::zt::ConfigBuilder()
+            .controller_url("https://zt-api.hanzo.ai")
+            .credentials(hanzo::zt::HanzoAuth::resolve())
+            .build();
+
+        hanzo::zt::ZtContext ctx(std::move(config));
+        ctx.authenticate();
+
+        auto conn = ctx.dial("echo-service");
+        conn.send("Hello, ZT!");
+
+        auto response = conn.recv();
+        std::cout << "Response: "
+                  << std::string(response.begin(), response.end())
+                  << "\n";
+    } catch (const hanzo::zt::ZtError& e) {
+        std::cerr << "Error: " << e.what() << "\n";
+        return 1;
+    }
+    return 0;
+}
+```
+
+## Complete Example
+
+End-to-end example with authentication, service listing, ZAP transport, billing, and error handling:
+
+```cpp
+#include <hanzo/zt/context.hpp>
+#include <hanzo/zt/config.hpp>
+#include <hanzo/zt/auth.hpp>
+#include <hanzo/zt/billing.hpp>
+#include <hanzo/zt/zap_transport.hpp>
+#include <chrono>
+#include <iostream>
+
+int main() {
+    try {
+        // 1. Configure
+        auto config = hanzo::zt::ConfigBuilder()
+            .controller_url("https://zt-api.hanzo.ai")
+            .credentials(hanzo::zt::HanzoAuth::resolve())
+            .billing(true)
+            .commerce_url("https://api.hanzo.ai/commerce")
+            .connect_timeout(std::chrono::seconds(30))
+            .build();
+
+        // 2. Create context and authenticate
+        hanzo::zt::ZtContext ctx(std::move(config));
+        ctx.authenticate();
+        std::cout << "Authenticated.\n";
+
+        // 3. List available services
+        auto services = ctx.services();
+        for (const auto& svc : services) {
+            std::cout << "Service: " << svc.name
+                      << " (" << svc.id << ")\n";
+        }
+
+        // 4. Dial a service and exchange messages
+        auto start = std::chrono::steady_clock::now();
+        auto conn = ctx.dial("echo-service");
+
+        std::string request = "Hello from C++!";
+        conn.send(request);
+        auto response = conn.recv();
+
+        auto elapsed = std::chrono::steady_clock::now() - start;
+        auto ms = std::chrono::duration_cast<
+            std::chrono::milliseconds>(elapsed).count();
+
+        std::cout << "Response: "
+                  << std::string(response.begin(), response.end())
+                  << " (" << ms << "ms)\n";
+
+        // 5. Use iostream interface
+        conn << "stream request\n" << std::flush;
+        std::string line;
+        std::getline(conn, line);
+        std::cout << "Stream response: " << line << "\n";
+
+        // 6. Record usage
+        hanzo::zt::BillingGuard guard(
+            "https://api.hanzo.ai/commerce",
+            std::getenv("HANZO_API_KEY")
+        );
+
+        hanzo::zt::UsageRecord record;
+        record.service = "echo-service";
+        record.session_id = conn.session_id();
+        record.bytes_sent = request.size() + 16;
+        record.bytes_received = response.size();
+        record.duration_ms = static_cast<uint64_t>(ms);
+
+        guard.record_usage(record);
+        std::cout << "Usage recorded.\n";
+
+        // 7. Connection auto-closes when conn goes out of scope
+        // 8. Context auto-cleans up when ctx goes out of scope
+
+    } catch (const hanzo::zt::AuthError& e) {
+        std::cerr << "Auth failed: " << e.what() << "\n";
+        return 1;
+    } catch (const hanzo::zt::InsufficientBalance& e) {
+        std::cerr << "Insufficient balance: " << e.what() << "\n";
+        return 1;
+    } catch (const hanzo::zt::ZtError& e) {
+        std::cerr << "ZT error: " << e.what() << "\n";
+        return 1;
+    }
+
+    return 0;
+}
+```
+
+### ZAP Transport Example
+
+Using Cap'n Proto RPC over ZT:
+
+```cpp
+#include <hanzo/zt/context.hpp>
+#include <hanzo/zt/config.hpp>
+#include <hanzo/zt/auth.hpp>
+#include <hanzo/zt/zap_transport.hpp>
+#include <capnp/message.h>
+#include <iostream>
+
+int main() {
+    try {
+        auto config = hanzo::zt::ConfigBuilder()
+            .controller_url("https://zt-api.hanzo.ai")
+            .credentials(hanzo::zt::HanzoAuth::resolve())
+            .build();
+
+        hanzo::zt::ZtContext ctx(std::move(config));
+        ctx.authenticate();
+
+        // Create ZAP transport
+        hanzo::zt::ZapTransport transport(ctx, "zap-service");
+
+        // Build and send a Cap'n Proto message
+        capnp::MallocMessageBuilder request;
+        // ... populate request schema ...
+        transport.send(request);
+
+        // Receive response
+        auto response = transport.recv();
+        // ... read response schema ...
+
+        std::cout << "ZAP exchange complete.\n";
+    } catch (const hanzo::zt::ZtError& e) {
+        std::cerr << "Error: " << e.what() << "\n";
+        return 1;
+    }
+
+    return 0;
+}
+```
+
+## Build Configuration
+
+### CMake Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `HANZO_ZT_BUILD_TESTS` | `OFF` | Build unit tests |
+| `HANZO_ZT_BUILD_EXAMPLES` | `OFF` | Build example programs |
+| `HANZO_ZT_WITH_ZAP` | `ON` | Enable ZAP/Cap'n Proto transport |
+
+```bash
+cmake -B build \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DHANZO_ZT_BUILD_TESTS=ON \
+  -DHANZO_ZT_BUILD_EXAMPLES=ON
+cmake --build build
+ctest --test-dir build
+```
+
+### Dependencies
+
+| Library | Purpose |
+|---------|---------|
+| `libzt` | ZeroTier network library (fetched via FetchContent) |
+| `Cap'n Proto` | Serialization and RPC (fetched via FetchContent, optional) |
+| C++17 standard library | Filesystem, optional, chrono, iostream |
+
+The SDK requires a C++17-compliant compiler (GCC 8+, Clang 7+, MSVC 2019+).
