@@ -1,0 +1,902 @@
+---
+title: Go SDK
+description: Complete documentation for sdk-golang, the Go zero-trust networking SDK with ZAP transport, Hanzo IAM authentication, and billing integration.
+---
+
+# Go SDK
+
+The Go SDK (`sdk-golang`) provides idiomatic Go bindings for Hanzo ZT. It includes ZAP transport for Cap'n Proto framing, Hanzo IAM JWT authentication, and billing enforcement via the Hanzo Commerce API.
+
+**Repository**: [github.com/hanzozt/sdk-golang](https://github.com/hanzozt/sdk-golang)
+
+## Installation
+
+```bash
+go get github.com/hanzozt/sdk-golang
+```
+
+Requires Go 1.21 or later.
+
+## Package Structure
+
+The SDK is organized into focused packages:
+
+| Package | Import Path | Purpose |
+|---------|-------------|---------|
+| `zap` | `github.com/hanzozt/sdk-golang/zap` | ZAP transport with 4-byte big-endian length-prefix framing |
+| `auth/hanzo` | `github.com/hanzozt/sdk-golang/auth/hanzo` | Hanzo IAM JWT credentials resolution |
+| `billing` | `github.com/hanzozt/sdk-golang/billing` | Balance checks and usage recording via Commerce API |
+
+## Quick Start
+
+Full working example: authenticate, check balance, dial a service, exchange messages, and record usage.
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+
+	zt "github.com/hanzozt/sdk-golang"
+	"github.com/hanzozt/sdk-golang/auth/hanzo"
+	"github.com/hanzozt/sdk-golang/billing"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Resolve credentials from HANZO_API_KEY or ~/.hanzo/auth.json
+	creds, err := hanzo.ResolveCredentials()
+	if err != nil {
+		log.Fatalf("auth: %v", err)
+	}
+	fmt.Println("Auth:", creds.Display())
+
+	// Build config
+	config, err := zt.NewConfigBuilder().
+		ControllerURL("https://zt-api.hanzo.ai").
+		Credentials(creds).
+		Billing(true).
+		Build()
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
+
+	// Create context and authenticate
+	ztCtx, err := zt.New(ctx, config)
+	if err != nil {
+		log.Fatalf("init: %v", err)
+	}
+	defer ztCtx.Close()
+
+	if err := ztCtx.Authenticate(ctx); err != nil {
+		log.Fatalf("authenticate: %v", err)
+	}
+
+	// Check balance before dialing
+	guard := billing.NewGuard(
+		"https://api.hanzo.ai/commerce",
+		creds.Token(),
+	)
+	if err := guard.CheckBalance(ctx, "echo-service"); err != nil {
+		log.Fatalf("billing: %v", err)
+	}
+
+	// Dial service
+	start := time.Now()
+	conn, err := ztCtx.Dial(ctx, "echo-service")
+	if err != nil {
+		log.Fatalf("dial: %v", err)
+	}
+	defer conn.Close()
+
+	// Send and receive
+	request := []byte("Hello, ZT!")
+	if err := conn.Send(ctx, request); err != nil {
+		log.Fatalf("send: %v", err)
+	}
+
+	response, err := conn.Recv(ctx)
+	if err != nil {
+		log.Fatalf("recv: %v", err)
+	}
+	fmt.Printf("Response: %s\n", response)
+
+	// Record usage
+	duration := time.Since(start)
+	err = guard.RecordUsage(ctx, &billing.UsageRecord{
+		Service:       "echo-service",
+		SessionID:     conn.SessionID(),
+		BytesSent:     uint64(len(request)),
+		BytesReceived: uint64(len(response)),
+		DurationMs:    uint64(duration.Milliseconds()),
+	})
+	if err != nil {
+		log.Printf("usage recording failed: %v", err)
+	}
+}
+```
+
+## Authentication
+
+### JwtCredentials
+
+The `auth/hanzo` package implements the `edge_apis.Credentials` interface using Hanzo IAM JWTs. It authenticates to the ZT controller via the `ext-jwt` auth method.
+
+```go
+import "github.com/hanzozt/sdk-golang/auth/hanzo"
+```
+
+#### Resolution Order
+
+`ResolveCredentials()` checks these sources in order:
+
+1. `HANZO_API_KEY` environment variable
+2. `~/.hanzo/auth.json` file (written by `dev login`)
+
+```go
+creds, err := hanzo.ResolveCredentials()
+if err != nil {
+	// ErrNotAuthenticated if no credentials found
+	log.Fatal(err)
+}
+```
+
+#### Explicit Construction
+
+```go
+// From an API key
+creds := hanzo.FromAPIKey("hzo_sk_live_abc123...")
+
+// From a JWT token directly
+creds := hanzo.FromToken("eyJhbGciOiJSUzI1NiIs...")
+```
+
+#### The Credentials Interface
+
+`JwtCredentials` implements the `edge_apis.Credentials` interface used by the ZT controller client:
+
+```go
+type Credentials interface {
+	// AuthMethod returns the authentication method identifier.
+	// JwtCredentials returns "ext-jwt".
+	AuthMethod() string
+
+	// AuthPayload returns the authentication body sent to
+	// the controller at /edge/client/v1/authenticate
+	AuthPayload() (map[string]interface{}, error)
+
+	// Display returns a human-readable representation
+	// with masked secrets.
+	Display() string
+}
+```
+
+#### Display Format
+
+Credentials are displayed with masked secrets for logging:
+
+```go
+fmt.Println(creds.Display())
+// API key:  "Hanzo API key (...c123)"
+// JWT:      "Hanzo IAM (user@example.com)"
+```
+
+### Auth Flow
+
+The full authentication flow works as follows:
+
+1. **Resolve credentials** -- `HANZO_API_KEY` env var or `~/.hanzo/auth.json` (written by `dev login`)
+2. **Authenticate with ZT controller** -- JWT sent to `/edge/client/v1/authenticate?method=ext-jwt`
+3. **Controller returns session token** -- used for subsequent API calls
+4. **Balance check** -- Commerce API verifies the account has credit (no free tier)
+5. **Dial/bind services** -- session token authorizes service access
+
+```go
+// Step 1: Resolve
+creds, err := hanzo.ResolveCredentials()
+
+// Step 2-3: Authenticate (handled internally)
+err = ztCtx.Authenticate(ctx)
+
+// Step 4: Balance check
+err = guard.CheckBalance(ctx, "my-service")
+
+// Step 5: Dial
+conn, err := ztCtx.Dial(ctx, "my-service")
+```
+
+## ZAP Transport
+
+The `zap` package provides a length-prefixed framing protocol for sending Cap'n Proto payloads over ZT connections. Each frame is preceded by a 4-byte big-endian length prefix.
+
+```go
+import "github.com/hanzozt/sdk-golang/zap"
+```
+
+### Transport
+
+`zap.Transport` wraps a ZT connection (or any `io.ReadWriteCloser`) with framing:
+
+```go
+// From an existing ZT connection
+conn, err := ztCtx.Dial(ctx, "my-service")
+if err != nil {
+	log.Fatal(err)
+}
+transport := zap.NewTransport(conn)
+```
+
+### Framing Protocol
+
+The wire format is straightforward:
+
+```
+[4 bytes: big-endian uint32 payload length][N bytes: payload]
+```
+
+Each call to `SendFrame` writes exactly one framed message. Each call to `RecvFrame` reads exactly one framed message.
+
+### SendFrame and RecvFrame
+
+```go
+// Send a framed payload
+payload := []byte("capnp-serialized-data")
+err := transport.SendFrame(ctx, payload)
+
+// Receive a framed payload
+data, err := transport.RecvFrame(ctx)
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Printf("Received %d bytes\n", len(data))
+```
+
+### io.Reader and io.Writer Interfaces
+
+`Transport` also exposes standard Go interfaces for stream-oriented use:
+
+```go
+// Write raw bytes (without framing)
+n, err := transport.Write([]byte("raw-data"))
+
+// Read raw bytes (without framing)
+buf := make([]byte, 4096)
+n, err := transport.Read(buf)
+```
+
+### Transport Lifecycle
+
+```go
+// Check connection status
+if transport.IsConnected() {
+	fmt.Println("Transport is active")
+}
+
+// Close the transport (also closes the underlying connection)
+err := transport.Close()
+```
+
+## Billing
+
+The `billing` package enforces paid-only access. There is no free tier. Every session requires a positive balance and records usage after completion.
+
+```go
+import "github.com/hanzozt/sdk-golang/billing"
+```
+
+### Guard
+
+`billing.Guard` provides two operations: pre-dial balance checks and post-session usage recording.
+
+```go
+guard := billing.NewGuard(
+	"https://api.hanzo.ai/commerce",  // Commerce API base URL
+	"jwt-or-api-key-token",          // Auth token
+)
+```
+
+### CheckBalance
+
+Call before dialing a service. Returns `ErrInsufficientBalance` if the account has no credit.
+
+```go
+err := guard.CheckBalance(ctx, "my-service")
+if err != nil {
+	switch {
+	case errors.Is(err, zt.ErrInsufficientBalance):
+		fmt.Println("Add credits at https://hanzo.ai/billing")
+	default:
+		fmt.Printf("Billing API error: %v\n", err)
+	}
+	return
+}
+// Balance is sufficient, proceed to dial
+```
+
+### RecordUsage
+
+Call after a session ends to record consumption:
+
+```go
+err := guard.RecordUsage(ctx, &billing.UsageRecord{
+	Service:       "my-service",
+	SessionID:     "sess_abc123",
+	BytesSent:     4096,
+	BytesReceived: 8192,
+	DurationMs:    5000,
+})
+```
+
+### UsageRecord
+
+The `UsageRecord` struct captures session metrics:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `Service` | `string` | Name of the ZT service |
+| `SessionID` | `string` | Session identifier from the connection |
+| `BytesSent` | `uint64` | Total bytes sent by the client |
+| `BytesReceived` | `uint64` | Total bytes received by the client |
+| `DurationMs` | `uint64` | Session duration in milliseconds |
+
+## Configuration
+
+### ConfigBuilder
+
+Use the builder pattern to construct a validated `Config`:
+
+```go
+config, err := zt.NewConfigBuilder().
+	ControllerURL("https://zt-api.hanzo.ai").
+	Credentials(creds).
+	Billing(true).
+	CommerceURL("https://api.hanzo.ai/commerce").
+	ConnectTimeout(30 * time.Second).
+	RequestTimeout(15 * time.Second).
+	Build()
+if err != nil {
+	log.Fatalf("invalid config: %v", err)
+}
+```
+
+### Config Fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `ControllerURL` | `string` | Required | ZT controller URL |
+| `Credentials` | `Credentials` | Required | Auth credentials (JwtCredentials or custom) |
+| `BillingEnabled` | `bool` | `true` | Enable billing checks before dial |
+| `CommerceURL` | `string` | `https://api.hanzo.ai/commerce` | Hanzo Commerce API base URL |
+| `IdentityFile` | `string` | `""` | Path to identity file (cert-based auth) |
+| `ConnectTimeout` | `time.Duration` | `30s` | Connection establishment timeout |
+| `RequestTimeout` | `time.Duration` | `15s` | Controller API request timeout |
+
+### Validation
+
+`Build()` validates all required fields and returns `ErrInvalidConfig` with a descriptive message if validation fails:
+
+```go
+config, err := zt.NewConfigBuilder().Build()
+// err: "invalid config: controller_url is required"
+```
+
+## Error Handling
+
+The SDK uses sentinel errors and typed error values. All errors can be checked with `errors.Is()` or `errors.As()`.
+
+### Sentinel Errors
+
+```go
+import zt "github.com/hanzozt/sdk-golang"
+
+var (
+	ErrNotAuthenticated    // No credentials found or session expired
+	ErrServiceNotFound     // Named service does not exist
+	ErrInsufficientBalance // Account balance is zero or negative
+	ErrInvalidConfig       // Configuration validation failed
+	ErrConnectionClosed    // Connection was closed
+	ErrNoEdgeRouters       // No edge routers available for service
+)
+```
+
+### Error Matching
+
+```go
+conn, err := ztCtx.Dial(ctx, "my-service")
+if err != nil {
+	switch {
+	case errors.Is(err, zt.ErrNotAuthenticated):
+		fmt.Println("Run 'dev login' first or set HANZO_API_KEY")
+	case errors.Is(err, zt.ErrServiceNotFound):
+		fmt.Println("Service does not exist")
+	case errors.Is(err, zt.ErrInsufficientBalance):
+		fmt.Println("Add credits at https://hanzo.ai/billing")
+	case errors.Is(err, zt.ErrNoEdgeRouters):
+		fmt.Println("No edge routers available, try again later")
+	case errors.Is(err, zt.ErrConnectionClosed):
+		fmt.Println("Connection was closed unexpectedly")
+	default:
+		fmt.Printf("Unexpected error: %v\n", err)
+	}
+	return
+}
+```
+
+### Wrapped Errors
+
+Controller, billing, and transport errors wrap underlying causes for inspection:
+
+```go
+var authErr *zt.AuthError
+if errors.As(err, &authErr) {
+	fmt.Printf("Auth failed (method=%s): %s\n",
+		authErr.Method, authErr.Reason)
+}
+
+var billingErr *zt.BillingError
+if errors.As(err, &billingErr) {
+	fmt.Printf("Billing API error (status=%d): %s\n",
+		billingErr.StatusCode, billingErr.Message)
+}
+```
+
+### Full Error Reference
+
+| Error | Description |
+|-------|-------------|
+| `ErrNotAuthenticated` | No active session; call `Authenticate()` or provide credentials |
+| `ErrServiceNotFound` | The named service does not exist on the controller |
+| `ErrNoEdgeRouters` | No edge routers are available to route to the service |
+| `ErrInsufficientBalance` | Account balance is zero or negative |
+| `ErrInvalidConfig` | Config validation failed (missing required fields) |
+| `ErrConnectionClosed` | The connection was closed by the remote side |
+| `AuthError` | Structured auth failure with method and reason |
+| `BillingError` | Commerce API returned a non-200 status |
+| `ControllerError` | ZT controller returned an error response |
+| `TimeoutError` | Operation exceeded configured timeout |
+
+## Context and ZtContext
+
+### Creating a Context
+
+`zt.New()` creates a new ZT context. All operations require a `context.Context` for cancellation and timeouts.
+
+```go
+ztCtx, err := zt.New(ctx, config)
+if err != nil {
+	log.Fatal(err)
+}
+defer ztCtx.Close()
+```
+
+### Methods
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `Authenticate` | `Authenticate(ctx context.Context) error` | Authenticate with the ZT controller |
+| `Dial` | `Dial(ctx context.Context, service string) (*Connection, error)` | Dial a service by name |
+| `Listen` | `Listen(ctx context.Context, service string) (*Listener, error)` | Bind to a service for incoming connections |
+| `Services` | `Services(ctx context.Context) ([]Service, error)` | List available services |
+| `Session` | `Session() *SessionInfo` | Get current session info |
+| `Close` | `Close() error` | Close the context and all connections |
+
+## Listening and Binding
+
+To accept incoming connections, use `Listen()`:
+
+```go
+listener, err := ztCtx.Listen(ctx, "my-service")
+if err != nil {
+	log.Fatal(err)
+}
+defer listener.Close()
+
+fmt.Printf("Listening on %s\n", listener.ServiceName())
+
+for {
+	conn, err := listener.Accept(ctx)
+	if err != nil {
+		log.Printf("accept error: %v", err)
+		break
+	}
+
+	// Handle each connection in a goroutine
+	go func(c *zt.Connection) {
+		defer c.Close()
+
+		data, err := c.Recv(ctx)
+		if err != nil {
+			log.Printf("recv: %v", err)
+			return
+		}
+
+		// Echo back
+		if err := c.Send(ctx, data); err != nil {
+			log.Printf("send: %v", err)
+		}
+	}(conn)
+}
+```
+
+### Listener Methods
+
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `Accept` | `Accept(ctx context.Context) (*Connection, error)` | Block until a new connection arrives |
+| `ServiceName` | `ServiceName() string` | The bound service name |
+| `Close` | `Close() error` | Stop accepting and close the listener |
+
+## Connection
+
+A `Connection` represents a bidirectional ZT session.
+
+### Message-Based API
+
+```go
+// Send a message
+err := conn.Send(ctx, []byte("hello"))
+
+// Receive a message
+data, err := conn.Recv(ctx)
+```
+
+### Stream-Based API
+
+`Connection` implements `io.Reader`, `io.Writer`, and `io.Closer`:
+
+```go
+// Write raw bytes
+n, err := conn.Write([]byte("hello"))
+
+// Read raw bytes
+buf := make([]byte, 4096)
+n, err := conn.Read(buf)
+
+// Close the connection
+err := conn.Close()
+```
+
+### Connection Metadata
+
+```go
+fmt.Println("Service:", conn.ServiceName())
+fmt.Println("Session:", conn.SessionID())
+fmt.Println("Connected:", conn.IsConnected())
+```
+
+## Complete End-to-End Example
+
+A production-ready example showing a client and server communicating over ZT with billing:
+
+### Server
+
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	zt "github.com/hanzozt/sdk-golang"
+	"github.com/hanzozt/sdk-golang/auth/hanzo"
+)
+
+func main() {
+	ctx := context.Background()
+
+	creds, err := hanzo.ResolveCredentials()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	config, err := zt.NewConfigBuilder().
+		ControllerURL("https://zt-api.hanzo.ai").
+		Credentials(creds).
+		Billing(false). // Server-side: no billing check
+		Build()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ztCtx, err := zt.New(ctx, config)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer ztCtx.Close()
+
+	if err := ztCtx.Authenticate(ctx); err != nil {
+		log.Fatal(err)
+	}
+
+	listener, err := ztCtx.Listen(ctx, "echo-service")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer listener.Close()
+
+	fmt.Println("Server listening on echo-service")
+
+	for {
+		conn, err := listener.Accept(ctx)
+		if err != nil {
+			log.Printf("accept: %v", err)
+			return
+		}
+
+		go func(c *zt.Connection) {
+			defer c.Close()
+			for {
+				data, err := c.Recv(ctx)
+				if err != nil {
+					return
+				}
+				if err := c.Send(ctx, data); err != nil {
+					return
+				}
+			}
+		}(conn)
+	}
+}
+```
+
+### Client
+
+```go
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"time"
+
+	zt "github.com/hanzozt/sdk-golang"
+	"github.com/hanzozt/sdk-golang/auth/hanzo"
+	"github.com/hanzozt/sdk-golang/billing"
+)
+
+func main() {
+	ctx := context.Background()
+
+	// Authenticate
+	creds, err := hanzo.ResolveCredentials()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("Auth:", creds.Display())
+
+	config, err := zt.NewConfigBuilder().
+		ControllerURL("https://zt-api.hanzo.ai").
+		Credentials(creds).
+		Billing(true).
+		Build()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ztCtx, err := zt.New(ctx, config)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer ztCtx.Close()
+
+	if err := ztCtx.Authenticate(ctx); err != nil {
+		log.Fatal(err)
+	}
+
+	// List available services
+	services, err := ztCtx.Services(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, svc := range services {
+		fmt.Printf("  Service: %s (%s)\n", svc.Name, svc.ID)
+	}
+
+	// Check billing
+	guard := billing.NewGuard(
+		"https://api.hanzo.ai/commerce",
+		creds.Token(),
+	)
+	if err := guard.CheckBalance(ctx, "echo-service"); err != nil {
+		if errors.Is(err, zt.ErrInsufficientBalance) {
+			log.Fatal("No balance. Add credits at https://hanzo.ai/billing")
+		}
+		log.Fatal(err)
+	}
+
+	// Dial and exchange messages
+	start := time.Now()
+	conn, err := ztCtx.Dial(ctx, "echo-service")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	messages := []string{"Hello", "World", "Goodbye"}
+	var totalSent, totalRecv uint64
+
+	for _, msg := range messages {
+		payload := []byte(msg)
+		if err := conn.Send(ctx, payload); err != nil {
+			log.Fatal(err)
+		}
+		totalSent += uint64(len(payload))
+
+		resp, err := conn.Recv(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+		totalRecv += uint64(len(resp))
+		fmt.Printf("  Sent: %s -> Received: %s\n", msg, resp)
+	}
+
+	// Record usage
+	duration := time.Since(start)
+	err = guard.RecordUsage(ctx, &billing.UsageRecord{
+		Service:       "echo-service",
+		SessionID:     conn.SessionID(),
+		BytesSent:     totalSent,
+		BytesReceived: totalRecv,
+		DurationMs:    uint64(duration.Milliseconds()),
+	})
+	if err != nil {
+		log.Printf("Warning: usage recording failed: %v", err)
+	}
+
+	fmt.Printf("Session complete: %d bytes sent, %d bytes received, %dms\n",
+		totalSent, totalRecv, duration.Milliseconds())
+}
+```
+
+## Testing
+
+The SDK includes 5 tests covering credentials resolution, config validation, billing guards, ZAP framing, and error types.
+
+```bash
+go test ./...
+```
+
+### Example Tests
+
+```go
+package hanzo_test
+
+import (
+	"testing"
+
+	zt "github.com/hanzozt/sdk-golang"
+	"github.com/hanzozt/sdk-golang/auth/hanzo"
+)
+
+func TestConfigBuilderSuccess(t *testing.T) {
+	creds := hanzo.FromToken("test-token-abc")
+	config, err := zt.NewConfigBuilder().
+		ControllerURL("https://zt-api.hanzo.ai").
+		Credentials(creds).
+		Billing(false).
+		Build()
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	if config.ControllerURL != "https://zt-api.hanzo.ai" {
+		t.Errorf("unexpected controller URL: %s", config.ControllerURL)
+	}
+	if config.BillingEnabled {
+		t.Error("expected billing disabled")
+	}
+}
+
+func TestConfigBuilderMissingController(t *testing.T) {
+	creds := hanzo.FromToken("test-token")
+	_, err := zt.NewConfigBuilder().
+		Credentials(creds).
+		Build()
+	if err == nil {
+		t.Fatal("expected error for missing controller URL")
+	}
+}
+
+func TestJwtCredentialsFromToken(t *testing.T) {
+	creds := hanzo.FromToken("test-token-12345")
+	if creds.AuthMethod() != "ext-jwt" {
+		t.Errorf("expected ext-jwt, got: %s", creds.AuthMethod())
+	}
+	display := creds.Display()
+	if display == "" {
+		t.Error("display should not be empty")
+	}
+	// Should contain masked suffix
+	if !containsSubstring(display, "...12345") {
+		t.Errorf("display should contain masked suffix, got: %s", display)
+	}
+}
+
+func TestJwtCredentialsFromAPIKey(t *testing.T) {
+	creds := hanzo.FromAPIKey("hzo_sk_live_abc123")
+	if creds.AuthMethod() != "ext-jwt" {
+		t.Errorf("expected ext-jwt, got: %s", creds.AuthMethod())
+	}
+	display := creds.Display()
+	if !containsSubstring(display, "Hanzo API key") {
+		t.Errorf("expected 'Hanzo API key' in display, got: %s", display)
+	}
+}
+
+func TestSentinelErrors(t *testing.T) {
+	errors := []error{
+		zt.ErrNotAuthenticated,
+		zt.ErrServiceNotFound,
+		zt.ErrInsufficientBalance,
+		zt.ErrInvalidConfig,
+		zt.ErrConnectionClosed,
+	}
+	for _, err := range errors {
+		if err == nil {
+			t.Error("sentinel error should not be nil")
+		}
+		if err.Error() == "" {
+			t.Error("sentinel error message should not be empty")
+		}
+	}
+}
+
+func containsSubstring(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr ||
+		len(s) > len(substr) && searchString(s, substr))
+}
+
+func searchString(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
+}
+```
+
+Run the full test suite:
+
+```bash
+cd sdk-golang
+go test -v ./...
+=== RUN   TestConfigBuilderSuccess
+--- PASS: TestConfigBuilderSuccess (0.00s)
+=== RUN   TestConfigBuilderMissingController
+--- PASS: TestConfigBuilderMissingController (0.00s)
+=== RUN   TestJwtCredentialsFromToken
+--- PASS: TestJwtCredentialsFromToken (0.00s)
+=== RUN   TestJwtCredentialsFromAPIKey
+--- PASS: TestJwtCredentialsFromAPIKey (0.00s)
+=== RUN   TestSentinelErrors
+--- PASS: TestSentinelErrors (0.00s)
+PASS
+ok  	github.com/hanzozt/sdk-golang	0.003s
+```
+
+## Dependencies
+
+| Module | Purpose |
+|--------|---------|
+| `encoding/binary` | Big-endian length-prefix encoding for ZAP frames |
+| `net/http` | HTTP client for controller and Commerce API calls |
+| `encoding/json` | JSON serialization for API payloads |
+| `context` | Cancellation, timeouts, and deadline propagation |
+| `github.com/openziti/edge-api-go` | ZT edge API client and service models |
+| `github.com/openziti/sdk-golang` | Underlying ZT SDK (connection, listener, identity) |
+
+## Environment Variables
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `HANZO_API_KEY` | API key for authentication (highest priority) | None |
+| `HANZO_AUTH_FILE` | Override path to auth.json | `~/.hanzo/auth.json` |
+| `HANZO_ZT_CONTROLLER` | Override controller URL | None |
+| `HANZO_COMMERCE_URL` | Override Commerce API URL | `https://api.hanzo.ai/commerce` |

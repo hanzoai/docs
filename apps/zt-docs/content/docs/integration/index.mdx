@@ -1,0 +1,157 @@
+---
+title: Integration
+description: MCP, ZAP, gateway, and dev CLI integration with Hanzo ZT
+---
+
+# Integration
+
+Hanzo ZT integrates with the broader Hanzo ecosystem through ZAP transport, MCP protocol, the API gateway, and the dev CLI.
+
+## ZAP Transport
+
+ZT implements the ZAP transport trait, enabling Cap'n Proto RPC over the zero-trust overlay. The `zt://` URL scheme is registered with the ZAP transport system.
+
+```rust title="Rust"
+use hanzo_zt::ZtTransport;
+
+// Create transport from controller URL and service name
+let transport = ZtTransport::new(
+    "https://zt-api.hanzo.ai",
+    "my-service",
+).await?;
+
+// The transport implements hanzo_zap::transport::Transport
+transport.send(b"zap-frame").await?;
+let frame = transport.recv().await?;
+
+// Check connection state
+println!("Connected: {}", transport.is_connected());
+println!("Local: {:?}", transport.local_addr());   // "zt://local/my-service"
+println!("Peer: {:?}", transport.peer_addr());     // "zt://my-service"
+```
+
+### zt:// URL Scheme
+
+The `zt://` URL scheme routes ZAP RPC calls through the ZT fabric:
+
+```text
+zt://service-name
+zt://service-name?controller=https://zt-api.hanzo.ai
+```
+
+Any ZAP client that supports pluggable transports can use ZT connections by specifying a `zt://` URL instead of `tcp://` or `ws://`.
+
+### Framing Protocol
+
+ZAP uses 4-byte big-endian length-prefix framing over ZT connections:
+
+```text
+[4 bytes: big-endian uint32 length][N bytes: Cap'n Proto payload]
+```
+
+All 6 SDKs implement this framing consistently, enabling cross-language ZAP communication over the ZT fabric.
+
+## MCP Integration
+
+ZT provides a transport layer for MCP (Model Context Protocol) servers, enabling zero-trust MCP connections for AI tool calling:
+
+```typescript title="TypeScript"
+import { ZtContext, HanzoAuth } from '@hanzo/zt';
+
+// Connect to an MCP server through ZT
+const ctx = await ZtContext.create({
+  controllerUrl: 'https://zt-api.hanzo.ai',
+  credentials: HanzoAuth.resolve(),
+  billing: true,
+});
+
+await ctx.authenticate();
+const conn = await ctx.dial('mcp-server');
+
+// Use the ZT connection as MCP transport
+// MCP messages flow through the zero-trust overlay
+```
+
+### MCP over ZT Benefits
+
+| Feature | Without ZT | With ZT |
+|---------|-----------|---------|
+| **Encryption** | TLS (optional) | mTLS (always) |
+| **Authentication** | API keys | Hanzo IAM JWT + x509 |
+| **Network exposure** | Open ports required | No open ports |
+| **Billing** | Application-level | Transport-level |
+| **NAT traversal** | Manual port forwarding | Automatic |
+
+## Dev CLI Integration
+
+The Hanzo Dev CLI (`dev`) supports ZT connections via the `--cloud` flag:
+
+```bash
+# Connect via WebSocket relay (default)
+dev --cloud
+
+# Connect via ZT fabric
+dev --cloud zt://hanzo-relay
+
+# Connect to local bot gateway
+dev --cloud local
+```
+
+When a `zt://` URL is specified, the CLI:
+1. Resolves Hanzo IAM credentials from `HANZO_API_KEY` or `~/.hanzo/auth.json`
+2. Authenticates with the ZT controller at `https://zt-api.hanzo.ai`
+3. Checks billing balance
+4. Dials the relay service through the ZT fabric
+5. Establishes a tunnel connection for remote management
+
+### Dev CLI Cloud Modes
+
+| Mode | URL | Transport |
+|------|-----|-----------|
+| **Cloud relay** | `wss://api.hanzo.ai/v1/relay` | WebSocket |
+| **ZT fabric** | `zt://hanzo-relay` | Zero Trust |
+| **Local gateway** | `ws://127.0.0.1:18789/v1/tunnel` | WebSocket |
+
+## Gateway Integration
+
+The Hanzo API Gateway can route requests through ZT networks for backend services that require zero-trust connectivity:
+
+```text
+Internet ──HTTPS──> API Gateway ──ZT──> Backend Service
+                   (api.hanzo.ai)     (no public ports)
+```
+
+Gateway configuration supports ZT backends:
+- Routes like `/v1/*` can target ZT services instead of HTTP backends
+- The gateway handles JWT authentication and passes the ZT session through
+- Billing is enforced at both the gateway level (rate limiting) and ZT level (balance check)
+
+## Tunnel Integration
+
+The `hanzo-tunnel` crate provides WebSocket-based tunneling that can be backed by ZT transport:
+
+```rust title="Rust"
+use hanzo_tunnel::{TunnelConfig, AppKind};
+
+let config = TunnelConfig {
+    relay_url: "zt://hanzo-relay".to_string(),
+    auth_token: auth_token.clone(),
+    app_kind: AppKind::Dev,
+    // ... other config
+};
+
+// The tunnel transparently uses ZT when given a zt:// URL
+let (connection, session_url) = hanzo_tunnel::connect_and_register(config).await?;
+```
+
+## Cross-Language Interoperability
+
+Since all 6 SDKs implement the same ZAP framing protocol and ZT transport, services written in different languages can communicate seamlessly:
+
+```text
+Rust Service  ──ZAP/ZT──>  Python Service
+Go Service    ──ZAP/ZT──>  TypeScript Service
+C++ Service   ──ZAP/ZT──>  C Service
+```
+
+The key to interoperability is the shared 4-byte BE length-prefix framing and consistent authentication flow across all SDKs.

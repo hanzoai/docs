@@ -1,0 +1,86 @@
+---
+title: Overview
+description: Hanzo ZT architecture, concepts, design principles, and SDK comparison
+---
+
+# Overview
+
+Hanzo ZT is a zero-trust overlay networking SDK suite that provides secure, authenticated, and metered connections between services. It combines ZeroTier-style overlay networking with ZAP (Cap'n Proto RPC) transport for high-performance AI service communication.
+
+## Design Principles
+
+1. **Zero Trust** — Never trust the network. Every connection is authenticated and encrypted with x509 mTLS certificates issued by a central controller.
+2. **No Open Ports** — NAT traversal is built into the fabric. Services never expose ports to the public internet. All connectivity flows through encrypted tunnels with UDP hole punching.
+3. **Billing-First** — Usage metering and balance checks are enforced at the transport layer, not the application layer. No free tier — every `dial()` requires a positive balance.
+4. **Language Parity** — All 6 SDKs (Rust, Go, TypeScript, Python, C++, C) provide the same API surface and behavior guarantees.
+5. **ZAP Native** — Cap'n Proto RPC is a first-class citizen via the ZAP transport trait, enabling zero-copy binary serialization over the ZT fabric.
+
+## Components
+
+| Component | Description |
+|-----------|-------------|
+| **ZT Controller** | Manages networks, identities, x509 certificates, and access policies. REST API at `/edge/client/v1`. |
+| **ZT Fabric** | The overlay network that connects nodes via mTLS tunnels with automatic NAT traversal. |
+| **ZAP Client** | Cap'n Proto RPC client that runs over the ZT transport using 4-byte BE length-prefix framing. |
+| **Hanzo IAM** | JWT-based authentication via [hanzo.id](https://hanzo.id). External JWT auth method for the controller. |
+| **Billing Engine** | Balance checks before dial and usage recording after session via the Hanzo Commerce API. |
+
+## How It Works
+
+```text
+1. Authenticate   →  Present JWT to ZT Controller
+2. Get Identity   →  Controller issues x509 mTLS certificate
+3. Check Balance  →  Verify positive balance via Commerce API
+4. Dial Service   →  Establish mTLS tunnel through ZT fabric
+5. Transfer Data  →  Send/receive through encrypted channel
+6. Record Usage   →  Post usage metrics to Commerce API
+```
+
+## SDK Comparison
+
+All SDKs follow the same pattern but with language-idiomatic APIs:
+
+| Feature | Rust | Go | TypeScript | Python | C++ | C |
+|---------|------|-----|------------|--------|-----|---|
+| **Async I/O** | Tokio | goroutines | async/await | asyncio | std::future | callbacks |
+| **ZAP Transport** | Trait impl | Interface | Class | Class | RAII class | Functions |
+| **Config** | Builder pattern | Builder pattern | Interface | Dataclass | Builder | Struct |
+| **Error handling** | Result/thiserror | error values | Error classes | Exceptions | Exceptions | Return codes |
+| **Credential resolution** | env then file | env then file | env then file | env then file | env then file | env then file |
+| **Tests** | 9 pass | 5 pass | Complete | 11 pass | Builds clean | Syntax pass |
+
+## When to Use Hanzo ZT
+
+**Use ZT when you need:**
+- Service-to-service communication without exposing ports
+- mTLS encryption for all traffic regardless of network
+- Centralized identity and access management
+- Transport-level billing and usage metering
+- Cross-language RPC via ZAP/Cap'n Proto
+- NAT traversal for services behind firewalls
+
+**Don't use ZT when:**
+- Public HTTP APIs with standard TLS suffice
+- You're building a public-facing web application
+- Low-latency requirements preclude overlay networking overhead
+
+## Relationship to ZAP
+
+ZAP (Zero-copy Application Protocol) provides the RPC layer, while ZT provides the networking layer:
+
+| | ZAP | ZT |
+|-|-----|-----|
+| **Purpose** | RPC protocol | Overlay networking |
+| **Serialization** | Cap'n Proto | N/A (transport) |
+| **Encryption** | Optional | Always (mTLS) |
+| **Authentication** | App-level | Transport-level |
+| **URL scheme** | `tcp://`, `ws://` | `zt://` |
+
+When combined, ZAP over ZT gives you zero-copy RPC with zero-trust networking — the best of both worlds.
+
+## Next Steps
+
+- [Getting Started](/docs/getting-started) — Install and connect in minutes
+- [Architecture](/docs/architecture) — Deep dive into the transport stack
+- [SDK Documentation](/docs/sdks) — Language-specific guides
+- [Integration](/docs/integration) — MCP, gateway, and dev CLI
