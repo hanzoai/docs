@@ -1,31 +1,55 @@
 ---
 title: zen-director
-description: Text-to-video generation
+description: Text-to-video and image-to-video generation
 ---
 
 # zen-director
 
-Text-to-video generation
+Video generation model for text-to-video and image-to-video synthesis.
 
 ## Overview
 
-[Model documentation coming from existing content]
+zen-director generates video content from text prompts or reference images. Part of the Zen multimodal family for creative content generation.
+
+## Capabilities
+
+- **Text-to-video**: Generate video clips from text descriptions
+- **Image-to-video**: Animate still images into video sequences
+- **Variable duration**: Generate clips from 2 to 16 seconds
+- **Multiple resolutions**: 480p, 720p, 1080p output
+- **Style control**: Cinematic, animation, documentary, and more
 
 ## Quick Start
 
 ```python
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from diffusers import DiffusionPipeline
 
-model = AutoModelForCausalLM.from_pretrained("zenlm/zen-director")
-tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-director")
+pipe = DiffusionPipeline.from_pretrained("zenlm/zen-director")
 
-inputs = tokenizer("Your prompt", return_tensors="pt")
-outputs = model.generate(**inputs)
-print(tokenizer.decode(outputs[0]))
+video = pipe(
+    "A time-lapse of clouds moving over a mountain range at sunset",
+    num_frames=48,
+    num_inference_steps=50
+)
+
+# Export video frames
+from diffusers.utils import export_to_video
+export_to_video(video.frames[0], "output.mp4")
+```
+
+### Via Hanzo API
+
+```bash
+curl https://api.hanzo.ai/v1/videos/generations \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen-director",
+    "prompt": "Aerial shot of a futuristic city at night"
+  }'
 ```
 
 ## Resources
 
-- 🤗 [HuggingFace](https://huggingface.co/zenlm/zen-director)
-- 📦 [GitHub](https://github.com/zenlm/zen-director)
-- 📄 [Paper](/papers/zen-director_whitepaper.pdf)
+- [HuggingFace](https://huggingface.co/zenlm/zen-director)
+- [GitHub](https://github.com/zenlm/zen-director)
