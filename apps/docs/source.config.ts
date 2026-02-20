@@ -92,6 +92,7 @@ export const docs = defineDocs({
         remarkPlugins: isLint
           ? [remarkElementIds]
           : [
+              remarkPassthroughUnknownJsx,
               remarkSteps,
               remarkMath,
               [remarkFeedbackBlock, feedbackOptions],
@@ -166,6 +167,53 @@ function transformerEscape(): ShikiTransformer {
       replace(hast);
       return hast;
     },
+  };
+}
+
+/**
+ * Remark plugin that converts unknown JSX components (from upstream doc
+ * platforms like Mintlify, Docusaurus, GitBook, etc.) into JSX fragments
+ * so MDX doesn't generate _missingMdxReference checks that crash SSG.
+ *
+ * Only applies to files inside content/docs/projects/.
+ */
+function remarkPassthroughUnknownJsx(): Transformer<Root, Root> {
+  // Components that are actually provided via getMDXComponents() or imported.
+  // Everything else in project docs gets converted to a fragment.
+  const knownComponents = new Set([
+    // @hanzo/docs-base-ui / fumadocs built-ins
+    'Callout', 'Card', 'Cards', 'Banner', 'TypeTable',
+    'DocsPage', 'DocsBody',
+    // Explicitly provided in page.tsx
+    'Tabs', 'Tab', 'TabsContent', 'TabsList', 'TabsTrigger',
+    'Files', 'File', 'Folder',
+    'Accordion', 'Accordions',
+    'Mermaid', 'Wrapper', 'Installation', 'Customisation',
+    'FeedbackBlock', 'DocsCategory',
+    // Twoslash
+    'Popup', 'PopupContent', 'PopupTrigger',
+  ]);
+
+  return (tree, file) => {
+    // Only transform upstream project docs — leave first-party docs alone
+    // so unknown components still surface as errors during development.
+    const filePath = file.path ?? file.history[0] ?? '';
+    if (!filePath.includes('content/docs/projects/') &&
+        !filePath.includes('content\\docs\\projects\\')) {
+      return;
+    }
+
+    visit(tree, ['mdxJsxFlowElement', 'mdxJsxTextElement'], (node: any) => {
+      if (!node.name) return; // already a fragment
+      // Only target PascalCase names (custom components), not lowercase HTML
+      if (!/^[A-Z]/.test(node.name)) return;
+      // Keep known components that we actually provide
+      if (knownComponents.has(node.name)) return;
+
+      // Convert to JSX fragment: strips the unknown tag but keeps children
+      node.name = null;
+      node.attributes = [];
+    });
   };
 }
 
