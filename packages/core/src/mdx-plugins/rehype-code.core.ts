@@ -22,6 +22,7 @@ export function rehypeCodeDefaultOptions(config: ResolvedShikiConfig): RehypeCod
     ...config.defaultThemes,
     defaultColor: false,
     defaultLanguage: 'plaintext',
+    fallbackLanguage: 'text',
     transformers: [
       transformerNotationHighlight({
         matchAlgorithm: 'v3',
