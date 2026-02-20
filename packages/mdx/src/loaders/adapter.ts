@@ -145,11 +145,22 @@ export type WebpackLoader = (
 export function toWebpack(loader: Loader): WebpackLoader {
   return async function (source, callback) {
     try {
+      const isProjectDoc =
+        this.resourcePath.includes('content/docs/projects/') ||
+        this.resourcePath.includes('content\\docs\\projects\\');
+
+      // For upstream project docs, pre-process the raw MDX source to
+      // escape curly-brace template placeholders (e.g. {region}) that
+      // MDX would otherwise interpret as JavaScript expressions.
+      const processedSource = isProjectDoc
+        ? escapeTemplatePlaceholders(source)
+        : source;
+
       const result = await loader.load({
         filePath: this.resourcePath,
         query: parse(this.resourceQuery.slice(1)),
         getSource() {
-          return source;
+          return processedSource;
         },
         development: this.mode === 'development',
         compiler: this,
@@ -239,6 +250,54 @@ function wrapMdxExportSafe(code: string): string {
   );
 
   return withWrapper;
+}
+
+/**
+ * Escape curly-brace template placeholders in upstream MDX source so
+ * that MDX doesn't interpret them as JavaScript expressions.
+ *
+ * Targets patterns like `{region}`, `{variable_name}`, `{account-id}`
+ * that appear outside of fenced code blocks.  Inside code fences the
+ * content is already treated as literal text by the MDX parser.
+ *
+ * In MDX, `\{` produces a literal `{` character.
+ */
+function escapeTemplatePlaceholders(source: string): string {
+  const lines = source.split('\n');
+  let inCodeFence = false;
+  const result: string[] = [];
+
+  for (const line of lines) {
+    // Track fenced code blocks (``` or ~~~)
+    if (/^(\s*)(```|~~~)/.test(line)) {
+      inCodeFence = !inCodeFence;
+      result.push(line);
+      continue;
+    }
+
+    if (inCodeFence) {
+      result.push(line);
+      continue;
+    }
+
+    // Outside code fences: escape {identifier} patterns that look like
+    // template placeholders (e.g. {region}, {account-id}).  Only targets
+    // lowercase identifiers to avoid interfering with JSX expressions.
+    result.push(
+      line.replace(
+        /\{([a-z][a-z0-9_-]*)\}/g,
+        (match, identifier) => {
+          // Don't escape known MDX/JSX expression patterns
+          if (['children', 'props', 'true', 'false', 'null', 'undefined'].includes(identifier)) {
+            return match;
+          }
+          return `\\{${identifier}\\}`;
+        },
+      ),
+    );
+  }
+
+  return result.join('\n');
 }
 
 export function toBun(loader: Loader) {
