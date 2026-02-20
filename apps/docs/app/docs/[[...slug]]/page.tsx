@@ -182,5 +182,17 @@ export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): P
 }
 
 export function generateStaticParams() {
-  return source.generateParams();
+  const params = source.generateParams();
+
+  // During static export, exclude heavy upstream API reference pages to
+  // keep memory usage within CI runner limits.  These pages will return
+  // 404 in the static build (acceptable for auto-generated API docs).
+  if (process.env.NEXT_EXPORT === '1') {
+    return params.filter((p) => {
+      const slug = p.slug?.join('/') ?? '';
+      return !slug.includes('projects/') || !slug.includes('/api-reference');
+    });
+  }
+
+  return params;
 }
