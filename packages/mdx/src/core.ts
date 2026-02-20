@@ -322,6 +322,13 @@ export function createCore(options: CoreOptions) {
           .replace(/\b\w/g, (c) => c.toUpperCase());
       }
 
+      // Provide default description when null/undefined.
+      // YAML `null` and missing keys both need a safe fallback because
+      // the zod schema expects `string | undefined`, never `null`.
+      if (data.description == null) {
+        data.description = '';
+      }
+
       data = await transformMetadata(options, data);
       for (const plugin of plugins) {
         if (plugin.doc?.frontmatter) data = (await plugin.doc.frontmatter.call(ctx, data)) ?? data;
