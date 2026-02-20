@@ -106,6 +106,10 @@ export const docs = defineDocs({
     schema: metaSchema.extend({
       description: z.string().optional(),
     }),
+    // Only pick up actual meta files — the default **/*.{json,yaml} pattern
+    // also matches data files (openapi.json, package.json, etc.) which then
+    // get processed through the MDX loader and corrupt the build.
+    files: ['**/meta.json', '**/meta.yaml'],
   },
 });
 
