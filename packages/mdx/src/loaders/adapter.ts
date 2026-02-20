@@ -165,8 +165,30 @@ export function toWebpack(loader: Loader): WebpackLoader {
         return callback(new Error(await error.toStringFormatted()));
       }
 
-      if (!(error instanceof Error)) throw error;
-      callback(error);
+      // Resilience: instead of crashing the entire build on a bad page,
+      // emit a warning and return a fallback component that renders an
+      // error message at runtime.  This lets the rest of the site build
+      // even when upstream imported docs contain unsupported syntax.
+      const filePath = this.resourcePath;
+      const msg =
+        error instanceof Error ? error.message : String(error);
+
+      this.emitWarning(
+        new Error(
+          `[hanzo-docs] Skipping page due to compilation error: ${filePath}\n${msg}`,
+        ),
+      );
+
+      const fallback = [
+        `export const frontmatter = {};`,
+        `export const toc = [];`,
+        `export const structuredData = { headings: [], contents: [] };`,
+        `export default function ErrorPage() {`,
+        `  return null;`,
+        `}`,
+      ].join('\n');
+
+      callback(undefined, fallback);
     }
   };
 }

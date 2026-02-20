@@ -71,6 +71,9 @@ export async function mdxPreset(options: MDXBundlerPresetOptions = {}): Promise<
 
   const rehypePlugins = await resolvePlugins(
     (v) => [
+      // rehype-raw parses raw HTML strings (from upstream markdown) into proper
+      // HAST element nodes so that hast-util-to-estree can handle them.
+      import('rehype-raw').then((mod) => [mod.default, { passThrough: ['mdxjsEsm', 'mdxJsxFlowElement', 'mdxJsxTextElement', 'mdxFlowExpression', 'mdxTextExpression'] }]),
       rehypeCodeOptions !== false &&
         import('@/mdx-plugins/rehype-code').then((mod) => [mod.rehypeCode, rehypeCodeOptions]),
       ...v,

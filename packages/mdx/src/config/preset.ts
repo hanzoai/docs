@@ -113,8 +113,14 @@ export function applyMdxPreset(
       mdxOptions.remarkPlugins,
     );
 
+    // rehype-raw parses raw HTML strings (from upstream markdown) into proper
+    // HAST element nodes so that hast-util-to-estree (used by MDX) can handle
+    // them.  It must run before any other rehype plugin that inspects the tree.
+    const { default: rehypeRaw } = await import('rehype-raw');
+
     const rehypePlugins = pluginOption(
       (v) => [
+        [rehypeRaw, { passThrough: ['mdxjsEsm', 'mdxJsxFlowElement', 'mdxJsxTextElement', 'mdxFlowExpression', 'mdxTextExpression'] }],
         rehypeCodeOptions !== false && [plugins.rehypeCode, rehypeCodeOptions],
         ...v,
         plugins.rehypeToc,
