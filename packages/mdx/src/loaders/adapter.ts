@@ -158,7 +158,17 @@ export function toWebpack(loader: Loader): WebpackLoader {
       if (result === null) {
         callback(undefined, source);
       } else {
-        callback(undefined, result.code, result.map as string);
+        let code = result.code;
+
+        // For upstream project docs, wrap the default export in try/catch
+        // so that runtime errors (undefined variables from template
+        // placeholders, etc.) don't crash the entire SSG build.
+        if (this.resourcePath.includes('content/docs/projects/') ||
+            this.resourcePath.includes('content\\docs\\projects\\')) {
+          code = wrapMdxExportSafe(code);
+        }
+
+        callback(undefined, code, result.map as string);
       }
     } catch (error) {
       if (error instanceof ValidationError) {
@@ -191,6 +201,44 @@ export function toWebpack(loader: Loader): WebpackLoader {
       callback(undefined, fallback);
     }
   };
+}
+
+/**
+ * Wrap the compiled MDX default export in a try/catch so that runtime
+ * errors during SSG prerendering (e.g. undefined template variables,
+ * broken expressions from upstream docs) render null instead of
+ * crashing the entire build.
+ */
+function wrapMdxExportSafe(code: string): string {
+  // Match the MDX default export function.
+  // MDX v3 compiles to: function MDXContent(props = {}) { ... }
+  // then: export default MDXContent;
+  // OR: export default function MDXContent(props = {}) { ... }
+  //
+  // Strategy: rename the original function and create a safe wrapper.
+  const renamed = code.replace(
+    /function\s+MDXContent\s*\(/,
+    'function _UnsafeMDXContent(',
+  );
+
+  if (renamed === code) {
+    // If the pattern didn't match, return as-is
+    return code;
+  }
+
+  // Replace the export to point to our wrapper
+  const withWrapper = renamed.replace(
+    /export\s+default\s+MDXContent\b/,
+    [
+      'function MDXContent(props) {',
+      '  try { return _UnsafeMDXContent(props); }',
+      '  catch (e) { return null; }',
+      '}',
+      'export default MDXContent',
+    ].join('\n'),
+  );
+
+  return withWrapper;
 }
 
 export function toBun(loader: Loader) {
