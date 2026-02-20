@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import { existsSync } from 'node:fs';
 import type { Image, Root } from 'mdast';
 import type { Transformer } from 'unified';
 import { visit } from 'unist-util-visit';
@@ -108,6 +109,15 @@ export function remarkImage({
       }
 
       if (src.type === 'file' && useImport) {
+        // Check that the file exists before generating an import statement.
+        // Without this check, missing files produce uncatchable webpack module
+        // resolution errors instead of being handled by the onError option.
+        if (!existsSync(src.file)) {
+          throw new Error(
+            `[Remark Image] Cannot resolve image: file does not exist: ${src.file}`,
+          );
+        }
+
         // Unique variable name for the given static image URL
         const variableName = `__img${importsToInject.length}`;
         const hasBlur =

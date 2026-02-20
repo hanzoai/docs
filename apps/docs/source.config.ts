@@ -59,6 +59,11 @@ export const docs = defineDocs({
         shiki: shikiConfig,
       };
       return applyMdxPreset({
+        remarkImageOptions: {
+          // Imported upstream docs may reference images that don't exist in
+          // this monorepo. Log a warning instead of failing the build.
+          onError: 'ignore',
+        },
         rehypeCodeOptions: isLint
           ? false
           : {
