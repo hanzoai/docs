@@ -314,6 +314,14 @@ export function createCore(options: CoreOptions) {
         ...options,
       };
 
+      // Provide default title from filename when frontmatter lacks one
+      if (!data.title) {
+        const basename = path.basename(options.filePath, path.extname(options.filePath));
+        data.title = basename
+          .replace(/[-_]/g, ' ')
+          .replace(/\b\w/g, (c) => c.toUpperCase());
+      }
+
       data = await transformMetadata(options, data);
       for (const plugin of plugins) {
         if (plugin.doc?.frontmatter) data = (await plugin.doc.frontmatter.call(ctx, data)) ?? data;
