@@ -28,9 +28,16 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Add swap for large build
+        run: |
+          sudo fallocate -l 8G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+
       - run: pnpm build --filter=docs
         env:
-          NODE_OPTIONS: '--max-old-space-size=8192'
+          NODE_OPTIONS: '--max-old-space-size=12288'
 
       - run: npx wrangler pages deploy apps/docs/out --project-name=hanzo-docs --commit-dirty=true
         env:
