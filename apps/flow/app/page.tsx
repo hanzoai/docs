@@ -105,7 +105,7 @@ export default function Page() {
               Docs
             </a>
             <a
-              href="https://flow.hanzo.ai"
+              href="https://app.flow.hanzo.ai"
               className={cn(buttonVariants({ size: 'sm' }))}
             >
               Open Flow
@@ -141,7 +141,7 @@ export default function Page() {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <a
-                href="https://flow.hanzo.ai"
+                href="https://app.flow.hanzo.ai"
                 className={cn(buttonVariants({ size: 'lg' }))}
               >
                 Open Flow
@@ -185,7 +185,7 @@ export default function Page() {
               <pre className="overflow-x-auto p-6 text-sm font-mono leading-relaxed">
                 <code className="text-text-muted">
                   <span className="text-brand">curl</span>
-                  {' https://flow.hanzo.ai/api/v1/run/my-flow \\\n'}
+                  {' https://app.flow.hanzo.ai/api/v1/run/my-flow \\\n'}
                   {'  -H '}
                   <span className="text-green-400">
                     {'"Authorization: Bearer sk-..."'}
@@ -342,7 +342,7 @@ export default function Page() {
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
             <a
-              href="https://flow.hanzo.ai"
+              href="https://app.flow.hanzo.ai"
               className={cn(buttonVariants({ size: 'lg' }))}
             >
               Open Flow

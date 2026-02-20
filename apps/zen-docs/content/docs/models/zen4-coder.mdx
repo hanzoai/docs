@@ -1,0 +1,68 @@
+---
+title: zen4-coder
+description: Code generation model built on Qwen3-Coder-480B-A35B by Alibaba Qwen. 480B (35B active) MoE with 262K context.
+---
+
+# zen4-coder
+
+**Code Generation**
+
+The primary code model. Built on Qwen3-Coder-480B-A35B by Alibaba Qwen -- 480B total parameters with 35B active per token. Specialized for code generation, review, and debugging.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen4-coder` |
+| **Upstream** | Qwen3-Coder-480B-A35B by Alibaba Qwen |
+| **Parameters** | 480B (35B active) |
+| **Architecture** | MoE |
+| **Context Window** | 262K tokens |
+| **Tier** | ultra |
+| **Input Price** | $3.60 / 1M tokens |
+| **Output Price** | $3.60 / 1M tokens |
+
+## Capabilities
+
+- Full-repository code understanding with 262K context
+- Code generation across all major languages
+- Code review and debugging
+- Agentic programming with tool calling
+- Multi-file refactoring
+
+## API Usage
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen4-coder",
+    "messages": [{"role": "user", "content": "Write a Go HTTP server with graceful shutdown."}]
+  }'
+```
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.hanzo.ai/v1",
+    api_key="hk-your-api-key",
+)
+
+response = client.chat.completions.create(
+    model="zen4-coder",
+    messages=[{"role": "user", "content": "Write a Go HTTP server with graceful shutdown."}],
+)
+print(response.choices[0].message.content)
+```
+
+## Upstream
+
+zen4-coder is built on open-source weights from **Qwen3-Coder-480B-A35B** by Alibaba Qwen. The MoE architecture keeps 35B parameters active per token from a 480B total, providing strong code capability with efficient inference. Pricing is set at 3x upstream inference cost.
+
+## See Also
+
+- [zen4-coder-pro](/docs/models/zen4-coder-pro) -- Full BF16 precision for maximum accuracy
+- [zen4-coder-flash](/docs/models/zen4-coder-flash) -- Faster, lighter code model
+- [Pricing](/docs/api/pricing) -- Full pricing table

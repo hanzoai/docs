@@ -1,0 +1,51 @@
+---
+title: Agent Platform (Local + Cloud)
+description: Unify Hanzo Dev local sessions with Agent Base and Agent Field cloud tracking.
+---
+
+## Overview
+
+Hanzo Dev writes local session data under `~/.hanzo`, and Agent Base can surface those sessions in the desktop UI. When you want cloud visibility, Agent Base can also forward the same task feed to Agent Field.
+
+Local artifacts:
+
+- `~/.hanzo/sessions/` - session rollouts (`.jsonl`), used by Agent Base to list and open Hanzo sessions.
+- `~/.hanzo/tasks.jsonl` - append-only task feed for lifecycle events (started/completed/aborted).
+
+## Local setup (Agent Base)
+
+1. Run Hanzo Dev as normal; session files are created automatically.
+2. Launch Agent Base and choose the **Hanzo** agent type when opening a session.
+3. Session lists and previews come from `~/.hanzo/sessions`.
+
+## Cloud forwarding (Agent Field)
+
+Agent Base can forward task events to Agent Field if you configure an endpoint. Set these environment variables before launching Agent Base:
+
+```bash
+export HANZO_AGENTFIELD_URL="https://your-agentfield-host"
+export HANZO_AGENTFIELD_TOKEN="your-api-token"
+
+# Optional overrides
+export HANZO_TASK_FEED_PATH="$HOME/.hanzo/tasks.jsonl"
+export HANZO_TASK_FEED_FROM_START=1
+```
+
+Notes:
+
+- If `HANZO_TASK_FEED_FROM_START` is unset, Agent Base forwards only new task events.
+- Without `HANZO_AGENTFIELD_URL`, everything stays local.
+
+## Event mapping
+
+Task events are mapped to Agent Field workflow execution events:
+
+- **execution_id**: `hanzo-<session_id>-<task_id>`
+- **run_id**: `<session_id>`
+- **status**: `running`, `succeeded`, or `cancelled`
+- **input_data**: task metadata (cwd, model, git info, event type)
+
+## Troubleshooting
+
+- **No sessions in Agent Base**: confirm `~/.hanzo/sessions` exists and contains rollout `.jsonl` files.
+- **No cloud events**: verify `HANZO_AGENTFIELD_URL` is set and reachable, and check that `HANZO_TASK_FEED_PATH` points to the task feed.

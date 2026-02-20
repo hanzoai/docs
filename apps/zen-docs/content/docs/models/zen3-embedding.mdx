@@ -1,0 +1,89 @@
+---
+title: zen3-embedding
+description: Text embedding model built on text-embedding-3-large by OpenAI. 3072 dimensions with 8K context.
+---
+
+# zen3-embedding
+
+**Text Embeddings**
+
+High-quality text embeddings for search, clustering, and retrieval. Built on text-embedding-3-large by OpenAI with 3072-dimensional output.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen3-embedding` |
+| **Upstream** | text-embedding-3-large by OpenAI |
+| **Dimensions** | 3,072 |
+| **Context Window** | 8K tokens |
+| **Tier** | pro max |
+| **Input Price** | $0.39 / 1M tokens |
+| **Output Price** | $0.39 / 1M tokens |
+
+## Capabilities
+
+- Semantic search by meaning, not keywords
+- RAG pipeline retrieval
+- Document clustering and deduplication
+- Classification feature generation
+- 3072-dimensional dense vectors
+
+## API Usage
+
+```bash
+curl https://api.hanzo.ai/v1/embeddings \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen3-embedding",
+    "input": "Zen LM is a family of frontier AI models"
+  }'
+```
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.hanzo.ai/v1",
+    api_key="hk-your-api-key",
+)
+
+response = client.embeddings.create(
+    model="zen3-embedding",
+    input=["Hello world", "Zen LM models"],
+)
+
+for embedding in response.data:
+    print(f"Vector dim: {len(embedding.embedding)}")
+```
+
+## Response Format
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "embedding",
+      "index": 0,
+      "embedding": [0.0023, -0.0091, 0.0152, "..."]
+    }
+  ],
+  "model": "zen3-embedding",
+  "usage": {
+    "prompt_tokens": 8,
+    "total_tokens": 8
+  }
+}
+```
+
+## Upstream
+
+zen3-embedding is built on **text-embedding-3-large** by OpenAI. Produces 3072-dimensional dense vectors optimized for semantic similarity. Pricing is set at 3x upstream inference cost.
+
+## See Also
+
+- [Embeddings API](/docs/api/embeddings) -- Endpoint documentation
+- [zen3-nano](/docs/models/zen3-nano) -- Lightweight text model
+- [Pricing](/docs/api/pricing) -- Full pricing table
