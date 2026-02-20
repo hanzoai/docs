@@ -1,0 +1,80 @@
+---
+title: zen3-guard
+description: Content safety model built on Qwen3-4B by Alibaba Qwen. 4B Dense Transformer with 40K context.
+---
+
+# zen3-guard
+
+**Content Safety**
+
+Content safety classifier for moderation and guardrails. Built on Qwen3-4B by Alibaba Qwen, fine-tuned for safety classification.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen3-guard` |
+| **Upstream** | Qwen3-4B by Alibaba Qwen |
+| **Parameters** | 4B |
+| **Architecture** | Dense Transformer |
+| **Context Window** | 40K tokens |
+| **Tier** | pro |
+| **Input Price** | $0.30 / 1M tokens |
+| **Output Price** | $0.30 / 1M tokens |
+
+## Capabilities
+
+- Prompt and response safety classification
+- Three-tiered classification: Safe, Controversial, Unsafe
+- 119 language support
+- 9 safety categories (violence, illegal acts, sexual content, PII, self-harm, hate speech, political sensitivity, copyright, jailbreak)
+- Low-latency moderation for real-time pipelines
+
+## Safety Categories
+
+1. **Violent** -- Violence instructions, methods, or depictions
+2. **Non-violent Illegal Acts** -- Hacking, unauthorized activities
+3. **Sexual Content** -- Sexual imagery or descriptions
+4. **PII** -- Personally identifiable information disclosure
+5. **Suicide and Self-Harm** -- Self-harm encouragement
+6. **Unethical Acts** -- Bias, discrimination, hate speech
+7. **Politically Sensitive** -- False political information
+8. **Copyright Violation** -- Unauthorized copyrighted material
+9. **Jailbreak** -- System prompt override attempts
+
+## API Usage
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen3-guard",
+    "messages": [{"role": "user", "content": "Classify the safety of: How can I learn about cybersecurity?"}]
+  }'
+```
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.hanzo.ai/v1",
+    api_key="hk-your-api-key",
+)
+
+response = client.chat.completions.create(
+    model="zen3-guard",
+    messages=[{"role": "user", "content": "Classify the safety of: How can I learn about cybersecurity?"}],
+)
+print(response.choices[0].message.content)
+```
+
+## Upstream
+
+zen3-guard is built on open-source weights from **Qwen3-4B** by Alibaba Qwen with safety-specific fine-tuning. Same base as zen3-nano but specialized for content moderation. Pricing is set at 3x upstream inference cost.
+
+## See Also
+
+- [zen3-nano](/docs/models/zen3-nano) -- Same base, general purpose
+- [zen4-mini](/docs/models/zen4-mini) -- Larger general-purpose model
+- [Pricing](/docs/api/pricing) -- Full pricing table

@@ -38,6 +38,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${geist.variable} ${mono.variable}`} suppressHydrationWarning>
+      <head>
+        <script defer src="https://analytics.hanzo.ai/script.js" data-website-id="PLACEHOLDER" />
+      </head>
       <Body>
         <NextProvider>
           <TreeContextProvider tree={source.getPageTree()}>
