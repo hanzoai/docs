@@ -1,6 +1,6 @@
 ---
 title: Chat Completions
-description: Generate text with Zen models using the OpenAI-compatible chat completions endpoint
+description: Generate text with any of the 14 Zen models using the OpenAI-compatible chat completions endpoint
 ---
 
 # Chat Completions
@@ -85,7 +85,7 @@ Set `stream: true` to receive server-sent events:
 ```python
 from openai import OpenAI
 
-client = OpenAI(base_url="https://api.hanzo.ai/v1", api_key="your-key")
+client = OpenAI(base_url="https://api.hanzo.ai/v1", api_key="hk-your-key")
 
 stream = client.chat.completions.create(
     model="zen4",
@@ -115,9 +115,9 @@ response = client.chat.completions.create(
 )
 ```
 
-## Reasoning (zen4-thinking)
+## Reasoning (zen4-thinking, zen4-ultra)
 
-The thinking model shows its reasoning process:
+Reasoning models show their chain-of-thought process:
 
 ```python
 response = client.chat.completions.create(
@@ -125,3 +125,34 @@ response = client.chat.completions.create(
     messages=[{"role": "user", "content": "Solve: If 2^x = 1024, what is x?"}],
 )
 ```
+
+## Code Generation (zen4-coder, zen4-coder-pro, zen4-coder-flash)
+
+Code models support up to 262K context for full-repository understanding:
+
+```python
+response = client.chat.completions.create(
+    model="zen4-coder",
+    messages=[{"role": "user", "content": "Write a Go HTTP server with graceful shutdown."}],
+)
+```
+
+## Available Models
+
+All 14 Zen models work with this endpoint (except zen3-embedding which uses `/v1/embeddings`):
+
+| Model | Context | Best For |
+|-------|---------|----------|
+| zen4 | 202K | General flagship |
+| zen4-ultra | 202K | Maximum reasoning |
+| zen4-pro | 131K | High capability |
+| zen4-max | 131K | Large documents |
+| zen4-mini | 40K | Fast and cheap |
+| zen4-thinking | 131K | Chain-of-thought |
+| zen4-coder | 262K | Code generation |
+| zen4-coder-pro | 262K | Premium code |
+| zen4-coder-flash | 262K | Fast code |
+| zen3-omni | 202K | Multimodal |
+| zen3-vl | 131K | Vision-language |
+| zen3-nano | 40K | Edge |
+| zen3-guard | 40K | Content safety |
