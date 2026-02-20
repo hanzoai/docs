@@ -1,10 +1,10 @@
-import { docs } from '@hanzo/docs-mdx/collections/server';
+import { docs } from '@/docs/server';
 import { type InferPageType, loader } from '@hanzo/docs-core/source';
 import { lucideIconsPlugin } from '@hanzo/docs-core/source/lucide-icons';
 
 export const source = loader({
   baseUrl: '/docs',
-  source: docs.toFumadocsSource(),
+  source: docs.toSource(),
   plugins: [lucideIconsPlugin()],
 });
 
