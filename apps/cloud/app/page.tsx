@@ -103,11 +103,11 @@ export default function Page() {
               Docs
             </a>
             <a
-              href="https://console.hanzo.ai"
+              href="https://app.hanzo.bot/dashboard"
               className={cn(buttonVariants({ size: 'sm' }))}
             >
-              Console
-              <ArrowRightIcon className="size-4" />
+              App
+            <ArrowRightIcon className="size-4" />
             </a>
           </div>
         </div>
@@ -138,10 +138,10 @@ export default function Page() {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <a
-                href="https://console.hanzo.ai"
+                href="https://app.hanzo.bot/dashboard"
                 className={cn(buttonVariants({ size: 'lg' }))}
               >
-                Open Console
+                Open App
                 <ArrowRightIcon className="size-5" />
               </a>
               <a
@@ -321,15 +321,15 @@ export default function Page() {
             Ready to get started?
           </h2>
           <p className="mb-8 text-text-muted">
-            Sign in to the Hanzo Cloud Console to manage your AI infrastructure.
+            Sign in to the Hanzo App to manage your AI infrastructure.
             Create API keys, monitor usage, and manage your team.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
             <a
-              href="https://console.hanzo.ai"
+              href="https://app.hanzo.bot/dashboard"
               className={cn(buttonVariants({ size: 'lg' }))}
             >
-              Go to Console
+              Go to App
               <ArrowRightIcon className="size-5" />
             </a>
             <a
@@ -361,10 +361,10 @@ export default function Page() {
               hanzo.ai
             </a>
             <a
-              href="https://console.hanzo.ai"
+              href="https://app.hanzo.bot/dashboard"
               className="hover:text-text transition-colors"
             >
-              Console
+              App
             </a>
             <a
               href="https://hanzo.ai/docs"

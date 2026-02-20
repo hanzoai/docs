@@ -1,0 +1,289 @@
+---
+title: Hanzo Chat
+description: AI chat platform with 14 Zen models, 100+ third-party models, MCP tools, and agents
+---
+
+# Hanzo Chat
+
+Hanzo Chat is a production-ready AI chat platform. It ships 14 first-party Zen models alongside 100+ third-party models from OpenAI, Anthropic, Google, Meta, and Mistral. Built-in MCP tool support, agents, file uploads, vision, and conversation history make it a complete chat solution for teams and products.
+
+## Features
+
+- **14 Zen Models**: Flagship, reasoning, code, vision, multimodal, edge, safety, and embeddings
+- **100+ Third-Party Models**: OpenAI, Anthropic, Google, Meta, Mistral, Together, Groq, and more
+- **MCP Tools**: Model Context Protocol integration for extending model capabilities
+- **Agents**: Configurable AI agents with custom system prompts and tool access
+- **Vision & Multimodal**: Image analysis via zen3-vl, zen3-omni, GPT-4o, Claude
+- **File Uploads**: Upload documents, images, and code for analysis
+- **Streaming**: Real-time streaming responses for all models
+- **Conversation History**: Persistent chat history backed by MongoDB
+- **Multi-Tenant**: Organization-isolated workspaces via Hanzo IAM
+
+## Architecture
+
+```
++---------------------------------------------------------------+
+|                         HANZO CHAT                             |
++---------------------------------------------------------------+
+|                                                                |
+|  +------------------+  +------------------+  +---------------+ |
+|  |   React Client   |  |   Node.js API    |  |   MongoDB     | |
+|  |                  |  |                  |  |               | |
+|  |  - Chat UI      |  |  - REST API      |  |  - Messages   | |
+|  |  - Model Select |  |  - WebSocket     |  |  - Convos     | |
+|  |  - File Upload  |  |  - MCP Broker    |  |  - Users      | |
+|  |  - Agent Config |  |  - Auth          |  |  - Presets    | |
+|  +------------------+  +------------------+  +---------------+ |
+|                                                                |
+|  +----------------------------------------------------------+ |
+|  |                  Provider Layer                            | |
+|  |  Zen LM (14) . OpenAI . Anthropic . Google . Meta . ...   | |
+|  +----------------------------------------------------------+ |
+|                                                                |
++---------------------------------------------------------------+
+```
+
+## Endpoints
+
+| Environment | URL |
+|-------------|-----|
+| Production | `https://chat.hanzo.ai` |
+| API | `https://api.hanzo.ai/v1` |
+| Local | `http://localhost:3081` |
+
+## Quick Start
+
+### Cloud
+
+1. Go to [chat.hanzo.ai](https://chat.hanzo.ai)
+2. Sign in with your Hanzo account
+3. Your **$5 free credit** is applied automatically
+4. Select a model and start chatting
+
+### Self-Hosted
+
+```bash
+# Clone the chat template
+git clone https://github.com/hanzoai/chat-template
+cd chat-template
+
+# Configure
+cp .env.example .env
+# Edit .env with your API keys
+
+# Start
+make up
+
+# Open http://localhost:3081
+```
+
+### Docker
+
+```yaml
+# compose.yml
+services:
+  chat:
+    image: ghcr.io/hanzoai/chat:latest
+    ports:
+      - "3081:3081"
+    volumes:
+      - ./chat.yaml:/app/chat.yaml:ro
+    environment:
+      - HANZO_API_KEY=${HANZO_API_KEY}
+      - MONGO_URI=mongodb://mongo:27017/chat
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
+```
+
+## Configuration
+
+Chat is configured via `chat.yaml` (mounted into the container):
+
+```yaml
+# chat.yaml
+version: 1.0.0
+cache: true
+
+endpoints:
+  hanzo:
+    # 14 Zen models + 100+ third-party via Hanzo Gateway
+    baseURL: "https://api.hanzo.ai/v1"
+    apiKey: "${HANZO_API_KEY}"
+    models:
+      default:
+        - zen4
+        - zen4-ultra
+        - zen4-pro
+        - zen4-max
+        - zen4-mini
+        - zen4-thinking
+        - zen4-coder
+        - zen4-coder-pro
+        - zen4-coder-flash
+        - zen3-omni
+        - zen3-vl
+        - zen3-nano
+        - zen3-guard
+
+  # Direct provider endpoints (optional)
+  openAI:
+    apiKey: "${OPENAI_API_KEY}"
+    models:
+      default:
+        - gpt-4o
+        - o3
+        - o4-mini
+
+  anthropic:
+    apiKey: "${ANTHROPIC_API_KEY}"
+    models:
+      default:
+        - claude-sonnet-4-5-20250929
+        - claude-opus-4-20250514
+```
+
+## Models
+
+### Zen Models (First-Party)
+
+All 14 Zen models are available by default:
+
+| Model | Type | Input $/MTok | Output $/MTok |
+|-------|------|-------------|---------------|
+| zen4 | Flagship | $3.00 | $9.60 |
+| zen4-ultra | Max Reasoning | $3.00 | $9.60 |
+| zen4-pro | High Capability | $2.70 | $2.70 |
+| zen4-max | Large Documents | $3.60 | $3.60 |
+| zen4-mini | Fast & Efficient | $0.60 | $0.60 |
+| zen4-thinking | Chain-of-Thought | $2.70 | $2.70 |
+| zen4-coder | Code Generation | $3.60 | $3.60 |
+| zen4-coder-pro | Premium Code | $4.50 | $4.50 |
+| zen4-coder-flash | Fast Code | $1.50 | $1.50 |
+| zen3-omni | Multimodal | $1.80 | $6.60 |
+| zen3-vl | Vision-Language | $0.45 | $1.80 |
+| zen3-nano | Edge | $0.30 | $0.30 |
+| zen3-guard | Content Safety | $0.30 | $0.30 |
+| zen3-embedding | Embeddings | $0.39 | -- |
+
+### Third-Party Models
+
+100+ models from all major providers are available through the Hanzo Gateway:
+
+| Provider | Notable Models |
+|----------|---------------|
+| **OpenAI** | GPT-4o, o3, o4-mini |
+| **Anthropic** | Claude Opus 4, Claude Sonnet 4.5 |
+| **Google** | Gemini 2.x |
+| **Meta** | Llama 3.x, Llama 4 |
+| **Mistral** | Mistral Large, Codestral |
+| **Together AI** | 50+ open models |
+| **Groq** | Llama, Mixtral (fastest inference) |
+
+## Pricing
+
+- **$5 free credit** on every new account (expires in 30 days)
+- **Prepaid billing** -- add credits via [console.hanzo.ai](https://console.hanzo.ai)
+- **$1 minimum balance** required to make API calls
+- **Starting at $0.30/MTok** (zen3-nano)
+- **No surprise bills** -- service stops when credits are depleted
+
+See [Zen LM Pricing](/docs/api/pricing) for the full pricing table.
+
+## MCP Tools
+
+Chat supports Model Context Protocol tools for extending model capabilities:
+
+```yaml
+# chat.yaml (tools section)
+mcpServers:
+  filesystem:
+    command: npx
+    args:
+      - "@hanzo/mcp-filesystem"
+    env:
+      ALLOWED_DIRS: "/data"
+
+  web:
+    command: npx
+    args:
+      - "@hanzo/mcp-web"
+```
+
+## Agents
+
+Create custom AI agents with specific system prompts, model selection, and tool access:
+
+```yaml
+# chat.yaml (agents section)
+agents:
+  - name: "Code Reviewer"
+    model: "zen4-coder"
+    systemPrompt: |
+      You are a senior code reviewer. Analyze code for bugs,
+      security issues, and style improvements.
+    tools:
+      - filesystem
+      - web
+
+  - name: "Research Assistant"
+    model: "zen4-pro"
+    systemPrompt: |
+      You are a research assistant. Search the web, analyze
+      documents, and provide citations.
+    tools:
+      - web
+```
+
+## Environment Variables
+
+```bash
+# Required
+HANZO_API_KEY=hk-your-api-key
+
+# Database
+MONGO_URI=mongodb://localhost:27017/chat
+
+# Optional: Direct provider keys (bypass gateway)
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_AI_API_KEY=...
+
+# Auth (optional)
+DOMAIN_SERVER=https://chat.yourdomain.com
+DOMAIN_CLIENT=https://chat.yourdomain.com
+
+# Branding (optional)
+APP_TITLE=Hanzo Chat
+CUSTOM_FOOTER=Powered by Hanzo AI
+```
+
+## API Endpoint
+
+The Chat API is available at `api.hanzo.ai`:
+
+```bash
+# Chat completion via Hanzo API
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen4",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+```
+
+## Related
+
+- [Zen LM Models](/docs/models) -- Full model catalog with specs and pricing
+- [LLM Gateway](/docs/llm) -- Unified API proxy for all models
+- [Hanzo MCP](/docs/mcp) -- Model Context Protocol tools
+- [Gateway Service](/docs/services/gateway) -- API gateway deployment and configuration
+- [Console](/docs/services/cloud) -- Billing, usage, and API key management

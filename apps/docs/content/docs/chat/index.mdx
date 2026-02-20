@@ -1,0 +1,134 @@
+---
+title: Hanzo Chat
+description: AI chat platform with 14 Zen models, 100+ third-party models, MCP tools, and agents. $5 free credit, prepaid billing from $0.30/MTok.
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# Hanzo Chat
+
+AI chat platform with **14 first-party Zen models**, **100+ third-party models**, built-in **MCP tool support**, and **configurable agents**. Available as a hosted service at [chat.hanzo.ai](https://chat.hanzo.ai) or self-hosted via Docker.
+
+```bash title="Quick Start"
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen4",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+```
+
+## Why Hanzo Chat?
+
+- **14 Zen Models** -- Code, reasoning, vision, multimodal, edge, safety, and embeddings
+- **100+ Third-Party** -- OpenAI, Anthropic, Google, Meta, Mistral, Together, Groq
+- **MCP Tools** -- Model Context Protocol integration for extending model capabilities
+- **Agents** -- Configurable AI agents with custom system prompts and tool access
+- **$5 Free Credit** -- Every new account starts with $5 (expires 30 days)
+- **Prepaid Billing** -- No surprise bills, starting at $0.30/MTok (zen3-nano)
+
+## Zen Model Lineup
+
+| Model | Type | Input $/MTok | Output $/MTok |
+|-------|------|-------------|---------------|
+| zen4 | Flagship | $3.00 | $9.60 |
+| zen4-ultra | Max Reasoning | $3.00 | $9.60 |
+| zen4-pro | High Capability | $2.70 | $2.70 |
+| zen4-max | Large Documents | $3.60 | $3.60 |
+| zen4-mini | Fast & Efficient | $0.60 | $0.60 |
+| zen4-thinking | Chain-of-Thought | $2.70 | $2.70 |
+| zen4-coder | Code Generation | $3.60 | $3.60 |
+| zen4-coder-pro | Premium Code | $4.50 | $4.50 |
+| zen4-coder-flash | Fast Code | $1.50 | $1.50 |
+| zen3-omni | Multimodal | $1.80 | $6.60 |
+| zen3-vl | Vision-Language | $0.45 | $1.80 |
+| zen3-nano | Edge | $0.30 | $0.30 |
+| zen3-guard | Content Safety | $0.30 | $0.30 |
+| zen3-embedding | Embeddings | $0.39 | -- |
+
+## SDK Usage
+
+### Python
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="hk-your-api-key",
+    base_url="https://api.hanzo.ai/v1"
+)
+
+response = client.chat.completions.create(
+    model="zen4",
+    messages=[{"role": "user", "content": "Hello, Zen."}]
+)
+print(response.choices[0].message.content)
+```
+
+### TypeScript
+
+```typescript
+import OpenAI from 'openai'
+
+const client = new OpenAI({
+  apiKey: process.env.HANZO_API_KEY,
+  baseURL: 'https://api.hanzo.ai/v1',
+})
+
+const completion = await client.chat.completions.create({
+  model: 'zen4',
+  messages: [{ role: 'user', content: 'Hello, Zen.' }],
+})
+console.log(completion.choices[0].message.content)
+```
+
+## Self-Hosted
+
+Configure via `chat.yaml`:
+
+```yaml
+# chat.yaml
+version: 1.0.0
+cache: true
+endpoints:
+  hanzo:
+    baseURL: "https://api.hanzo.ai/v1"
+    apiKey: "${HANZO_API_KEY}"
+    models:
+      default:
+        - zen4
+        - zen4-coder
+        - zen4-mini
+        - zen3-omni
+        - zen3-vl
+```
+
+```bash
+docker pull ghcr.io/hanzoai/chat:latest
+docker compose up -d
+# Open http://localhost:3081
+```
+
+## Get Started
+
+1. Create an account at [console.hanzo.ai](https://console.hanzo.ai)
+2. Your **$5 free credit** is applied automatically
+3. Generate an API key (prefix: `hk-`)
+4. Start chatting at [chat.hanzo.ai](https://chat.hanzo.ai) or via the API at `api.hanzo.ai/v1`
+
+<Cards>
+  <Card title="Service Docs" href="/docs/services/chat">
+    Full deployment guide, configuration, agents, and MCP tools
+  </Card>
+  <Card title="LLM Gateway" href="/docs/llm">
+    Unified API proxy for all 200+ models
+  </Card>
+  <Card title="MCP Tools" href="/docs/mcp">
+    Model Context Protocol tool integrations
+  </Card>
+  <Card title="Hanzo Dev" href="/docs/dev">
+    AI coding agent powered by the same models
+  </Card>
+</Cards>

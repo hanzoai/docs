@@ -1,0 +1,82 @@
+---
+title: zen3-omni
+description: Hypermodal model built on GLM-4.7 by Zhipu AI. ~200B Dense Multimodal with 202K context.
+---
+
+# zen3-omni
+
+**Hypermodal**
+
+Multimodal model supporting text, vision, and audio. Built on GLM-4.7 by Zhipu AI -- a ~200B Dense Multimodal architecture.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen3-omni` |
+| **Upstream** | GLM-4.7 by Zhipu AI |
+| **Parameters** | ~200B |
+| **Architecture** | Dense Multimodal |
+| **Context Window** | 202K tokens |
+| **Modalities** | Text, Vision, Audio |
+| **Tier** | pro max |
+| **Input Price** | $1.80 / 1M tokens |
+| **Output Price** | $6.60 / 1M tokens |
+
+## Capabilities
+
+- Text generation and understanding
+- Image analysis and visual reasoning
+- Audio and speech processing
+- Cross-modal reasoning
+- Structured output generation
+- 202K context window
+
+## API Usage
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen3-omni",
+    "messages": [{
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "What is in this image?"},
+        {"type": "image_url", "image_url": {"url": "https://example.com/photo.jpg"}}
+      ]
+    }]
+  }'
+```
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.hanzo.ai/v1",
+    api_key="hk-your-api-key",
+)
+
+response = client.chat.completions.create(
+    model="zen3-omni",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "Describe this image."},
+            {"type": "image_url", "image_url": {"url": "https://example.com/photo.jpg"}},
+        ],
+    }],
+)
+print(response.choices[0].message.content)
+```
+
+## Upstream
+
+zen3-omni is built on open-source weights from **GLM-4.7** by Zhipu AI with Zen identity optimization. The multimodal architecture handles text, vision, and audio in a single model. Pricing is set at 3x upstream inference cost.
+
+## See Also
+
+- [zen3-vl](/docs/models/zen3-vl) -- Vision-language only, lower cost
+- [zen4](/docs/models/zen4) -- Text-only flagship
+- [Pricing](/docs/api/pricing) -- Full pricing table

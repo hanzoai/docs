@@ -1,86 +1,87 @@
 ---
 title: Introduction
-description: Zen4 - Open foundation models from 4B to 1T+ parameters
+description: Zen LM by Hanzo AI -- 14 frontier models for code, reasoning, vision, multimodal, embeddings, and safety
 ---
 
-# Zen4
+# Zen LM
 
-**Zen4** is a family of open, uncensored AI models built on abliterated weights from Qwen3 and frontier MoE architectures.
+**Zen LM by Hanzo AI** is a frontier model family of 14 specialized models built on open-source weights with custom identity and optimization. From the 4B zen3-nano for edge deployment to the ~400B zen4-ultra for maximum reasoning, Zen models cover code, reasoning, vision, multimodal, embeddings, and safety.
 
-From the 4B Mini for edge deployment to the 1.04T Ultra for cloud-scale reasoning, Zen4 models run unrestricted with no safety theater.
-
-## Model Tiers
+## Model Lineup
 
 <Cards>
-  <Card title="Consumer Line" href="/docs/models#consumer">
-    5 models from 4B to 80B MoE - dense models for edge and MoE flagships for desktop
+  <Card title="Zen4 Generation" href="/docs/models#zen4">
+    9 models -- flagship, reasoning, and code. From 8B zen4-mini to ~400B zen4-ultra.
   </Card>
-  <Card title="Coder Line" href="/docs/models#coder">
-    3 coding models from 31B to 355B for agentic programming
+  <Card title="Zen3 Generation" href="/docs/models#zen3">
+    5 models -- multimodal, vision, edge, safety, and embeddings.
   </Card>
-  <Card title="Frontier Line" href="/docs/models#frontier">
-    zen-max (671B), zen4-ultra (1.04T), and Zen5 (2T+) for cloud and research
+  <Card title="API Reference" href="/docs/api">
+    OpenAI-compatible API at api.hanzo.ai with all 14 models.
   </Card>
-  <Card title="Training" href="/docs/training">
-    Fine-tune Zen4 models with MLX, Unsloth, or DeepSpeed
+  <Card title="Pricing" href="/docs/api/pricing">
+    Transparent pricing at 3x upstream inference cost. From $0.30/MTok.
   </Card>
 </Cards>
 
 ## Quick Start
 
-### Use a Zen4 model
+### API (OpenAI-compatible)
 
 ```python
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from openai import OpenAI
 
-model = AutoModelForCausalLM.from_pretrained("zenlm/zen4")
-tokenizer = AutoTokenizer.from_pretrained("zenlm/zen4")
+client = OpenAI(
+    base_url="https://api.hanzo.ai/v1",
+    api_key="hk-your-api-key",
+)
 
-messages = [{"role": "user", "content": "Hello, who are you?"}]
-text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-inputs = tokenizer(text, return_tensors="pt").to(model.device)
-outputs = model.generate(**inputs, max_new_tokens=512)
-print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+response = client.chat.completions.create(
+    model="zen4",
+    messages=[{"role": "user", "content": "Hello, who are you?"}],
+)
+print(response.choices[0].message.content)
 ```
 
-### Run with MLX (Apple Silicon)
+### curl
 
 ```bash
-pip install mlx-lm
-python -m mlx_lm.generate --model zenlm/zen4-max --prompt "Explain quantum computing"
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer hk-your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "zen4", "messages": [{"role": "user", "content": "Hello, Zen."}]}'
 ```
 
-### Run with Ollama
+## Key Facts
 
-```bash
-ollama run zen4
-```
+- **14 models** covering all major AI tasks
+- **OpenAI-compatible** API -- works with every SDK that supports the OpenAI format
+- **Built on open-source weights** with custom Zen identity and optimization
+- **Transparent pricing** at 3x upstream inference cost
+- **API key prefix**: `hk-`
+- **Endpoints**: `api.hanzo.ai/v1` and `api.zen.hanzo.ai/v1`
 
-## Key Features
+## All 14 Models
 
-- **Abliterated**: Safety restrictions removed via orthogonalization of refusal directions
-- **Efficient MoE**: Flagship models use only 3B active parameters from 30B-80B total
-- **Long Context**: Up to 256K tokens on MoE models, 32K on dense models
-- **Open Weights**: All models available on [HuggingFace](https://huggingface.co/zenlm)
-
-## Zen5 — Coming Soon
-
-**2T+ parameters**, trained on-chain via NVIDIA TEE confidential compute on [hanzo.network](https://hanzo.network).
-
-The first publicly trained open-source frontier model with on-chain verifiable training. Private beta available — request access to preprint and weights under research license.
-
-<Cards>
-  <Card title="Request Research Access" href="https://hanzo.ai/zen5">
-    Get early access to Zen5 preprint and weights
-  </Card>
-  <Card title="On-Chain Training" href="https://hanzo.network">
-    Learn about verifiable AI training on hanzo.network
-  </Card>
-</Cards>
+| Model | Type | Upstream | Input $/1M | Output $/1M |
+|-------|------|----------|------------|-------------|
+| zen4 | Flagship | GLM-5 (Zhipu AI) | $3.00 | $9.60 |
+| zen4-ultra | Max Reasoning | GLM-5 thinking (Zhipu AI) | $3.00 | $9.60 |
+| zen4-pro | High Capability | Qwen3-Next-80B-A3B | $2.70 | $2.70 |
+| zen4-max | Extended Context | Qwen3-235B-A22B | $3.60 | $3.60 |
+| zen4-mini | Fast & Efficient | Qwen3-8B | $0.60 | $0.60 |
+| zen4-thinking | Deep Reasoning | Qwen3-Next-80B-A3B thinking | $2.70 | $2.70 |
+| zen4-coder | Code Generation | Qwen3-Coder-480B-A35B | $3.60 | $3.60 |
+| zen4-coder-pro | Premium Code | Qwen3-Coder-480B BF16 | $4.50 | $4.50 |
+| zen4-coder-flash | Fast Code | Qwen3-Coder-30B-A3B | $1.50 | $1.50 |
+| zen3-omni | Hypermodal | GLM-4.7 (Zhipu AI) | $1.80 | $6.60 |
+| zen3-vl | Vision-Language | Qwen3-VL-30B-A3B | $0.45 | $1.80 |
+| zen3-nano | Edge | Qwen3-4B | $0.30 | $0.30 |
+| zen3-guard | Content Safety | Qwen3-4B | $0.30 | $0.30 |
+| zen3-embedding | Text Embeddings | text-embedding-3-large (OpenAI) | $0.39 | $0.39 |
 
 ## Resources
 
 - [All Models on HuggingFace](https://huggingface.co/zenlm)
 - [GitHub Organization](https://github.com/zenlm)
-- [Zen LM Website](https://zenlm.org)
 - [Hanzo AI](https://hanzo.ai)
