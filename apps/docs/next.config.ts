@@ -17,6 +17,10 @@ const config: NextConfig = {
   output: process.env.NEXT_EXPORT === '1' ? 'export' : undefined,
   basePath: isGitHubPages ? '/docs' : undefined,
   reactStrictMode: true,
+  experimental: {
+    // Reduce peak memory during webpack compilation for large builds.
+    webpackMemoryOptimizations: true,
+  },
   webpack: (config) => {
     // ------------------------------------------------------------------ //
     // Layer 1 – Resolve aliases                                          //
