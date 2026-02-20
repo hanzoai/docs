@@ -20,6 +20,16 @@ const config: NextConfig = {
       '@hanzo/mdx:collections/server': path.resolve(__dirname, 'docs/server.ts'),
       '@hanzo/mdx:collections/browser': path.resolve(__dirname, 'docs/browser.ts'),
       '@hanzo/mdx:collections/dynamic': path.resolve(__dirname, 'docs/dynamic.ts'),
+
+      // Upstream project docs use absolute imports that don't exist in this
+      // monorepo.  Map them to `false` so webpack provides an empty module
+      // instead of crashing.
+      //   /snippets/...       – KMS (Mintlify-style)
+      //   /src/components/... – Datastore (ClickHouse-style)
+      //   @site/...           – Datastore (Docusaurus-style)
+      '/snippets': false,
+      '/src/components': false,
+      '@site': false,
     };
     return config;
   },
