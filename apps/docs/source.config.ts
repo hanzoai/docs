@@ -178,22 +178,6 @@ function transformerEscape(): ShikiTransformer {
  * Only applies to files inside content/docs/projects/.
  */
 function remarkPassthroughUnknownJsx(): Transformer<Root, Root> {
-  // Components that are actually provided via getMDXComponents() or imported.
-  // Everything else in project docs gets converted to a fragment.
-  const knownComponents = new Set([
-    // @hanzo/docs-base-ui / fumadocs built-ins
-    'Callout', 'Card', 'Cards', 'Banner', 'TypeTable',
-    'DocsPage', 'DocsBody',
-    // Explicitly provided in page.tsx
-    'Tabs', 'Tab', 'TabsContent', 'TabsList', 'TabsTrigger',
-    'Files', 'File', 'Folder',
-    'Accordion', 'Accordions',
-    'Mermaid', 'Wrapper', 'Installation', 'Customisation',
-    'FeedbackBlock', 'DocsCategory',
-    // Twoslash
-    'Popup', 'PopupContent', 'PopupTrigger',
-  ]);
-
   return (tree, file) => {
     // Only transform upstream project docs — leave first-party docs alone
     // so unknown components still surface as errors during development.
@@ -203,12 +187,16 @@ function remarkPassthroughUnknownJsx(): Transformer<Root, Root> {
       return;
     }
 
+    // Convert ALL PascalCase JSX elements to fragments in project docs.
+    // Upstream docs use components from various platforms (Mintlify, Docusaurus,
+    // GitBook, etc.) with incompatible APIs. Rather than maintaining a
+    // whitelist and risking API mismatches (e.g. Mintlify <Tab title="..."> vs
+    // fumadocs <Tab value="...">), we strip all custom components and render
+    // just their children. First-party docs are unaffected by this plugin.
     visit(tree, ['mdxJsxFlowElement', 'mdxJsxTextElement'], (node: any) => {
       if (!node.name) return; // already a fragment
       // Only target PascalCase names (custom components), not lowercase HTML
       if (!/^[A-Z]/.test(node.name)) return;
-      // Keep known components that we actually provide
-      if (knownComponents.has(node.name)) return;
 
       // Convert to JSX fragment: strips the unknown tag but keeps children
       node.name = null;
