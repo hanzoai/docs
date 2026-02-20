@@ -21,6 +21,7 @@ import { Installation } from '@/components/preview/installation';
 import { Customisation } from '@/components/preview/customisation';
 import { DocsBody, DocsPage, PageLastUpdate } from '@hanzo/docs-base-ui/layouts/docs/page';
 import { NotFound } from '@/components/layouts/not-found';
+import { MdxErrorBoundary } from '@/components/mdx-error-boundary';
 import { getSuggestions } from './suggestions';
 import { PathUtils } from '@hanzo/docs-core/source';
 
@@ -79,48 +80,50 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
       </div>
       <div className="prose flex-1 text-fd-foreground/90">
         {page.data.preview && <PreviewRenderer preview={page.data.preview} />}
-        <Mdx
-          components={getMDXComponents({
-            ...Twoslash,
-            a: ({ href, ...props }) => {
-              const found = source.getPageByHref(href ?? '', {
-                dir: PathUtils.dirname(page.path),
-              });
+        <MdxErrorBoundary>
+          <Mdx
+            components={getMDXComponents({
+              ...Twoslash,
+              a: ({ href, ...props }) => {
+                const found = source.getPageByHref(href ?? '', {
+                  dir: PathUtils.dirname(page.path),
+                });
 
-              if (!found) return <Link href={href} {...props} />;
+                if (!found) return <Link href={href} {...props} />;
 
-              return (
-                <HoverCard>
-                  <HoverCardTrigger
-                    href={found.hash ? `${found.page.url}#${found.hash}` : found.page.url}
-                    {...props}
-                  >
-                    {props.children}
-                  </HoverCardTrigger>
-                  <HoverCardContent className="text-sm">
-                    <p className="font-medium">{found.page.data.title}</p>
-                    <p className="text-fd-muted-foreground">{found.page.data.description}</p>
-                  </HoverCardContent>
-                </HoverCard>
-              );
-            },
-            FeedbackBlock: ({ children, ...props }) => (
-              <PageFeedbackBlock {...props}>
-                {children}
-              </PageFeedbackBlock>
-            ),
-            Banner,
-            Mermaid,
-            TypeTable,
-            Wrapper,
-            blockquote: Callout as unknown as FC<ComponentProps<'blockquote'>>,
-            DocsCategory: ({ url }) => {
-              return <DocsCategory url={url ?? page.url} />;
-            },
-            Installation,
-            Customisation,
-          })}
-        />
+                return (
+                  <HoverCard>
+                    <HoverCardTrigger
+                      href={found.hash ? `${found.page.url}#${found.hash}` : found.page.url}
+                      {...props}
+                    >
+                      {props.children}
+                    </HoverCardTrigger>
+                    <HoverCardContent className="text-sm">
+                      <p className="font-medium">{found.page.data.title}</p>
+                      <p className="text-fd-muted-foreground">{found.page.data.description}</p>
+                    </HoverCardContent>
+                  </HoverCard>
+                );
+              },
+              FeedbackBlock: ({ children, ...props }) => (
+                <PageFeedbackBlock {...props}>
+                  {children}
+                </PageFeedbackBlock>
+              ),
+              Banner,
+              Mermaid,
+              TypeTable,
+              Wrapper,
+              blockquote: Callout as unknown as FC<ComponentProps<'blockquote'>>,
+              DocsCategory: ({ url }) => {
+                return <DocsCategory url={url ?? page.url} />;
+              },
+              Installation,
+              Customisation,
+            })}
+          />
+        </MdxErrorBoundary>
         {page.data.index ? <DocsCategory url={page.url} /> : null}
       </div>
       <PageFeedback />
