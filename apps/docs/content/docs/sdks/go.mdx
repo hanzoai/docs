@@ -5,7 +5,7 @@ description: The official Hanzo Go SDK for building AI-powered Go applications.
 
 # Go SDK
 
-The `hanzoai-go` module provides an idiomatic Go client for the Hanzo LLM Gateway.
+The `hanzoai-go` module provides an idiomatic Go client for the Hanzo LLM Gateway with full type safety and streaming support.
 
 ## Installation
 
@@ -70,6 +70,102 @@ for stream.Next() {
 
 if err := stream.Err(); err != nil {
 	panic(err)
+}
+```
+
+## Function Calling
+
+```go
+tools := []hanzoai.ChatCompletionToolParam{
+	{
+		Type: "function",
+		Function: hanzoai.FunctionDefinitionParam{
+			Name:        "get_weather",
+			Description: hanzoai.String("Get weather for a location"),
+			Parameters: hanzoai.FunctionParameters{
+				"type": "object",
+				"properties": map[string]any{
+					"location": map[string]any{
+						"type":        "string",
+						"description": "City name",
+					},
+				},
+				"required": []string{"location"},
+			},
+		},
+	},
+}
+
+response, err := client.Chat.Completions.New(
+	context.Background(),
+	hanzoai.ChatCompletionNewParams{
+		Model: "gpt-4o",
+		Messages: []hanzoai.ChatCompletionMessageParamUnion{
+			hanzoai.UserMessage("What's the weather in Tokyo?"),
+		},
+		Tools: tools,
+	},
+)
+
+if err == nil && len(response.Choices[0].Message.ToolCalls) > 0 {
+	for _, call := range response.Choices[0].Message.ToolCalls {
+		fmt.Printf("Call %s(%s)\n", call.Function.Name, call.Function.Arguments)
+	}
+}
+```
+
+## Multiple Providers
+
+```go
+// Switch providers by changing the model name
+params := hanzoai.ChatCompletionNewParams{
+	Messages: []hanzoai.ChatCompletionMessageParamUnion{
+		hanzoai.UserMessage("Hello!"),
+	},
+}
+
+// OpenAI
+params.Model = "gpt-4o"
+resp, _ := client.Chat.Completions.New(ctx, params)
+
+// Anthropic
+params.Model = "claude-sonnet-4-5-20250929"
+resp, _ = client.Chat.Completions.New(ctx, params)
+
+// Google
+params.Model = "gemini-2.0-flash"
+resp, _ = client.Chat.Completions.New(ctx, params)
+```
+
+## Configuration
+
+```go
+client := hanzoai.NewClient(
+	option.WithAPIKey("your-api-key"),
+	option.WithBaseURL("https://llm.hanzo.ai/v1"),  // default
+	option.WithMaxRetries(2),
+)
+```
+
+### Environment Variables
+
+```bash
+HANZO_API_KEY=your-api-key
+HANZO_BASE_URL=https://llm.hanzo.ai/v1  # optional
+```
+
+## Error Handling
+
+```go
+response, err := client.Chat.Completions.New(ctx, params)
+if err != nil {
+	var apiErr *hanzoai.Error
+	if errors.As(err, &apiErr) {
+		fmt.Printf("API error %d: %s\n", apiErr.StatusCode, apiErr.Message)
+	} else {
+		fmt.Printf("Network error: %v\n", err)
+	}
+	return
 }
 ```
 
