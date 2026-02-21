@@ -5,22 +5,136 @@ description: User identity, profiles, and directory services
 
 # Hanzo Identity
 
-Hanzo Identity provides user profiles, organization directories, and identity resolution services
-across the Hanzo platform. It complements IAM by focusing on identity data and relationships rather
-than access control flows.
+Hanzo Identity provides user profiles, organization directories, and identity resolution services across the Hanzo platform. It complements IAM by focusing on identity data and relationships rather than access control flows.
 
-## What it provides
+## Features
 
-- **Profiles**: Unified user and service identity records
-- **Directories**: Organization, team, and group catalogs
-- **Resolution**: Link identities across services and environments
-- **Auditability**: Identity history and provenance
+- **Profiles**: Unified user and service identity records with rich metadata
+- **Directories**: Organization, team, and group catalogs with hierarchy
+- **Resolution**: Link identities across services, providers, and environments
+- **Auditability**: Full identity history, change logs, and provenance tracking
+- **Sync**: Bidirectional sync with external identity providers (SCIM, LDAP)
 
 ## Relationship to IAM
 
-IAM handles authentication and authorization. Identity powers the canonical profile and directory
-data that IAM, Gateway, and other services reference.
+IAM handles authentication and authorization — login flows, OAuth2, token issuance. Identity powers the canonical profile and directory data that IAM, Gateway, and other services reference.
 
-## Status
+```
+┌──────────────┐     ┌──────────────┐
+│     IAM      │────▶│   Identity   │
+│  Auth flows  │     │  Profiles &  │
+│  Tokens      │     │  Directories │
+│  Permissions │     │  Resolution  │
+└──────────────┘     └──────────────┘
+       │                    │
+       ▼                    ▼
+  Access Control      User Data Store
+```
 
-This section is a placeholder. Add API endpoints and SDK usage details as they become available.
+## Profiles
+
+Every user, service account, and bot has a unified profile:
+
+```json
+{
+  "id": "usr_a1b2c3d4",
+  "type": "user",
+  "name": "Ada Lovelace",
+  "email": "ada@example.com",
+  "avatar": "https://cdn.hanzo.ai/avatars/usr_a1b2c3d4.jpg",
+  "organization": "hanzo",
+  "teams": ["engineering", "research"],
+  "metadata": {
+    "title": "Principal Engineer",
+    "timezone": "America/Los_Angeles"
+  },
+  "linked_identities": [
+    { "provider": "github", "external_id": "ada-lovelace" },
+    { "provider": "google", "external_id": "ada@gmail.com" }
+  ],
+  "created_at": "2025-01-15T00:00:00Z",
+  "updated_at": "2025-06-01T12:00:00Z"
+}
+```
+
+## Directories
+
+Organization directories provide hierarchical team and group management:
+
+```python
+from hanzo_iam import IAMClient
+
+client = IAMClient()
+
+# List organization members
+members = client.get_users(owner="hanzo")
+
+# Search by attribute
+results = client.get_users(
+    owner="hanzo",
+    field="tag",
+    value="engineering"
+)
+```
+
+## Identity Resolution
+
+Link and resolve identities across providers and services:
+
+```python
+# Resolve a user across linked providers
+profile = client.get_user("hanzo", "ada-lovelace")
+
+# Access linked identities
+for identity in profile.get("properties", {}).get("linked_identities", []):
+    print(f"{identity['provider']}: {identity['external_id']}")
+```
+
+## SDK Integration
+
+### Python
+
+```python
+from hanzo_iam import IAMClient
+
+client = IAMClient(
+    server_url="https://iam.hanzo.ai",
+    client_id="your-client-id",
+    client_secret="your-client-secret",
+    organization="hanzo"
+)
+
+# Get current user profile
+user = client.get_user("hanzo", "username")
+
+# Update profile metadata
+client.update_user(user)
+```
+
+### TypeScript
+
+```typescript
+import { HanzoAuth } from '@hanzo/iam'
+
+const auth = new HanzoAuth({
+  clientId: 'your-client-id',
+  organization: 'hanzo'
+})
+
+// Get current user
+const user = await auth.getUser()
+
+// User profile includes linked identities
+console.log(user.name, user.email, user.avatar)
+```
+
+## Next Steps
+
+<Cards>
+  <Card title="IAM" href="/docs/services/iam">
+    Authentication and authorization
+  </Card>
+  <Card title="KMS" href="/docs/services/kms">
+    Key management and secrets
+  </Card>
+</Cards>

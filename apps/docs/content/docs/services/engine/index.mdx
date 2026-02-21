@@ -5,16 +5,138 @@ description: Core runtime for inference, workflows, and service orchestration
 
 # Hanzo Engine
 
-Hanzo Engine is the core runtime that powers inference execution, workflow scheduling, and
-service orchestration across the platform.
+Hanzo Engine is the core runtime that powers inference execution, workflow scheduling, and service orchestration across the platform. It provides the execution layer that other Hanzo services build upon.
 
-## Capabilities
+## Features
 
-- **Runtime**: Execution layer for models and workflows
-- **Scheduling**: Queueing, retries, and dependency management
-- **Plugins**: Extensible adapters for models and data sources
-- **Telemetry**: Deep tracing and profiling hooks
+- **Runtime**: Execution layer for models, workflows, and pipelines
+- **Scheduling**: Priority queueing, retries, dependency management, and cron
+- **Plugins**: Extensible adapters for model runtimes, data sources, and sinks
+- **Telemetry**: Deep tracing, profiling hooks, and OpenTelemetry export
+- **Scaling**: Horizontal auto-scaling based on queue depth and latency
 
-## Status
+## Architecture
 
-This section is a placeholder. Add API endpoints and deployment details when available.
+```
+┌─────────────────────────────────────────────────┐
+│                  Hanzo Engine                     │
+├─────────────────────────────────────────────────┤
+│                                                   │
+│  ┌─────────┐  ┌─────────┐  ┌─────────────────┐ │
+│  │ Gateway  │  │  Flow   │  │  Chat / Nexus   │ │
+│  │ (LLM)   │  │ (Pipes) │  │ (Agents / RAG)  │ │
+│  └────┬─────┘  └────┬────┘  └───────┬─────────┘ │
+│       │              │               │            │
+│       ▼              ▼               ▼            │
+│  ┌──────────────────────────────────────────┐    │
+│  │            Task Scheduler                 │    │
+│  │   Priority queues · Retries · Cron        │    │
+│  └──────────────────────────────────────────┘    │
+│       │              │               │            │
+│       ▼              ▼               ▼            │
+│  ┌──────────┐  ┌──────────┐  ┌──────────────┐   │
+│  │ GPU Pool │  │ CPU Pool │  │  Spot / Burst │   │
+│  └──────────┘  └──────────┘  └──────────────┘   │
+│                                                   │
+│  ┌──────────────────────────────────────────┐    │
+│  │         Telemetry & Observability         │    │
+│  │   Traces · Metrics · Logs · Profiling     │    │
+│  └──────────────────────────────────────────┘    │
+│                                                   │
+└─────────────────────────────────────────────────┘
+```
+
+## Task Scheduling
+
+Engine manages the execution lifecycle for all platform tasks:
+
+```python
+# Tasks are submitted via service APIs and managed by Engine
+# Example: Gateway submits an inference request
+{
+    "task_id": "tsk_abc123",
+    "type": "inference",
+    "model": "claude-sonnet-4-5-20250929",
+    "priority": "high",
+    "timeout_ms": 30000,
+    "retry_policy": {
+        "max_retries": 3,
+        "backoff": "exponential",
+        "initial_delay_ms": 100
+    },
+    "routing": {
+        "prefer_gpu": true,
+        "region": "us-west-2"
+    }
+}
+```
+
+## Plugin System
+
+Engine supports pluggable adapters for different model runtimes:
+
+| Plugin | Runtime | Models |
+|--------|---------|--------|
+| `vllm` | vLLM | Open-source LLMs (Llama, Mistral, Qwen) |
+| `trt-llm` | TensorRT-LLM | NVIDIA-optimized inference |
+| `mlx` | MLX | Apple Silicon models |
+| `onnx` | ONNX Runtime | Cross-platform inference |
+| `triton` | Triton Inference Server | Multi-framework serving |
+
+## Telemetry
+
+Engine exports OpenTelemetry-compatible traces, metrics, and logs:
+
+```bash
+# Environment variables for telemetry export
+OTEL_EXPORTER_OTLP_ENDPOINT=https://console.hanzo.ai/v1/traces
+OTEL_SERVICE_NAME=hanzo-engine
+HANZO_ENGINE_TRACE_SAMPLING=0.1  # 10% sampling in production
+```
+
+Key metrics exported:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `engine.tasks.queued` | Gauge | Tasks waiting in queue |
+| `engine.tasks.active` | Gauge | Currently executing tasks |
+| `engine.tasks.completed` | Counter | Completed tasks (by status) |
+| `engine.inference.latency` | Histogram | End-to-end inference latency |
+| `engine.inference.tokens_per_sec` | Gauge | Throughput per model |
+| `engine.gpu.utilization` | Gauge | GPU utilization percentage |
+
+## Auto-Scaling
+
+Engine scales worker pools based on demand:
+
+```yaml
+# Engine scaling configuration
+scaling:
+  gpu_pool:
+    min_replicas: 2
+    max_replicas: 32
+    target_queue_depth: 10
+    scale_up_cooldown: 30s
+    scale_down_cooldown: 300s
+  cpu_pool:
+    min_replicas: 4
+    max_replicas: 64
+    target_latency_p99: 500ms
+```
+
+## Related Services
+
+<Cards>
+  <Card title="Gateway" href="/docs/services/gateway">
+    LLM API gateway — routes requests to Engine
+  </Card>
+  <Card title="Flow" href="/docs/services/flow">
+    Visual workflow builder — orchestrated by Engine
+  </Card>
+  <Card title="ML" href="/docs/services/ml">
+    ML pipelines — training tasks managed by Engine
+  </Card>
+  <Card title="Analytics" href="/docs/services/analytics">
+    Telemetry dashboards for Engine metrics
+  </Card>
+</Cards>

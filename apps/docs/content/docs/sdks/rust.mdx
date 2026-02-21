@@ -68,6 +68,122 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+## Function Calling
+
+```rust
+use hanzo_ai::{Client, Tool, FunctionDef};
+use serde_json::json;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Client::new("your-api-key");
+
+    let tools = vec![
+        Tool::function(FunctionDef {
+            name: "get_weather".into(),
+            description: Some("Get weather for a location".into()),
+            parameters: json!({
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "City name"
+                    }
+                },
+                "required": ["location"]
+            }),
+        }),
+    ];
+
+    let response = client
+        .chat()
+        .completions()
+        .create("gpt-4o")
+        .message("user", "What's the weather in Tokyo?")
+        .tools(tools)
+        .send()
+        .await?;
+
+    if let Some(tool_calls) = &response.choices[0].message.tool_calls {
+        for call in tool_calls {
+            println!("Call {}({})", call.function.name, call.function.arguments);
+        }
+    }
+
+    Ok(())
+}
+```
+
+## Multiple Providers
+
+```rust
+// Switch providers by changing the model name
+let openai = client.chat().completions().create("gpt-4o")
+    .message("user", "Hello!").send().await?;
+
+let anthropic = client.chat().completions().create("claude-sonnet-4-5-20250929")
+    .message("user", "Hello!").send().await?;
+
+let google = client.chat().completions().create("gemini-2.0-flash")
+    .message("user", "Hello!").send().await?;
+```
+
+## Configuration
+
+```rust
+use hanzo_ai::{Client, Config};
+
+let client = Client::with_config(Config {
+    api_key: "your-api-key".into(),
+    base_url: "https://llm.hanzo.ai/v1".into(),  // default
+    timeout: std::time::Duration::from_secs(60),
+    max_retries: 2,
+});
+```
+
+### Environment Variables
+
+```bash
+HANZO_API_KEY=your-api-key
+HANZO_BASE_URL=https://llm.hanzo.ai/v1  # optional
+```
+
+## Error Handling
+
+```rust
+use hanzo_ai::Error;
+
+match client.chat().completions().create("gpt-4o")
+    .message("user", "Hello!")
+    .send()
+    .await
+{
+    Ok(response) => println!("{}", response.choices[0].message.content),
+    Err(Error::Api { status, message }) => {
+        eprintln!("API error {status}: {message}");
+    }
+    Err(Error::Network(e)) => {
+        eprintln!("Network error: {e}");
+    }
+    Err(e) => eprintln!("Error: {e}"),
+}
+```
+
+## Crypto & DID Features
+
+The Rust SDK includes additional support for Web3 and decentralized identity:
+
+```rust
+use hanzo_ai::crypto::{Did, Verifier};
+
+// Create a DID for authenticated API access
+let did = Did::from_keypair(&keypair)?;
+
+// Verify DID-authenticated requests
+let verifier = Verifier::new(&did);
+let is_valid = verifier.verify(&signed_request)?;
+```
+
 ## Resources
 
 - [GitHub Repository](https://github.com/hanzoai/rust-sdk)

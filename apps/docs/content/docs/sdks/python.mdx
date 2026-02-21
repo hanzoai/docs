@@ -46,13 +46,111 @@ for chunk in stream:
         print(chunk.choices[0].delta.content, end="")
 ```
 
+## Async
+
+```python
+import asyncio
+from hanzoai import AsyncHanzo
+
+async def main():
+    client = AsyncHanzo(api_key="your-api-key")
+
+    response = await client.chat.completions.create(
+        model="claude-sonnet-4-5-20250929",
+        messages=[{"role": "user", "content": "Hello!"}]
+    )
+    print(response.choices[0].message.content)
+
+asyncio.run(main())
+```
+
+## Function Calling
+
+```python
+import json
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "Get the current weather for a location",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string", "description": "City name"},
+                    "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}
+                },
+                "required": ["location"]
+            }
+        }
+    }
+]
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "What's the weather in Tokyo?"}],
+    tools=tools,
+    tool_choice="auto"
+)
+
+# Handle tool calls
+message = response.choices[0].message
+if message.tool_calls:
+    for call in message.tool_calls:
+        args = json.loads(call.function.arguments)
+        print(f"Call {call.function.name}({args})")
+```
+
+## Multiple Providers
+
+Switch between providers by changing the model name:
+
+```python
+# OpenAI
+client.chat.completions.create(model="gpt-4o", ...)
+
+# Anthropic
+client.chat.completions.create(model="claude-sonnet-4-5-20250929", ...)
+
+# Google
+client.chat.completions.create(model="gemini-2.0-flash", ...)
+
+# Meta (via Groq, Together, etc.)
+client.chat.completions.create(model="groq/llama-3.1-70b", ...)
+```
+
 ## Configuration
 
 ```python
 client = Hanzo(
     api_key="your-api-key",
     base_url="https://llm.hanzo.ai/v1",  # default
+    timeout=60.0,
+    max_retries=2,
 )
+```
+
+### Environment Variables
+
+```bash
+HANZO_API_KEY=your-api-key
+HANZO_BASE_URL=https://llm.hanzo.ai/v1  # optional
+```
+
+## Hanzo CLI
+
+The Python SDK also includes the `hanzo` CLI for platform management:
+
+```bash
+pip install hanzo[all]   # includes CLI + all tools
+
+hanzo login              # authenticate with IAM
+hanzo dev                # launch Hanzo Dev (AI coding assistant)
+hanzo bot status         # check bot-gateway status
+hanzo kms list           # list KMS secrets
+hanzo iam users          # manage IAM users
+hanzo storage ls s3://   # S3-compatible storage
 ```
 
 ## Resources

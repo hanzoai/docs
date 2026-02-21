@@ -1,0 +1,238 @@
+---
+title: C/C++ SDK
+description: The official Hanzo C/C++ SDK for high-performance native applications.
+---
+
+# C/C++ SDK
+
+The `hanzo-ai` C/C++ library provides native bindings for the Hanzo LLM Gateway, designed for low-latency embedded systems, game engines, and performance-critical applications.
+
+## Installation
+
+### C++ (CMake)
+
+```cmake
+# CMakeLists.txt
+include(FetchContent)
+FetchContent_Declare(
+  hanzo-ai
+  GIT_REPOSITORY https://github.com/hanzoai/c-sdk
+  GIT_TAG main
+)
+FetchContent_MakeAvailable(hanzo-ai)
+
+target_link_libraries(your_app PRIVATE hanzo::ai)
+```
+
+### C (system install)
+
+```bash
+# macOS
+brew install hanzo-ai
+
+# Linux
+curl -fsSL https://hanzo.sh | bash -s -- --component c-sdk
+```
+
+## Quick Start (C++)
+
+```cpp
+#include <hanzo/ai.h>
+#include <iostream>
+
+int main() {
+    hanzo::Client client("your-api-key");
+
+    auto response = client.chat().completions().create({
+        .model = "gpt-4o",
+        .messages = {
+            {"user", "Hello, world!"}
+        }
+    });
+
+    std::cout << response.choices[0].message.content << std::endl;
+    return 0;
+}
+```
+
+## Quick Start (C)
+
+```c
+#include <hanzo/ai.h>
+#include <stdio.h>
+
+int main() {
+    hanzo_client_t* client = hanzo_client_new("your-api-key");
+
+    hanzo_message_t messages[] = {
+        { .role = "user", .content = "Hello, world!" }
+    };
+
+    hanzo_request_t req = {
+        .model = "gpt-4o",
+        .messages = messages,
+        .num_messages = 1
+    };
+
+    hanzo_response_t* resp = hanzo_chat_complete(client, &req);
+
+    if (resp && resp->num_choices > 0) {
+        printf("%s\n", resp->choices[0].message.content);
+    }
+
+    hanzo_response_free(resp);
+    hanzo_client_free(client);
+    return 0;
+}
+```
+
+## Streaming (C++)
+
+```cpp
+#include <hanzo/ai.h>
+#include <iostream>
+
+int main() {
+    hanzo::Client client("your-api-key");
+
+    client.chat().completions().stream({
+        .model = "claude-sonnet-4-5-20250929",
+        .messages = {{"user", "Write a haiku about AI"}}
+    }, [](const hanzo::StreamChunk& chunk) {
+        if (!chunk.content.empty()) {
+            std::cout << chunk.content << std::flush;
+        }
+    });
+
+    std::cout << std::endl;
+    return 0;
+}
+```
+
+## Streaming (C)
+
+```c
+void on_chunk(const char* content, size_t len, void* user_data) {
+    if (content && len > 0) {
+        fwrite(content, 1, len, stdout);
+        fflush(stdout);
+    }
+}
+
+int main() {
+    hanzo_client_t* client = hanzo_client_new("your-api-key");
+
+    hanzo_message_t messages[] = {
+        { .role = "user", .content = "Write a haiku about AI" }
+    };
+
+    hanzo_stream_request_t req = {
+        .model = "claude-sonnet-4-5-20250929",
+        .messages = messages,
+        .num_messages = 1,
+        .callback = on_chunk,
+        .user_data = NULL
+    };
+
+    hanzo_chat_stream(client, &req);
+
+    hanzo_client_free(client);
+    return 0;
+}
+```
+
+## Function Calling (C++)
+
+```cpp
+#include <hanzo/ai.h>
+#include <nlohmann/json.hpp>
+
+int main() {
+    hanzo::Client client("your-api-key");
+
+    hanzo::Tool weather_tool = {
+        .type = "function",
+        .function = {
+            .name = "get_weather",
+            .description = "Get weather for a location",
+            .parameters = R"({
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string", "description": "City name"}
+                },
+                "required": ["location"]
+            })"_json
+        }
+    };
+
+    auto response = client.chat().completions().create({
+        .model = "gpt-4o",
+        .messages = {{"user", "What's the weather in Tokyo?"}},
+        .tools = {weather_tool}
+    });
+
+    for (const auto& call : response.choices[0].message.tool_calls) {
+        std::cout << "Call " << call.function.name
+                  << "(" << call.function.arguments << ")" << std::endl;
+    }
+
+    return 0;
+}
+```
+
+## Configuration
+
+```cpp
+// C++
+hanzo::Client client({
+    .api_key = "your-api-key",
+    .base_url = "https://llm.hanzo.ai/v1",  // default
+    .timeout_ms = 60000,
+    .max_retries = 2,
+});
+```
+
+```c
+// C
+hanzo_config_t config = {
+    .api_key = "your-api-key",
+    .base_url = "https://llm.hanzo.ai/v1",
+    .timeout_ms = 60000,
+    .max_retries = 2,
+};
+hanzo_client_t* client = hanzo_client_new_with_config(&config);
+```
+
+### Environment Variables
+
+```bash
+HANZO_API_KEY=your-api-key
+HANZO_BASE_URL=https://llm.hanzo.ai/v1  # optional
+```
+
+## Thread Safety
+
+The client is thread-safe and uses connection pooling internally:
+
+```cpp
+// Create once, use from multiple threads
+auto client = std::make_shared<hanzo::Client>("your-api-key");
+
+std::vector<std::thread> threads;
+for (int i = 0; i < 10; i++) {
+    threads.emplace_back([&client, i]() {
+        auto resp = client->chat().completions().create({
+            .model = "gpt-4o",
+            .messages = {{"user", "Thread " + std::to_string(i)}}
+        });
+        std::cout << resp.choices[0].message.content << std::endl;
+    });
+}
+
+for (auto& t : threads) t.join();
+```
+
+## Resources
+
+- [GitHub Repository](https://github.com/hanzoai/c-sdk)
+- [LLM Gateway Docs](/docs/llm)
