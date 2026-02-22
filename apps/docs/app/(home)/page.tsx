@@ -167,7 +167,7 @@ const serviceGroups = [
       { name: 'DB', desc: 'PostgreSQL managed', href: '/docs/services/db' },
       { name: 'KV', desc: 'Redis key-value', href: '/docs/services/kv' },
       { name: 'MQ', desc: 'Message queues', href: '/docs/services/mq' },
-      { name: 'Kafka', desc: 'Event streaming', href: '/docs/services/kafka' },
+      { name: 'Stream', desc: 'Kafka-compatible streaming', href: '/docs/services/stream' },
       { name: 'PubSub', desc: 'Real-time messaging', href: '/docs/services/pubsub' },
       { name: 'Edge', desc: 'Edge functions', href: '/docs/services/edge' },
       { name: 'Registry', desc: 'Container registry', href: '/docs/services/registry' },
