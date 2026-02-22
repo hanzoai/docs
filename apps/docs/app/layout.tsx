@@ -12,9 +12,10 @@ import { NextProvider } from '@hanzo/docs/core/framework/next';
 export const metadata = createMetadata({
   title: {
     template: '%s | Hanzo Docs',
-    default: 'Hanzo Docs',
+    default: 'Hanzo — Documentation',
   },
-  description: 'The React.js documentation framework.',
+  description:
+    'Documentation for Hanzo AI Cloud — 33 services, one API key, one gateway.',
   metadataBase: baseUrl,
 });
 
