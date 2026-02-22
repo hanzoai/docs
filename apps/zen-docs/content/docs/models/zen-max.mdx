@@ -1,0 +1,73 @@
+---
+title: zen-max
+description: Trillion-parameter 1.04T MoE open-weights frontier model. Same model as zen4-max.
+---
+
+# zen-max
+
+**Frontier**
+
+The open-weights release of the Zen frontier model. zen-max and zen4-max are the same model -- a 1.04T Mixture-of-Experts architecture with 32B active parameters per token and a 256K context window. zen-max is the brand name; zen4-max is the generation identifier.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen-max` |
+| **Parameters** | 1.04T (32B active) |
+| **Architecture** | MoE |
+| **Context Window** | 256K tokens |
+| **Status** | Available |
+| **HuggingFace** | [zenlm/zen-max](https://huggingface.co/zenlm/zen-max) |
+
+## Capabilities
+
+- Frontier-scale reasoning and analysis
+- 256K context for entire codebases and document collections
+- Complex multi-step problem solving
+- Advanced multilingual understanding (100+ languages)
+- State-of-the-art instruction following
+- Research-grade text generation
+
+## Usage
+
+### HuggingFace
+
+```bash
+pip install transformers torch accelerate
+```
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-max")
+model = AutoModelForCausalLM.from_pretrained(
+    "zenlm/zen-max",
+    device_map="auto",
+    torch_dtype="auto",
+)
+
+inputs = tokenizer("Solve this step by step:", return_tensors="pt").to(model.device)
+outputs = model.generate(**inputs, max_new_tokens=1024)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
+
+### API
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen-max",
+    messages=[{"role": "user", "content": "Derive the proof for the Cauchy-Schwarz inequality."}],
+)
+print(response.choices[0].message.content)
+```
+
+## See Also
+
+- [zen4-max](/docs/models/zen4-max) -- Same model, generation identifier
+- [zen4-ultra](/docs/models/zen4-ultra) -- zen4 with chain-of-thought reasoning
+- [zen4](/docs/models/zen4) -- 744B MoE flagship

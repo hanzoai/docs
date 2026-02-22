@@ -1,0 +1,76 @@
+---
+title: zen-omni
+description: 72B dense hypermodal model supporting text, vision, audio, and code.
+---
+
+# zen-omni
+
+**Hypermodal**
+
+A 72B dense transformer that unifies text, vision, audio, and code in a single model. Process and generate across all modalities with a 131K context window.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen-omni` |
+| **Parameters** | 72B |
+| **Architecture** | Dense Multimodal |
+| **Context Window** | 131K tokens |
+| **Modalities** | Text, Vision, Audio, Code |
+| **Status** | Available |
+| **HuggingFace** | [zenlm/zen-omni](https://huggingface.co/zenlm/zen-omni) |
+
+## Capabilities
+
+- Unified text, vision, audio, and code processing
+- Cross-modal reasoning (e.g., describe audio from video)
+- Image and document understanding
+- Audio transcription and analysis
+- Code generation with visual context
+- 131K context for long multimodal sessions
+
+## Usage
+
+### HuggingFace
+
+```bash
+pip install transformers torch pillow
+```
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-omni", trust_remote_code=True)
+model = AutoModelForCausalLM.from_pretrained("zenlm/zen-omni", trust_remote_code=True, device_map="auto")
+
+inputs = tokenizer("Analyze this data and provide insights:", return_tensors="pt").to(model.device)
+outputs = model.generate(**inputs, max_new_tokens=512)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
+
+### API
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen-omni",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "image_url", "image_url": {"url": "https://example.com/chart.png"}},
+            {"type": "text", "text": "Analyze this chart and summarize the trends."},
+        ],
+    }],
+)
+print(response.choices[0].message.content)
+```
+
+## See Also
+
+- [zen3-omni](/docs/models/zen3-omni) -- 200B multimodal model
+- [zen-vl](/docs/models/zen-vl) -- 32B vision-language model
+- [zen4](/docs/models/zen4) -- 744B MoE flagship (text)

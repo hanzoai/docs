@@ -7,6 +7,28 @@ description: Get started with Zen models in minutes
 
 Get up and running with Zen models quickly.
 
+## Hanzo Cloud API
+
+The fastest way to use Zen models — no GPU required:
+
+```bash
+pip install hanzoai
+```
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen4",
+    messages=[{"role": "user", "content": "Hello, Zen!"}],
+)
+print(response.choices[0].message.content)
+```
+
+Get your API key at [console.hanzo.ai](https://console.hanzo.ai) — every new account gets **$5 free credit**.
+
 ## Transformers
 
 The easiest way to use Zen models:
@@ -37,8 +59,6 @@ For high-throughput production serving:
 ```bash
 vllm serve zenlm/zen-coder-flash \
     --tensor-parallel-size 4 \
-    --tool-call-parser glm47 \
-    --reasoning-parser glm45 \
     --enable-auto-tool-choice
 ```
 
@@ -50,7 +70,6 @@ With EAGLE speculative decoding:
 python -m sglang.launch_server \
     --model-path zenlm/zen-coder-flash \
     --tp-size 4 \
-    --tool-call-parser glm47 \
     --speculative-algorithm EAGLE
 ```
 

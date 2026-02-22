@@ -1,0 +1,81 @@
+---
+title: zen-agent
+description: 32B dense model with tool use and planning for agentic AI workflows.
+---
+
+# zen-agent
+
+**Agentic AI**
+
+A 32B dense transformer designed for agentic workflows with native tool use, multi-step planning, and autonomous execution. Excels at breaking down complex tasks, calling external tools, and iterating on results.
+
+> This model is in preview. Access may be limited.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen-agent` |
+| **Parameters** | 32B |
+| **Architecture** | Dense |
+| **Context Window** | 131K tokens |
+| **Status** | Preview |
+| **HuggingFace** | -- |
+
+## Capabilities
+
+- Native tool/function calling
+- Multi-step task planning and execution
+- Code execution and iteration
+- Web browsing and information retrieval
+- File manipulation and data processing
+- Self-correction and error recovery
+- 131K context for complex agent workflows
+
+## Usage
+
+### API
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "search_web",
+            "description": "Search the web for information",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"},
+                },
+                "required": ["query"],
+            },
+        },
+    },
+]
+
+response = client.chat.completions.create(
+    model="zen-agent",
+    messages=[{"role": "user", "content": "Find the latest research on quantum error correction and summarize the key findings."}],
+    tools=tools,
+    tool_choice="auto",
+)
+
+message = response.choices[0].message
+if message.tool_calls:
+    for call in message.tool_calls:
+        print(f"Tool: {call.function.name}")
+        print(f"Args: {call.function.arguments}")
+else:
+    print(message.content)
+```
+
+## See Also
+
+- [zen4](/docs/models/zen4) -- 744B MoE flagship model
+- [zen-coder](/docs/models/zen-coder) -- 32B code-specialized model
+- [zen-pro](/docs/models/zen-pro) -- 32B professional foundation model

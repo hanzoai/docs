@@ -1,0 +1,57 @@
+---
+title: zen-scribe
+description: Speech-to-text transcription model with multi-language support.
+---
+
+# zen-scribe
+
+**Transcription**
+
+A speech-to-text transcription model supporting multiple languages with high accuracy. Handles diverse accents, noisy environments, and domain-specific terminology.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen-scribe` |
+| **Architecture** | Encoder-Decoder Transformer |
+| **Input** | Audio (WAV, MP3, FLAC, M4A) |
+| **Languages** | 100+ |
+| **Status** | Available |
+| **HuggingFace** | -- |
+
+## Capabilities
+
+- Multi-language speech-to-text
+- Speaker diarization (who spoke when)
+- Timestamp generation (word and segment level)
+- Punctuation and capitalization
+- Noise-robust transcription
+- Domain-specific vocabulary support
+
+## Usage
+
+### API
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.audio.transcriptions.create(
+    model="zen-scribe",
+    file=open("meeting.mp3", "rb"),
+    language="en",
+    response_format="verbose_json",
+    timestamp_granularities=["word", "segment"],
+)
+
+for segment in response.segments:
+    print(f"[{segment.start:.1f}s - {segment.end:.1f}s] {segment.text}")
+```
+
+## See Also
+
+- [zen-translator](/docs/models/zen-translator) -- Multi-language translation
+- [zen-dub](/docs/models/zen-dub) -- Voice synthesis (text-to-speech)
+- [zen-live](/docs/models/zen-live) -- Real-time bidirectional translation

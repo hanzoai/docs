@@ -1,0 +1,69 @@
+---
+title: zen-coder
+description: 32B dense code model with 131K context for multi-language development.
+---
+
+# zen-coder
+
+**Code**
+
+A 32B dense transformer trained for software engineering. Supports multi-language code generation, refactoring, debugging, and documentation with a 131K context window for working with large codebases.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen-coder` |
+| **Parameters** | 32B |
+| **Architecture** | Dense |
+| **Context Window** | 131K tokens |
+| **Status** | Available |
+| **HuggingFace** | [zenlm/zen-coder](https://huggingface.co/zenlm/zen-coder) |
+
+## Capabilities
+
+- Multi-language code generation (Python, TypeScript, Go, Rust, C++, and more)
+- Code review and refactoring
+- Bug detection and debugging
+- Documentation generation
+- Test case creation
+- 131K context for repository-scale understanding
+
+## Usage
+
+### HuggingFace
+
+```bash
+pip install transformers torch
+```
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-coder")
+model = AutoModelForCausalLM.from_pretrained("zenlm/zen-coder", device_map="auto")
+
+inputs = tokenizer("Write a Python function to merge two sorted lists:", return_tensors="pt").to(model.device)
+outputs = model.generate(**inputs, max_new_tokens=256)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
+
+### API
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen-coder",
+    messages=[{"role": "user", "content": "Write a Go HTTP server with graceful shutdown."}],
+)
+print(response.choices[0].message.content)
+```
+
+## See Also
+
+- [zen4-coder](/docs/models/zen4-coder) -- 480B MoE code model
+- [zen-coder-flash](/docs/models/zen-coder-flash) -- 7B low-latency code completions
+- [zen-code](/docs/models/zen-code) -- 14B legacy code model
