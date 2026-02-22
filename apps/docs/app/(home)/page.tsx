@@ -1,4 +1,3 @@
-import { cn } from '@/lib/cn';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -7,19 +6,14 @@ import {
   Cloud,
   Code2,
   Database,
-  Eye,
   Globe,
   HardDrive,
   Key,
-  Layers,
   MessageCircle,
   Monitor,
-  Music,
-  Palette,
   Shield,
   Sparkles,
   Terminal,
-  Video,
   Workflow,
   Zap,
 } from 'lucide-react';
