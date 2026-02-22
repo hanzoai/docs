@@ -1,29 +1,329 @@
 ---
 title: Hanzo Bot
-description: Skill registry and marketplace for Hanzo Bot with APIs for browsing, publishing, and managing bot skills and personas.
+description: Skill-based AI assistant platform with 743+ skills, 35+ channel integrations, persona management, and a plugin SDK for extending capabilities.
 ---
+
+import { Cards, Card } from '@hanzo/docs-ui/components/card'
 
 # Hanzo Bot
 
-Hanzo Bot Hub is the skill registry and marketplace for Hanzo Bot. It provides APIs for browsing, publishing, and managing bot skills, personas, and integrations.
+Hanzo Bot is a multi-channel AI assistant platform. It ships as a single gateway binary
+that connects to any messaging channel, routes conversations to specialized AI agents,
+and exposes 743+ installable skills and 594+ automation integrations out of the box.
 
-**Endpoint:** `hanzo.bot`
-**Gateway:** `api.hanzo.ai/v1/bot/*`
+**Domain:** [hanzo.bot](https://hanzo.bot)
+**Console:** [app.hanzo.bot](https://app.hanzo.bot)
+**Skills Browser:** [skills.hanzo.bot](https://skills.hanzo.bot)
+**Gateway API:** `api.hanzo.ai/v1/bot/*`
+**Package:** `@hanzo/bot` on npm
+**CLI Binary:** `hanzo-bot`
+
+---
+
+## Features
+
+- **743+ Skills** -- Community-contributed skill packages covering code generation, data analysis, web scraping, DevOps, design, writing, research, and more.
+- **10 Team Presets** -- Pre-configured AI personas (Vi, Dev, Des, Opera, Su, Mark, Fin, Art, Three, Fil) auto-provisioned per workspace.
+- **35+ Channel Adapters** -- Telegram, Discord, Slack, iMessage, WhatsApp, Signal, Matrix, IRC, MS Teams, Nostr, Line, Google Chat, Feishu, Mattermost, Nextcloud Talk, Twitch, Zalo, and more.
+- **594+ Automation Integrations** -- ActivePieces-based flow connectors for third-party services.
+- **Plugin SDK** -- `@hanzo/bot-*` scoped packages for extending bot capabilities with custom channels, tools, and skills.
+- **Multi-Model Support** -- Route conversations to any LLM provider via the Hanzo LLM Gateway (Claude, GPT, Qwen3, Gemini, Llama, and 100+ others).
+- **MCP Tool Integration** -- Connect Model Context Protocol tools directly to bot agents for rich tool use.
+- **mDNS Service Discovery** -- Local network discovery via `bot-gw` Bonjour/mDNS service type.
+- **DID and Wallet Identity** -- Each agent gets a W3C DID (`did:hanzo:<id>`) and an on-chain Safe wallet.
+- **Embeddable Chat Widget** -- Drop-in `embed.js` script for adding bot chat to any website.
+- **Tiered Runtime** -- From free shared gateway to dedicated EC2 Mac instances, scaling on demand.
+
+---
+
+## Architecture
+
+```
+hanzo-bot (CLI)
++-- Gateway (WebSocket :18789, OpenAI-compatible HTTP)
+|   +-- Auth (token / password / API key / Tailscale / local)
+|   +-- 80+ RPC methods, event streaming
++-- Agent Runtime (10 team presets, DID + wallet, memory)
++-- Channel Adapters (35+ platforms, ChannelPlugin interface)
++-- Skills Engine (743+ packages)
++-- Extensions (35 built-in: messaging, memory, flow, voice)
++-- Config (~/.bot/bot.json)
+```
+
+---
 
 ## Quick Start
 
+### Install
+
 ```bash
-curl -H "Authorization: Bearer hk-your-api-key" \
-  https://api.hanzo.ai/v1/bot/skills
+npm install -g @hanzo/bot
 ```
 
-## Key Features
+### Run the Gateway
 
-- 743+ skills available
-- Skill publishing and versioning
-- Persona management
-- Integration marketplace with 600+ connectors
+```bash
+# Start with default config
+hanzo-bot
 
-## API Reference
+# Start with explicit config
+hanzo-bot --config ~/.bot/bot.json
 
-See the [full API reference](/docs/openapi) for all endpoints.
+# Gateway-only mode (skip channel adapters)
+BOT_SKIP_CHANNELS=1 hanzo-bot
+```
+
+### Connect via API
+
+```bash
+# List available skills
+curl -H "Authorization: Bearer $BOT_API_KEY" \
+  https://api.hanzo.ai/v1/bot/skills
+
+# Send a message to an agent
+curl -X POST -H "Authorization: Bearer $BOT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello", "agentId": "vi"}' \
+  https://api.hanzo.ai/v1/bot/chat
+```
+
+### WebSocket Connection
+
+```javascript
+const ws = new WebSocket('ws://localhost:18789');
+ws.onopen = () => {
+  ws.send(JSON.stringify({ method: 'auth', params: { token: BOT_TOKEN } }));
+  ws.send(JSON.stringify({ method: 'chat.send', params: { message: 'Hello!', agentId: 'vi' } }));
+};
+ws.onmessage = (e) => console.log(JSON.parse(e.data));
+```
+
+---
+
+## Skills
+
+Skills are modular capability packages that extend what a bot can do. Each skill is a
+self-contained unit with instructions, tools, and optional dependencies.
+
+Manage skills via gateway methods: `skills.status`, `skills.bins`, `skills.install`, `skills.update`.
+
+### Skill Categories
+
+The 743+ skills span categories including:
+
+- **Development** -- Code generation, debugging, git workflows, CI/CD
+- **Data** -- Analysis, visualization, ETL pipelines, SQL queries
+- **DevOps** -- Infrastructure management, monitoring, deployment
+- **Design** -- UI mockups, asset generation, design system management
+- **Writing** -- Content creation, editing, translation, summarization
+- **Research** -- Web search, paper analysis, fact-checking
+- **Productivity** -- Calendar, email, task management, note-taking
+
+Browse all skills at [skills.hanzo.bot](https://skills.hanzo.bot).
+
+---
+
+## Personas (Team Presets)
+
+Every workspace gets 10 AI team members auto-provisioned. Each persona has a unique
+identity, system prompt (soul), default model, and optional skill bindings.
+
+| ID | Name | Role | Description |
+|----|------|------|-------------|
+| `vi` | Vi | Visionary Leader | Strategic planning, product vision, team coordination |
+| `dev` | Dev | Software Engineer | Code, architecture, debugging, testing |
+| `des` | Des | Designer | UI/UX design, design systems, user research |
+| `opera` | Opera | Operations Engineer | DevOps, infrastructure, CI/CD, monitoring |
+| `su` | Su | Support | Customer support, documentation, onboarding |
+| `mark` | Mark | Marketing | Content strategy, campaigns, growth analytics |
+| `fin` | Fin | Financial | Budgets, forecasting, pricing, unit economics |
+| `art` | Art | Artist | Visual art, branding, illustrations, icons |
+| `three` | Three | 3D Artist | 3D modeling, spatial computing, interactive 3D |
+| `fil` | Fil | Film Director | Video production, animation, motion design |
+
+### Identity System
+
+Each persona receives:
+
+- **W3C DID**: `did:hanzo:<agent-id>` (e.g., `did:hanzo:dev`)
+- **Safe Wallet**: On-chain smart-contract wallet on Hanzo Network (chain 36963)
+- **Soul Prompt**: Detailed system instructions defining behavior and principles
+- **Skills**: Default skill bindings (e.g., Dev gets `coding-agent` and `github`)
+
+### Gateway Methods
+
+| Method | Description |
+|--------|-------------|
+| `team.presets.list` | List all team presets |
+| `team.presets.get` | Get a specific preset by ID |
+| `team.provision` | Provision a single agent from a preset |
+| `team.provision.all` | Provision all 10 team agents |
+| `agent.did.get` | Get agent DID |
+| `agent.did.create` | Create agent DID |
+| `agent.wallet.get` | Get agent wallet |
+| `agent.wallet.create` | Create agent wallet |
+| `agent.identity.full` | Get full identity (profile + DID + wallet) |
+
+---
+
+## Plugin SDK
+
+The Plugin SDK (`@hanzo/bot/plugin-sdk`) provides typed interfaces for building custom
+channel adapters, tools, and extensions.
+
+### Installation
+
+```bash
+npm install @hanzo/bot
+```
+
+### Channel Plugin Interface
+
+```typescript
+import type { ChannelPlugin } from '@hanzo/bot/plugin-sdk';
+
+const myChannel: ChannelPlugin = {
+  meta: { id: 'my-channel', name: 'My Channel', version: '1.0.0' },
+  setup:     { /* ChannelSetupAdapter */     },
+  auth:      { /* ChannelAuthAdapter */      },
+  messaging: { /* ChannelMessagingAdapter */ },
+  gateway:   { /* ChannelGatewayAdapter */   },
+  streaming: { /* ChannelStreamingAdapter */ },
+  gatewayMethods: ['my-channel.send', 'my-channel.status'],
+};
+```
+
+### Key SDK Types
+
+| Type | Purpose |
+|------|---------|
+| `ChannelPlugin` | Top-level plugin definition |
+| `ChannelMessagingAdapter` | Send and receive messages |
+| `ChannelAuthAdapter` | Authentication flow |
+| `ChannelGatewayAdapter` | Custom gateway RPC methods |
+| `ChannelStreamingAdapter` | Streaming response support |
+| `ChannelThreadingAdapter` | Thread/reply management |
+| `ChannelAgentTool` | Agent tool factory for channel-specific tools |
+
+Exports: `@hanzo/bot/plugin-sdk` (types), `@hanzo/bot/plugin-sdk/account-id` (utilities).
+
+---
+
+## Automations and Integrations
+
+594+ automation integrations powered by an ActivePieces-based flow engine connect the bot to third-party services: CRM (Salesforce, HubSpot), Development (GitHub, GitLab, Jira, Linear), Cloud (AWS, GCP, DO), Analytics (Mixpanel, Segment), Storage (S3, Google Drive), Social (Twitter/X, LinkedIn), and Databases (PostgreSQL, MongoDB, Redis, Supabase).
+
+### Built-in Extensions
+
+35 built-in extensions ship with deep platform integrations:
+
+**Messaging:** Discord, Slack, Telegram, WhatsApp, Signal, Matrix, iMessage (BlueBubbles), MS Teams, IRC, Nostr, Feishu/Lark, Google Chat, Mattermost, LINE, Twitch, Zalo, Nextcloud Talk, Tlon
+
+**Infrastructure:** memory-core, memory-lancedb (vector recall), flow (workflow engine), talk-voice, device-pair, phone-control, diagnostics-otel, copilot-proxy
+
+---
+
+## Configuration
+
+### Config Directory
+
+```
+~/.bot/
+  bot.json          # Main configuration file
+```
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `BOT_GATEWAY_TOKEN` | Token for gateway authentication |
+| `BOT_GATEWAY_PASSWORD` | Password for gateway authentication |
+| `BOT_API_KEYS` | Comma-separated API keys |
+| `BOT_SKIP_CHANNELS` | Set to `1` for gateway-only mode |
+| `BOT_CLI_PATH` | Override CLI binary path |
+| `ANTHROPIC_API_KEY` | Anthropic API key for Claude models |
+| `OPENAI_API_KEY` | OpenAI API key for GPT models |
+
+### Auth Modes
+
+All modes use timing-safe comparison: Token (`BOT_GATEWAY_TOKEN`), Password (`BOT_GATEWAY_PASSWORD`), API Key (`BOT_API_KEYS`, comma-separated), Tailscale (whois verification), Local Bypass (loopback skip).
+
+### Ports
+
+| Port | Service |
+|------|---------|
+| `18789` | Gateway API (WebSocket) |
+| `18790` | WebSocket bridge |
+| `8080` | Combined UI (chat + VNC desktop) |
+
+### Embeddable Widget
+
+```html
+<script src="https://hanzo.bot/embed.js"
+  data-agent="vi" data-title="Hanzo Bot"
+  data-token="your-api-key" data-url="wss://gateway.hanzo.bot"
+  data-theme="dark" data-position="right">
+</script>
+```
+
+---
+
+## Runtime Tiers
+
+| Tier | Name | Cost | Compute |
+|------|------|------|---------|
+| 0 | Shared Gateway | Free | Multi-tenant, chat-only |
+| 1 | Terminal Agent | $5/mo | Dedicated pod, terminal access |
+| 2 | Linux Desktop | $25/mo | Xvfb + noVNC + headless browser |
+| 3 | EC2 Linux | $50/mo | Dedicated instance, optional GPU |
+| 4 | EC2 Mac | $99/mo | mac2.metal, Xcode, Simulator |
+| Local | Desktop | Free | User's own machine, registers with cloud |
+
+Tier switching is dynamic via `bot.tier.upgrade(botId, tier)`. Idle detection auto-downgrades after a configurable timeout. State persists across switches via persistent volumes.
+
+---
+
+## Gateway RPC Methods
+
+The gateway exposes 80+ RPC methods over WebSocket. Key method groups:
+
+| Group | Methods | Purpose |
+|-------|---------|---------|
+| **Chat** | `chat.send`, `chat.history`, `chat.abort` | Conversation management |
+| **Agents** | `agents.list`, `agents.create`, `agents.update`, `agents.delete` | Agent CRUD |
+| **Skills** | `skills.status`, `skills.install`, `skills.update`, `skills.bins` | Skill management |
+| **Team** | `team.presets.list`, `team.provision`, `team.provision.all` | Persona provisioning |
+| **Identity** | `agent.did.*`, `agent.wallet.*`, `agent.identity.full` | DID and wallet |
+| **Sessions** | `sessions.list`, `sessions.patch`, `sessions.reset` | Session lifecycle |
+| **Config** | `config.get`, `config.set`, `config.apply`, `config.patch` | Runtime configuration |
+| **Cron** | `cron.list`, `cron.add`, `cron.run`, `cron.remove` | Scheduled tasks |
+| **Nodes** | `node.list`, `node.invoke`, `node.pair.*`, `device.pair.*` | Node and device pairing |
+| **System** | `health`, `status`, `models.list`, `logs.tail` | Monitoring |
+
+Gateway events: `agent`, `chat`, `presence`, `tick`, `cron`, `node.pair.requested`, `exec.approval.requested`.
+
+---
+
+## Related Services
+
+<Cards>
+  <Card title="Hanzo Chat" href="/docs/services/chat">
+    AI chat interface with multi-model support, MCP tools, and conversation management.
+    Integrates with Bot gateway for agent routing.
+  </Card>
+
+  <Card title="Hanzo Flow" href="/docs/services/flow">
+    Visual workflow builder for automations. Powers the 594+ integrations
+    available in Bot.
+  </Card>
+
+  <Card title="Hanzo Auto" href="/docs/services/auto">
+    Automation engine for scheduled tasks, event-driven workflows, and
+    background processing.
+  </Card>
+
+  <Card title="Hanzo Operative" href="/docs/services/operative">
+    Computer use agent for browser and desktop automation. Available as a
+    Bot runtime tier for headless browser tasks.
+  </Card>
+</Cards>

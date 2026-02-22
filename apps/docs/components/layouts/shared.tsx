@@ -1,30 +1,35 @@
-import { AlbumIcon, Heart, LayoutTemplate } from 'lucide-react';
-import Image from 'next/image';
+import { BookOpen, Code2, FileJson2, Newspaper } from 'lucide-react';
 import type { BaseLayoutProps, LinkItemType } from '@hanzo/docs/ui/layouts/shared';
 import { HanzoDocsIcon } from '@/app/layout.client';
-import Logo from '@/public/logo.png';
 
 export const linkItems: LinkItemType[] = [
   {
-    icon: <AlbumIcon />,
-    text: 'Blog',
-    url: '/blog',
+    icon: <BookOpen />,
+    text: 'Services',
+    url: '/docs/services',
     active: 'nested-url',
   },
   {
-    text: 'Showcase',
-    url: '/showcase',
-    icon: <LayoutTemplate />,
-    active: 'url',
+    icon: <Code2 />,
+    text: 'SDKs',
+    url: '/docs/sdks',
+    active: 'nested-url',
   },
   {
-    text: 'Sponsors',
-    url: '/sponsors',
-    icon: <Heart />,
+    icon: <FileJson2 />,
+    text: 'API Reference',
+    url: '/docs/openapi',
+    active: 'nested-url',
+  },
+  {
+    icon: <Newspaper />,
+    text: 'Blog',
+    url: 'https://hanzo.ai/blog',
+    external: true,
   },
   {
     type: 'icon',
-    url: 'https://github.com/hanzoai/docs',
+    url: 'https://github.com/hanzoai',
     label: 'github',
     text: 'Github',
     icon: (
@@ -37,17 +42,7 @@ export const linkItems: LinkItemType[] = [
 ];
 
 export const logo = (
-  <>
-    <Image
-      alt="Hanzo Docs"
-      src={Logo}
-      sizes="100px"
-      className="hidden w-22 in-[.uwu]:block"
-      aria-label="Hanzo Docs"
-    />
-
-    <HanzoDocsIcon className="size-5 in-[.uwu]:hidden" />
-  </>
+  <HanzoDocsIcon className="size-5" />
 );
 
 export function baseOptions(): BaseLayoutProps {
@@ -56,7 +51,7 @@ export function baseOptions(): BaseLayoutProps {
       title: (
         <>
           {logo}
-          <span className="font-medium in-[.uwu]:hidden">Hanzo Docs</span>
+          <span className="font-medium max-md:hidden">Hanzo</span>
         </>
       ),
     },
