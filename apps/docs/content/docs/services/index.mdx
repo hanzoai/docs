@@ -1,201 +1,51 @@
 ---
-title: Hanzo Services
-description: Complete documentation for all Hanzo AI platform services
+title: Services
+description: All 26 Hanzo Cloud services -- AI, automation, infrastructure, and operations.
+index: true
+icon: Cloud
 ---
 
-# Hanzo AI Platform Services
+# Hanzo Cloud Services
 
-Hanzo provides a comprehensive suite of AI-first platform services designed for enterprise-grade applications. All services use unified OAuth2/OIDC authentication via Hanzo IAM.
-
-## Service Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                          HANZO AI PLATFORM                               │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐ │
-│  │  Identity    │  │     IAM      │  │     KMS      │  │   Gateway   │ │
-│  │ identity.*   │  │  iam.hanzo   │  │  kms.hanzo   │  │gateway.hanzo│ │
-│  │              │  │              │  │              │  │             │ │
-│  │  - Profiles  │  │  - OAuth2    │  │  - MPC Keys  │  │  - LLM API  │ │
-│  │  - Directory │  │  - OIDC      │  │  - HSM       │  │  - Routing  │ │
-│  │  - Resolve   │  │  - Web3      │  │  - Signing   │  │  - Caching  │ │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └─────────────┘ │
-│                                                                          │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐ │
-│  │    Auto      │  │    Flow      │  │   Engine     │  │   Vector    │ │
-│  │ auto.hanzo   │  │ flow.hanzo   │  │ engine.*     │  │vector.hanzo │ │
-│  │              │  │              │  │              │  │             │ │
-│  │  - Workflows │  │  - LLM Pipes │  │  - Runtime   │  │  - Search   │ │
-│  │  - Triggers  │  │  - Agents    │  │  - Scheduler │  │  - Embed    │ │
-│  │  - 600+ Apps │  │  - RAG Build │  │  - Observe   │  │  - Index    │ │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └─────────────┘ │
-│                                                                          │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐ │
-│  │    Nexus     │  │     ML       │  │    Cloud     │  │  Analytics  │ │
-│  │ nexus.hanzo  │  │   ml.hanzo   │  │ cloud.hanzo  │  │ analytics.* │ │
-│  │              │  │              │  │              │  │             │ │
-│  │  - RAG       │  │  - Pipelines │  │  - Deploy    │  │  - Cost     │ │
-│  │  - Knowledge │  │  - Registry  │  │  - Infra     │  │  - Usage    │ │
-│  │  - Agents    │  │  - Toolkit   │  │  - Serving   │  │  - SLOs     │ │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └─────────────┘ │
-│                                                                          │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐ │
-│  │    Chat      │  │   Commerce   │  │   Console    │  │   Hub       │ │
-│  │ chat.hanzo   │  │  api.hanzo   │  │console.hanzo │  │hub.hanzo.bot│ │
-│  │              │  │              │  │              │  │             │ │
-│  │  - 14 Zen   │  │  - Orders    │  │  - Observe   │  │  - Skills   │ │
-│  │  - 100+ LLM │  │  - Payments  │  │  - Monitor   │  │  - Personas │ │
-│  │  - MCP Tools│  │  - Products  │  │  - Traces    │  │  - 600+ Int │ │
-│  │  - Agents   │  │  - Analytics │  │  - Logs      │  │  - Registry │ │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └─────────────┘ │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-## Core Services
-
-| Service | Endpoint | Description |
-|---------|----------|-------------|
-| [**Chat**](/docs/services/chat) | `chat.hanzo.ai` | AI chat with 14 Zen models, 100+ third-party, MCP tools, agents |
-| [Identity](/docs/services/identity) | `TBD` | Profiles, directories, and identity resolution |
-| [IAM](/docs/services/iam) | `iam.hanzo.ai` | Identity, authentication, OAuth2/OIDC, Web3, MPC auth |
-| [KMS](/docs/services/kms) | `kms.hanzo.ai` | Key management, MPC custody, HSM, signing |
-| [Gateway](/docs/services/gateway) | `gateway.hanzo.ai` | LLM API gateway, routing, caching, rate limiting |
-| [Auto](/docs/services/auto) | `auto.hanzo.ai` | Workflow automation, 600+ integrations, triggers |
-| [Flow](/docs/services/flow) | `flow.hanzo.ai` | Visual AI workflow builder, LLM pipelines, RAG |
-| [Engine](/docs/services/engine) | `TBD` | Core runtime, scheduling, orchestration |
-| [Vector](/docs/services/vector) | `vector.hanzo.ai` | Vector database, embeddings, similarity search |
-| [Nexus](/docs/services/nexus) | `nexus.hanzo.ai` | RAG, knowledge graphs, agents, memory |
-| [ML](/docs/services/ml) | `TBD` | Kubeflow pipelines and Rust ML toolkit |
-| [Cloud](/docs/services/cloud) | `cloud.hanzo.ai` | AI platform, deployment, infrastructure |
-| [Analytics](/docs/services/analytics) | `TBD` | Usage, cost, and performance analytics |
-| [Commerce](/docs/services/commerce) | `api.hanzo.ai` | E-commerce API, orders, payments, products |
-
-## Authentication
-
-All services authenticate via Hanzo IAM using OAuth2/OIDC:
-
-```typescript
-import { HanzoClient } from '@hanzo/sdk'
-
-const client = new HanzoClient({
-  apiKey: process.env.HANZO_API_KEY,
-  // Or use OAuth2
-  accessToken: 'your-access-token'
-})
-```
-
-### API Keys
-
-Generate API keys via the Gateway API:
-
-```bash
-curl -X POST https://gateway.hanzo.ai/key/generate \
-  -H "Authorization: Bearer $HANZO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "models": ["claude-3-opus", "gpt-4", "*"],
-    "max_budget": 1000.00
-  }'
-```
-
-### OAuth2 Flow
-
-```
-1. Redirect → https://iam.hanzo.ai/login/oauth/authorize
-2. User authenticates
-3. Callback with authorization code
-4. Exchange code → https://iam.hanzo.ai/api/login/oauth/access_token
-5. Use access token for API calls
-```
-
-## OpenAPI Specifications
-
-Available OpenAPI 3.1 specifications:
-
-| Service | Spec URL |
-|---------|----------|
-| IAM | `https://iam.hanzo.ai/.well-known/openapi.yaml` |
-| Gateway | `https://gateway.hanzo.ai/openapi.yaml` |
-| Vector | `https://vector.hanzo.ai/openapi.yaml` |
-| Nexus | `https://nexus.hanzo.ai/openapi.yaml` |
-| Cloud | `https://cloud.hanzo.ai/openapi.yaml` |
-| Commerce | `https://api.hanzo.ai/openapi.yaml` |
-
-## SDKs
-
-Official SDKs are available in multiple languages:
-
-- **TypeScript/JavaScript**: `@hanzo/sdk`, `@hanzo/commerce`
-- **Python**: `hanzoai`, `hanzo-mcp`
-- **Go**: `github.com/hanzoai/go-sdk`
-- **Rust**: `hanzo-rs`
-
-## Environment Variables
-
-Standard environment variables across all SDKs:
-
-```bash
-# API Access
-HANZO_API_KEY=your-api-key
-HANZO_TOKEN=your-oauth-token
-
-# Service Endpoints (optional, use defaults)
-HANZO_IAM_URL=https://iam.hanzo.ai
-HANZO_IDENTITY_URL=
-HANZO_GATEWAY_URL=https://gateway.hanzo.ai
-HANZO_ENGINE_URL=
-HANZO_VECTOR_URL=https://vector.hanzo.ai
-HANZO_NEXUS_URL=https://nexus.hanzo.ai
-HANZO_ML_URL=
-HANZO_CLOUD_URL=https://cloud.hanzo.ai
-HANZO_ANALYTICS_URL=
-HANZO_COMMERCE_URL=https://api.hanzo.ai
-HANZO_CHAT_URL=https://chat.hanzo.ai
-```
-
-## Next Steps
+One API key. One gateway. 26 services. Everything at `api.hanzo.ai`.
 
 <Cards>
-  <Card title="Chat" href="/docs/services/chat">
-    AI chat with 14 Zen models, 100+ third-party, MCP tools, and agents
+  <Card title="Cloud" href="/docs/services/cloud">
+    LLM inference -- 86+ models
   </Card>
-  <Card title="Gateway" href="/docs/services/gateway">
-    LLM API gateway with 200+ models
+  <Card title="Chat" href="/docs/services/chat">
+    AI chat with MCP tools
   </Card>
   <Card title="IAM" href="/docs/services/iam">
-    Identity and access management, OAuth2, Web3, MPC
+    Identity & access management
   </Card>
   <Card title="KMS" href="/docs/services/kms">
-    Key management, MPC custody, HSM integration
+    Secrets management
   </Card>
-  <Card title="Auto" href="/docs/services/auto">
-    Workflow automation with 600+ integrations
+  <Card title="DB" href="/docs/services/db">
+    Serverless Postgres
   </Card>
-  <Card title="Flow" href="/docs/services/flow">
-    Visual AI workflow builder for LLM pipelines
+  <Card title="KV" href="/docs/services/kv">
+    Key-value store & caching
   </Card>
-  <Card title="Identity" href="/docs/services/identity">
-    Profiles, directories, and identity resolution
+  <Card title="MQ" href="/docs/services/mq">
+    Message queue & pub/sub
+  </Card>
+  <Card title="Edge" href="/docs/services/edge">
+    Edge functions
+  </Card>
+  <Card title="Gateway" href="/docs/services/gateway">
+    Unified API proxy
+  </Card>
+  <Card title="Console" href="/docs/services/console">
+    Observability & tracing
+  </Card>
+  <Card title="PaaS" href="/docs/services/paas">
+    K8s deployments
   </Card>
   <Card title="Engine" href="/docs/services/engine">
-    Core runtime, scheduling, and orchestration
+    GPU scheduling & ML
   </Card>
 </Cards>
 
-<Cards>
-  <Card title="Vector" href="/docs/services/vector">
-    Vector database for embeddings and search
-  </Card>
-  <Card title="Nexus" href="/docs/services/nexus">
-    Knowledge graphs, agents, and memory
-  </Card>
-  <Card title="ML" href="/docs/services/ml">
-    Kubeflow pipelines and Rust ML toolkit
-  </Card>
-  <Card title="Analytics" href="/docs/services/analytics">
-    Usage, cost, and performance analytics
-  </Card>
-</Cards>
+See the full [API Reference](/docs/openapi) for endpoint-level documentation.
