@@ -14,11 +14,11 @@ export default function HomePage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           <div className="p-6 rounded-lg border bg-card">
             <h3 className="font-semibold text-lg mb-2">zen-max</h3>
-            <p className="text-sm text-muted-foreground">671B MoE • 71.3% SWE-bench</p>
+            <p className="text-sm text-muted-foreground">1T+ MoE • Frontier scale</p>
           </div>
           <div className="p-6 rounded-lg border bg-card ring-2 ring-primary">
             <h3 className="font-semibold text-lg mb-2">zen-coder-flash ⭐</h3>
-            <p className="text-sm text-muted-foreground">31B MoE • 59.2% SWE-bench</p>
+            <p className="text-sm text-muted-foreground">Fast code • 262K context</p>
           </div>
           <div className="p-6 rounded-lg border bg-card">
             <h3 className="font-semibold text-lg mb-2">zen-nano</h3>

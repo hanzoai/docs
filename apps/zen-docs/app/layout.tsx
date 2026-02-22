@@ -9,7 +9,7 @@ export const metadata = createMetadata({
     template: '%s | Zen LM',
     default: 'Zen LM - Open Foundation Models',
   },
-  description: 'Zen AI model family documentation. Consumer, Coder, Vision-Language, and Max tiers from 0.6B to 671B parameters by Zen LM and Hanzo AI.',
+  description: 'Zen AI model family by Hanzo AI. 14 frontier models from 4B to 1T+ parameters for code, reasoning, vision, and multimodal tasks.',
   metadataBase: baseUrl,
 });
 
