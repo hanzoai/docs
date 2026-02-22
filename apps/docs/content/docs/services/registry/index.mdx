@@ -1,30 +1,431 @@
 ---
 title: Hanzo Registry
-description: Container image registry with vulnerability scanning, image signing, access control, and replication.
+description: OCI-compliant container and model artifact registry with vulnerability scanning, image signing, multi-arch builds, and pull-through caching.
 ---
 
 # Hanzo Registry
 
-Hanzo Registry provides a container image registry with vulnerability scanning, image signing, access control, and replication.
+Hanzo Registry is a unified container and model artifact registry for the Hanzo platform. It stores OCI-compliant Docker images, model weights, and versioned artifacts with built-in vulnerability scanning, image signing, garbage collection, and multi-architecture support.
 
-**Endpoint:** `registry.hanzo.ai`
+**Registry:** `registry.hanzo.ai`
 **Gateway:** `api.hanzo.ai/v1/registry/*`
+**Console:** `console.hanzo.ai/registry`
+**Mirror:** `ghcr.io/hanzoai/*`
+
+## Features
+
+- **OCI-Compliant**: Full compliance with the OCI Distribution Spec -- works with Docker, Podman, Buildah, and any OCI client
+- **Model Artifact Registry**: Store and version model weights, checkpoints, LoRA adapters, and GGUF quantizations alongside containers
+- **Multi-Architecture**: Native support for `linux/amd64` and `linux/arm64` manifests with automatic manifest list resolution
+- **Vulnerability Scanning**: Automated CVE scanning on every push with configurable severity gates
+- **Image Signing**: Cosign and Notary v2 signatures for supply chain integrity verification
+- **Immutable Digests**: Content-addressable SHA-256 digests guarantee reproducible deployments
+- **Pull-Through Cache**: Transparent caching proxy for Docker Hub, GHCR, and upstream registries
+- **Garbage Collection**: Automated cleanup of untagged manifests and unreferenced blobs
+- **Version Tagging**: Semantic version tags, Git SHA tags, and mutable channel tags (latest, stable, canary)
+- **CI/CD Integration**: Native support for GitHub Actions, GitLab CI, and Hanzo Platform pipelines
+- **RBAC**: Fine-grained access control per namespace and repository via Hanzo IAM
+- **Replication**: Cross-region replication for low-latency pulls from any edge location
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  Clients                                                             │
+│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌────────────────┐   │
+│  │ docker    │  │ podman    │  │ buildah   │  │ hanzo CLI      │   │
+│  │ push/pull │  │ push/pull │  │ push/pull │  │ registry push  │   │
+│  └─────┬─────┘  └─────┬─────┘  └─────┬─────┘  └──────┬─────────┘   │
+│        │               │               │               │             │
+└────────┼───────────────┼───────────────┼───────────────┼─────────────┘
+         │               │               │               │
+         ▼               ▼               ▼               ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  registry.hanzo.ai                                                    │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │  Hanzo Registry                                                │  │
+│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ │  │
+│  │  │ OCI Dist   │ │ Auth /     │ │ Vuln       │ │ Signing    │ │  │
+│  │  │ API v2     │ │ RBAC       │ │ Scanner    │ │ (Cosign)   │ │  │
+│  │  └────────────┘ └────────────┘ └────────────┘ └────────────┘ │  │
+│  │  ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐ │  │
+│  │  │ Manifest   │ │ Pull-Thru  │ │ Garbage    │ │ Replication│ │  │
+│  │  │ Lists      │ │ Cache      │ │ Collection │ │ Controller │ │  │
+│  │  └────────────┘ └────────────┘ └────────────┘ └────────────┘ │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                              │                                        │
+│                    ┌─────────┴──────────┐                            │
+│                    │  Hanzo S3 Backend   │                            │
+│                    │  (s3.hanzo.ai)      │                            │
+│                    └────────────────────┘                            │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+Blob storage is backed by Hanzo S3 (`s3.hanzo.ai`), giving the registry the same durability, encryption, and lifecycle management as all other Hanzo storage services.
 
 ## Quick Start
 
+### Authenticate
+
 ```bash
-curl -H "Authorization: Bearer hk-your-api-key" \
-  https://api.hanzo.ai/v1/registry/repositories
+# Login with your Hanzo credentials
+docker login registry.hanzo.ai
+# Username: your-hanzo-email
+# Password: your-api-key (or `hanzo auth token`)
+
+# Or use a Hanzo API key directly
+echo "$HANZO_API_KEY" | docker login registry.hanzo.ai -u hanzo --password-stdin
 ```
 
-## Key Features
+### Push a Container Image
 
-- OCI-compliant container registry
-- Automated vulnerability scanning
-- Image signing and verification
-- Role-based access control
-- Cross-region replication
+```bash
+# Tag your local image for Hanzo Registry
+docker tag my-app:latest registry.hanzo.ai/my-org/my-app:v1.0.0
 
-## API Reference
+# Push
+docker push registry.hanzo.ai/my-org/my-app:v1.0.0
 
-See the [full API reference](/docs/openapi) for all endpoints.
+# Push with multiple tags
+docker tag my-app:latest registry.hanzo.ai/my-org/my-app:latest
+docker push registry.hanzo.ai/my-org/my-app:latest
+```
+
+### Pull a Container Image
+
+```bash
+# Pull by tag
+docker pull registry.hanzo.ai/my-org/my-app:v1.0.0
+
+# Pull by immutable digest (recommended for production)
+docker pull registry.hanzo.ai/my-org/my-app@sha256:abc123...
+
+# Pull a Hanzo platform image
+docker pull registry.hanzo.ai/hanzoai/llm-gateway:latest
+```
+
+### Multi-Architecture Build and Push
+
+```bash
+# Create a multi-arch builder
+docker buildx create --name hanzo-builder --use
+
+# Build and push for both amd64 and arm64
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  --tag registry.hanzo.ai/my-org/my-app:v1.0.0 \
+  --push .
+```
+
+## Image Management
+
+### Tagging Strategy
+
+Hanzo Registry supports three tagging patterns:
+
+| Pattern | Example | Use Case |
+|---------|---------|----------|
+| **Semantic version** | `v1.2.3` | Release artifacts |
+| **Git SHA** | `sha-a1b2c3d` | Traceability to exact commit |
+| **Channel** | `latest`, `stable`, `canary` | Mutable pointers for deployment tracks |
+
+Semantic version tags and Git SHA tags are treated as immutable by default. Pushing to an existing immutable tag returns an error unless you explicitly overwrite with `--force`.
+
+### Listing Repositories and Tags
+
+```bash
+# List all repositories in your namespace
+curl -s -H "Authorization: Bearer $HANZO_API_KEY" \
+  https://registry.hanzo.ai/v2/_catalog | jq .
+
+# List tags for a repository
+curl -s -H "Authorization: Bearer $HANZO_API_KEY" \
+  https://registry.hanzo.ai/v2/my-org/my-app/tags/list | jq .
+```
+
+### Deleting Images
+
+```bash
+# Delete a specific tag
+curl -X DELETE -H "Authorization: Bearer $HANZO_API_KEY" \
+  https://registry.hanzo.ai/v2/my-org/my-app/manifests/sha256:abc123...
+
+# Garbage collection runs automatically after deletion
+# Unreferenced blobs are cleaned up within 24 hours
+```
+
+### Immutable Digests
+
+Every image pushed to the registry receives a content-addressable SHA-256 digest. Use digests in production deployments to guarantee bit-for-bit reproducibility:
+
+```yaml
+# Kubernetes deployment (recommended)
+containers:
+  - name: my-app
+    image: registry.hanzo.ai/my-org/my-app@sha256:abc123def456...
+```
+
+## Model Registry
+
+Hanzo Registry extends OCI distribution to store ML model artifacts alongside container images. Model artifacts are stored as OCI artifacts with custom media types.
+
+### Push a Model
+
+```bash
+# Using ORAS (OCI Registry as Storage)
+oras push registry.hanzo.ai/my-org/models/llama-3-8b:v1 \
+  --artifact-type application/vnd.hanzo.model.v1 \
+  ./model.safetensors:application/vnd.hanzo.safetensors \
+  ./config.json:application/json \
+  ./tokenizer.json:application/json
+
+# Push a GGUF quantization
+oras push registry.hanzo.ai/my-org/models/llama-3-8b:q4_k_m \
+  --artifact-type application/vnd.hanzo.model.v1 \
+  ./llama-3-8b-q4_k_m.gguf:application/vnd.hanzo.gguf
+```
+
+### Pull a Model
+
+```bash
+# Pull all artifacts for a model version
+oras pull registry.hanzo.ai/my-org/models/llama-3-8b:v1 -o ./model-dir/
+
+# Pull a specific layer by digest
+oras pull registry.hanzo.ai/my-org/models/llama-3-8b@sha256:abc123...
+```
+
+### Supported Model Formats
+
+| Format | Media Type | Extension |
+|--------|-----------|-----------|
+| SafeTensors | `application/vnd.hanzo.safetensors` | `.safetensors` |
+| GGUF | `application/vnd.hanzo.gguf` | `.gguf` |
+| PyTorch | `application/vnd.hanzo.pytorch` | `.pt`, `.pth` |
+| ONNX | `application/vnd.hanzo.onnx` | `.onnx` |
+| LoRA Adapter | `application/vnd.hanzo.lora` | `.safetensors` |
+| Tokenizer | `application/json` | `.json` |
+| Model Config | `application/json` | `.json` |
+
+### Model Versioning
+
+Models follow the same tagging strategy as container images. Use semantic versions for releases and descriptive tags for variants:
+
+```
+registry.hanzo.ai/my-org/models/llama-3-8b:v1.0.0          # Full precision
+registry.hanzo.ai/my-org/models/llama-3-8b:v1.0.0-q4_k_m   # Quantized
+registry.hanzo.ai/my-org/models/llama-3-8b:v1.0.0-lora-sft  # Fine-tuned adapter
+```
+
+## Security
+
+### Vulnerability Scanning
+
+Every image pushed to Hanzo Registry is automatically scanned for known CVEs. Scan results are available in the console and via API.
+
+```bash
+# View scan results for an image
+curl -s -H "Authorization: Bearer $HANZO_API_KEY" \
+  https://api.hanzo.ai/v1/registry/my-org/my-app/v1.0.0/vulnerabilities | jq .
+```
+
+Configure severity gates to block deployments with critical vulnerabilities:
+
+```yaml
+# .hanzo/registry.yaml
+scan:
+  enabled: true
+  severity_gate: high    # Block pulls if HIGH or CRITICAL CVEs found
+  ignore:
+    - CVE-2024-0000      # Known false positive
+```
+
+### Image Signing
+
+Sign images with Cosign to establish a verified supply chain:
+
+```bash
+# Generate a key pair (or use KMS-backed keys)
+cosign generate-key-pair
+
+# Sign an image after push
+cosign sign --key cosign.key registry.hanzo.ai/my-org/my-app:v1.0.0
+
+# Sign with Hanzo KMS (recommended)
+cosign sign --key hanzo-kms://projects/my-org/keys/signing-key \
+  registry.hanzo.ai/my-org/my-app:v1.0.0
+
+# Verify a signature before pull
+cosign verify --key cosign.pub registry.hanzo.ai/my-org/my-app:v1.0.0
+```
+
+### Access Control
+
+Registry access is managed through Hanzo IAM (`hanzo.id`). Permissions are scoped per namespace and repository:
+
+| Role | Permissions |
+|------|------------|
+| **Reader** | Pull images, view scan results |
+| **Writer** | Push and pull images, manage tags |
+| **Admin** | All of the above plus delete images, configure policies |
+
+```bash
+# Grant a team read access to a namespace
+curl -X POST -H "Authorization: Bearer $HANZO_API_KEY" \
+  https://api.hanzo.ai/v1/registry/my-org/permissions \
+  -d '{"team": "ml-engineers", "role": "writer"}'
+```
+
+## Pull-Through Cache
+
+Hanzo Registry can act as a transparent caching proxy for upstream registries. This reduces external bandwidth, improves pull latency, and provides resilience against upstream outages.
+
+```yaml
+# Configured upstream mirrors
+proxy:
+  remotes:
+    - name: docker-hub
+      url: https://registry-1.docker.io
+    - name: ghcr
+      url: https://ghcr.io
+    - name: gcr
+      url: https://gcr.io
+```
+
+Pull through the cache by prefixing the upstream path:
+
+```bash
+# Pull from Docker Hub via Hanzo cache
+docker pull registry.hanzo.ai/cache/library/nginx:1.27
+
+# Pull from GHCR via Hanzo cache
+docker pull registry.hanzo.ai/cache/ghcr/actions/runner:latest
+```
+
+Cached layers are stored on Hanzo S3 and expire based on configurable TTL (default: 7 days).
+
+## Garbage Collection
+
+Hanzo Registry runs automated garbage collection to reclaim storage from:
+
+- Untagged manifests (orphaned by tag overwrites)
+- Unreferenced blobs (layers no longer referenced by any manifest)
+- Expired cache entries (pull-through cache TTL)
+
+Garbage collection runs on a configurable schedule (default: daily at 03:00 UTC) and can also be triggered manually:
+
+```bash
+# Trigger garbage collection via API
+curl -X POST -H "Authorization: Bearer $HANZO_API_KEY" \
+  https://api.hanzo.ai/v1/registry/admin/gc
+
+# View GC history
+curl -s -H "Authorization: Bearer $HANZO_API_KEY" \
+  https://api.hanzo.ai/v1/registry/admin/gc/history | jq .
+```
+
+## CI/CD Integration
+
+### GitHub Actions
+
+```yaml
+# .github/workflows/build.yml
+name: Build and Push
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Hanzo Registry
+        uses: docker/login-action@v3
+        with:
+          registry: registry.hanzo.ai
+          username: ${{ secrets.HANZO_REGISTRY_USER }}
+          password: ${{ secrets.HANZO_REGISTRY_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            registry.hanzo.ai/${{ github.repository }}:${{ github.sha }}
+            registry.hanzo.ai/${{ github.repository }}:latest
+
+      - name: Sign image
+        run: |
+          cosign sign --key env://COSIGN_KEY \
+            registry.hanzo.ai/${{ github.repository }}:${{ github.sha }}
+        env:
+          COSIGN_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+```
+
+### Hanzo Platform Pipeline
+
+When deploying through Hanzo PaaS, images pushed to Hanzo Registry are automatically detected and deployed:
+
+```yaml
+# hanzo.yaml
+service:
+  name: my-app
+  image: registry.hanzo.ai/my-org/my-app
+  deploy:
+    trigger: push          # Deploy on every push to the registry
+    tag_pattern: "v*"      # Only deploy semantic version tags
+    scan_gate: high        # Block deploy if HIGH+ CVEs found
+    verify_signature: true # Require valid Cosign signature
+```
+
+### GitLab CI
+
+```yaml
+# .gitlab-ci.yml
+build:
+  image: docker:27
+  services:
+    - docker:27-dind
+  script:
+    - echo "$HANZO_REGISTRY_TOKEN" | docker login registry.hanzo.ai -u hanzo --password-stdin
+    - docker build -t registry.hanzo.ai/my-org/my-app:$CI_COMMIT_SHA .
+    - docker push registry.hanzo.ai/my-org/my-app:$CI_COMMIT_SHA
+```
+
+## Platform Images
+
+The following Hanzo platform images are published to the registry and mirrored to `ghcr.io/hanzoai/*`:
+
+| Image | Description |
+|-------|-------------|
+| `hanzoai/llm-gateway` | LLM proxy for 100+ providers |
+| `hanzoai/console` | Hanzo Console web application |
+| `hanzoai/console-worker` | Console background worker |
+| `hanzoai/cloud` | Cloud backend API |
+| `hanzoai/cloud-site` | Cloud marketing site |
+| `hanzoai/storage` | Hanzo S3 server |
+| `hanzoai/commerce` | Commerce API |
+| `hanzoai/bot-site` | Hanzo Bot site |
+| `hanzoai/platform-studio` | PaaS Studio UI |
+| `hanzoai/platform-oauth-proxy` | PaaS OAuth proxy |
+
+## Related Services
+
+<Cards>
+  <Card title="PaaS" href="/docs/services/paas">
+    K8s-native GitOps deployments that pull from Hanzo Registry
+  </Card>
+  <Card title="Platform" href="/docs/services/platform">
+    Build pipelines and deployment management
+  </Card>
+  <Card title="S3" href="/docs/services/s3">
+    Object storage backend for registry blobs and model artifacts
+  </Card>
+  <Card title="KMS" href="/docs/services/kms">
+    Key management for image signing and secret injection
+  </Card>
+</Cards>

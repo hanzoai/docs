@@ -7,101 +7,127 @@ import {
   NavbarMenuTrigger,
 } from '@hanzo/docs-base-ui/layouts/home/navbar';
 import Link from '@hanzo/docs-core/link';
-import Image from 'next/image';
-import Preview from '@/public/banner.png';
-import { Book, ComponentIcon, Pencil, PlusIcon, Server } from 'lucide-react';
+import {
+  Cloud,
+  Cpu,
+  Database,
+  Globe,
+  Layers,
+  Monitor,
+  Zap,
+} from 'lucide-react';
+import { AuthButtons } from '@/components/auth-buttons';
+import { TryHanzoDropdown } from '@/components/try-hanzo-dropdown';
+import { Footer } from '@/components/footer';
 
 export default function Layout({ children }: LayoutProps<'/'>) {
   return (
-    <HomeLayout
-      {...baseOptions()}
-      links={[
-        {
-          type: 'menu',
-          on: 'menu',
-          text: 'Documentation',
-          items: [
-            {
-              text: 'Getting Started',
-              url: '/docs',
-              icon: <Book />,
-            },
-            {
-              text: 'Components',
-              url: '/docs/ui/components',
-              icon: <ComponentIcon />,
-            },
-          ],
-        },
-        {
-          type: 'custom',
-          on: 'nav',
-          children: (
-            <NavbarMenu>
-              <NavbarMenuTrigger>
-                <Link href="/docs">Documentation</Link>
-              </NavbarMenuTrigger>
-              <NavbarMenuContent>
-                <NavbarMenuLink href="/docs" className="md:row-span-2">
-                  <div className="-mx-3 -mt-3">
-                    <Image
-                      src={Preview}
-                      alt="Perview"
-                      className="rounded-t-lg object-cover"
-                      style={{
-                        maskImage: 'linear-gradient(to bottom,white 60%,transparent)',
-                      }}
-                    />
-                  </div>
-                  <p className="font-medium">Getting Started</p>
-                  <p className="text-fd-muted-foreground text-sm">
-                    Learn to use Hanzo Docs on your docs site.
-                  </p>
-                </NavbarMenuLink>
+    <>
+      <HomeLayout
+        {...baseOptions()}
+        links={[
+          {
+            type: 'menu',
+            on: 'menu',
+            text: 'Services',
+            items: [
+              {
+                text: 'All Services',
+                url: '/docs/services',
+                icon: <Layers />,
+              },
+              {
+                text: 'API Reference',
+                url: '/docs/openapi',
+                icon: <Globe />,
+              },
+            ],
+          },
+          {
+            type: 'custom',
+            on: 'nav',
+            children: (
+              <NavbarMenu>
+                <NavbarMenuTrigger>
+                  <Link href="/docs/services">Services</Link>
+                </NavbarMenuTrigger>
+                <NavbarMenuContent>
+                  <NavbarMenuLink
+                    href="/docs/services/cloud"
+                    className="md:row-span-2"
+                  >
+                    <Cloud className="bg-[#fd4444] text-white p-1 mb-2 rounded-md" />
+                    <p className="font-medium">AI &amp; Intelligence</p>
+                    <p className="text-fd-muted-foreground text-sm">
+                      LLM gateway, chat, search, agents, vector DB, and ML
+                      pipelines.
+                    </p>
+                  </NavbarMenuLink>
 
-                <NavbarMenuLink href="/docs/ui/components" className="lg:col-start-2">
-                  <ComponentIcon className="bg-fd-primary text-fd-primary-foreground p-1 mb-2 rounded-md" />
-                  <p className="font-medium">Components</p>
-                  <p className="text-fd-muted-foreground text-sm">
-                    Add interactive experience to your docs.
-                  </p>
-                </NavbarMenuLink>
+                  <NavbarMenuLink
+                    href="/docs/services/paas"
+                    className="lg:col-start-2"
+                  >
+                    <Database className="bg-fd-primary text-fd-primary-foreground p-1 mb-2 rounded-md" />
+                    <p className="font-medium">Infrastructure</p>
+                    <p className="text-fd-muted-foreground text-sm">
+                      PaaS, databases, storage, queues, edge functions.
+                    </p>
+                  </NavbarMenuLink>
 
-                <NavbarMenuLink href="/docs/openapi" className="lg:col-start-2">
-                  <Server className="bg-fd-primary text-fd-primary-foreground p-1 mb-2 rounded-md" />
-                  <p className="font-medium">OpenAPI</p>
-                  <p className="text-fd-muted-foreground text-sm">
-                    Generate interactive playgrounds and docs for your OpenAPI schema.
-                  </p>
-                </NavbarMenuLink>
+                  <NavbarMenuLink
+                    href="/docs/services/flow"
+                    className="lg:col-start-2"
+                  >
+                    <Zap className="bg-fd-primary text-fd-primary-foreground p-1 mb-2 rounded-md" />
+                    <p className="font-medium">Automation</p>
+                    <p className="text-fd-muted-foreground text-sm">
+                      Visual workflows, event-driven tasks, browser automation.
+                    </p>
+                  </NavbarMenuLink>
 
-                <NavbarMenuLink href="/docs/markdown" className="lg:col-start-3 lg:row-start-1">
-                  <Pencil className="bg-fd-primary text-fd-primary-foreground p-1 mb-2 rounded-md" />
-                  <p className="font-medium">Markdown</p>
-                  <p className="text-fd-muted-foreground text-sm">
-                    Learn the writing format/syntax of Hanzo Docs.
-                  </p>
-                </NavbarMenuLink>
+                  <NavbarMenuLink
+                    href="/docs/services/iam"
+                    className="lg:col-start-3 lg:row-start-1"
+                  >
+                    <Monitor className="bg-fd-primary text-fd-primary-foreground p-1 mb-2 rounded-md" />
+                    <p className="font-medium">Platform</p>
+                    <p className="text-fd-muted-foreground text-sm">
+                      IAM, identity, commerce, gateway, observability.
+                    </p>
+                  </NavbarMenuLink>
 
-                <NavbarMenuLink
-                  href="/docs/manual-installation"
-                  className="lg:col-start-3 lg:row-start-2"
-                >
-                  <PlusIcon className="bg-fd-primary text-fd-primary-foreground p-1 mb-2 rounded-md" />
-                  <p className="font-medium">Manual Installation</p>
-                  <p className="text-fd-muted-foreground text-sm">
-                    Setup Hanzo Docs for your existing Next.js app.
-                  </p>
-                </NavbarMenuLink>
-              </NavbarMenuContent>
-            </NavbarMenu>
-          ),
-        },
-        ...linkItems,
-      ]}
-      className="dark:bg-neutral-950 dark:[--color-fd-background:var(--color-neutral-950)] [--color-fd-primary:var(--color-brand)]"
-    >
-      {children}
-    </HomeLayout>
+                  <NavbarMenuLink
+                    href="/docs/services/engine"
+                    className="lg:col-start-3 lg:row-start-2"
+                  >
+                    <Cpu className="bg-fd-primary text-fd-primary-foreground p-1 mb-2 rounded-md" />
+                    <p className="font-medium">Operations</p>
+                    <p className="text-fd-muted-foreground text-sm">
+                      Inference engine, o11y, DNS, zero-trust networking.
+                    </p>
+                  </NavbarMenuLink>
+                </NavbarMenuContent>
+              </NavbarMenu>
+            ),
+          },
+          ...linkItems,
+          {
+            type: 'custom',
+            on: 'nav',
+            children: <TryHanzoDropdown />,
+          },
+          {
+            type: 'custom',
+            on: 'nav',
+            children: <AuthButtons />,
+          },
+        ]}
+        className="dark:bg-neutral-950 dark:[--color-fd-background:var(--color-neutral-950)] [--color-fd-primary:var(--color-brand)]"
+      >
+        {children}
+      </HomeLayout>
+      <Footer />
+    </>
   );
 }
