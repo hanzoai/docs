@@ -1,0 +1,332 @@
+---
+title: Hanzo Kafka
+description: Kafka-compatible streaming gateway built on Hanzo PubSub
+---
+
+# Hanzo Kafka
+
+Hanzo Kafka is a stateless Kafka wire protocol gateway built on Hanzo PubSub. It accepts connections from any standard Kafka client and translates every operation into Hanzo Stream calls against PubSub. All storage, replication, and durability is delegated to Hanzo PubSub -- the broker itself is completely stateless and horizontally scalable.
+
+**Endpoint:** `kafka.hanzo.ai:9092`
+**Gateway:** `api.hanzo.ai/v1/kafka/*`
+**Source:** [github.com/hanzoai/kafka](https://github.com/hanzoai/kafka)
+
+## Features
+
+- **Kafka Wire Protocol**: Native compatibility with Kafka clients -- no code changes required
+- **Stateless Gateway**: All state lives in Hanzo PubSub; multiple brokers can share the same PubSub cluster
+- **Topics and Partitions**: Create topics with configurable partition counts for parallel consumption
+- **Consumer Groups**: Coordinated consumers with automatic offset tracking via Hanzo Stream KV
+- **Compression**: GZIP, Snappy, LZ4, and ZSTD compression on the wire
+- **Horizontal Scaling**: Deploy as many broker instances as needed behind a load balancer
+- **Hanzo Stream Backed**: Durable, replicated storage with configurable replication factor
+
+## Supported Kafka APIs
+
+| API | Key | Description |
+|-----|-----|-------------|
+| Produce | 0 | Write records to topic partitions |
+| Fetch | 1 | Read records from topic partitions |
+| ListOffsets | 2 | Query earliest/latest offsets |
+| Metadata | 3 | Discover topics, partitions, and brokers |
+| OffsetCommit | 8 | Commit consumer group offsets |
+| OffsetFetch | 9 | Retrieve committed offsets |
+| FindCoordinator | 10 | Locate the group coordinator broker |
+| JoinGroup | 11 | Join a consumer group |
+| Heartbeat | 12 | Maintain consumer group membership |
+| SyncGroup | 14 | Distribute partition assignments |
+| ApiVersions | 18 | Negotiate supported API versions |
+| CreateTopics | 19 | Create new topics |
+| InitProducerId | 22 | Initialize idempotent producer |
+| DescribeConfigs | 32 | Query broker and topic configuration |
+
+## Quick Start
+
+Connect using any standard Kafka client on port `9092`.
+
+### kafkacat / kcat
+
+```bash
+# Create a topic and produce messages
+echo "hello world" | kcat -b kafka.hanzo.ai:9092 -t my-topic -P
+
+# Consume from the beginning
+kcat -b kafka.hanzo.ai:9092 -t my-topic -C -o beginning
+```
+
+### Kafka CLI Tools
+
+```bash
+# Create a topic
+kafka-topics.sh --create --topic events \
+  --partitions 3 \
+  --bootstrap-server kafka.hanzo.ai:9092
+
+# Produce
+kafka-console-producer.sh \
+  --bootstrap-server kafka.hanzo.ai:9092 \
+  --topic events
+
+# Consume
+kafka-console-consumer.sh \
+  --bootstrap-server kafka.hanzo.ai:9092 \
+  --topic events \
+  --from-beginning
+```
+
+### Python (kafka-python)
+
+```python
+from kafka import KafkaProducer, KafkaConsumer
+
+# Producer
+producer = KafkaProducer(
+    bootstrap_servers=["kafka.hanzo.ai:9092"],
+    compression_type="zstd",
+)
+producer.send("events", b"hello from python")
+producer.flush()
+
+# Consumer
+consumer = KafkaConsumer(
+    "events",
+    bootstrap_servers=["kafka.hanzo.ai:9092"],
+    group_id="my-group",
+    auto_offset_reset="earliest",
+)
+for msg in consumer:
+    print(f"{msg.topic}:{msg.partition}:{msg.offset} = {msg.value}")
+```
+
+### Go (sarama)
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+
+    "github.com/IBM/sarama"
+)
+
+func main() {
+    config := sarama.NewConfig()
+    config.Producer.Return.Successes = true
+    config.Producer.Compression = sarama.CompressionZSTD
+
+    // Producer
+    producer, err := sarama.NewSyncProducer(
+        []string{"kafka.hanzo.ai:9092"}, config,
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer producer.Close()
+
+    partition, offset, err := producer.SendMessage(&sarama.ProducerMessage{
+        Topic: "events",
+        Value: sarama.StringEncoder("hello from go"),
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("sent to partition %d at offset %d\n", partition, offset)
+
+    // Consumer
+    consumer, err := sarama.NewConsumer(
+        []string{"kafka.hanzo.ai:9092"}, config,
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer consumer.Close()
+
+    pc, err := consumer.ConsumePartition("events", 0, sarama.OffsetOldest)
+    if err != nil {
+        log.Fatal(err)
+    }
+    for msg := range pc.Messages() {
+        fmt.Printf("%s:%d:%d = %s\n",
+            msg.Topic, msg.Partition, msg.Offset, msg.Value)
+    }
+}
+```
+
+### Java
+
+```java
+import org.apache.kafka.clients.producer.*;
+import org.apache.kafka.clients.consumer.*;
+import java.util.*;
+
+// Producer
+Properties props = new Properties();
+props.put("bootstrap.servers", "kafka.hanzo.ai:9092");
+props.put("key.serializer",
+    "org.apache.kafka.common.serialization.StringSerializer");
+props.put("value.serializer",
+    "org.apache.kafka.common.serialization.StringSerializer");
+props.put("compression.type", "zstd");
+
+Producer<String, String> producer = new KafkaProducer<>(props);
+producer.send(new ProducerRecord<>("events", "hello from java"));
+producer.close();
+
+// Consumer
+Properties cprops = new Properties();
+cprops.put("bootstrap.servers", "kafka.hanzo.ai:9092");
+cprops.put("group.id", "my-group");
+cprops.put("auto.offset.reset", "earliest");
+cprops.put("key.deserializer",
+    "org.apache.kafka.common.serialization.StringDeserializer");
+cprops.put("value.deserializer",
+    "org.apache.kafka.common.serialization.StringDeserializer");
+
+KafkaConsumer<String, String> consumer = new KafkaConsumer<>(cprops);
+consumer.subscribe(Collections.singletonList("events"));
+while (true) {
+    ConsumerRecords<String, String> records = consumer.poll(100);
+    for (ConsumerRecord<String, String> record : records) {
+        System.out.printf("%s:%d:%d = %s%n",
+            record.topic(), record.partition(),
+            record.offset(), record.value());
+    }
+}
+```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Kafka Clients (producers / consumers)                      │
+│  kafkacat, sarama, kafka-python, Java KafkaClient, ...      │
+└──────────────────────┬──────────────────────────────────────┘
+                       │ Kafka wire protocol (TCP :9092)
+                       v
+┌─────────────────────────────────────────────────────────────┐
+│  Hanzo Kafka Gateway (stateless)                            │
+│                                                             │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐                  │
+│  │ Instance  │  │ Instance  │  │ Instance  │                 │
+│  │    1      │  │    2      │  │    3      │                 │
+│  └─────┬────┘  └─────┬────┘  └─────┬────┘                  │
+│        │             │             │                        │
+│        └──────┬──────┘──────┬──────┘                        │
+│               │             │                               │
+│        Protocol Translation │                               │
+│     (Kafka <-> Hanzo Stream)│                               │
+├───────────────┴─────────────┴───────────────────────────────┤
+│  Hanzo PubSub (Hanzo Stream)                                │
+│                                                             │
+│  Streams:                      KV Store:                    │
+│    kafka-events-0              kafka-consumer-offsets        │
+│    kafka-events-1                group.topic.partition       │
+│    kafka-events-2                -> committed offset         │
+│    kafka-logs-0                                             │
+│                                                             │
+│  Replication, Durability, Clustering                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### How It Works
+
+Hanzo Kafka translates Kafka concepts directly to Hanzo Stream primitives:
+
+| Kafka Concept | Hanzo Stream Equivalent |
+|---|---|
+| Topic `foo`, Partition N | Stream `kafka-foo-N`, Subject `kafka.foo.N` |
+| Produce record | Publish to stream subject, returns sequence as offset |
+| Fetch at offset | Get message at sequence (offset + 1) |
+| Consumer group offsets | KV bucket `kafka-consumer-offsets` |
+| Create topic (N partitions) | Create N streams |
+| Topic metadata | Stream info queries |
+
+One stream per partition ensures a clean 1:1 mapping between Kafka offsets and PubSub sequences. The broker translates between Kafka's 0-based offsets and PubSub's 1-based sequences automatically.
+
+### Stateless Design
+
+The broker maintains no local state. All data, metadata, and consumer offsets are stored in Hanzo PubSub. This means:
+
+- **Horizontal scaling**: Add or remove broker instances at any time
+- **Zero data loss**: No state to lose on broker restart
+- **Simple operations**: No leader election, no rebalancing, no split-brain concerns
+- **Shared nothing**: Every instance is identical and interchangeable
+
+## Configuration
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--pubsub-url` | `nats://localhost:4222` | Hanzo PubSub server URL |
+| `--pubsub-creds` | | Optional PubSub credentials file |
+| `--port` | `9092` | Port for Kafka client connections |
+| `--host` | `localhost` | Advertised hostname |
+| `--node-id` | `1` | Broker node ID |
+| `--replicas` | `1` | Hanzo Stream replication factor |
+| `--storage` | `file` | Hanzo Stream storage type (`file` or `memory`) |
+
+## Self-Hosted
+
+Run your own Hanzo Kafka instance with Docker:
+
+```bash
+docker run -d --name kafka \
+  -p 9092:9092 \
+  ghcr.io/hanzoai/kafka:latest \
+  --pubsub-url nats://your-pubsub:4222 \
+  --host 0.0.0.0
+```
+
+Or build from source:
+
+```bash
+git clone https://github.com/hanzoai/kafka.git
+cd kafka
+go build -o hanzo-kafka .
+./hanzo-kafka --pubsub-url nats://localhost:4222
+```
+
+## Performance
+
+Hanzo Kafka is optimized for high-throughput streaming workloads:
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│  Producer Benchmark (1M records, 500B each, acks=1)            │
+│                                                                │
+│  Throughput:  ~100,000 records/sec  (~47 MB/sec)               │
+│  Latency:    2.6 ms avg | 1 ms p50 | 14 ms p95 | 53 ms p99   │
+└────────────────────────────────────────────────────────────────┘
+```
+
+Run your own benchmark with standard Kafka tools:
+
+```bash
+kafka-producer-perf-test.sh \
+  --topic perf-test \
+  --num-records 1000000 \
+  --record-size 500 \
+  --throughput 100000 \
+  --producer-props \
+    acks=1 \
+    batch.size=16384 \
+    linger.ms=5 \
+    bootstrap.servers=kafka.hanzo.ai:9092
+```
+
+## Related Services
+
+<Cards>
+  <Card title="PubSub" href="/docs/services/pubsub">
+    Hanzo PubSub -- the persistence layer backing Hanzo Kafka
+  </Card>
+  <Card title="MQ" href="/docs/services/mq">
+    Hanzo MQ -- job queues and async processing
+  </Card>
+  <Card title="KV" href="/docs/services/kv">
+    Managed key-value store with caching and streams
+  </Card>
+  <Card title="DB" href="/docs/services/db">
+    Managed PostgreSQL with pgvector
+  </Card>
+</Cards>

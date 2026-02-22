@@ -1,18 +1,19 @@
 export function getSection(path: string | undefined) {
-  if (!path) return 'framework';
+  if (!path) return 'services';
   const [dir] = path.split('/', 1);
-  if (!dir) return 'framework';
+  if (!dir) return 'services';
   return (
     {
-      ui: 'ui',
-      mdx: 'mdx',
-      cli: 'cli',
-      headless: 'headless',
+      services: 'services',
+      commerce: 'commerce',
+      sdks: 'sdks',
+      openapi: 'openapi',
+      chat: 'chat',
       llm: 'llm',
       mcp: 'mcp',
       dev: 'dev',
       zap: 'zap',
-      services: 'services',
-    }[dir] ?? 'framework'
+      projects: 'projects',
+    }[dir] ?? 'services'
   );
 }
