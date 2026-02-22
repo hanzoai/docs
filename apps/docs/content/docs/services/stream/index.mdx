@@ -1,15 +1,15 @@
 ---
-title: Hanzo Kafka
+title: Hanzo Stream
 description: Kafka-compatible streaming gateway built on Hanzo PubSub
 ---
 
-# Hanzo Kafka
+# Hanzo Stream
 
-Hanzo Kafka is a stateless Kafka wire protocol gateway built on Hanzo PubSub. It accepts connections from any standard Kafka client and translates every operation into Hanzo Stream calls against PubSub. All storage, replication, and durability is delegated to Hanzo PubSub -- the broker itself is completely stateless and horizontally scalable.
+Hanzo Stream is a stateless Kafka wire protocol gateway built on Hanzo PubSub. Standard Kafka clients connect on `:9092`; the gateway translates every Kafka API call into JetStream operations against PubSub. All storage, replication, and durability live in PubSub — the gateway itself holds no state and scales horizontally.
 
-**Endpoint:** `kafka.hanzo.ai:9092`
-**Gateway:** `api.hanzo.ai/v1/kafka/*`
-**Source:** [github.com/hanzoai/kafka](https://github.com/hanzoai/kafka)
+**Endpoint:** `stream.hanzo.ai:9092`
+**Gateway:** `api.hanzo.ai/v1/stream/*`
+**Source:** [github.com/hanzoai/stream](https://github.com/hanzoai/stream)
 
 ## Features
 
@@ -48,10 +48,10 @@ Connect using any standard Kafka client on port `9092`.
 
 ```bash
 # Create a topic and produce messages
-echo "hello world" | kcat -b kafka.hanzo.ai:9092 -t my-topic -P
+echo "hello world" | kcat -b stream.hanzo.ai:9092 -t my-topic -P
 
 # Consume from the beginning
-kcat -b kafka.hanzo.ai:9092 -t my-topic -C -o beginning
+kcat -b stream.hanzo.ai:9092 -t my-topic -C -o beginning
 ```
 
 ### Kafka CLI Tools
@@ -60,16 +60,16 @@ kcat -b kafka.hanzo.ai:9092 -t my-topic -C -o beginning
 # Create a topic
 kafka-topics.sh --create --topic events \
   --partitions 3 \
-  --bootstrap-server kafka.hanzo.ai:9092
+  --bootstrap-server stream.hanzo.ai:9092
 
 # Produce
 kafka-console-producer.sh \
-  --bootstrap-server kafka.hanzo.ai:9092 \
+  --bootstrap-server stream.hanzo.ai:9092 \
   --topic events
 
 # Consume
 kafka-console-consumer.sh \
-  --bootstrap-server kafka.hanzo.ai:9092 \
+  --bootstrap-server stream.hanzo.ai:9092 \
   --topic events \
   --from-beginning
 ```
@@ -81,7 +81,7 @@ from kafka import KafkaProducer, KafkaConsumer
 
 # Producer
 producer = KafkaProducer(
-    bootstrap_servers=["kafka.hanzo.ai:9092"],
+    bootstrap_servers=["stream.hanzo.ai:9092"],
     compression_type="zstd",
 )
 producer.send("events", b"hello from python")
@@ -90,7 +90,7 @@ producer.flush()
 # Consumer
 consumer = KafkaConsumer(
     "events",
-    bootstrap_servers=["kafka.hanzo.ai:9092"],
+    bootstrap_servers=["stream.hanzo.ai:9092"],
     group_id="my-group",
     auto_offset_reset="earliest",
 )
@@ -117,7 +117,7 @@ func main() {
 
     // Producer
     producer, err := sarama.NewSyncProducer(
-        []string{"kafka.hanzo.ai:9092"}, config,
+        []string{"stream.hanzo.ai:9092"}, config,
     )
     if err != nil {
         log.Fatal(err)
@@ -135,7 +135,7 @@ func main() {
 
     // Consumer
     consumer, err := sarama.NewConsumer(
-        []string{"kafka.hanzo.ai:9092"}, config,
+        []string{"stream.hanzo.ai:9092"}, config,
     )
     if err != nil {
         log.Fatal(err)
@@ -162,7 +162,7 @@ import java.util.*;
 
 // Producer
 Properties props = new Properties();
-props.put("bootstrap.servers", "kafka.hanzo.ai:9092");
+props.put("bootstrap.servers", "stream.hanzo.ai:9092");
 props.put("key.serializer",
     "org.apache.kafka.common.serialization.StringSerializer");
 props.put("value.serializer",
@@ -175,7 +175,7 @@ producer.close();
 
 // Consumer
 Properties cprops = new Properties();
-cprops.put("bootstrap.servers", "kafka.hanzo.ai:9092");
+cprops.put("bootstrap.servers", "stream.hanzo.ai:9092");
 cprops.put("group.id", "my-group");
 cprops.put("auto.offset.reset", "earliest");
 cprops.put("key.deserializer",
@@ -205,7 +205,7 @@ while (true) {
                        │ Kafka wire protocol (TCP :9092)
                        v
 ┌─────────────────────────────────────────────────────────────┐
-│  Hanzo Kafka Gateway (stateless)                            │
+│  Hanzo Stream Gateway (stateless)                            │
 │                                                             │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐                  │
 │  │ Instance  │  │ Instance  │  │ Instance  │                 │
@@ -231,7 +231,7 @@ while (true) {
 
 ### How It Works
 
-Hanzo Kafka translates Kafka concepts directly to Hanzo Stream primitives:
+Hanzo Stream translates Kafka concepts directly to Hanzo Stream primitives:
 
 | Kafka Concept | Hanzo Stream Equivalent |
 |---|---|
@@ -267,12 +267,12 @@ The broker maintains no local state. All data, metadata, and consumer offsets ar
 
 ## Self-Hosted
 
-Run your own Hanzo Kafka instance with Docker:
+Run your own Hanzo Stream instance with Docker:
 
 ```bash
-docker run -d --name kafka \
+docker run -d --name stream \
   -p 9092:9092 \
-  ghcr.io/hanzoai/kafka:latest \
+  ghcr.io/hanzoai/stream:latest \
   --pubsub-url nats://your-pubsub:4222 \
   --host 0.0.0.0
 ```
@@ -280,15 +280,15 @@ docker run -d --name kafka \
 Or build from source:
 
 ```bash
-git clone https://github.com/hanzoai/kafka.git
-cd kafka
-go build -o hanzo-kafka .
-./hanzo-kafka --pubsub-url nats://localhost:4222
+git clone https://github.com/hanzoai/stream.git
+cd stream
+go build -o hanzo-stream .
+./hanzo-stream --pubsub-url nats://localhost:4222
 ```
 
 ## Performance
 
-Hanzo Kafka is optimized for high-throughput streaming workloads:
+Hanzo Stream is optimized for high-throughput streaming workloads:
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
@@ -311,14 +311,14 @@ kafka-producer-perf-test.sh \
     acks=1 \
     batch.size=16384 \
     linger.ms=5 \
-    bootstrap.servers=kafka.hanzo.ai:9092
+    bootstrap.servers=stream.hanzo.ai:9092
 ```
 
 ## Related Services
 
 <Cards>
   <Card title="PubSub" href="/docs/services/pubsub">
-    Hanzo PubSub -- the persistence layer backing Hanzo Kafka
+    Hanzo PubSub -- the persistence and streaming layer backing Hanzo Stream
   </Card>
   <Card title="MQ" href="/docs/services/mq">
     Hanzo MQ -- job queues and async processing
