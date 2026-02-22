@@ -36,11 +36,12 @@ docs/
 
 ## Models
 
-- **zen-max** - 671B MoE (71.3% SWE-bench)
-- **zen-coder-flash** - 31B MoE (59.2% SWE-bench) ⭐ Flagship
-- **zen-omni** - 7B multimodal
-- **zen-vl** - Vision-language (4B/8B/30B)
-- **zen-nano** - 0.6B edge
+- **zen4-max** - 1.04T MoE, 256K context
+- **zen4** - ~400B Dense flagship
+- **zen4-coder** - 480B MoE code specialist
+- **zen4-coder-flash** - Fast code generation
+- **zen3-omni** - ~200B multimodal
+- **zen3-nano** - 4B edge deployment
 
 ## Links
 
