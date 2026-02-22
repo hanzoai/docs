@@ -1,248 +1,406 @@
 ---
 title: Hanzo Gateway
-description: Multi-provider AI inference gateway
+description: Unified API gateway and LLM proxy — routes to 100+ AI providers
 ---
 
 # Hanzo Gateway
 
-Hanzo Gateway is a production-ready multi-provider AI inference platform. It provides secure, cost-effective AI inference across multiple providers with built-in rate limiting, cost controls, and device authentication.
+Hanzo Gateway is the unified API gateway for all Hanzo services. Built on KrakenD, it serves as the single entry point for LLM inference, commerce, authentication, analytics, and every other Hanzo backend. Two independent gateway instances run on separate Kubernetes clusters, each with its own routing table and rate-limit policy.
+
+## Endpoints
+
+| Cluster | Domain | Purpose |
+|---------|--------|---------|
+| **hanzo-k8s** | `api.hanzo.ai` | All Hanzo services (LLM, Commerce, Auth, Analytics, Agents, Bot, etc.) |
+| **lux-k8s** | `api.lux.network` | Lux blockchain RPC (C-Chain, X-Chain, P-Chain, indexers) |
+
+Both endpoints terminate TLS via Cloudflare (Hanzo) or DigitalOcean Load Balancer (Lux) and proxy to the gateway on port 8080 inside the cluster.
 
 ## Features
 
-- **Multi-Provider Support**: OpenAI, Anthropic Claude, DigitalOcean Gradient, Together, Fireworks
-- **Cost Optimization**: Default to affordable providers, automatic fallback
-- **Rate Limiting**: Per-key and per-team limits
-- **Device Authentication**: Secure device-based auth
-- **OpenAI Compatible**: Drop-in replacement API
-- **Health Monitoring**: Built-in health checks and metrics
+- **LLM Proxy**: OpenAI-compatible `/v1/*` endpoints routed to 100+ models via Cloud Backend and DO AI inference
+- **Unified Routing**: Single gateway fans out to 15+ backend services (Cloud, Commerce, IAM, Analytics, Agents, Bot, Operative, KMS, Web3, Infra, Console, Team, Billing)
+- **Rate Limiting**: Per-IP and global rate limits on every endpoint, enforced at the gateway layer
+- **Passthrough Encoding**: All traffic uses `no-op` encoding -- the gateway never transforms request or response bodies
+- **Header Forwarding**: All client headers (including `Authorization`) are forwarded to backends
+- **Health Checks**: `/__health` liveness probe, `GET /health` public endpoint
+- **Streaming**: Passthrough encoding preserves SSE streams for chat completions
+- **Multi-Cluster**: Separate configs, images, and deployments for Hanzo and Lux clusters
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         HANZO GATEWAY                                    │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌────────────────────────────────────────────────────────────────┐     │
-│  │                    Gateway Layer                                │     │
-│  │   ┌──────────┬──────────┬───────────┬─────────────────┐        │     │
-│  │   │  Auth    │  Rate    │   Cost    │    Routing      │        │     │
-│  │   │  Layer   │  Limit   │  Control  │    Engine       │        │     │
-│  │   └────┬─────┴────┬─────┴─────┬─────┴───────┬─────────┘        │     │
-│  └────────┼──────────┼───────────┼─────────────┼──────────────────┘     │
-│           │          │           │             │                         │
-│           ▼          ▼           ▼             ▼                         │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                    Provider Adapters                             │    │
-│  │  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐   │    │
-│  │  │ OpenAI  │ │Anthropic│ │DigitalO │ │Together │ │Fireworks│   │    │
-│  │  │  GPT-4  │ │ Claude  │ │ Qwen3   │ │ Llama   │ │ Mixtral │   │    │
-│  │  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘   │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
+                    Internet
+                       |
+          +-----------+-----------+
+          |                       |
+   Cloudflare              DO Load Balancer
+   api.hanzo.ai            api.lux.network
+          |                       |
+          v                       v
+ +------------------+   +------------------+
+ | hanzo-k8s        |   | lux-k8s          |
+ | Gateway (2 pods) |   | Gateway (2 pods) |
+ | port 8080        |   | port 8080        |
+ +--------+---------+   +--------+---------+
+          |                       |
+    +-----+-----+          +-----+-----+
+    |           |          |           |
+ /v1/*      /commerce/*  /ext/bc/C/rpc  /ext/bc/X
+    |           |          |              |
+    v           v          v              v
+ cloud-api  commerce    luxd:9630      luxd:9630
+  :8000      :8001     (mainnet)      (mainnet)
 ```
 
-## Endpoints
+### Hanzo Cluster Route Map
 
-| Environment | URL |
-|-------------|-----|
-| Production | `https://gateway.hanzo.ai` |
-| Staging | `https://stg.gateway.hanzo.ai` |
+| Path Prefix | Backend Service | Port | Description |
+|-------------|----------------|------|-------------|
+| `/v1/chat/completions` | `cloud-api` | 8000 | LLM chat completions |
+| `/v1/completions` | `cloud-api` | 8000 | LLM text completions |
+| `/v1/embeddings` | DO AI (direct) | 443 | Text embeddings |
+| `/v1/models` | DO AI (direct) | 443 | Model listing |
+| `/v1/images/generations` | DO AI (direct) | 443 | Image generation |
+| `/v1/audio/transcriptions` | DO AI (direct) | 443 | Speech-to-text |
+| `/v1/audio/speech` | DO AI (direct) | 443 | Text-to-speech |
+| `/v1/async-invoke` | DO AI (direct) | 443 | Async inference jobs |
+| `/cloud/*` | `cloud-api` | 8000 | Cloud management API |
+| `/ai/*` | `cloud-api` | 8000 | AI management API |
+| `/commerce/*` | `commerce` | 8001 | Commerce / payments |
+| `/billing/*` | `commerce` | 8001 | Billing API (v1) |
+| `/auth/*` | `iam` | 8000 | IAM / authentication |
+| `/analytics/*` | `analytics` | 80 | Usage analytics |
+| `/agents/*` | `agents` | 8080 | Agent orchestration |
+| `/bot/*` | `bot-gateway` | 80 | Bot management |
+| `/operative/*` | `operative` | 80 | Computer-use agents |
+| `/kms/*` | `kms` | 80 | Key management |
+| `/web3/*` | `bootnode-api` | 80 | Blockchain API |
+| `/infra/*` | `visor` | 19000 | Infrastructure management |
+| `/console/*` | `console` | 80 | Console backend |
+| `/team/*` | team services | various | Team / collaboration |
+| `/health` | self | 8080 | Gateway health check |
 
-## Quick Start
+### Lux Cluster Route Map
 
-### 1. Development Setup
+| Path | Backend | Description |
+|------|---------|-------------|
+| `/ext/bc/C/rpc` | `luxd:9630` | C-Chain EVM JSON-RPC |
+| `/ext/bc/C/ws` | `luxd:9630` | C-Chain WebSocket |
+| `/ext/bc/X` | `luxd:9630` | X-Chain (Exchange) |
+| `/ext/bc/P` | `luxd:9630` | P-Chain (Platform) |
+| `/ext/info` | `luxd:9630` | Node info |
+| `/ext/health` | `luxd:9630` | Node health |
+| `/ext/keystore` | `luxd:9630` | Keystore API |
+| `/ext/index/C/block` | `luxd:9630` | C-Chain block index |
+| `/ext/index/C/tx` | `luxd:9630` | C-Chain tx index |
+| `/ext/index/X/tx` | `luxd:9630` | X-Chain tx index |
+| `/ext/index/P/block` | `luxd:9630` | P-Chain block index |
+| `/ext/index/P/tx` | `luxd:9630` | P-Chain tx index |
+| `/ext/metrics` | `luxd:9630` | Prometheus metrics |
+| `/ext/admin` | `luxd:9630` | Admin API |
+
+## API Examples
+
+### Chat Completions
 
 ```bash
-cd ~/work/hanzo/gateway
-
-# Copy environment
-cp .env.example .env
-
-# Start with Docker
-docker compose up
-
-# Or run directly
-npm start
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "anthropic-claude-haiku-4.5",
+    "messages": [
+      {"role": "user", "content": "Explain quantum computing in one paragraph."}
+    ],
+    "max_tokens": 256
+  }'
 ```
 
-### 2. Make API Calls
+Response:
 
-```typescript
-import OpenAI from 'openai'
-
-const client = new OpenAI({
-  apiKey: process.env.HANZO_GATEWAY_KEY,
-  baseURL: 'https://gateway.hanzo.ai/v1'
-})
-
-const response = await client.chat.completions.create({
-  model: 'gpt-4o',
-  messages: [{ role: 'user', content: 'Hello!' }]
-})
+```json
+{
+  "id": "chatcmpl-abc123",
+  "object": "chat.completions",
+  "created": 1740000000,
+  "model": "anthropic-claude-haiku-4.5",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Quantum computing leverages quantum mechanical phenomena..."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 12,
+    "completion_tokens": 85,
+    "total_tokens": 97
+  }
+}
 ```
 
-### 3. Use Different Providers
-
-```typescript
-// Default: Cost-optimized (DigitalOcean Qwen3-32B)
-const response = await client.chat.completions.create({
-  model: 'qwen3-32b',
-  messages: [{ role: 'user', content: 'Hello!' }]
-})
-
-// OpenAI
-const gpt = await client.chat.completions.create({
-  model: 'gpt-4o',
-  messages: [{ role: 'user', content: 'Hello!' }]
-})
-
-// Anthropic
-const claude = await client.chat.completions.create({
-  model: 'claude-3-opus',
-  messages: [{ role: 'user', content: 'Hello!' }]
-})
-```
-
-## Supported Models
-
-### OpenAI
-
-| Model | Context | Description |
-|-------|---------|-------------|
-| gpt-4o | 128K | Latest GPT-4 Omni |
-| gpt-4o-mini | 128K | Cost-efficient GPT-4 |
-| gpt-4-turbo | 128K | GPT-4 Turbo |
-| o1 | 128K | Reasoning model |
-
-### Anthropic
-
-| Model | Context | Description |
-|-------|---------|-------------|
-| claude-3-opus | 200K | Most capable |
-| claude-3-5-sonnet | 200K | Best balance |
-| claude-3-haiku | 200K | Fastest |
-
-### DigitalOcean Gradient
-
-| Model | Context | Description |
-|-------|---------|-------------|
-| qwen3-32b | 32K | Cost-effective default |
-| llama-3.1-70b | 128K | Open source large |
-
-### Together/Fireworks
-
-| Model | Context | Description |
-|-------|---------|-------------|
-| llama-3.1-405b | 128K | Largest open |
-| mixtral-8x22b | 64K | MoE model |
-
-## Configuration
-
-### Environment Variables
+### Streaming
 
 ```bash
-# Required
-HANZO_GATEWAY_PORT=3000
-HANZO_IAM_URL=https://iam.hanzo.ai
-
-# Providers (add as needed)
-OPENAI_API_KEY=sk-xxx
-ANTHROPIC_API_KEY=sk-ant-xxx
-DO_API_KEY=xxx
-TOGETHER_API_KEY=xxx
-FIREWORKS_API_KEY=xxx
-
-# Rate Limiting
-RATE_LIMIT_REQUESTS=100
-RATE_LIMIT_WINDOW=60
-
-# Cost Controls
-MAX_DAILY_SPEND=100.00
-DEFAULT_MODEL=qwen3-32b
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai-gpt-5-nano",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": true
+  }'
 ```
 
-## Device Authentication
+### Embeddings
+
+```bash
+curl https://api.hanzo.ai/v1/embeddings \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "text-embedding-3-small",
+    "input": "The quick brown fox jumps over the lazy dog"
+  }'
+```
+
+### Image Generation
+
+```bash
+curl https://api.hanzo.ai/v1/images/generations \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "dall-e-3",
+    "prompt": "A futuristic city skyline at sunset",
+    "n": 1,
+    "size": "1024x1024"
+  }'
+```
+
+### List Models
+
+```bash
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+## SDK Usage
+
+### Python
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="your-key")
+
+response = client.chat.completions.create(
+    model="alibaba-qwen3-32b",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
+print(response.choices[0].message.content)
+```
+
+### TypeScript
 
 ```typescript
-// Register device
-const device = await gateway.devices.register({
-  name: 'iPhone 15',
-  platform: 'ios',
-  pushToken: 'xxx'
-})
+import Hanzo from '@hanzo/ai'
 
-// Authenticate with device
-const token = await gateway.devices.authenticate({
-  deviceId: device.id,
-  signature: signChallenge(challenge)
+const client = new Hanzo({ apiKey: 'your-key' })
+
+const response = await client.chat.completions.create({
+  model: 'alibaba-qwen3-32b',
+  messages: [{ role: 'user', content: 'Hello!' }]
 })
+console.log(response.choices[0].message.content)
 ```
 
-## Cost Controls
+### OpenAI SDK (Drop-in)
 
-```typescript
-// Set budget
-await gateway.budgets.set({
-  teamId: 'team-123',
-  dailyLimit: 100.00,
-  monthlyLimit: 2000.00
-})
+Any OpenAI-compatible client works by changing the base URL:
 
-// Check spend
-const spend = await gateway.spend.get({
-  teamId: 'team-123',
-  period: 'month'
-})
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="your-hanzo-key",
+    base_url="https://api.hanzo.ai/v1"
+)
+
+response = client.chat.completions.create(
+    model="openai-gpt-5-nano",
+    messages=[{"role": "user", "content": "Hello!"}]
+)
 ```
+
+## Provider Routing
+
+Chat and text completions are routed through the **Cloud Backend** (`cloud-api`), which selects the appropriate upstream provider based on the model ID prefix:
+
+| Prefix | Provider | Upstream URL |
+|--------|----------|-------------|
+| `openai-` | OpenAI (via DO AI) | `inference.do-ai.run/v1` |
+| `anthropic-` | Anthropic (via DO AI) | `inference.do-ai.run/v1` |
+| `alibaba-` | Qwen models (via DO AI) | `inference.do-ai.run/v1` |
+| `meta-` | Llama models (via DO AI) | `inference.do-ai.run/v1` |
+| `mistral-` | Mistral models (via DO AI) | `inference.do-ai.run/v1` |
+| `google-` | Google models (via DO AI) | `inference.do-ai.run/v1` |
+| `deepseek-` | DeepSeek models (via DO AI) | `inference.do-ai.run/v1` |
+
+Embeddings, images, audio, and async-invoke endpoints bypass Cloud Backend and route directly to DO AI (`inference.do-ai.run`).
+
+### Model ID Format
+
+Model IDs follow the pattern `{provider}-{model-name}`. Examples:
+
+```
+openai-gpt-5-nano
+anthropic-claude-haiku-4.5
+alibaba-qwen3-32b
+meta-llama-3.3-70b-instruct
+mistral-small-3.1-24b-instruct
+google-gemini-2.0-flash-001
+deepseek-r1-0528
+```
+
+## Rate Limiting
+
+Rate limits are enforced per-endpoint at the KrakenD layer using the `qos/ratelimit/router` plugin.
+
+### Hanzo Cluster (`api.hanzo.ai`)
+
+| Scope | Limit | Window |
+|-------|-------|--------|
+| Global (all clients) | 5,000 req/s | per second |
+| Per IP | 100 req | per minute |
+
+### Lux Cluster (`api.lux.network`)
+
+| Scope | Limit | Window |
+|-------|-------|--------|
+| Global (all clients) | 1,000 req/s | per second |
+| Per IP | 100 req/s | per second |
+
+Rate-limited requests receive HTTP `429 Too Many Requests`.
+
+## Infrastructure
+
+### Build
+
+The gateway is a Go binary built from KrakenD source with Hanzo extensions:
+
+```
+github.com/hanzoai/gateway/v2  (Go 1.25)
+```
+
+### Docker Images
+
+| Image | Config | Cluster |
+|-------|--------|---------|
+| `ghcr.io/hanzoai/gateway:hanzo-latest` | `configs/hanzo/gateway.json` | hanzo-k8s |
+| `ghcr.io/hanzoai/gateway:lux-latest` | `configs/lux/gateway.json` | lux-k8s |
+
+### Kubernetes Deployment
+
+Both clusters run 2 replicas behind a ClusterIP service:
+
+```
+Deployment (2 replicas)
+  image: ghcr.io/hanzoai/gateway:<cluster>-latest
+  port: 8080
+  resources:
+    requests: 100m CPU, 128Mi RAM
+    limits: 1 CPU, 512Mi RAM
+  probes:
+    liveness:  GET /__health (every 15s)
+    readiness: GET /__health (every 5s)
+  config: ConfigMap → /etc/gateway/gateway.json
+```
+
+The Hanzo cluster is exposed via an nginx Ingress with TLS (cert-manager + Let's Encrypt) at `api.hanzo.ai`. The Lux cluster uses a DigitalOcean LoadBalancer at `134.199.141.71`.
+
+### DNS
+
+| Domain | Type | Target |
+|--------|------|--------|
+| `api.hanzo.ai` | A (CF proxied) | `24.199.76.156` (hanzo-k8s LB) |
+| `llm.hanzo.ai` | CNAME | `api.hanzo.ai` |
+| `api.lux.network` | A | `134.199.141.71` (lux-k8s LB) |
+
+### Operations
+
+```bash
+# Validate configs
+make validate
+
+# Deploy to hanzo-k8s
+make deploy-hanzo
+
+# Deploy to lux-k8s
+make deploy-lux
+
+# Deploy both
+make deploy
+
+# Check status
+make status
+
+# Tail logs
+make logs-hanzo
+make logs-lux
+```
+
+### Config Structure
+
+```
+configs/
+  hanzo/gateway.json    # Hanzo API Gateway (15+ services)
+  lux/gateway.json      # Lux blockchain RPC (14 endpoints)
+k8s/
+  hanzo/                # deployment, service, ingress
+  lux/                  # deployment, service
+Dockerfile              # Multi-stage build (Go build + Alpine runtime)
+Makefile                # Build, validate, deploy commands
+```
+
+To add or modify a route:
+
+1. Edit `configs/<cluster>/gateway.json`
+2. Validate: `make validate`
+3. Deploy: `make deploy-hanzo` or `make deploy-lux`
+
+The Makefile creates a ConfigMap from the JSON config and triggers a rolling restart.
 
 ## Health Checks
 
 ```bash
-# Liveness
-curl https://gateway.hanzo.ai/health
+# Gateway internal health
+curl https://api.hanzo.ai/__health
 
-# Readiness
-curl https://gateway.hanzo.ai/ready
+# Public health endpoint
+curl https://api.hanzo.ai/health
 
-# Metrics
-curl https://gateway.hanzo.ai/metrics
+# Lux gateway health
+curl https://api.lux.network/ext/health
 ```
 
-## Docker Deployment
-
-```bash
-docker pull hanzoai/gateway:latest
-
-docker run -d \
-  --name hanzo-gateway \
-  -p 3000:3000 \
-  -e OPENAI_API_KEY=sk-xxx \
-  -e ANTHROPIC_API_KEY=sk-ant-xxx \
-  hanzoai/gateway:latest
-```
-
-## Integration with Engine
-
-For local inference, Hanzo Gateway can connect to Hanzo Engine (Rust-based inference):
-
-```bash
-# Start engine
-cd ~/work/hanzo/engine
-cargo run --release -- serve --port 8080
-
-# Configure gateway
-HANZO_ENGINE_URL=http://localhost:8080
-```
-
-## Next Steps
+## Related Services
 
 <Cards>
-  <Card title="Models" href="/docs/services/gateway/models">
-    Complete model catalog
+  <Card title="Cloud" href="/docs/services/cloud">
+    Cloud Backend -- LLM provider routing and management
   </Card>
   <Card title="Engine" href="/docs/services/engine">
-    Local Rust inference
+    Local Rust inference engine
+  </Card>
+  <Card title="Analytics" href="/docs/services/analytics">
+    Usage, cost, and performance metrics
+  </Card>
+  <Card title="IAM" href="/docs/services/iam">
+    Identity and access management (hanzo.id)
   </Card>
 </Cards>
