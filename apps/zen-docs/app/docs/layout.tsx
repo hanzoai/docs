@@ -13,7 +13,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       sidebar={{
         banner: (
           <div className="p-3 rounded-lg bg-primary/10 text-sm">
-            <strong>zen-coder-flash</strong> - 59.2% SWE-bench
+            <strong>zen4-max</strong> — 1T+ MoE frontier model
           </div>
         ),
       }}
