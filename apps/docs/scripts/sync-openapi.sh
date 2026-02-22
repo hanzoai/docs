@@ -15,8 +15,7 @@ fi
 
 mkdir -p "$DOCS_DIR/openapi-specs"
 
-# Commerce excluded temporarily — 3.0.3 spec needs migration to 3.1.0 schema
-SERVICES="analytics auto bot chat cloud console db dns edge engine flow gateway iam kms kv mq nexus o11y operative paas platform registry search vector visor zt"
+SERVICES="analytics auto bot chat cloud commerce console db dns edge engine flow gateway iam kms kv mq nexus o11y operative paas platform registry search vector visor zt"
 
 for service in $SERVICES; do
   if [ -f "$OPENAPI_DIR/$service/openapi.yaml" ]; then
