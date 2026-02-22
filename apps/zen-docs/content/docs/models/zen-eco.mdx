@@ -1,0 +1,70 @@
+---
+title: zen-eco
+description: Efficient 4B dense model balancing capability and cost for general-purpose tasks.
+---
+
+# zen-eco
+
+**Efficient**
+
+A 4B dense transformer that balances capability and efficiency. Designed for high-throughput production workloads where cost matters but quality cannot be compromised. Achieves 33K tokens/sec with 2--8GB RAM.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen-eco` |
+| **Parameters** | 4B |
+| **Architecture** | Dense |
+| **Context Window** | 32K tokens |
+| **Throughput** | 33K tokens/sec |
+| **Memory** | 2--8 GB RAM |
+| **HuggingFace** | [zenlm/zen-eco-4b](https://huggingface.co/zenlm/zen-eco-4b) |
+
+## Capabilities
+
+- General-purpose text generation
+- Summarization and extraction
+- Classification and labeling
+- High-throughput batch processing
+- Cost-efficient production deployment
+- Instruction following
+
+## Usage
+
+### HuggingFace
+
+```bash
+pip install transformers torch
+```
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-eco-4b")
+model = AutoModelForCausalLM.from_pretrained("zenlm/zen-eco-4b")
+
+inputs = tokenizer("Summarize the key points:", return_tensors="pt")
+outputs = model.generate(**inputs, max_new_tokens=256)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
+
+### API
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen-eco",
+    messages=[{"role": "user", "content": "Summarize the key benefits of edge computing."}],
+)
+print(response.choices[0].message.content)
+```
+
+## See Also
+
+- [zen-nano](/docs/models/zen-nano) -- 0.6B ultra-compact edge model
+- [zen](/docs/models/zen) -- 8-32B standard foundation model
+- [zen3-nano](/docs/models/zen3-nano) -- 4B edge-optimized variant

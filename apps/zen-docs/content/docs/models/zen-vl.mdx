@@ -1,0 +1,80 @@
+---
+title: zen-vl
+description: 32B dense multimodal model for vision-language understanding.
+---
+
+# zen-vl
+
+**Vision-Language**
+
+A 32B dense multimodal transformer for vision-language tasks. Processes images and text together for visual question answering, image description, document understanding, and OCR.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen-vl` |
+| **Parameters** | 32B |
+| **Architecture** | Dense Multimodal |
+| **Context Window** | 32K tokens |
+| **Status** | Available |
+| **HuggingFace** | [zenlm/zen-vl](https://huggingface.co/zenlm/zen-vl) |
+
+## Capabilities
+
+- Visual question answering
+- Image captioning and description
+- Document and chart understanding
+- OCR and text extraction from images
+- Multi-image reasoning
+- Diagram and infographic analysis
+
+## Usage
+
+### HuggingFace
+
+```bash
+pip install transformers torch pillow
+```
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from PIL import Image
+
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-vl", trust_remote_code=True)
+model = AutoModelForCausalLM.from_pretrained("zenlm/zen-vl", trust_remote_code=True, device_map="auto")
+
+image = Image.open("example.jpg")
+inputs = tokenizer.apply_chat_template(
+    [{"role": "user", "content": [image, "Describe this image in detail."]}],
+    return_tensors="pt",
+).to(model.device)
+outputs = model.generate(**inputs, max_new_tokens=256)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
+
+### API
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen-vl",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "image_url", "image_url": {"url": "https://example.com/image.jpg"}},
+            {"type": "text", "text": "What is shown in this image?"},
+        ],
+    }],
+)
+print(response.choices[0].message.content)
+```
+
+## See Also
+
+- [zen3-vl](/docs/models/zen3-vl) -- 30B MoE vision-language model
+- [zen-omni](/docs/models/zen-omni) -- 72B hypermodal (text+vision+audio+code)
+- [zen3-omni](/docs/models/zen3-omni) -- 200B multimodal model
