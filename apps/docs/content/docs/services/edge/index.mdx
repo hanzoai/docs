@@ -1,30 +1,641 @@
 ---
 title: Hanzo Edge
-description: Serverless edge functions with global deployment, instant scaling, and zero cold starts.
+description: Global edge computing platform for low-latency AI inference, edge caching, serverless functions, and CDN -- powered by Cloudflare Workers.
 ---
 
 # Hanzo Edge
 
-Hanzo Edge provides serverless edge functions with global deployment, instant scaling, and zero cold starts.
+Hanzo Edge is a global edge computing platform that brings AI inference, caching, and serverless logic to 300+ points of presence worldwide. Built on Cloudflare Workers, it provides sub-50ms response times for cached model outputs, real-time WebSocket streaming, geographic routing, and DDoS protection -- all managed through a single API.
 
 **Endpoint:** `edge.hanzo.ai`
 **Gateway:** `api.hanzo.ai/v1/edge/*`
+**Workers Dashboard:** `console.hanzo.ai/edge`
+
+## Features
+
+- **Global Edge Network**: 300+ PoPs across 100+ countries with automatic anycast routing to the nearest node
+- **Edge Caching**: Semantic and key-based caching for model responses, reducing origin load and latency by up to 90%
+- **Edge Functions**: Deploy TypeScript/JavaScript functions to every PoP with zero cold starts via V8 isolates
+- **Cloudflare Workers Integration**: Native Workers runtime with access to KV, Durable Objects, R2, and D1
+- **WebSocket Streaming**: Persistent connections for real-time LLM token streaming at the edge
+- **Geographic Routing**: Route requests to region-specific origins based on client location, with latency-based failover
+- **DDoS Protection**: Layer 3/4/7 mitigation with automatic traffic scrubbing at the edge
+- **Rate Limiting**: Per-IP, per-key, and per-route rate limits enforced at the edge before requests reach origin
+- **Custom Domains**: Bring your own domain with automatic TLS certificate provisioning and renewal
+- **Gateway Integration**: Seamless routing between edge functions and Hanzo Gateway backend services
+
+## Architecture
+
+```
+                         Client Request
+                              |
+                              v
+                    +-------------------+
+                    |   Anycast DNS     |
+                    |   (Cloudflare)    |
+                    +--------+----------+
+                             |
+              +--------------+--------------+
+              |              |              |
+              v              v              v
+       +------------+  +------------+  +------------+
+       | Edge PoP   |  | Edge PoP   |  | Edge PoP   |
+       | US-East    |  | EU-West    |  | AP-Tokyo   |
+       |            |  |            |  |            |
+       | +--------+ |  | +--------+ |  | +--------+ |
+       | |V8 Iso- | |  | |V8 Iso- | |  | |V8 Iso- | |
+       | |lates   | |  | |lates   | |  | |lates   | |
+       | +--------+ |  | +--------+ |  | +--------+ |
+       | +--------+ |  | +--------+ |  | +--------+ |
+       | |Edge KV | |  | |Edge KV | |  | |Edge KV | |
+       | |Cache   | |  | |Cache   | |  | |Cache   | |
+       | +--------+ |  | +--------+ |  | +--------+ |
+       | +--------+ |  | +--------+ |  | +--------+ |
+       | |Rate    | |  | |Rate    | |  | |Rate    | |
+       | |Limiter | |  | |Limiter | |  | |Limiter | |
+       | +--------+ |  | +--------+ |  | +--------+ |
+       +-----+------+  +-----+------+  +-----+------+
+             |              |              |
+             +--------------+--------------+
+                            |
+                            v
+                  +-------------------+
+                  |  Hanzo Gateway    |
+                  |  api.hanzo.ai    |
+                  |  (Origin)        |
+                  +--------+----------+
+                           |
+              +------------+------------+
+              |            |            |
+              v            v            v
+          cloud-api   commerce     agents
+           :8000       :8001       :8080
+```
+
+Each edge PoP runs V8 isolates (zero cold start), a local KV cache replica, and a rate limiter. Requests that miss the edge cache are forwarded to the Hanzo Gateway origin on `api.hanzo.ai`. WebSocket connections are upgraded at the edge and proxied to the origin with keep-alive.
 
 ## Quick Start
 
+### Deploy an Edge Function
+
 ```bash
-curl -H "Authorization: Bearer hk-your-api-key" \
-  https://api.hanzo.ai/v1/edge/functions
+# Install the Hanzo CLI
+npm install -g @hanzo/cli
+
+# Authenticate
+hanzo auth login
+
+# Create a new edge function project
+hanzo edge init my-function
+cd my-function
 ```
 
-## Key Features
+This scaffolds a minimal project:
 
-- Global edge deployment
-- Zero cold starts
-- TypeScript and JavaScript runtime
-- Built-in KV storage access
-- Custom domain routing
+```
+my-function/
+  src/
+    index.ts        # Entry point
+  hanzo.edge.toml   # Configuration
+  package.json
+  tsconfig.json
+```
 
-## API Reference
+### Write Your Function
 
-See the [full API reference](/docs/openapi) for all endpoints.
+```typescript
+// src/index.ts
+export default {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url)
+
+    // Cache AI responses at the edge
+    if (url.pathname.startsWith('/api/inference')) {
+      const cacheKey = new Request(url.toString(), request)
+      const cache = caches.default
+
+      let response = await cache.match(cacheKey)
+      if (response) {
+        return new Response(response.body, {
+          ...response,
+          headers: { ...response.headers, 'X-Edge-Cache': 'HIT' },
+        })
+      }
+
+      // Forward to Hanzo Gateway origin
+      response = await fetch(`https://api.hanzo.ai/v1/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.HANZO_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: request.body,
+      })
+
+      // Cache for 60 seconds
+      const cached = new Response(response.body, response)
+      cached.headers.set('Cache-Control', 'public, max-age=60')
+      ctx.waitUntil(cache.put(cacheKey, cached.clone()))
+
+      return cached
+    }
+
+    return new Response('Hanzo Edge', { status: 200 })
+  },
+}
+```
+
+### Deploy
+
+```bash
+# Deploy to all edge PoPs
+hanzo edge deploy
+
+# Deploy to specific regions only
+hanzo edge deploy --regions us-east,eu-west,ap-northeast
+
+# View deployment status
+hanzo edge status my-function
+```
+
+### Test
+
+```bash
+curl https://my-function.edge.hanzo.ai/api/inference \
+  -H "Content-Type: application/json" \
+  -d '{"model": "alibaba-qwen3-32b", "messages": [{"role": "user", "content": "Hello"}]}'
+```
+
+## Edge Caching
+
+Hanzo Edge provides two caching strategies for AI workloads.
+
+### Key-Based Caching
+
+Cache responses by exact request signature. Best for deterministic queries (embeddings, classifications, structured extraction).
+
+```typescript
+const cacheKey = `${model}:${hashBody(request.body)}`
+const cached = await env.EDGE_KV.get(cacheKey, 'json')
+
+if (cached) {
+  return Response.json(cached, {
+    headers: { 'X-Edge-Cache': 'HIT', 'X-Cache-TTL': cached._ttl },
+  })
+}
+
+const result = await forwardToOrigin(request)
+await env.EDGE_KV.put(cacheKey, JSON.stringify(result), {
+  expirationTtl: 3600, // 1 hour
+})
+```
+
+### Semantic Caching
+
+Cache by meaning rather than exact match. Similar prompts return cached responses if their embedding similarity exceeds a threshold.
+
+```typescript
+import { cosineSimilarity, embed } from '@hanzo/edge/semantic'
+
+const queryEmbedding = await embed(request.body.messages)
+const neighbors = await env.EDGE_VECTOR.query(queryEmbedding, { topK: 1 })
+
+if (neighbors[0] && neighbors[0].score > 0.95) {
+  const cached = await env.EDGE_KV.get(neighbors[0].id, 'json')
+  return Response.json(cached, {
+    headers: { 'X-Edge-Cache': 'SEMANTIC_HIT', 'X-Similarity': neighbors[0].score },
+  })
+}
+```
+
+### Cache Configuration
+
+Configure caching rules in `hanzo.edge.toml`:
+
+```toml
+[cache]
+default_ttl = 3600          # 1 hour default
+max_ttl = 86400              # 24 hour maximum
+bypass_cookie = "nocache"    # Bypass cache on cookie
+bypass_header = "X-No-Cache" # Bypass cache on header
+
+[[cache.rules]]
+path = "/api/embeddings/*"
+ttl = 86400                  # Embeddings rarely change
+
+[[cache.rules]]
+path = "/api/chat/*"
+ttl = 0                      # Never cache chat by default
+
+[[cache.rules]]
+path = "/api/classify/*"
+ttl = 3600
+semantic = true              # Enable semantic matching
+similarity_threshold = 0.95
+```
+
+### Cache Management
+
+```bash
+# Purge all cached content for a function
+hanzo edge cache purge my-function
+
+# Purge specific paths
+hanzo edge cache purge my-function --path "/api/embeddings/*"
+
+# View cache analytics
+hanzo edge cache stats my-function
+```
+
+## Edge Functions
+
+Edge functions run on V8 isolates with zero cold starts. Each invocation gets its own isolate with a 128 MB memory limit and 30-second CPU time.
+
+### Runtime Environment
+
+| Resource | Limit |
+|----------|-------|
+| CPU time per request | 30 seconds |
+| Memory per isolate | 128 MB |
+| Request body size | 100 MB |
+| Response body size | 100 MB |
+| Subrequests per invocation | 50 |
+| Environment variables | 64, 5 KB each |
+| Script size (compressed) | 10 MB |
+
+### Bindings
+
+Edge functions can access the following Hanzo-managed bindings:
+
+```toml
+# hanzo.edge.toml
+
+[bindings]
+# Key-value storage (globally replicated, eventually consistent)
+EDGE_KV = { type = "kv", namespace = "my-app-cache" }
+
+# Durable Objects (strongly consistent, single-instance coordination)
+SESSIONS = { type = "durable-object", class = "SessionManager" }
+
+# Hanzo S3 bucket (S3-compatible object storage)
+MODELS = { type = "s3", bucket = "my-models" }
+
+# Environment secrets
+HANZO_API_KEY = { type = "secret" }
+DATABASE_URL = { type = "secret" }
+```
+
+### Middleware Pattern
+
+Chain middleware for auth, logging, and routing:
+
+```typescript
+import { Router, withAuth, withRateLimit, withCors } from '@hanzo/edge'
+
+const router = new Router()
+
+router.use(withCors({ origin: '*' }))
+router.use(withRateLimit({ limit: 100, window: 60 }))
+router.use(withAuth({ issuer: 'https://hanzo.id' }))
+
+router.post('/api/inference', async (req, env) => {
+  const response = await fetch('https://api.hanzo.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${env.HANZO_API_KEY}` },
+    body: req.body,
+  })
+  return response
+})
+
+router.get('/health', () => Response.json({ status: 'ok' }))
+
+export default router
+```
+
+## WebSocket Streaming
+
+Edge functions support WebSocket upgrade for real-time LLM streaming:
+
+```typescript
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    if (request.headers.get('Upgrade') === 'websocket') {
+      const [client, server] = Object.values(new WebSocketPair())
+
+      server.accept()
+      server.addEventListener('message', async (event) => {
+        const payload = JSON.parse(event.data as string)
+
+        // Stream from Hanzo Gateway
+        const response = await fetch('https://api.hanzo.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${env.HANZO_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ...payload, stream: true }),
+        })
+
+        const reader = response.body!.getReader()
+        const decoder = new TextDecoder()
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) {
+            server.send(JSON.stringify({ type: 'done' }))
+            break
+          }
+          server.send(decoder.decode(value))
+        }
+      })
+
+      return new Response(null, { status: 101, webSocket: client })
+    }
+
+    return new Response('WebSocket endpoint', { status: 426 })
+  },
+}
+```
+
+## Custom Domains
+
+Attach your own domain to any edge function with automatic TLS.
+
+### Add a Domain
+
+```bash
+# Add a custom domain
+hanzo edge domain add my-function api.example.com
+
+# Verify DNS (add a CNAME pointing to edge.hanzo.ai)
+hanzo edge domain verify api.example.com
+
+# List domains
+hanzo edge domain list my-function
+```
+
+### DNS Configuration
+
+Add a CNAME record at your DNS provider:
+
+| Type | Name | Target |
+|------|------|--------|
+| CNAME | `api.example.com` | `edge.hanzo.ai` |
+
+TLS certificates are provisioned automatically via Let's Encrypt within 60 seconds of DNS verification. Certificates renew automatically 30 days before expiry.
+
+### Wildcard Domains
+
+```bash
+hanzo edge domain add my-function "*.example.com"
+```
+
+Requires a DNS TXT record for validation:
+
+| Type | Name | Value |
+|------|------|-------|
+| TXT | `_hanzo-verify.example.com` | (provided by CLI) |
+
+## Rate Limiting
+
+Edge rate limiting runs before any request reaches the origin, protecting backend services.
+
+### Configuration
+
+```toml
+# hanzo.edge.toml
+
+[[rate_limit]]
+path = "/api/*"
+limit = 100            # requests
+window = 60            # seconds
+key = "ip"             # per IP address
+response_code = 429
+
+[[rate_limit]]
+path = "/api/inference"
+limit = 20
+window = 60
+key = "header:Authorization"  # per API key
+response_code = 429
+
+[[rate_limit]]
+path = "/api/public/*"
+limit = 1000
+window = 60
+key = "ip"
+```
+
+### Programmatic Rate Limiting
+
+```typescript
+import { RateLimiter } from '@hanzo/edge'
+
+const limiter = new RateLimiter({
+  namespace: env.RATE_LIMITER,
+  limit: 60,
+  window: 60,
+})
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown'
+    const { success, remaining, reset } = await limiter.check(clientIP)
+
+    if (!success) {
+      return new Response('Rate limit exceeded', {
+        status: 429,
+        headers: {
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(reset),
+          'Retry-After': String(Math.ceil((reset - Date.now()) / 1000)),
+        },
+      })
+    }
+
+    const response = await handleRequest(request, env)
+    response.headers.set('X-RateLimit-Remaining', String(remaining))
+    return response
+  },
+}
+```
+
+## DDoS Protection
+
+Hanzo Edge provides automatic DDoS mitigation at every PoP:
+
+- **Layer 3/4**: SYN floods, UDP amplification, and protocol attacks absorbed at the network edge
+- **Layer 7**: HTTP floods, slowloris, and application-layer attacks mitigated with behavioral analysis
+- **Bot Management**: Machine learning-based bot detection with challenge pages for suspicious traffic
+- **IP Reputation**: Real-time threat intelligence across the global network
+
+DDoS protection is enabled by default for all edge functions. No configuration required.
+
+### Security Headers
+
+```typescript
+import { withSecurity } from '@hanzo/edge'
+
+// Adds CSP, HSTS, X-Frame-Options, X-Content-Type-Options
+router.use(withSecurity({
+  hsts: { maxAge: 31536000, includeSubDomains: true },
+  contentSecurityPolicy: "default-src 'self'; script-src 'self'",
+  frameOptions: 'DENY',
+}))
+```
+
+## Geographic Routing
+
+Route requests to region-specific origins based on client location:
+
+```typescript
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const country = request.cf?.country || 'US'
+    const continent = request.cf?.continent || 'NA'
+
+    // Route to nearest regional origin
+    const origins: Record<string, string> = {
+      'NA': 'https://us.api.hanzo.ai',
+      'EU': 'https://eu.api.hanzo.ai',
+      'AS': 'https://ap.api.hanzo.ai',
+    }
+
+    const origin = origins[continent] || origins['NA']
+
+    return fetch(new Request(origin + new URL(request.url).pathname, request))
+  },
+}
+```
+
+### Available Geolocation Fields
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| `request.cf.country` | ISO 3166-1 alpha-2 country code | `US`, `DE`, `JP` |
+| `request.cf.continent` | Continent code | `NA`, `EU`, `AS`, `OC` |
+| `request.cf.city` | City name | `San Francisco` |
+| `request.cf.region` | Region/state | `California` |
+| `request.cf.latitude` | Client latitude | `37.7749` |
+| `request.cf.longitude` | Client longitude | `-122.4194` |
+| `request.cf.timezone` | IANA timezone | `America/Los_Angeles` |
+
+## Observability
+
+### Logs
+
+```bash
+# Stream live logs from all PoPs
+hanzo edge logs my-function --follow
+
+# Filter by status code
+hanzo edge logs my-function --status 500
+
+# Filter by region
+hanzo edge logs my-function --region eu-west
+```
+
+### Metrics
+
+Edge function metrics are available in the Hanzo Console and via the API:
+
+```bash
+# View metrics summary
+hanzo edge metrics my-function --period 24h
+```
+
+| Metric | Description |
+|--------|-------------|
+| `edge.requests.total` | Total requests across all PoPs |
+| `edge.requests.cached` | Cache hit count |
+| `edge.latency.p50` | Median response time |
+| `edge.latency.p99` | 99th percentile response time |
+| `edge.errors.total` | Total error responses (4xx/5xx) |
+| `edge.bandwidth.total` | Total bytes transferred |
+| `edge.cache.hit_ratio` | Cache hit rate (0-1) |
+
+Metrics integrate with [Hanzo Analytics](/docs/services/analytics) for dashboards and alerting.
+
+## Configuration Reference
+
+Full `hanzo.edge.toml` reference:
+
+```toml
+name = "my-function"
+main = "src/index.ts"
+compatibility_date = "2026-02-22"
+
+[account]
+id = "your-account-id"
+
+# Build settings
+[build]
+command = "npm run build"
+watch_dir = "src"
+
+# Environment variables (non-secret)
+[vars]
+ENVIRONMENT = "production"
+LOG_LEVEL = "info"
+
+# Bindings
+[bindings]
+EDGE_KV = { type = "kv", namespace = "my-cache" }
+HANZO_API_KEY = { type = "secret" }
+
+# Routes
+[[routes]]
+pattern = "api.example.com/*"
+zone_name = "example.com"
+
+# Cache rules
+[cache]
+default_ttl = 3600
+
+# Rate limiting
+[[rate_limit]]
+path = "/api/*"
+limit = 100
+window = 60
+key = "ip"
+
+# Cron triggers (scheduled invocations)
+[[triggers.crons]]
+cron = "0 * * * *"    # Every hour
+```
+
+## CLI Reference
+
+```bash
+hanzo edge init <name>              # Scaffold a new edge function
+hanzo edge dev                      # Run locally with hot reload
+hanzo edge deploy                   # Deploy to all PoPs
+hanzo edge deploy --regions <list>  # Deploy to specific regions
+hanzo edge delete <name>            # Remove an edge function
+hanzo edge list                     # List all edge functions
+hanzo edge status <name>            # View deployment status
+hanzo edge logs <name> --follow     # Stream live logs
+hanzo edge metrics <name>           # View performance metrics
+hanzo edge cache purge <name>       # Purge edge cache
+hanzo edge domain add <name> <dom>  # Add custom domain
+hanzo edge domain list <name>       # List custom domains
+hanzo edge secret put <key>         # Set a secret binding
+hanzo edge secret list              # List secret bindings
+```
+
+## Related Services
+
+<Cards>
+  <Card title="Gateway" href="/docs/services/gateway">
+    Unified API gateway -- origin routing, LLM proxy, and backend fan-out
+  </Card>
+  <Card title="DNS" href="/docs/services/dns">
+    Authoritative DNS hosting with GeoDNS and failover routing
+  </Card>
+  <Card title="Zero Trust" href="/docs/services/zt">
+    Programmable zero-trust networking for secure origin access
+  </Card>
+  <Card title="S3" href="/docs/services/s3">
+    S3-compatible object storage for model artifacts and static assets
+  </Card>
+</Cards>

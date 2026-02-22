@@ -1,30 +1,507 @@
 ---
 title: Hanzo O11y
-description: Unified observability with logs, metrics, and traces in a single platform.
+description: Full-stack observability platform — Prometheus metrics, Grafana dashboards, OpenTelemetry distributed tracing, log aggregation, alerting, and SLO management for Hanzo infrastructure and applications.
 ---
 
 # Hanzo O11y
 
-Hanzo O11y provides unified observability with logs, metrics, and traces in a single platform.
+Hanzo O11y is the unified observability stack for the entire Hanzo platform. It collects metrics, logs, and distributed traces from every service, aggregates them into a single pane of glass, and drives alerting and SLO enforcement. Built on Prometheus, Grafana, and OpenTelemetry, O11y gives operators and developers real-time visibility into infrastructure health, application performance, and service mesh telemetry.
 
 **Endpoint:** `o11y.hanzo.ai`
+**Prometheus:** `o11y.hanzo.ai:9090`
 **Gateway:** `api.hanzo.ai/v1/o11y/*`
+
+## Features
+
+- **Prometheus Metrics**: Collection, storage, and PromQL querying for all Hanzo services
+- **Grafana Dashboards**: Pre-built and custom dashboards for infrastructure, APM, and business metrics
+- **Distributed Tracing**: OpenTelemetry-native trace collection with automatic context propagation
+- **Log Aggregation**: Structured log ingestion, indexing, and full-text search via Loki
+- **Alerting**: Threshold, anomaly, and SLO-burn-rate alerts routed to PagerDuty, Slack, and webhooks
+- **Service Mesh Telemetry**: Automatic request/duration/error metrics from sidecar proxies
+- **Custom Metrics**: Application-defined counters, gauges, and histograms via OTLP or Prometheus exposition
+- **SLO Management**: Define, track, and alert on Service Level Objectives with error budget tracking
+- **Infrastructure Monitoring**: Node, pod, and container metrics via kube-state-metrics and node-exporter
+- **Application Performance Monitoring (APM)**: End-to-end latency breakdown, dependency maps, and error classification
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                            Hanzo O11y                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Data Sources                                                           │
+│  ────────────                                                           │
+│                                                                         │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────────────────┐  │
+│  │ Services │  │   Nodes  │  │  Proxies │  │  Application SDKs     │  │
+│  │ (pods)   │  │ (hosts)  │  │  (mesh)  │  │  (OTLP / Prometheus)  │  │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └──────────┬────────────┘  │
+│       │              │              │                    │               │
+│       ▼              ▼              ▼                    ▼               │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │                   OpenTelemetry Collector                        │   │
+│  │   ────────────────────────────────────────                      │   │
+│  │   Receives: OTLP (gRPC/HTTP), Prometheus scrape, syslog        │   │
+│  │   Processes: batch, filter, transform, tail-sample              │   │
+│  │   Exports: to Prometheus, Loki, Tempo                           │   │
+│  └──────────┬──────────────────┬──────────────────┬───────────────┘   │
+│             │                  │                   │                    │
+│     Metrics │          Logs    │          Traces   │                    │
+│             ▼                  ▼                   ▼                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐            │
+│  │  Prometheus  │  │    Loki      │  │     Tempo         │            │
+│  │  :9090       │  │  :3100       │  │   :4317 (OTLP)    │            │
+│  │  TSDB 30d    │  │  Index+Chunk │  │   :3200 (query)   │            │
+│  │  PromQL      │  │  LogQL       │  │   TraceQL          │            │
+│  └──────┬───────┘  └──────┬───────┘  └────────┬─────────┘            │
+│         │                  │                    │                       │
+│         └──────────────────┼────────────────────┘                      │
+│                            ▼                                            │
+│              ┌──────────────────────────┐                              │
+│              │        Grafana           │                              │
+│              │   o11y.hanzo.ai          │                              │
+│              │   ──────────────         │                              │
+│              │   Dashboards             │                              │
+│              │   Explore (logs/traces)  │                              │
+│              │   Alert rules + routing  │                              │
+│              │   SLO tracking           │                              │
+│              └──────────┬───────────────┘                              │
+│                         │                                               │
+│            ┌────────────┼────────────────┐                             │
+│            ▼            ▼                ▼                              │
+│  ┌──────────────┐ ┌──────────┐ ┌─────────────────┐                   │
+│  │  PagerDuty   │ │  Slack   │ │  Webhooks       │                   │
+│  │  (critical)  │ │  (warn)  │ │  (custom)       │                   │
+│  └──────────────┘ └──────────┘ └─────────────────┘                   │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 ## Quick Start
 
+### Send Metrics via OTLP
+
 ```bash
-curl -H "Authorization: Bearer hk-your-api-key" \
-  https://api.hanzo.ai/v1/o11y/logs?query=level:error&limit=100
+# Push metrics using the OpenTelemetry HTTP endpoint
+curl -X POST https://o11y.hanzo.ai/v1/metrics \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/x-protobuf" \
+  --data-binary @metrics.pb
+
+# Or query Prometheus directly
+curl "https://o11y.hanzo.ai:9090/api/v1/query?query=up" \
+  -H "Authorization: Bearer $HANZO_TOKEN"
 ```
 
-## Key Features
+### Query Logs
 
-- Unified logs, metrics, and traces
-- Real-time log streaming
-- Custom dashboards
-- Alerting and notifications
-- OpenTelemetry-compatible ingestion
+```bash
+curl "https://o11y.hanzo.ai/loki/api/v1/query_range" \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  --data-urlencode 'query={service="gateway"} |= "error"' \
+  --data-urlencode 'start=1708560000' \
+  --data-urlencode 'end=1708646400' \
+  --data-urlencode 'limit=100'
+```
 
-## API Reference
+### Instrument Your Application
 
-See the [full API reference](/docs/openapi) for all endpoints.
+```bash
+# Set environment variables for any OTLP-compatible application
+export OTEL_EXPORTER_OTLP_ENDPOINT=https://o11y.hanzo.ai:4317
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer $HANZO_TOKEN"
+export OTEL_SERVICE_NAME=my-service
+export OTEL_RESOURCE_ATTRIBUTES="deployment.environment=production"
+```
+
+## Metrics
+
+### Prometheus Collection
+
+O11y runs Prometheus with 30-day retention, scraping all Hanzo services at 15-second intervals. Every K8s pod exposing a `/metrics` endpoint is discovered automatically via service monitors.
+
+```bash
+# PromQL: Request rate by service (last 5 minutes)
+rate(http_requests_total[5m])
+
+# PromQL: 99th percentile latency
+histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))
+
+# PromQL: Error rate percentage
+100 * rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m])
+```
+
+### Built-in Service Metrics
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `http_requests_total` | Counter | Total HTTP requests by service, method, status |
+| `http_request_duration_seconds` | Histogram | Request latency distribution |
+| `http_request_size_bytes` | Histogram | Request body size |
+| `http_response_size_bytes` | Histogram | Response body size |
+| `grpc_server_handled_total` | Counter | gRPC requests by service, method, code |
+| `process_cpu_seconds_total` | Counter | CPU time consumed |
+| `process_resident_memory_bytes` | Gauge | RSS memory usage |
+| `container_cpu_usage_seconds_total` | Counter | Container CPU (cAdvisor) |
+| `container_memory_working_set_bytes` | Gauge | Container memory (cAdvisor) |
+| `kube_pod_status_phase` | Gauge | Pod lifecycle phase |
+
+### Custom Metrics
+
+Push application-specific metrics via the OTLP endpoint or Prometheus client libraries:
+
+```python
+from prometheus_client import Counter, Histogram, start_http_server
+
+# Define custom metrics
+inference_requests = Counter(
+    'inference_requests_total',
+    'Total inference requests',
+    ['model', 'status']
+)
+
+inference_latency = Histogram(
+    'inference_duration_seconds',
+    'Inference latency',
+    ['model'],
+    buckets=[0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+)
+
+# Expose on :8000/metrics
+start_http_server(8000)
+
+# Record metrics
+with inference_latency.labels(model="qwen3-4b").time():
+    result = run_inference(prompt)
+inference_requests.labels(model="qwen3-4b", status="ok").inc()
+```
+
+## Logging
+
+### Log Ingestion
+
+O11y aggregates logs from all Hanzo services via Loki. Logs are structured as JSON and enriched with K8s metadata (namespace, pod, container, node) automatically.
+
+```bash
+# Push logs directly via the Loki API
+curl -X POST https://o11y.hanzo.ai/loki/api/v1/push \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "streams": [{
+      "stream": { "service": "my-app", "level": "error" },
+      "values": [
+        ["1708646400000000000", "{\"msg\":\"connection timeout\",\"host\":\"db-01\"}"]
+      ]
+    }]
+  }'
+```
+
+### LogQL Queries
+
+```bash
+# All error logs from the gateway service
+{service="gateway"} |= "error"
+
+# JSON-parsed logs with latency > 1s
+{service="engine"} | json | latency > 1s
+
+# Log volume rate by service
+sum by (service) (rate({namespace="hanzo"} [5m]))
+
+# Errors with stack traces
+{service="console", level="error"} |= "panic" | line_format "{{.msg}}\n{{.stacktrace}}"
+```
+
+### Log Levels
+
+| Level | Usage | Retention |
+|-------|-------|-----------|
+| `error` | Failures requiring attention | 90 days |
+| `warn` | Degraded state, retries | 30 days |
+| `info` | Normal operations | 14 days |
+| `debug` | Verbose diagnostic output | 3 days |
+
+## Tracing
+
+### OpenTelemetry Distributed Tracing
+
+O11y collects distributed traces via the OpenTelemetry Collector and stores them in Tempo. Traces automatically propagate across service boundaries using W3C Trace Context headers.
+
+```bash
+# Query traces by service
+curl "https://o11y.hanzo.ai/tempo/api/search?service.name=gateway&limit=20" \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+
+# Get a specific trace by ID
+curl "https://o11y.hanzo.ai/tempo/api/traces/abc123def456" \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+```
+
+### SDK Instrumentation
+
+```python
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
+# Configure exporter
+exporter = OTLPSpanExporter(
+    endpoint="https://o11y.hanzo.ai:4317",
+    headers={"Authorization": f"Bearer {HANZO_TOKEN}"}
+)
+
+provider = TracerProvider()
+provider.add_span_processor(BatchSpanProcessor(exporter))
+trace.set_tracer_provider(provider)
+
+tracer = trace.get_tracer("my-service")
+
+# Create spans
+with tracer.start_as_current_span("process_request") as span:
+    span.set_attribute("model", "qwen3-4b")
+    span.set_attribute("tokens.input", 1024)
+    result = process(request)
+    span.set_attribute("tokens.output", len(result.tokens))
+```
+
+### Trace Pipeline
+
+| Stage | Component | Configuration |
+|-------|-----------|---------------|
+| Collection | OTel Collector | OTLP gRPC (:4317), OTLP HTTP (:4318) |
+| Processing | OTel Collector | Batching (200ms), tail sampling (error + slow) |
+| Storage | Tempo | S3-backed, 14-day retention |
+| Query | Tempo / Grafana | TraceQL, service graph, span search |
+
+## Alerting
+
+### Alert Rules
+
+O11y supports Prometheus alerting rules evaluated by Grafana Alerting. Notifications route to PagerDuty (critical), Slack (warning), and webhooks (custom).
+
+```yaml
+# Example: High error rate alert
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: service-errors
+  namespace: hanzo
+spec:
+  groups:
+    - name: service.rules
+      rules:
+        - alert: HighErrorRate
+          expr: |
+            100 * rate(http_requests_total{status=~"5.."}[5m])
+            / rate(http_requests_total[5m]) > 1
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Error rate above 1% for {{ $labels.service }}"
+            runbook: "https://docs.hanzo.ai/runbooks/high-error-rate"
+```
+
+### Alert API
+
+```bash
+# Create an alert rule via the API
+curl -X POST https://api.hanzo.ai/v1/o11y/alerts \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "High latency on gateway",
+    "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{service=\"gateway\"}[5m])) > 2",
+    "for": "5m",
+    "severity": "warning",
+    "channels": [
+      {"type": "slack", "webhook": "https://hooks.slack.com/services/..."},
+      {"type": "pagerduty", "routing_key": "your-routing-key"},
+      {"type": "webhook", "url": "https://your-app.com/alerts"}
+    ]
+  }'
+```
+
+### Notification Channels
+
+| Channel | Severity | Configuration |
+|---------|----------|---------------|
+| PagerDuty | `critical` | Routing key per service team |
+| Slack | `warning`, `info` | Channel webhook per namespace |
+| Webhook | Any | Custom HTTP POST with JSON payload |
+| Email | `critical`, `warning` | SMTP via Grafana notification policy |
+
+## Dashboards
+
+### Pre-built Dashboards
+
+O11y ships with curated Grafana dashboards for every layer of the stack:
+
+| Dashboard | Description |
+|-----------|-------------|
+| **Platform Overview** | Cluster health, request volume, error rates, latency |
+| **LLM Gateway** | Model routing, token throughput, provider latency, cost |
+| **Engine APM** | Inference latency, GPU utilization, batch size, queue depth |
+| **K8s Infrastructure** | Node CPU/memory, pod status, PVC usage, network I/O |
+| **Service Mesh** | Request flow, inter-service latency, circuit breaker state |
+| **Database** | PostgreSQL connections, query latency, replication lag |
+| **Redis / Valkey** | Hit rate, memory usage, evictions, connected clients |
+| **SLO Burn Rate** | Error budget consumption, burn rate alerts, SLI trends |
+
+### Custom Dashboards
+
+Create dashboards via the Grafana API or UI at `o11y.hanzo.ai`:
+
+```bash
+# Import a dashboard from JSON
+curl -X POST https://o11y.hanzo.ai/api/dashboards/db \
+  -H "Authorization: Bearer $GRAFANA_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dashboard": {
+      "title": "My Service Dashboard",
+      "panels": [
+        {
+          "title": "Request Rate",
+          "type": "timeseries",
+          "targets": [
+            {"expr": "rate(http_requests_total{service=\"my-service\"}[5m])"}
+          ]
+        }
+      ]
+    },
+    "overwrite": false
+  }'
+```
+
+## SLO Management
+
+Define Service Level Objectives and track error budgets:
+
+```bash
+# Create an SLO
+curl -X POST https://api.hanzo.ai/v1/o11y/slos \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Gateway Availability",
+    "description": "99.9% of requests return non-5xx in a 30-day window",
+    "sli": {
+      "type": "availability",
+      "good": "http_requests_total{service=\"gateway\",status!~\"5..\"}",
+      "total": "http_requests_total{service=\"gateway\"}"
+    },
+    "target": 0.999,
+    "window": "30d",
+    "alerts": {
+      "burn_rate_1h": 14.4,
+      "burn_rate_6h": 6.0
+    }
+  }'
+```
+
+| SLO | Target | SLI | Error Budget (30d) |
+|-----|--------|-----|-------------------|
+| Gateway availability | 99.9% | Non-5xx / total requests | 43.2 min downtime |
+| Gateway latency | 99% < 500ms | Requests under 500ms | 432 min slow |
+| Engine inference | 99.5% success | Successful inferences | 216 min failures |
+| Console response | 99.9% < 2s | Page loads under 2s | 43.2 min slow |
+
+## Infrastructure Monitoring
+
+### Kubernetes Metrics
+
+O11y automatically collects cluster metrics via kube-state-metrics and node-exporter:
+
+```bash
+# Cluster CPU utilization
+1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))
+
+# Memory pressure
+node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.1
+
+# Pod restart rate
+rate(kube_pod_container_status_restarts_total[1h]) > 0
+
+# PVC usage
+kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.85
+```
+
+### Service Mesh Telemetry
+
+Sidecar proxies automatically emit RED metrics (Rate, Errors, Duration) for all inter-service traffic without any application code changes:
+
+| Metric | Description |
+|--------|-------------|
+| `envoy_http_downstream_rq_total` | Total inbound requests |
+| `envoy_http_downstream_rq_xx` | Requests by response class (2xx, 4xx, 5xx) |
+| `envoy_http_downstream_rq_time` | Request duration histogram |
+| `envoy_cluster_upstream_cx_active` | Active upstream connections |
+
+## Configuration
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector endpoint | `https://o11y.hanzo.ai:4317` |
+| `OTEL_EXPORTER_OTLP_HEADERS` | Auth headers for OTLP | - |
+| `OTEL_SERVICE_NAME` | Service name for telemetry | - |
+| `OTEL_RESOURCE_ATTRIBUTES` | Additional resource attributes | - |
+| `OTEL_TRACES_SAMPLER` | Sampling strategy | `parentbased_traceidratio` |
+| `OTEL_TRACES_SAMPLER_ARG` | Sampling rate (0.0-1.0) | `0.1` |
+| `PROMETHEUS_SCRAPE_INTERVAL` | Metric scrape interval | `15s` |
+| `LOKI_RETENTION_PERIOD` | Log retention | `336h` (14d) |
+| `TEMPO_RETENTION_PERIOD` | Trace retention | `336h` (14d) |
+
+### K8s Service Monitor
+
+Auto-discover metrics endpoints from any service:
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: my-service
+  namespace: hanzo
+spec:
+  selector:
+    matchLabels:
+      app: my-service
+  endpoints:
+    - port: metrics
+      interval: 15s
+      path: /metrics
+```
+
+### Ports
+
+| Port | Protocol | Service |
+|------|----------|---------|
+| 9090 | HTTP | Prometheus query API |
+| 3000 | HTTP | Grafana UI |
+| 3100 | HTTP | Loki query API |
+| 3200 | HTTP | Tempo query API |
+| 4317 | gRPC | OTLP collector (traces, metrics, logs) |
+| 4318 | HTTP | OTLP collector (HTTP fallback) |
+
+## Related Services
+
+<Cards>
+  <Card title="Console" href="/docs/services/console">
+    LLM engineering platform — traces, prompts, evaluations, and datasets
+  </Card>
+  <Card title="Analytics" href="/docs/services/analytics">
+    Usage, cost, and performance analytics across Hanzo services
+  </Card>
+  <Card title="PaaS" href="/docs/services/paas">
+    K8s-native GitOps deployments with built-in health checks
+  </Card>
+  <Card title="Engine" href="/docs/services/engine">
+    Inference engine runtime telemetry and GPU performance metrics
+  </Card>
+</Cards>

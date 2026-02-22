@@ -1,30 +1,477 @@
 ---
-title: Hanzo ZT
-description: Programmable zero-trust networking for AI infrastructure with identity-based access control and secure overlay networks.
+title: Hanzo Zero Trust
+description: Programmable zero-trust networking for AI infrastructure with identity-based access control, mTLS overlay networks, and post-quantum cryptography.
 ---
 
-# Hanzo ZT
+# Hanzo Zero Trust
 
-Hanzo ZT provides programmable zero-trust networking for AI infrastructure. Build secure overlay networks with identity-based access control, no inbound ports, and end-to-end encryption.
+Hanzo Zero Trust (ZT) is a programmable zero-trust networking layer for AI infrastructure. It replaces IP-based trust with cryptographic identity, enforces mutual TLS on every connection, and provides a secure overlay network that requires no inbound ports, no VPN clients, and no firewall rules.
 
-**Endpoint:** `zt.hanzo.ai`
+Every workload, SDK client, and service in the Hanzo mesh is identified by a strong certificate-based identity. Access is granted by policy, not by network location. The overlay spans clouds, on-prem sites, edge devices, and developer workstations without exposing any listening ports to the public internet.
+
+**Console:** `https://zt.hanzo.ai`
+**Controller API:** `https://zt-api.hanzo.ai`
 **Gateway:** `api.hanzo.ai/v1/zt/*`
+**K8s Namespace:** `hanzo-zt`
+**Organization:** `github.com/hanzozt`
+
+## Features
+
+- **Zero-Trust Overlay** -- Dark network with no listening ports. All connections are outbound-initiated and identity-verified before any data flows.
+- **Identity-Based Access** -- Every endpoint gets a cryptographic identity (x509 certificate). Policies grant access by identity, not IP address.
+- **mTLS Everywhere** -- Mutual TLS on every connection, including service-to-service, SDK-to-router, and router-to-controller. No plaintext ever.
+- **Post-Quantum Cryptography** -- Dilithium lattice-based signatures for forward-secure identity certificates, resistant to quantum attack.
+- **No VPN Required** -- Application-embedded connectivity via lightweight SDKs. No kernel modules, no split tunneling, no client software to manage.
+- **MCP Gateway** -- Zero-trust access to Model Context Protocol tools. AI models connect to MCP backends through the overlay without direct network exposure.
+- **Multi-SDK Support** -- Native SDKs for Go, C, Node.js, and Python. Embed zero-trust connectivity directly in your application.
+- **Edge Routers** -- Fabric routers handle site-to-site connectivity, smart routing, and link-cost optimization across multi-cloud and hybrid deployments.
+- **Private Sharing (zrok)** -- Instant, ephemeral tunnels for sharing local services through the ZT mesh without any configuration.
+- **Programmable Policies** -- Define service access, dial/bind permissions, and posture checks as code through the management API.
+
+## Architecture
+
+```
+                          Internet
+                             |
+                    +--------+--------+
+                    |                 |
+             zt-api.hanzo.ai    zt.hanzo.ai
+              (Controller)       (Console)
+                    |                 |
+                    v                 v
+    +-------------------------------+----------+
+    |          hanzo-zt namespace               |
+    |                                           |
+    |   +------------------+                    |
+    |   |    Controller    |  Identity authority |
+    |   |    port 1280     |  PKI, policies,    |
+    |   |    (LB:443)      |  sessions          |
+    |   +--------+---------+                    |
+    |            |                              |
+    |     +------+------+                       |
+    |     |             |                       |
+    |   +-v----+   +----v---+   +------------+  |
+    |   |Router|   | Router |   | zrok       |  |
+    |   | 3022 |   |  3022  |   | Controller |  |
+    |   +--+---+   +---+----+   | 18080      |  |
+    |      |           |        +-----+------+  |
+    |      +-----+-----+              |         |
+    |            |              +-----v------+  |
+    |            |              | MCP Gateway |  |
+    |            |              | @hanzo/mcp  |  |
+    |            |              +-------------+  |
+    +-------------------------------+-----------+
+                 |
+      +----------+----------+
+      |          |          |
+   +--v--+   +--v--+   +--v--+
+   | SDK |   | SDK |   | SDK |
+   | Go  |   | C   |   |Node |
+   +-----+   +-----+   +-----+
+   App A      App B      App C
+```
+
+### Components
+
+| Component | Image | Port | Purpose |
+|-----------|-------|------|---------|
+| **Controller** | `ghcr.io/hanzozt/zt-controller:1.7.2` | 1280 (LB:443) | Identity authority, PKI, policy engine, management API |
+| **Router** | `ghcr.io/hanzozt/zt-router:1.7.2` | 3022, 10080 | Data plane, SDK termination, inter-router mesh links |
+| **Console** | `ghcr.io/hanzozt/zt-console:latest` | 8443 | Web management UI at zt.hanzo.ai |
+| **zrok Controller** | `ghcr.io/hanzoai/zrok:latest` | 18080 | Private sharing service for ephemeral tunnels |
+| **MCP Gateway** | `ghcr.io/hanzozt/mcp-gateway:latest` | -- | Zero-trust MCP tool aggregator over zrok private shares |
+
+### Data Flow
+
+1. **Identity Enrollment** -- A new endpoint (SDK client, router, or service) enrolls with the controller and receives a certificate signed by the ZT PKI.
+2. **Session Establishment** -- The endpoint opens an outbound TLS connection to an edge router. The router verifies the identity certificate and establishes a session.
+3. **Service Dial** -- When the endpoint dials a service, the router evaluates policies (identity, posture checks, time constraints) and either permits or denies the connection.
+4. **mTLS Data Path** -- Once authorized, data flows over the mTLS tunnel between endpoints. The overlay handles routing, retransmission, and link failover transparently.
 
 ## Quick Start
 
+### 1. Install the CLI
+
 ```bash
-curl -H "Authorization: Bearer hk-your-api-key" \
-  https://api.hanzo.ai/v1/zt/networks
+# macOS / Linux
+curl -sS https://get.hanzo.ai/zt | bash
+
+# Or via the Hanzo CLI
+hanzo zt install
 ```
 
-## Key Features
+### 2. Login to the Controller
 
-- Zero-trust overlay networking
-- Identity-based access control
-- No inbound ports required
-- End-to-end encryption
-- Service mesh for AI workloads
+```bash
+hanzo zt login https://zt-api.hanzo.ai:443 \
+  --username admin \
+  --password "$ZT_ADMIN_PASSWORD"
+```
 
-## API Reference
+### 3. Create an Identity
 
-See the [full API reference](/docs/openapi) for all endpoints.
+```bash
+# Create a new identity for your service
+hanzo zt create identity my-service \
+  --role-attributes "services,backend"
+
+# Enroll the identity (generates certificate)
+hanzo zt create enrollment otter my-service -o my-service.jwt
+hanzo zt enroll --jwt my-service.jwt --out my-service.json
+```
+
+### 4. Create a Service and Policy
+
+```bash
+# Define a service (e.g., expose a local HTTP server)
+hanzo zt create service my-api \
+  --role-attributes "api-services"
+
+# Allow 'backend' identities to host (bind) the service
+hanzo zt create service-policy my-api-bind Bind \
+  --identity-roles '#backend' \
+  --service-roles '@my-api'
+
+# Allow 'frontend' identities to connect (dial) the service
+hanzo zt create service-policy my-api-dial Dial \
+  --identity-roles '#frontend' \
+  --service-roles '@my-api'
+```
+
+### 5. Connect via SDK
+
+```go
+import "github.com/hanzozt/sdk-golang/ziti"
+
+cfg, _ := ziti.NewConfigFromFile("my-service.json")
+ctx, _ := ziti.NewContext(cfg)
+
+// Dial a service by name -- no IP, no port, no DNS
+conn, _ := ctx.Dial("my-api")
+defer conn.Close()
+```
+
+## Identity Management
+
+Every entity in the Hanzo ZT mesh has a cryptographic identity. Identities are x509 certificates issued by the controller's built-in PKI.
+
+### Identity Types
+
+| Type | Description | Use Case |
+|------|-------------|----------|
+| **Device** | A physical or virtual machine | Servers, VMs, containers |
+| **User** | A human operator | Admin access, debugging |
+| **Service** | An application endpoint | Microservices, APIs |
+| **Router** | A fabric router | Mesh nodes, edge gateways |
+
+### Identity Attributes
+
+Attributes are tags attached to identities. Policies reference attributes (prefixed with `#`) rather than individual identities, enabling scalable RBAC:
+
+```bash
+# Tag identities
+hanzo zt update identity my-service \
+  --role-attributes "production,backend,team-infra"
+
+# Policy references attributes, not names
+hanzo zt create service-policy prod-access Dial \
+  --identity-roles '#production,#backend' \
+  --service-roles '#internal-apis'
+```
+
+### Posture Checks
+
+Enforce device and runtime conditions before granting access:
+
+- **OS version** -- Minimum OS version required
+- **Process** -- Required process must be running
+- **Domain** -- Machine must be domain-joined
+- **MFA** -- Require MFA verification within a time window
+- **MAC address** -- Restrict to known hardware
+
+## Service Mesh
+
+Hanzo ZT operates as a zero-trust service mesh. Services are logical names, not IP:port pairs. The overlay resolves, routes, and encrypts all traffic.
+
+### Defining Services
+
+```bash
+# Create a service backed by a local TCP server
+hanzo zt create config my-api-intercept intercept.v1 \
+  '{"protocols":["tcp"],"addresses":["my-api.hanzo.internal"],"portRanges":[{"low":443,"high":443}]}'
+
+hanzo zt create config my-api-host host.v1 \
+  '{"protocol":"tcp","address":"localhost","port":8080}'
+
+hanzo zt create service my-api \
+  --configs my-api-intercept,my-api-host \
+  --role-attributes "api-services"
+```
+
+### Service Policies
+
+| Policy Type | Direction | Meaning |
+|-------------|-----------|---------|
+| **Bind** | Hosting | Which identities can host (serve) the service |
+| **Dial** | Consuming | Which identities can connect to the service |
+
+Policies use attribute selectors:
+
+```
+#attribute   -- All identities with this attribute
+@name        -- A specific identity by name
+*            -- All identities (use with caution)
+```
+
+### Traffic Flow
+
+```
+Client App          ZT SDK          Edge Router        Hosting Router      Server App
+    |                  |                 |                    |                  |
+    |--- dial("svc") ->|                 |                    |                  |
+    |                  |-- session ------>|                    |                  |
+    |                  |                 |-- policy check --->|                  |
+    |                  |                 |<-- authorized -----|                  |
+    |                  |<-- circuit -----|-------- mTLS ----->|                  |
+    |                  |                 |                    |--- connect ----->|
+    |<===== encrypted bidirectional data channel =============================>|
+```
+
+## MCP Gateway
+
+The MCP Gateway provides zero-trust access to Model Context Protocol tools. AI models and agents dial MCP backends through the ZT overlay without any direct network exposure.
+
+### How It Works
+
+1. The MCP Gateway runs inside the ZT mesh as a hosted service
+2. It aggregates MCP tool backends (configured in `config.yml`)
+3. Clients access tools through a zrok private share over the overlay
+4. No ports are exposed; all access is identity-verified
+
+### Configuration
+
+```yaml
+# MCP Gateway config
+aggregator:
+  name: "hanzo-tools"
+backends:
+  - id: hanzo-mcp
+    transport:
+      type: stdio
+      command: npx
+      args: ["-y", "@hanzo/mcp"]
+  - id: custom-tools
+    transport:
+      type: stdio
+      command: python
+      args: ["-m", "my_mcp_server"]
+```
+
+### Connecting AI Models
+
+```python
+from hanzoai.mcp import MCPClient
+
+# Connect through the ZT mesh -- no direct network access needed
+client = MCPClient(
+    gateway="hanzo-tools",
+    identity="./agent-identity.json"
+)
+
+tools = await client.list_tools()
+result = await client.call_tool("search", {"query": "latest papers"})
+```
+
+## SDK Integration
+
+Hanzo ZT provides native SDKs that embed zero-trust connectivity directly into applications. No sidecar, no proxy, no iptables rules.
+
+### Go
+
+```go
+import "github.com/hanzozt/sdk-golang/ziti"
+
+cfg, _ := ziti.NewConfigFromFile("identity.json")
+ctx, _ := ziti.NewContext(cfg)
+
+// Listen on the overlay (bind a service)
+listener, _ := ctx.Listen("my-service")
+defer listener.Close()
+
+for {
+    conn, _ := listener.Accept()
+    go handleConnection(conn)
+}
+```
+
+### Node.js
+
+```javascript
+const ziti = require('@hanzozt/sdk-nodejs')
+
+await ziti.init('identity.json')
+
+// Dial a service
+const conn = await ziti.dial('my-service')
+conn.write('Hello from Node.js')
+```
+
+### Python
+
+```python
+import hanzozt
+
+ctx = hanzozt.Context("identity.json")
+
+# Connect to a service by name
+sock = ctx.dial("my-service")
+sock.send(b"Hello from Python")
+response = sock.recv(4096)
+```
+
+### C
+
+```c
+#include <hanzozt/ziti.h>
+
+ziti_context ztx;
+ziti_config cfg;
+
+ziti_load_config(&cfg, "identity.json");
+ziti_init(&ztx, &cfg);
+
+// Dial
+ziti_connection conn;
+ziti_dial(conn, "my-service", on_connect, on_data);
+```
+
+## Configuration Reference
+
+### Controller Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ZITI_CTRL_ADVERTISED_ADDRESS` | -- | Public hostname for the controller |
+| `ZITI_CTRL_ADVERTISED_PORT` | `1280` | Port for controller API (LB maps 443 to 1280) |
+| `ZITI_USER` | `admin` | Bootstrap admin username |
+| `ZITI_PWD` | -- | Bootstrap admin password (from K8s secret) |
+| `ZITI_BOOTSTRAP` | `false` | Run bootstrap on first start |
+| `ZITI_HOME` | `/persistent` | Data directory for PKI and config |
+
+### Router Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `ZITI_CTRL_ADVERTISED_ADDRESS` | -- | Controller address to connect to |
+| `ZITI_CTRL_ADVERTISED_PORT` | `443` | Controller port |
+| `ZITI_ENROLL_TOKEN` | -- | One-time enrollment token (from K8s secret) |
+| `ZITI_ROUTER_ADVERTISED_ADDRESS` | -- | This router's reachable address |
+| `ZITI_ROUTER_PORT` | `3022` | Edge listener port |
+| `ZITI_ROUTER_MODE` | `host` | Router mode (`host`, `tproxy`, `proxy`) |
+
+### Kubernetes Resources
+
+```yaml
+# Controller
+Deployment: 1 replica, Recreate strategy
+PVC: 2Gi (persistent PKI and config)
+Service: LoadBalancer (443 -> 1280)
+Resources: 100m-500m CPU, 256Mi-512Mi RAM
+
+# Router
+Deployment: 1 replica
+Storage: emptyDir (ephemeral, re-enrolls on restart)
+Service: ClusterIP (3022)
+Resources: 50m-250m CPU, 128Mi-256Mi RAM
+
+# MCP Gateway
+Deployment: 1 replica, Recreate strategy
+PVC: 100Mi (zrok environment state)
+Resources: 50m-250m CPU, 128Mi-256Mi RAM
+```
+
+### DNS Records
+
+| Domain | Type | Target | Purpose |
+|--------|------|--------|---------|
+| `zt-api.hanzo.ai` | A | LB IP | Controller API (mTLS passthrough) |
+| `zt.hanzo.ai` | A | Ingress IP | Console web UI |
+| `ztc.hanzo.ai` | A | Ingress IP | Console (alternate) |
+
+## Private Sharing with zrok
+
+zrok provides instant, ephemeral tunnels through the ZT mesh. Share a local port globally without configuration, DNS, or firewall changes.
+
+### Share a Local Service
+
+```bash
+# Share localhost:3000 through the ZT mesh
+hanzo zt share private localhost:3000
+
+# Output: Access your share at: <share-token>
+```
+
+### Access a Private Share
+
+```bash
+# From any enrolled identity
+hanzo zt access private <share-token>
+# Proxies to localhost:9090 by default
+```
+
+### Use Cases
+
+- **Development** -- Share a local dev server with teammates securely
+- **Demos** -- Expose a prototype without deploying
+- **Debugging** -- Give remote access to a service running on your machine
+- **MCP backends** -- Run MCP tool servers locally and share them with AI agents
+
+## Dilithium Post-Quantum Transport
+
+Hanzo ZT includes the Dilithium post-quantum transport layer, providing forward-secure communication resistant to quantum computing attacks.
+
+Dilithium is a lattice-based cryptographic signature scheme selected by NIST as a post-quantum standard. In Hanzo ZT, it is used for:
+
+- **Identity certificates** -- Post-quantum signatures on identity enrollment
+- **Channel authentication** -- Router-to-router and SDK-to-router handshakes
+- **Transport encryption** -- Hybrid classical + post-quantum key exchange
+
+This ensures that data encrypted today cannot be decrypted by future quantum computers (harvest-now-decrypt-later defense).
+
+## Key Repositories
+
+| Repository | Description |
+|------------|-------------|
+| `hanzozt/ziti` | Core controller and router |
+| `hanzozt/sdk-golang` | Go SDK for application-embedded connectivity |
+| `hanzozt/ziti-sdk-c` | C SDK (used by tunnelers and embedded systems) |
+| `hanzozt/ziti-sdk-nodejs` | Node.js SDK |
+| `hanzozt/ziti-sdk-py` | Python SDK |
+| `hanzozt/edge-api` | Edge management and client API definitions |
+| `hanzozt/channel` | Multiplexed messaging channels |
+| `hanzozt/transport` | Transport abstractions (TCP, TLS, WebSocket) |
+| `hanzozt/identity` | Identity and certificate management |
+| `hanzozt/foundation` | Shared utilities and primitives |
+| `hanzozt/dilithium` | Post-quantum cryptographic transport |
+| `hanzozt/mcp-gateway` | MCP tool aggregator for ZT mesh |
+| `hanzozt/zrok` | Private sharing and ephemeral tunnels |
+| `hanzozt/agent` | Local agent for identity management |
+| `hanzozt/storage` | Persistent storage abstractions |
+| `hanzozt/metrics` | Metrics collection and reporting |
+
+## Related Services
+
+<Cards>
+  <Card title="IAM" href="/docs/services/iam">
+    Identity and access management -- issues OAuth2/OIDC tokens consumed by ZT policies
+  </Card>
+  <Card title="Gateway" href="/docs/services/gateway">
+    API gateway -- ZT secures east-west traffic while Gateway handles north-south
+  </Card>
+  <Card title="Edge" href="/docs/services/edge">
+    Edge computing -- ZT routers extend the mesh to edge locations
+  </Card>
+  <Card title="DNS" href="/docs/services/dns">
+    DNS service -- ZT intercept configs resolve service names to overlay addresses
+  </Card>
+</Cards>

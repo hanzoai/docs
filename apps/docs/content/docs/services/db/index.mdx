@@ -1,30 +1,519 @@
 ---
 title: Hanzo DB
-description: Serverless PostgreSQL with instant branching, autoscaling compute, and point-in-time restore.
+description: Serverless PostgreSQL with pgvector, auto-scaling, instant branching, connection pooling, and point-in-time recovery.
 ---
 
 # Hanzo DB
 
-Hanzo DB provides serverless PostgreSQL with instant branching, autoscaling compute, and point-in-time restore.
+Hanzo DB is a serverless PostgreSQL service purpose-built for AI infrastructure. It provides auto-scaling compute, instant database branching for development workflows, pgvector for embedding storage, connection pooling, automatic backups, and point-in-time recovery -- all managed as part of the Hanzo platform.
 
 **Endpoint:** `db.hanzo.ai`
 **Gateway:** `api.hanzo.ai/v1/db/*`
+**In-cluster:** `postgres.hanzo.svc:5432`
+**Version:** PostgreSQL 16 with pgvector 0.7+
+
+## Features
+
+- **Serverless PostgreSQL**: Auto-scaling compute that scales to zero when idle and spins up on demand
+- **pgvector**: First-class vector embedding storage and similarity search for AI workloads
+- **Connection Pooling**: Built-in PgBouncer pooling with transaction and session modes
+- **Instant Branching**: Copy-on-write database branches for development, staging, and CI
+- **Point-in-Time Recovery**: Restore to any second within the retention window
+- **Read Replicas**: Horizontally scale read-heavy workloads across replica endpoints
+- **Automatic Backups**: Continuous WAL archiving with configurable retention (default 7 days)
+- **SQL and REST APIs**: Connect via standard PostgreSQL wire protocol or HTTP REST
+- **OIDC Integration**: Authenticate with `hanzo.id` for console and management API access
+- **Role-Based Access**: Fine-grained database and schema-level permissions
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  Clients                                                             │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────────────┐   │
+│  │  psql    │  │ Python   │  │ Node.js  │  │ Hanzo Services    │   │
+│  │          │  │ asyncpg  │  │ pg       │  │ (IAM, Console...) │   │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └─────────┬─────────┘   │
+│       │              │              │                  │             │
+└───────┼──────────────┼──────────────┼──────────────────┼─────────────┘
+        │              │              │                  │
+        ▼              ▼              ▼                  ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  db.hanzo.ai / postgres.hanzo.svc:5432                               │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │  Connection Pooler (PgBouncer)                                 │  │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌────────────────────┐    │  │
+│  │  │ Transaction  │  │  Session    │  │  Statement         │    │  │
+│  │  │ Mode (6432)  │  │  Mode       │  │  Mode              │    │  │
+│  │  └─────────────┘  └─────────────┘  └────────────────────┘    │  │
+│  └──────────────────────────┬─────────────────────────────────────┘  │
+│                             ▼                                        │
+│  ┌────────────────────────────────────────────────────────────────┐  │
+│  │  PostgreSQL 16                                                 │  │
+│  │  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌──────────────┐  │  │
+│  │  │ pgvector  │ │ Branching │ │ WAL       │ │ Read         │  │  │
+│  │  │ HNSW/IVF  │ │ (CoW)     │ │ Archiving │ │ Replicas     │  │  │
+│  │  └───────────┘ └───────────┘ └───────────┘ └──────────────┘  │  │
+│  │  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌──────────────┐  │  │
+│  │  │ PITR      │ │ Auto      │ │ pg_stat   │ │ Row-Level    │  │  │
+│  │  │ Recovery  │ │ Vacuum    │ │ Monitoring │ │ Security     │  │  │
+│  │  └───────────┘ └───────────┘ └───────────┘ └──────────────┘  │  │
+│  └────────────────────────────────────────────────────────────────┘  │
+│                             │                                        │
+│                   ┌─────────┴──────────┐                            │
+│                   │  Persistent Volume  │                            │
+│                   │  (NVMe / Block)     │                            │
+│                   └────────────────────┘                            │
+└──────────────────────────────────────────────────────────────────────┘
+```
 
 ## Quick Start
 
+### Connect with psql
+
 ```bash
-curl -H "Authorization: Bearer hk-your-api-key" \
-  https://api.hanzo.ai/v1/db/projects
+# Direct connection
+psql "postgresql://user:password@db.hanzo.ai:5432/mydb?sslmode=require"
+
+# In-cluster (from Hanzo K8s workloads)
+psql "postgresql://user:password@postgres.hanzo.svc:5432/mydb"
+
+# Via pooler (recommended for applications)
+psql "postgresql://user:password@db.hanzo.ai:6432/mydb?sslmode=require"
 ```
 
-## Key Features
+### Python (asyncpg)
 
-- Serverless PostgreSQL with autoscaling
-- Instant database branching for dev/test
-- Point-in-time restore
-- Connection pooling
-- Read replicas
+```python
+import asyncio
+import asyncpg
 
-## API Reference
+async def main():
+    conn = await asyncpg.connect(
+        host="db.hanzo.ai",
+        port=5432,
+        user="myuser",
+        password="mypassword",
+        database="mydb",
+        ssl="require",
+    )
 
-See the [full API reference](/docs/openapi) for all endpoints.
+    # Create a table
+    await conn.execute("""
+        CREATE TABLE IF NOT EXISTS documents (
+            id    SERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            body  TEXT,
+            created_at TIMESTAMPTZ DEFAULT now()
+        )
+    """)
+
+    # Insert
+    await conn.execute(
+        "INSERT INTO documents (title, body) VALUES ($1, $2)",
+        "Getting Started", "Welcome to Hanzo DB.",
+    )
+
+    # Query
+    rows = await conn.fetch("SELECT id, title, created_at FROM documents")
+    for row in rows:
+        print(f"{row['id']}: {row['title']} ({row['created_at']})")
+
+    await conn.close()
+
+asyncio.run(main())
+```
+
+Install:
+
+```bash
+pip install asyncpg
+```
+
+### Node.js (pg)
+
+```typescript
+import { Pool } from 'pg'
+
+const pool = new Pool({
+  host: 'db.hanzo.ai',
+  port: 6432, // pooler
+  user: 'myuser',
+  password: 'mypassword',
+  database: 'mydb',
+  ssl: { rejectUnauthorized: true },
+  max: 20,
+})
+
+// Create table
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS documents (
+    id         SERIAL PRIMARY KEY,
+    title      TEXT NOT NULL,
+    body       TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+  )
+`)
+
+// Insert
+await pool.query(
+  'INSERT INTO documents (title, body) VALUES ($1, $2)',
+  ['Getting Started', 'Welcome to Hanzo DB.']
+)
+
+// Query
+const { rows } = await pool.query('SELECT id, title, created_at FROM documents')
+for (const row of rows) {
+  console.log(`${row.id}: ${row.title} (${row.created_at})`)
+}
+
+await pool.end()
+```
+
+Install:
+
+```bash
+npm install pg
+```
+
+### REST API
+
+Query your database over HTTP when a persistent connection is not practical:
+
+```bash
+# Execute a SQL query
+curl -X POST https://api.hanzo.ai/v1/db/query \
+  -H "Authorization: Bearer hk-your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "database": "mydb",
+    "query": "SELECT id, title FROM documents LIMIT 10"
+  }'
+
+# List databases
+curl -H "Authorization: Bearer hk-your-api-key" \
+  https://api.hanzo.ai/v1/db/databases
+
+# Get database info
+curl -H "Authorization: Bearer hk-your-api-key" \
+  https://api.hanzo.ai/v1/db/databases/mydb
+```
+
+## pgvector -- Vector Embeddings
+
+Hanzo DB includes pgvector for storing and querying vector embeddings directly alongside your relational data. No separate vector database required.
+
+### Enable the Extension
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+```
+
+### Create a Vector Table
+
+```sql
+CREATE TABLE embeddings (
+    id        SERIAL PRIMARY KEY,
+    content   TEXT NOT NULL,
+    metadata  JSONB DEFAULT '{}',
+    embedding vector(1536)  -- OpenAI text-embedding-3-small dimension
+);
+```
+
+### Insert Embeddings
+
+```python
+import asyncpg
+import httpx
+
+async def store_embedding(conn, content: str, api_key: str):
+    # Generate embedding via Hanzo LLM Gateway
+    resp = httpx.post(
+        "https://api.hanzo.ai/v1/embeddings",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json={"model": "text-embedding-3-small", "input": content},
+    )
+    vector = resp.json()["data"][0]["embedding"]
+
+    await conn.execute(
+        "INSERT INTO embeddings (content, embedding) VALUES ($1, $2)",
+        content, str(vector),
+    )
+```
+
+### Similarity Search
+
+```sql
+-- Nearest neighbors (cosine distance)
+SELECT id, content, 1 - (embedding <=> $1::vector) AS similarity
+FROM embeddings
+ORDER BY embedding <=> $1::vector
+LIMIT 10;
+
+-- L2 distance
+SELECT id, content, embedding <-> $1::vector AS distance
+FROM embeddings
+ORDER BY embedding <-> $1::vector
+LIMIT 10;
+
+-- Inner product (for normalized vectors)
+SELECT id, content, (embedding <#> $1::vector) * -1 AS similarity
+FROM embeddings
+ORDER BY embedding <#> $1::vector
+LIMIT 10;
+```
+
+### Indexing
+
+Create indexes for fast approximate nearest neighbor (ANN) queries:
+
+```sql
+-- HNSW index (recommended for most workloads)
+CREATE INDEX ON embeddings
+  USING hnsw (embedding vector_cosine_ops)
+  WITH (m = 16, ef_construction = 64);
+
+-- IVFFlat index (faster builds, good for large datasets)
+CREATE INDEX ON embeddings
+  USING ivfflat (embedding vector_cosine_ops)
+  WITH (lists = 100);
+```
+
+| Index Type | Build Speed | Query Speed | Memory | Best For |
+|------------|-------------|-------------|--------|----------|
+| **HNSW** | Slower | Fastest | Higher | Production queries, low latency |
+| **IVFFlat** | Faster | Fast | Lower | Large datasets, batch workloads |
+
+## Connection Pooling
+
+All Hanzo DB endpoints include a built-in PgBouncer connection pooler to efficiently multiplex application connections to PostgreSQL backends.
+
+### Pooler Endpoint
+
+```
+# Pooled connection (recommended for applications)
+postgresql://user:password@db.hanzo.ai:6432/mydb
+
+# Direct connection (for migrations, LISTEN/NOTIFY, advisory locks)
+postgresql://user:password@db.hanzo.ai:5432/mydb
+```
+
+### Pool Modes
+
+| Mode | Port | Use Case |
+|------|------|----------|
+| **Transaction** | 6432 | Default. Connections returned after each transaction. Best for web apps and APIs. |
+| **Session** | 5432 | Connection held for entire session. Required for prepared statements and LISTEN/NOTIFY. |
+
+### Tuning
+
+Set pool size based on your workload:
+
+```bash
+# Check active connections
+psql -c "SELECT count(*) FROM pg_stat_activity WHERE state = 'active';"
+
+# Check pooler stats
+psql -p 6432 -c "SHOW POOLS;"
+```
+
+Recommended pool sizes per application:
+
+| Workload | `max` connections |
+|----------|-------------------|
+| Web API | 10-20 |
+| Background worker | 3-5 |
+| Migration runner | 1 |
+| Analytics | 5-10 |
+
+## Branching
+
+Database branches are copy-on-write clones that share storage with the parent until data diverges. Use them for development, staging, CI test runs, and schema previews.
+
+### Create a Branch
+
+```bash
+# Create a branch from the current state
+curl -X POST https://api.hanzo.ai/v1/db/branches \
+  -H "Authorization: Bearer hk-your-api-key" \
+  -d '{"database": "mydb", "name": "feature-auth-refactor"}'
+
+# Create a branch from a specific point in time
+curl -X POST https://api.hanzo.ai/v1/db/branches \
+  -H "Authorization: Bearer hk-your-api-key" \
+  -d '{"database": "mydb", "name": "debug-2026-02-20", "restore_to": "2026-02-20T15:30:00Z"}'
+```
+
+### Connect to a Branch
+
+```bash
+psql "postgresql://user:password@db.hanzo.ai:5432/mydb:feature-auth-refactor?sslmode=require"
+```
+
+### List and Delete Branches
+
+```bash
+# List all branches
+curl -H "Authorization: Bearer hk-your-api-key" \
+  https://api.hanzo.ai/v1/db/branches?database=mydb
+
+# Delete a branch
+curl -X DELETE https://api.hanzo.ai/v1/db/branches/feature-auth-refactor \
+  -H "Authorization: Bearer hk-your-api-key"
+```
+
+### Branch Workflow
+
+```
+main (production)
+  │
+  ├── feature-auth ─────── develop, test, merge
+  │
+  ├── staging ──────────── pre-production validation
+  │
+  └── ci-run-4821 ──────── ephemeral, auto-deleted after CI
+```
+
+Branches are near-instant to create regardless of database size because they use copy-on-write storage. They incur storage cost only for changed pages.
+
+## Backup and Recovery
+
+### Automatic Backups
+
+Hanzo DB continuously archives WAL (Write-Ahead Log) segments. No cron jobs or manual snapshots required.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| **Retention** | 7 days | Configurable up to 30 days |
+| **Frequency** | Continuous | WAL segments archived as they are produced |
+| **Granularity** | 1 second | Restore to any point within the retention window |
+
+### Point-in-Time Recovery
+
+Restore a database to any second within the backup retention window:
+
+```bash
+# Restore to a specific timestamp
+curl -X POST https://api.hanzo.ai/v1/db/restore \
+  -H "Authorization: Bearer hk-your-api-key" \
+  -d '{
+    "database": "mydb",
+    "restore_to": "2026-02-20T14:30:00Z",
+    "target": "mydb-restored"
+  }'
+```
+
+The restored database appears as a new database. Verify its state before swapping with production.
+
+### Manual Snapshots
+
+Take an on-demand snapshot for pre-migration safety:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/db/snapshots \
+  -H "Authorization: Bearer hk-your-api-key" \
+  -d '{"database": "mydb", "label": "pre-migration-v42"}'
+```
+
+## Read Replicas
+
+Scale read-heavy workloads by routing queries to read replicas:
+
+```bash
+# Create a read replica
+curl -X POST https://api.hanzo.ai/v1/db/replicas \
+  -H "Authorization: Bearer hk-your-api-key" \
+  -d '{"database": "mydb", "name": "mydb-ro-1"}'
+```
+
+Connect applications to the read replica endpoint:
+
+```
+# Read replica (eventually consistent)
+postgresql://user:password@db.hanzo.ai:5432/mydb-ro-1?sslmode=require
+```
+
+Typical replication lag is under 100ms for in-cluster replicas.
+
+## Platform Databases
+
+The Hanzo platform uses the following databases on `postgres.hanzo.svc`:
+
+| Database | Service | Purpose |
+|----------|---------|---------|
+| `iam` | Hanzo IAM (hanzo.id) | Users, organizations, applications, OAuth providers |
+| `cloud` | Hanzo Cloud | Cloud backend state, AI provider configs, usage records |
+| `console` | Hanzo Console | Projects, API keys, prompts, evaluation datasets |
+| `hanzo_cloud` | Hanzo Cloud (legacy) | Legacy cloud data, billing records |
+| `kms` | Hanzo KMS | Secrets, machine identities, audit logs |
+| `platform` | Hanzo Platform | PaaS deployment state, build configs, domains |
+| `commerce` | Hanzo Commerce | Products, orders, customers, payments |
+
+These databases are managed by the platform and should not be modified directly. Use the respective service APIs to interact with them.
+
+## Monitoring
+
+### Built-in Metrics
+
+Hanzo DB exports PostgreSQL metrics to Hanzo Analytics and Prometheus:
+
+```sql
+-- Active connections
+SELECT count(*) FROM pg_stat_activity;
+
+-- Database sizes
+SELECT datname, pg_size_pretty(pg_database_size(datname))
+FROM pg_database WHERE datistemplate = false;
+
+-- Slow queries (>1s)
+SELECT query, calls, mean_exec_time, total_exec_time
+FROM pg_stat_statements
+ORDER BY mean_exec_time DESC
+LIMIT 20;
+
+-- Table bloat
+SELECT schemaname, tablename, n_dead_tup, n_live_tup,
+       round(n_dead_tup::numeric / greatest(n_live_tup, 1) * 100, 2) AS dead_pct
+FROM pg_stat_user_tables
+ORDER BY n_dead_tup DESC
+LIMIT 10;
+```
+
+### Extensions
+
+The following extensions are available and can be enabled per-database:
+
+| Extension | Purpose |
+|-----------|---------|
+| `vector` | pgvector -- vector similarity search |
+| `pg_stat_statements` | Query performance statistics |
+| `pg_trgm` | Trigram text similarity and fuzzy search |
+| `btree_gin` | GIN index support for scalar types |
+| `uuid-ossp` | UUID generation functions |
+| `hstore` | Key-value pairs within a single column |
+| `citext` | Case-insensitive text type |
+| `postgis` | Geographic objects and spatial queries |
+
+Enable any extension:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+```
+
+## Related Services
+
+<Cards>
+  <Card title="KV" href="/docs/services/kv">
+    Key-value store for caching, sessions, and pub/sub messaging
+  </Card>
+  <Card title="S3" href="/docs/services/s3">
+    S3-compatible object storage for files, models, and media
+  </Card>
+  <Card title="Console" href="/docs/services/console">
+    Management console for projects, API keys, and observability
+  </Card>
+  <Card title="Analytics" href="/docs/services/analytics">
+    Unified analytics and query engine (ClickHouse)
+  </Card>
+</Cards>

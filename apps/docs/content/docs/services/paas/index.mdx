@@ -1,30 +1,601 @@
 ---
 title: Hanzo PaaS
-description: Production PaaS for K8s-native GitOps deployments, per-org DOKS cluster management, and fleet operations.
+description: Kubernetes-native container orchestration and deployment layer for Hanzo infrastructure. Manages DOKS clusters, namespace isolation, ingress, secrets, CI/CD, and auto-scaling.
 ---
 
 # Hanzo PaaS
 
-Hanzo PaaS provides production-grade K8s-native GitOps deployments, per-org DOKS cluster management, and fleet operations.
+Hanzo PaaS is the container orchestration and deployment layer that runs all Hanzo and Lux production infrastructure. It provides Kubernetes-native deployments on DigitalOcean Kubernetes (DOKS) clusters with namespace isolation, automated TLS, secrets management via KMS, CI/CD pipelines, and horizontal auto-scaling.
 
 **Endpoint:** `paas.hanzo.ai`
 **Gateway:** `api.hanzo.ai/v1/paas/*`
 
-## Quick Start
+## Features
 
-```bash
-curl -H "Authorization: Bearer hk-your-api-key" \
-  https://api.hanzo.ai/v1/paas/deployments
+- **Kubernetes-Native Deployments**: All services run as K8s Deployments, StatefulSets, or DaemonSets with declarative manifests
+- **Multi-Cluster Management**: Two DOKS clusters purpose-separated for Hanzo services and Lux blockchain
+- **Namespace Isolation**: Service groups are isolated by namespace with RBAC boundaries
+- **Ingress + TLS**: nginx-ingress with cert-manager for automatic Let's Encrypt certificate provisioning
+- **Secrets Management**: KMS (Infisical) integration via `KMSSecret` custom resources for zero-plaintext secrets
+- **CI/CD Pipelines**: GitHub Actions workflows build, push, and deploy on every merge to main
+- **Container Registry**: All images published to `ghcr.io/hanzoai/*` with multi-arch support
+- **Helm Charts**: Complex multi-component services deployed via Helm for repeatability
+- **Horizontal Auto-Scaling**: HPA policies based on CPU, memory, and custom metrics
+- **Persistent Volumes**: Block storage PVCs for stateful services (databases, validators, storage)
+- **Internal DNS**: Service discovery via `*.hanzo.svc` cluster DNS
+
+## Architecture
+
+```
+                           ┌──────────────────────────────────────┐
+                           │          Cloudflare DNS              │
+                           │  *.hanzo.ai  *.lux.network  *.zoo.id│
+                           └──────────┬──────────┬────────────────┘
+                                      │          │
+                    ┌─────────────────▼──┐  ┌────▼─────────────────┐
+                    │    hanzo-k8s        │  │    lux-k8s           │
+                    │    24.199.76.156    │  │    24.144.69.101     │
+                    │                     │  │                      │
+                    │  ┌───────────────┐  │  │  ┌───────────────┐   │
+                    │  │ nginx-ingress │  │  │  │ nginx-ingress │   │
+                    │  │ + cert-manager│  │  │  │ + cert-manager│   │
+                    │  └──────┬────────┘  │  │  └──────┬────────┘   │
+                    │         │           │  │         │            │
+                    │  ┌──────▼────────┐  │  │  ┌──────▼────────┐   │
+                    │  │  Namespaces   │  │  │  │  Namespaces   │   │
+                    │  │               │  │  │  │               │   │
+                    │  │  hanzo        │  │  │  │  hanzo        │   │
+                    │  │  hanzo-zt     │  │  │  │  lux          │   │
+                    │  │  monitoring   │  │  │  │  monitoring   │   │
+                    │  │  cert-manager │  │  │  │  cert-manager │   │
+                    │  └──────┬────────┘  │  │  └──────┬────────┘   │
+                    │         │           │  │         │            │
+                    │  ┌──────▼────────┐  │  │  ┌──────▼────────┐   │
+                    │  │  Data Layer   │  │  │  │  Data Layer   │   │
+                    │  │  PostgreSQL   │  │  │  │  PostgreSQL   │   │
+                    │  │  Redis/Valkey │  │  │  │  Redis/Valkey │   │
+                    │  │  MongoDB      │  │  │  │  Datastore    │   │
+                    │  │  Hanzo S3     │  │  │  └───────────────┘   │
+                    │  │  ClickHouse   │  │  │                      │
+                    │  └───────────────┘  │  │  ┌───────────────┐   │
+                    │                     │  │  │  Lux Network  │   │
+                    │  ┌───────────────┐  │  │  │  15 validators│   │
+                    │  │  KMS Operator │  │  │  │  gateway      │   │
+                    │  │  (Infisical)  │  │  │  │  markets      │   │
+                    │  └───────────────┘  │  │  └───────────────┘   │
+                    └─────────────────────┘  └──────────────────────┘
+                              │                        │
+                    ┌─────────▼────────────────────────▼──────────┐
+                    │              ghcr.io/hanzoai/*               │
+                    │          Container Image Registry            │
+                    └─────────────────────────────────────────────┘
 ```
 
-## Key Features
+## Quick Start
 
-- K8s-native GitOps deployments
-- Per-org cluster management
-- Fleet operations across clusters
-- Auto-scaling and zero-downtime deploys
-- Built-in CI/CD pipelines
+### Prerequisites
+
+```bash
+# Install kubectl and configure cluster access
+brew install kubectl helm
+
+# Configure contexts for both clusters
+doctl kubernetes cluster kubeconfig save hanzo-k8s
+doctl kubernetes cluster kubeconfig save lux-k8s
+
+# Verify access
+kubectl --context do-sfo3-hanzo-k8s get nodes
+kubectl --context do-sfo3-lux-k8s get nodes
+```
+
+### Deploy a Service
+
+```yaml
+# deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-service
+  namespace: hanzo
+  labels:
+    app: my-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-service
+  template:
+    metadata:
+      labels:
+        app: my-service
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: my-service
+          image: ghcr.io/hanzoai/my-service:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: my-service-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+```
+
+```bash
+# Apply to hanzo-k8s cluster
+kubectl --context do-sfo3-hanzo-k8s apply -f deployment.yaml
+```
+
+### Expose via Ingress
+
+```yaml
+# ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-service
+  namespace: hanzo
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - my-service.hanzo.ai
+      secretName: my-service-tls
+  rules:
+    - host: my-service.hanzo.ai
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-service
+                port:
+                  number: 8080
+```
+
+### Deploy with Helm
+
+```bash
+# Add Hanzo chart repository
+helm repo add hanzo https://charts.hanzo.ai
+helm repo update
+
+# Install a chart
+helm install my-release hanzo/my-chart \
+  --namespace hanzo \
+  --set image.tag=v1.2.3 \
+  --set replicas=3
+```
+
+## Cluster Layout
+
+### hanzo-k8s (24.199.76.156)
+
+Primary cluster for all Hanzo platform services. Region: SFO3.
+
+| Service | Namespace | Domain | Image |
+|---------|-----------|--------|-------|
+| IAM (Casdoor) | hanzo | hanzo.id, lux.id, zoo.id, pars.id | `ghcr.io/hanzoai/iam` |
+| KMS (Infisical) | hanzo | kms.hanzo.ai | `ghcr.io/hanzoai/kms` |
+| Console | hanzo | console.hanzo.ai | `hanzoai/console` |
+| Console Worker | hanzo | (internal) | `ghcr.io/hanzoai/console-worker` |
+| Cloud Backend | hanzo | cloud.hanzo.ai | `ghcr.io/hanzoai/cloud` |
+| Gateway | hanzo | api.hanzo.ai | `ghcr.io/hanzoai/gateway` |
+| LLM Proxy | hanzo | llm.hanzo.ai | `ghcr.io/hanzoai/llm` |
+| Commerce | hanzo | commerce.hanzo.ai | `ghcr.io/hanzoai/commerce` |
+| Platform | hanzo | platform.hanzo.ai | `ghcr.io/hanzoai/platform` |
+| Storage (Hanzo S3) | hanzo | hanzo.space, s3.hanzo.space | `ghcr.io/hanzoai/storage` |
+| PostgreSQL | hanzo | postgres.hanzo.svc | `postgres:16` |
+| Redis/Valkey | hanzo | redis.hanzo.svc | `valkey/valkey:8` |
+| MongoDB | hanzo | mongodb.hanzo.svc | `mongo:7` |
+| ClickHouse | hanzo | clickhouse.hanzo.svc | `clickhouse/clickhouse-server` |
+| ZT Controller | hanzo-zt | zt.hanzo.ai | `ghcr.io/hanzoai/ziti` |
+| ZT Router | hanzo-zt | (mesh) | `ghcr.io/hanzoai/ziti-router` |
+
+### lux-k8s (24.144.69.101)
+
+Dedicated cluster for Lux blockchain infrastructure. Region: SFO3.
+
+| Service | Namespace | Domain | Image |
+|---------|-----------|--------|-------|
+| Lux Validators (x15) | lux | (P2P) | `ghcr.io/luxfi/node` |
+| KrakenD Gateway | hanzo | api.lux.network | `devopsfaith/krakend` |
+| Lux Cloud | hanzo | cloud.lux.network | `ghcr.io/luxfi/cloud-web` |
+| Markets | hanzo | markets.lux.network | `ghcr.io/luxfi/markets` |
+| PostgreSQL | hanzo | postgres.hanzo.svc | `postgres:16` |
+| Redis/Valkey | hanzo | redis.hanzo.svc | `valkey/valkey:8` |
+
+## Namespace Organization
+
+Namespaces provide security boundaries and resource isolation.
+
+```
+hanzo-k8s:
+  hanzo/              # All core Hanzo services
+  hanzo-zt/           # Zero Trust mesh networking (Ziti)
+  monitoring/         # Prometheus, Grafana, alerting
+  cert-manager/       # TLS certificate automation
+  kube-system/        # K8s system components
+
+lux-k8s:
+  hanzo/              # Platform services (gateway, cloud)
+  lux/                # Blockchain validators and infra
+  monitoring/         # Cluster monitoring
+  cert-manager/       # TLS certificate automation
+  kube-system/        # K8s system components
+```
+
+Each namespace has:
+- **ResourceQuotas**: CPU/memory limits per namespace
+- **NetworkPolicies**: Restrict inter-namespace traffic (only explicit allowlists)
+- **RBAC**: Service accounts scoped to namespace resources
+- **LimitRanges**: Default container resource constraints
+
+## Secrets Management
+
+All secrets are managed through KMS (Infisical) and synced into Kubernetes via the KMS operator. No plaintext secrets in manifests or Git.
+
+### KMSSecret Custom Resource
+
+```yaml
+# secrets.yaml
+apiVersion: secrets.hanzo.ai/v1
+kind: KMSSecret
+metadata:
+  name: my-service-secrets
+  namespace: hanzo
+spec:
+  # KMS project and environment
+  projectId: "proj-xxxxxxxx"
+  environment: "production"
+  secretPath: "/my-service"
+
+  # Authentication via Universal Auth
+  authentication:
+    universalAuth:
+      credentialsRef:
+        secretName: kms-machine-identity
+        secretNamespace: hanzo
+
+  # Target K8s secret
+  managedSecretReference:
+    secretName: my-service-secrets
+    secretNamespace: hanzo
+    secretType: Opaque
+
+  # Sync interval
+  resyncInterval: 60
+```
+
+### Secret Workflow
+
+```
+Developer                KMS (Infisical)           K8s Cluster
+    │                         │                         │
+    ├── Create secret ───────►│                         │
+    │   via UI or CLI         │                         │
+    │                         ├── KMS Operator sync ───►│
+    │                         │   (every 60s)           │
+    │                         │                         ├── Pod mounts
+    │                         │                         │   secret as env
+    │                         │                         │
+```
+
+### Migrating from Static Secrets
+
+Existing manifests with inline secrets should be replaced with `KMSSecret` resources:
+
+```bash
+# 1. Store secret in KMS
+hanzo-kms secrets set DATABASE_URL "postgres://..." \
+  --env production --path /my-service
+
+# 2. Replace K8s secret manifest with KMSSecret
+# 3. Reference the synced secret in your Deployment envFrom
+```
+
+## CI/CD Pipeline
+
+All services use GitHub Actions for continuous integration and deployment.
+
+### Standard Workflow
+
+```yaml
+# .github/workflows/deploy.yml
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Checkout
+      - uses: actions/checkout@v4
+
+      # 2. Authenticate with KMS for deploy secrets
+      - name: Fetch deploy secrets from KMS
+        uses: hanzoai/kms-action@v1
+        with:
+          client-id: ${{ secrets.KMS_CLIENT_ID }}
+          client-secret: ${{ secrets.KMS_CLIENT_SECRET }}
+          project-id: ${{ secrets.KMS_PROJECT_ID }}
+          environment: production
+          path: /ci-cd
+        env:
+          KMS_URL: https://kms.hanzo.ai
+
+      # 3. Build and push to GHCR
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: ghcr.io/hanzoai/${{ github.event.repository.name }}:latest
+
+      # 4. Deploy to K8s
+      - uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ env.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - run: |
+          doctl kubernetes cluster kubeconfig save hanzo-k8s
+          kubectl set image deployment/my-service \
+            my-service=ghcr.io/hanzoai/my-service:${{ github.sha }} \
+            --namespace hanzo
+          kubectl rollout status deployment/my-service \
+            --namespace hanzo --timeout=300s
+```
+
+### Image Registry
+
+All container images are stored in the GitHub Container Registry under the `hanzoai` organization:
+
+```
+ghcr.io/hanzoai/
+  iam:latest              # IAM (Casdoor)
+  kms:latest              # KMS (Infisical)
+  console:latest          # Console web
+  console-worker:latest   # Console BullMQ worker
+  cloud:latest            # Cloud backend
+  cloud-site:latest       # Cloud landing page
+  gateway:latest          # API gateway
+  llm:latest              # LLM proxy
+  commerce:latest         # Commerce engine
+  platform:latest         # Platform (Dokploy)
+  storage:latest          # Hanzo S3 storage
+  bot-site:latest         # hanzo.bot site
+  ziti:latest             # ZT controller
+  ziti-router:latest      # ZT router
+```
+
+Authentication for pulling images in-cluster:
+
+```bash
+# Create GHCR pull secret (one-time per cluster)
+kubectl create secret docker-registry ghcr-secret \
+  --docker-server=ghcr.io \
+  --docker-username=hanzoai \
+  --docker-password=$GHCR_TOKEN \
+  --namespace hanzo
+```
+
+## Auto-Scaling
+
+Horizontal Pod Autoscaler (HPA) policies ensure services scale with demand.
+
+```yaml
+# hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: my-service
+  namespace: hanzo
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
+```
+
+## Persistent Volumes
+
+Stateful services use DigitalOcean Block Storage via the `do-block-storage` StorageClass.
+
+```yaml
+# pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  namespace: hanzo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: do-block-storage
+  resources:
+    requests:
+      storage: 50Gi
+```
+
+Current persistent volumes:
+
+| Service | Size | Mount Path |
+|---------|------|------------|
+| PostgreSQL (hanzo-k8s) | 50Gi | /var/lib/postgresql/data |
+| PostgreSQL (lux-k8s) | 50Gi | /var/lib/postgresql/data |
+| MongoDB | 20Gi | /data/db |
+| ClickHouse | 100Gi | /var/lib/clickhouse |
+| Hanzo S3 | 200Gi | /data |
+| ZT Controller | 2Gi | /persistent |
+| ZT Router | 100Mi | /persistent |
+| Lux Validators (x15) | 50Gi each | /data |
+
+## Monitoring
+
+Cluster health and service metrics are collected via the monitoring stack.
+
+### Stack
+
+- **Prometheus**: Metrics collection from all pods (ServiceMonitor CRDs)
+- **Grafana**: Dashboards and alerting (accessible via console.hanzo.ai)
+- **AlertManager**: PagerDuty and Slack alert routing
+- **Node Exporter**: Host-level metrics from all cluster nodes
+
+### Health Checks
+
+Every service exposes standard health endpoints:
+
+```
+GET /health          # Liveness  - is the process alive?
+GET /health/ready    # Readiness - is the service ready for traffic?
+```
+
+### Key Alerts
+
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| PodCrashLooping | Restart count > 3 in 5m | critical |
+| HighCPU | CPU > 90% for 10m | warning |
+| HighMemory | Memory > 85% for 10m | warning |
+| CertExpiringSoon | TLS cert expires < 14d | warning |
+| PVCNearFull | Volume usage > 80% | warning |
+| NodeNotReady | Node unschedulable > 5m | critical |
+
+## Internal DNS
+
+All services within a cluster are discoverable via Kubernetes DNS:
+
+```
+# Format: <service>.<namespace>.svc.cluster.local
+# Short form (same namespace): <service>.hanzo.svc
+
+postgres.hanzo.svc:5432      # PostgreSQL
+redis.hanzo.svc:6379         # Redis/Valkey
+mongodb.hanzo.svc:27017      # MongoDB
+clickhouse.hanzo.svc:9000    # ClickHouse
+s3.hanzo.svc:9000            # Hanzo S3 API
+s3.hanzo.svc:9001            # Hanzo S3 Console
+```
+
+Services reference each other by internal DNS, keeping traffic in-cluster and avoiding external round-trips.
+
+## Infrastructure as Code
+
+All cluster manifests live in the `universe/infra/k8s/` directory, organized by service:
+
+```
+universe/infra/k8s/
+  iam/                # IAM deployment, service, ingress, configmap
+  kms/                # KMS Helm values, secrets
+  console/            # Console web + worker deployments
+  cloud/              # Cloud backend
+  gateway/            # API gateway
+  commerce/           # Commerce engine
+  storage/            # Hanzo S3 deployment, ingress, buckets
+  paas/               # PaaS platform (Dokploy)
+  zt/                 # Zero Trust controller + router
+  monitoring/         # Prometheus, Grafana, AlertManager
+  cert-manager/       # ClusterIssuer, cert resources
+```
+
+Changes to manifests follow GitOps: push to main, CI applies to cluster.
 
 ## API Reference
 
+### Deployments
+
+- `GET /v1/paas/deployments` - List all deployments
+- `POST /v1/paas/deployments` - Create deployment
+- `GET /v1/paas/deployments/:id` - Get deployment status
+- `PATCH /v1/paas/deployments/:id` - Update deployment
+- `DELETE /v1/paas/deployments/:id` - Delete deployment
+- `POST /v1/paas/deployments/:id/rollback` - Rollback to previous revision
+
+### Clusters
+
+- `GET /v1/paas/clusters` - List managed clusters
+- `GET /v1/paas/clusters/:id/nodes` - List cluster nodes
+- `GET /v1/paas/clusters/:id/namespaces` - List namespaces
+
+### Scaling
+
+- `GET /v1/paas/deployments/:id/hpa` - Get HPA configuration
+- `PUT /v1/paas/deployments/:id/hpa` - Update HPA policy
+- `POST /v1/paas/deployments/:id/scale` - Manual scale
+
 See the [full API reference](/docs/openapi) for all endpoints.
+
+## Related Services
+
+<Cards>
+  <Card title="Platform" href="/docs/services/platform">
+    PaaS UI for managing deployments, domains, and databases via web interface
+  </Card>
+  <Card title="Registry" href="/docs/services/registry">
+    Container image registry and artifact management at ghcr.io/hanzoai
+  </Card>
+  <Card title="KMS" href="/docs/services/kms">
+    Secrets management with Kubernetes operator for zero-plaintext secret sync
+  </Card>
+  <Card title="Observability" href="/docs/services/o11y">
+    Prometheus, Grafana, and AlertManager for cluster and service monitoring
+  </Card>
+</Cards>
