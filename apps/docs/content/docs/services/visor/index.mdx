@@ -1,30 +1,267 @@
 ---
 title: Hanzo Visor
-description: VM and remote session management platform with cloud machines, remote desktop sessions via Guacamole (RDP/SSH/Telnet), and environment provisioning.
+description: VM and container runtime for AI workloads with GPU passthrough, live migration, snapshot/restore, and Kubernetes CRI integration.
 ---
 
 # Hanzo Visor
 
-Hanzo Visor is a VM and remote session management platform. It manages cloud machines, remote desktop sessions via Guacamole (RDP/SSH/Telnet), and environment provisioning.
+Hanzo Visor is a lightweight VM and container runtime purpose-built for AI infrastructure. It manages cloud machines, GPU-accelerated execution environments, remote desktop sessions, and environment provisioning. Visor integrates with Kubernetes as a CRI (Container Runtime Interface) provider and exposes a REST API for programmatic machine lifecycle management.
 
-**Endpoint:** `visor.hanzo.ai`
-**Gateway:** `api.hanzo.ai/v1/visor/*`
+## Features
+
+- **Lightweight VM Management**: Minimal hypervisor layer with sub-second cold start for microVMs
+- **Container Orchestration**: OCI-compatible container runtime with native K8s CRI integration
+- **GPU Passthrough**: Direct NVIDIA/AMD GPU passthrough via VFIO for training and inference
+- **Isolated Execution**: Hardware-level isolation between tenants using KVM/microVM boundaries
+- **Snapshot and Restore**: Full VM state capture and instant restore for checkpointing
+- **Live Migration**: Zero-downtime VM migration across nodes for maintenance and rebalancing
+- **Resource Quotas**: Per-tenant CPU, memory, GPU, and disk quotas with hard enforcement
+- **Remote Sessions**: RDP, SSH, and Telnet access via integrated Guacamole gateway
+- **Environment Templates**: Pre-built images for PyTorch, JAX, TensorRT, Candle, and more
+
+## Endpoints
+
+| Environment | URL |
+|-------------|-----|
+| API | `https://api.hanzo.ai/v1/visor/*` |
+| Gateway route | `api.hanzo.ai → visor:19000` |
+| Dashboard | `https://console.hanzo.ai/visor` |
+| Remote Desktop | `https://visor.hanzo.ai/guacamole` |
+
+## Architecture
+
+```
+                     API Requests
+                          |
+                          v
+                  +---------------+
+                  | Hanzo Gateway |
+                  | /infra/*      |
+                  +-------+-------+
+                          |
+                          v
+              +-----------------------+
+              |     Visor Control     |
+              |     Plane (19000)     |
+              +-----+--------+-------+
+                    |        |
+          +---------+        +---------+
+          v                            v
+  +--------------+            +--------------+
+  |   VM Engine  |            |  Container   |
+  |  (KVM/QEMU)  |            |   Runtime   |
+  +------+-------+            +------+-------+
+         |                           |
+    +----+----+                 +----+----+
+    v         v                 v         v
+ +------+ +------+          +------+ +------+
+ | VM 1 | | VM 2 |          |Ctr 1 | |Ctr 2 |
+ | GPU  | | CPU  |          | GPU  | | CPU  |
+ +------+ +------+          +------+ +------+
+         \                   /
+          v                 v
+ +-------------------------------------+
+ |        GPU Pool (VFIO/SR-IOV)       |
+ |  NVIDIA A100 | H100 | AMD MI300X   |
+ +-------------------------------------+
+```
 
 ## Quick Start
 
+### List Machines
+
 ```bash
-curl -H "Authorization: Bearer hk-your-api-key" \
+curl -H "Authorization: Bearer $HANZO_API_KEY" \
   https://api.hanzo.ai/v1/visor/machines
 ```
 
-## Key Features
+### Create a VM
 
-- Cloud VM provisioning and management
-- Remote desktop sessions (RDP, SSH, Telnet)
-- Environment templates
-- Session recording and playback
-- Multi-cloud support
+```bash
+curl -X POST https://api.hanzo.ai/v1/visor/machines \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "training-node-01",
+    "template": "pytorch-cuda12",
+    "resources": {
+      "vcpus": 8, "memory_gb": 32, "disk_gb": 200,
+      "gpus": 1, "gpu_type": "nvidia-a100"
+    }
+  }'
+```
 
-## API Reference
+### Snapshot and Restore
 
-See the [full API reference](/docs/openapi) for all endpoints.
+```bash
+# Snapshot
+curl -X POST https://api.hanzo.ai/v1/visor/machines/vm-abc123/snapshot \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -d '{"name": "checkpoint-epoch-50"}'
+
+# Restore to new machine
+curl -X POST https://api.hanzo.ai/v1/visor/machines \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -d '{"name": "restored-node", "snapshot_id": "snap-def456"}'
+```
+
+### Live Migrate
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/visor/machines/vm-abc123/migrate \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -d '{"target_node": "node-gpu-04", "strategy": "live"}'
+```
+
+### Remote Session
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/visor/machines/vm-abc123/session \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -d '{"protocol": "ssh", "user": "hanzo"}'
+# Returns: {"session_id": "sess-xyz", "url": "https://visor.hanzo.ai/guacamole/#/client/sess-xyz"}
+```
+
+## Environment Templates
+
+| Template | Frameworks | GPU | Disk |
+|----------|-----------|-----|------|
+| `pytorch-cuda12` | PyTorch 2.6, torchvision | CUDA 12.6 | 100GB |
+| `jax-cuda12` | JAX 0.5, Flax | CUDA 12.6 | 100GB |
+| `inference-trt` | TensorRT, Triton Server | CUDA 12.6 | 80GB |
+| `jupyter-gpu` | JupyterLab, PyTorch, JAX | CUDA 12.6 | 120GB |
+| `candle-rust` | Rust toolchain, Candle | CUDA 12.6 | 60GB |
+| `base-cpu` | Python 3.12, Node 22 | -- | 40GB |
+| `base-gpu` | Python 3.12, nvidia-smi | CUDA 12.6 | 60GB |
+
+## Configuration
+
+### GPU Passthrough
+
+Visor uses VFIO for direct GPU assignment. IOMMU must be enabled on host nodes:
+
+```bash
+dmesg | grep -i iommu          # Verify IOMMU
+curl -H "Authorization: Bearer $HANZO_API_KEY" \
+  https://api.hanzo.ai/v1/visor/gpus   # List available GPUs
+```
+
+### Resource Quotas
+
+```bash
+curl -X PUT https://api.hanzo.ai/v1/visor/quotas/org-hanzo \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -d '{"max_vcpus": 256, "max_memory_gb": 1024, "max_gpus": 16, "max_machines": 50}'
+```
+
+### Kubernetes CRI Integration
+
+Register Visor as a CRI runtime for K8s-scheduled microVMs:
+
+```yaml
+apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: visor
+handler: visor
+scheduling:
+  nodeSelector:
+    runtime: visor
+overhead:
+  podFixed:
+    memory: "64Mi"
+    cpu: "50m"
+```
+
+Deploy a GPU pod with Visor isolation:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: training-job
+spec:
+  runtimeClassName: visor
+  containers:
+    - name: trainer
+      image: ghcr.io/hanzoai/pytorch-cuda12:latest
+      resources:
+        limits:
+          nvidia.com/gpu: "1"
+          memory: "32Gi"
+          cpu: "8"
+```
+
+## Machine Lifecycle
+
+| State | Description |
+|-------|-------------|
+| `provisioning` | VM is being created and configured |
+| `running` | VM is active and accepting connections |
+| `stopped` | VM is halted, resources reserved |
+| `migrating` | Live-migrating to another node |
+| `snapshotting` | VM state is being captured |
+| `restoring` | Restoring from a snapshot |
+| `terminated` | Destroyed, resources released |
+
+## Environment Variables
+
+```bash
+VISOR_API_PORT=19000             # Control plane port
+VISOR_DATA_DIR=/var/lib/visor    # VM and container data
+VISOR_GPU_DRIVER=nvidia          # nvidia | amd
+VISOR_IOMMU_ENABLED=true
+VISOR_SNAPSHOT_BACKEND=s3        # s3 | local
+VISOR_S3_ENDPOINT=https://s3.hanzo.space
+VISOR_S3_BUCKET=visor-snapshots
+GUACAMOLE_URL=https://visor.hanzo.ai/guacamole
+```
+
+## SDK Usage
+
+### Python
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="your-key")
+
+machine = client.visor.machines.create(
+    name="inference-server",
+    template="inference-trt",
+    resources={"vcpus": 4, "memory_gb": 16, "gpus": 1, "gpu_type": "nvidia-a100"}
+)
+
+snapshot = client.visor.machines.snapshot(machine.id, name="model-v2-loaded")
+```
+
+### TypeScript
+
+```typescript
+import Hanzo from '@hanzo/ai'
+
+const client = new Hanzo({ apiKey: 'your-key' })
+
+const machine = await client.visor.machines.create({
+  name: 'inference-server',
+  template: 'inference-trt',
+  resources: { vcpus: 4, memory_gb: 16, gpus: 1, gpu_type: 'nvidia-a100' }
+})
+```
+
+## Related Services
+
+<Cards>
+  <Card title="Gateway" href="/docs/services/gateway">
+    API gateway routing /infra/* to Visor
+  </Card>
+  <Card title="S3 Storage" href="/docs/services/s3">
+    Snapshot storage on hanzo.space
+  </Card>
+  <Card title="O11y" href="/docs/services/o11y">
+    Observability and monitoring for VMs
+  </Card>
+  <Card title="Zero Trust" href="/docs/services/zt">
+    Secure networking between Visor instances
+  </Card>
+</Cards>
