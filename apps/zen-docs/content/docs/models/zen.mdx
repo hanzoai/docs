@@ -1,0 +1,69 @@
+---
+title: zen
+description: Standard 8-32B dense foundation model for general-purpose AI tasks.
+---
+
+# zen
+
+**Foundation**
+
+The standard Zen foundation model. An 8--32B dense transformer that serves as the default general-purpose model across the Zen lineup. Balanced performance across reasoning, generation, and instruction following.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen` |
+| **Parameters** | 8--32B |
+| **Architecture** | Dense |
+| **Context Window** | 32K tokens |
+| **Status** | Available |
+| **HuggingFace** | [zenlm/zen-8b](https://huggingface.co/zenlm/zen-8b) |
+
+## Capabilities
+
+- General-purpose text generation and reasoning
+- Multilingual understanding
+- Instruction following and structured output
+- Summarization and analysis
+- Code assistance
+- Conversational AI
+
+## Usage
+
+### HuggingFace
+
+```bash
+pip install transformers torch
+```
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-8b")
+model = AutoModelForCausalLM.from_pretrained("zenlm/zen-8b")
+
+inputs = tokenizer("Explain quantum computing in simple terms.", return_tensors="pt")
+outputs = model.generate(**inputs, max_new_tokens=256)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
+
+### API
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen",
+    messages=[{"role": "user", "content": "Explain quantum computing in simple terms."}],
+)
+print(response.choices[0].message.content)
+```
+
+## See Also
+
+- [zen-pro](/docs/models/zen-pro) -- 32B professional grade
+- [zen-eco](/docs/models/zen-eco) -- 4B efficient variant
+- [zen4](/docs/models/zen4) -- 744B MoE flagship

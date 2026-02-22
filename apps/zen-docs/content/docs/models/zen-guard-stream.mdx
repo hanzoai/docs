@@ -1,0 +1,57 @@
+---
+title: zen-guard-stream
+description: 4B dense model for low-latency streaming content moderation.
+---
+
+# zen-guard-stream
+
+**Streaming Moderation**
+
+A 4B dense transformer optimized for low-latency streaming content moderation. Evaluates text in real time as it is generated or received, enabling token-by-token safety checks in production pipelines.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen-guard-stream` |
+| **Parameters** | 4B |
+| **Architecture** | Dense |
+| **Context Window** | 8K tokens |
+| **Status** | Available |
+| **HuggingFace** | -- |
+
+## Capabilities
+
+- Real-time streaming content moderation
+- Token-by-token safety evaluation
+- Low-latency classification (< 10ms per chunk)
+- Multi-category harm detection
+- Configurable sensitivity thresholds
+- Pipeline integration for LLM output filtering
+
+## Usage
+
+### API
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.moderations.create(
+    model="zen-guard-stream",
+    input="Text to moderate for safety.",
+)
+
+for result in response.results:
+    print(f"Flagged: {result.flagged}")
+    for category, score in result.category_scores.items():
+        if score > 0.5:
+            print(f"  {category}: {score:.3f}")
+```
+
+## See Also
+
+- [zen3-guard](/docs/models/zen3-guard) -- 4B safety classifier
+- [zen-guard-gen](/docs/models/zen-guard-gen) -- 8B safe generation model
+- [zen3-nano](/docs/models/zen3-nano) -- 4B general-purpose edge model

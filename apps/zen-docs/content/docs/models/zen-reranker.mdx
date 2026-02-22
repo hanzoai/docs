@@ -1,0 +1,90 @@
+---
+title: zen-reranker
+description: 568M dense cross-encoder model for search result reranking.
+---
+
+# zen-reranker
+
+**Search Reranking**
+
+A 568M dense cross-encoder model that reranks search results for improved relevance. Takes query-document pairs and produces relevance scores, dramatically improving retrieval quality in RAG pipelines and search systems.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen-reranker` |
+| **Parameters** | 568M |
+| **Architecture** | Dense Cross-Encoder |
+| **Context Window** | 8K tokens |
+| **Status** | Available |
+| **HuggingFace** | [zenlm/zen-reranker](https://huggingface.co/zenlm/zen-reranker) |
+
+## Capabilities
+
+- Cross-encoder search result reranking
+- Query-document relevance scoring
+- RAG pipeline retrieval improvement
+- Multi-stage search refinement
+- Passage and document-level ranking
+- Lightweight enough for high-throughput production
+
+## Usage
+
+### HuggingFace
+
+```bash
+pip install transformers torch
+```
+
+```python
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+import torch
+
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-reranker")
+model = AutoModelForSequenceClassification.from_pretrained("zenlm/zen-reranker")
+
+query = "What is retrieval augmented generation?"
+documents = [
+    "RAG combines retrieval with language model generation for grounded responses.",
+    "The weather in Tokyo is sunny today.",
+    "Vector databases store embeddings for semantic search.",
+]
+
+pairs = [[query, doc] for doc in documents]
+inputs = tokenizer(pairs, padding=True, truncation=True, return_tensors="pt")
+
+with torch.no_grad():
+    scores = model(**inputs).logits.squeeze()
+
+ranked = sorted(zip(documents, scores.tolist()), key=lambda x: x[1], reverse=True)
+for doc, score in ranked:
+    print(f"[{score:.3f}] {doc}")
+```
+
+### API
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.rerank.create(
+    model="zen-reranker",
+    query="What is retrieval augmented generation?",
+    documents=[
+        "RAG combines retrieval with language model generation.",
+        "The weather in Tokyo is sunny today.",
+        "Vector databases store embeddings for semantic search.",
+    ],
+)
+
+for result in response.results:
+    print(f"[{result.relevance_score:.3f}] {result.document.text}")
+```
+
+## See Also
+
+- [zen3-embedding](/docs/models/zen3-embedding) -- 3072-dim text embeddings
+- [zen3-nano](/docs/models/zen3-nano) -- 4B lightweight model
+- [zen-eco](/docs/models/zen-eco) -- 4B efficient general-purpose

@@ -1,0 +1,70 @@
+---
+title: zen-pro
+description: Professional-grade 32B dense model with 19K tokens/sec throughput.
+---
+
+# zen-pro
+
+**Professional**
+
+A 32B dense transformer for professional workloads requiring high-quality reasoning and generation. Achieves 19K tokens/sec -- the strongest dense model in the foundation tier before stepping up to MoE architectures.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen-pro` |
+| **Parameters** | 32B |
+| **Architecture** | Dense |
+| **Context Window** | 32K tokens |
+| **Throughput** | 19K tokens/sec |
+| **Status** | Available |
+| **HuggingFace** | [zenlm/zen-pro-32b](https://huggingface.co/zenlm/zen-pro-32b) |
+
+## Capabilities
+
+- High-quality reasoning and analysis
+- Professional document drafting
+- Complex instruction following
+- Code generation and review
+- Multilingual translation and understanding
+- Structured data extraction
+
+## Usage
+
+### HuggingFace
+
+```bash
+pip install transformers torch
+```
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-pro-32b")
+model = AutoModelForCausalLM.from_pretrained("zenlm/zen-pro-32b", device_map="auto")
+
+inputs = tokenizer("Draft a technical proposal for:", return_tensors="pt").to(model.device)
+outputs = model.generate(**inputs, max_new_tokens=512)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
+
+### API
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen-pro",
+    messages=[{"role": "user", "content": "Analyze the trade-offs between microservices and monolithic architecture."}],
+)
+print(response.choices[0].message.content)
+```
+
+## See Also
+
+- [zen](/docs/models/zen) -- 8-32B standard foundation model
+- [zen4-pro](/docs/models/zen4-pro) -- 80B MoE professional tier
+- [zen-max](/docs/models/zen-max) -- 1.04T MoE frontier scale
