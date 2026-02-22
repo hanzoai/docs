@@ -5,7 +5,7 @@ description: Kafka-compatible streaming gateway built on Hanzo PubSub
 
 # Hanzo Stream
 
-Hanzo Stream is a stateless Kafka wire protocol gateway built on Hanzo PubSub. Standard Kafka clients connect on `:9092`; the gateway translates every Kafka API call into JetStream operations against PubSub. All storage, replication, and durability live in PubSub — the gateway itself holds no state and scales horizontally.
+Hanzo Stream is a stateless Kafka wire protocol gateway built on Hanzo PubSub. Standard Kafka clients connect on `:9092`; the gateway translates every Kafka API call into PubSub JetStream operations. All storage, replication, and durability live in PubSub — the gateway holds no state and scales horizontally.
 
 **Endpoint:** `stream.hanzo.ai:9092`
 **Gateway:** `api.hanzo.ai/v1/stream/*`
@@ -215,7 +215,7 @@ while (true) {
 │        └──────┬──────┘──────┬──────┘                        │
 │               │             │                               │
 │        Protocol Translation │                               │
-│     (Kafka <-> Hanzo Stream)│                               │
+│    (Kafka <-> PubSub/JS)    │                               │
 ├───────────────┴─────────────┴───────────────────────────────┤
 │  Hanzo PubSub (Hanzo Stream)                                │
 │                                                             │
@@ -231,9 +231,9 @@ while (true) {
 
 ### How It Works
 
-Hanzo Stream translates Kafka concepts directly to Hanzo Stream primitives:
+Hanzo Stream translates Kafka concepts to PubSub JetStream primitives:
 
-| Kafka Concept | Hanzo Stream Equivalent |
+| Kafka Concept | PubSub JetStream Equivalent |
 |---|---|
 | Topic `foo`, Partition N | Stream `kafka-foo-N`, Subject `kafka.foo.N` |
 | Produce record | Publish to stream subject, returns sequence as offset |
