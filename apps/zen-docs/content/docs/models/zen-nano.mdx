@@ -1,0 +1,70 @@
+---
+title: zen-nano
+description: Ultra-compact 0.6B dense model for edge inference at 44K tokens/sec.
+---
+
+# zen-nano
+
+**Edge**
+
+The smallest model in the Zen family. A 0.6B dense transformer designed for on-device inference, IoT deployments, and latency-critical pipelines where every millisecond counts. Achieves 44K tokens/sec with as little as 0.4GB RAM.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen-nano` |
+| **Parameters** | 0.6B |
+| **Architecture** | Dense |
+| **Context Window** | 32K tokens |
+| **Throughput** | 44K tokens/sec |
+| **Memory** | 0.4--1.2 GB RAM |
+| **HuggingFace** | [zenlm/zen-nano-0.6b](https://huggingface.co/zenlm/zen-nano-0.6b) |
+
+## Capabilities
+
+- Ultra-low latency inference (44K tokens/sec)
+- On-device and edge deployment
+- Mobile and embedded applications
+- Text classification and extraction
+- Lightweight chat and instruction following
+- Runs on CPU-only hardware
+
+## Usage
+
+### HuggingFace
+
+```bash
+pip install transformers torch
+```
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-nano-0.6b")
+model = AutoModelForCausalLM.from_pretrained("zenlm/zen-nano-0.6b")
+
+inputs = tokenizer("Hello, Zen.", return_tensors="pt")
+outputs = model.generate(**inputs, max_new_tokens=64)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
+
+### API
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen-nano",
+    messages=[{"role": "user", "content": "Hello, Zen."}],
+)
+print(response.choices[0].message.content)
+```
+
+## See Also
+
+- [zen-eco](/docs/models/zen-eco) -- 4B efficient general-purpose model
+- [zen3-nano](/docs/models/zen3-nano) -- 4B edge model (next size up)
+- [zen4-mini](/docs/models/zen4-mini) -- 8B dense model

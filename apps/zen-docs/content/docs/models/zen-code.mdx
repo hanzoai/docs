@@ -1,0 +1,68 @@
+---
+title: zen-code
+description: Legacy 14B dense code model for general programming tasks.
+---
+
+# zen-code
+
+**Code (Legacy)**
+
+A 14B dense transformer for code generation and understanding. This is a legacy model -- for new projects, consider [zen-coder](/docs/models/zen-coder) (32B) or [zen4-coder](/docs/models/zen4-coder) (480B MoE).
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen-code` |
+| **Parameters** | 14B |
+| **Architecture** | Dense |
+| **Context Window** | 32K tokens |
+| **Status** | Legacy |
+| **HuggingFace** | [zenlm/zen-code](https://huggingface.co/zenlm/zen-code) |
+
+## Capabilities
+
+- Code generation across common languages
+- Code explanation and documentation
+- Basic refactoring suggestions
+- Test generation
+- 32K context for moderate file sizes
+
+## Usage
+
+### HuggingFace
+
+```bash
+pip install transformers torch
+```
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-code")
+model = AutoModelForCausalLM.from_pretrained("zenlm/zen-code", device_map="auto")
+
+inputs = tokenizer("Implement a linked list in Python:", return_tensors="pt").to(model.device)
+outputs = model.generate(**inputs, max_new_tokens=256)
+print(tokenizer.decode(outputs[0], skip_special_tokens=True))
+```
+
+### API
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen-code",
+    messages=[{"role": "user", "content": "Write a REST API endpoint in Express.js for user registration."}],
+)
+print(response.choices[0].message.content)
+```
+
+## See Also
+
+- [zen-coder](/docs/models/zen-coder) -- 32B recommended replacement
+- [zen-coder-flash](/docs/models/zen-coder-flash) -- 7B low-latency alternative
+- [zen4-coder](/docs/models/zen4-coder) -- 480B MoE flagship code model
