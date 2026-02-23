@@ -15,7 +15,7 @@ fi
 
 mkdir -p "$DOCS_DIR/openapi-specs"
 
-SERVICES="analytics auto bot chat cloud commerce console db dns edge engine flow gateway iam kms kv mq nexus o11y operative paas platform registry search vector visor zt"
+SERVICES="analytics auto bot chat cloud commerce console db dns edge engine flow gateway guard iam identity kms kv ml mq nexus o11y operative paas platform pubsub registry s3 search stream vector visor zt"
 
 for service in $SERVICES; do
   if [ -f "$OPENAPI_DIR/$service/openapi.yaml" ]; then
