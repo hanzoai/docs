@@ -27,7 +27,7 @@ export const registry: Registry = {
     }
 
     if (ref.type === 'dependency' && ref.dep === '@hanzo/docs-ui') {
-      const match = /@hanzo/docs-ui\/components\/ui\/(.*)/.exec(ref.specifier);
+      const match = /@hanzo\/docs-ui\/components\/ui\/(.*)/.exec(ref.specifier);
       if (match) {
         return resolveFromRemote(
           radixUi.registry,
