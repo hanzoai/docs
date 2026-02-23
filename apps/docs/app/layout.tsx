@@ -15,7 +15,7 @@ export const metadata = createMetadata({
     default: 'Hanzo — Documentation',
   },
   description:
-    'Documentation for Hanzo AI Cloud — 33 services, one API key, one gateway.',
+    'Documentation for the decentralized AI cloud.',
   metadataBase: baseUrl,
 });
 
