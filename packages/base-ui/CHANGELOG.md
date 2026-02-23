@@ -1,12 +1,70 @@
 # @fumadocs/base-ui
 
+## 16.6.5
+
+### Patch Changes
+
+- Updated dependencies [1a614de]
+- Updated dependencies [6ab6692]
+  - fumadocs-core@16.6.5
+
+## 16.6.4
+
+### Patch Changes
+
+- 8f8e7f0: fix accessibility issues
+  - fumadocs-core@16.6.4
+
+## 16.6.3
+
+### Patch Changes
+
+- 1c26656: Extend grid of docs layout to 5 columns
+  - fumadocs-core@16.6.3
+
+## 16.6.2
+
+### Patch Changes
+
+- cfc5590: Implement `active` on sidebar link items
+  - fumadocs-core@16.6.2
+
+## 16.6.1
+
+### Patch Changes
+
+- 89c6e65: fix search dialog shortcuts
+- Updated dependencies [00c9a0f]
+  - fumadocs-core@16.6.1
+
+## 16.6.0
+
+### Minor Changes
+
+- 9241992: **Support Markdown in search results**
+
+  This deprecates the old `contentWithHighlights` field in search results, the highlights are marked with Markdown instead (e.g. `Hello <mark>World</mark>`).
+
+### Patch Changes
+
+- Updated dependencies [9241992]
+- Updated dependencies [64a0057]
+  - fumadocs-core@16.6.0
+
+## 16.5.4
+
+### Patch Changes
+
+- Updated dependencies [1ad8a38]
+- Updated dependencies [3e8efb0]
+  - fumadocs-core@16.5.4
+
 ## 16.5.3
 
 ### Patch Changes
 
-- 9fe9f7c: Rebrand from Fuma Nama to Hanzo AI, update canonical URL to hanzoai.github.io/docs, fix DTS generation OOM in unified wrapper package, and update all package metadata.
-- Updated dependencies [9fe9f7c]
-  - @hanzo/docs-core@16.5.3
+- Updated dependencies [be957f1]
+  - fumadocs-core@16.5.3
 
 ## 16.5.2
 
@@ -119,10 +177,13 @@
 
 ### Patch Changes
 
-- Rebrand fumadocs to @hanzo/docs namespace. Change default output directory from .source to .docs.
-- Updated dependencies
-  - @hanzo/docs-core@16.4.2
-  - @hanzo/docs-ui@16.4.2
+- b16a32f: Switch to tsdown for bundling
+- Updated dependencies [590d36a]
+- Updated dependencies [98d38ff]
+- Updated dependencies [446631d]
+- Updated dependencies [b16a32f]
+  - fumadocs-core@16.4.2
+  - @fumadocs/ui@16.4.2
 
 ## 16.4.1
 

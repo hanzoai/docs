@@ -4,7 +4,6 @@ import type { ElementContent } from 'hast';
 import jsonSchema from '@hanzo/docs-mdx/plugins/json-schema';
 import lastModified from '@hanzo/docs-mdx/plugins/last-modified';
 import type { ShikiTransformer } from 'shiki';
-import type { RemarkFeedbackBlockOptions } from '@hanzo/docs-core/mdx-plugins';
 import type { RemarkAutoTypeTableOptions } from '@hanzo/docs-typescript';
 import { shikiConfig } from './lib/shiki';
 import { metaSchema, pageSchema } from '@hanzo/docs-core/source/schema';
@@ -39,8 +38,6 @@ export const docs = defineDocs({
     async: true,
     async mdxOptions(environment) {
       const { rehypeCodeDefaultOptions } = await import('@hanzo/docs-core/mdx-plugins/rehype-code');
-      const { remarkStructureDefaultOptions } =
-        await import('@hanzo/docs-core/mdx-plugins/remark-structure');
       const { remarkSteps } = await import('@hanzo/docs-core/mdx-plugins/remark-steps');
       const { remarkFeedbackBlock } =
         await import('@hanzo/docs-core/mdx-plugins/remark-feedback-block');
@@ -52,13 +49,6 @@ export const docs = defineDocs({
       const { remarkAutoTypeTable, createGenerator, createFileSystemGeneratorCache } =
         await import('@hanzo/docs-typescript');
 
-      const feedbackOptions: RemarkFeedbackBlockOptions = {
-        resolve(node) {
-          // defensive approach
-          if (node.type === 'mdxJsxFlowElement') return 'skip';
-          return node.type === 'paragraph' || node.type === 'image' || node.type === 'list';
-        },
-      };
       const typeTableOptions: RemarkAutoTypeTableOptions = {
         generator: createGenerator({
           cache: createFileSystemGeneratorCache('.next/@hanzo/docs-typescript'),
@@ -91,6 +81,27 @@ export const docs = defineDocs({
         remarkCodeTabOptions: {
           parseMdx: true,
         },
+        remarkStructureOptions: {
+          stringify: {
+            filterElement(node) {
+              switch (node.type) {
+                case 'mdxJsxFlowElement':
+                case 'mdxJsxTextElement':
+                  switch (node.name) {
+                    case 'File':
+                    case 'TypeTable':
+                    case 'Callout':
+                    case 'Card':
+                    case 'Custom':
+                      return true;
+                  }
+                  return 'children-only';
+              }
+
+              return true;
+            },
+          },
+        },
         remarkNpmOptions: {
           persist: {
             id: 'package-manager',
@@ -102,7 +113,7 @@ export const docs = defineDocs({
               remarkPassthroughUnknownJsx,
               remarkSteps,
               remarkMath,
-              [remarkFeedbackBlock, feedbackOptions],
+              remarkFeedbackBlock,
               [remarkAutoTypeTable, typeTableOptions],
               remarkTypeScriptToJavaScript,
             ],

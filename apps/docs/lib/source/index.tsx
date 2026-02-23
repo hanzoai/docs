@@ -9,20 +9,27 @@ import { openapiPlugin, openapiSource } from '@hanzo/docs/openapi/server';
 import { blog as blogPosts, docs } from '@hanzo/mdx:collections/server';
 import { createSource } from '@hanzo/docs/mdx/runtime/server';
 import { lucideIconsPlugin } from '@hanzo/docs/core/source/lucide-icons';
-import { openapi } from '@/lib/openapi';
+import { openapi, hasSpecs } from '@/lib/openapi';
 
-export const source = loader(
-  multiple({
-    docs: docs.toSource(),
-    openapi: await openapiSource(openapi, {
-      baseDir: 'openapi/(generated)',
-    }),
-  }),
-  {
-    baseUrl: '/docs',
-    plugins: [pageTreeCodeTitles(), lucideIconsPlugin(), openapiPlugin()],
-  },
-);
+const sources: Record<string, any> = {
+  docs: docs.toSource(),
+};
+
+// Only load OpenAPI source when specs exist (skipped during static export)
+if (hasSpecs) {
+  sources.openapi = await openapiSource(openapi, {
+    baseDir: 'openapi/(generated)',
+  });
+}
+
+export const source = loader(multiple(sources), {
+  baseUrl: '/docs',
+  plugins: [
+    pageTreeCodeTitles(),
+    lucideIconsPlugin(),
+    ...(hasSpecs ? [openapiPlugin()] : []),
+  ],
+});
 
 function pageTreeCodeTitles(): LoaderPlugin {
   return {
