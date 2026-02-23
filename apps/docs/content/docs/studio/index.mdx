@@ -1,0 +1,223 @@
+---
+title: Hanzo Studio
+description: Visual AI engine for image generation, video, 3D, and audio workflows. Node-based editor with CPU/GPU compute profiles and on-demand GPU scaling.
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# Hanzo Studio
+
+Visual AI engine built on [ComfyUI](https://github.com/comfyanonymous/ComfyUI) with enterprise features: IAM authentication, multi-tenant isolation, usage billing, and on-demand GPU scaling via Hanzo Cloud. Available at [studio.hanzo.ai](https://studio.hanzo.ai) or self-hosted via Docker.
+
+```bash title="Quick Start"
+docker pull ghcr.io/hanzoai/studio:latest
+docker run -p 8188:8188 ghcr.io/hanzoai/studio:latest \
+  python main.py --listen 0.0.0.0 --cpu
+# Open http://localhost:8188
+```
+
+## Why Hanzo Studio?
+
+- **Visual Workflows** -- Drag-and-drop node editor for building AI pipelines
+- **GPU on Demand** -- Scale from CPU to T4, V100, A100, or H100 with one API call
+- **Multi-Tenant** -- Per-org storage isolation with IAM authentication
+- **Usage Billing** -- Commerce integration for metered billing per prompt
+- **Worker Mode** -- Distribute execution across multiple GPU machines
+- **Open Source** -- Full ComfyUI compatibility, all custom nodes supported
+
+## Compute Profiles
+
+Each organization gets a compute profile that controls how prompts are executed.
+
+| Profile | Device | GPU Type | Use Case |
+|---------|--------|----------|----------|
+| `cpu` | CPU | -- | Lightweight workflows, testing |
+| `gpu-basic` | CUDA | T4 (16GB) | Image generation, standard models |
+| `gpu-pro` | CUDA | A100 (80GB) | Large models, video, 3D |
+| `custom` | CUDA | Any | Custom instance types |
+
+### Configure via API
+
+```bash title="Enable GPU"
+curl -X PUT https://studio.hanzo.ai/api/compute/config \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "active_profile": "gpu-basic",
+    "gpu_type": "t4",
+    "auto_provision": true
+  }'
+```
+
+```bash title="Check Config"
+curl https://studio.hanzo.ai/api/compute/config \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+```
+
+## GPU Workers
+
+Studio supports distributed execution via worker mode. A coordinator (the main Studio instance) routes prompts to GPU workers based on the compute profile.
+
+### Architecture
+
+```
+Client --prompt--> Coordinator (studio.hanzo.ai)
+                     |
+                     |-- CPU prompt --> local execution
+                     |-- GPU prompt --> Worker (g4dn.xlarge, T4)
+                     |-- GPU prompt --> Worker (p3.2xlarge, V100)
+```
+
+### Provision GPU on Demand
+
+```bash title="Launch GPU Worker"
+curl -X POST https://studio.hanzo.ai/api/compute/provision \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "gpu_type": "t4",
+    "worker_id": "my-gpu-worker"
+  }'
+```
+
+Workers auto-register with the coordinator via heartbeats and become available for prompt routing within 60 seconds.
+
+### Worker Mode (Self-Hosted)
+
+Run a Studio instance as a headless GPU worker:
+
+```bash
+docker run --gpus all -p 8188:8188 \
+  ghcr.io/hanzoai/studio:latest \
+  python main.py \
+    --listen 0.0.0.0 \
+    --worker-mode \
+    --coordinator-url http://your-coordinator:8188 \
+    --worker-id gpu-worker-1
+```
+
+### List Workers
+
+```bash
+curl https://studio.hanzo.ai/api/compute/workers \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+```
+
+## Prompt Routing
+
+When submitting a prompt, include `device_preference` to control routing:
+
+```bash title="Route to GPU"
+curl -X POST https://studio.hanzo.ai/api/prompt \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": { ... },
+    "device_preference": "gpu"
+  }'
+```
+
+| `device_preference` | Behavior |
+|---------------------|----------|
+| `auto` (default) | GPU if enabled in profile, else CPU |
+| `cpu` | Always execute locally on CPU |
+| `gpu` | Route to GPU worker, 503 if none available |
+
+## API Reference
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/compute/config` | Get compute profile |
+| `PUT` | `/api/compute/config` | Update compute profile |
+| `GET` | `/api/compute/workers` | List registered workers |
+| `POST` | `/api/compute/workers/register` | Worker heartbeat |
+| `POST` | `/api/compute/provision` | Launch GPU VM via Visor |
+| `DELETE` | `/api/compute/provision` | Terminate GPU VM |
+| `POST` | `/api/prompt` | Submit workflow prompt |
+| `GET` | `/api/queue` | Get queue status |
+| `GET` | `/api/jobs` | List jobs with filtering |
+| `GET` | `/api/system_stats` | Device and memory info |
+
+## Self-Hosted
+
+### Docker (CPU)
+
+```bash
+docker run -d --name studio \
+  -p 8188:8188 \
+  -v studio-data:/app/user \
+  ghcr.io/hanzoai/studio:latest \
+  python main.py --listen 0.0.0.0 --cpu
+```
+
+### Docker (GPU)
+
+```bash
+docker run -d --name studio --gpus all \
+  -p 8188:8188 \
+  -v studio-data:/app/user \
+  ghcr.io/hanzoai/studio:latest \
+  python main.py --listen 0.0.0.0
+```
+
+### With IAM Auth
+
+```yaml title="compose.yml"
+services:
+  studio:
+    image: ghcr.io/hanzoai/studio:latest
+    ports:
+      - "8188:8188"
+    environment:
+      STUDIO_ENABLE_IAM_AUTH: "true"
+      STUDIO_IAM_URL: "https://hanzo.id"
+      STUDIO_NO_LOCALHOST_BYPASS: "true"
+      STUDIO_MULTI_TENANT: "true"
+      STUDIO_ORG_ID: "my-org"
+    volumes:
+      - studio-data:/app/user
+    command: ["python", "main.py", "--listen", "0.0.0.0", "--cpu"]
+
+volumes:
+  studio-data:
+```
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `STUDIO_ENABLE_IAM_AUTH` | `false` | Enable IAM authentication |
+| `STUDIO_IAM_URL` | `https://hanzo.id` | IAM server URL |
+| `STUDIO_NO_LOCALHOST_BYPASS` | `false` | Require auth even for localhost |
+| `STUDIO_MULTI_TENANT` | `false` | Per-org storage isolation |
+| `STUDIO_ORG_ID` | -- | Default organization ID |
+| `STUDIO_ENABLE_BILLING` | `false` | Enable usage billing |
+| `STUDIO_RATE_LIMIT_RPM` | `60` | Max prompts/minute per org |
+| `STUDIO_ENABLE_METRICS` | `false` | Enable Prometheus `/metrics` |
+| `STUDIO_WORKER_MODE` | `false` | Run as headless worker |
+| `COORDINATOR_URL` | -- | Coordinator URL (worker mode) |
+| `WORKER_ID` | -- | Worker identifier |
+| `VISOR_URL` | `https://visor.hanzo.ai` | Visor API for GPU provisioning |
+
+## Get Started
+
+1. Sign in at [studio.hanzo.ai](https://studio.hanzo.ai) with your Hanzo account
+2. Build a workflow using the visual node editor
+3. Submit prompts -- runs on CPU by default
+4. Upgrade to GPU via the compute config API when you need more power
+
+<Cards>
+  <Card title="LLM Gateway" href="/docs/llm">
+    Unified API proxy for 200+ language models
+  </Card>
+  <Card title="Hanzo Chat" href="/docs/chat">
+    AI chat with Zen models and MCP tools
+  </Card>
+  <Card title="MCP Tools" href="/docs/mcp">
+    Model Context Protocol tool integrations
+  </Card>
+  <Card title="API Reference" href="/docs/openapi">
+    Full OpenAPI specification for all services
+  </Card>
+</Cards>
