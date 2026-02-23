@@ -23,4 +23,9 @@ for service in $SERVICES; do
   fi
 done
 
+# Also sync the unified umbrella spec if it exists
+if [ -f "$OPENAPI_DIR/hanzo.yaml" ]; then
+  cp "$OPENAPI_DIR/hanzo.yaml" "$DOCS_DIR/openapi-specs/hanzo.yaml"
+fi
+
 echo "Synced $(ls "$DOCS_DIR/openapi-specs/"*.yaml 2>/dev/null | wc -l | tr -d ' ') specs"
