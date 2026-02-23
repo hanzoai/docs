@@ -4,14 +4,18 @@ import fs from 'node:fs';
 
 const specsDir = path.resolve('./openapi-specs');
 
-// Auto-discover all specs
+// Load OpenAPI specs when the directory exists (populated by sync-openapi.sh).
+// With projects excluded from the build, the ~780 generated API pages fit
+// comfortably within CI memory limits alongside ~240 MDX pages.
 const specFiles = fs.existsSync(specsDir)
-  ? fs.readdirSync(specsDir)
+  ? fs
+      .readdirSync(specsDir)
       .filter((f: string) => f.endsWith('.yaml'))
       .map((f: string) => path.join(specsDir, f))
-  : [path.resolve('./scalar.yaml')]; // Fallback to example
+  : [];
 
-export const openapi = createOpenAPI({
-  input: specFiles,
-  proxyUrl: '/api/proxy',
-});
+export const hasSpecs = specFiles.length > 0;
+
+export const openapi = hasSpecs
+  ? createOpenAPI({ input: specFiles, proxyUrl: '/api/proxy' })
+  : (null as any);

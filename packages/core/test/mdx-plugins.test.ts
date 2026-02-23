@@ -50,7 +50,8 @@ test('Remark Structure', async () => {
   const result = await remark()
     .use(remarkGfm)
     .use(remarkMdx)
-    .use(remarkStructure, { allowedMdxAttributes: ['title'] })
+    .use(remarkHeading)
+    .use(remarkStructure)
     .process(content);
 
   await expect(JSON.stringify(result.data.structuredData, null, 2)).toMatchFileSnapshot(
@@ -114,7 +115,7 @@ test('Remark Image: `publicDir` with URL', async () => {
   const content = await fs.readFile(path.resolve(cwd, './fixtures/remark-image-public-dir.md'));
   const result = await remark()
     .use(remarkImage, {
-      publicDir: 'https://fumadocs.dev',
+      publicDir: 'https://docs.hanzo.ai',
       useImport: false,
     })
     .use(remarkMdx)

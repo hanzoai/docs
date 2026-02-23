@@ -9,7 +9,7 @@ import { createMethod, methodKeys, type NoReference, type ResolvedSchema } from 
 import { idToTitle } from '@/utils/id-to-title';
 import { Schema } from '../schema';
 import { UsageTabs } from '@/ui/operation/usage-tabs';
-import { MethodLabel } from '@/ui/components/method-label';
+import { Badge, MethodLabel } from '@/ui/components/method-label';
 import { CopyResponseTypeScript, SelectTab, SelectTabs, SelectTabTrigger } from './client';
 import {
   AccordionContent,
@@ -23,6 +23,7 @@ import { cn } from '@/utils/cn';
 import { APIPlayground } from '@/playground';
 import { getExampleRequests, RequestTabs } from './request-tabs';
 import { UsageTabsProviderLazy } from './usage-tabs/lazy';
+import { ServerProviderLazy } from '../contexts/api.lazy';
 
 const ParamTypes = {
   path: 'Path Parameters',
@@ -68,7 +69,7 @@ export async function Operation({
     headingLevel++;
   }
 
-  const contentTypes = body ? Object.entries(body.content) : null;
+  const contentTypes = body?.content ? Object.entries(body.content) : null;
 
   if (body && contentTypes && contentTypes.length > 0) {
     const items = contentTypes.map(([key]) => ({
@@ -138,25 +139,31 @@ export async function Operation({
       <Fragment key={type}>
         {ctx.renderHeading(headingLevel, title)}
         <div className="flex flex-col">
-          {params.map((param) => (
-            <Schema
-              key={param.name}
-              client={{
-                name: param.name,
-                required: param.required,
-              }}
-              root={
-                {
-                  ...param.schema,
-                  description: param.description ?? param.schema?.description,
-                  deprecated: (param.deprecated ?? false) || (param.schema?.deprecated ?? false),
-                } as ResolvedSchema
-              }
-              readOnly={method.method === 'GET'}
-              writeOnly={method.method !== 'GET'}
-              ctx={ctx}
-            />
-          ))}
+          {params.map(
+            (param) =>
+              param.schema != null && (
+                <Schema
+                  key={param.name}
+                  client={{
+                    name: param.name!,
+                    required: param.required,
+                  }}
+                  root={
+                    typeof param.schema === 'object'
+                      ? {
+                          ...param.schema,
+                          description: param.description ?? param.schema?.description,
+                          deprecated:
+                            (param.deprecated ?? false) || (param.schema?.deprecated ?? false),
+                        }
+                      : param.schema
+                  }
+                  readOnly={method.method === 'GET'}
+                  writeOnly={method.method !== 'GET'}
+                  ctx={ctx}
+                />
+              ),
+          )}
         </div>
       </Fragment>
     );
@@ -263,7 +270,7 @@ export async function Operation({
     };
 
     const playgroundEnabled = ctx.playground?.enabled ?? true;
-    const content = await renderOperationLayout(
+    let content = await renderOperationLayout(
       {
         header: headNode,
         description: descriptionNode,
@@ -288,7 +295,7 @@ export async function Operation({
       method,
     );
 
-    return (
+    content = (
       <UsageTabsProviderLazy
         defaultExampleId={method['x-exclusiveCodeSample'] ?? method['x-selectedCodeSample']}
         route={path}
@@ -297,6 +304,11 @@ export async function Operation({
         {content}
       </UsageTabsProviderLazy>
     );
+    if (method.servers) {
+      content = <ServerProviderLazy servers={method.servers}>{content}</ServerProviderLazy>;
+    }
+
+    return content;
   } else {
     renderWebhookLayout ??= (slots) => (
       <div className="flex flex-col-reverse gap-x-6 gap-y-4 @4xl:flex-row @4xl:items-start">
@@ -384,7 +396,7 @@ async function ResponseAccordion({
                       name: 'response',
                       as: 'body',
                     }}
-                    root={schema as ResolvedSchema}
+                    root={schema}
                     readOnly
                     ctx={ctx}
                   />
@@ -443,7 +455,7 @@ function WebhookCallback({
 }
 
 function AuthScheme({
-  scheme: schema,
+  scheme,
   scopes,
   ctx,
 }: {
@@ -451,16 +463,17 @@ function AuthScheme({
   scopes: string[];
   ctx: RenderContext;
 }) {
-  if (schema.type === 'http' || schema.type === 'oauth2') {
+  if (scheme.type === 'http' || scheme.type === 'oauth2') {
     return (
       <AuthProperty
         name="Authorization"
         type={
-          schema.type === 'http' && schema.scheme === 'basic' ? `Basic <token>` : 'Bearer <token>'
+          scheme.type === 'http' && scheme.scheme === 'basic' ? `Basic <token>` : 'Bearer <token>'
         }
+        deprecated={scheme.deprecated}
         scopes={scopes}
       >
-        {schema.description && ctx.renderMarkdown(schema.description)}
+        {scheme.description && ctx.renderMarkdown(scheme.description)}
         <p>
           In: <code>header</code>
         </p>
@@ -468,21 +481,31 @@ function AuthScheme({
     );
   }
 
-  if (schema.type === 'apiKey') {
+  if (scheme.type === 'apiKey') {
     return (
-      <AuthProperty name={schema.name} type="<token>" scopes={scopes}>
-        {schema.description && ctx.renderMarkdown(schema.description)}
+      <AuthProperty
+        name={scheme.name!}
+        type="<token>"
+        deprecated={scheme.deprecated}
+        scopes={scopes}
+      >
+        {scheme.description && ctx.renderMarkdown(scheme.description)}
         <p>
-          In: <code>{schema.in}</code>
+          In: <code>{scheme.in}</code>
         </p>
       </AuthProperty>
     );
   }
 
-  if (schema.type === 'openIdConnect') {
+  if (scheme.type === 'openIdConnect') {
     return (
-      <AuthProperty name="OpenID Connect" type="<token>" scopes={scopes}>
-        {schema.description && ctx.renderMarkdown(schema.description)}
+      <AuthProperty
+        name="OpenID Connect"
+        type="<token>"
+        deprecated={scheme.deprecated}
+        scopes={scopes}
+      >
+        {scheme.description && ctx.renderMarkdown(scheme.description)}
       </AuthProperty>
     );
   }
@@ -491,12 +514,14 @@ function AuthScheme({
 function AuthProperty({
   name,
   type,
+  deprecated = false,
   scopes = [],
   className,
   ...props
 }: ComponentProps<'div'> & {
   name: string;
   type: string;
+  deprecated?: boolean;
   scopes?: string[];
 }) {
   return (
@@ -504,6 +529,7 @@ function AuthProperty({
       <div className="flex flex-wrap items-center gap-3 not-prose">
         <span className="font-medium font-mono text-fd-primary">{name}</span>
         <span className="text-sm font-mono text-fd-muted-foreground">{type}</span>
+        {deprecated && <Badge color="red">Deprecated</Badge>}
       </div>
       <div className="prose-no-margin pt-2.5 empty:hidden">
         {props.children}

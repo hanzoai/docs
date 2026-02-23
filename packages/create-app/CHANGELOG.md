@@ -1,5 +1,25 @@
 # create-next-docs-app
 
+## 16.0.58
+
+## 16.0.57
+
+## 16.0.56
+
+## 16.0.55
+
+## 16.0.54
+
+### Patch Changes
+
+- 0e48cbe: Force CLI update
+
+## 16.0.53
+
+## 16.0.52
+
+## 16.0.51
+
 ## 16.0.50
 
 ## 16.0.49
@@ -40,6 +60,10 @@
 ## 16.0.35
 
 ## 16.0.34
+
+### Patch Changes
+
+- b16a32f: Switch to tsdown for bundling
 
 ## 16.0.33
 

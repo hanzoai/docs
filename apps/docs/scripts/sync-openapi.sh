@@ -15,12 +15,17 @@ fi
 
 mkdir -p "$DOCS_DIR/openapi-specs"
 
-SERVICES="analytics auto bot chat cloud commerce console db dns edge engine flow gateway iam kms kv mq nexus o11y operative paas platform registry search vector visor zt"
+SERVICES="analytics auto bot chat cloud commerce console db did dns edge engine flow gateway guard iam kms kv ml mq nexus o11y operative paas platform pubsub registry s3 search stream vector visor zt"
 
 for service in $SERVICES; do
   if [ -f "$OPENAPI_DIR/$service/openapi.yaml" ]; then
     cp "$OPENAPI_DIR/$service/openapi.yaml" "$DOCS_DIR/openapi-specs/$service.yaml"
   fi
 done
+
+# Also sync the unified umbrella spec if it exists
+if [ -f "$OPENAPI_DIR/hanzo.yaml" ]; then
+  cp "$OPENAPI_DIR/hanzo.yaml" "$DOCS_DIR/openapi-specs/hanzo.yaml"
+fi
 
 echo "Synced $(ls "$DOCS_DIR/openapi-specs/"*.yaml 2>/dev/null | wc -l | tr -d ' ') specs"

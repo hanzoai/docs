@@ -10,7 +10,7 @@ import {
   type ComponentProps,
   useRef,
 } from 'react';
-import { useApiContext } from '@/ui/contexts/api';
+import { useApiContext, useServerContext } from '@/ui/contexts/api';
 import type { FetchResult } from '@/playground/fetcher';
 import type { ParameterField, SecurityEntry } from '@/playground/index';
 import { getStatusInfo } from './status-info';
@@ -142,7 +142,6 @@ export default function PlaygroundClient({
   const storageKeys = useStorageKey();
   const {
     mediaAdapters,
-    serverRef,
     client: {
       playground: {
         components: { ResultDisplay = DefaultResultDisplay } = {},
@@ -151,7 +150,11 @@ export default function PlaygroundClient({
       } = {},
     },
   } = useApiContext();
-  const [securityId, setSecurityId] = useState(0);
+  const { serverRef } = useServerContext();
+  const [securityId, setSecurityId] = useState(() => {
+    const idx = securities.findIndex((s) => s.every((entry) => !entry.deprecated));
+    return idx === -1 ? 0 : idx;
+  });
   const { inputs, mapInputs, initAuthValues } = useAuthInputs(
     securities[securityId],
     transformAuthInputs,
@@ -229,9 +232,10 @@ export default function PlaygroundClient({
   });
 
   useEffect(() => {
-    return () => {
-      stf.dataEngine.reset(defaultValues);
-    };
+    // same object reference = unchanged
+    if (stf.dataEngine.getData() === defaultValues) return;
+
+    stf.dataEngine.reset(defaultValues);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ignore other parts
   }, [defaultValues]);
 
@@ -254,7 +258,7 @@ export default function PlaygroundClient({
             e.preventDefault();
           }}
         >
-          <ServerSelect />
+          <ServerSelect className="border-b" />
           <div className="flex flex-row items-center gap-2 text-sm p-3 not-last:pb-0">
             <MethodLabel>{method}</MethodLabel>
             <Route route={route} className="flex-1" />
@@ -311,7 +315,14 @@ function SecurityTabs({
             <SelectItem key={i} value={i.toString()}>
               {security.map((item) => (
                 <div key={item.id} className="max-w-[600px]">
-                  <p className="font-mono font-medium">{item.id}</p>
+                  <p
+                    className={cn(
+                      'font-mono font-medium',
+                      item.deprecated && 'text-fd-muted-foreground line-through',
+                    )}
+                  >
+                    {item.id}
+                  </p>
                   <p className="text-fd-muted-foreground whitespace-pre-wrap">{item.description}</p>
                 </div>
               ))}
@@ -373,7 +384,7 @@ function FormBody({ parameters = [], body }: Pick<PlaygroundClientProps, 'parame
           }
         >
           {items.map((field) => {
-            const fieldName: FieldKey = [type, field.name];
+            const fieldName: FieldKey = [type, field.name!];
             if (renderParameterField) {
               return renderParameterField(fieldName, field);
             }
@@ -572,7 +583,7 @@ function useAuthInputs(
           ),
         });
       } else if (security.type === 'apiKey') {
-        const fieldName: FieldKey = [security.in, security.name];
+        const fieldName: FieldKey = [security.in!, security.name!];
 
         result.push({
           fieldName,

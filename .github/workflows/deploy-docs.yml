@@ -23,7 +23,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
@@ -38,12 +38,28 @@ jobs:
           sudo swapon /swapfile
           free -h
 
-      - run: pnpm build --filter=docs
+      # Build all workspace packages first (turbo handles deps)
+      - name: Build packages
+        run: pnpm build --filter=docs^...
+        env:
+          NODE_OPTIONS: '--max-old-space-size=16384'
+        timeout-minutes: 30
+
+      # Run opennextjs-cloudflare build (calls our buildCommand from open-next.config.ts)
+      - name: Build for Cloudflare
+        working-directory: apps/docs
+        run: npx opennextjs-cloudflare build
         env:
           NODE_OPTIONS: '--max-old-space-size=16384'
         timeout-minutes: 60
 
-      - run: npx wrangler pages deploy apps/docs/out --project-name=hanzo-docs --commit-dirty=true
+      # Deploy to CF Workers (hanzo-docs-app)
+      - name: Deploy Worker
+        working-directory: apps/docs
+        run: |
+          npx wrangler deploy
+          echo "$HANZO_API_KEY" | npx wrangler secret put HANZO_API_KEY --name hanzo-docs-app
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          HANZO_API_KEY: ${{ secrets.HANZO_API_KEY }}
