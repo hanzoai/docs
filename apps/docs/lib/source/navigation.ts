@@ -13,7 +13,6 @@ export function getSection(path: string | undefined) {
       mcp: 'mcp',
       dev: 'dev',
       zap: 'zap',
-      projects: 'projects',
     }[dir] ?? 'services'
   );
 }
