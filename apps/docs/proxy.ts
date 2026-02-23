@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isMarkdownPreferred, rewritePath } from '@hanzo/docs/core/negotiation';
 
+// Required for @opennextjs/cloudflare — proxy must run on edge, not Node.js.
+export const runtime = 'edge';
+
 const { rewrite: rewriteLLM } = rewritePath('/docs/*path', '/llms.mdx/*path');
 
 const DEFAULT_HOST_SUFFIX = 'docs.hanzo.ai';
