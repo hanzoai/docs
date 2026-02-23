@@ -38,13 +38,22 @@ jobs:
           sudo swapon /swapfile
           free -h
 
-      # Build with opennextjs-cloudflare (produces .open-next/ for Workers)
-      - run: pnpm build --filter=docs
+      # Build all workspace packages first (turbo handles deps)
+      - name: Build packages
+        run: pnpm build --filter=docs^...
+        env:
+          NODE_OPTIONS: '--max-old-space-size=16384'
+        timeout-minutes: 30
+
+      # Run opennextjs-cloudflare build (calls our buildCommand from open-next.config.ts)
+      - name: Build for Cloudflare
+        working-directory: apps/docs
+        run: npx opennextjs-cloudflare build
         env:
           NODE_OPTIONS: '--max-old-space-size=16384'
         timeout-minutes: 60
 
-      # Deploy to CF Workers (hanzo-docs-app) — has API routes / functions
+      # Deploy to CF Workers (hanzo-docs-app)
       - name: Deploy Worker
         working-directory: apps/docs
         run: |
