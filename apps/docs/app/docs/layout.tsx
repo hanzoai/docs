@@ -19,7 +19,7 @@ export default function Layout({ children }: LayoutProps<'/docs'>) {
         {...base}
         tree={source.getPageTree()}
         links={[
-          ...linkItems.filter((item) => item.type === 'icon'),
+          ...linkItems,
           {
             type: 'custom',
             on: 'nav',
