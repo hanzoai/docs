@@ -49,6 +49,16 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
 
   if (page.data.type === 'openapi') {
     const { APIPage } = await import('@/components/api-page');
+    if (!APIPage) {
+      return (
+        <DocsPage full>
+          <h1 className="text-[1.75em] font-semibold">{page.data.title}</h1>
+          <DocsBody>
+            <p className="text-fd-muted-foreground">API reference is not available during static export.</p>
+          </DocsBody>
+        </DocsPage>
+      );
+    }
     return (
       <DocsPage full>
         <h1 className="text-[1.75em] font-semibold">{page.data.title}</h1>
