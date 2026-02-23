@@ -1,10 +1,9 @@
-import Slugger from 'github-slugger';
-import type { Nodes, Root } from 'mdast';
+import type { Heading, Link, Nodes, Root } from 'mdast';
 import { remark } from 'remark';
 import remarkGfm from 'remark-gfm';
 import type { PluggableList, Processor, Transformer } from 'unified';
 import { visit } from 'unist-util-visit';
-import { flattenNode, toMdxExport } from './mdast-utils';
+import { toMdxExport } from './mdast-utils';
 import {
   mdxToMarkdown,
   type MdxJsxAttribute,
@@ -12,47 +11,96 @@ import {
   type MdxJsxFlowElement,
   type MdxJsxTextElement,
 } from 'mdast-util-mdx';
-import { type Handle, toMarkdown } from 'mdast-util-to-markdown';
+import { type Handle, type Options, toMarkdown } from 'mdast-util-to-markdown';
+import { remarkHeading } from './remark-heading';
 
-interface Heading {
+interface StructuredDataHeading {
   id: string;
   content: string;
 }
 
-interface Content {
+interface StructuredDataContent {
   heading: string | undefined;
   content: string;
 }
 
 export interface StructuredData {
-  headings: Heading[];
+  headings: StructuredDataHeading[];
   /**
    * Refer to paragraphs, a heading may contain multiple contents as well
    */
-  contents: Content[];
+  contents: StructuredDataContent[];
+}
+
+type Stringifier = (this: Processor, node: Nodes, ctx: StringifierContext) => string;
+
+interface StringifierContext {
+  addContent: (...content: StructuredDataContent[]) => void;
+}
+
+export interface StringifyOptions {
+  /**
+   * Filter the elements to be included in the output:
+   *
+   * - `true`: include element & its children.
+   * - `children-only`: exclude element but keep its children.
+   * - `false`: exclude element & its children.
+   *
+   * Default:
+   *
+   * ```ts
+   * filterElement = (node) => {
+   *   switch (node.type) {
+   *     case 'mdxJsxFlowElement':
+   *     case 'mdxJsxTextElement':
+   *       switch (node.name) {
+   *         case 'File':
+   *         case 'TypeTable':
+   *         case 'Callout':
+   *         case 'Card':
+   *           return true;
+   *       }
+   *       return 'children-only';
+   *   }
+   *
+   *   return true;
+   * },
+   * ```
+   */
+  filterElement?: (node: Nodes) => boolean | 'children-only';
+
+  /**
+   * Filter the attributes to stringify.
+   */
+  filterMdxAttributes?: (
+    node: MdxJsxFlowElement | MdxJsxTextElement,
+    attribute: MdxJsxAttribute | MdxJsxExpressionAttribute,
+  ) => boolean;
 }
 
 export interface StructureOptions {
   /**
-   * MDAST **block** types to be scanned as content.
+   * MDAST node types to be scanned as a content block.
    *
-   * If a node's type is represented in this array, it will be stringified and its children will not be scanned.
+   * If a node's type is listed in this array, it will be converted into a single content block.
    *
    * @defaultValue ['heading', 'paragraph', 'blockquote', 'tableCell', 'mdxJsxFlowElement']
    */
   types?: string[] | ((node: Nodes) => boolean);
 
   /**
-   * stringify a given node & its children, you can use something like `mdast-util-to-markdown`.
+   * stringify text content from a MDAST node.
    */
-  stringify?: (this: Processor, node: Nodes) => string;
+  stringify?: Stringifier | StringifyOptions;
 
   /**
-   * By default, it will not index MDX attributes. You can define a list of MDX attributes to index, either:
+   * Whether the MDX element should be treated as a single content block, only effective if `types` has `mdxJsxFlowElement`.
    *
-   * - an array of attribute names.
-   * - a function that determines if attribute should be indexed.
+   * Default: return `true` if the element is a leaf node, otherwise `false`.
    */
+  mdxTypes?: (node: MdxJsxFlowElement | MdxJsxTextElement) => boolean;
+
+  /** @deprecated use `stringify.filterMdxAttributes` instead */
   allowedMdxAttributes?:
     | string[]
     | ((
@@ -69,16 +117,23 @@ export interface StructureOptions {
 declare module 'mdast' {
   interface Data {
     /**
-     * [Hanzo Docs] Get content of unserializable element, `remarkStructure` uses it to generate search index.
+     * [Fumadocs: remark-structure] The stringified form of node for generating search index.
      */
-    _string?: string[];
+    _string?: string | (() => string);
+
+    /**
+     * [Fumadocs: remark-structure] Items to add to the structured data.
+     */
+    structuredData?: {
+      contents: StructuredDataContent[];
+    };
   }
 }
 
 declare module 'vfile' {
   interface DataMap {
     /**
-     * [Hanzo Docs] injected by `remarkStructure`
+     * [Fumadocs: remark-structure] output data.
      */
     structuredData: StructuredData;
   }
@@ -86,14 +141,8 @@ declare module 'vfile' {
 
 export const remarkStructureDefaultOptions = {
   types: ['heading', 'paragraph', 'blockquote', 'tableCell', 'mdxJsxFlowElement'],
-  allowedMdxAttributes(node) {
-    switch (node.name) {
-      case 'TypeTable':
-      case 'Callout':
-        return true;
-      default:
-        return false;
-    }
+  mdxTypes(node) {
+    return !node.children || node.children.length === 0;
   },
   exportAs: false,
 } satisfies StructureOptions;
@@ -107,53 +156,33 @@ export function remarkStructure(
   this: Processor,
   {
     types = remarkStructureDefaultOptions.types,
-    stringify,
-    allowedMdxAttributes = remarkStructureDefaultOptions.allowedMdxAttributes,
+    mdxTypes = remarkStructureDefaultOptions.mdxTypes,
+    stringify: stringifyOptions,
+    allowedMdxAttributes,
     exportAs = remarkStructureDefaultOptions.exportAs,
   }: StructureOptions = {},
 ): Transformer<Root, Root> {
-  const slugger = new Slugger();
-
-  if (Array.isArray(allowedMdxAttributes)) {
-    const arr = allowedMdxAttributes;
-    allowedMdxAttributes = (_node, attribute) =>
-      attribute.type === 'mdxJsxAttribute' && arr.includes(attribute.name);
-  }
-
   if (Array.isArray(types)) {
     const arr = types;
     types = (node) => arr.includes(node.type);
   }
 
-  stringify ??= (root) => {
-    const { mdxJsxFlowElement } = mdxToMarkdown({ tightSelfClosing: true }).extensions![1]
-      .handlers!;
-    const wrapper: Handle = (node: MdxJsxFlowElement | MdxJsxTextElement, ...rest) => {
-      const originalAttributes = node.attributes;
-      if (allowedMdxAttributes)
-        node.attributes = node.attributes.filter((attr) => allowedMdxAttributes(node, attr));
-      const s = mdxJsxFlowElement!(node, ...rest);
-      node.attributes = originalAttributes;
-      return s;
-    };
-
-    return toMarkdown(root, {
-      ...this.data('settings'),
-      // from https://github.com/remarkjs/remark/blob/main/packages/remark-stringify/lib/index.js
-      extensions: this.data('toMarkdownExtensions') ?? [],
-      handlers: {
-        mdxJsxFlowElement: wrapper,
-        mdxJsxTextElement: wrapper,
-      },
-    });
-  };
-
+  const stringify =
+    typeof stringifyOptions === 'function'
+      ? stringifyOptions
+      : defaultStringifier({
+          filterMdxAttributes: Array.isArray(allowedMdxAttributes)
+            ? (_node, attribute) =>
+                attribute.type === 'mdxJsxAttribute' &&
+                allowedMdxAttributes.includes(attribute.name)
+            : allowedMdxAttributes,
+          ...stringifyOptions,
+        });
   return (tree, file) => {
-    slugger.reset();
     const data: StructuredData = { contents: [], headings: [] };
     let lastHeading: string | undefined;
 
-    // Hanzo Docs OpenAPI Generated Structured Data
+    // Fumadocs OpenAPI Generated Structured Data
     if (file.data.frontmatter) {
       const frontmatter = file.data.frontmatter as {
         _openapi?: {
@@ -161,43 +190,55 @@ export function remarkStructure(
         };
       };
 
-      if (frontmatter._openapi?.structuredData) {
-        data.headings.push(...frontmatter._openapi.structuredData.headings);
-        data.contents.push(...frontmatter._openapi.structuredData.contents);
+      const openapiData = frontmatter._openapi?.structuredData;
+      if (openapiData) {
+        data.headings.push(...openapiData.headings);
+        data.contents.push(...openapiData.contents);
       }
     }
 
-    visit(tree, (element) => {
-      if (element.type === 'root' || !types(element)) return;
-
-      if (element.type === 'heading') {
-        element.data ||= {};
-        element.data.hProperties ||= {};
-        const properties = element.data.hProperties;
-        const content = flattenNode(element).trim();
-        const id = properties.id ?? slugger.slug(content);
-
-        data.headings.push({
-          id,
-          content,
-        });
-
-        lastHeading = id;
-        return 'skip';
-      }
-
-      if (element.data?._string) {
-        for (const content of element.data._string) {
-          data.contents.push({
-            heading: lastHeading,
-            content,
-          });
+    const stringifierCtx: StringifierContext = {
+      addContent(...content) {
+        for (const item of content) {
+          data.contents.push({ ...item, heading: item.heading ?? lastHeading });
         }
+      },
+    };
 
-        return 'skip';
+    visit(tree, (element) => {
+      if (!types(element)) return;
+      switch (element.type) {
+        case 'root':
+          return;
+        case 'mdxJsxFlowElement':
+        case 'mdxJsxTextElement':
+          if (!mdxTypes(element)) return;
+          break;
+        case 'heading': {
+          element.data ||= {};
+          element.data.hProperties ||= {};
+          const id = element.data.hProperties.id;
+          if (typeof id !== 'string') {
+            console.warn(
+              '[remark-structure] hProperties.id is missing in heading node, it is required to generate heading data. You can add remark-heading prior to remark-structure to generate heading IDs.',
+            );
+            return 'skip';
+          }
+
+          const content = stringify.call(this, element, stringifierCtx).trim();
+          if (content.length > 0) {
+            data.headings.push({
+              id,
+              content,
+            });
+          }
+
+          lastHeading = id;
+          return 'skip';
+        }
       }
 
-      const content = stringify.call(this, element).trim();
+      const content = stringify.call(this, element, stringifierCtx).trim();
       if (content.length > 0) {
         data.contents.push({
           heading: lastHeading,
@@ -228,8 +269,120 @@ export function structure(
   const result = remark()
     .use(remarkGfm)
     .use(remarkPlugins)
+    .use(remarkHeading)
     .use(remarkStructure, options)
     .processSync(content);
 
   return result.data.structuredData!;
+}
+
+interface CustomRootNode {
+  type: '_custom';
+  root: Nodes;
+  ctx: StringifierContext;
+}
+
+export function defaultStringifier(config: Options & StringifyOptions = {}): Stringifier {
+  const {
+    filterMdxAttributes,
+    filterElement = (node) => {
+      switch (node.type) {
+        case 'mdxJsxFlowElement':
+        case 'mdxJsxTextElement':
+          switch (node.name) {
+            case 'File':
+            case 'TypeTable':
+            case 'Callout':
+            case 'Card':
+              return true;
+          }
+          return 'children-only';
+      }
+
+      return true;
+    },
+    ...customExtension
+  } = config;
+
+  function modHandler(handler: Handle, ctx: StringifierContext): Handle {
+    return function (node: Nodes, parent, state, info) {
+      if (node.data?.structuredData) ctx.addContent(...node.data.structuredData.contents);
+      if (node.data?._string)
+        return typeof node.data._string === 'function' ? node.data._string() : node.data._string;
+      const visibility = filterElement(node);
+
+      if (visibility === false) return '';
+
+      switch (node.type) {
+        case 'mdxJsxFlowElement':
+        case 'mdxJsxTextElement': {
+          if (visibility === 'children-only') {
+            return node.type === 'mdxJsxTextElement'
+              ? state.containerPhrasing(node, info)
+              : state.containerFlow(node, info);
+          }
+
+          const stringifiedAttributes: MdxJsxAttribute[] = [];
+          for (const attr of node.attributes) {
+            if (attr.type === 'mdxJsxExpressionAttribute') continue;
+            if (filterMdxAttributes && !filterMdxAttributes(node, attr)) continue;
+            const str = typeof attr.value === 'string' ? attr.value : attr.value?.value;
+            if (!str) continue;
+
+            stringifiedAttributes.push({
+              ...attr,
+              value: str,
+            });
+          }
+
+          const temp = node.attributes;
+          node.attributes = stringifiedAttributes;
+          const s = handler(node, parent, state, info);
+          node.attributes = temp;
+          return s;
+        }
+        default:
+          if (visibility === 'children-only')
+            return 'children' in node
+              ? state.containerFlow({ type: 'root', children: node.children }, info)
+              : '';
+
+          return handler(node, parent, state, info);
+      }
+    };
+  }
+
+  const customToMarkdown: Options = {
+    handlers: {
+      link(node: Link, _, state, info) {
+        return state.containerPhrasing(node, info);
+      },
+      heading(node: Heading, _, state, info) {
+        return state.containerPhrasing(node, info);
+      },
+      image() {
+        return '';
+      },
+      _custom(node: CustomRootNode, _, state, info) {
+        const handlers: Record<string, Handle> = state.handlers;
+        for (const k in handlers) {
+          handlers[k] = modHandler(handlers[k], node.ctx);
+        }
+
+        return state.handle(node.root, undefined, state, info);
+      },
+    } as Record<string, Handle>,
+  };
+
+  return function (root, ctx) {
+    return toMarkdown({ type: '_custom', root, ctx } satisfies CustomRootNode as never, {
+      ...this.data('settings'),
+      extensions: [
+        mdxToMarkdown(),
+        ...(this.data('toMarkdownExtensions') ?? []),
+        customToMarkdown,
+        customExtension,
+      ],
+    });
+  };
 }

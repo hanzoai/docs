@@ -18,7 +18,7 @@ export interface EncodedParameterMultiple {
 export function encodeRequestData(
   from: RawRequestData,
   adapters: Record<string, MediaAdapter>,
-  parameters: NoReference<ParameterObject>[],
+  parameters: NoReference<ParameterObject>[] = [],
 ): RequestData {
   const result: RequestData = {
     method: from.method,
@@ -110,13 +110,13 @@ function serializePathParameter(
   switch (field.style) {
     case 'label':
       if (Array.isArray(value)) {
-        output[field.name] = {
+        output[field.name!] = {
           value: '.' + value.join(explode ? '.' : ','),
         };
         break;
       }
       if (typeof value === 'object') {
-        output[field.name] = {
+        output[field.name!] = {
           value:
             '.' +
             (explode
@@ -127,7 +127,7 @@ function serializePathParameter(
         };
         break;
       }
-      output[field.name] = {
+      output[field.name!] = {
         value: `.${value}`,
       };
       break;
@@ -135,7 +135,7 @@ function serializePathParameter(
       const specifier = `;${name}=`;
 
       if (Array.isArray(value)) {
-        output[field.name] = {
+        output[field.name!] = {
           value: explode
             ? `${specifier}${value.join(',')}`
             : `${specifier}${value.join(specifier)}`,
@@ -143,7 +143,7 @@ function serializePathParameter(
         break;
       }
       if (typeof value === 'object') {
-        output[field.name] = {
+        output[field.name!] = {
           value: explode
             ? Object.entries(value)
                 .map(([k, v]) => `;${k}=${v}`)
@@ -153,14 +153,14 @@ function serializePathParameter(
         break;
       }
 
-      output[field.name] = {
+      output[field.name!] = {
         value: `${specifier}${value}`,
       };
       break;
     }
     // simple
     default:
-      output[field.name] = {
+      output[field.name!] = {
         value: serializeSimple(value, explode),
       };
   }
@@ -172,62 +172,58 @@ function serializeQueryParameter(
   // write output
   output: Record<string, EncodedParameterMultiple>,
 ): void {
-  const { explode = true } = field;
+  const { style, explode = true } = field;
 
-  switch (field.style) {
-    case 'spaceDelimited':
-      if (!explode && Array.isArray(value)) {
-        output[field.name] = {
-          values: [value.join(' ')],
-        };
-        break;
-      }
-    case 'pipeDelimited':
-      if (!explode && Array.isArray(value)) {
-        output[field.name] = {
-          values: [value.join('|')],
-        };
-        break;
-      }
-    case 'deepObject':
-      if (!Array.isArray(value) && typeof value === 'object') {
-        for (const [k, v] of Object.entries(value)) {
-          output[`${field.name}[${k}]`] = {
-            // note: the behaviour of nested array is undefined, we do this to avoid edge cases
-            values: Array.isArray(v) ? v : [String(v)],
-          };
-        }
-        break;
-      }
-    // form
-    default:
-      if (Array.isArray(value)) {
-        output[field.name] = {
-          values: explode ? value : [value.join(',')],
-        };
-        break;
-      }
-
-      if (typeof value === 'object' && explode) {
-        for (const [k, v] of Object.entries(value)) {
-          output[k] = {
-            values: [String(v)],
-          };
-        }
-        break;
-      }
-
-      if (typeof value === 'object') {
-        output[field.name] = {
-          values: [Object.entries(value).flat().join(',')],
-        };
-        break;
-      }
-
-      output[field.name] = {
-        values: [String(value)],
-      };
+  if (style === 'spaceDelimited' && !explode && Array.isArray(value)) {
+    output[field.name!] = {
+      values: [value.join(' ')],
+    };
+    return;
   }
+
+  if (style === 'pipeDelimited' && !explode && Array.isArray(value)) {
+    output[field.name!] = {
+      values: [value.join('|')],
+    };
+    return;
+  }
+
+  if (style === 'deepObject' && !Array.isArray(value) && typeof value === 'object') {
+    for (const [k, v] of Object.entries(value)) {
+      output[`${field.name}[${k}]`] = {
+        // note: the behaviour of nested array is undefined, we do this to avoid edge cases
+        values: Array.isArray(v) ? v : [String(v)],
+      };
+    }
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    output[field.name!] = {
+      values: explode ? value : [value.join(',')],
+    };
+    return;
+  }
+
+  if (typeof value === 'object' && explode) {
+    for (const [k, v] of Object.entries(value)) {
+      output[k] = {
+        values: [String(v)],
+      };
+    }
+    return;
+  }
+
+  if (typeof value === 'object') {
+    output[field.name!] = {
+      values: [Object.entries(value).flat().join(',')],
+    };
+    return;
+  }
+
+  output[field.name!] = {
+    values: [String(value)],
+  };
 }
 
 function serializeCookieParameter(
@@ -240,7 +236,7 @@ function serializeCookieParameter(
 
   // form
   if (Array.isArray(value)) {
-    output[field.name] = {
+    output[field.name!] = {
       value: explode ? value.map((v) => `${field.name}=${v}`).join('&') : value.join(','),
     };
   } else if (typeof value === 'object' && explode) {
@@ -250,11 +246,11 @@ function serializeCookieParameter(
       };
     }
   } else if (typeof value === 'object') {
-    output[field.name] = {
+    output[field.name!] = {
       value: Object.entries(value).flat().join(','),
     };
   } else {
-    output[field.name] = {
+    output[field.name!] = {
       value: String(value),
     };
   }
