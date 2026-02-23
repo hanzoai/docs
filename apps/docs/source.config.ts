@@ -18,11 +18,9 @@ const isExport = process.env.NEXT_EXPORT === '1';
 
 export const docs = defineDocs({
   docs: {
-    // During static export, exclude heavy upstream API reference pages
-    // (1,200+ auto-generated files) to keep memory within CI limits.
-    ...(isExport
-      ? { files: ['**/*.mdx', '!**/projects/*/api-reference/**', '!**/projects/*/*/api-reference/**'] }
-      : {}),
+    // Exclude projects directory entirely — 2,361 upstream project docs
+    // are too heavy for static export and no longer in the platform nav.
+    files: ['**/*.mdx', '!**/projects/**'],
     schema: pageSchema.extend({
       preview: z.string().optional(),
       index: z.boolean().default(false),
