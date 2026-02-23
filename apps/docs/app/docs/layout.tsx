@@ -2,11 +2,9 @@ import { DocsLayout } from '@hanzo/docs-base-ui/layouts/docs';
 import { baseOptions, linkItems, logo } from '@/components/layouts/shared';
 import { source } from '@/lib/source';
 import { AISearch, AISearchPanel, AISearchTrigger } from '@/components/ai/search';
-import { getSection } from '@/lib/source/navigation';
 import { MessageCircleIcon } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
-import { ProjectSwitcher } from '@/components/projects/project-switcher';
 import { AuthButtons } from '@/components/auth-buttons';
 import { TryHanzoDropdown } from '@/components/try-hanzo-dropdown';
 import { Footer } from '@/components/footer';
@@ -41,32 +39,6 @@ export default function Layout({ children }: LayoutProps<'/docs'>) {
               <span className="font-medium max-md:hidden">Hanzo</span>
             </>
           ),
-        }}
-        sidebar={{
-          banner: <ProjectSwitcher />,
-          tabs: {
-            transform(option, node) {
-              const meta = source.getNodeMeta(node);
-              if (!meta || !node.icon) return option;
-              const color = `var(--${getSection(meta.path)}-color, var(--color-fd-foreground))`;
-
-              return {
-                ...option,
-                icon: (
-                  <div
-                    className="[&_svg]:size-full rounded-lg size-full text-(--tab-color) max-md:bg-(--tab-color)/10 max-md:border max-md:p-1.5"
-                    style={
-                      {
-                        '--tab-color': color,
-                      } as object
-                    }
-                  >
-                    {node.icon}
-                  </div>
-                ),
-              };
-            },
-          },
         }}
       >
         {children}
