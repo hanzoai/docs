@@ -170,7 +170,7 @@ export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): P
       title: 'Not Found',
     });
 
-  const description = page.data.description ?? 'The library for building documentation sites';
+  const description = page.data.description ?? 'Hanzo AI Cloud documentation';
 
   const image = {
     url: getPageImage(page).url,
