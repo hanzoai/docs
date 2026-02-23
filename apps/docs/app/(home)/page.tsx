@@ -65,7 +65,7 @@ const zenModels = [
 const products = [
   {
     name: 'Cloud',
-    tagline: 'LLM Gateway — 200+ models',
+    tagline: 'Unified LLM gateway',
     href: '/docs/services/cloud',
     icon: Cloud,
     color: '#fd4444',
@@ -79,7 +79,7 @@ const products = [
   },
   {
     name: 'Bot',
-    tagline: '743+ skills, 35 channels',
+    tagline: 'Multi-channel AI assistant',
     href: '/docs/services/bot',
     icon: Bot,
     color: '#10b981',
@@ -114,7 +114,7 @@ const products = [
   },
 ];
 
-/* ── All 33 services ─────────────────────────────────────────────── */
+/* ── All services ────────────────────────────────────────────────── */
 
 const serviceGroups = [
   {
@@ -122,10 +122,10 @@ const serviceGroups = [
     color: '#fd4444',
     icon: BrainCircuit,
     services: [
-      { name: 'Cloud', desc: 'LLM gateway, 200+ models', href: '/docs/services/cloud' },
+      { name: 'Cloud', desc: 'Unified LLM gateway', href: '/docs/services/cloud' },
       { name: 'Chat', desc: 'Multi-model AI chat', href: '/docs/services/chat' },
       { name: 'Search', desc: 'AI search & generative UI', href: '/docs/services/search' },
-      { name: 'Bot', desc: '743+ skills assistant', href: '/docs/services/bot' },
+      { name: 'Bot', desc: 'Multi-channel assistant', href: '/docs/services/bot' },
       { name: 'Nexus', desc: 'Agent orchestration', href: '/docs/services/nexus' },
       { name: 'Vector', desc: 'Embeddings & RAG', href: '/docs/services/vector' },
       { name: 'ML', desc: 'MLOps & model registry', href: '/docs/services/ml' },
@@ -147,7 +147,7 @@ const serviceGroups = [
     icon: Shield,
     services: [
       { name: 'IAM', desc: 'Identity & SSO', href: '/docs/services/iam' },
-      { name: 'Identity', desc: 'User profiles & directories', href: '/docs/services/identity' },
+      { name: 'DID', desc: 'Decentralized identity', href: '/docs/services/did' },
       { name: 'Commerce', desc: 'Headless commerce', href: '/docs/services/commerce' },
       { name: 'Gateway', desc: 'API routing', href: '/docs/services/gateway' },
       { name: 'Guard', desc: 'AI safety & PII redaction', href: '/docs/services/guard' },
@@ -196,7 +196,7 @@ export default function Page() {
       <section className="relative flex flex-col items-center text-center mx-auto w-full max-w-[1400px] px-6 pt-20 pb-16 md:pt-28 md:pb-20">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(253,68,68,0.08),transparent_70%)]" />
         <p className="relative text-xs text-[#fd4444] font-mono tracking-widest uppercase mb-6">
-          One API &middot; 33 Services &middot; 44 Models
+          Decentralized AI Cloud
         </p>
         <h1 className="relative text-5xl font-bold tracking-tight leading-[1.1] xl:text-6xl">
           Hanzo AI Cloud
@@ -343,10 +343,10 @@ print(response.choices[0].message.content)`}
           </div>
         </section>
 
-        {/* ── All 33 Services ─────────────────────────────────── */}
+        {/* ── All Services ────────────────────────────────────── */}
         <section>
           <h2 className="text-2xl font-bold tracking-tight mb-2">
-            33 Services
+            Services
           </h2>
           <p className="text-[#a3a3a3] text-sm mb-6">
             Everything at <code className="text-[#fd4444] text-xs">api.hanzo.ai</code>
