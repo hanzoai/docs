@@ -20,8 +20,12 @@ var shikiConfig = {
 import { metaSchema, pageSchema } from "@hanzo/docs-core/source/schema";
 import { visit } from "unist-util-visit";
 var isLint = process.env.LINT === "1";
+var isExport = process.env.NEXT_EXPORT === "1";
 var docs = defineDocs({
   docs: {
+    // Exclude projects directory entirely — 2,361 upstream project docs
+    // are too heavy for static export and no longer in the platform nav.
+    files: ["**/*.mdx", "!**/projects/**"],
     schema: pageSchema.extend({
       preview: z.string().optional(),
       index: z.boolean().default(false),
@@ -89,6 +93,7 @@ var docs = defineDocs({
           }
         },
         remarkPlugins: isLint ? [remarkElementIds] : [
+          remarkPassthroughUnknownJsx,
           remarkSteps,
           remarkMath,
           [remarkFeedbackBlock, feedbackOptions],
@@ -102,7 +107,11 @@ var docs = defineDocs({
   meta: {
     schema: metaSchema.extend({
       description: z.string().optional()
-    })
+    }),
+    // Only pick up actual meta files — the default **/*.{json,yaml} pattern
+    // also matches data files (openapi.json, package.json, etc.) which then
+    // get processed through the MDX loader and corrupt the build.
+    files: ["**/meta.json", "**/meta.yaml"]
   }
 });
 var blog = defineCollections({
@@ -153,6 +162,20 @@ function transformerEscape() {
       replace(hast);
       return hast;
     }
+  };
+}
+function remarkPassthroughUnknownJsx() {
+  return (tree, file) => {
+    const filePath = file.path ?? file.history[0] ?? "";
+    if (!filePath.includes("content/docs/projects/") && !filePath.includes("content\\docs\\projects\\")) {
+      return;
+    }
+    visit(tree, ["mdxJsxFlowElement", "mdxJsxTextElement"], (node) => {
+      if (!node.name) return;
+      if (!/^[A-Z]/.test(node.name)) return;
+      node.name = null;
+      node.attributes = [];
+    });
   };
 }
 function remarkElementIds() {
