@@ -15,22 +15,23 @@ and exposes installable skills and automation integrations out of the box.
 **Console:** [app.hanzo.bot](https://app.hanzo.bot)
 **Skills Browser:** [skills.hanzo.bot](https://skills.hanzo.bot)
 **Gateway API:** `api.hanzo.ai/v1/bot/*`
-**Package:** `@hanzo/bot` on npm
+**Package:** `@hanzo/bot` on npm (MIT license, requires Node >= 22.12.0, pnpm >= 10.23.0)
 **CLI Binary:** `hanzo-bot`
 
 ---
 
 ## Features
 
-- **Skills Library** -- Community-contributed skill packages covering code generation, data analysis, web scraping, DevOps, design, writing, research, and more.
+- **Skills Catalog** -- Community-contributed skill packages covering productivity, development, messaging, media, AI model access, home automation, health, and more. Browse at [skills.hanzo.bot](https://skills.hanzo.bot).
 - **10 Team Presets** -- Pre-configured AI personas (Vi, Dev, Des, Opera, Su, Mark, Fin, Art, Three, Fil) auto-provisioned per workspace.
-- **35+ Channel Adapters** -- Telegram, Discord, Slack, iMessage, WhatsApp, Signal, Matrix, IRC, MS Teams, Nostr, Line, Google Chat, Feishu, Mattermost, Nextcloud Talk, Twitch, Zalo, and more.
+- **18 Channel Adapters** -- Discord, Slack, Telegram, WhatsApp (Baileys), Signal, Matrix, iMessage (BlueBubbles), MS Teams, IRC, Nostr, Feishu/Lark, Google Chat, Mattermost, LINE, Twitch, Zalo, Nextcloud Talk, Tlon.
+- **20+ LLM Providers** -- Anthropic, OpenAI, Google Gemini, GitHub Copilot, AWS Bedrock, HuggingFace, OpenRouter, Together AI, Venice, Ollama, vLLM, MiniMax, Xiaomi, Moonshot/Kimi, Qwen, Zai, AI Gateway, Cloudflare AI Gateway, LocalAI, Synthetic, and more.
 - **Automation Integrations** -- ActivePieces-based flow connectors for third-party services.
-- **Plugin SDK** -- `@hanzo/bot-*` scoped packages for extending bot capabilities with custom channels, tools, and skills.
-- **Multi-Model Support** -- Route conversations to any LLM provider via the Hanzo LLM Gateway (Claude, GPT, Qwen3, Gemini, Llama, and more).
+- **Plugin SDK** -- `@hanzo/bot/plugin-sdk` for extending bot capabilities with custom channels, tools, and skills.
 - **MCP Tool Integration** -- Connect Model Context Protocol tools directly to bot agents for rich tool use.
-- **mDNS Service Discovery** -- Local network discovery via `bot-gw` Bonjour/mDNS service type.
-- **DID and Wallet Identity** -- Each agent gets a W3C DID (`did:hanzo:<id>`) and an on-chain Safe wallet.
+- **mDNS Service Discovery** -- Local network discovery via `_bot-gw._tcp` Bonjour/mDNS service type.
+- **DID and Wallet Identity** -- Each agent gets a W3C DID (`did:hanzo:<id>`) and an on-chain Safe wallet on Hanzo Network (chain 36963).
+- **Native Apps** -- macOS (SwiftUI), iOS (SwiftUI), Android (Gradle) clients alongside the web interface.
 - **Embeddable Chat Widget** -- Drop-in `embed.js` script for adding bot chat to any website.
 - **Tiered Runtime** -- From free shared gateway to dedicated EC2 Mac instances, scaling on demand.
 
@@ -40,13 +41,15 @@ and exposes installable skills and automation integrations out of the box.
 
 ```
 hanzo-bot (CLI)
-+-- Gateway (WebSocket :18789, OpenAI-compatible HTTP)
-|   +-- Auth (token / password / API key / Tailscale / local)
-|   +-- 80+ RPC methods, event streaming
-+-- Agent Runtime (10 team presets, DID + wallet, memory)
-+-- Channel Adapters (35+ platforms, ChannelPlugin interface)
-+-- Skills Engine (packages)
-+-- Extensions (35 built-in: messaging, memory, flow, voice)
++-- Gateway (WebSocket + HTTP on port 18789)
+|   +-- Auth (token / password / API key / Tailscale whois / local bypass)
+|   +-- 80+ RPC methods, WebSocket event streaming
++-- Agent Runtime (10 team presets, W3C DID + Safe wallet, memory)
++-- Channel Adapters (18 platforms, ChannelPlugin interface)
++-- Skills Engine (installable skill packages)
++-- Extensions (32 built-in: messaging, memory, flow, voice, diagnostics, etc.)
++-- LLM Providers (20+ backends: Anthropic, OpenAI, Gemini, Ollama, vLLM, etc.)
++-- Native Apps (macOS, iOS, Android)
 +-- Config (~/.bot/bot.json)
 ```
 
@@ -107,17 +110,22 @@ self-contained unit with instructions, tools, and optional dependencies.
 
 Manage skills via gateway methods: `skills.status`, `skills.bins`, `skills.install`, `skills.update`.
 
-### Skill Categories
+### Skill Catalog
 
-Skills span categories including:
+The skills catalog spans a wide range of categories:
 
-- **Development** -- Code generation, debugging, git workflows, CI/CD
-- **Data** -- Analysis, visualization, ETL pipelines, SQL queries
-- **DevOps** -- Infrastructure management, monitoring, deployment
-- **Design** -- UI mockups, asset generation, design system management
-- **Writing** -- Content creation, editing, translation, summarization
-- **Research** -- Web search, paper analysis, fact-checking
-- **Productivity** -- Calendar, email, task management, note-taking
+- **Development** -- `coding-agent`, `github`, `canvas`, `clawhub`, `skill-creator`
+- **Messaging** -- `discord`, `slack`, `imsg`, `bluebubbles`, `wacli`
+- **AI and Models** -- `gemini`, `openai-image-gen`, `openai-whisper`, `openai-whisper-api`, `model-usage`, `sherpa-onnx-tts`
+- **Productivity** -- `notion`, `obsidian`, `things-mac`, `trello`, `apple-notes`, `apple-reminders`, `bear-notes`, `tmux`, `session-logs`
+- **Media** -- `camsnap`, `peekaboo`, `gifgrep`, `video-frames`, `video-quote-finder`, `songsee`, `spotify-player`, `sonoscli`
+- **Communication** -- `voice-call`, `himalaya` (email)
+- **Research and Web** -- `blogwatcher`, `summarize`, `weather`, `goplaces`, `food-order`, `ordercli`
+- **Infrastructure** -- `healthcheck`, `eightctl`, `blucli`, `mcporter`, `nano-banana-pro`, `nano-pdf`
+- **Smart Home** -- `openhue` (Philips Hue)
+- **Security** -- `1password`
+- **Games** -- `gog`
+- **Utilities** -- `bot` (self-management), `sag`, `oracle`
 
 Browse all skills at [skills.hanzo.bot](https://skills.hanzo.bot).
 
@@ -209,17 +217,61 @@ Exports: `@hanzo/bot/plugin-sdk` (types), `@hanzo/bot/plugin-sdk/account-id` (ut
 
 ---
 
+## Channel Adapters
+
+Eighteen primary messaging channels are supported out of the box:
+
+| Channel | Transport |
+|---------|-----------|
+| Discord | Bot API |
+| Slack | Bot API |
+| Telegram | Bot API |
+| WhatsApp | Baileys (Web API) |
+| Signal | Signal CLI bridge |
+| Matrix | Matrix SDK |
+| iMessage | BlueBubbles bridge |
+| MS Teams | Bot Framework |
+| IRC | IRC client |
+| Nostr | NIP relay |
+| Feishu/Lark | Open API |
+| Google Chat | Chat API |
+| Mattermost | Bot API |
+| LINE | Messaging API |
+| Twitch | IRC + EventSub |
+| Zalo | Official API |
+| Nextcloud Talk | Talk API |
+| Tlon | Urbit API |
+
+Each adapter implements the `ChannelPlugin` interface from the Plugin SDK.
+
+---
+
+## LLM Providers
+
+Hanzo Bot routes conversations to any supported LLM backend. Providers include:
+
+- **Frontier APIs** -- Anthropic (Claude), OpenAI (GPT), Google Gemini
+- **Cloud** -- AWS Bedrock, GitHub Copilot, HuggingFace Inference
+- **Routing** -- OpenRouter, Together AI, AI Gateway, Cloudflare AI Gateway
+- **Self-hosted** -- Ollama, vLLM, LocalAI
+- **Regional** -- MiniMax, Xiaomi, Moonshot/Kimi, Qwen, Zai
+- **Specialized** -- Venice (privacy), Synthetic (test/mock)
+
+Model selection is per-agent or per-request via the gateway API.
+
+---
+
 ## Automations and Integrations
 
 Automation integrations powered by an ActivePieces-based flow engine connect the bot to third-party services: CRM (Salesforce, HubSpot), Development (GitHub, GitLab, Jira, Linear), Cloud (AWS, GCP, DO), Analytics (Mixpanel, Segment), Storage (S3, Google Drive), Social (Twitter/X, LinkedIn), and Databases (PostgreSQL, MongoDB, Redis, Supabase).
 
 ### Built-in Extensions
 
-35 built-in extensions ship with deep platform integrations:
+Extension packages ship with deep platform integrations across two categories:
 
 **Messaging:** Discord, Slack, Telegram, WhatsApp, Signal, Matrix, iMessage (BlueBubbles), MS Teams, IRC, Nostr, Feishu/Lark, Google Chat, Mattermost, LINE, Twitch, Zalo, Nextcloud Talk, Tlon
 
-**Infrastructure:** memory-core, memory-lancedb (vector recall), flow (workflow engine), talk-voice, device-pair, phone-control, diagnostics-otel, copilot-proxy
+**Infrastructure:** memory-core, memory-lancedb (vector recall), flow (workflow engine), talk-voice, device-pair, phone-control, diagnostics-otel, copilot-proxy, and others
 
 ---
 
@@ -246,15 +298,33 @@ Automation integrations powered by an ActivePieces-based flow engine connect the
 
 ### Auth Modes
 
-All modes use timing-safe comparison: Token (`BOT_GATEWAY_TOKEN`), Password (`BOT_GATEWAY_PASSWORD`), API Key (`BOT_API_KEYS`, comma-separated), Tailscale (whois verification), Local Bypass (loopback skip).
+All modes use timing-safe comparison:
+
+| Mode | Mechanism |
+|------|-----------|
+| Token | `BOT_GATEWAY_TOKEN` env var |
+| Password | `BOT_GATEWAY_PASSWORD` env var |
+| API Key | `BOT_API_KEYS` (comma-separated list) |
+| Tailscale | Whois verification of peer identity |
+| Local Bypass | Loopback connections skip auth |
 
 ### Ports
 
 | Port | Service |
 |------|---------|
-| `18789` | Gateway API (WebSocket) |
+| `18789` | Gateway API (WebSocket + HTTP) |
 | `18790` | WebSocket bridge |
 | `8080` | Combined UI (chat + VNC desktop) |
+
+### Docker
+
+Base image: `node:22-bookworm`. Exposes ports 18789, 18790, and 8080.
+
+```bash
+docker run -p 18789:18789 -p 8080:8080 \
+  -e BOT_GATEWAY_TOKEN=your-token \
+  ghcr.io/hanzoai/bot:latest
+```
 
 ### Embeddable Widget
 
@@ -301,6 +371,18 @@ The gateway exposes 80+ RPC methods over WebSocket. Key method groups:
 | **System** | `health`, `status`, `models.list`, `logs.tail` | Monitoring |
 
 Gateway events: `agent`, `chat`, `presence`, `tick`, `cron`, `node.pair.requested`, `exec.approval.requested`.
+
+---
+
+## Native Apps
+
+| Platform | Framework | Notes |
+|----------|-----------|-------|
+| macOS | SwiftUI | Desktop client, connects to local or cloud gateway |
+| iOS | SwiftUI | Mobile client with push notifications |
+| Android | Gradle | Material Design client |
+
+All native apps communicate with the gateway over the same WebSocket protocol on port 18789.
 
 ---
 

@@ -6,9 +6,10 @@ const columns = [
     links: [
       { label: 'Cloud', href: 'https://cloud.hanzo.ai' },
       { label: 'Chat', href: 'https://hanzo.chat' },
-      { label: 'Console', href: 'https://console.hanzo.ai' },
       { label: 'Bot', href: 'https://hanzo.bot' },
+      { label: 'Dev', href: 'https://dev.hanzo.ai' },
       { label: 'Flow', href: 'https://flow.hanzo.ai' },
+      { label: 'Console', href: 'https://console.hanzo.ai' },
       { label: 'Platform', href: 'https://platform.hanzo.ai' },
       { label: 'Space', href: 'https://hanzo.space' },
     ],
@@ -21,6 +22,15 @@ const columns = [
       { label: 'SDKs', href: '/docs/sdks' },
       { label: 'GitHub', href: 'https://github.com/hanzoai' },
       { label: 'Status', href: 'https://status.hanzo.ai' },
+    ],
+  },
+  {
+    title: 'Models',
+    links: [
+      { label: 'Zen Models', href: '/docs/llm' },
+      { label: 'Zen Coder', href: '/docs/llm' },
+      { label: 'Zen Ultra', href: '/docs/llm' },
+      { label: 'View All', href: '/docs/llm' },
     ],
   },
   {
@@ -46,7 +56,7 @@ export function Footer() {
   return (
     <footer className="border-t border-[#262626] bg-[#0a0a0a]">
       <div className="mx-auto max-w-[1400px] px-6 py-12 md:px-12">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-8 md:grid-cols-5">
           {columns.map((column) => (
             <div key={column.title}>
               <h3 className="mb-4 text-sm font-semibold text-[#fafafa]">
