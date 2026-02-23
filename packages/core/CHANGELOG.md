@@ -1,10 +1,48 @@
 # next-docs-zeta
 
+## 16.6.5
+
+### Patch Changes
+
+- 1a614de: enforce MDX stringifier by default
+- 6ab6692: fix edge case for Dynamic Link
+
+## 16.6.4
+
+## 16.6.3
+
+## 16.6.2
+
+## 16.6.1
+
+### Patch Changes
+
+- 00c9a0f: Remove default rerank value from mixedbread search
+
+## 16.6.0
+
+### Minor Changes
+
+- 9241992: **Support Markdown in search results**
+
+  This deprecates the old `contentWithHighlights` field in search results, the highlights are marked with Markdown instead (e.g. `Hello <mark>World</mark>`).
+
+### Patch Changes
+
+- 64a0057: [Remark Feedback] skip MDX elements by default to avoid interfering with component logic
+
+## 16.5.4
+
+### Patch Changes
+
+- 1ad8a38: Support server-side Mixedbread search API, deprecate client-side adapter
+- 3e8efb0: [remark-structure] hotfix filter MDX elements
+
 ## 16.5.3
 
 ### Patch Changes
 
-- 9fe9f7c: Rebrand from Fuma Nama to Hanzo AI, update canonical URL to hanzoai.github.io/docs, fix DTS generation OOM in unified wrapper package, and update all package metadata.
+- be957f1: use `mdast-util-to-markdown` for accurate stringification
 
 ## 16.5.2
 
@@ -76,7 +114,10 @@
 
 ### Patch Changes
 
-- Rebrand fumadocs to @hanzo/docs namespace. Change default output directory from .source to .docs.
+- 590d36a: Support `findSiblings()` page tree utility
+- 98d38ff: Support context-aware type-safe `slugs` function in `loader()`
+- 446631d: Support `<auto-files />` syntax in `remark-mdx-files` plugin
+- b16a32f: Switch to tsdown for bundling
 
 ## 16.4.1
 
