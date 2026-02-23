@@ -41,9 +41,9 @@ const config: NextConfig = {
       '@hanzo/mdx:collections/dynamic': path.resolve(__dirname, 'docs/dynamic.ts'),
 
       // (a) fumadocs -> @hanzo/docs equivalents (real components/APIs)
-      'fumadocs-ui': '@hanzo/docs-base-ui',
-      'fumadocs-core': '@hanzo/docs-core',
-      'fumadocs-mdx': '@hanzo/docs-mdx',
+      '@hanzo/docs-ui': '@hanzo/docs-base-ui',
+      '@hanzo/docs-core': '@hanzo/docs-core',
+      '@hanzo/docs-mdx': '@hanzo/docs-mdx',
 
       // (b) Other doc-platform packages -> no-op stub
       '@docusaurus': emptyProjectModule,
@@ -146,7 +146,7 @@ const config: NextConfig = {
     'ajv',
   ],
   typescript: {
-    // Upstream project docs import fumadocs-ui which is aliased to @hanzo/docs-base-ui
+    // Upstream project docs import @hanzo/docs-ui which is aliased to @hanzo/docs-base-ui
     // at webpack level, but TS type-checker doesn't see webpack aliases.
     ignoreBuildErrors: true,
   },

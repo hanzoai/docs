@@ -4,7 +4,6 @@ import type { ElementContent } from 'hast';
 import jsonSchema from '@hanzo/docs-mdx/plugins/json-schema';
 import lastModified from '@hanzo/docs-mdx/plugins/last-modified';
 import type { ShikiTransformer } from 'shiki';
-import type { RemarkFeedbackBlockOptions } from '@hanzo/docs-core/mdx-plugins';
 import type { RemarkAutoTypeTableOptions } from '@hanzo/docs-typescript';
 import { shikiConfig } from './lib/shiki';
 import { metaSchema, pageSchema } from '@hanzo/docs-core/source/schema';
@@ -14,13 +13,8 @@ import type { Root } from 'mdast';
 
 const isLint = process.env.LINT === '1';
 
-const isExport = process.env.NEXT_EXPORT === '1';
-
 export const docs = defineDocs({
   docs: {
-    // Exclude projects directory entirely — 2,361 upstream project docs
-    // are too heavy for static export and no longer in the platform nav.
-    files: ['**/*.mdx', '!**/projects/**'],
     schema: pageSchema.extend({
       preview: z.string().optional(),
       index: z.boolean().default(false),
@@ -37,8 +31,6 @@ export const docs = defineDocs({
     async: true,
     async mdxOptions(environment) {
       const { rehypeCodeDefaultOptions } = await import('@hanzo/docs-core/mdx-plugins/rehype-code');
-      const { remarkStructureDefaultOptions } =
-        await import('@hanzo/docs-core/mdx-plugins/remark-structure');
       const { remarkSteps } = await import('@hanzo/docs-core/mdx-plugins/remark-steps');
       const { remarkFeedbackBlock } =
         await import('@hanzo/docs-core/mdx-plugins/remark-feedback-block');
@@ -50,13 +42,6 @@ export const docs = defineDocs({
       const { remarkAutoTypeTable, createGenerator, createFileSystemGeneratorCache } =
         await import('@hanzo/docs-typescript');
 
-      const feedbackOptions: RemarkFeedbackBlockOptions = {
-        resolve(node) {
-          // defensive approach
-          if (node.type === 'mdxJsxFlowElement') return 'skip';
-          return node.type === 'paragraph' || node.type === 'image' || node.type === 'list';
-        },
-      };
       const typeTableOptions: RemarkAutoTypeTableOptions = {
         generator: createGenerator({
           cache: createFileSystemGeneratorCache('.next/@hanzo/docs-typescript'),
@@ -64,11 +49,6 @@ export const docs = defineDocs({
         shiki: shikiConfig,
       };
       return applyMdxPreset({
-        remarkImageOptions: {
-          // Imported upstream docs may reference images that don't exist in
-          // this monorepo. Log a warning instead of failing the build.
-          onError: 'ignore',
-        },
         rehypeCodeOptions: isLint
           ? false
           : {
@@ -89,6 +69,27 @@ export const docs = defineDocs({
         remarkCodeTabOptions: {
           parseMdx: true,
         },
+        remarkStructureOptions: {
+          stringify: {
+            filterElement(node) {
+              switch (node.type) {
+                case 'mdxJsxFlowElement':
+                case 'mdxJsxTextElement':
+                  switch (node.name) {
+                    case 'File':
+                    case 'TypeTable':
+                    case 'Callout':
+                    case 'Card':
+                    case 'Custom':
+                      return true;
+                  }
+                  return 'children-only';
+              }
+
+              return true;
+            },
+          },
+        },
         remarkNpmOptions: {
           persist: {
             id: 'package-manager',
@@ -97,10 +98,9 @@ export const docs = defineDocs({
         remarkPlugins: isLint
           ? [remarkElementIds]
           : [
-              remarkPassthroughUnknownJsx,
               remarkSteps,
               remarkMath,
-              [remarkFeedbackBlock, feedbackOptions],
+              remarkFeedbackBlock,
               [remarkAutoTypeTable, typeTableOptions],
               remarkTypeScriptToJavaScript,
             ],
@@ -112,10 +112,6 @@ export const docs = defineDocs({
     schema: metaSchema.extend({
       description: z.string().optional(),
     }),
-    // Only pick up actual meta files — the default **/*.{json,yaml} pattern
-    // also matches data files (openapi.json, package.json, etc.) which then
-    // get processed through the MDX loader and corrupt the build.
-    files: ['**/meta.json', '**/meta.yaml'],
   },
 });
 
@@ -172,41 +168,6 @@ function transformerEscape(): ShikiTransformer {
       replace(hast);
       return hast;
     },
-  };
-}
-
-/**
- * Remark plugin that converts unknown JSX components (from upstream doc
- * platforms like Mintlify, Docusaurus, GitBook, etc.) into JSX fragments
- * so MDX doesn't generate _missingMdxReference checks that crash SSG.
- *
- * Only applies to files inside content/docs/projects/.
- */
-function remarkPassthroughUnknownJsx(): Transformer<Root, Root> {
-  return (tree, file) => {
-    // Only transform upstream project docs — leave first-party docs alone
-    // so unknown components still surface as errors during development.
-    const filePath = file.path ?? file.history[0] ?? '';
-    if (!filePath.includes('content/docs/projects/') &&
-        !filePath.includes('content\\docs\\projects\\')) {
-      return;
-    }
-
-    // Convert ALL PascalCase JSX elements to fragments in project docs.
-    // Upstream docs use components from various platforms (Mintlify, Docusaurus,
-    // GitBook, etc.) with incompatible APIs. Rather than maintaining a
-    // whitelist and risking API mismatches (e.g. Mintlify <Tab title="..."> vs
-    // fumadocs <Tab value="...">), we strip all custom components and render
-    // just their children. First-party docs are unaffected by this plugin.
-    visit(tree, ['mdxJsxFlowElement', 'mdxJsxTextElement'], (node: any) => {
-      if (!node.name) return; // already a fragment
-      // Only target PascalCase names (custom components), not lowercase HTML
-      if (!/^[A-Z]/.test(node.name)) return;
-
-      // Convert to JSX fragment: strips the unknown tag but keeps children
-      node.name = null;
-      node.attributes = [];
-    });
   };
 }
 

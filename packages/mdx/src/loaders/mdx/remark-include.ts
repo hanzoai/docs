@@ -3,12 +3,12 @@ import { visit } from 'unist-util-visit';
 import type { Code, Node, Root, RootContent } from 'mdast';
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
-import { parseFrontmatter } from '../../utils/frontmatter';
-import type { MdxJsxFlowElement, MdxJsxTextElement } from 'mdast-util-mdx-jsx';
+import { fumaMatter } from '@/utils/fuma-matter';
+import type { MdxJsxFlowElement, MdxJsxTextElement } from 'mdast-util-mdx';
 import { remarkHeading } from '@hanzo/docs-core/mdx-plugins';
 import { VFile } from 'vfile';
 import type { Directives } from 'mdast-util-directive';
-import { remarkMarkAndUnravel } from './remark-unravel';
+import { remarkMarkAndUnravel } from '@/loaders/mdx/remark-unravel';
 import { flattenNode } from './mdast-utils';
 
 /**
@@ -230,7 +230,7 @@ export function remarkInclude(this: Processor): Transformer<Root, Root> {
     }
 
     const parser = _getProcessor(ext === '.mdx' ? 'mdx' : 'md');
-    const parsed = parseFrontmatter(content);
+    const parsed = fumaMatter(content);
     const targetFile = new VFile({
       path: targetPath,
       value: parsed.content,

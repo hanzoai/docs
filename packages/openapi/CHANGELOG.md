@@ -1,13 +1,60 @@
 # @fuma-docs/openapi
 
+## 10.3.9
+
+### Patch Changes
+
+- 5537900: allow optional parameter schema
+
+## 10.3.8
+
+### Patch Changes
+
+- f5e7993: improve edge case handling
+- Updated dependencies [1a614de]
+- Updated dependencies [6ab6692]
+  - fumadocs-core@16.6.5
+  - fumadocs-ui@16.6.5
+
+## 10.3.7
+
+### Patch Changes
+
+- 3f8c9b0: Support OpenAPI 3.2 security scheme deprecation
+- Updated dependencies [8f8e7f0]
+  - fumadocs-ui@16.6.4
+  - fumadocs-core@16.6.4
+
+## 10.3.6
+
+### Patch Changes
+
+- 6ded66b: Improve server selector UI
+- Updated dependencies [1c26656]
+  - fumadocs-ui@16.6.3
+  - fumadocs-core@16.6.3
+
+## 10.3.5
+
+### Patch Changes
+
+- 013bba7: support servers override
+- Updated dependencies [9241992]
+- Updated dependencies [64a0057]
+  - fumadocs-ui@16.6.0
+  - fumadocs-core@16.6.0
+
 ## 10.3.4
 
 ### Patch Changes
 
-- 9fe9f7c: Rebrand from Fuma Nama to Hanzo AI, update canonical URL to hanzoai.github.io/docs, fix DTS generation OOM in unified wrapper package, and update all package metadata.
-- Updated dependencies [9fe9f7c]
-  - @hanzo/docs-core@16.5.3
-  - @hanzo/docs-base-ui@16.5.3
+- 7872e27: fix change detector
+- Updated dependencies [7872e27]
+- Updated dependencies [1ad8a38]
+- Updated dependencies [3e8efb0]
+  - @fumari/stf@0.0.3
+  - fumadocs-core@16.5.4
+  - fumadocs-ui@16.5.4
 
 ## 10.3.3
 
