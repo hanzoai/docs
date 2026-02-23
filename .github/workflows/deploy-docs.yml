@@ -38,28 +38,16 @@ jobs:
           sudo swapon /swapfile
           free -h
 
-      # Build all workspace packages first (turbo handles deps)
-      - name: Build packages
-        run: pnpm build --filter=docs^...
-        env:
-          NODE_OPTIONS: '--max-old-space-size=16384'
-        timeout-minutes: 30
-
-      # Run opennextjs-cloudflare build (calls our buildCommand from open-next.config.ts)
-      - name: Build for Cloudflare
-        working-directory: apps/docs
-        run: npx opennextjs-cloudflare build
+      - run: pnpm build --filter=docs
         env:
           NODE_OPTIONS: '--max-old-space-size=16384'
         timeout-minutes: 60
 
-      # Deploy to CF Workers (hanzo-docs-app)
-      - name: Deploy Worker
+      # Deploy static assets + CF Pages Functions.
+      # wrangler pages deploy looks for functions/ relative to cwd.
+      - name: Deploy to Cloudflare Pages
         working-directory: apps/docs
-        run: |
-          npx wrangler deploy
-          echo "$HANZO_API_KEY" | npx wrangler secret put HANZO_API_KEY --name hanzo-docs-app
+        run: npx wrangler pages deploy out --project-name=hanzo-docs --commit-dirty=true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          HANZO_API_KEY: ${{ secrets.HANZO_API_KEY }}
