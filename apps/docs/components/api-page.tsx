@@ -9,5 +9,9 @@ export const APIPage = hasSpecs
           light: 'vitesse-light',
         },
       },
+      showResponseSchema: true,
+      schemaUI: {
+        showExample: true,
+      },
     })
   : null;
