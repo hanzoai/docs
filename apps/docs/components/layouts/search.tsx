@@ -30,29 +30,24 @@ const items = [
     value: undefined,
   },
   {
-    name: 'Framework',
-    description: 'Only results about framework guides',
-    value: 'framework',
+    name: 'Services',
+    description: 'Hanzo Cloud services documentation',
+    value: 'services',
   },
   {
-    name: 'UI',
-    description: 'Only results about Hanzo Docs UI',
-    value: 'ui',
+    name: 'SDKs',
+    description: 'Python, TypeScript, Go, Rust, and C SDKs',
+    value: 'sdks',
   },
   {
-    name: 'Core',
-    description: 'Only results about Hanzo Docs Core',
-    value: 'headless',
+    name: 'API',
+    description: 'OpenAPI reference for all services',
+    value: 'openapi',
   },
   {
-    name: 'MDX',
-    description: 'Only results about Hanzo Docs MDX',
-    value: 'mdx',
-  },
-  {
-    name: 'CLI',
-    description: 'Only results about Hanzo Docs CLI',
-    value: 'cli',
+    name: 'Products',
+    description: 'Zen LM, Chat, MCP, Dev, ZAP',
+    value: 'products',
   },
 ];
 
