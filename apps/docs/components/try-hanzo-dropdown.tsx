@@ -17,7 +17,7 @@ const products = [
   {
     label: 'Hanzo Cloud',
     url: 'https://cloud.hanzo.ai',
-    description: 'LLM inference gateway — 100+ models',
+    description: 'LLM inference gateway — all major models',
     icon: Cloud,
   },
   {
@@ -35,7 +35,7 @@ const products = [
   {
     label: 'Hanzo Bot',
     url: 'https://hanzo.bot',
-    description: '743+ skills, 35+ channel adapters',
+    description: 'Skills engine, multi-channel',
     icon: Bot,
   },
   {

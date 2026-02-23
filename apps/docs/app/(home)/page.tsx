@@ -234,7 +234,7 @@ export default function Page() {
                 Zen LM
               </h2>
               <p className="text-[#a3a3a3] text-sm mt-1">
-                44 frontier models. From 4B edge to 1T+ reasoning.
+                Frontier models from 4B edge to 1T+ reasoning.
               </p>
             </div>
             <Link
