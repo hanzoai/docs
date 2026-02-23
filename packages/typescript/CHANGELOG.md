@@ -1,13 +1,25 @@
 # fumadocs-typescript
 
+## 5.1.4
+
+### Patch Changes
+
+- 16360ef: fix tag parser
+- Updated dependencies [1a614de]
+- Updated dependencies [6ab6692]
+  - fumadocs-core@16.6.5
+  - fumadocs-ui@16.6.5
+
 ## 5.1.3
 
 ### Patch Changes
 
-- 9fe9f7c: Rebrand from Fuma Nama to Hanzo AI, update canonical URL to hanzoai.github.io/docs, fix DTS generation OOM in unified wrapper package, and update all package metadata.
-- Updated dependencies [9fe9f7c]
-  - @hanzo/docs-core@16.5.3
-  - @hanzo/docs-base-ui@16.5.3
+- 071347a: Support props passthrough for type tables
+- 20cd4d6: Support ID & `@fumadocsHref` tag in type tables
+- Updated dependencies [00c9a0f]
+- Updated dependencies [20cd4d6]
+  - fumadocs-core@16.6.1
+  - fumadocs-ui@16.6.1
 
 ## 5.1.2
 
@@ -27,8 +39,8 @@
 ### Patch Changes
 
 - Updated dependencies [9ba1250]
-  - fumadocs-ui@17.0.0
-  - fumadocs-core@17.0.0
+  - fumadocs-ui@16.6.0
+  - fumadocs-core@16.6.0
 
 ## 5.0.1
 

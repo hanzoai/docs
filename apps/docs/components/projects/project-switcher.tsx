@@ -2,7 +2,18 @@
 
 import { useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { FolderOpen } from 'lucide-react';
 import projectsManifest from '@/projects.json';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type Project = {
   org: string;
@@ -42,30 +53,35 @@ export function ProjectSwitcher() {
   const value = current?.route ?? '/docs/projects';
 
   return (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1.5">
       <span className="text-xs font-semibold uppercase tracking-wide text-fd-muted-foreground">
         Project
       </span>
-      <select
+      <Select
         value={value}
-        onChange={(event) => {
-          const next = event.target.value;
+        onValueChange={(next) => {
           if (next) router.push(next);
         }}
-        className="h-9 rounded-md border border-fd-border bg-fd-background px-2 text-sm text-fd-foreground"
-        aria-label="Project switcher"
       >
-        <option value="/docs/projects">All Projects</option>
-        {grouped.map(([org, orgProjects]) => (
-          <optgroup key={org} label={org}>
-            {orgProjects.map((project) => (
-              <option key={project.slug} value={project.route}>
-                {project.name}{project.archived ? ' (archived)' : ''}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
+        <SelectTrigger aria-label="Project switcher">
+          <FolderOpen className="h-3.5 w-3.5 shrink-0 text-fd-muted-foreground mr-1.5" />
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="/docs/projects">All Projects</SelectItem>
+          {grouped.map(([org, orgProjects], idx) => (
+            <SelectGroup key={org}>
+              {idx > 0 && <SelectSeparator />}
+              <SelectLabel>{org}</SelectLabel>
+              {orgProjects.map((project) => (
+                <SelectItem key={project.slug} value={project.route}>
+                  {project.name}{project.archived ? ' (archived)' : ''}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
