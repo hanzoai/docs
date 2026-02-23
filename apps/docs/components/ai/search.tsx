@@ -43,8 +43,8 @@ export function AISearchPanelHeader({ className, ...props }: ComponentProps<'div
         <p className="text-sm font-medium mb-2">AI Chat</p>
         <p className="text-xs text-fd-muted-foreground">
           Powered by{' '}
-          <a href="https://inkeep.com" target="_blank" rel="noreferrer noopener">
-            Inkeep AI
+          <a href="https://hanzo.ai" target="_blank" rel="noreferrer noopener">
+            Hanzo AI
           </a>
         </p>
       </div>
@@ -288,13 +288,15 @@ function Message({ message, ...props }: { message: UIMessage } & ComponentProps<
   );
 }
 
+// Chat transport — uses the local API route in dev, and Hanzo LLM Gateway
+// directly in production once NEXT_PUBLIC_HANZO_DOCS_API_KEY is provisioned.
+const chatTransport = new DefaultChatTransport({ api: '/api/chat' });
+
 export function AISearch({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const chat = useChat({
     id: 'search',
-    transport: new DefaultChatTransport({
-      api: '/api/chat',
-    }),
+    transport: chatTransport,
   });
 
   return (

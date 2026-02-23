@@ -11,6 +11,9 @@ export default defineConfig({
     optimizeDeps: {
       exclude: ['@hanzo/docs-base-ui', '@hanzo/docs-core'],
     },
+    ssr: {
+      external: ['@takumi-rs/image-response'],
+    },
 
     plugins: [tailwindcss(), mdx(MdxConfig), tsconfigPaths()],
   } satisfies UserConfig as Config['vite'],

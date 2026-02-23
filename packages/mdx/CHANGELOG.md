@@ -4,10 +4,10 @@
 
 ### Patch Changes
 
-- 9fe9f7c: Rebrand from Fuma Nama to Hanzo AI, update canonical URL to hanzoai.github.io/docs, fix DTS generation OOM in unified wrapper package, and update all package metadata.
-- Updated dependencies [9fe9f7c]
-  - @hanzo/docs-core@16.5.3
-  - @hanzo/docs-mdx-remote@1.4.6
+- 1a614de: enforce MDX stringifier by default
+- Updated dependencies [1a614de]
+- Updated dependencies [6ab6692]
+  - fumadocs-core@16.6.5
 
 ## 14.2.7
 
@@ -36,9 +36,14 @@
 
 ### Patch Changes
 
-- Rebrand fumadocs to @hanzo/docs namespace. Change default output directory from .source to .docs.
-- Updated dependencies
-  - @hanzo/docs-core@16.4.2
+- 689d31e: Improve error message
+- b16a32f: Switch to tsdown for bundling
+- Updated dependencies [590d36a]
+- Updated dependencies [98d38ff]
+- Updated dependencies [446631d]
+- Updated dependencies [b16a32f]
+  - fumadocs-core@16.4.2
+  - @fumadocs/mdx-remote@1.4.4
 
 ## 14.2.3
 
