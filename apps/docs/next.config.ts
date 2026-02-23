@@ -20,6 +20,9 @@ const config: NextConfig = {
   experimental: {
     // Reduce peak memory during webpack compilation for large builds.
     webpackMemoryOptimizations: true,
+    // Limit static generation workers to reduce memory pressure.
+    // Default (3 workers × ~4GB each) exceeds the GH Actions runner memory.
+    cpus: 1,
   },
   webpack: (config) => {
     // ------------------------------------------------------------------ //
