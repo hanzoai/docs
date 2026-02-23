@@ -19,6 +19,7 @@ import { type UIMessage, useChat, type UseChatHelpers } from '@ai-sdk/react';
 import type { ProvideLinksToolSchema } from '@/lib/chat/inkeep-qa-schema';
 import type { z } from 'zod';
 import { DefaultChatTransport } from 'ai';
+import { HanzoChatTransport } from '@/lib/chat/hanzo-transport';
 import { Markdown } from './markdown';
 import { Presence } from '@radix-ui/react-presence';
 
@@ -43,8 +44,8 @@ export function AISearchPanelHeader({ className, ...props }: ComponentProps<'div
         <p className="text-sm font-medium mb-2">AI Chat</p>
         <p className="text-xs text-fd-muted-foreground">
           Powered by{' '}
-          <a href="https://inkeep.com" target="_blank" rel="noreferrer noopener">
-            Inkeep AI
+          <a href="https://hanzo.ai" target="_blank" rel="noreferrer noopener">
+            Hanzo AI
           </a>
         </p>
       </div>
@@ -288,13 +289,21 @@ function Message({ message, ...props }: { message: UIMessage } & ComponentProps<
   );
 }
 
+// In production (static export), API routes don't exist. Use HanzoChatTransport
+// to call the Hanzo LLM Gateway directly from the browser.
+// In dev mode, fall back to the local API route via DefaultChatTransport.
+const chatTransport =
+  process.env.NODE_ENV === 'production'
+    ? new HanzoChatTransport({
+        apiKey: process.env.NEXT_PUBLIC_HANZO_DOCS_API_KEY ?? '',
+      })
+    : new DefaultChatTransport({ api: '/api/chat' });
+
 export function AISearch({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const chat = useChat({
     id: 'search',
-    transport: new DefaultChatTransport({
-      api: '/api/chat',
-    }),
+    transport: chatTransport,
   });
 
   return (
