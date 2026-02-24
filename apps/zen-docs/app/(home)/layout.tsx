@@ -24,6 +24,18 @@ const linkItems: LinkItemType[] = [
   },
   {
     type: 'icon',
+    url: 'https://huggingface.co/zenlm',
+    label: 'HuggingFace',
+    text: 'HuggingFace',
+    icon: (
+      <svg role="img" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm-1.163 5.04c.687 0 1.244.558 1.244 1.244 0 .687-.557 1.244-1.244 1.244a1.244 1.244 0 1 1 0-2.488zm2.326 0c.687 0 1.244.558 1.244 1.244 0 .687-.557 1.244-1.244 1.244a1.244 1.244 0 1 1 0-2.488zM7.2 8.4a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4zm9.6 0a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4zm-8.16 5.04c.168-.024.336.072.408.24.696 1.608 2.04 2.52 3.72 2.52s3.024-.912 3.72-2.52a.39.39 0 0 1 .504-.216.39.39 0 0 1 .216.504C16.44 15.84 14.856 16.92 12.768 16.92c-2.088 0-3.672-1.08-4.44-2.952a.39.39 0 0 1 .312-.528z" />
+      </svg>
+    ),
+    external: true,
+  },
+  {
+    type: 'icon',
     url: 'https://github.com/zenlm',
     label: 'GitHub',
     text: 'GitHub',
@@ -41,7 +53,7 @@ function baseOptions(): BaseLayoutProps {
     nav: {
       title: (
         <>
-          <span className="text-lg font-bold">⚡ Zen LM</span>
+          <span className="text-lg font-bold">🪷 Zen LM</span>
         </>
       ),
       url: '/',
