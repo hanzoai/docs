@@ -1,0 +1,502 @@
+---
+title: Protocols
+description: Deep dive into the 8 cryptographic protocols powering Hanzo MPC
+---
+
+# Cryptographic Protocols
+
+Hanzo MPC implements 8 distinct multi-party computation protocols, each optimized for specific use cases. All protocols share common properties: no single party ever holds a complete private key, and every step is verified with zero-knowledge proofs.
+
+## Protocol Selection Guide
+
+Choose a protocol based on your chain, performance, and security requirements:
+
+```
+Need ECDSA (Bitcoin/Ethereum/EVM)?
+  ├─ 2-of-2 only? → Doerner (fastest)
+  └─ t-of-n?     → CGGMP21
+
+Need Schnorr/EdDSA (Solana/Polkadot/Taproot)?
+  └─ → FROST
+
+Need BLS (Ethereum 2.0 validators)?
+  ├─ Post-quantum hedge? → Quasar
+  └─ Standard?           → BLS
+
+Need key rotation without signing?
+  └─ → LSSS
+
+Need encrypted computation on shares?
+  └─ → TFHE
+
+Need post-quantum signatures?
+  └─ → Corona
+```
+
+---
+
+## CGGMP21
+
+**Threshold ECDSA with identifiable aborts**
+
+The workhorse protocol for Bitcoin, Ethereum, and all EVM-compatible chains. Based on the Canetti-Gennaro-Goldfeder-Makriyannis-Peled 2021 paper, it provides threshold ECDSA signatures with strong security guarantees.
+
+### Properties
+
+| Property | Value |
+|----------|-------|
+| Signature type | ECDSA |
+| Curves | secp256k1, P-256 |
+| Threshold | Any t-of-n |
+| Rounds (keygen) | 4 |
+| Rounds (signing) | 5 |
+| Identifiable abort | Yes |
+| Communication | O(n^2) keygen, O(t^2) signing |
+
+### How It Works
+
+**Key Generation (DKG)**
+
+1. Each party generates a random secret share and a Paillier key pair
+2. Parties exchange Feldman VSS commitments to verify share consistency
+3. Zero-knowledge proofs verify Paillier key correctness and range bounds
+4. The public key is derived from the combined commitments -- no party ever sees the full private key
+
+**Signing**
+
+1. A subset of `t` parties are selected (or volunteer)
+2. Each party computes a presignature share using their key share and random nonces
+3. Paillier homomorphic encryption enables multiplication of shares without revealing them
+4. Parties exchange partial signatures and combine them into a valid ECDSA signature
+5. At each step, ZK proofs verify correctness -- any deviation triggers identifiable abort
+
+### Zero-Knowledge Proofs Used
+
+| Proof | Purpose |
+|-------|---------|
+| Schnorr proof | Knowledge of discrete log |
+| Paillier-Blum modulus | N = pq with p, q safe primes |
+| Range proof (Mta) | Encrypted value within bounds |
+| Affine operation proof | Correct MtA computation |
+| Log-star proof | Consistency of Paillier ciphertext and EC point |
+| Dec proof | Correct Paillier decryption |
+
+### Use Cases
+
+- Bitcoin (legacy, SegWit, Native SegWit)
+- Ethereum and all EVM chains
+- Cosmos (secp256k1)
+- Lux Network (C/X/P chains)
+- XRPL
+- Any chain using ECDSA over secp256k1 or P-256
+
+### Example
+
+```bash
+curl -X POST https://mpc.hanzo.ai/api/wallets \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "protocol": "cggmp21",
+    "curve": "secp256k1",
+    "threshold": 2,
+    "parties": 3
+  }'
+```
+
+---
+
+## FROST
+
+**Flexible Round-Optimized Schnorr Threshold signatures**
+
+The fastest protocol for chains that use Schnorr or EdDSA signatures. FROST achieves optimal round complexity -- signing requires only 2 rounds regardless of threshold.
+
+### Properties
+
+| Property | Value |
+|----------|-------|
+| Signature type | Schnorr / EdDSA |
+| Curves | Ed25519, Ristretto, secp256k1 (Schnorr) |
+| Threshold | Any t-of-n |
+| Rounds (keygen) | 2 |
+| Rounds (signing) | 2 |
+| Identifiable abort | Yes |
+| Communication | O(n^2) keygen, O(t) signing |
+
+### How It Works
+
+**Key Generation (DKG)**
+
+1. Each party selects a random polynomial of degree `t-1`
+2. Parties exchange Feldman commitments and secret shares via secure channels
+3. Each party verifies received shares against commitments
+4. The group public key is the sum of all constant-term commitments
+
+**Signing**
+
+1. **Round 1 (Commitment)**: Each participating signer generates a nonce pair and broadcasts commitments
+2. **Round 2 (Response)**: Each signer computes their partial signature using Lagrange interpolation and broadcasts it
+3. **Aggregation**: The coordinator combines partial signatures into a valid Schnorr signature
+
+### Performance Benchmarks
+
+FROST is significantly faster than CGGMP21 because Schnorr signatures have a simpler algebraic structure:
+
+| Operation | 3 parties | 10 parties | 20 parties | 50 parties |
+|-----------|-----------|------------|------------|------------|
+| Keygen | 22 ms | 38 ms | 332 ms | 1.85 s |
+| Signing (t=3) | 25 ms | 25 ms | 25 ms | 25 ms |
+| Signing (t=5) | - | 21 ms | 21 ms | 21 ms |
+
+Signing time depends only on `t` (threshold), not `n` (total parties). A 3-of-100 wallet signs as fast as a 3-of-3.
+
+### Use Cases
+
+- Bitcoin Taproot (BIP-340 Schnorr)
+- Solana (Ed25519)
+- TON (Ed25519)
+- Cardano (Ed25519)
+- NEAR (Ed25519)
+- Polkadot / Substrate (Sr25519 via Ristretto)
+
+### Example
+
+```bash
+curl -X POST https://mpc.hanzo.ai/api/wallets \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "protocol": "frost",
+    "curve": "ed25519",
+    "threshold": 3,
+    "parties": 5
+  }'
+```
+
+---
+
+## LSSS
+
+**Linear Secret Sharing Scheme with dynamic resharing**
+
+LSSS provides the resharing primitive that allows key shares to be refreshed, thresholds to be changed, and parties to be added or removed -- all without changing the public key.
+
+### Properties
+
+| Property | Value |
+|----------|-------|
+| Type | Secret sharing (not signing) |
+| Curves | Any (share-level, curve-agnostic) |
+| Threshold | Configurable per epoch |
+| Rounds | 3 (reshare) |
+| Communication | O(n * n') where n'= new party count |
+
+### How It Works
+
+LSSS generalizes Shamir's Secret Sharing with the addition of proactive refresh and dynamic reconfiguration:
+
+**Proactive Refresh**
+
+1. Each party generates a random polynomial with a zero constant term
+2. Parties distribute shares of their zero-polynomial to all other parties
+3. Each party adds the received zero-shares to their existing share
+4. Result: all shares change, but the underlying secret remains identical
+
+**Threshold Change (t-of-n to t'-of-n')**
+
+1. `t` old parties reconstruct the secret in a distributed manner using Lagrange interpolation
+2. A new random polynomial of degree `t'-1` is generated collaboratively
+3. New shares are distributed to the `n'` new parties
+4. Old shares are securely deleted
+
+### Use Cases
+
+- Scheduled share rotation (compliance, security hygiene)
+- Responding to suspected key compromise
+- Adding or removing custodians
+- Changing governance thresholds (e.g., upgrading 2-of-3 to 3-of-5)
+
+### Example
+
+```bash
+# Reshare: change from 2-of-3 to 3-of-5
+curl -X POST https://mpc.hanzo.ai/api/reshare \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "wallet_id": "w_3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "new_threshold": 3,
+    "new_parties": 5,
+    "reason": "adding_custodians"
+  }'
+```
+
+---
+
+## TFHE
+
+**Threshold Fully Homomorphic Encryption**
+
+TFHE enables computation on encrypted key shares without ever decrypting them. This is used internally for protocols that require arithmetic operations on secret data across parties.
+
+### Properties
+
+| Property | Value |
+|----------|-------|
+| Type | Encrypted computation |
+| Security | Lattice-based (LWE) |
+| Operations | Addition, multiplication on ciphertexts |
+| Noise budget | Bootstrapped per operation |
+| Use case | Internal MPC sub-protocol |
+
+### How It Works
+
+1. Each party encrypts their key share under a threshold FHE scheme
+2. Computations (e.g., polynomial evaluation, nonce generation) are performed on ciphertexts
+3. Threshold decryption requires `t` parties to contribute decryption shares
+4. Result is decrypted only at the final step, keeping intermediates encrypted
+
+### Use Cases
+
+- Internal computation within CGGMP21 and FROST protocols
+- Privacy-preserving policy evaluation (e.g., spending limits)
+- Secure multi-party analytics on custody data
+
+TFHE is not directly exposed as a wallet creation protocol. It functions as an internal building block for other protocols.
+
+---
+
+## Corona
+
+**Post-quantum lattice-based threshold signatures**
+
+Corona provides threshold signatures using Module-LWE, offering resistance against quantum computer attacks. Deploy today for assets that need long-term security guarantees.
+
+### Properties
+
+| Property | Value |
+|----------|-------|
+| Signature type | Lattice-based (Dilithium-like) |
+| Security basis | Module-LWE |
+| Security level | NIST PQ Level 3 (128-bit quantum) |
+| Threshold | Any t-of-n |
+| Signature size | ~2.4 KB |
+| Public key size | ~1.3 KB |
+
+### How It Works
+
+1. **Key Generation**: Parties collaboratively generate a Module-LWE key pair using a lattice-based DKG
+2. **Signing**: Parties produce partial signatures using rejection sampling to ensure the combined signature does not leak share information
+3. **Verification**: Standard Dilithium verification on the combined signature
+
+### Trade-offs
+
+| Advantage | Disadvantage |
+|-----------|-------------|
+| Quantum-resistant | Larger signatures (2.4 KB vs 64 bytes) |
+| NIST standardized basis | Higher computational cost |
+| Future-proof | Not compatible with existing blockchain address schemes |
+
+### Use Cases
+
+- Long-term cold storage where quantum risk is a concern
+- Hybrid custody alongside classical ECDSA wallets
+- Research and compliance for post-quantum readiness
+
+### Example
+
+```bash
+curl -X POST https://mpc.hanzo.ai/api/wallets \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "protocol": "corona",
+    "curve": "module-lwe",
+    "threshold": 3,
+    "parties": 5
+  }'
+```
+
+---
+
+## Quasar
+
+**Hybrid BLS + post-quantum threshold signatures**
+
+Quasar produces dual signatures -- one BLS12-381 for immediate blockchain compatibility and one Dilithium for quantum resistance. If either scheme is broken, the other still protects the key.
+
+### Properties
+
+| Property | Value |
+|----------|-------|
+| Signature type | BLS + Dilithium (dual) |
+| Curves | BLS12-381 + Module-LWE |
+| Threshold | Any t-of-n |
+| Signature output | Two signatures per operation |
+| Verification | Both must verify |
+
+### How It Works
+
+1. **DKG**: Two parallel key generation ceremonies -- one BLS, one lattice-based
+2. **Signing**: Each party produces both a BLS partial signature and a Dilithium partial signature
+3. **Aggregation**: Both partial signature sets are combined independently
+4. **Verification**: A Quasar signature is valid only if both the BLS and Dilithium components verify
+
+### Use Cases
+
+- Ethereum 2.0 validator keys with quantum hedge
+- High-value cold storage requiring defense-in-depth
+- Institutional custody with regulatory PQ requirements
+
+### Example
+
+```bash
+curl -X POST https://mpc.hanzo.ai/api/wallets \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "protocol": "quasar",
+    "curve": "bls12-381",
+    "threshold": 3,
+    "parties": 5
+  }'
+```
+
+---
+
+## BLS
+
+**Threshold BLS aggregate signatures**
+
+BLS signatures have a unique property: they can be aggregated. Multiple signatures from different keys on different messages can be combined into a single constant-size signature. This makes BLS ideal for validator sets.
+
+### Properties
+
+| Property | Value |
+|----------|-------|
+| Signature type | BLS (Boneh-Lynn-Shacham) |
+| Curve | BLS12-381 |
+| Threshold | Any t-of-n |
+| Signature size | 48 bytes (compressed G1) |
+| Aggregation | Yes (multi-sig and aggregate) |
+| Rounds (signing) | 1 (non-interactive after setup) |
+
+### How It Works
+
+1. **DKG**: Parties run a standard Feldman DKG over the BLS12-381 scalar field
+2. **Signing**: Each party computes `sigma_i = sk_i * H(m)` where `H` maps to G1
+3. **Aggregation**: Lagrange interpolation in the exponent combines `t` partial signatures
+4. **Verification**: `e(sigma, g2) == e(H(m), pk)` using the bilinear pairing
+
+Signing is non-interactive -- once nonce commitments are exchanged during a setup phase, individual partial signatures can be produced independently.
+
+### Use Cases
+
+- Ethereum 2.0 validator signing
+- Aggregate multi-party attestations
+- Consensus protocol signing (Lux Network validators)
+
+### Example
+
+```bash
+curl -X POST https://mpc.hanzo.ai/api/wallets \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "protocol": "bls",
+    "curve": "bls12-381",
+    "threshold": 5,
+    "parties": 9
+  }'
+```
+
+---
+
+## Doerner
+
+**Optimized 2-of-2 ECDSA**
+
+Doerner is a specialized protocol for the 2-of-2 case that achieves the lowest possible latency for two-party ECDSA signing. It uses oblivious transfer (OT) instead of Paillier encryption, eliminating the most expensive operations in CGGMP21.
+
+### Properties
+
+| Property | Value |
+|----------|-------|
+| Signature type | ECDSA |
+| Curve | secp256k1 |
+| Threshold | 2-of-2 only |
+| Rounds (keygen) | 2 |
+| Rounds (signing) | 3 |
+| Communication | O(1) -- constant |
+| OT extension | Yes (batch amortized) |
+
+### How It Works
+
+1. **Key Generation**: Two parties generate their secret shares and exchange public commitments. An OT base setup is performed for future signing sessions
+2. **Signing**: Party A selects a nonce and commits. Party B responds with an OT-based multiplication of the message and shares. Party A completes the signature
+3. **Batch OT**: The OT base can be extended to amortize cost over many signing operations
+
+### When to Use Doerner vs CGGMP21
+
+| Scenario | Recommendation |
+|----------|---------------|
+| High-frequency 2-party signing | Doerner |
+| Threshold > 2 | CGGMP21 |
+| Need flexibility to add parties later | CGGMP21 (can reshare) |
+| Latency-critical 2-party | Doerner |
+
+### Example
+
+```bash
+curl -X POST https://mpc.hanzo.ai/api/wallets \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "protocol": "doerner",
+    "curve": "secp256k1",
+    "threshold": 2,
+    "parties": 2
+  }'
+```
+
+---
+
+## Protocol Comparison
+
+| Protocol | Signature | Quantum Safe | Rounds (Sign) | Best Throughput | Chains |
+|----------|-----------|-------------|----------------|-----------------|--------|
+| CGGMP21 | ECDSA | No | 5 | ~100/s | BTC, ETH, EVM |
+| FROST | Schnorr/EdDSA | No | 2 | ~500/s | SOL, DOT, Taproot |
+| LSSS | (resharing) | N/A | 3 | N/A | All (share mgmt) |
+| TFHE | (internal) | Yes | N/A | N/A | Internal |
+| Corona | Lattice | Yes | 4 | ~50/s | PQ-ready chains |
+| Quasar | BLS+PQ | Yes | 3 | ~80/s | ETH 2.0 + PQ |
+| BLS | BLS | No* | 1 | ~1000/s | ETH 2.0, validators |
+| Doerner | ECDSA | No | 3 | ~200/s | BTC, ETH (2-of-2) |
+
+*BLS over BLS12-381 is not inherently quantum-safe; use Quasar for a PQ hedge.
+
+## ZK Proof Systems
+
+All 17 zero-knowledge proof systems used across the protocol suite:
+
+| # | Proof | Used In | Purpose |
+|---|-------|---------|---------|
+| 1 | Schnorr DL proof | All | Knowledge of discrete log |
+| 2 | Paillier-Blum modulus | CGGMP21 | Safe prime product |
+| 3 | Range proof (MtA) | CGGMP21 | Ciphertext value bounds |
+| 4 | Affine operation proof | CGGMP21 | MtA correctness |
+| 5 | Log-star | CGGMP21 | Paillier-EC consistency |
+| 6 | Dec proof | CGGMP21 | Paillier decryption |
+| 7 | Feldman VSS | CGGMP21, FROST, BLS | Share commitment consistency |
+| 8 | Pedersen commitment | CGGMP21, FROST | Hiding+binding commitment |
+| 9 | DLOG equality (DLEQ) | FROST, BLS | Same exponent across groups |
+| 10 | Nonce commitment | FROST | Binding nonce selection |
+| 11 | Rejection sampling | Corona | Signature distribution masking |
+| 12 | Module-LWE proof | Corona, Quasar | Lattice key correctness |
+| 13 | BLS pop (proof of possession) | BLS, Quasar | Key ownership |
+| 14 | Pairing proof | BLS | Signature validity |
+| 15 | OT correlation | Doerner | OT extension correctness |
+| 16 | Bit decomposition | TFHE | Ciphertext structure |
+| 17 | Bootstrapping proof | TFHE | Noise budget refresh |
