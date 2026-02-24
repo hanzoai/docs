@@ -6,6 +6,7 @@ import {
   MessageSquare, Globe, Lock, Layers, DollarSign, Package,
   Gauge, CloudLightning, Heart, Star, Users, Clock,
 } from 'lucide-react';
+import DynamicPricing from './DynamicPricing';
 
 /* ─────────────────────────────────────────────────────────── */
 /*  LANDING PAGE                                               */
@@ -76,9 +77,9 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-6 max-w-4xl mx-auto">
             <Stat value="49" label="Models" />
             <Stat value="1T+" label="Max Parameters" />
-            <Stat value="262K" label="Max Context" />
+            <Stat value="1M" label="Max Context" />
             <Stat value="10" label="Modalities" />
-            <Stat value="$0.30" label="From $/MTok" />
+            <Stat value="$0.15" label="From $/MTok" />
           </div>
         </div>
       </section>
@@ -95,8 +96,8 @@ export default function HomePage() {
             icon={<Zap className="h-6 w-6" />}
             name="zen4-max"
             badge="FRONTIER"
-            spec="1.04T MoE · 32B active · 256K ctx"
-            description="Trillion-parameter frontier model with deep reasoning. Our largest and most capable model."
+            spec="Maximum Intelligence · 1M ctx"
+            description="Most capable model for complex reasoning, analysis, and agentic coding. 1M token context."
             href="/docs/models/zen4-max"
           />
           <ModelHighlight
@@ -133,126 +134,7 @@ export default function HomePage() {
             subtitle="Pay-as-you-go. $5 free credit on signup. No minimum commitment."
           />
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-            <div className="rounded-xl border border-fd-primary/30 bg-fd-primary/5 p-6 ring-1 ring-fd-primary/20">
-              <div className="text-xs font-semibold tracking-widest uppercase text-fd-primary mb-2">FREE TIER</div>
-              <div className="text-3xl font-bold mb-1">$5</div>
-              <p className="text-sm text-fd-muted-foreground mb-4">Free credit on every new account</p>
-              <ul className="text-sm text-fd-muted-foreground space-y-2">
-                <li className="flex items-center gap-2"><Star className="h-3.5 w-3.5 text-fd-primary" /> All 15 API models</li>
-                <li className="flex items-center gap-2"><Star className="h-3.5 w-3.5 text-fd-primary" /> OpenAI-compatible API</li>
-                <li className="flex items-center gap-2"><Star className="h-3.5 w-3.5 text-fd-primary" /> 30-day expiry</li>
-              </ul>
-              <a
-                href="https://console.hanzo.ai"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-6 block text-center rounded-lg bg-fd-primary px-4 py-2.5 text-sm font-medium text-fd-primary-foreground hover:opacity-90 transition"
-              >
-                Get Started Free
-              </a>
-            </div>
-            <div className="rounded-xl border border-fd-border bg-fd-background p-6">
-              <div className="text-xs font-semibold tracking-widest uppercase text-fd-muted-foreground mb-2">PAY AS YOU GO</div>
-              <div className="text-3xl font-bold mb-1">$0.30<span className="text-base font-normal text-fd-muted-foreground">/MTok</span></div>
-              <p className="text-sm text-fd-muted-foreground mb-4">Starting from — scale with usage</p>
-              <ul className="text-sm text-fd-muted-foreground space-y-2">
-                <li className="flex items-center gap-2"><Star className="h-3.5 w-3.5 text-fd-primary" /> Prepaid credits</li>
-                <li className="flex items-center gap-2"><Star className="h-3.5 w-3.5 text-fd-primary" /> Real-time usage tracking</li>
-                <li className="flex items-center gap-2"><Star className="h-3.5 w-3.5 text-fd-primary" /> No surprise bills</li>
-              </ul>
-              <a
-                href="https://console.hanzo.ai"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-6 block text-center rounded-lg border border-fd-border px-4 py-2.5 text-sm font-medium hover:bg-fd-muted transition"
-              >
-                Add Credits
-              </a>
-            </div>
-            <div className="rounded-xl border border-fd-border bg-fd-background p-6">
-              <div className="text-xs font-semibold tracking-widest uppercase text-fd-muted-foreground mb-2">ENTERPRISE</div>
-              <div className="text-3xl font-bold mb-1">Custom</div>
-              <p className="text-sm text-fd-muted-foreground mb-4">Volume pricing, SLAs, dedicated support</p>
-              <ul className="text-sm text-fd-muted-foreground space-y-2">
-                <li className="flex items-center gap-2"><Star className="h-3.5 w-3.5 text-fd-primary" /> Volume discounts</li>
-                <li className="flex items-center gap-2"><Star className="h-3.5 w-3.5 text-fd-primary" /> Dedicated infrastructure</li>
-                <li className="flex items-center gap-2"><Star className="h-3.5 w-3.5 text-fd-primary" /> SLA guarantees</li>
-              </ul>
-              <a
-                href="https://hanzo.industries/contact"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-6 block text-center rounded-lg border border-fd-border px-4 py-2.5 text-sm font-medium hover:bg-fd-muted transition"
-              >
-                Contact Sales
-              </a>
-            </div>
-          </div>
-
-          {/* Pricing table */}
-          <h3 className="text-xl font-semibold mb-6">Zen4 Generation — Production API</h3>
-          <div className="overflow-x-auto mb-10">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-fd-border text-left">
-                  <th className="pb-3 pr-4 font-medium">Model</th>
-                  <th className="pb-3 pr-4 font-medium">Architecture</th>
-                  <th className="pb-3 pr-4 font-medium">Context</th>
-                  <th className="pb-3 pr-4 font-medium">Tier</th>
-                  <th className="pb-3 pr-4 font-medium text-right">Input $/MTok</th>
-                  <th className="pb-3 font-medium text-right">Output $/MTok</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-fd-border">
-                <ModelRow name="zen4-max" arch="1.04T (32B active) MoE" ctx="256K" tier="ultra max" input="$3.60" output="$3.60" href="/docs/models/zen4-max" featured />
-                <ModelRow name="zen4" arch="744B (40B active) MoE" ctx="202K" tier="ultra max" input="$3.00" output="$9.60" href="/docs/models/zen4" />
-                <ModelRow name="zen4-ultra" arch="744B (40B active) MoE + CoT" ctx="202K" tier="ultra max" input="$3.00" output="$9.60" href="/docs/models/zen4-ultra" />
-                <ModelRow name="zen4-pro" arch="80B (3B active) MoE" ctx="131K" tier="ultra" input="$2.70" output="$2.70" href="/docs/models/zen4-pro" />
-                <ModelRow name="zen4-thinking" arch="80B (3B active) MoE + CoT" ctx="131K" tier="pro max" input="$2.70" output="$2.70" href="/docs/models/zen4-thinking" />
-                <ModelRow name="zen4-coder" arch="480B (35B active) MoE" ctx="262K" tier="ultra" input="$3.60" output="$3.60" href="/docs/models/zen4-coder" />
-                <ModelRow name="zen4-coder-pro" arch="480B Dense BF16" ctx="262K" tier="ultra max" input="$4.50" output="$4.50" href="/docs/models/zen4-coder-pro" />
-                <ModelRow name="zen4-coder-flash" arch="30B (3B active) MoE" ctx="262K" tier="pro max" input="$1.50" output="$1.50" href="/docs/models/zen4-coder-flash" />
-                <ModelRow name="zen4-mini" arch="8B Dense" ctx="40K" tier="pro" input="$0.60" output="$0.60" href="/docs/models/zen4-mini" />
-              </tbody>
-            </table>
-          </div>
-
-          <h3 className="text-xl font-semibold mb-6">Zen3 Generation — Specialized Models</h3>
-          <div className="overflow-x-auto mb-10">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-fd-border text-left">
-                  <th className="pb-3 pr-4 font-medium">Model</th>
-                  <th className="pb-3 pr-4 font-medium">Architecture</th>
-                  <th className="pb-3 pr-4 font-medium">Context</th>
-                  <th className="pb-3 pr-4 font-medium">Tier</th>
-                  <th className="pb-3 pr-4 font-medium text-right">Input $/MTok</th>
-                  <th className="pb-3 font-medium text-right">Output $/MTok</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-fd-border">
-                <ModelRow name="zen3-omni" arch="~200B Dense Multimodal" ctx="202K" tier="pro max" input="$1.80" output="$6.60" />
-                <ModelRow name="zen3-vl" arch="30B (3B active) MoE VL" ctx="131K" tier="pro max" input="$0.45" output="$1.80" />
-                <ModelRow name="zen3-nano" arch="4B Dense" ctx="40K" tier="pro" input="$0.30" output="$0.30" />
-                <ModelRow name="zen3-guard" arch="4B Dense" ctx="40K" tier="pro" input="$0.30" output="$0.30" />
-                <ModelRow name="zen3-embedding" arch="Embedding (3072 dim)" ctx="8K" tier="pro max" input="$0.39" output="—" />
-              </tbody>
-            </table>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <CostExample task="100 chat messages" model="zen4-mini" tokens="50K in + 50K out" cost="$0.06" />
-            <CostExample task="1K code completions" model="zen4-coder-flash" tokens="500K in + 500K out" cost="$1.50" />
-            <CostExample task="10K embeddings" model="zen3-embedding" tokens="1M input" cost="$0.39" />
-            <CostExample task="Heavy daily use" model="zen4" tokens="1M in + 1M out" cost="$12.60" />
-          </div>
-
-          <div className="text-center">
-            <Link href="/docs/api/pricing" className="inline-flex items-center gap-2 text-sm font-medium text-fd-primary hover:underline">
-              Full pricing details <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
+          <DynamicPricing />
         </div>
       </section>
 
