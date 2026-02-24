@@ -1,0 +1,173 @@
+---
+title: Queries
+description: Type-safe query builder with filters, ordering, and pagination.
+---
+
+# Queries
+
+Hanzo ORM provides `TypedQuery[T]` -- a generic query builder that returns `[]*T` directly, eliminating type assertions.
+
+## Basic Query
+
+```go
+q := orm.TypedQuery[User](db)
+users, err := q.Get()
+if err != nil {
+    log.Fatal(err)
+}
+// users is []*User -- fully typed
+```
+
+## Filters
+
+Chain `.Filter()` calls to narrow results. The filter string uses `Field` + `Op` format:
+
+```go
+// Exact match
+q.Filter("Status=", "active")
+
+// Greater than
+q.Filter("Credits>", 100)
+
+// Less than or equal
+q.Filter("Age<=", 30)
+
+// Not equal
+q.Filter("Role!=", "admin")
+```
+
+### Filter Operators
+
+| Operator | Meaning | Example |
+|----------|---------|---------|
+| `=` | Equal | `Filter("Status=", "active")` |
+| `!=` | Not equal | `Filter("Role!=", "guest")` |
+| `>` | Greater than | `Filter("Score>", 90)` |
+| `>=` | Greater or equal | `Filter("Age>=", 18)` |
+| `<` | Less than | `Filter("Price<", 1000)` |
+| `<=` | Less or equal | `Filter("Credits<=", 0)` |
+
+### Chaining Filters
+
+Multiple filters are ANDed together:
+
+```go
+q := orm.TypedQuery[User](db)
+active, err := q.
+    Filter("Status=", "active").
+    Filter("Plan=", "pro").
+    Filter("Credits>", 0).
+    Get()
+```
+
+## Ordering
+
+```go
+// Ascending (default)
+q.Order("Name")
+
+// Descending
+q.Order("-CreatedAt")
+```
+
+## Pagination
+
+```go
+q.Limit(20)   // Max results
+q.Offset(40)  // Skip first 40
+```
+
+### Cursor-Based Pagination
+
+For large datasets, use cursor-based iteration:
+
+```go
+q := orm.TypedQuery[User](db)
+q.Filter("Status=", "active").Order("Id").Limit(100)
+
+results, err := q.Get()
+// Use last result's ID as cursor for next page
+```
+
+## Get by ID
+
+```go
+// Via TypedQuery
+q := orm.TypedQuery[User](db)
+user, err := q.ById(userId)
+
+// Or directly
+user, err := orm.Get[User](db, userId)
+```
+
+## Model-Scoped Queries
+
+Each model instance has a `.Query()` method that returns a query pre-scoped to its kind:
+
+```go
+user := orm.New[User](db)
+q := user.Query()
+results, err := q.Filter("Plan=", "enterprise").Get()
+```
+
+## SQLite Query Internals
+
+Under the hood, the SQLite driver stores entities as JSON in a `_entities` table:
+
+```sql
+CREATE TABLE _entities (
+    id         TEXT PRIMARY KEY,
+    kind       TEXT NOT NULL,
+    parent_id  TEXT,
+    data       JSON NOT NULL,
+    created_at DATETIME,
+    updated_at DATETIME,
+    deleted    BOOLEAN DEFAULT 0
+);
+```
+
+Filters translate to `json_extract()` expressions:
+
+```sql
+SELECT data FROM _entities
+WHERE kind = 'user'
+  AND json_extract(data, '$.status') = 'active'
+  AND COALESCE(json_extract(data, '$.credits'), 0) > 0
+  AND deleted = 0
+ORDER BY json_extract(data, '$.name') ASC
+LIMIT 20;
+```
+
+Field names auto-convert from PascalCase (`Status`) to camelCase (`$.status`) to match JSON storage.
+
+## Transactions
+
+Wrap multiple operations in a transaction:
+
+```go
+err := db.RunInTransaction(func(tx orm.DB) {
+    user := orm.New[User](tx)
+    user.Name = "Alice"
+    user.Create()
+
+    order := orm.New[Order](tx)
+    order.CustomerID = user.Id()
+    order.Total = 9900
+    order.Create()
+})
+// Both succeed or both roll back
+```
+
+## Example: Paginated Active Users
+
+```go
+func ListActiveUsers(db orm.DB, page, pageSize int) ([]*User, error) {
+    q := orm.TypedQuery[User](db)
+    return q.
+        Filter("Status=", "active").
+        Order("-CreatedAt").
+        Limit(pageSize).
+        Offset((page - 1) * pageSize).
+        Get()
+}
+```

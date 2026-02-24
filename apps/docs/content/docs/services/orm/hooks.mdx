@@ -1,0 +1,167 @@
+---
+title: Lifecycle Hooks
+description: Run custom logic before and after CRUD operations.
+---
+
+# Lifecycle Hooks
+
+Hooks let you run validation, enrichment, or side-effect logic at specific points in an entity's lifecycle. Implement the hook interface on your struct -- the ORM calls it automatically.
+
+## Available Hooks
+
+| Interface | Method | Called When |
+|-----------|--------|------------|
+| `BeforeCreator` | `BeforeCreate() error` | Before a new entity is persisted |
+| `AfterCreator` | `AfterCreate() error` | After a new entity is persisted |
+| `BeforeUpdater` | `BeforeUpdate() error` | Before an existing entity is updated |
+| `AfterUpdater` | `AfterUpdate() error` | After an existing entity is updated |
+| `BeforeDeleter` | `BeforeDelete() error` | Before an entity is deleted |
+| `AfterDeleter` | `AfterDelete() error` | After an entity is deleted |
+
+## Execution Order
+
+### Create
+
+```
+1. ApplyDefaults (struct tags)
+2. BeforeCreate()
+3. SerializeFields (orm:"serialize")
+4. DB Put
+5. AfterCreate()
+```
+
+### Update
+
+```
+1. BeforeUpdate()
+2. SerializeFields
+3. DB Put
+4. AfterUpdate()
+```
+
+### Delete
+
+```
+1. BeforeDelete()
+2. DB Delete
+3. AfterDelete()
+```
+
+## Example: Validation Hook
+
+```go
+type User struct {
+    orm.Model[User]
+    Name  string `json:"name"`
+    Email string `json:"email"`
+}
+
+func (u *User) BeforeCreate() error {
+    if u.Name == "" {
+        return fmt.Errorf("name is required")
+    }
+    if !strings.Contains(u.Email, "@") {
+        return fmt.Errorf("invalid email: %s", u.Email)
+    }
+    return nil
+}
+```
+
+If `BeforeCreate` returns an error, the entity is **not** persisted and `Create()` returns that error.
+
+## Example: Timestamps
+
+```go
+type AuditedEntity struct {
+    orm.Model[AuditedEntity]
+    Name      string    `json:"name"`
+    CreatedBy string    `json:"createdBy"`
+    UpdatedBy string    `json:"updatedBy"`
+    TouchedAt time.Time `json:"touchedAt"`
+}
+
+func (a *AuditedEntity) BeforeCreate() error {
+    a.TouchedAt = time.Now()
+    return nil
+}
+
+func (a *AuditedEntity) BeforeUpdate() error {
+    a.TouchedAt = time.Now()
+    return nil
+}
+```
+
+## Example: Side Effects
+
+```go
+type Order struct {
+    orm.Model[Order]
+    CustomerID string `json:"customerId"`
+    Total      int64  `json:"total"`
+    Status     string `json:"status" orm:"default:pending"`
+}
+
+func (o *Order) AfterCreate() error {
+    // Send confirmation email, emit event, etc.
+    log.Printf("Order created: %s for customer %s ($%.2f)",
+        o.Id(), o.CustomerID, float64(o.Total)/100)
+    return nil
+}
+
+func (o *Order) AfterUpdate() error {
+    if o.Status == "paid" {
+        // Trigger fulfillment
+        log.Printf("Order %s paid — starting fulfillment", o.Id())
+    }
+    return nil
+}
+```
+
+## Error Handling
+
+- **Before hooks**: returning an error **aborts** the operation. The database is not touched.
+- **After hooks**: returning an error is propagated to the caller, but the database write has already committed. Use after-hooks for non-critical side effects, or wrap the full operation in a transaction.
+
+```go
+err := db.RunInTransaction(func(tx orm.DB) {
+    order := orm.New[Order](tx)
+    order.Total = 5000
+    if err := order.Create(); err != nil {
+        // If AfterCreate fails inside a transaction,
+        // the entire transaction rolls back
+        return
+    }
+})
+```
+
+## Hook Interfaces
+
+The hook interfaces are defined in `hooks.go`:
+
+```go
+type BeforeCreator interface {
+    BeforeCreate() error
+}
+
+type AfterCreator interface {
+    AfterCreate() error
+}
+
+type BeforeUpdater interface {
+    BeforeUpdate() error
+}
+
+type AfterUpdater interface {
+    AfterUpdate() error
+}
+
+type BeforeDeleter interface {
+    BeforeDelete() error
+}
+
+type AfterDeleter interface {
+    AfterDelete() error
+}
+```
+
+Any struct embedding `Model[T]` can implement any combination of these interfaces. The ORM uses interface type assertion at runtime -- no registration or configuration needed.

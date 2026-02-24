@@ -1,0 +1,196 @@
+---
+title: Models
+description: Define type-safe models with the Model[T] generic mixin.
+---
+
+# Models
+
+Every ORM model embeds `orm.Model[T]` and registers itself in `init()`. This gives each struct automatic ID generation, kind identification, and all CRUD methods.
+
+## Defining a Model
+
+```go
+package models
+
+import "github.com/hanzoai/orm"
+
+type Customer struct {
+    orm.Model[Customer]
+    Name    string `json:"name"`
+    Email   string `json:"email"`
+    Plan    string `json:"plan"    orm:"default:free"`
+    Credits int    `json:"credits" orm:"default:100"`
+}
+
+func init() {
+    orm.Register[Customer]("customer")
+}
+```
+
+### What `Model[T]` Provides
+
+| Method | Description |
+|--------|-------------|
+| `Id() string` | Returns the entity's unique ID |
+| `Kind() string` | Returns the registered kind name (e.g., `"customer"`) |
+| `Key() orm.Key` | Returns the entity's datastore key |
+| `Create() error` | Persists a new entity (calls hooks, applies defaults, serializes) |
+| `Update() error` | Updates an existing entity |
+| `Delete() error` | Soft-deletes the entity |
+| `Get() error` | Reloads the entity from the database by its key |
+| `GetById(id string) error` | Loads an entity by ID |
+| `Clone() *T` | Deep-copies the entity |
+| `Query() *ModelQuery[T]` | Returns a typed query scoped to this model's kind |
+
+## Factory Functions
+
+```go
+// New[T] creates an instance, sets defaults, and initializes the DB reference
+user := orm.New[User](db)
+
+// Get[T] fetches by ID in one call
+user, err := orm.Get[User](db, "1234567890")
+
+// TypedQuery[T] starts a query builder
+q := orm.TypedQuery[User](db)
+
+// Kind[T] returns the registered kind name
+name := orm.Kind[User]() // "user"
+```
+
+## Registration Options
+
+`Register[T]` accepts functional options to customize behavior:
+
+```go
+func init() {
+    orm.Register[Order]("order",
+        orm.WithStringKey[Order](),           // Use string IDs (default is int64-based)
+        orm.WithParent[Order](parentKeyFn),   // Set parent key for hierarchical data
+        orm.WithInit[Order](initFn),          // Custom initialization logic
+        orm.WithDefaults[Order](defaultsFn),  // Programmatic defaults beyond struct tags
+        orm.WithCache[Order](cacheConfig),    // Per-model cache configuration
+    )
+}
+```
+
+### WithStringKey
+
+Uses string-based keys instead of the default nanosecond-precision int64 IDs.
+
+```go
+orm.Register[APIKey]("api-key", orm.WithStringKey[APIKey]())
+```
+
+### WithParent
+
+Sets a parent key function for hierarchical key structures:
+
+```go
+orm.Register[LineItem]("line-item",
+    orm.WithParent[LineItem](func(li *LineItem) orm.Key {
+        return orm.NewKey("order", li.OrderID, 0, nil)
+    }),
+)
+```
+
+### WithInit
+
+Runs custom initialization when `New[T]` is called:
+
+```go
+orm.Register[Session]("session",
+    orm.WithInit[Session](func(s *Session) {
+        s.Token = generateToken()
+        s.ExpiresAt = time.Now().Add(24 * time.Hour)
+    }),
+)
+```
+
+### WithDefaults
+
+Applies programmatic defaults beyond what struct tags can express:
+
+```go
+orm.Register[Subscription]("subscription",
+    orm.WithDefaults[Subscription](func(s *Subscription) {
+        s.BillingAnchor = time.Now()
+        s.NextInvoice = time.Now().Add(30 * 24 * time.Hour)
+    }),
+)
+```
+
+## Struct Tags
+
+### `json` Tag
+
+Controls JSON field naming. Required for all stored fields.
+
+```go
+type Product struct {
+    orm.Model[Product]
+    Name     string  `json:"name"`
+    Price    int64   `json:"price"`
+    Currency string  `json:"currency"`
+    Active   bool    `json:"active"`
+}
+```
+
+### `orm` Tag
+
+| Tag | Description | Example |
+|-----|-------------|---------|
+| `default:value` | Sets a default value on creation | `orm:"default:active"` |
+| `serialize` | Auto-serializes complex types to a `_` storage field | `orm:"serialize"` |
+
+### `datastore` Tag (Legacy)
+
+The `datastore:"-"` tag is detected for backwards compatibility with older model patterns. Fields with `datastore:"-"` and a corresponding `Foo_` sibling are auto-serialized.
+
+## ID Generation
+
+IDs are generated using `UnixNano + atomic counter`, producing globally unique values even in tight loops:
+
+```
+1708905600123456789₀₀₀₁
+│                   │
+└── nanosecond ts   └── atomic sequence (mod 10000)
+```
+
+This guarantees uniqueness without UUIDs or external sequence generators.
+
+## Example: Full Model
+
+```go
+package models
+
+import (
+    "time"
+    "github.com/hanzoai/orm"
+)
+
+type Invoice struct {
+    orm.Model[Invoice]
+
+    // Business fields
+    CustomerID string    `json:"customerId"`
+    Number     string    `json:"number"`
+    Status     string    `json:"status"   orm:"default:draft"`
+    Currency   string    `json:"currency" orm:"default:usd"`
+    Total      int64     `json:"total"`
+    DueDate    time.Time `json:"dueDate"`
+
+    // Auto-serialized: LineItems stored as JSON in LineItems_ column
+    LineItems  []LineItem `json:"lineItems"  orm:"serialize" datastore:"-"`
+    LineItems_ string     `json:"-"          datastore:"lineItems"`
+
+    // Metadata
+    Notes    string            `json:"notes,omitempty"`
+    Metadata map[string]string `json:"metadata,omitempty" orm:"serialize" datastore:"-"`
+    Metadata_ string           `json:"-"                  datastore:"metadata"`
+}
+
+func init() {
+    orm.Register[Invoice]("invoice")
+}
+```
