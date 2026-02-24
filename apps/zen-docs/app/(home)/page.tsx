@@ -1,10 +1,11 @@
 import Link from 'next/link';
 import {
-  Brain, Code, Zap, Cpu, Eye, Shield, Search, Network,
+  Atom, Code, Zap, Cpu, Eye, Shield, Search, Network,
   ArrowRight, Download, Terminal, BookOpen, Beaker, Database,
   Mic, Video, Box, Sparkles, ExternalLink, GitBranch,
   MessageSquare, Globe, Lock, Layers, DollarSign, Package,
   Gauge, CloudLightning, Heart, Star, Users, Clock,
+  Orbit, Infinity,
 } from 'lucide-react';
 import DynamicPricing from './DynamicPricing';
 
@@ -101,7 +102,7 @@ export default function HomePage() {
             href="/docs/models/zen4-max"
           />
           <ModelHighlight
-            icon={<Brain className="h-6 w-6" />}
+            icon={<Atom className="h-6 w-6" />}
             name="zen4"
             badge="FLAGSHIP"
             spec="744B MoE · 40B active · 202K ctx"
@@ -268,7 +269,7 @@ for chunk in stream:
 
           {/* Foundation Models */}
           <ModelFamily
-            icon={<Brain className="h-5 w-5" />}
+            icon={<Atom className="h-5 w-5" />}
             title="Foundation"
             subtitle="Core models from 0.6B edge to 1T+ frontier scale"
             models={[
@@ -418,7 +419,7 @@ for chunk in stream:
           <ModalityCard icon={<Shield />} title="Safety" models="3" desc="Moderation, guardrails" />
           <ModalityCard icon={<Search />} title="Embedding" models="2" desc="Search, retrieval, RAG" />
           <ModalityCard icon={<Network />} title="Agents" models="1" desc="Tool use, planning" />
-          <ModalityCard icon={<Brain />} title="Math" models="6" desc="Reasoning, proof, computation" />
+          <ModalityCard icon={<Infinity />} title="Math" models="6" desc="Reasoning, proof, computation" />
         </div>
       </section>
 
@@ -431,7 +432,7 @@ for chunk in stream:
           />
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <ArchCard icon={<Brain className="h-5 w-5" />} title="Consumer Line" description="Dense and MoE models from 4B to 80B. Edge-deployable dense models and efficient MoE flagships with only 3B active parameters." />
+            <ArchCard icon={<Orbit className="h-5 w-5" />} title="Consumer Line" description="Dense and MoE models from 4B to 80B. Edge-deployable dense models and efficient MoE flagships with only 3B active parameters." />
             <ArchCard icon={<Code className="h-5 w-5" />} title="Coder Line" description="Code-specialized models trained on 8.47B tokens of real agentic programming data. Fast completions to full-precision code intelligence." />
             <ArchCard icon={<Zap className="h-5 w-5" />} title="Ultra Line" description="Trillion-parameter MoE models for cloud deployment. 1.04T parameters with 32B active for frontier-scale reasoning." />
             <ArchCard icon={<Cpu className="h-5 w-5" />} title="Efficient MoE" description="Mixture-of-Experts delivers frontier performance with only 3B active parameters — runs on consumer hardware." />
@@ -634,16 +635,16 @@ for chunk in stream:
         <div className="mx-auto max-w-6xl px-6 py-12">
           <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-8 mb-10">
             <div className="lg:col-span-2">
-              <div className="text-lg font-bold mb-3">⚡ Zen LM</div>
+              <div className="text-lg font-bold mb-3">🪷 Zen LM</div>
               <p className="text-sm text-fd-muted-foreground mb-4 max-w-xs">
                 Frontier AI models by Hanzo AI. Open weights, transparent pricing, production-grade API.
               </p>
               <div className="flex gap-3">
-                <a href="https://github.com/zenlm" target="_blank" rel="noopener noreferrer" className="text-fd-muted-foreground hover:text-fd-foreground transition">
-                  <GitBranch className="h-4 w-4" />
+                <a href="https://huggingface.co/zenlm" target="_blank" rel="noopener noreferrer" className="text-fd-muted-foreground hover:text-fd-foreground transition" title="HuggingFace">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm-1.163 5.04c.687 0 1.244.558 1.244 1.244 0 .687-.557 1.244-1.244 1.244a1.244 1.244 0 1 1 0-2.488zm2.326 0c.687 0 1.244.558 1.244 1.244 0 .687-.557 1.244-1.244 1.244a1.244 1.244 0 1 1 0-2.488zM7.2 8.4a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4zm9.6 0a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4zm-8.16 5.04c.168-.024.336.072.408.24.696 1.608 2.04 2.52 3.72 2.52s3.024-.912 3.72-2.52a.39.39 0 0 1 .504-.216.39.39 0 0 1 .216.504C16.44 15.84 14.856 16.92 12.768 16.92c-2.088 0-3.672-1.08-4.44-2.952a.39.39 0 0 1 .312-.528z" /></svg>
                 </a>
-                <a href="https://huggingface.co/zenlm" target="_blank" rel="noopener noreferrer" className="text-fd-muted-foreground hover:text-fd-foreground transition">
-                  <Download className="h-4 w-4" />
+                <a href="https://github.com/zenlm" target="_blank" rel="noopener noreferrer" className="text-fd-muted-foreground hover:text-fd-foreground transition" title="GitHub">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" /></svg>
                 </a>
               </div>
             </div>
