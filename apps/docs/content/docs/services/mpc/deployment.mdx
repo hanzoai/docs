@@ -1,0 +1,575 @@
+---
+title: Deployment
+description: Deploy Hanzo MPC with Helm, Docker, or Kubernetes
+---
+
+# Deployment
+
+Hanzo MPC runs as a Kubernetes StatefulSet with NATS JetStream for inter-node messaging and Consul for peer discovery. This guide covers all deployment methods from local development to production clusters.
+
+## Prerequisites
+
+- Kubernetes 1.28+ (production) or Docker (development)
+- Helm 3.12+
+- A Hanzo IAM instance for authentication (or `hanzo.id` for managed auth)
+- At least 3 nodes for meaningful threshold security
+
+## Quick Start with Docker
+
+For local development and testing:
+
+```bash
+docker run -d \
+  --name mpc-node-0 \
+  -p 8080:8080 \
+  -e MPC_NODE_INDEX=0 \
+  -e MPC_PARTIES=3 \
+  -e MPC_THRESHOLD=2 \
+  -e NATS_URL=nats://nats:4222 \
+  -e CONSUL_ADDR=consul:8500 \
+  -e IAM_ENDPOINT=https://hanzo.id \
+  ghcr.io/hanzoai/mpc:latest
+```
+
+### Docker Compose (3-node cluster)
+
+```yaml
+# compose.yml
+services:
+  nats:
+    image: nats:2.10-alpine
+    command: ["-js"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+
+  consul:
+    image: hashicorp/consul:1.18
+    command: ["agent", "-dev", "-client", "0.0.0.0"]
+    ports:
+      - "8500:8500"
+
+  mpc-node-0:
+    image: ghcr.io/hanzoai/mpc:latest
+    environment:
+      MPC_NODE_INDEX: "0"
+      MPC_PARTIES: "3"
+      MPC_THRESHOLD: "2"
+      NATS_URL: "nats://nats:4222"
+      CONSUL_ADDR: "consul:8500"
+      IAM_ENDPOINT: "https://hanzo.id"
+      STORAGE_ENCRYPTION_KEY: "${ENCRYPTION_KEY_0}"
+    ports:
+      - "8080:8080"
+    volumes:
+      - mpc-data-0:/data
+    depends_on:
+      - nats
+      - consul
+
+  mpc-node-1:
+    image: ghcr.io/hanzoai/mpc:latest
+    environment:
+      MPC_NODE_INDEX: "1"
+      MPC_PARTIES: "3"
+      MPC_THRESHOLD: "2"
+      NATS_URL: "nats://nats:4222"
+      CONSUL_ADDR: "consul:8500"
+      IAM_ENDPOINT: "https://hanzo.id"
+      STORAGE_ENCRYPTION_KEY: "${ENCRYPTION_KEY_1}"
+    ports:
+      - "8081:8080"
+    volumes:
+      - mpc-data-1:/data
+    depends_on:
+      - nats
+      - consul
+
+  mpc-node-2:
+    image: ghcr.io/hanzoai/mpc:latest
+    environment:
+      MPC_NODE_INDEX: "2"
+      MPC_PARTIES: "3"
+      MPC_THRESHOLD: "2"
+      NATS_URL: "nats://nats:4222"
+      CONSUL_ADDR: "consul:8500"
+      IAM_ENDPOINT: "https://hanzo.id"
+      STORAGE_ENCRYPTION_KEY: "${ENCRYPTION_KEY_2}"
+    ports:
+      - "8082:8080"
+    volumes:
+      - mpc-data-2:/data
+    depends_on:
+      - nats
+      - consul
+
+volumes:
+  mpc-data-0:
+  mpc-data-1:
+  mpc-data-2:
+```
+
+Start the cluster:
+
+```bash
+# Generate unique encryption keys for each node
+export ENCRYPTION_KEY_0=$(openssl rand -hex 32)
+export ENCRYPTION_KEY_1=$(openssl rand -hex 32)
+export ENCRYPTION_KEY_2=$(openssl rand -hex 32)
+
+docker compose up -d
+```
+
+Verify health:
+
+```bash
+curl http://localhost:8080/health
+```
+
+---
+
+## Helm Chart
+
+The recommended deployment method for production Kubernetes clusters.
+
+### Install
+
+```bash
+helm repo add hanzo https://charts.hanzo.ai
+helm repo update
+
+helm install hanzo-mpc hanzo/mpc \
+  --namespace mpc \
+  --create-namespace \
+  --values values.yaml
+```
+
+### values.yaml
+
+```yaml
+# Cluster configuration
+cluster:
+  parties: 3
+  threshold: 2
+  protocol: cggmp21  # Default protocol for new wallets
+
+# Node configuration
+replicaCount: 3
+
+image:
+  repository: ghcr.io/hanzoai/mpc
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Resource limits per node
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+# Persistent storage for key shares
+persistence:
+  enabled: true
+  storageClass: do-block-storage  # Adjust for your cloud
+  size: 10Gi
+
+# NATS JetStream
+nats:
+  enabled: true  # Deploy NATS as subchart
+  # Or use external NATS:
+  # enabled: false
+  # externalUrl: nats://nats.infrastructure.svc:4222
+  jetstream:
+    enabled: true
+    memoryStore:
+      maxSize: 256Mi
+    fileStore:
+      maxSize: 1Gi
+
+# Consul
+consul:
+  enabled: true  # Deploy Consul as subchart
+  # Or use external Consul:
+  # enabled: false
+  # externalAddr: consul.infrastructure.svc:8500
+
+# Authentication
+auth:
+  iamEndpoint: https://hanzo.id
+  # Or internal IAM:
+  # iamEndpoint: http://iam.hanzo.svc:8000
+
+# TLS
+tls:
+  enabled: true
+  certManager: true
+  issuer: letsencrypt-prod
+  # Or provide certs directly:
+  # certManager: false
+  # secretName: mpc-tls
+
+# Ingress
+ingress:
+  enabled: true
+  className: nginx
+  host: mpc.hanzo.ai
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+# Monitoring
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    namespace: monitoring
+
+# Node-to-node mTLS via Consul Connect
+connectInject:
+  enabled: true
+```
+
+### Upgrade
+
+```bash
+helm upgrade hanzo-mpc hanzo/mpc \
+  --namespace mpc \
+  --values values.yaml
+```
+
+### Uninstall
+
+```bash
+helm uninstall hanzo-mpc --namespace mpc
+```
+
+Persistent volumes are retained by default. To delete them:
+
+```bash
+kubectl delete pvc -l app.kubernetes.io/name=mpc -n mpc
+```
+
+---
+
+## Kubernetes Manual Deployment
+
+If you prefer to manage manifests directly instead of using Helm.
+
+### Namespace
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mpc
+```
+
+### StatefulSet
+
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mpc
+  namespace: mpc
+spec:
+  serviceName: mpc
+  replicas: 3
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app: mpc
+  template:
+    metadata:
+      labels:
+        app: mpc
+    spec:
+      containers:
+        - name: mpc
+          image: ghcr.io/hanzoai/mpc:latest
+          ports:
+            - containerPort: 8080
+              name: api
+            - containerPort: 9090
+              name: metrics
+          env:
+            - name: MPC_NODE_INDEX
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.annotations['mpc-index']
+            - name: MPC_PARTIES
+              value: "3"
+            - name: MPC_THRESHOLD
+              value: "2"
+            - name: NATS_URL
+              value: "nats://nats.mpc.svc:4222"
+            - name: CONSUL_ADDR
+              value: "consul.mpc.svc:8500"
+            - name: IAM_ENDPOINT
+              value: "https://hanzo.id"
+            - name: STORAGE_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: mpc-encryption-keys
+                  key: node-key
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: do-block-storage
+        resources:
+          requests:
+            storage: 10Gi
+```
+
+### Service
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: mpc
+  namespace: mpc
+spec:
+  type: ClusterIP
+  selector:
+    app: mpc
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: api
+    - port: 9090
+      targetPort: 9090
+      name: metrics
+```
+
+### Secrets
+
+Generate and store encryption keys:
+
+```bash
+# Generate keys
+kubectl create secret generic mpc-encryption-keys \
+  --namespace mpc \
+  --from-literal=node-key=$(openssl rand -hex 32)
+```
+
+For production, store encryption keys in Hanzo KMS and sync via the KMS operator:
+
+```yaml
+apiVersion: secrets.hanzo.ai/v1
+kind: KMSSecret
+metadata:
+  name: mpc-encryption-keys
+  namespace: mpc
+spec:
+  secretRef:
+    secretName: mpc-encryption-keys
+  data:
+    - secretKey: node-key
+      remoteRef:
+        secretPath: /mpc/encryption
+        secretKey: NODE_ENCRYPTION_KEY
+```
+
+---
+
+## Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `MPC_NODE_INDEX` | Yes | - | Node index (0-based) |
+| `MPC_PARTIES` | Yes | - | Total number of parties |
+| `MPC_THRESHOLD` | Yes | - | Signing threshold |
+| `NATS_URL` | Yes | - | NATS JetStream connection URL |
+| `CONSUL_ADDR` | Yes | - | Consul agent address |
+| `IAM_ENDPOINT` | Yes | `https://hanzo.id` | Hanzo IAM endpoint for token validation |
+| `STORAGE_ENCRYPTION_KEY` | Yes | - | Hex-encoded AES-256 key for BadgerDB encryption |
+| `LOG_LEVEL` | No | `info` | Log level: `debug`, `info`, `warn`, `error` |
+| `METRICS_PORT` | No | `9090` | Prometheus metrics port |
+| `API_PORT` | No | `8080` | REST API port |
+| `BADGER_PATH` | No | `/data/badger` | BadgerDB storage path |
+
+---
+
+## Monitoring
+
+### Prometheus Metrics
+
+The `/metrics` endpoint exposes standard Prometheus metrics:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `mpc_keygen_duration_seconds` | histogram | DKG ceremony duration |
+| `mpc_signing_duration_seconds` | histogram | Signing operation duration |
+| `mpc_reshare_duration_seconds` | histogram | Reshare operation duration |
+| `mpc_signing_total` | counter | Total signing operations |
+| `mpc_signing_errors_total` | counter | Failed signing operations |
+| `mpc_nodes_healthy` | gauge | Number of healthy nodes |
+| `mpc_wallets_total` | gauge | Total managed wallets |
+| `mpc_active_protocols` | gauge | Active protocol sessions |
+
+### Grafana Dashboard
+
+Import the Hanzo MPC dashboard:
+
+```bash
+# Dashboard ID: hanzo-mpc
+kubectl apply -f https://charts.hanzo.ai/dashboards/mpc.json
+```
+
+### Alerting Rules
+
+```yaml
+groups:
+  - name: mpc
+    rules:
+      - alert: MPCNodeDown
+        expr: mpc_nodes_healthy < mpc_threshold
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "MPC cluster below signing threshold"
+
+      - alert: MPCSigningLatency
+        expr: histogram_quantile(0.99, mpc_signing_duration_seconds) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MPC signing p99 latency above 1 second"
+
+      - alert: MPCSigningErrors
+        expr: rate(mpc_signing_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "MPC signing error rate elevated"
+```
+
+---
+
+## Production Checklist
+
+Before going to production, verify the following:
+
+### Security
+
+- [ ] Each node has a unique `STORAGE_ENCRYPTION_KEY` stored in Hanzo KMS
+- [ ] mTLS enabled between nodes via Consul Connect
+- [ ] Ingress TLS terminated with valid certificates
+- [ ] IAM endpoint configured for Bearer token validation
+- [ ] Network policies restrict inter-pod traffic to MPC namespace
+- [ ] PodSecurityPolicy or PodSecurity admission enforced
+
+### High Availability
+
+- [ ] Nodes spread across availability zones (pod anti-affinity)
+- [ ] Persistent volumes use replicated storage class
+- [ ] NATS JetStream configured with replication factor >= 2
+- [ ] Liveness and readiness probes configured
+- [ ] PodDisruptionBudget set (maxUnavailable < threshold)
+
+### Operations
+
+- [ ] Prometheus ServiceMonitor deployed
+- [ ] Grafana dashboard imported
+- [ ] Alert rules for node health and signing latency
+- [ ] Backup strategy for BadgerDB volumes
+- [ ] Key share reshare schedule configured (e.g., monthly)
+- [ ] Audit log forwarding to SIEM
+
+### Pod Anti-Affinity
+
+Ensure MPC nodes are distributed across failure domains:
+
+```yaml
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app: mpc
+        topologyKey: topology.kubernetes.io/zone
+```
+
+### PodDisruptionBudget
+
+Never allow more nodes to be unavailable than the cluster can tolerate:
+
+```yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mpc
+  namespace: mpc
+spec:
+  maxUnavailable: 1  # For 2-of-3: max 1 unavailable
+  selector:
+    matchLabels:
+      app: mpc
+```
+
+---
+
+## Backup and Recovery
+
+### Share Backup
+
+Key shares are the most critical data in the system. Back up BadgerDB volumes regularly:
+
+```bash
+# Snapshot a node's data
+kubectl exec -n mpc mpc-0 -- \
+  tar czf /tmp/backup.tar.gz /data/badger
+
+kubectl cp mpc/mpc-0:/tmp/backup.tar.gz ./mpc-0-backup.tar.gz
+```
+
+Store backups encrypted in Hanzo S3 or your secure object store. Never store share backups from multiple nodes in the same location -- this would defeat the threshold security model.
+
+### Disaster Recovery
+
+If a node is permanently lost but the cluster still has `t` healthy nodes:
+
+1. Deploy a replacement node with a fresh `MPC_NODE_INDEX`
+2. Trigger a reshare operation to generate new shares for the replacement node
+3. The replacement node receives its share through the reshare protocol
+4. Old shares from the lost node are automatically invalidated
+
+```bash
+curl -X POST https://mpc.hanzo.ai/api/reshare \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "wallet_id": "w_...",
+    "reason": "node_replacement"
+  }'
+```
