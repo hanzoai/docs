@@ -1,0 +1,188 @@
+---
+title: Hanzo ORM
+description: Generics-based ORM for Go with type-safe Model[T], auto-registration, auto-serialization, and multi-backend support.
+---
+
+# Hanzo ORM
+
+Hanzo ORM is a generics-based object-relational mapper for Go that eliminates model boilerplate through a single `Model[T]` mixin. Define your struct, register it, and get type-safe CRUD, queries, lifecycle hooks, auto-serialization, and caching -- all with zero code generation.
+
+**Module:** `github.com/hanzoai/orm`
+**Version:** v0.2.0
+**Go:** 1.22+
+**License:** MIT
+
+## Install
+
+```bash
+go get github.com/hanzoai/orm@latest
+```
+
+## Quick Start
+
+### Define a Model
+
+```go
+package main
+
+import "github.com/hanzoai/orm"
+
+type User struct {
+    orm.Model[User]
+    Name   string `json:"name"`
+    Email  string `json:"email"`
+    Status string `json:"status" orm:"default:active"`
+}
+
+func init() {
+    orm.Register[User]("user")
+}
+```
+
+Embedding `orm.Model[User]` gives your struct an auto-generated ID, kind name, and all CRUD methods. The `init()` call registers metadata at startup -- no code generation step.
+
+### Connect to a Backend
+
+```go
+import ormdb "github.com/hanzoai/orm/db"
+
+// SQLite (embedded, zero config)
+db, err := orm.OpenSQLite(&ormdb.SQLiteDBConfig{
+    Path:   "data/app.db",
+    Config: ormdb.SQLiteConfig{BusyTimeout: 5000, JournalMode: "WAL"},
+})
+
+// Or ZAP binary protocol (PostgreSQL, MongoDB, Redis, ClickHouse)
+db, err := orm.OpenZap(&ormdb.ZapConfig{
+    Addr:    "localhost:9651",
+    Backend: ormdb.ZapSQL,
+})
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+### Create
+
+```go
+user := orm.New[User](db)
+user.Name = "Alice"
+user.Email = "alice@example.com"
+// Status defaults to "active" via orm:"default:active"
+
+if err := user.Create(); err != nil {
+    log.Fatal(err)
+}
+
+fmt.Println(user.Id()) // unique nanosecond-precision ID
+```
+
+### Read
+
+```go
+got, err := orm.Get[User](db, user.Id())
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(got.Name) // "Alice"
+```
+
+### Update
+
+```go
+got.Name = "Alice Smith"
+if err := got.Update(); err != nil {
+    log.Fatal(err)
+}
+```
+
+### Delete
+
+```go
+if err := got.Delete(); err != nil {
+    log.Fatal(err)
+}
+```
+
+### Query
+
+```go
+q := orm.TypedQuery[User](db)
+active, err := q.Filter("Status=", "active").Get()
+if err != nil {
+    log.Fatal(err)
+}
+for _, u := range active {
+    fmt.Println(u.Name, u.Email)
+}
+```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Your Application                                    │
+│  ┌────────────┐  ┌────────────┐  ┌──────────────┐  │
+│  │ Model[User]│  │Model[Order]│  │Model[Product]│  │
+│  └─────┬──────┘  └─────┬──────┘  └──────┬───────┘  │
+│        │               │                │           │
+│        ▼               ▼                ▼           │
+│  ┌─────────────────────────────────────────────┐    │
+│  │           orm.DB Interface                   │    │
+│  │  New[T] · Get[T] · TypedQuery[T]           │    │
+│  │  Register · Hooks · Defaults · Serialize    │    │
+│  └─────────────────────┬───────────────────────┘    │
+│                        │                             │
+│  ┌─────────────────────┼───────────────────────┐    │
+│  │          Cache Layer (optional)              │    │
+│  │  Memory LRU · Redis/Valkey · None           │    │
+│  └─────────────────────┬───────────────────────┘    │
+│                        │                             │
+│  ┌─────────┬───────────┼──────────┬────────────┐    │
+│  │ SQLite  │ ZAP Binary Protocol  │  Custom    │    │
+│  │ (WAL)   │ PostgreSQL│ MongoDB  │  Driver    │    │
+│  │         │ Redis     │ClickHouse│            │    │
+│  └─────────┴───────────┴──────────┴────────────┘    │
+└─────────────────────────────────────────────────────┘
+```
+
+## Packages
+
+| Package | Import | Description |
+|---------|--------|-------------|
+| **orm** | `github.com/hanzoai/orm` | Core `Model[T]`, registration, hooks, cache, serialization |
+| **orm/db** | `github.com/hanzoai/orm/db` | Database interfaces + SQLite driver |
+| **orm/val** | `github.com/hanzoai/orm/val` | Struct field validation |
+| **orm/internal/json** | `github.com/hanzoai/orm/internal/json` | JSON encode/decode helpers |
+| **orm/internal/reflect** | `github.com/hanzoai/orm/internal/reflect` | Reflection utilities |
+
+## Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Generics Model** | `Model[T]` mixin -- embed once, get Id, Kind, CRUD, Query |
+| **Auto-Registration** | `Register[T]("kind")` in `init()` -- no code generation |
+| **Auto-Serialization** | `orm:"serialize"` tag auto-marshals complex fields to JSON strings |
+| **Struct Tag Defaults** | `orm:"default:value"` sets field defaults on creation |
+| **Lifecycle Hooks** | `BeforeCreate`, `AfterCreate`, `BeforeUpdate`, `AfterUpdate` interfaces |
+| **Typed Queries** | `TypedQuery[T]` returns `[]*T` -- no type assertions |
+| **KV Cache** | Read-through caching with Memory LRU, Redis/Valkey, or no-op backends |
+| **SQLite Driver** | WAL mode, JSON storage, `json_extract` queries, `sqlite-vec` ready |
+| **ZAP Driver** | Binary protocol to PostgreSQL, MongoDB, Redis, ClickHouse via zap-sidecar |
+
+## Related Services
+
+<Cards>
+  <Card title="DB" href="/docs/services/db">
+    Serverless PostgreSQL for relational data and embeddings
+  </Card>
+  <Card title="KV" href="/docs/services/kv">
+    Redis/Valkey for caching, sessions, and pub/sub
+  </Card>
+  <Card title="Commerce" href="/docs/commerce">
+    Billing platform built on Hanzo ORM
+  </Card>
+  <Card title="Go SDK" href="/docs/sdks/go">
+    Go client for the Hanzo LLM Gateway
+  </Card>
+</Cards>
