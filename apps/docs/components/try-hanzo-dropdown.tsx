@@ -17,7 +17,7 @@ const products = [
   {
     label: 'Hanzo Cloud',
     url: 'https://cloud.hanzo.ai',
-    description: 'LLM inference gateway — 100+ models',
+    description: 'LLM inference gateway — 200+ models',
     icon: Cloud,
   },
   {
@@ -76,7 +76,7 @@ export function TryHanzoDropdown() {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1 rounded-lg border border-[#fd4444]/30 px-3 py-1.5 text-sm font-medium text-[#fd4444] hover:bg-[#fd4444]/10 transition-colors"
+        className="inline-flex items-center gap-1.5 rounded-full border border-white/20 px-4 py-1.5 text-sm font-medium text-white hover:bg-white/10 transition-colors"
       >
         Try Hanzo
         <ChevronDown
@@ -95,7 +95,7 @@ export function TryHanzoDropdown() {
               className="flex items-start gap-3 rounded-lg p-2.5 hover:bg-[#1a1a1a] transition-colors group"
               onClick={() => setOpen(false)}
             >
-              <product.icon className="mt-0.5 size-4 text-[#a3a3a3] group-hover:text-[#fd4444] transition-colors shrink-0" />
+              <product.icon className="mt-0.5 size-4 text-[#666] group-hover:text-white transition-colors shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">
                   <span className="text-sm font-medium text-[#fafafa]">
@@ -103,7 +103,7 @@ export function TryHanzoDropdown() {
                   </span>
                   <ExternalLink className="size-3 text-[#525252] opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <p className="text-xs text-[#a3a3a3] mt-0.5">
+                <p className="text-xs text-[#666] mt-0.5">
                   {product.description}
                 </p>
               </div>
