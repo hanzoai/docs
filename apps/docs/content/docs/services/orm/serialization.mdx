@@ -1,0 +1,165 @@
+---
+title: Auto-Serialization
+description: Automatically marshal complex fields to JSON strings for storage.
+---
+
+# Auto-Serialization
+
+Complex Go types (slices, maps, nested structs) cannot be stored directly in most databases. Hanzo ORM auto-serializes these fields to JSON strings before writing and deserializes them after reading -- no manual `json.Marshal`/`json.Unmarshal` needed.
+
+## How It Works
+
+For each field tagged with `orm:"serialize"`, the ORM looks for a corresponding `_` storage field:
+
+```go
+type Product struct {
+    orm.Model[Product]
+
+    // The "real" field — used in Go code
+    Variants  []Variant `json:"variants" orm:"serialize" datastore:"-"`
+
+    // The storage field — holds the JSON string in the database
+    Variants_ string    `json:"-" datastore:"variants"`
+}
+```
+
+### Naming Convention
+
+| JSON Field | Storage Field |
+|-----------|---------------|
+| `Variants` | `Variants_` |
+| `Metadata` | `Metadata_` |
+| `LineItems` | `LineItems_` |
+| `Config` | `Config_` |
+
+The storage field name is always the JSON field name + `_` suffix.
+
+### Serialization Flow
+
+```
+Create/Update:
+  Go struct → SerializeFields() → Variants marshaled to Variants_ → DB Put
+
+Get/Query:
+  DB Get → raw data → DeserializeFields() → Variants_ unmarshaled to Variants
+```
+
+## Usage
+
+### Slice of Structs
+
+```go
+type Variant struct {
+    SKU   string `json:"sku"`
+    Size  string `json:"size"`
+    Price int64  `json:"price"`
+}
+
+type Product struct {
+    orm.Model[Product]
+    Name      string    `json:"name"`
+    Variants  []Variant `json:"variants"  orm:"serialize" datastore:"-"`
+    Variants_ string    `json:"-"         datastore:"variants"`
+}
+
+func init() { orm.Register[Product]("product") }
+```
+
+```go
+p := orm.New[Product](db)
+p.Name = "T-Shirt"
+p.Variants = []Variant{
+    {SKU: "TS-SM", Size: "S", Price: 2500},
+    {SKU: "TS-MD", Size: "M", Price: 2500},
+    {SKU: "TS-LG", Size: "L", Price: 2900},
+}
+p.Create() // Variants automatically serialized to Variants_
+```
+
+### Map Fields
+
+```go
+type PaymentIntent struct {
+    orm.Model[PaymentIntent]
+    Amount    int64             `json:"amount"`
+    Metadata  map[string]string `json:"metadata,omitempty"  orm:"serialize" datastore:"-"`
+    Metadata_ string            `json:"-"                   datastore:"metadata"`
+}
+```
+
+### Nested Structs
+
+```go
+type Address struct {
+    Line1   string `json:"line1"`
+    Line2   string `json:"line2,omitempty"`
+    City    string `json:"city"`
+    State   string `json:"state"`
+    Zip     string `json:"zip"`
+    Country string `json:"country"`
+}
+
+type Customer struct {
+    orm.Model[Customer]
+    Name     string  `json:"name"`
+    Address  Address `json:"address"  orm:"serialize" datastore:"-"`
+    Address_ string  `json:"-"        datastore:"address"`
+}
+```
+
+## Legacy Detection
+
+For backwards compatibility, the ORM also auto-detects serializable fields when:
+
+1. A field has `datastore:"-"` (excluded from direct storage)
+2. A sibling field named `Foo_` exists (storage field)
+
+This means older models that predate the `orm:"serialize"` tag still work:
+
+```go
+// Legacy pattern — still works
+type OldModel struct {
+    orm.Model[OldModel]
+    Items  []Item `json:"items"  datastore:"-"`   // detected as serializable
+    Items_ string `json:"-"     datastore:"items"` // storage field
+}
+```
+
+## Multiple Serialized Fields
+
+A model can have any number of serialized fields:
+
+```go
+type Invoice struct {
+    orm.Model[Invoice]
+    CustomerID string `json:"customerId"`
+
+    LineItems  []LineItem        `json:"lineItems"  orm:"serialize" datastore:"-"`
+    LineItems_ string            `json:"-"          datastore:"lineItems"`
+
+    Discounts  []Discount        `json:"discounts"  orm:"serialize" datastore:"-"`
+    Discounts_ string            `json:"-"          datastore:"discounts"`
+
+    Metadata   map[string]string `json:"metadata"   orm:"serialize" datastore:"-"`
+    Metadata_  string            `json:"-"          datastore:"metadata"`
+}
+```
+
+## What Gets Stored
+
+The `_` field receives the raw JSON string. For example, if `Variants` is:
+
+```go
+[]Variant{
+    {SKU: "TS-SM", Size: "S", Price: 2500},
+    {SKU: "TS-MD", Size: "M", Price: 2500},
+}
+```
+
+Then `Variants_` becomes:
+
+```json
+[{"sku":"TS-SM","size":"S","price":2500},{"sku":"TS-MD","size":"M","price":2500}]
+```
+
+This string is stored in the database. On read, the reverse happens automatically.

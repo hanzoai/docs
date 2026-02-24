@@ -1,0 +1,161 @@
+---
+title: Caching
+description: Read-through KV cache with memory LRU and Redis/Valkey backends.
+---
+
+# Caching
+
+Hanzo ORM includes a built-in cache layer that sits between your application and the database. Cached reads skip the database entirely, reducing latency and load.
+
+## Cache Backends
+
+| Backend | Import | Use Case |
+|---------|--------|----------|
+| **Memory LRU** | `orm.NewMemoryCache(...)` | Single-process apps, development, testing |
+| **Redis/Valkey** | `orm.NewKVCache(...)` | Multi-process, distributed apps |
+| **No-op** | `orm.NewNoopCache()` | Disable caching (default) |
+
+## Configuration
+
+### Memory Cache
+
+```go
+cache := orm.NewMemoryCache(orm.MemoryCacheConfig{
+    MaxEntries:    10000,
+    EntityTTL:     5 * time.Minute,
+    QueryTTL:      1 * time.Minute,
+})
+```
+
+### Redis/Valkey Cache
+
+```go
+import kv "github.com/hanzoai/kv-go/v9"
+
+kvClient := kv.NewClient(&kv.Options{
+    Addr:     "kv.hanzo.ai:6379",
+    Password: os.Getenv("VALKEY_PASSWORD"),
+})
+
+cache := orm.NewKVCache(orm.KVCacheConfig{
+    Client:    kvClient,
+    Namespace: "myapp",
+    EntityTTL: 5 * time.Minute,
+    QueryTTL:  1 * time.Minute,
+})
+```
+
+### Per-Model Cache
+
+Override cache settings for specific models:
+
+```go
+orm.Register[Session]("session",
+    orm.WithCache[Session](orm.CacheConfig{
+        EntityTTL: 30 * time.Minute,  // Sessions cached longer
+        QueryTTL:  5 * time.Minute,
+    }),
+)
+
+orm.Register[PriceList]("price-list",
+    orm.WithCache[PriceList](orm.CacheConfig{
+        EntityTTL: 0,  // Disable entity cache for this model
+        QueryTTL:  0,  // Disable query cache too
+    }),
+)
+```
+
+## Cache Keys
+
+```
+Entity: orm:{namespace}:{kind}:{id}
+Query:  orm:{namespace}:{kind}:q:{hash}
+```
+
+| Component | Example |
+|-----------|---------|
+| Namespace | `myapp` |
+| Kind | `user` |
+| Entity ID | `17089056001234` |
+| Query hash | `sha256(filter+order+limit)` |
+
+### Examples
+
+```
+orm:myapp:user:17089056001234          → cached User entity
+orm:myapp:user:q:a1b2c3d4e5f6         → cached query result set
+```
+
+## Read-Through Behavior
+
+### Entity Get
+
+```
+Get[User](db, "123")
+  │
+  ├── Cache HIT → return cached entity
+  │
+  └── Cache MISS → DB read → cache entity → return
+```
+
+### Query
+
+```
+TypedQuery[User](db).Filter("Status=", "active").Get()
+  │
+  ├── Cache HIT (query hash match) → return cached results
+  │
+  └── Cache MISS → DB query → cache results → return
+```
+
+## Write-Through Invalidation
+
+On every write (Create, Update, Delete), the cache:
+
+1. **Invalidates the entity** by its key
+2. **Invalidates all query results** for that kind
+
+This ensures reads never return stale data after writes.
+
+```
+user.Update()
+  │
+  ├── DB Put
+  ├── Delete orm:myapp:user:{id}           ← entity invalidated
+  └── Delete orm:myapp:user:q:*            ← all user queries invalidated
+```
+
+## Namespace Isolation
+
+The namespace in cache keys prevents cross-tenant cache pollution in multi-tenant systems:
+
+```go
+// Tenant A
+cacheA := orm.NewKVCache(orm.KVCacheConfig{
+    Client:    kvClient,
+    Namespace: "tenant-a",
+})
+
+// Tenant B
+cacheB := orm.NewKVCache(orm.KVCacheConfig{
+    Client:    kvClient,
+    Namespace: "tenant-b",
+})
+```
+
+Keys for the same entity in different tenants are completely separate:
+
+```
+orm:tenant-a:user:123   (Tenant A's user)
+orm:tenant-b:user:123   (Tenant B's user — different data)
+```
+
+## Performance
+
+| Operation | Without Cache | With Cache (hit) |
+|-----------|--------------|-------------------|
+| Get by ID | ~1-5ms (SQLite) | < 0.1ms (memory) / < 1ms (Redis) |
+| Query (10 results) | ~5-20ms | < 0.5ms (memory) / < 2ms (Redis) |
+| Write | ~2-10ms | ~2-10ms + invalidation overhead |
+
+Cache is most effective for read-heavy workloads with predictable access patterns.
