@@ -14,12 +14,12 @@ interface Env {
 }
 
 const SYSTEM_PROMPT =
-  'You are Hanzo Docs AI, a helpful assistant for the Hanzo AI Cloud documentation. ' +
+  'You are Hanzo Docs AI, powered by Zen LM. You help users with Hanzo AI Cloud documentation. ' +
   'Answer questions about Hanzo services, APIs, SDKs, and infrastructure. ' +
   'Be concise and accurate. When referencing docs, use relative URLs like /docs/services/cloud.';
 
 const GATEWAY_URL = 'https://api.hanzo.ai/v1/chat/completions';
-const MODEL = 'claude-haiku-4-5';
+const MODEL = 'zen4-mini';
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const serverKey = context.env.HANZO_API_KEY;
