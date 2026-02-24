@@ -8,6 +8,7 @@ import {
   Orbit, Infinity,
 } from 'lucide-react';
 import DynamicPricing from './DynamicPricing';
+import ModelLibrary from './ModelLibrary';
 
 /* ─────────────────────────────────────────────────────────── */
 /*  LANDING PAGE                                               */
@@ -267,138 +268,7 @@ for chunk in stream:
             subtitle="49 models across 10 categories — text, code, vision, video, audio, 3D, safety, embeddings, and agents"
           />
 
-          {/* Foundation Models */}
-          <ModelFamily
-            icon={<Atom className="h-5 w-5" />}
-            title="Foundation"
-            subtitle="Core models from 0.6B edge to 1T+ frontier scale"
-            models={[
-              { name: 'zen-nano', spec: '0.6B Dense', ctx: '32K', desc: 'Ultra-lightweight edge model — 44K tokens/sec, fits in 0.4GB', hf: 'zenlm/zen-nano-0.6b' },
-              { name: 'zen-eco', spec: '4B Dense', ctx: '32K', desc: 'Efficient general-purpose — 33K tokens/sec, 2–8GB memory', hf: 'zenlm/zen-eco-4b' },
-              { name: 'zen', spec: '8–32B Dense', ctx: '32K', desc: 'Standard foundation — versatile for most tasks', hf: 'zenlm/zen-8b' },
-              { name: 'zen-pro', spec: '32B Dense', ctx: '32K', desc: 'Professional grade — 19K tokens/sec, high-quality outputs', hf: 'zenlm/zen-pro-32b' },
-              { name: 'zen-max', spec: '1.04T MoE', ctx: '256K', desc: 'Maximum scale — same model as zen4-max, open weights', hf: 'zenlm/zen-max', featured: true },
-              { name: 'zen-next', spec: 'TBD Dense', ctx: '256K', desc: 'Next-generation preview', status: 'preview' },
-            ]}
-          />
-
-          {/* Zen4 API Models */}
-          <ModelFamily
-            icon={<Sparkles className="h-5 w-5" />}
-            title="Zen4 Generation"
-            subtitle="Latest generation — 10 production API models"
-            models={[
-              { name: 'zen4-max', spec: '1.04T (32B active) MoE', ctx: '256K', desc: 'Frontier scale — deepest reasoning capabilities', hf: 'zenlm/zen-max', featured: true },
-              { name: 'zen4', spec: '744B (40B active) MoE', ctx: '202K', desc: 'Flagship intelligence — multi-domain reasoning', hf: 'zenlm/zen4' },
-              { name: 'zen4-ultra', spec: '744B (40B active) MoE + CoT', ctx: '202K', desc: 'Maximum reasoning with chain-of-thought', hf: 'zenlm/zen4-ultra' },
-              { name: 'zen4-pro', spec: '80B (3B active) MoE', ctx: '131K', desc: 'High capability — efficient MoE architecture', hf: 'zenlm/zen4-pro' },
-              { name: 'zen4-thinking', spec: '80B (3B active) MoE + CoT', ctx: '131K', desc: 'Deep reasoning — chain-of-thought enabled' },
-              { name: 'zen4-mini', spec: '8B Dense', ctx: '40K', desc: 'Ultra-fast inference — cost-effective', hf: 'zenlm/zen4-mini' },
-              { name: 'zen4-coder', spec: '480B (35B active) MoE', ctx: '262K', desc: 'Code generation — 262K context for large codebases', hf: 'zenlm/zen4-coder' },
-              { name: 'zen4-coder-pro', spec: '480B Dense BF16', ctx: '262K', desc: 'Premium code — full-precision dense model', hf: 'zenlm/zen4-coder-pro' },
-              { name: 'zen4-coder-flash', spec: '30B (3B active) MoE', ctx: '262K', desc: 'Fast code — low-latency completions', hf: 'zenlm/zen4-coder-flash' },
-              { name: 'zen4-coder-next', spec: 'TBD MoE', ctx: '262K', desc: 'Next-gen code generation — preview', status: 'preview' },
-            ]}
-          />
-
-          {/* Code Models */}
-          <ModelFamily
-            icon={<Code className="h-5 w-5" />}
-            title="Code"
-            subtitle="Specialized for generation, review, debugging, and agentic programming"
-            models={[
-              { name: 'zen-coder', spec: '32B Dense', ctx: '131K', desc: 'Multi-language code generation and understanding', hf: 'zenlm/zen-coder' },
-              { name: 'zen-coder-flash', spec: '7B Dense', ctx: '32K', desc: 'Low-latency code completions', hf: 'zenlm/zen-coder-flash' },
-              { name: 'zen-code', spec: '14B Dense', ctx: '32K', desc: 'Legacy code model — still available on HuggingFace', hf: 'zenlm/zen-code' },
-            ]}
-          />
-
-          {/* Vision & Image */}
-          <ModelFamily
-            icon={<Eye className="h-5 w-5" />}
-            title="Vision & Image"
-            subtitle="Image understanding, generation, editing, and design"
-            models={[
-              { name: 'zen-vl', spec: '32B Dense Multimodal', ctx: '32K', desc: 'Vision-language understanding — image analysis', hf: 'zenlm/zen-vl' },
-              { name: 'zen-omni', spec: '72B Dense Multimodal', ctx: '131K', desc: 'Hypermodal — text, vision, audio, code in one model', hf: 'zenlm/zen-omni' },
-              { name: 'zen-artist', spec: 'Image Generation', ctx: '—', desc: 'High-resolution image generation, multiple styles' },
-              { name: 'zen-artist-edit', spec: 'Image Editing', ctx: '—', desc: 'Edit-by-instruction, inpainting, outpainting' },
-              { name: 'zen-designer', spec: 'Design Generation', ctx: '—', desc: 'UI/UX design, graphics, mockups', status: 'coming-soon' },
-            ]}
-          />
-
-          {/* Video */}
-          <ModelFamily
-            icon={<Video className="h-5 w-5" />}
-            title="Video"
-            subtitle="Video generation, understanding, and world modeling"
-            models={[
-              { name: 'zen-director', spec: 'Text-to-Video', ctx: '—', desc: 'Cinematic-quality text-to-video generation', status: 'coming-soon' },
-              { name: 'zen-video', spec: 'Video Understanding', ctx: '—', desc: 'Video analysis, frame-by-frame understanding', status: 'coming-soon' },
-              { name: 'zen-video-i2v', spec: 'Image-to-Video', ctx: '—', desc: 'Animate images into video sequences', status: 'coming-soon' },
-              { name: 'zen-voyager', spec: 'World Model', ctx: '—', desc: 'Spatial reasoning and world simulation', status: 'coming-soon' },
-            ]}
-          />
-
-          {/* Audio & Speech */}
-          <ModelFamily
-            icon={<Mic className="h-5 w-5" />}
-            title="Audio & Speech"
-            subtitle="Music generation, voice synthesis, transcription, and translation"
-            models={[
-              { name: 'zen-scribe', spec: 'Speech-to-Text', ctx: '—', desc: 'Multi-language transcription' },
-              { name: 'zen-translator', spec: 'Translation', ctx: '—', desc: '100+ languages, context-aware translation' },
-              { name: 'zen-dub', spec: 'Voice Synthesis', ctx: '—', desc: 'Multi-language voice dubbing and synthesis', status: 'coming-soon' },
-              { name: 'zen-dub-live', spec: 'Real-time Voice', ctx: '—', desc: 'Ultra-low latency real-time voice', status: 'coming-soon' },
-              { name: 'zen-musician', spec: 'Music Generation', ctx: '—', desc: 'Multi-instrument music composition', status: 'coming-soon' },
-              { name: 'zen-foley', spec: 'Sound Effects', ctx: '—', desc: 'Text-to-SFX, foley art generation', status: 'coming-soon' },
-              { name: 'zen-live', spec: 'Real-time Translation', ctx: '—', desc: 'Bidirectional real-time speech translation', status: 'coming-soon' },
-            ]}
-          />
-
-          {/* 3D & Spatial */}
-          <ModelFamily
-            icon={<Box className="h-5 w-5" />}
-            title="3D & Spatial"
-            subtitle="3D asset generation and world simulation"
-            models={[
-              { name: 'zen-3d', spec: '3D Generation', ctx: '—', desc: 'Text-to-3D and image-to-3D asset generation', status: 'coming-soon' },
-              { name: 'zen-world', spec: 'World Simulation', ctx: '—', desc: 'Spatial reasoning and environment simulation', status: 'coming-soon' },
-            ]}
-          />
-
-          {/* Safety */}
-          <ModelFamily
-            icon={<Shield className="h-5 w-5" />}
-            title="Safety & Guardrails"
-            subtitle="Content moderation and safety classification"
-            models={[
-              { name: 'zen-guard', spec: '8B Dense', ctx: '32K', desc: 'Content moderation and safety classification', hf: 'zenlm/zen-guard' },
-              { name: 'zen-guard-gen', spec: '8B Dense', ctx: '32K', desc: 'Safe generation with built-in guardrails' },
-              { name: 'zen-guard-stream', spec: '4B Dense', ctx: '8K', desc: 'Low-latency streaming moderation' },
-            ]}
-          />
-
-          {/* Embedding & Retrieval */}
-          <ModelFamily
-            icon={<Search className="h-5 w-5" />}
-            title="Embedding & Retrieval"
-            subtitle="Text embeddings and search reranking"
-            models={[
-              { name: 'zen-embedding', spec: '3072 dim', ctx: '8K', desc: 'High-dimensional text embeddings', hf: 'zenlm/zen-embedding' },
-              { name: 'zen-reranker', spec: '568M Dense', ctx: '8K', desc: 'Cross-encoder search reranking', hf: 'zenlm/zen-reranker' },
-            ]}
-          />
-
-          {/* Agents */}
-          <ModelFamily
-            icon={<Network className="h-5 w-5" />}
-            title="Agents"
-            subtitle="Agentic AI with tool use and multi-step planning"
-            models={[
-              { name: 'zen-agent', spec: '32B Dense', ctx: '131K', desc: 'Agentic AI — tool use, multi-step planning, autonomous execution', status: 'preview' },
-            ]}
-          />
+          <ModelLibrary />
         </div>
       </section>
 
@@ -598,7 +468,7 @@ for chunk in stream:
             Build with Zen LM
           </h2>
           <p className="text-fd-muted-foreground mb-8 max-w-xl mx-auto">
-            49 models. 10 modalities. Open weights. From $0.30/MTok.
+            49 models. 10 modalities. Open weights. From $0.15/MTok.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <a
@@ -746,86 +616,12 @@ function ModelHighlight({
   );
 }
 
-function ModelRow({
-  name, arch, ctx, tier, input, output, href, featured,
-}: {
-  name: string; arch: string; ctx: string; tier: string;
-  input: string; output: string; href?: string; featured?: boolean;
-}) {
-  const row = (
-    <tr className={`${featured ? 'bg-fd-primary/5' : ''} ${href ? 'hover:bg-fd-muted/50 cursor-pointer' : ''}`}>
-      <td className="py-3 pr-4 font-medium"><span className={href ? 'text-fd-primary' : ''}>{name}</span></td>
-      <td className="py-3 pr-4 text-fd-muted-foreground font-mono text-xs">{arch}</td>
-      <td className="py-3 pr-4 text-fd-muted-foreground">{ctx}</td>
-      <td className="py-3 pr-4"><span className="text-[10px] font-semibold tracking-wider uppercase bg-fd-muted px-2 py-0.5 rounded-full">{tier}</span></td>
-      <td className="py-3 pr-4 text-right text-fd-muted-foreground">{input}</td>
-      <td className="py-3 text-right text-fd-muted-foreground">{output}</td>
-    </tr>
-  );
-  if (href) return <Link href={href} className="contents">{row}</Link>;
-  return row;
-}
-
 function ArchCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
     <div className="rounded-xl border border-fd-border bg-fd-background p-6">
       <div className="rounded-lg bg-fd-muted p-2 w-fit text-fd-primary mb-3">{icon}</div>
       <h4 className="font-semibold mb-2">{title}</h4>
       <p className="text-sm text-fd-muted-foreground">{description}</p>
-    </div>
-  );
-}
-
-type ModelInfo = {
-  name: string; spec: string; ctx: string; desc: string;
-  hf?: string; featured?: boolean; status?: string;
-};
-
-function ModelFamily({ icon, title, subtitle, models }: {
-  icon: React.ReactNode; title: string; subtitle: string; models: ModelInfo[];
-}) {
-  return (
-    <div className="mb-12">
-      <div className="flex items-center gap-3 mb-2">
-        <div className="rounded-lg bg-fd-muted p-2 text-fd-primary">{icon}</div>
-        <div>
-          <h3 className="text-xl font-semibold">{title}</h3>
-          <p className="text-sm text-fd-muted-foreground">{subtitle}</p>
-        </div>
-        <span className="ml-auto text-xs text-fd-muted-foreground bg-fd-muted px-2 py-1 rounded-full">{models.length} models</span>
-      </div>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
-        {models.map((m) => (
-          <div
-            key={m.name}
-            className={`rounded-lg border p-4 ${
-              m.featured ? 'border-fd-primary/30 bg-fd-primary/5' : 'border-fd-border bg-fd-background'
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <span className="font-semibold text-sm">{m.name}</span>
-              {m.status === 'preview' && (
-                <span className="text-[9px] font-semibold tracking-wider uppercase bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full">PREVIEW</span>
-              )}
-              {m.status === 'coming-soon' && (
-                <span className="text-[9px] font-semibold tracking-wider uppercase bg-fd-muted text-fd-muted-foreground px-1.5 py-0.5 rounded-full">SOON</span>
-              )}
-            </div>
-            <div className="text-xs font-mono text-fd-muted-foreground mb-2">{m.spec}{m.ctx !== '—' ? ` · ${m.ctx} ctx` : ''}</div>
-            <p className="text-xs text-fd-muted-foreground mb-2">{m.desc}</p>
-            {m.hf && (
-              <a
-                href={`https://huggingface.co/${m.hf}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-fd-primary hover:underline"
-              >
-                HuggingFace <ExternalLink className="h-2.5 w-2.5" />
-              </a>
-            )}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
