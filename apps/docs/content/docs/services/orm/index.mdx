@@ -8,7 +8,7 @@ description: Generics-based ORM for Go with type-safe Model[T], auto-registratio
 Hanzo ORM is a generics-based object-relational mapper for Go that eliminates model boilerplate through a single `Model[T]` mixin. Define your struct, register it, and get type-safe CRUD, queries, lifecycle hooks, auto-serialization, and caching -- all with zero code generation.
 
 **Module:** `github.com/hanzoai/orm`
-**Version:** v0.2.0
+**Version:** v0.3.0
 **Go:** 1.22+
 **License:** MIT
 
@@ -169,6 +169,129 @@ for _, u := range active {
 | **KV Cache** | Read-through caching with Memory LRU, Redis/Valkey, or no-op backends |
 | **SQLite Driver** | WAL mode, JSON storage, `json_extract` queries, `sqlite-vec` ready |
 | **ZAP Driver** | Binary protocol to PostgreSQL, MongoDB, Redis, ClickHouse via zap-sidecar |
+| **Namespace Support** | Multi-tenant isolation with `SetNamespace` |
+| **Context Propagation** | `CreateCtx`, `UpdateCtx`, `DeleteCtx` for deadline/tracing support |
+| **Old-Entity Hooks** | `BeforeUpdate(old *T)` receives the previous state for diff-aware logic |
+| **Must Variants** | `MustGet`, `MustNew` -- panic on error for scripts and tests |
+| **GetOrCreate / GetOrUpdate** | Atomic find-or-initialize and find-or-modify helpers |
+| **Query.First / GetAll / Count** | Single-result, context-aware list, and count queries |
+
+## New in v0.3.0
+
+### Namespace Support
+
+Namespace scoping enables multi-tenant isolation without separate tables or databases. All CRUD and query operations are automatically scoped to the active namespace.
+
+```go
+user := orm.New[User](db)
+user.SetNamespace("org-123") // all ops scoped to org-123
+
+user.Name = "Alice"
+user.Create() // stored under namespace "org-123"
+
+// Queries are scoped too
+q := orm.TypedQuery[User](db)
+q.SetNamespace("org-123")
+users, _ := q.Filter("Status=", "active").Get()
+```
+
+### Context Propagation
+
+All mutating operations now accept a `context.Context` for deadline enforcement, cancellation, and tracing propagation.
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+defer cancel()
+
+user := orm.New[User](db)
+user.Name = "Alice"
+
+if err := user.CreateCtx(ctx); err != nil {
+    log.Fatal(err)
+}
+
+user.Name = "Alice Smith"
+if err := user.UpdateCtx(ctx); err != nil {
+    log.Fatal(err)
+}
+
+if err := user.DeleteCtx(ctx); err != nil {
+    log.Fatal(err)
+}
+```
+
+The original `Create()`, `Update()`, and `Delete()` methods still work and use `context.Background()` internally.
+
+### Old-Entity Hooks
+
+`BeforeUpdate` and `AfterUpdate` hooks now receive the previous entity state, enabling diff-aware logic like audit logging, conditional side effects, and change detection.
+
+```go
+func (u *User) BeforeUpdate(old *User) error {
+    if old.Email != u.Email {
+        // email changed -- send verification
+        return sendVerificationEmail(u.Email)
+    }
+    return nil
+}
+
+func (u *User) AfterUpdate(old *User) error {
+    if old.Status != u.Status {
+        // status changed -- emit event
+        emitStatusChange(u.Id(), old.Status, u.Status)
+    }
+    return nil
+}
+```
+
+### Must Variants and Helpers
+
+`Must*` functions panic on error -- useful for tests, scripts, and initialization code where failure is not recoverable.
+
+```go
+// Panics if user not found
+user := orm.MustGet[User](db, "user-123")
+
+// GetOrCreate: returns existing entity or creates a new one
+entity, created, err := orm.GetOrCreate[User](db, "user-123", func(u *User) {
+    u.Name = "Default"
+    u.Status = "pending"
+})
+// created == true if a new entity was initialized
+
+// GetOrUpdate: fetches then applies a mutation
+entity, err := orm.GetOrUpdate[User](db, "user-123", func(u *User) {
+    u.LastLogin = time.Now()
+})
+```
+
+`CloneFromJSON` deserializes JSON into a new entity copy, and `Zero` returns a zero-valued entity of the registered kind -- both useful for testing and data migration.
+
+```go
+clone, err := orm.CloneFromJSON[User](db, jsonBytes)
+empty := orm.Zero[User](db)
+```
+
+### Query Improvements
+
+`TypedQuery[T]` gains three convenience methods:
+
+```go
+q := orm.TypedQuery[User](db)
+
+// First: returns the first match or ErrNotFound
+user, err := q.Filter("Email=", "alice@example.com").First()
+if errors.Is(err, orm.ErrNotFound) {
+    // no match
+}
+
+// GetAll: context-aware list query
+ctx := context.Background()
+users, err := q.Filter("Status=", "active").GetAll(ctx)
+
+// Count: returns the number of matching entities
+count, err := q.Filter("Status=", "active").Count(ctx)
+```
 
 ## Related Services
 
