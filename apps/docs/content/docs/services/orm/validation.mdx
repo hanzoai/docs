@@ -1,0 +1,167 @@
+---
+title: Validation
+description: Struct field validation with the orm/val package.
+---
+
+# Validation
+
+The `orm/val` package provides struct field validation with clear error reporting. Use it in lifecycle hooks or standalone.
+
+## Install
+
+The `val` package is included with Hanzo ORM:
+
+```go
+import "github.com/hanzoai/orm/val"
+```
+
+## Basic Usage
+
+### String Validation
+
+```go
+func (u *User) BeforeCreate() error {
+    v := val.NewValidator()
+
+    v.CheckString(u.Name, "name").
+        Required().
+        MinLength(2).
+        MaxLength(100)
+
+    v.CheckString(u.Email, "email").
+        Required().
+        Email()
+
+    return v.Error()
+}
+```
+
+### Context-Aware Validation
+
+```go
+func (u *User) BeforeCreate() error {
+    v := val.NewValidator()
+
+    v.CheckContext("name", func() error {
+        if u.Name == "" {
+            return fmt.Errorf("required")
+        }
+        if len(u.Name) > 100 {
+            return fmt.Errorf("must be 100 characters or less")
+        }
+        return nil
+    })
+
+    return v.Error()
+}
+```
+
+## String Checks
+
+| Method | Description |
+|--------|-------------|
+| `Required()` | Must not be empty |
+| `MinLength(n)` | Minimum character length |
+| `MaxLength(n)` | Maximum character length |
+| `Email()` | Valid email format |
+| `URL()` | Valid URL format |
+| `Match(regex)` | Matches a regular expression |
+| `OneOf(values...)` | Must be one of the listed values |
+
+```go
+v.CheckString(status, "status").
+    Required().
+    OneOf("active", "inactive", "suspended")
+
+v.CheckString(website, "website").
+    URL()
+
+v.CheckString(code, "code").
+    Match(`^[A-Z]{3}-\d{4}$`)
+```
+
+## Password Validation
+
+```go
+err := val.ValidatePassword(password)
+// Checks: min 8 chars, uppercase, lowercase, digit, special char
+```
+
+## Error Types
+
+### FieldError
+
+A validation error for a specific field:
+
+```go
+err := val.NewFieldError("email", "invalid format")
+// err.Field == "email"
+// err.Message == "invalid format"
+```
+
+### Error (Multiple Fields)
+
+Collects multiple field errors:
+
+```go
+err := val.NewError(
+    val.NewFieldError("name", "required"),
+    val.NewFieldError("email", "invalid format"),
+)
+
+// err.Error() == "name: required; email: invalid format"
+// err.Fields() == []{name: "required"}, {email: "invalid format"}
+```
+
+## Integration with Hooks
+
+The standard pattern is to validate in `BeforeCreate` and `BeforeUpdate`:
+
+```go
+type PaymentIntent struct {
+    orm.Model[PaymentIntent]
+    Amount   int64  `json:"amount"`
+    Currency string `json:"currency" orm:"default:usd"`
+    Status   string `json:"status"   orm:"default:requires_payment_method"`
+}
+
+func (pi *PaymentIntent) BeforeCreate() error {
+    v := val.NewValidator()
+
+    v.CheckContext("amount", func() error {
+        if pi.Amount <= 0 {
+            return fmt.Errorf("must be positive")
+        }
+        if pi.Amount > 99999999 {
+            return fmt.Errorf("exceeds maximum")
+        }
+        return nil
+    })
+
+    v.CheckString(pi.Currency, "currency").
+        Required().
+        MinLength(3).
+        MaxLength(3)
+
+    return v.Error()
+}
+```
+
+## Standalone Usage
+
+The `val` package works outside of ORM models too:
+
+```go
+func ValidateRegistrationForm(name, email, password string) error {
+    v := val.NewValidator()
+
+    v.CheckString(name, "name").Required().MinLength(2)
+    v.CheckString(email, "email").Required().Email()
+
+    if err := val.ValidatePassword(password); err != nil {
+        v.AddError(val.NewFieldError("password", err.Error()))
+    }
+
+    return v.Error()
+}
+```
