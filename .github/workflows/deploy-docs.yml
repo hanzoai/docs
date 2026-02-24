@@ -12,7 +12,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest-8core
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       deployments: write
@@ -28,9 +28,19 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Extend swap for large build
+        run: |
+          sudo swapoff /swapfile 2>/dev/null || true
+          sudo rm -f /swapfile
+          sudo fallocate -l 12G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+
       - run: pnpm build --filter=docs
         env:
-          NODE_OPTIONS: '--max-old-space-size=24576'
+          NODE_OPTIONS: '--max-old-space-size=16384'
         timeout-minutes: 60
 
       # Deploy static assets + CF Pages Functions.
