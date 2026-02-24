@@ -13,9 +13,10 @@ export default function Layout({ children }: LayoutProps<'/'>) {
           ...linkItems,
           {
             type: 'custom',
+            secondary: true,
             on: 'nav',
             children: (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <TryHanzoDropdown />
                 <AuthButtons />
               </div>
