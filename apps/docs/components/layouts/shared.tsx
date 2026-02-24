@@ -1,30 +1,24 @@
-import { BookOpen, Code2, FileJson2, Sparkles } from 'lucide-react';
+import { BookOpen, Code2, FileJson2 } from 'lucide-react';
 import type { BaseLayoutProps, LinkItemType } from '@hanzo/docs/ui/layouts/shared';
 import { HanzoDocsIcon } from '@/app/layout.client';
 
 export const linkItems: LinkItemType[] = [
   {
-    icon: <Sparkles />,
-    text: 'Zen LM',
-    url: '/docs/llm',
-    active: 'nested-url',
-  },
-  {
     icon: <BookOpen />,
-    text: 'Services',
+    text: 'Docs',
     url: '/docs/services',
-    active: 'nested-url',
-  },
-  {
-    icon: <Code2 />,
-    text: 'SDKs',
-    url: '/docs/sdks',
     active: 'nested-url',
   },
   {
     icon: <FileJson2 />,
     text: 'API',
     url: '/docs/openapi',
+    active: 'nested-url',
+  },
+  {
+    icon: <Code2 />,
+    text: 'SDKs',
+    url: '/docs/sdks',
     active: 'nested-url',
   },
   {

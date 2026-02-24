@@ -14,12 +14,12 @@ export default function Layout({ children }: LayoutProps<'/'>) {
           {
             type: 'custom',
             on: 'nav',
-            children: <TryHanzoDropdown />,
-          },
-          {
-            type: 'custom',
-            on: 'nav',
-            children: <AuthButtons />,
+            children: (
+              <div className="flex items-center gap-3">
+                <TryHanzoDropdown />
+                <AuthButtons />
+              </div>
+            ),
           },
         ]}
         className="dark:bg-neutral-950 dark:[--color-fd-background:var(--color-neutral-950)]"
