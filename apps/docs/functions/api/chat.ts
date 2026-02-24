@@ -19,7 +19,7 @@ const SYSTEM_PROMPT =
   'Be concise and accurate. When referencing docs, use relative URLs like /docs/services/cloud.';
 
 const GATEWAY_URL = 'https://api.hanzo.ai/v1/chat/completions';
-const MODEL = 'zen-coder-flash';
+const MODEL = 'claude-haiku-4-5';
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   const serverKey = context.env.HANZO_API_KEY;
