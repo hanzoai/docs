@@ -1,0 +1,280 @@
+---
+title: Database Drivers
+description: SQLite, ZAP binary protocol (PostgreSQL, MongoDB, Redis, ClickHouse), and custom driver support.
+---
+
+# Database Drivers
+
+Hanzo ORM uses a two-layer interface design. The `orm.DB` interface is minimal (what `Model[T]` needs), while `db.DB` is the full driver interface. The adapter layer bridges them.
+
+## Backend Overview
+
+| Backend | Constructor | Transport | Use Case |
+|---------|------------|-----------|----------|
+| SQLite | `orm.OpenSQLite` | Embedded | Single-node, development, edge |
+| PostgreSQL | `orm.OpenZap` + `ZapSQL` | ZAP binary | Production SQL |
+| MongoDB/FerretDB | `orm.OpenZap` + `ZapDocumentDB` | ZAP binary | Document storage |
+| Redis/Valkey | `orm.OpenZap` + `ZapKV` | ZAP binary | KV storage |
+| ClickHouse | `orm.OpenZap` + `ZapDatastore` | ZAP binary | Analytics/columnar |
+| Custom | `orm.AdaptDB` | Any | Bring your own driver |
+
+## SQLite
+
+The built-in SQLite driver uses WAL mode, JSON entity storage, and `json_extract()` for filtering.
+
+### Setup
+
+```go
+import (
+    "github.com/hanzoai/orm"
+    ormdb "github.com/hanzoai/orm/db"
+)
+
+db, err := orm.OpenSQLite(&ormdb.SQLiteDBConfig{
+    Path: "data/app.db",
+    Config: ormdb.SQLiteConfig{
+        BusyTimeout: 5000,
+        JournalMode: "WAL",
+    },
+})
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+### Configuration
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `Path` | required | Path to the SQLite database file |
+| `BusyTimeout` | `5000` | Milliseconds to wait for locks |
+| `JournalMode` | `"WAL"` | WAL for concurrent reads; DELETE for simpler recovery |
+
+### Storage Schema
+
+All entities are stored in a single `_entities` table:
+
+```sql
+CREATE TABLE _entities (
+    id         TEXT PRIMARY KEY,
+    kind       TEXT NOT NULL,
+    parent_id  TEXT,
+    data       JSON NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    deleted    BOOLEAN DEFAULT 0
+);
+
+CREATE INDEX idx_entities_kind ON _entities(kind);
+CREATE INDEX idx_entities_parent ON _entities(parent_id);
+```
+
+### How Queries Work
+
+Filters on struct fields translate to `json_extract()` calls:
+
+```go
+// Go code
+q.Filter("Status=", "active").Filter("Credits>", 0)
+```
+
+```sql
+-- Generated SQL
+SELECT data FROM _entities
+WHERE kind = 'user'
+  AND json_extract(data, '$.status') = ?
+  AND COALESCE(json_extract(data, '$.credits'), 0) > ?
+  AND deleted = 0
+```
+
+Field names auto-convert: `Status` (Go PascalCase) → `$.status` (JSON camelCase).
+
+Boolean and zero-value fields use `COALESCE` to handle NULL correctly.
+
+### Write Concurrency
+
+SQLite uses a single write connection protected by a mutex, ensuring serialized writes. Read connections are separate, allowing concurrent reads even during writes (WAL mode).
+
+```
+┌──────────────┐
+│  Write Conn  │ ← mutex-protected, one write at a time
+├──────────────┤
+│  Read Conn   │ ← concurrent reads via WAL
+│  Read Conn   │
+│  Read Conn   │
+└──────────────┘
+```
+
+### Transactions
+
+```go
+err := db.RunInTransaction(func(tx orm.DB) {
+    user := orm.New[User](tx)
+    user.Name = "Alice"
+    user.Create()
+
+    account := orm.New[Account](tx)
+    account.UserID = user.Id()
+    account.Balance = 10000
+    account.Create()
+})
+```
+
+Transactions use the write connection and hold the write mutex for the duration.
+
+### Batch Operations
+
+```go
+// Allocate multiple IDs at once
+keys, err := db.AllocateIDs("user", 100)
+```
+
+### sqlite-vec Support
+
+The SQLite driver is compatible with [`sqlite-vec`](https://github.com/asg017/sqlite-vec) for vector similarity search. Load the extension before opening the database if your build includes it.
+
+## ZAP Binary Protocol
+
+ZAP eliminates JSON serialization overhead by encoding structs directly into a binary format over RPC. A **zap-sidecar** process proxies requests to the actual database backend.
+
+```
+┌──────────┐    ZAP binary    ┌──────────────┐    native    ┌────────────┐
+│  Your App │ ──────────────▸ │  zap-sidecar  │ ──────────▸ │  Database   │
+│  (ORM)    │ ◂────────────── │  (proxy)      │ ◂────────── │  Backend    │
+└──────────┘                  └──────────────┘              └────────────┘
+```
+
+### Setup
+
+```go
+import (
+    "github.com/hanzoai/orm"
+    ormdb "github.com/hanzoai/orm/db"
+)
+
+// PostgreSQL via ZAP
+db, err := orm.OpenZap(&ormdb.ZapConfig{
+    Addr:    "localhost:9651",
+    Backend: ormdb.ZapSQL,
+})
+
+// MongoDB via ZAP
+db, err := orm.OpenZap(&ormdb.ZapConfig{
+    Addr:    "localhost:9651",
+    Backend: ormdb.ZapDocumentDB,
+})
+
+// Redis/Valkey via ZAP
+db, err := orm.OpenZap(&ormdb.ZapConfig{
+    Addr:    "localhost:9651",
+    Backend: ormdb.ZapKV,
+})
+
+// ClickHouse via ZAP
+db, err := orm.OpenZap(&ormdb.ZapConfig{
+    Addr:    "localhost:9651",
+    Backend: ormdb.ZapDatastore,
+})
+```
+
+### Configuration
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `Addr` | required | Address of the zap-sidecar (e.g., `"localhost:9651"`) |
+| `Backend` | `ZapSQL` | Target backend: `ZapSQL`, `ZapDocumentDB`, `ZapKV`, `ZapDatastore` |
+| `Database` | `""` | Target database name (SQL/DocumentDB) |
+| `Collection` | auto | Entity table/collection name (`_entities` for SQL, `entities` for DocumentDB, `orm` for KV) |
+| `NodeID` | auto | Client node ID for ZAP peer identification |
+| `QueryTimeout` | `30s` | Per-query timeout |
+| `Logger` | `slog.Default()` | Logger for ZAP node |
+
+### How It Works
+
+The ZAP driver translates ORM operations into backend-specific requests:
+
+**SQL backends** (PostgreSQL via ZapSQL):
+- `Get` → `SELECT data FROM _entities WHERE id = $1 AND kind = $2`
+- `Put` → `INSERT ... ON CONFLICT DO UPDATE`
+- `Query` → `SELECT` with `json_extract` filters
+- `Delete` → Soft delete (`UPDATE SET deleted = true`)
+
+**Document backends** (MongoDB via ZapDocumentDB):
+- `Get` → `find` with `{_id, kind}` filter
+- `Put` → `update` with `$set` (upsert) or `insert`
+- `Query` → `find` with MongoDB query operators
+- `Delete` → `update` with `{deleted: true}`
+
+**KV backends** (Redis/Valkey via ZapKV):
+- `Get` → `GET orm:kind:id`
+- `Put` → `SET orm:kind:id`
+- `Delete` → `DEL orm:kind:id`
+
+### Benefits
+
+- **Zero JSON overhead**: Binary encoding instead of `json.Marshal`/`json.Unmarshal` for transport
+- **Unified interface**: Same `orm.DB` across SQL, document, KV, and columnar backends
+- **Native types**: Complex Go types (slices, maps, nested structs) transmitted natively
+- **Backend flexibility**: Switch databases by changing one config line
+
+### When to Use ZAP vs SQLite
+
+| | SQLite | ZAP |
+|---|--------|-----|
+| **Deployment** | Embedded, single binary | Requires zap-sidecar process |
+| **Scaling** | Single node | Multi-node, distributed |
+| **Use case** | Dev, edge, CLI tools | Production services |
+| **Performance** | Fast for small datasets | Better for large/concurrent workloads |
+| **Backends** | SQLite only | PostgreSQL, MongoDB, Redis, ClickHouse |
+
+## Custom Drivers
+
+Implement the `db.DB` interface to add support for any backend:
+
+```go
+type DB interface {
+    Get(ctx context.Context, key Key, dst interface{}) error
+    Put(ctx context.Context, key Key, src interface{}) (Key, error)
+    Delete(ctx context.Context, key Key) error
+    Query(kind string) Query
+    NewKey(kind string, id string, intID int64, parent Key) Key
+    NewIncompleteKey(kind string, parent Key) Key
+    AllocateIDs(kind string, parent Key, n int) ([]Key, error)
+    RunInTransaction(ctx context.Context, fn func(tx Transaction) error, opts *TransactionOptions) error
+    Close() error
+}
+```
+
+Then wrap it with `orm.AdaptDB()`:
+
+```go
+customDB := NewMyCustomDB(config)
+ormDB := orm.AdaptDB(customDB)
+
+// Now use with Model[T]
+user := orm.New[User](ormDB)
+```
+
+## Interface Layers
+
+```
+┌─────────────────────────────────────────────────────┐
+│  orm.DB (minimal)                                    │
+│  Get, Put, Delete, Query, NewKey,                   │
+│  AllocateIDs, RunInTransaction, Close               │
+│                                                      │
+│  Used by: Model[T], New[T], Get[T]                  │
+├─────────────────────────────────────────────────────┤
+│  adapter.go                                          │
+│  OpenSQLite() → orm.DB                               │
+│  OpenZap()    → orm.DB                               │
+│  AdaptDB(db.DB) → orm.DB                             │
+│  bridgeKey / reverseKey wrappers                     │
+├─────────────────────────────────────────────────────┤
+│  db.DB (full)                                        │
+│  FilterField, Run, Start/End, Cursor,               │
+│  Transaction with Commit/Rollback                    │
+│                                                      │
+│  Implemented by: SQLiteDB, ZapDB                     │
+└─────────────────────────────────────────────────────┘
+```
