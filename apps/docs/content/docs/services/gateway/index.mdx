@@ -5,7 +5,11 @@ description: Unified API gateway and LLM proxy — routes to 100+ AI providers
 
 # Hanzo Gateway
 
-Hanzo Gateway is the unified API gateway for all Hanzo services. Built on KrakenD, it serves as the single entry point for LLM inference, commerce, authentication, analytics, and every other Hanzo backend. Two independent gateway instances run on separate Kubernetes clusters, each with its own routing table and rate-limit policy.
+Hanzo Gateway is the unified, high-performance API gateway for all Hanzo services. It serves as the single entry point for LLM inference, commerce, authentication, analytics, and every other Hanzo backend -- with rate limiting, circuit breakers, header forwarding, and telemetry driven by declarative JSON configuration. Two independent gateway instances run on separate Kubernetes clusters, each with its own routing table and rate-limit policy.
+
+**GitHub:** [github.com/hanzoai/gateway](https://github.com/hanzoai/gateway)
+**Docker:** `ghcr.io/hanzoai/gateway`
+**License:** Apache-2.0
 
 ## Endpoints
 
@@ -19,12 +23,15 @@ Both endpoints terminate TLS via Cloudflare (Hanzo) or DigitalOcean Load Balance
 ## Features
 
 - **LLM Proxy**: OpenAI-compatible `/v1/*` endpoints routed to 100+ models via Cloud Backend and DO AI inference
-- **Unified Routing**: Single gateway fans out to 15+ backend services (Cloud, Commerce, IAM, Analytics, Agents, Bot, Operative, KMS, Web3, Infra, Console, Team, Billing)
-- **Rate Limiting**: Per-IP and global rate limits on every endpoint, enforced at the gateway layer
+- **Unified Routing**: Single gateway fans out to 15+ backend services across 133+ endpoints (Cloud, Commerce, IAM, Analytics, Agents, Bot, Operative, KMS, Web3, Infra, Console, Team, Billing)
+- **Rate Limiting**: Per-IP and global rate limits on every endpoint, enforced at the gateway layer before requests reach backends
+- **Circuit Breakers**: Automatic backend failure isolation prevents cascading failures across services
 - **Passthrough Encoding**: All traffic uses `no-op` encoding -- the gateway never transforms request or response bodies
 - **Header Forwarding**: All client headers (including `Authorization`) are forwarded to backends
 - **Health Checks**: `/__health` liveness probe, `GET /health` public endpoint
 - **Streaming**: Passthrough encoding preserves SSE streams for chat completions
+- **Telemetry**: Structured logging with `[GATEWAY]` prefix, Prometheus-compatible metrics
+- **Zero-Downtime Deploys**: ConfigMap-based config with rolling restart
 - **Multi-Cluster**: Separate configs, images, and deployments for Hanzo and Lux clusters
 
 ## Architecture
@@ -269,7 +276,7 @@ deepseek-r1-0528
 
 ## Rate Limiting
 
-Rate limits are enforced per-endpoint at the KrakenD layer using the `qos/ratelimit/router` plugin.
+Rate limits are enforced per-endpoint at the gateway layer using the `qos/ratelimit/router` configuration.
 
 ### Hanzo Cluster (`api.hanzo.ai`)
 
@@ -291,7 +298,7 @@ Rate-limited requests receive HTTP `429 Too Many Requests`.
 
 ### Build
 
-The gateway is a Go binary built from KrakenD source with Hanzo extensions:
+The gateway is a Go binary with declarative JSON-driven routing:
 
 ```
 github.com/hanzoai/gateway/v2  (Go 1.25)
@@ -388,6 +395,22 @@ curl https://api.hanzo.ai/health
 curl https://api.lux.network/ext/health
 ```
 
+## Infrastructure Stack
+
+Hanzo Gateway is one of four products in the Hanzo AI infrastructure stack:
+
+| Product | Role | Repository |
+|---------|------|------------|
+| [**Hanzo Ingress**](https://github.com/hanzoai/ingress) | L7 reverse proxy, TLS termination, load balancing | `hanzoai/ingress` |
+| [**Hanzo Gateway**](https://github.com/hanzoai/gateway) | API gateway, rate limiting, endpoint routing | `hanzoai/gateway` |
+| [**Hanzo Engine**](https://github.com/hanzoai/engine) | GPU inference engine, model serving | `hanzoai/engine` |
+| [**Hanzo Edge**](https://github.com/hanzoai/edge) | On-device inference runtime (mobile, web, embedded) | `hanzoai/edge` |
+
+```
+Internet -> Ingress (TLS/L7) -> Gateway (API routing) -> Engine (inference) / Cloud API / Services
+                                                          Edge (on-device, client-side)
+```
+
 ## Related Services
 
 <Cards>
@@ -395,10 +418,10 @@ curl https://api.lux.network/ext/health
     Cloud Backend -- LLM provider routing and management
   </Card>
   <Card title="Engine" href="/docs/services/engine">
-    Local Rust inference engine
+    High-performance Rust inference engine with GPU acceleration
   </Card>
-  <Card title="Analytics" href="/docs/services/analytics">
-    Usage, cost, and performance metrics
+  <Card title="Edge" href="/docs/services/edge">
+    On-device inference runtime for mobile, web, and embedded
   </Card>
   <Card title="IAM" href="/docs/services/iam">
     Identity and access management (hanzo.id)
