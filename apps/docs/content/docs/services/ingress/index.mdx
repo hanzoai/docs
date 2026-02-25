@@ -1,0 +1,515 @@
+---
+title: Hanzo Ingress
+description: Cloud-native L7 reverse proxy and load balancer for Hanzo AI infrastructure -- Kubernetes-native with automatic TLS, dynamic configuration, and zero-downtime reloads.
+---
+
+# Hanzo Ingress
+
+Hanzo Ingress is the front door for all Hanzo production traffic. It watches Kubernetes Ingress resources, automatically provisions TLS certificates via Let's Encrypt, and routes traffic to internal services -- including [Hanzo Gateway](/docs/services/gateway) for API endpoints and direct service routing for web applications.
+
+Deployed on the `hanzo-k8s` cluster as the default IngressClass (`hanzo`), it handles all `*.hanzo.ai` traffic with 2 replicas in host-network mode for direct port 80/443 binding.
+
+**Container:** `ghcr.io/hanzoai/ingress`
+**Cluster:** `hanzo-k8s` (namespace `hanzo`)
+**Health:** `GET /ping` on port 80
+
+## Features
+
+- **Kubernetes-native**: Watches standard `networking.k8s.io/v1` Ingress resources, auto-configures routes with zero manual intervention
+- **Automatic TLS**: Let's Encrypt certificate provisioning and renewal with wildcard support -- no cert-manager required
+- **Dynamic configuration**: Zero-restart config updates as Ingress resources are created, modified, or deleted
+- **HTTP/2, gRPC, WebSocket**: Full protocol support for all backend types including streaming inference
+- **Middleware chain**: Composable middleware for authentication, rate limiting, circuit breakers, headers, compression, and retry logic
+- **Circuit breakers**: Automatic failure isolation with configurable thresholds to protect backend services
+- **Retry logic**: Built-in retry with exponential backoff for transient failures
+- **Metrics export**: Prometheus, Datadog, StatsD, InfluxDB2, and OpenTelemetry collectors
+- **Access logging**: JSON and Common Log Format output for request tracing
+- **Web dashboard**: Built-in UI for route visualization and health monitoring
+- **REST API**: Programmatic access to configuration, routes, and service status
+- **Host-network mode**: Direct port binding for minimal latency -- no kube-proxy or iptables overhead
+- **Single static binary**: No runtime dependencies, minimal attack surface
+
+## Architecture
+
+```
+                Internet
+                   |
+          +--------+--------+
+          | Cloudflare CDN  |
+          | (DNS + WAF)     |
+          +--------+--------+
+                   |
+          +--------+--------+
+          | Hanzo Ingress   |   <-- L7 reverse proxy
+          | (ports 80/443)  |       TLS termination
+          | IngressClass:   |       Route matching
+          |   "hanzo"       |       Load balancing
+          +--+----+----+----+
+             |    |    |
+    +--------+ +--+--+ +--------+
+    | Gateway | | IAM | | Cloud  |   <-- Internal services
+    | :8080   | |:8000| | :3000  |
+    +---------+ +-----+ +--------+
+```
+
+### Request Flow
+
+1. DNS resolves `*.hanzo.ai` to Cloudflare
+2. Cloudflare proxies to `hanzo-k8s` cluster load balancer (`24.199.76.156`)
+3. Hanzo Ingress terminates TLS and matches host/path rules
+4. Request is forwarded to the matching backend service
+5. For API traffic (`api.hanzo.ai`), Ingress routes to [Hanzo Gateway](/docs/services/gateway) for endpoint-level routing
+
+## Quick Start
+
+### Build from Source
+
+```bash
+# Build the binary
+make build
+
+# Run with a config file
+./hanzo-ingress --configFile=config.toml
+
+# Run with CLI flags
+./hanzo-ingress \
+  --entrypoints.web.address=:80 \
+  --entrypoints.websecure.address=:443 \
+  --providers.kubernetesingress=true
+```
+
+### Docker
+
+```bash
+docker run -d \
+  -p 80:80 \
+  -p 443:443 \
+  ghcr.io/hanzoai/ingress:latest \
+  --entrypoints.web.address=:80 \
+  --entrypoints.websecure.address=:443 \
+  --ping=true
+```
+
+### Docker Compose
+
+```yaml
+services:
+  ingress:
+    image: ghcr.io/hanzoai/ingress:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./acme.json:/acme.json
+    command:
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--providers.docker=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=ops@hanzo.ai"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/acme.json"
+```
+
+## Kubernetes Deployment
+
+### IngressClass
+
+Hanzo Ingress registers as the default IngressClass on the cluster. Any Ingress resource without an explicit `ingressClassName` is automatically picked up.
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: hanzo
+  annotations:
+    ingressclass.kubernetes.io/is-default-class: "true"
+spec:
+  controller: hanzo.ai/ingress-controller
+```
+
+### Deploy to hanzo-k8s
+
+```bash
+# Apply all manifests (RBAC, IngressClass, Deployment, Service)
+kubectl --context do-sfo3-hanzo-k8s apply -f k8s/hanzo/
+
+# Verify
+kubectl --context do-sfo3-hanzo-k8s -n hanzo get pods -l app=hanzo-ingress
+kubectl --context do-sfo3-hanzo-k8s -n hanzo get svc hanzo-ingress
+```
+
+### K8s Manifests
+
+```
+k8s/hanzo/
+  rbac.yaml             # ServiceAccount, ClusterRole, ClusterRoleBinding
+  ingressclass.yaml     # IngressClass "hanzo" (default)
+  deployment.yaml       # 2 replicas, hostNetwork, ports 80/443
+  service.yaml          # LoadBalancer service
+```
+
+### Production Configuration
+
+| Property | Value |
+|----------|-------|
+| **Image** | `ghcr.io/hanzoai/ingress:latest` |
+| **Replicas** | 2 |
+| **Namespace** | `hanzo` |
+| **Network** | hostNetwork (direct port binding) |
+| **Ports** | 80 (HTTP), 443 (HTTPS) |
+| **Service type** | LoadBalancer |
+| **Health check** | `GET /ping` on port 80 |
+| **Liveness probe** | HTTP `/ping`, 5s initial delay, 10s interval |
+| **Readiness probe** | HTTP `/ping`, 3s initial delay, 5s interval |
+| **Resources** | 100m-1000m CPU, 128Mi-512Mi memory |
+| **Security** | `NET_BIND_SERVICE` capability, all others dropped |
+
+### Creating Ingress Resources
+
+Once deployed, create standard Kubernetes Ingress resources to route traffic:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-service
+  namespace: hanzo
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+spec:
+  ingressClassName: hanzo
+  tls:
+  - hosts:
+    - my-service.hanzo.ai
+    secretName: my-service-tls
+  rules:
+  - host: my-service.hanzo.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: my-service
+            port:
+              number: 8080
+```
+
+## Service Discovery
+
+Hanzo Ingress supports multiple provider backends for service discovery:
+
+| Provider | Description |
+|----------|-------------|
+| **Kubernetes Ingress** | Watches `networking.k8s.io/v1` Ingress resources (primary, production) |
+| **Docker** | Discovers containers via Docker socket labels |
+| **File** | Static TOML/YAML configuration files |
+| **HTTP** | Remote configuration endpoint polling |
+| **Consul** | HashiCorp Consul service catalog integration |
+| **Etcd** | Key-value store configuration |
+| **ECS** | AWS ECS task discovery |
+
+Production runs exclusively with the Kubernetes Ingress provider.
+
+## Configuration
+
+### CLI Flags (Production)
+
+```bash
+./hanzo-ingress \
+  --providers.kubernetesingress=true \
+  --providers.kubernetesingress.ingressendpoint.publishedservice=hanzo/hanzo-ingress \
+  --providers.kubernetesingress.allowemptyservices=true \
+  --entrypoints.web.address=:80 \
+  --entrypoints.websecure.address=:443 \
+  --entrypoints.websecure.http.tls=true \
+  --ping=true \
+  --ping.entryPoint=web \
+  --api.dashboard=false \
+  --log.level=INFO \
+  --accesslog=true
+```
+
+### Configuration File (TOML)
+
+```toml
+[entryPoints]
+  [entryPoints.web]
+    address = ":80"
+  [entryPoints.websecure]
+    address = ":443"
+    [entryPoints.websecure.http.tls]
+
+[providers]
+  [providers.kubernetesIngress]
+    [providers.kubernetesIngress.ingressEndpoint]
+      publishedService = "hanzo/hanzo-ingress"
+
+[ping]
+  entryPoint = "web"
+
+[log]
+  level = "INFO"
+
+[accessLog]
+```
+
+### Entrypoints
+
+Entrypoints define the network addresses where Ingress listens for incoming connections.
+
+```toml
+[entryPoints]
+  [entryPoints.web]
+    address = ":80"
+    [entryPoints.web.http.redirections.entryPoint]
+      to = "websecure"
+      scheme = "https"
+
+  [entryPoints.websecure]
+    address = ":443"
+    [entryPoints.websecure.http.tls]
+      certResolver = "letsencrypt"
+
+  [entryPoints.grpc]
+    address = ":9090"
+    [entryPoints.grpc.http2]
+```
+
+### TLS / Let's Encrypt
+
+Automatic certificate provisioning with HTTP-01 or DNS-01 challenges:
+
+```toml
+[certificatesResolvers.letsencrypt.acme]
+  email = "ops@hanzo.ai"
+  storage = "/acme.json"
+  [certificatesResolvers.letsencrypt.acme.httpChallenge]
+    entryPoint = "web"
+
+# Or use DNS challenge for wildcard certs
+[certificatesResolvers.letsencrypt-dns.acme]
+  email = "ops@hanzo.ai"
+  storage = "/acme-dns.json"
+  [certificatesResolvers.letsencrypt-dns.acme.dnsChallenge]
+    provider = "cloudflare"
+```
+
+## Middleware
+
+Hanzo Ingress provides a composable middleware chain that processes requests before they reach backend services.
+
+### Authentication
+
+Forward authentication to an external service:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: protected-service
+  annotations:
+    hanzo.ai/ingress-middleware: "auth-forward@kubernetescrd"
+spec:
+  ingressClassName: hanzo
+  rules:
+  - host: protected.hanzo.ai
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: protected-service
+            port:
+              number: 8080
+```
+
+### Rate Limiting
+
+```toml
+[http.middlewares.rate-limit.rateLimit]
+  average = 100
+  burst = 50
+  period = "1m"
+  [http.middlewares.rate-limit.rateLimit.sourceCriterion.ipStrategy]
+    depth = 1
+```
+
+### Circuit Breaker
+
+```toml
+[http.middlewares.circuit-breaker.circuitBreaker]
+  expression = "LatencyAtQuantileMS(50.0) > 100 || NetworkErrorRatio() > 0.30"
+  checkPeriod = "10s"
+  fallbackDuration = "15s"
+  recoveryDuration = "30s"
+```
+
+### Headers and CORS
+
+```toml
+[http.middlewares.security-headers.headers]
+  browserXssFilter = true
+  contentTypeNosniff = true
+  frameDeny = true
+  stsIncludeSubdomains = true
+  stsSeconds = 31536000
+  [http.middlewares.security-headers.headers.customResponseHeaders]
+    X-Powered-By = "Hanzo AI"
+
+[http.middlewares.cors.headers]
+  accessControlAllowMethods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+  accessControlAllowOriginList = ["https://hanzo.ai", "https://console.hanzo.ai"]
+  accessControlMaxAge = 86400
+```
+
+### Compression
+
+```toml
+[http.middlewares.compress.compress]
+  excludedContentTypes = ["text/event-stream"]
+  minResponseBodyBytes = 1024
+```
+
+### Retry
+
+```toml
+[http.middlewares.retry.retry]
+  attempts = 3
+  initialInterval = "100ms"
+```
+
+### Middleware Chaining
+
+Apply multiple middleware to a single route via Kubernetes annotations:
+
+```yaml
+metadata:
+  annotations:
+    hanzo.ai/ingress-middleware: "rate-limit@file,security-headers@file,compress@file"
+```
+
+## Metrics and Observability
+
+### Prometheus
+
+```toml
+[metrics.prometheus]
+  entryPoint = "metrics"
+  addEntryPointsLabels = true
+  addRoutersLabels = true
+  addServicesLabels = true
+  buckets = [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+```
+
+Expose a metrics entrypoint:
+
+```toml
+[entryPoints.metrics]
+  address = ":9100"
+```
+
+### Key Metrics
+
+| Metric | Description |
+|--------|-------------|
+| `hanzo_ingress_entrypoint_requests_total` | Total requests per entrypoint |
+| `hanzo_ingress_entrypoint_request_duration_seconds` | Request latency histogram |
+| `hanzo_ingress_entrypoint_open_connections` | Current open connections |
+| `hanzo_ingress_service_requests_total` | Requests per backend service |
+| `hanzo_ingress_service_server_up` | Backend health status (1=up, 0=down) |
+| `hanzo_ingress_tls_certs_not_after` | TLS certificate expiry timestamps |
+
+### OpenTelemetry
+
+```toml
+[tracing]
+  [tracing.otlp]
+    [tracing.otlp.grpc]
+      endpoint = "otel-collector.hanzo.svc:4317"
+      insecure = true
+```
+
+### Access Logs
+
+```toml
+[accessLog]
+  filePath = "/var/log/ingress/access.log"
+  format = "json"
+  bufferingSize = 100
+  [accessLog.filters]
+    statusCodes = ["200-299", "400-499", "500-599"]
+    minDuration = "10ms"
+  [accessLog.fields.headers]
+    defaultMode = "drop"
+    [accessLog.fields.headers.names]
+      Authorization = "redact"
+      User-Agent = "keep"
+      X-Request-ID = "keep"
+```
+
+## PaaS Integration
+
+Hanzo Ingress serves as the ingress layer for [Hanzo Platform](/docs/services/platform) (PaaS). Applications deployed through the platform automatically get:
+
+- Ingress resource creation with proper host rules
+- TLS certificate provisioning via Let's Encrypt
+- Load balancing across application replicas
+- Access logging and metrics collection
+
+No manual Ingress configuration is required -- the platform controller creates and manages Ingress resources for each deployed application.
+
+## Repository Structure
+
+```
+cmd/                    # Binary entry point
+internal/               # Core routing, middleware, provider logic
+pkg/                    # Public packages and configuration types
+webui/                  # Built-in dashboard (React)
+k8s/
+  hanzo/                # Production K8s manifests
+    rbac.yaml           # ServiceAccount + ClusterRole
+    ingressclass.yaml   # IngressClass "hanzo" (default)
+    deployment.yaml     # 2-replica Deployment
+    service.yaml        # LoadBalancer Service
+integration/            # Integration test suite
+contrib/                # Community contributed configs
+docs/                   # Extended documentation
+Dockerfile              # Multi-stage build (Node webui + Go binary)
+Makefile                # Build, test, Docker targets
+```
+
+## Hanzo Infrastructure Stack
+
+Hanzo Ingress is one of four products in the Hanzo AI infrastructure stack:
+
+| Product | Role | Repository |
+|---------|------|------------|
+| **Hanzo Ingress** | L7 reverse proxy, TLS termination, load balancing | `hanzoai/ingress` |
+| [**Hanzo Gateway**](/docs/services/gateway) | API gateway, rate limiting, endpoint routing | `hanzoai/gateway` |
+| [**Hanzo Engine**](/docs/services/engine) | GPU inference engine, model serving | `hanzoai/engine` |
+| [**Hanzo Edge**](/docs/services/edge) | On-device inference runtime (mobile, web, embedded) | `hanzoai/edge` |
+
+```
+Internet -> Ingress (TLS/L7) -> Gateway (API routing) -> Engine (inference) / Cloud API / Services
+                                                          Edge (on-device, client-side)
+```
+
+## Related Services
+
+<Cards>
+  <Card title="Gateway" href="/docs/services/gateway">
+    Unified API gateway -- LLM proxy, rate limiting, and endpoint routing
+  </Card>
+  <Card title="Engine" href="/docs/services/engine">
+    GPU inference engine for model serving
+  </Card>
+  <Card title="PaaS" href="/docs/services/paas">
+    Platform-as-a-Service with automatic Ingress resource management
+  </Card>
+  <Card title="DNS" href="/docs/services/dns">
+    Authoritative DNS hosting with GeoDNS and failover routing
+  </Card>
+</Cards>
