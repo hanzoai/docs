@@ -100,7 +100,7 @@ const ecosystem = [
     tag: 'Platform',
   },
   {
-    name: 'Zen LM',
+    name: 'Zen',
     desc: '44 frontier models, 4B to 1T+. Open weights on HuggingFace.',
     icon: Sparkles,
     href: 'https://zenlm.org',
@@ -357,7 +357,7 @@ print(response.choices[0].message.content)`}
             <div className="flex items-center gap-3 mb-4">
               <Sparkles className="size-5 text-[#a3a3a3]" />
               <h2 className="text-2xl font-bold tracking-tight">
-                Zen LM
+                Zen
               </h2>
               <span className="text-xs text-[#525252] font-mono bg-white/5 px-2 py-0.5 rounded-full">
                 44 models
