@@ -23,9 +23,9 @@ var isLint = process.env.LINT === "1";
 var isExport = process.env.NEXT_EXPORT === "1";
 var docs = defineDocs({
   docs: {
-    // Exclude projects directory entirely — 2,361 upstream project docs
-    // are too heavy for static export and no longer in the platform nav.
-    files: ["**/*.mdx", "!**/projects/**"],
+    // During static export, exclude the entire projects directory — thousands
+    // of upstream project docs are too heavy for the standard CI runner.
+    ...isExport ? { files: ["**/*.mdx", "!**/projects/**"] } : {},
     schema: pageSchema.extend({
       preview: z.string().optional(),
       index: z.boolean().default(false),
@@ -42,7 +42,6 @@ var docs = defineDocs({
     async: true,
     async mdxOptions(environment) {
       const { rehypeCodeDefaultOptions } = await import("@hanzo/docs-core/mdx-plugins/rehype-code");
-      const { remarkStructureDefaultOptions } = await import("@hanzo/docs-core/mdx-plugins/remark-structure");
       const { remarkSteps } = await import("@hanzo/docs-core/mdx-plugins/remark-steps");
       const { remarkFeedbackBlock } = await import("@hanzo/docs-core/mdx-plugins/remark-feedback-block");
       const { transformerTwoslash } = await import("@hanzo/docs-twoslash");
@@ -51,12 +50,6 @@ var docs = defineDocs({
       const { remarkTypeScriptToJavaScript } = await import("@hanzo/docs-docgen/remark-ts2js");
       const { default: rehypeKatex } = await import("rehype-katex");
       const { remarkAutoTypeTable, createGenerator, createFileSystemGeneratorCache } = await import("@hanzo/docs-typescript");
-      const feedbackOptions = {
-        resolve(node) {
-          if (node.type === "mdxJsxFlowElement") return "skip";
-          return node.type === "paragraph" || node.type === "image" || node.type === "list";
-        }
-      };
       const typeTableOptions = {
         generator: createGenerator({
           cache: createFileSystemGeneratorCache(".next/@hanzo/docs-typescript")
@@ -87,6 +80,26 @@ var docs = defineDocs({
         remarkCodeTabOptions: {
           parseMdx: true
         },
+        remarkStructureOptions: {
+          stringify: {
+            filterElement(node) {
+              switch (node.type) {
+                case "mdxJsxFlowElement":
+                case "mdxJsxTextElement":
+                  switch (node.name) {
+                    case "File":
+                    case "TypeTable":
+                    case "Callout":
+                    case "Card":
+                    case "Custom":
+                      return true;
+                  }
+                  return "children-only";
+              }
+              return true;
+            }
+          }
+        },
         remarkNpmOptions: {
           persist: {
             id: "package-manager"
@@ -96,7 +109,7 @@ var docs = defineDocs({
           remarkPassthroughUnknownJsx,
           remarkSteps,
           remarkMath,
-          [remarkFeedbackBlock, feedbackOptions],
+          remarkFeedbackBlock,
           [remarkAutoTypeTable, typeTableOptions],
           remarkTypeScriptToJavaScript
         ],
