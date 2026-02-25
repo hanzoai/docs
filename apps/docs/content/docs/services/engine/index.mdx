@@ -9,18 +9,25 @@ Hanzo Engine is a high-performance, multimodal inference engine written in Rust.
 
 Key design goals: zero-config model loading, hardware-aware quantization, and production-grade throughput via PagedAttention and continuous batching.
 
+**GitHub:** [github.com/hanzoai/engine](https://github.com/hanzoai/engine)
+**Docker:** `ghcr.io/hanzoai/engine`
+**License:** Apache-2.0
+
 ## Features
 
 - **Hardware Acceleration**: Native Metal (Apple Silicon) and CUDA (NVIDIA) backends, FlashAttention V2/V3, multi-GPU tensor parallelism
 - **Quantization**: GGUF (2-8 bit), GPTQ, AWQ, HQQ, FP8, BNB, AFQ (Metal-optimized), and In-Situ Quantization (ISQ) of any HuggingFace model
 - **PagedAttention**: High-throughput continuous batching on CUDA and Metal with prefix caching and KV cache quantization
+- **Speculative Decoding**: Draft-model acceleration with rejection sampling for 2-3x speedup on supported architectures
 - **Multimodal**: Text, vision, audio/speech, image generation, and embeddings in a single binary
 - **MCP Integration**: Built-in MCP server exposing model tools via JSON-RPC, plus MCP client for connecting to external tool servers
-- **OpenAI-Compatible API**: Drop-in replacement for OpenAI endpoints — `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`, `/v1/models`
+- **OpenAI-Compatible API**: Drop-in replacement for OpenAI endpoints -- `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`, `/v1/images/generations`, `/v1/models`
 - **Agentic**: Integrated tool calling with Python/Rust callbacks, web search, and structured output (JSON schema, regex, grammar)
+- **Distributed Inference**: Multi-GPU via NCCL tensor parallelism, multi-node via TCP ring topology with heterogeneous device support
 - **LoRA / X-LoRA**: Adapter model support with runtime weight merging
 - **AnyMoE**: Create mixture-of-experts on any base model
 - **Per-Layer Topology**: Fine-tune quantization bit depth per layer for optimal quality/speed tradeoffs
+- **UQFF**: Universal Quantized File Format for portable quantized model distribution
 - **Web UI**: Built-in chat interface at `/ui` when serving
 
 ## Architecture
@@ -111,11 +118,59 @@ Key design goals: zero-config model loading, hardware-aware quantization, and pr
 | Image Generation | FLUX |
 | Embeddings | Embedding Gemma, Qwen 3 Embedding |
 
+## Zen Models
+
+Hanzo Engine is the inference backend for the [Zen model family](https://zenlm.org). First-class support for all Zen architectures:
+
+| Model | Parameters | Context | Architecture | Use Case |
+|-------|-----------|---------|--------------|----------|
+| **zen4** | 744B MoE (40B active) | 202K | Transformer MoE | Flagship reasoning and generation |
+| **zen4-max** | 1.04T MoE (32B active) | 256K | Transformer MoE | Maximum capability |
+| **zen4-ultra** | 744B MoE + CoT (40B active) | 202K | Transformer MoE | Extended chain-of-thought |
+| **zen4-pro** | 80B MoE (3B active) | 131K | Transformer MoE | High quality, efficient serving |
+| **zen4-mini** | 8B dense | 40K | Transformer | Fast inference, edge deployment |
+| **zen4-coder** | 480B MoE (35B active) | 262K | Transformer MoE | Code generation and analysis |
+| **zen4-coder-flash** | 30B MoE (3B active) | 262K | Transformer MoE | Fast code completion |
+| **zen4-coder-pro** | 480B dense BF16 | 262K | Transformer | Maximum code quality |
+| **zen3-vl** | 30B MoE (3B active) | 131K | Vision-Language MoE | Multimodal understanding |
+| **zen3-omni** | ~200B | 202K | Multimodal | Text, vision, audio |
+| **zen3-nano** | 4B dense | 40K | Transformer | Ultra-lightweight |
+| **zen3-guard** | 4B dense | -- | Classifier | Safety and content filtering |
+| **zen3-embedding** | -- | -- | Embedding (3072-dim) | Search and retrieval |
+
+```bash
+# Serve any Zen model
+hanzo-engine serve -m zenlm/zen4-mini --port 8000
+hanzo-engine serve -m zenlm/zen4 --port 8000 --isq Q4K
+hanzo-engine serve -m zenlm/zen4-coder --port 8000
+```
+
 ## Quick Start
 
 ### Install
 
-Build from source with the appropriate backend:
+**Linux / macOS (recommended):**
+
+```bash
+curl -sSL https://engine.hanzo.ai/install.sh | sh
+```
+
+**Via Cargo:**
+
+```bash
+cargo install hanzo-engine
+```
+
+**Via pip (Python SDK):**
+
+```bash
+pip install hanzo-engine               # CPU
+pip install hanzo-engine-cuda          # NVIDIA GPU
+pip install hanzo-engine-metal         # Apple Silicon
+pip install hanzo-engine-mkl           # Intel CPU
+```
+
+**Build from source** with the appropriate backend:
 
 ```bash
 # macOS (Metal)
@@ -126,9 +181,6 @@ cargo build --package hanzo-engine --release --features cuda
 
 # Linux (CUDA + FlashAttention)
 cargo build --package hanzo-engine --release --features "cuda flash-attn cudnn"
-
-# Install binary
-cargo install --path hanzo-engine --no-default-features --features metal
 ```
 
 ### Run a Model
@@ -265,6 +317,7 @@ curl http://localhost:36900/v1/embeddings \
 | `POST` | `/v1/chat/completions` | Chat completions (streaming supported) |
 | `POST` | `/v1/completions` | Text completions |
 | `POST` | `/v1/embeddings` | Vector embeddings |
+| `POST` | `/v1/images/generations` | Image generation (FLUX) |
 | `GET` | `/v1/models` | List loaded models |
 | `GET` | `/health` | Server health check |
 | `GET` | `/docs` | Interactive Swagger UI |
@@ -380,16 +433,198 @@ hanzo-engine serve \
   --mcp-client-config mcp-tools.json
 ```
 
+## Python SDK
+
+```python
+from hanzo_engine import Runner, Which, ChatCompletionRequest
+
+runner = Runner(
+    which=Which.Plain(model_id="zenlm/zen4-mini"),
+    in_situ_quant="4",
+)
+
+response = runner.send_chat_completion_request(
+    ChatCompletionRequest(
+        model="default",
+        messages=[{"role": "user", "content": "Hello!"}],
+        max_tokens=256,
+    )
+)
+print(response.choices[0].message.content)
+```
+
+## Rust SDK
+
+```rust
+use anyhow::Result;
+use hanzo_engine::{IsqType, TextMessageRole, TextMessages, TextModelBuilder};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let model = TextModelBuilder::new("zenlm/zen4-mini")
+        .with_isq(IsqType::Q4K)
+        .with_logging()
+        .build()
+        .await?;
+
+    let messages = TextMessages::new()
+        .add_message(TextMessageRole::User, "Hello!");
+
+    let response = model.send_chat_request(messages).await?;
+    println!("{}", response.choices[0].message.content.as_ref().unwrap());
+
+    Ok(())
+}
+```
+
 ## Docker
 
 ```bash
-# CUDA
-docker run --gpus all -p 36900:36900 ghcr.io/hanzoai/engine:latest \
-  serve -m Qwen/Qwen3-4B --port 36900
+# CPU
+docker run -p 8000:8000 ghcr.io/hanzoai/engine:latest \
+  serve -m zenlm/zen4-mini --port 8000
 
-# With ISQ quantization
-docker run --gpus all -p 36900:36900 ghcr.io/hanzoai/engine:latest \
-  serve -m meta-llama/Llama-3.2-3B-Instruct --isq 4 --port 36900
+# NVIDIA GPU
+docker run --gpus all -p 8000:8000 ghcr.io/hanzoai/engine:cuda \
+  serve -m zenlm/zen4 --port 8000
+
+# Apple Silicon (Metal)
+docker run -p 8000:8000 ghcr.io/hanzoai/engine:metal \
+  serve -m zenlm/zen4-mini --port 8000
+```
+
+### Docker Compose
+
+```yaml
+services:
+  engine:
+    image: ghcr.io/hanzoai/engine:cuda
+    ports:
+      - "8000:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - model-cache:/root/.cache/huggingface
+    command: serve -m zenlm/zen4 --port 8000
+    restart: unless-stopped
+
+volumes:
+  model-cache:
+```
+
+### Kubernetes
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hanzo-engine
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hanzo-engine
+  template:
+    metadata:
+      labels:
+        app: hanzo-engine
+    spec:
+      containers:
+        - name: engine
+          image: ghcr.io/hanzoai/engine:cuda
+          command: ["hanzo-engine", "serve", "-m", "zenlm/zen4", "--port", "8000"]
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+          volumeMounts:
+            - name: model-cache
+              mountPath: /root/.cache/huggingface
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: model-cache-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hanzo-engine
+spec:
+  selector:
+    app: hanzo-engine
+  ports:
+    - port: 8000
+      targetPort: 8000
+  type: ClusterIP
+```
+
+## Distributed Inference
+
+### Multi-GPU (NCCL)
+
+For models that exceed single-GPU memory, use NCCL tensor parallelism:
+
+```bash
+# 2x GPU tensor parallelism
+HANZO_ENGINE_LOCAL_WORLD_SIZE=2 hanzo-engine serve \
+  -m zenlm/zen4 --port 8000
+
+# 4x GPU
+HANZO_ENGINE_LOCAL_WORLD_SIZE=4 hanzo-engine serve \
+  -m zenlm/zen4-max --port 8000
+```
+
+### Multi-Node (Ring)
+
+Ring topology supports heterogeneous setups -- mix Metal, CUDA, and CPU nodes in a single inference cluster:
+
+```bash
+# Node 0 (master)
+RING_CONFIG=ring_node0.json hanzo-engine serve -m zenlm/zen4 --port 8000
+
+# Node 1
+RING_CONFIG=ring_node1.json hanzo-engine serve -m zenlm/zen4 --port 8001
+```
+
+## Speculative Decoding
+
+Draft-model acceleration uses a smaller model to generate candidate tokens, then validates them with the full model. This achieves 2-3x speedup for autoregressive generation:
+
+```toml
+[speculative]
+draft_model = "zenlm/zen4-mini"
+gamma = 16
+```
+
+```bash
+hanzo-engine from-config -f config.toml
+```
+
+## Performance Benchmarks
+
+Representative benchmarks with continuous batching enabled:
+
+| Model | Hardware | Quantization | Throughput (tok/s) | Latency (TTFT) | Memory |
+|-------|----------|-------------|-------------------|----------------|--------|
+| zen4-mini (8B) | 1x A100 80GB | FP16 | ~2,400 | 28ms | 16 GB |
+| zen4-mini (8B) | 1x A100 80GB | Q4K ISQ | ~3,800 | 18ms | 5 GB |
+| zen4-mini (8B) | M3 Max 64GB | Metal | ~85 | 120ms | 16 GB |
+| zen4-mini (8B) | M3 Max 64GB | Q4K ISQ | ~110 | 80ms | 5 GB |
+| zen4-pro (80B MoE) | 1x A100 80GB | Q4K ISQ | ~950 | 65ms | 42 GB |
+| zen4 (744B MoE) | 4x H100 | FP8 + NCCL | ~1,200 | 180ms | 280 GB |
+| zen4 (744B MoE) | 8x A100 80GB | Q4K + NCCL | ~800 | 250ms | 320 GB |
+
+Run your own benchmarks:
+
+```bash
+hanzo-engine bench -m zenlm/zen4-mini --isq Q4K
+hanzo-engine tune -m zenlm/zen4-mini --emit-config optimal.toml
 ```
 
 ## Configuration
@@ -399,6 +634,9 @@ docker run --gpus all -p 36900:36900 ghcr.io/hanzoai/engine:latest \
 | Variable | Description |
 |----------|-------------|
 | `HANZO_ENGINE_PORT` | Server port (default: `36900`) |
+| `HANZO_ENGINE_LOCAL_WORLD_SIZE` | Number of GPUs for NCCL tensor parallelism |
+| `HANZO_ENGINE_NO_NCCL` | Set to `1` to disable NCCL, use device mapping instead |
+| `RING_CONFIG` | Path to ring topology JSON config for multi-node inference |
 | `KEEP_ALIVE_INTERVAL` | SSE keep-alive interval in ms |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OpenTelemetry export endpoint |
 | `OTEL_SERVICE_NAME` | Service name for traces |
@@ -428,16 +666,16 @@ hanzo-engine from-config -f config.toml
 ## Related Services
 
 <Cards>
+  <Card title="Edge" href="/docs/services/edge">
+    On-device inference runtime -- mobile, web (WASM), and embedded deployment
+  </Card>
   <Card title="Gateway" href="/docs/services/gateway">
-    LLM API gateway — routes requests to Engine and 100+ external providers
+    LLM API gateway -- routes requests to Engine and 100+ external providers
   </Card>
   <Card title="ML" href="/docs/services/ml">
-    ML pipelines — training, fine-tuning, and model management
+    Rust ML framework powering Engine tensor operations
   </Card>
   <Card title="Cloud" href="/docs/services/cloud">
     Platform management, billing, and hosted inference
-  </Card>
-  <Card title="Analytics" href="/docs/services/analytics">
-    Usage metrics, cost tracking, and performance dashboards
   </Card>
 </Cards>
