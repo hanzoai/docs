@@ -1,7 +1,5 @@
 import { HomeLayout } from '@hanzo/docs-base-ui/layouts/home';
 import { baseOptions, linkItems } from '@/components/layouts/shared';
-import { AuthButtons } from '@/components/auth-buttons';
-import { TryHanzoDropdown } from '@/components/try-hanzo-dropdown';
 import { Footer } from '@/components/footer';
 
 export default function Layout({ children }: LayoutProps<'/'>) {
@@ -16,10 +14,12 @@ export default function Layout({ children }: LayoutProps<'/'>) {
             secondary: true,
             on: 'nav',
             children: (
-              <div className="flex items-center gap-2">
-                <TryHanzoDropdown />
-                <AuthButtons />
-              </div>
+              <a
+                href="https://console.hanzo.ai"
+                className="rounded-full bg-white px-4 py-1.5 text-sm font-medium text-black hover:bg-neutral-200 transition-colors"
+              >
+                Get API Key
+              </a>
             ),
           },
         ]}
