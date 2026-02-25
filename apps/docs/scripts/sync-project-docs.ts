@@ -24,6 +24,7 @@ type RepoRecord = {
 type Config = {
   orgs: string[];
   excludeRepos?: string[];
+  pageRenames?: Record<string, string>;
   docsCandidates?: string[];
   localRoot?: string;
   outputDir?: string;
@@ -90,6 +91,13 @@ export async function syncProjectDocs() {
 
     const records = await runWithConcurrency(tasks, concurrency);
     projects.push(...records);
+  }
+
+  const pageRenames = config.pageRenames ?? {};
+
+  // Apply page renames: rename filesystem directories and update project records
+  if (!dryRun) {
+    applyPageRenames(outputDir, orgs, projects, pageRenames);
   }
 
   const manifest = {
@@ -417,6 +425,50 @@ function ensureBaseMeta(destDir: string, repoName: string, description: string |
     const title = humanize(repoName);
     const body = `---\ntitle: ${escapeYaml(title)}\ndescription: ${escapeYaml(description ?? `Documentation for ${title}.`)}\n---\n\n# ${title}\n\nDocumentation imported from repository content.`;
     fs.writeFileSync(indexPath, body, 'utf8');
+  }
+}
+
+function applyPageRenames(
+  outputDir: string,
+  orgs: string[],
+  projects: RepoRecord[],
+  renames: Record<string, string>,
+) {
+  const renameEntries = Object.entries(renames);
+  if (renameEntries.length === 0) return;
+
+  for (const [oldSlug, newSlug] of renameEntries) {
+    for (const org of orgs) {
+      const oldDir = path.join(outputDir, org, oldSlug);
+      const newDir = path.join(outputDir, org, newSlug);
+
+      if (fs.existsSync(oldDir)) {
+        fs.rmSync(newDir, { recursive: true, force: true });
+        fs.renameSync(oldDir, newDir);
+        console.log(`[sync-project-docs] Renamed ${org}/${oldSlug} -> ${org}/${newSlug}`);
+
+        // Update the inner meta.json title to match the new slug
+        const innerMeta = path.join(newDir, 'meta.json');
+        if (fs.existsSync(innerMeta)) {
+          try {
+            const meta = JSON.parse(fs.readFileSync(innerMeta, 'utf8'));
+            meta.title = humanize(newSlug);
+            fs.writeFileSync(innerMeta, JSON.stringify(meta, null, 2), 'utf8');
+          } catch {
+            // ignore malformed meta.json
+          }
+        }
+      }
+    }
+
+    // Update the project record in-place so meta.json and manifest reflect the new name
+    for (const project of projects) {
+      if (project.slug === oldSlug) {
+        project.slug = newSlug;
+        project.name = humanize(newSlug);
+        project.route = `/docs/projects/${project.org}/${newSlug}`;
+      }
+    }
   }
 }
 
