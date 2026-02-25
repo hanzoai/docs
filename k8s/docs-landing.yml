@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docs-landing
+  namespace: hanzo
+  labels:
+    app: docs-landing
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: docs-landing
+  template:
+    metadata:
+      labels:
+        app: docs-landing
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: docs
+          image: ghcr.io/hanzoai/docs:latest
+          ports:
+            - containerPort: 3000
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 3
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docs-landing
+  namespace: hanzo
+  labels:
+    app: docs-landing
+spec:
+  selector:
+    app: docs-landing
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: docs-ingress
+  namespace: hanzo
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 10m
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - docs.hanzo.ai
+      secretName: docs-hanzo-ai-tls
+  rules:
+    - host: docs.hanzo.ai
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: docs-landing
+                port:
+                  number: 3000
