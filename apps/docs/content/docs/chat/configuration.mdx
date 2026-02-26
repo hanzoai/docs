@@ -1,0 +1,245 @@
+---
+title: Configuration
+description: Configure Hanzo Chat — models, endpoints, MCP tools, environment variables, and chat.yaml reference.
+---
+
+# Configuration
+
+Hanzo Chat is configured via a `chat.yaml` file and environment variables. The YAML file controls models, endpoints, MCP tools, and agents. Environment variables handle secrets and infrastructure.
+
+## chat.yaml
+
+Mount this file into your container at `/app/chat.yaml`:
+
+```yaml
+# chat.yaml
+version: 1.0.0
+cache: true
+
+# Registration & login
+registration:
+  socialLogins: ["google", "github", "hanzo"]
+  allowedDomains: []
+
+# Model endpoints
+endpoints:
+  hanzo:
+    # All 14 Zen models + 100+ third-party via Hanzo Gateway
+    baseURL: "https://api.hanzo.ai/v1"
+    apiKey: "${HANZO_API_KEY}"
+    models:
+      default:
+        - zen4
+        - zen4-ultra
+        - zen4-pro
+        - zen4-max
+        - zen4-mini
+        - zen4-thinking
+        - zen4-coder
+        - zen4-coder-pro
+        - zen4-coder-flash
+        - zen3-omni
+        - zen3-vl
+        - zen3-nano
+        - zen3-guard
+      fetch: true  # Auto-discover additional models
+
+  # Direct provider endpoints (optional — bypass gateway)
+  openAI:
+    apiKey: "${OPENAI_API_KEY}"
+    models:
+      default:
+        - gpt-4o
+        - o3
+        - o4-mini
+
+  anthropic:
+    apiKey: "${ANTHROPIC_API_KEY}"
+    models:
+      default:
+        - claude-sonnet-4-5-20250929
+        - claude-opus-4-20250514
+
+  google:
+    apiKey: "${GOOGLE_AI_API_KEY}"
+    models:
+      default:
+        - gemini-2.5-pro
+        - gemini-2.5-flash
+
+# MCP tool servers
+mcpServers:
+  filesystem:
+    command: npx
+    args:
+      - "@hanzo/mcp-filesystem"
+    env:
+      ALLOWED_DIRS: "/data"
+
+  web:
+    command: npx
+    args:
+      - "@hanzo/mcp-web"
+
+# Custom agents
+agents:
+  - name: "Code Reviewer"
+    model: "zen4-coder"
+    systemPrompt: |
+      You are a senior code reviewer. Analyze code for bugs,
+      security issues, and style improvements.
+    tools:
+      - filesystem
+      - web
+```
+
+## Environment Variables
+
+### Required
+
+```bash
+# At least one LLM provider key
+HANZO_API_KEY=hk-your-api-key
+
+# Database
+MONGO_URI=mongodb://localhost:27017/chat
+```
+
+### Authentication
+
+```bash
+# Hanzo IAM (recommended)
+OPENID_ISSUER=https://hanzo.id
+OPENID_CLIENT_ID=hanzo-chat-client
+OPENID_CLIENT_SECRET=your-client-secret
+OPENID_CALLBACK_URL=/oauth/openid/callback
+OPENID_SCOPE=openid profile email
+
+# Or direct social login
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GITHUB_CLIENT_ID=...
+GITHUB_CLIENT_SECRET=...
+```
+
+### Domain & Branding
+
+```bash
+# Server URLs
+DOMAIN_SERVER=https://chat.yourdomain.com
+DOMAIN_CLIENT=https://chat.yourdomain.com
+
+# Branding
+APP_TITLE=Hanzo Chat
+CUSTOM_FOOTER=Powered by Hanzo AI
+HELP_AND_FAQ_URL=https://docs.hanzo.ai/docs/chat
+```
+
+### Search & Storage
+
+```bash
+# Meilisearch (full-text search)
+MEILI_HOST=http://meilisearch:7700
+MEILI_MASTER_KEY=your-meili-key
+SEARCH=true
+
+# File uploads
+RAG_API_URL=http://rag:8000
+```
+
+### Direct Provider Keys
+
+These bypass the Hanzo Gateway and connect directly to providers:
+
+```bash
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_AI_API_KEY=...
+TOGETHER_API_KEY=...
+GROQ_API_KEY=...
+```
+
+## Model Configuration
+
+### Adding Models
+
+Models are configured per-endpoint in `chat.yaml`. Use `fetch: true` to auto-discover models from the endpoint:
+
+```yaml
+endpoints:
+  hanzo:
+    baseURL: "https://api.hanzo.ai/v1"
+    apiKey: "${HANZO_API_KEY}"
+    models:
+      default:
+        - zen4
+        - zen4-coder
+      fetch: true  # Also fetch available models from API
+```
+
+### Model Display Names
+
+Customize how models appear in the UI:
+
+```yaml
+endpoints:
+  hanzo:
+    modelDisplayLabel: "Zen"
+    models:
+      default:
+        - zen4
+      fetch: true
+```
+
+### Rate Limits
+
+```yaml
+rateLimits:
+  fileUploads:
+    ipMax: 100
+    ipWindowInMinutes: 60
+    userMax: 50
+    userWindowInMinutes: 60
+  conversationsImport:
+    ipMax: 100
+    ipWindowInMinutes: 60
+    userMax: 50
+    userWindowInMinutes: 60
+```
+
+## File Uploads
+
+Configure file upload limits and supported types:
+
+```yaml
+fileConfig:
+  endpoints:
+    hanzo:
+      fileLimit: 10
+      fileSizeLimit: 25  # MB
+    default:
+      totalSizeLimit: 100  # MB total per conversation
+  serverFileSizeLimit: 100  # MB
+  avatarSizeLimit: 2  # MB
+```
+
+## Conversation Settings
+
+```yaml
+# Interface customization
+interface:
+  privacyPolicy:
+    externalUrl: "https://hanzo.ai/privacy"
+  termsOfService:
+    externalUrl: "https://hanzo.ai/terms"
+
+# Default model presets
+presets:
+  - title: "Quick Chat"
+    model: "zen4-mini"
+    temperature: 0.7
+  - title: "Code Review"
+    model: "zen4-coder"
+    temperature: 0.2
+    systemPrompt: "You are a code reviewer."
+```

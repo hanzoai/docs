@@ -1,0 +1,132 @@
+---
+title: File Uploads & RAG
+description: Upload files to Hanzo Chat for context-aware responses using Retrieval-Augmented Generation (RAG).
+---
+
+# File Uploads & RAG
+
+Hanzo Chat supports file uploads with Retrieval-Augmented Generation (RAG) for context-aware responses. Upload documents, code, images, and data files — the system indexes them and retrieves relevant context for every message.
+
+## Supported File Types
+
+| Category | Formats |
+|----------|---------|
+| Documents | PDF, DOCX, TXT, MD, RTF |
+| Data | CSV, JSON, JSONL, XML, YAML |
+| Code | Python, JavaScript, TypeScript, Go, Rust, Java, C/C++, and more |
+| Images | PNG, JPG, GIF, WebP, SVG (for vision models) |
+| Archives | ZIP (extracted and indexed) |
+
+## How It Works
+
+1. **Upload** — drag and drop files into the chat, or use the attachment button
+2. **Indexing** — the RAG API chunks files, creates embeddings, and stores them in PGVector
+3. **Retrieval** — when you send a message, relevant chunks are found via semantic search
+4. **Generation** — retrieved context is appended to your prompt for accurate, grounded responses
+
+## Configuration
+
+### Docker Setup
+
+RAG is included in the default Docker Compose setup. The `rag-api` service handles indexing and retrieval:
+
+```yaml
+# compose.yml (included by default)
+services:
+  rag:
+    image: ghcr.io/hanzoai/chat-rag-api:latest
+    environment:
+      - RAG_OPENAI_API_KEY=${RAG_OPENAI_API_KEY:-${OPENAI_API_KEY}}
+      - EMBEDDINGS_PROVIDER=${EMBEDDINGS_PROVIDER:-openai}
+      - EMBEDDINGS_MODEL=${EMBEDDINGS_MODEL:-text-embedding-3-small}
+    depends_on:
+      - pgvector
+
+  pgvector:
+    image: pgvector/pgvector:pg16
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+```
+
+### Environment Variables
+
+```bash
+# Embeddings provider (required)
+RAG_OPENAI_API_KEY=sk-...          # Or use HANZO_API_KEY with Hanzo embeddings
+
+# Provider selection
+EMBEDDINGS_PROVIDER=openai          # openai, azure, huggingface, huggingfacetei, ollama
+EMBEDDINGS_MODEL=text-embedding-3-small
+
+# Chunking parameters
+CHUNK_SIZE=1500                     # Characters per chunk
+CHUNK_OVERLAP=100                   # Overlap between chunks
+
+# Database
+RAG_PORT=8000
+COLLECTION_NAME=hanzo_chat
+POSTGRES_DB=rag
+POSTGRES_USER=rag
+POSTGRES_PASSWORD=your-password
+```
+
+### Using Hanzo Embeddings
+
+To use Zen embeddings instead of OpenAI:
+
+```bash
+RAG_OPENAI_API_KEY=${HANZO_API_KEY}
+RAG_OPENAI_BASEURL=https://api.hanzo.ai/v1
+EMBEDDINGS_MODEL=zen3-embedding
+```
+
+## Usage Tips
+
+### Resend Files Toggle
+
+By default, uploaded files are queried on every message in the conversation. To control when retrieval happens:
+
+1. Open conversation settings
+2. Toggle **Resend Files** to off
+3. Files are only queried when explicitly attached to a message
+
+This is useful for long conversations where you want targeted file queries.
+
+### File Management
+
+- **Side Panel** — view and manage all uploaded files
+- **Reuse files** — attach previously uploaded files to any new conversation
+- **Storage types** — "Host" storage (for RAG) vs "OpenAI" storage (for Assistants)
+
+### Best Practices
+
+- **Be specific** — craft prompts that reference the file content directly
+- **Chunk size** — increase `CHUNK_SIZE` for technical docs, decrease for short Q&A content
+- **Multiple files** — upload related files together for cross-document queries
+- **File limits** — configure per-endpoint in `chat.yaml`:
+
+```yaml
+fileConfig:
+  endpoints:
+    hanzo:
+      fileLimit: 10           # Max files per message
+      fileSizeLimit: 25       # MB per file
+    default:
+      totalSizeLimit: 100     # MB total per conversation
+  serverFileSizeLimit: 100    # MB server-wide limit
+  avatarSizeLimit: 2          # MB for avatars
+```
+
+## What is RAG?
+
+RAG (Retrieval-Augmented Generation) enhances LLM responses by grounding them on your uploaded documents:
+
+1. **Retrieval** — finds relevant chunks from your files using semantic search
+2. **Augmentation** — appends the retrieved context to your prompt
+3. **Generation** — the LLM uses both its training and your documents to respond
+
+Benefits:
+- **Accurate answers** grounded in your specific documents
+- **No hallucination** about content in your files
+- **Up-to-date** — works with any documents you upload, regardless of model training cutoff
+- **Private** — your files stay on your infrastructure (self-hosted) or Hanzo's servers (hosted)
