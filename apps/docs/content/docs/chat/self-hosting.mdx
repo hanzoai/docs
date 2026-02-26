@@ -1,0 +1,222 @@
+---
+title: Self-Hosting
+description: Deploy Hanzo Chat with Docker, Kubernetes, or on cloud providers. Full self-hosting guide with production configuration.
+---
+
+# Self-Hosting
+
+Hanzo Chat can be self-hosted using Docker Compose, Kubernetes, or deployed to various cloud providers. This guide covers all deployment options.
+
+## Docker Compose (Recommended)
+
+### Quick Start
+
+```bash
+git clone https://github.com/hanzoai/chat
+cd chat
+cp .env.example .env
+# Edit .env with your API keys
+docker compose up -d
+```
+
+Services start on:
+- **Chat UI**: http://localhost:3081
+- **API**: http://localhost:3080
+- **MongoDB**: localhost:27017
+- **Meilisearch**: localhost:7700
+- **RAG API**: localhost:8000
+
+### Full Stack (with Cloud Dashboard & IAM)
+
+```bash
+# Start the complete platform
+docker compose -f compose.yml -f compose.full.yml up -d
+
+# Services:
+# Chat:   http://localhost:3081
+# Cloud:  http://localhost:3000  (AI dashboard)
+# IAM:    http://localhost:8000  (identity management)
+# Router: http://localhost:4000  (LLM gateway)
+```
+
+### Docker Compose Override
+
+Customize the deployment without editing the main compose file:
+
+```yaml
+# compose.override.yml
+services:
+  chat:
+    volumes:
+      - ./chat.yaml:/app/chat.yaml:ro
+    environment:
+      - HANZO_API_KEY=${HANZO_API_KEY}
+      - APP_TITLE=My Chat Instance
+
+  rag:
+    image: ghcr.io/hanzoai/chat-rag-api:latest  # Use full image for local embeddings
+```
+
+### Updating
+
+```bash
+# Pull latest images
+docker compose pull
+
+# Restart with new images
+docker compose up -d
+
+# Or rebuild from source
+docker compose build --no-cache
+docker compose up -d
+```
+
+## Kubernetes
+
+### Helm Chart
+
+```bash
+helm repo add hanzo https://charts.hanzo.ai
+helm install chat hanzo/chat \
+  --set config.hanzoApiKey=$HANZO_API_KEY \
+  --set ingress.enabled=true \
+  --set ingress.hosts[0].host=chat.example.com
+```
+
+### Manual Deployment
+
+```yaml
+# chat-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hanzo-chat
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hanzo-chat
+  template:
+    metadata:
+      labels:
+        app: hanzo-chat
+    spec:
+      containers:
+        - name: chat
+          image: ghcr.io/hanzoai/chat:latest
+          ports:
+            - containerPort: 3081
+          env:
+            - name: HANZO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: chat-secrets
+                  key: hanzo-api-key
+            - name: MONGO_URI
+              value: "mongodb://mongo:27017/chat"
+          volumeMounts:
+            - name: config
+              mountPath: /app/chat.yaml
+              subPath: chat.yaml
+      volumes:
+        - name: config
+          configMap:
+            name: chat-config
+```
+
+## Cloud Provider Guides
+
+### DigitalOcean
+
+1. Create a Droplet (4GB RAM minimum)
+2. SSH in and install Docker
+3. Clone and run the Docker Compose setup
+4. Configure Nginx or Traefik as reverse proxy
+5. Set up Let's Encrypt for SSL
+
+### Railway
+
+```bash
+# Deploy with one click
+railway login
+railway init
+railway up
+```
+
+Set environment variables in the Railway dashboard.
+
+### Render
+
+1. Create a new Web Service
+2. Connect your GitHub fork of `hanzoai/chat`
+3. Set build command: `npm run build`
+4. Set start command: `npm run start`
+5. Add environment variables
+
+## Production Configuration
+
+### Domain Setup
+
+| Service | Local | Production |
+|---------|-------|------------|
+| Chat | localhost:3081 | chat.yourdomain.com |
+| API | localhost:3080 | api.yourdomain.com |
+| IAM | localhost:8000 | id.yourdomain.com |
+
+### Reverse Proxy (Nginx)
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name chat.yourdomain.com;
+
+    ssl_certificate /etc/letsencrypt/live/chat.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/chat.yourdomain.com/privkey.pem;
+
+    location / {
+        proxy_pass http://localhost:3081;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+### Reverse Proxy (Traefik)
+
+```yaml
+# traefik labels in compose.override.yml
+services:
+  chat:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.chat.rule=Host(`chat.yourdomain.com`)"
+      - "traefik.http.routers.chat.tls.certresolver=letsencrypt"
+      - "traefik.http.services.chat.loadbalancer.server.port=3081"
+```
+
+### Production Checklist
+
+- [ ] Set `DOMAIN_CLIENT` and `DOMAIN_SERVER` to your production URL
+- [ ] Configure SSL/TLS certificates
+- [ ] Change all default passwords and secrets
+- [ ] Enable rate limiting and moderation
+- [ ] Set up MongoDB authentication
+- [ ] Configure backup strategy for MongoDB
+- [ ] Set up monitoring and alerting
+- [ ] Enable audit logging
+- [ ] Configure CORS properly
+- [ ] Set `NO_INDEX=true` if the instance is private
+
+### Resource Requirements
+
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| Chat + API | 2 CPU, 2GB RAM | 4 CPU, 4GB RAM |
+| MongoDB | 1 CPU, 1GB RAM | 2 CPU, 4GB RAM |
+| Meilisearch | 1 CPU, 512MB RAM | 2 CPU, 2GB RAM |
+| RAG API | 1 CPU, 1GB RAM | 2 CPU, 2GB RAM |
+| PGVector | 1 CPU, 512MB RAM | 2 CPU, 2GB RAM |
+| **Total** | **6 CPU, 5GB RAM** | **12 CPU, 14GB RAM** |

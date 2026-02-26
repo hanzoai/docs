@@ -1,0 +1,153 @@
+---
+title: Authentication
+description: Configure authentication for Hanzo Chat — Hanzo IAM, OAuth2/OIDC, social login, and local auth.
+---
+
+# Authentication
+
+Hanzo Chat supports multiple authentication methods. The recommended approach is Hanzo IAM (OAuth2/OIDC), but social login and local email/password auth are also available.
+
+## Hanzo IAM (Recommended)
+
+Hanzo IAM at [hanzo.id](https://hanzo.id) provides centralized authentication with SSO across all Hanzo services.
+
+### Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────────┐
+│  Hanzo Chat │────▶│  Hanzo IAM  │────▶│ Social Providers│
+│  (3081)     │     │  (hanzo.id) │     │ Google, GitHub  │
+└─────────────┘     └─────────────┘     └─────────────────┘
+```
+
+### Configuration
+
+```bash
+# Hanzo IAM as OpenID Connect provider
+OPENID_ISSUER=https://hanzo.id
+OPENID_CLIENT_ID=hanzo-chat-client
+OPENID_CLIENT_SECRET=your-client-secret
+OPENID_CALLBACK_URL=/oauth/openid/callback
+OPENID_SCOPE=openid profile email
+OPENID_BUTTON_LABEL=Login with Hanzo
+```
+
+### Setting Up IAM
+
+1. Log in to Hanzo IAM admin at [hanzo.id](https://hanzo.id)
+2. Go to **Applications** → **New Application**
+3. Create an OAuth application:
+   - **Name**: Hanzo Chat
+   - **Client ID**: `hanzo-chat-client`
+   - **Redirect URIs**: `https://chat.yourdomain.com/oauth/openid/callback`
+   - **Grant Types**: Authorization Code
+4. Copy the Client Secret to your `.env`
+
+## Social Login
+
+### Google
+
+```bash
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_CALLBACK_URL=/oauth/google/callback
+```
+
+Setup:
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create OAuth 2.0 credentials
+3. Add authorized redirect URI: `https://chat.yourdomain.com/oauth/google/callback`
+
+### GitHub
+
+```bash
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+GITHUB_CALLBACK_URL=/oauth/github/callback
+```
+
+Setup:
+1. Go to [GitHub Developer Settings](https://github.com/settings/developers)
+2. Create a new OAuth App
+3. Set callback URL: `https://chat.yourdomain.com/oauth/github/callback`
+
+### Discord
+
+```bash
+DISCORD_CLIENT_ID=your-discord-client-id
+DISCORD_CLIENT_SECRET=your-discord-client-secret
+DISCORD_CALLBACK_URL=/oauth/discord/callback
+```
+
+### Facebook
+
+```bash
+FACEBOOK_CLIENT_ID=your-facebook-app-id
+FACEBOOK_CLIENT_SECRET=your-facebook-app-secret
+FACEBOOK_CALLBACK_URL=/oauth/facebook/callback
+```
+
+## Local Authentication
+
+Email/password authentication is enabled by default:
+
+```bash
+# Allow new user registration
+ALLOW_REGISTRATION=true
+
+# Require email verification (needs SMTP)
+ALLOW_UNVERIFIED_EMAIL_LOGIN=true
+
+# Email verification SMTP settings
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_ENCRYPTION=starttls
+EMAIL_USERNAME=your-email@gmail.com
+EMAIL_PASSWORD=your-app-password
+EMAIL_FROM=noreply@yourdomain.com
+```
+
+## Registration Control
+
+```bash
+# Allow/disallow new registrations
+ALLOW_REGISTRATION=true
+
+# Allow only specific email domains
+ALLOWED_REGISTRATION_DOMAINS=hanzo.ai,yourcompany.com
+
+# Social login on registration page
+ALLOW_SOCIAL_REGISTRATION=true
+ALLOW_SOCIAL_LOGIN=true
+```
+
+```yaml
+# chat.yaml - configure social login buttons
+registration:
+  socialLogins:
+    - google
+    - github
+    - hanzo
+  allowedDomains: []
+```
+
+## Session Configuration
+
+```bash
+# Session secret (change in production!)
+JWT_SECRET=your-jwt-secret-change-this
+JWT_REFRESH_SECRET=your-refresh-secret-change-this
+
+# Session duration
+SESSION_EXPIRY=900000          # 15 minutes in ms
+REFRESH_TOKEN_EXPIRY=604800000 # 7 days in ms
+```
+
+## Production Security
+
+- **Change all default secrets** — JWT_SECRET, CLIENT_SECRET, etc.
+- **Use HTTPS** — required for OAuth redirects
+- **Configure CORS** — restrict to your domain
+- **Enable rate limiting** — see [Moderation](/docs/chat/moderation)
+- **Disable registration** if your instance is private
+- **Use IAM** for centralized user management across services

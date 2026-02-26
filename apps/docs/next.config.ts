@@ -154,9 +154,6 @@ const config: NextConfig = {
     // at webpack level, but TS type-checker doesn't see webpack aliases.
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   images: {
     unoptimized: true,
     remotePatterns: [
