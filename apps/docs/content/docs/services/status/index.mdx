@@ -1,0 +1,165 @@
+---
+title: Hanzo Status
+description: White-label status monitoring with real-time health checks, response time tracking, and incident management
+---
+
+# Hanzo Status
+
+Hanzo Status is a white-label status page framework built on [Gatus](https://github.com/TwiN/gatus). It monitors HTTP, TCP, DNS, ICMP, and STARTTLS endpoints with configurable health conditions, stores historical data in SQLite, and serves a Next.js frontend through an embedded Go binary.
+
+A single Docker image supports unlimited brands — each deployment reads its own YAML config to display brand-specific logos, navigation, and endpoints.
+
+## Live Instances
+
+| Brand | URL | Endpoints |
+|-------|-----|-----------|
+| **Hanzo** | [status.hanzo.ai](https://status.hanzo.ai) | 36 — Platform, AI, Commerce, Bot, Web, Observability |
+| **Lux** | [status.lux.network](https://status.lux.network) | 16 — Mainnet, Testnet, Devnet, Services, Web |
+| **Zoo** | [status.zoo.network](https://status.zoo.network) | 3 — Web, Services |
+| **Pars** | [status.pars.network](https://status.pars.network) | 2 — Web, Services |
+| **Ad Nexus** | [status.ad.nexus](https://status.ad.nexus) | 7 — Exchange, Services, Web |
+
+## Features
+
+- **Multi-protocol monitoring**: HTTP, TCP, DNS, ICMP, STARTTLS with configurable intervals
+- **Flexible health conditions**: Status codes, response time thresholds, certificate expiration, body content matching
+- **White-label branding**: Logo, favicon, buttons, title, description — all from YAML config
+- **Dark/light themes**: System preference detection with cookie persistence
+- **Response time charts**: Canvas-based visualization with average and min/max modes
+- **Endpoint grouping**: Collapsible groups with health summary badges
+- **Search and filtering**: Filter by name, sort by name/group/health, filter failing/unstable
+- **Incident announcements**: Scheduled maintenance and incident banners
+- **SQLite storage**: Embedded database with configurable retention
+- **Single binary**: Go binary with embedded Next.js static export — zero runtime dependencies
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│                  Hanzo Status                     │
+├─────────────────────────────────────────────────┤
+│                                                   │
+│  ┌──────────┐  ┌──────────┐  ┌────────────────┐ │
+│  │  Health   │  │  Go API  │  │  Next.js SPA   │ │
+│  │  Checker  │  │  Server  │  │  (embedded)    │ │
+│  │          │  │          │  │               │ │
+│  │  HTTP    │  │  /api/*  │  │  Dashboard    │ │
+│  │  TCP     │  │  /health │  │  Endpoint     │ │
+│  │  DNS     │  │  SPA     │  │  Response     │ │
+│  │  ICMP    │  │  handler │  │  Charts       │ │
+│  └──────────┘  └──────────┘  └────────────────┘ │
+│                                                   │
+│  ┌──────────────────────────────────────────────┐ │
+│  │             SQLite Database                   │ │
+│  │  Results · Events · Uptime · Response Times  │ │
+│  └──────────────────────────────────────────────┘ │
+│                                                   │
+│  ┌──────────────────────────────────────────────┐ │
+│  │           Brand Assets (embedded)             │ │
+│  │  /brands/{hanzo,lux,zoo,pars,adnexus}/       │ │
+│  │  logo.svg · favicon.svg · favicon-*.png      │ │
+│  └──────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────┘
+```
+
+## Quick Start
+
+### Docker
+
+```bash
+docker run -d \
+  -p 8080:8080 \
+  -v ./config.yaml:/config/config.yaml:ro \
+  -v status-data:/data \
+  ghcr.io/hanzoai/status:latest
+```
+
+### Docker Compose
+
+```yaml
+# compose.yml
+services:
+  status:
+    image: ghcr.io/hanzoai/status:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config.yaml:/config/config.yaml:ro
+      - status-data:/data
+    restart: unless-stopped
+
+volumes:
+  status-data:
+```
+
+### From Source
+
+```bash
+git clone https://github.com/hanzoai/status
+cd status
+
+# Build frontend
+cd web/next && npm ci && sh scripts/build.sh && cd ../..
+
+# Build binary
+go build -o status .
+
+# Run
+./status --config config/hanzo.yaml
+```
+
+## Minimal Configuration
+
+```yaml
+web:
+  port: 8080
+
+storage:
+  type: sqlite
+  path: /data/status.db
+
+ui:
+  title: "My Status Page"
+  logo: "/brands/hanzo/logo.svg"
+  link: "https://example.com"
+  dark-mode: true
+  buttons:
+    - name: "Docs"
+      link: "https://docs.example.com"
+
+endpoints:
+  - name: "Website"
+    group: "Web"
+    url: "https://example.com"
+    interval: 60s
+    conditions:
+      - "[STATUS] == 200"
+      - "[RESPONSE_TIME] < 3000"
+      - "[CERTIFICATE_EXPIRATION] > 720h"
+
+  - name: "API"
+    group: "Services"
+    url: "https://api.example.com/health"
+    interval: 30s
+    conditions:
+      - "[STATUS] == 200"
+      - "[RESPONSE_TIME] < 2000"
+```
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/api/endpoints/statuses` | All endpoint statuses with recent results |
+| `GET` | `/api/endpoints/{key}/statuses` | Single endpoint status and history |
+| `GET` | `/api/endpoints/{key}/response-times/{duration}` | Response time history (1h, 24h, 7d, 30d) |
+| `GET` | `/api/suites/statuses` | All suite statuses |
+| `GET` | `/api/config` | UI config (OIDC, announcements) |
+| `GET` | `/health` | Binary health check |
+
+## Related
+
+- [GitHub Repository](https://github.com/hanzoai/status) — Source code, issues, and contributions
+- [Gatus](https://github.com/TwiN/gatus) — Upstream health monitoring framework
+- [Cloud Service](/docs/services/cloud) — Hanzo Cloud infrastructure
+- [Console](/docs/services/console) — Service management dashboard
