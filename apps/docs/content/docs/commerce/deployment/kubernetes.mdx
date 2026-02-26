@@ -109,7 +109,7 @@ stringData:
   HANZO_CLIENT_SECRET: "your_client_secret"
   STRIPE_SECRET_KEY: "sk_live_..."
   STRIPE_WEBHOOK_SECRET: "whsec_..."
-  MEILI_MASTER_KEY: "your-meilisearch-key"
+  MEILI_MASTER_KEY: "your-search-key"
 ```
 
 ```bash
@@ -131,7 +131,7 @@ data:
   COMMERCE_ENV: "production"
   COMMERCE_LOG_LEVEL: "info"
   S3_URL: "s3://key:secret@s3.amazonaws.com/commerce-uploads"
-  SEARCH_URL: "http://meilisearch.commerce.svc:7700"
+  SEARCH_URL: "http://search.commerce.svc:7700"
 ```
 
 ```bash
@@ -289,27 +289,27 @@ spec:
 
 ## Supporting Services
 
-### Meilisearch
+### Hanzo Search
 
-```yaml title="meilisearch.yaml"
+```yaml title="search.yaml"
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: meilisearch
+  name: search
   namespace: commerce
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: meilisearch
+      app: search
   template:
     metadata:
       labels:
-        app: meilisearch
+        app: search
     spec:
       containers:
-        - name: meilisearch
-          image: getmeili/meilisearch:latest
+        - name: search
+          image: ghcr.io/hanzoai/search:latest
           ports:
             - containerPort: 7700
           env:
@@ -326,16 +326,16 @@ spec:
       volumes:
         - name: data
           persistentVolumeClaim:
-            claimName: meilisearch-pvc
+            claimName: search-pvc
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: meilisearch
+  name: search
   namespace: commerce
 spec:
   selector:
-    app: meilisearch
+    app: search
   ports:
     - port: 7700
 ```
