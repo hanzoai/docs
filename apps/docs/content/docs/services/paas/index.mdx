@@ -16,7 +16,7 @@ Hanzo PaaS is the container orchestration and deployment layer that runs all Han
 - **Multi-Cluster Management**: Two DOKS clusters purpose-separated for Hanzo services and Lux blockchain
 - **Namespace Isolation**: Service groups are isolated by namespace with RBAC boundaries
 - **Ingress + TLS**: nginx-ingress with cert-manager for automatic Let's Encrypt certificate provisioning
-- **Secrets Management**: KMS (Infisical) integration via `KMSSecret` custom resources for zero-plaintext secrets
+- **Secrets Management**: KMS integration via `KMSSecret` custom resources for zero-plaintext secrets
 - **CI/CD Pipelines**: GitHub Actions workflows build, push, and deploy on every merge to main
 - **Container Registry**: All images published to `ghcr.io/hanzoai/*` with multi-arch support
 - **Helm Charts**: Complex multi-component services deployed via Helm for repeatability
@@ -61,7 +61,7 @@ Hanzo PaaS is the container orchestration and deployment layer that runs all Han
                     │                     │  │  │  Lux Network  │   │
                     │  ┌───────────────┐  │  │  │  15 validators│   │
                     │  │  KMS Operator │  │  │  │  gateway      │   │
-                    │  │  (Infisical)  │  │  │  │  markets      │   │
+                    │  │  KMS Operator │  │  │  │  markets      │   │
                     │  └───────────────┘  │  │  └───────────────┘   │
                     └─────────────────────┘  └──────────────────────┘
                               │                        │
@@ -198,8 +198,8 @@ Primary cluster for all Hanzo platform services. Region: SFO3.
 
 | Service | Namespace | Domain | Image |
 |---------|-----------|--------|-------|
-| IAM (Casdoor) | hanzo | hanzo.id, lux.id, zoo.id, pars.id | `ghcr.io/hanzoai/iam` |
-| KMS (Infisical) | hanzo | kms.hanzo.ai | `ghcr.io/hanzoai/kms` |
+| IAM | hanzo | hanzo.id, lux.id, zoo.id, pars.id | `ghcr.io/hanzoai/iam` |
+| KMS | hanzo | kms.hanzo.ai | `ghcr.io/hanzoai/kms` |
 | Console | hanzo | console.hanzo.ai | `hanzoai/console` |
 | Console Worker | hanzo | (internal) | `ghcr.io/hanzoai/console-worker` |
 | Cloud Backend | hanzo | cloud.hanzo.ai | `ghcr.io/hanzoai/cloud` |
@@ -222,7 +222,7 @@ Dedicated cluster for Lux blockchain infrastructure. Region: SFO3.
 | Service | Namespace | Domain | Image |
 |---------|-----------|--------|-------|
 | Lux Validators (x15) | lux | (P2P) | `ghcr.io/luxfi/node` |
-| KrakenD Gateway | hanzo | api.lux.network | `devopsfaith/krakend` |
+| Hanzo Gateway | hanzo | api.lux.network | `ghcr.io/hanzoai/gateway` |
 | Lux Cloud | hanzo | cloud.lux.network | `ghcr.io/luxfi/cloud-web` |
 | Markets | hanzo | markets.lux.network | `ghcr.io/luxfi/markets` |
 | PostgreSQL | hanzo | postgres.hanzo.svc | `postgres:16` |
@@ -256,7 +256,7 @@ Each namespace has:
 
 ## Secrets Management
 
-All secrets are managed through KMS (Infisical) and synced into Kubernetes via the KMS operator. No plaintext secrets in manifests or Git.
+All secrets are managed through Hanzo KMS and synced into Kubernetes via the KMS operator. No plaintext secrets in manifests or Git.
 
 ### KMSSecret Custom Resource
 
@@ -293,7 +293,7 @@ spec:
 ### Secret Workflow
 
 ```
-Developer                KMS (Infisical)           K8s Cluster
+Developer                Hanzo KMS                 K8s Cluster
     │                         │                         │
     ├── Create secret ───────►│                         │
     │   via UI or CLI         │                         │
@@ -382,16 +382,16 @@ All container images are stored in the GitHub Container Registry under the `hanz
 
 ```
 ghcr.io/hanzoai/
-  iam:latest              # IAM (Casdoor)
-  kms:latest              # KMS (Infisical)
+  iam:latest              # IAM
+  kms:latest              # KMS
   console:latest          # Console web
-  console-worker:latest   # Console BullMQ worker
+  console-worker:latest   # Console MQ worker
   cloud:latest            # Cloud backend
   cloud-site:latest       # Cloud landing page
   gateway:latest          # API gateway
   llm:latest              # LLM proxy
   commerce:latest         # Commerce engine
-  platform:latest         # Platform (Dokploy)
+  platform:latest         # Platform (PaaS)
   storage:latest          # Hanzo S3 storage
   bot-site:latest         # hanzo.bot site
   ziti:latest             # ZT controller
@@ -550,7 +550,7 @@ universe/infra/k8s/
   gateway/            # API gateway
   commerce/           # Commerce engine
   storage/            # Hanzo S3 deployment, ingress, buckets
-  paas/               # PaaS platform (Dokploy)
+  paas/               # PaaS platform
   zt/                 # Zero Trust controller + router
   monitoring/         # Prometheus, Grafana, AlertManager
   cert-manager/       # ClusterIssuer, cert resources

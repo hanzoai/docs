@@ -7,7 +7,7 @@ import { Cards, Card } from '@hanzo/docs-ui/components/card'
 
 # Hanzo Search
 
-Hanzo Search is a high-performance, AI-powered search engine built in Rust. Based on Meilisearch, it delivers sub-50ms query responses with typo tolerance, hybrid semantic and full-text search, faceted filtering, geo search, and built-in chat completions powered by LLMs. Version 1.36.0.
+Hanzo Search is a high-performance, AI-powered search engine built in Rust. It delivers sub-50ms query responses with typo tolerance, hybrid semantic and full-text search, faceted filtering, geo search, and built-in chat completions powered by LLMs.
 
 **Endpoint:** `search.hanzo.ai`
 **Gateway:** `api.hanzo.ai/v1/search/*`
@@ -68,12 +68,12 @@ Hanzo Search is a high-performance, AI-powered search engine built in Rust. Base
 ```
 
 **Core crates:**
-- `meilisearch` -- HTTP server, routes, authentication, search queue
+- `hanzo-search` -- HTTP server, routes, authentication, search queue
 - `milli` -- Core search engine: indexing, ranking, filtering, vector search, hybrid search
 - `index-scheduler` -- Asynchronous task scheduling and batch processing
-- `meilisearch-auth` -- API key management and tenant token validation
+- `hanzo-search-auth` -- API key management and tenant token validation
 - `filter-parser` -- Filter expression parser for faceted search
-- `meilisearch-types` -- Shared types, settings, and error codes
+- `hanzo-search-types` -- Shared types, settings, and error codes
 
 ## Quick Start
 
@@ -93,7 +93,7 @@ docker run -d \
 ```bash
 git clone https://github.com/hanzoai/search.git && cd search
 cargo build --release
-./target/release/meilisearch --master-key="YOUR_MASTER_KEY"
+./target/release/hanzo-search --master-key="YOUR_MASTER_KEY"
 ```
 
 ### curl
@@ -144,9 +144,9 @@ print(resp.json()["hits"])
 ### JavaScript / TypeScript
 
 ```typescript
-import { MeiliSearch } from '@hanzo/search'
+import { HanzoSearch } from '@hanzo/search'
 
-const client = new MeiliSearch({
+const client = new HanzoSearch({
   host: 'http://localhost:7700',
   apiKey: 'YOUR_MASTER_KEY',
 })
@@ -360,10 +360,10 @@ curl -X POST 'http://localhost:7700/chats/default/chat/completions' \
 ```
 
 The chat system:
-- Automatically calls `_meiliSearchInIndex` to find relevant documents
-- Reports search progress via `_meiliSearchProgress` tool calls
-- Returns source citations via `_meiliSearchSources`
-- Supports conversation context via `_meiliAppendConversationMessage`
+- Automatically calls `_searchInIndex` to find relevant documents
+- Reports search progress via `_searchProgress` tool calls
+- Returns source citations via `_searchSources`
+- Supports conversation context via `_appendConversationMessage`
 
 ### Embedder Configuration
 
