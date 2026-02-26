@@ -35,7 +35,7 @@ services:
       - DATABASE_URL=postgresql://commerce:commerce@postgres:5432/commerce?sslmode=disable
       - KV_URL=redis://redis:6379/0
       - S3_URL=s3://your-access-key:your-secret-key@s3:9000/commerce
-      - SEARCH_URL=http://meilisearch:7700
+      - SEARCH_URL=http://search:7700
       - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
       - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
       - HANZO_API_KEY=${HANZO_API_KEY}
@@ -50,7 +50,7 @@ services:
         condition: service_healthy
       s3:
         condition: service_started
-      meilisearch:
+      search:
         condition: service_started
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8090/health"]
@@ -97,21 +97,21 @@ services:
     volumes:
       - s3_data:/data
 
-  meilisearch:
-    image: getmeili/meilisearch:latest
+  search:
+    image: ghcr.io/hanzoai/search:latest
     restart: unless-stopped
     environment:
       MEILI_ENV: production
       MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-your-master-key}
     volumes:
-      - meilisearch_data:/meili_data
+      - search_data:/meili_data
 
 volumes:
   commerce_data:
   postgres_data:
   redis_data:
   s3_data:
-  meilisearch_data:
+  search_data:
 ```
 
 ## Environment File
@@ -128,7 +128,7 @@ HANZO_CLIENT_SECRET=your_client_secret
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 
-# Meilisearch
+# Hanzo Search
 MEILI_MASTER_KEY=a-secure-master-key-at-least-16-chars
 ```
 
@@ -152,7 +152,7 @@ commerce            Up (healthy)        0.0.0.0:8090->8090/tcp
 postgres            Up (healthy)        5432/tcp
 redis               Up (healthy)        6379/tcp
 s3                  Up                  9000/tcp, 0.0.0.0:9001->9001/tcp
-meilisearch         Up                  7700/tcp
+search         Up                  7700/tcp
 ```
 
 Test the health endpoint:
@@ -286,7 +286,7 @@ docker compose logs --tail 100 commerce
 | `postgres_data` | PostgreSQL | Database files |
 | `redis_data` | Redis | Cache persistence (AOF) |
 | `s3_data` | Hanzo S3 | Uploaded files, media |
-| `meilisearch_data` | Meilisearch | Search indexes |
+| `search_data` | Hanzo Search | Search indexes |
 
 Back up these volumes regularly. For PostgreSQL, prefer `pg_dump` over volume-level backups for consistency.
 
