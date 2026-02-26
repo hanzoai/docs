@@ -1,0 +1,127 @@
+---
+title: Agents
+description: Create custom AI agents in Hanzo Chat with system prompts, model selection, and MCP tool access.
+---
+
+# Agents
+
+Agents are custom AI personas with specific system prompts, model preferences, and tool access. They appear as selectable options in the Chat UI.
+
+## Creating Agents
+
+### Via chat.yaml
+
+Define agents in your `chat.yaml` configuration:
+
+```yaml
+agents:
+  - name: "Code Reviewer"
+    model: "zen4-coder"
+    systemPrompt: |
+      You are a senior code reviewer. Analyze code for:
+      - Bugs and logic errors
+      - Security vulnerabilities
+      - Performance issues
+      - Style and readability improvements
+      Always explain your reasoning and suggest fixes.
+    tools:
+      - filesystem
+      - web
+
+  - name: "Research Assistant"
+    model: "zen4-pro"
+    systemPrompt: |
+      You are a research assistant. Search the web, analyze
+      documents, and provide comprehensive answers with citations.
+      Always cite your sources.
+    tools:
+      - web
+
+  - name: "Writing Editor"
+    model: "zen4"
+    systemPrompt: |
+      You are a professional editor. Review writing for clarity,
+      grammar, tone, and structure. Suggest specific improvements
+      while preserving the author's voice.
+
+  - name: "Data Analyst"
+    model: "zen4-thinking"
+    systemPrompt: |
+      You are a data analyst. Help users understand data, create
+      visualizations, write SQL queries, and interpret results.
+      Think step-by-step through complex analysis.
+    tools:
+      - filesystem
+```
+
+### Via UI
+
+1. Open Chat settings
+2. Go to **Agents** section
+3. Click **Create Agent**
+4. Configure name, model, system prompt, and tools
+5. Save — the agent appears in the model selector
+
+## Agent Configuration
+
+| Field | Description | Required |
+|-------|-------------|----------|
+| `name` | Display name in the UI | Yes |
+| `model` | Default model for this agent | Yes |
+| `systemPrompt` | Instructions prepended to every message | Yes |
+| `tools` | List of MCP tool servers the agent can use | No |
+| `description` | Short description shown in the UI | No |
+| `icon` | Custom icon URL | No |
+
+## MCP Tools for Agents
+
+Agents can use MCP (Model Context Protocol) tools for extended capabilities. First define the MCP servers, then reference them in agent configs:
+
+```yaml
+mcpServers:
+  filesystem:
+    command: npx
+    args: ["@hanzo/mcp-filesystem"]
+    env:
+      ALLOWED_DIRS: "/data"
+
+  web:
+    command: npx
+    args: ["@hanzo/mcp-web"]
+
+  github:
+    command: npx
+    args: ["@hanzo/mcp-github"]
+    env:
+      GITHUB_TOKEN: "${GITHUB_TOKEN}"
+
+agents:
+  - name: "DevOps Agent"
+    model: "zen4-coder"
+    systemPrompt: "You are a DevOps engineer..."
+    tools:
+      - filesystem
+      - github
+```
+
+See [MCP Tools](/docs/mcp) for the full list of 260+ available MCP tool servers.
+
+## Agent Presets
+
+Agents can also be saved as presets for quick switching:
+
+1. Configure an agent in model settings
+2. Adjust temperature, top_p, and other parameters
+3. Click **Save As Preset**
+4. The preset preserves both the system prompt and parameters
+
+## Built-in Agents
+
+Hanzo Chat includes several pre-configured agents:
+
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| Default | zen4 | General-purpose chat |
+| Coder | zen4-coder | Code generation and review |
+| Analyst | zen4-thinking | Deep analysis and reasoning |
+| Quick | zen4-mini | Fast responses for simple tasks |

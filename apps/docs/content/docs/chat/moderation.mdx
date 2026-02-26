@@ -1,0 +1,116 @@
+---
+title: Moderation
+description: Automated moderation system for Hanzo Chat — rate limiting, violation tracking, and user bans.
+---
+
+# Moderation
+
+Hanzo Chat includes an automated moderation system that tracks user violations, enforces rate limits, and temporarily bans abusive users. This protects your deployment from abuse and excessive usage.
+
+## How It Works
+
+The moderation system uses a scoring mechanism:
+
+1. **Violations** — actions like excessive logins, registrations, or messaging accumulate violation scores
+2. **Threshold** — when a user's score reaches the ban interval, they are temporarily banned
+3. **Ban** — both the user account and their IP address are blocked for the configured duration
+
+## Configuration
+
+All moderation settings are configured via environment variables:
+
+### Banning
+
+```bash
+BAN_VIOLATIONS=true              # Enable/disable ban system
+BAN_DURATION=7200000             # Ban duration in ms (default: 2 hours)
+BAN_INTERVAL=20                  # Score threshold for ban trigger
+```
+
+### Violation Scores
+
+Each violation type has a configurable score:
+
+```bash
+LOGIN_VIOLATION_SCORE=1          # Excessive login attempts
+REGISTRATION_VIOLATION_SCORE=1   # Excessive registrations
+CONCURRENT_VIOLATION_SCORE=1     # Too many concurrent messages
+MESSAGE_VIOLATION_SCORE=1        # Message rate limit exceeded
+NON_BROWSER_VIOLATION_SCORE=20   # Non-browser requests (high score)
+```
+
+### Rate Limiters
+
+#### Login & Registration
+
+```bash
+LOGIN_MAX=7                      # Max logins per IP per window
+LOGIN_WINDOW=5                   # Window in minutes
+REGISTER_MAX=5                   # Max registrations per IP per window
+REGISTER_WINDOW=60               # Window in minutes
+```
+
+#### Messaging
+
+```bash
+# Concurrent message limit
+LIMIT_CONCURRENT_MESSAGES=true
+CONCURRENT_MESSAGE_MAX=2         # Max simultaneous messages per user
+
+# Message rate limit
+LIMIT_MESSAGE_IP=true
+MESSAGE_IP_MAX=40                # Max messages per IP per window
+MESSAGE_IP_WINDOW=1              # Window in minutes
+
+LIMIT_MESSAGE_USER=false
+MESSAGE_USER_MAX=40              # Max messages per user per window
+MESSAGE_USER_WINDOW=1            # Window in minutes
+```
+
+#### File Uploads
+
+File upload rate limiting is configured in `chat.yaml`:
+
+```yaml
+rateLimits:
+  fileUploads:
+    ipMax: 100
+    ipWindowInMinutes: 60
+    userMax: 50
+    userWindowInMinutes: 60
+```
+
+## Violation Logs
+
+When any limiter or ban is enabled, violations are logged:
+
+- **`data/violations.json`** — total violation count per user
+- **`data/logs.json`** — individual violation records
+- **MongoDB `logs` collection** — active bans (transient, removed after ban expires)
+
+## Removing Bans
+
+To manually remove a ban:
+
+1. Connect to MongoDB
+2. Remove the ban entry from the `logs` collection
+3. Restart the Chat server
+
+```bash
+# Connect to MongoDB
+mongosh mongodb://localhost:27017/chat
+
+# View active bans
+db.logs.find({ type: "ban" })
+
+# Remove a specific ban
+db.logs.deleteOne({ user: "user-id-here", type: "ban" })
+```
+
+## Production Recommendations
+
+- **Always enable** `BAN_VIOLATIONS` and rate limiters in production
+- **Set `NON_BROWSER_VIOLATION_SCORE`** high (20+) to block automated abuse
+- **Use Cloudflare** or another DDoS protection service in front of your deployment
+- **Monitor logs** regularly for patterns of abuse
+- **Adjust `BAN_DURATION`** based on severity (default 2 hours is reasonable)
