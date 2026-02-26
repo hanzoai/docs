@@ -33,7 +33,7 @@ Hanzo Console is the LLM engineering platform at the center of the Hanzo AI stac
 │                    Console API                                   │
 │            ┌─────────────┼─────────────┐                        │
 │      PostgreSQL     ClickHouse      Redis ──► Worker            │
-│      (metadata)     (analytics)     (queues)  (BullMQ 27+)     │
+│      (metadata)     (analytics)     (queues)  (MQ 27+)         │
 └──────────────────────────────────────────────────────────────────┘
 
 Ingestion:  Your App ──► SDK/HTTP ──► api.hanzo.ai/v1/console/* ──► ClickHouse
@@ -42,7 +42,7 @@ Ingestion:  Your App ──► SDK/HTTP ──► api.hanzo.ai/v1/console/* ─�
 | Component | Image | Port | Purpose |
 |-----------|-------|------|---------|
 | **Web** | `hanzoai/console:latest` | 3001 | Next.js 15 dashboard and API |
-| **Worker** | `ghcr.io/hanzoai/console-worker:latest` | -- | BullMQ processor (27+ queues) |
+| **Worker** | `ghcr.io/hanzoai/console-worker:latest` | -- | Hanzo MQ processor (27+ queues) |
 | **ClickHouse** | In-cluster | 9000 | Analytics storage (traces, scores, costs) |
 | **PostgreSQL** | In-cluster | 5432 | Metadata (prompts, datasets, projects, users) |
 | **Redis** | In-cluster | 6379 | Job queues, caching, pub/sub |
@@ -104,7 +104,7 @@ Open `console.hanzo.ai`, select your project, and click **Traces**. Your trace a
 │ Scores │                                                         │
 │ Prompts│ Model Usage          │ Cost by Model                    │
 │ Datasets│ claude-haiku-4.5 47% │ claude-haiku-4.5    $147.20     │
-│ Evals  │ qwen3-32b        28% │ qwen3-32b           $89.60      │
+│ Evals  │ zen4-pro         28% │ zen4-pro            $89.60      │
 │ Users  │ gpt-5-nano       15% │ gpt-5-nano          $46.87      │
 │ Sessions│ other            10% │ other               $28.80      │
 │ Settings│                      │                                  │
@@ -146,7 +146,7 @@ def my_pipeline(query: str) -> str:
 @observe(name="generation", capture_input=True, capture_output=True)
 def generate(docs: list) -> str:
     return client.chat.completions.create(
-        model="alibaba-qwen3-32b",
+        model="zen4-pro",
         messages=[{"role": "user", "content": str(docs)}],
     ).choices[0].message.content
 ```
@@ -194,7 +194,7 @@ retrieval.end({ output: docs })
 
 const generation = trace.generation({
   name: 'llm-call',
-  model: 'alibaba-qwen3-32b',
+  model: 'zen4-pro',
   input: messages,
 })
 const result = await llmCall(messages)
@@ -325,7 +325,7 @@ migrate -path ./migrations -database "clickhouse://localhost:9000/console" up
 
 Console runs as two deployments on hanzo-k8s: **console** (2 replicas, `hanzoai/console:latest`, port 3001, health at `/api/public/health`) and **console-worker** (1 replica, `ghcr.io/hanzoai/console-worker:latest`, `imagePullSecrets: ghcr-secret`).
 
-Worker processes 27+ BullMQ queues: `trace-upsert`, `generation-upsert`, `score-upsert`, `event-upsert`, `dataset-run`, `prompt-cache-invalidation`, `cost-calculation`, `session-aggregation`, `export`, and more.
+Worker processes 27+ Hanzo MQ queues: `trace-upsert`, `generation-upsert`, `score-upsert`, `event-upsert`, `dataset-run`, `prompt-cache-invalidation`, `cost-calculation`, `session-aggregation`, `export`, and more.
 
 DNS: `console.hanzo.ai` and `api.hanzo.ai` both resolve to `24.199.76.156` (hanzo-k8s LB, Cloudflare proxied). The gateway routes `/console/*` to the console service.
 
