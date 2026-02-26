@@ -1,0 +1,108 @@
+---
+title: Plugins
+description: Hanzo Chat plugin system — built-in plugins, ChatGPT plugins, and custom plugin development.
+---
+
+# Plugins
+
+Hanzo Chat supports a plugin system that extends model capabilities with external tools and APIs. Plugins run server-side and are available to all conversations.
+
+## Built-in Plugins
+
+### Web Search
+
+Search the web from within conversations:
+
+```bash
+# Enable Google Search plugin
+GOOGLE_API_KEY=your-api-key
+GOOGLE_CSE_ID=your-cse-id
+```
+
+### Stable Diffusion
+
+Generate images from text prompts:
+
+```bash
+# Enable Stable Diffusion
+SD_WEBUI_URL=http://localhost:7860
+```
+
+### Wolfram Alpha
+
+Mathematical computation and data analysis:
+
+```bash
+WOLFRAM_APP_ID=your-app-id
+```
+
+### Azure AI Search
+
+Enterprise search over indexed documents:
+
+```bash
+AZURE_AI_SEARCH_SERVICE_ENDPOINT=https://your-service.search.windows.net
+AZURE_AI_SEARCH_INDEX_NAME=your-index
+AZURE_AI_SEARCH_API_KEY=your-key
+```
+
+## ChatGPT Plugins
+
+Hanzo Chat is compatible with OpenAI's ChatGPT plugin format. Any plugin that exposes an OpenAPI spec can be loaded:
+
+1. Go to **Plugin Store** in Chat
+2. Enter the plugin's manifest URL (e.g., `https://example.com/.well-known/ai-plugin.json`)
+3. The plugin is loaded and available for use
+
+## MCP Tools (Recommended)
+
+For new integrations, we recommend using MCP (Model Context Protocol) tools instead of legacy plugins. MCP provides a standardized interface with 260+ available tools.
+
+See [MCP Tools](/docs/mcp) and [Agents](/docs/chat/agents) for MCP configuration.
+
+```yaml
+# chat.yaml
+mcpServers:
+  filesystem:
+    command: npx
+    args: ["@hanzo/mcp-filesystem"]
+
+  web:
+    command: npx
+    args: ["@hanzo/mcp-web"]
+
+  github:
+    command: npx
+    args: ["@hanzo/mcp-github"]
+    env:
+      GITHUB_TOKEN: "${GITHUB_TOKEN}"
+```
+
+## Custom Plugin Development
+
+Build your own plugins using the OpenAPI specification:
+
+### 1. Create a manifest
+
+```json
+{
+  "schema_version": "v1",
+  "name_for_human": "My Plugin",
+  "name_for_model": "my_plugin",
+  "description_for_human": "Does something useful",
+  "description_for_model": "Call this plugin to do something useful",
+  "auth": { "type": "none" },
+  "api": {
+    "type": "openapi",
+    "url": "https://my-plugin.example.com/openapi.yaml"
+  }
+}
+```
+
+### 2. Implement the API
+
+Your API should match the OpenAPI spec. The model will call your endpoints based on the spec description.
+
+### 3. Register in Chat
+
+Add the manifest URL in Plugin Store or configure in `chat.yaml`.

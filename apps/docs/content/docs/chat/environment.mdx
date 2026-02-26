@@ -1,0 +1,168 @@
+---
+title: Environment Variables
+description: Complete reference for all Hanzo Chat environment variables — server, database, auth, models, moderation, and more.
+---
+
+# Environment Variables
+
+Complete reference for all `.env` configuration options. Create a `.env` file in the project root or set these as environment variables in your deployment.
+
+## Server
+
+```bash
+HOST=localhost                   # Server bind address (0.0.0.0 for all interfaces)
+PORT=3080                        # API server port
+DOMAIN_CLIENT=http://localhost:3081   # Client URL
+DOMAIN_SERVER=http://localhost:3080   # Server URL
+NO_INDEX=true                    # Prevent search engine indexing
+APP_TITLE=Hanzo Chat             # Application title
+CUSTOM_FOOTER=Powered by Hanzo AI
+```
+
+## Database
+
+```bash
+# MongoDB (required)
+MONGO_URI=mongodb://127.0.0.1:27017/chat
+
+# Meilisearch (optional, for full-text search)
+SEARCH=true
+MEILI_HOST=http://meilisearch:7700
+MEILI_MASTER_KEY=your-meili-key
+```
+
+## LLM Providers
+
+```bash
+# Hanzo Gateway (recommended — access all models via one key)
+HANZO_API_KEY=hk-your-api-key
+
+# Direct provider keys (optional — bypass gateway)
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_AI_API_KEY=...
+TOGETHER_API_KEY=...
+GROQ_API_KEY=...
+MISTRAL_API_KEY=...
+```
+
+## Authentication
+
+```bash
+# Session secrets (change in production!)
+JWT_SECRET=your-jwt-secret
+JWT_REFRESH_SECRET=your-refresh-secret
+SESSION_EXPIRY=900000              # 15 min
+REFRESH_TOKEN_EXPIRY=604800000     # 7 days
+
+# Registration
+ALLOW_REGISTRATION=true
+ALLOW_UNVERIFIED_EMAIL_LOGIN=true
+ALLOW_SOCIAL_LOGIN=true
+ALLOW_SOCIAL_REGISTRATION=true
+ALLOWED_REGISTRATION_DOMAINS=      # Comma-separated list
+
+# Hanzo IAM / OpenID Connect
+OPENID_ISSUER=https://hanzo.id
+OPENID_CLIENT_ID=hanzo-chat-client
+OPENID_CLIENT_SECRET=your-secret
+OPENID_CALLBACK_URL=/oauth/openid/callback
+OPENID_SCOPE=openid profile email
+OPENID_BUTTON_LABEL=Login with Hanzo
+
+# Google OAuth
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_CALLBACK_URL=/oauth/google/callback
+
+# GitHub OAuth
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GITHUB_CALLBACK_URL=/oauth/github/callback
+
+# Discord OAuth
+DISCORD_CLIENT_ID=
+DISCORD_CLIENT_SECRET=
+DISCORD_CALLBACK_URL=/oauth/discord/callback
+```
+
+## Email (for verification & password reset)
+
+```bash
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_ENCRYPTION=starttls
+EMAIL_USERNAME=your-email@gmail.com
+EMAIL_PASSWORD=your-app-password
+EMAIL_FROM=noreply@yourdomain.com
+EMAIL_FROM_NAME=Hanzo Chat
+```
+
+## RAG (File Uploads)
+
+```bash
+RAG_API_URL=http://rag:8000
+RAG_OPENAI_API_KEY=${OPENAI_API_KEY}
+RAG_OPENAI_BASEURL=                 # Custom base URL for embeddings
+EMBEDDINGS_PROVIDER=openai           # openai, azure, huggingface, huggingfacetei, ollama
+EMBEDDINGS_MODEL=text-embedding-3-small
+CHUNK_SIZE=1500
+CHUNK_OVERLAP=100
+COLLECTION_NAME=hanzo_chat
+```
+
+## Moderation
+
+```bash
+BAN_VIOLATIONS=true
+BAN_DURATION=7200000               # 2 hours in ms
+BAN_INTERVAL=20
+
+LOGIN_VIOLATION_SCORE=1
+REGISTRATION_VIOLATION_SCORE=1
+CONCURRENT_VIOLATION_SCORE=1
+MESSAGE_VIOLATION_SCORE=1
+NON_BROWSER_VIOLATION_SCORE=20
+
+LOGIN_MAX=7
+LOGIN_WINDOW=5                     # minutes
+REGISTER_MAX=5
+REGISTER_WINDOW=60                 # minutes
+
+LIMIT_CONCURRENT_MESSAGES=true
+CONCURRENT_MESSAGE_MAX=2
+
+LIMIT_MESSAGE_IP=true
+MESSAGE_IP_MAX=40
+MESSAGE_IP_WINDOW=1                # minutes
+
+LIMIT_MESSAGE_USER=false
+MESSAGE_USER_MAX=40
+MESSAGE_USER_WINDOW=1              # minutes
+```
+
+## Logging
+
+```bash
+DEBUG_LOGGING=true                 # Enable verbose file logs
+DEBUG_CONSOLE=false                # Log debug to console
+CONSOLE_JSON=false                 # JSON format for cloud deployments (GCP, AWS)
+```
+
+## File Storage
+
+```bash
+# Local file storage (default)
+# Files stored in /app/client/public/images
+
+# S3-compatible storage (optional)
+# Configure in chat.yaml
+```
+
+## Miscellaneous
+
+```bash
+APP_LANG=en                        # Default UI language
+CHECK_BALANCE=false                # Enable credit balance checking
+HELP_AND_FAQ_URL=https://docs.hanzo.ai/docs/chat
+```

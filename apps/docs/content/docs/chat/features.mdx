@@ -1,0 +1,150 @@
+---
+title: Features
+description: Hanzo Chat features — presets, file uploads, RAG, search, vision, conversation import/export, bookmarks, and more.
+---
+
+# Features
+
+Hanzo Chat provides a full-featured AI chat experience. This page covers all major features available in both the hosted and self-hosted versions.
+
+## Multi-Model Chat
+
+Switch between models mid-conversation or start new chats with any available model:
+
+- **14 Zen Models** — flagship, reasoning, code, vision, multimodal, edge, safety, embeddings
+- **100+ Third-Party** — OpenAI, Anthropic, Google, Meta, Mistral, Together, Groq
+- **Model comparison** — run the same prompt against multiple models side-by-side
+- **Streaming** — real-time token streaming for all models
+
+## Presets
+
+Save and reuse conversation settings as presets:
+
+- **Create presets** from model settings (model, temperature, system prompt, top_p, penalties)
+- **Import/Export** presets as JSON files for sharing
+- **Default preset** — set a preset to load automatically for new conversations
+- **Custom names** — give presets display names for quick identification
+
+### Creating a Preset
+
+1. Open model settings in a conversation
+2. Configure model, temperature, system prompt, and parameters
+3. Click **Save As Preset**
+4. Name it and save — it appears in the preset menu
+
+### Preset Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| **Model** | Which model to use (e.g., `zen4`, `zen4-coder`) |
+| **Temperature** | Controls randomness (0.0 = deterministic, 2.0 = creative) |
+| **Top P** | Nucleus sampling — controls diversity of output |
+| **Frequency Penalty** | Penalizes repeated tokens |
+| **Presence Penalty** | Encourages new topics |
+| **System Prompt** | Custom instructions prepended to every message |
+
+## File Uploads & RAG
+
+Upload files to conversations for context-aware responses using Retrieval-Augmented Generation:
+
+- **Supported formats** — PDF, DOCX, TXT, MD, CSV, JSON, code files, images
+- **Document indexing** — files are chunked, embedded, and stored in PGVector
+- **Semantic search** — relevant chunks are retrieved based on your messages
+- **Reusable files** — upload once, attach to any conversation via the side panel
+- **Configurable** — chunk size, overlap, and embedding model are all adjustable
+
+### How RAG Works
+
+1. **Upload** a file to a conversation
+2. **Indexing** — the RAG API chunks the document and creates embeddings
+3. **Retrieval** — when you send a message, relevant chunks are found via semantic search
+4. **Generation** — retrieved context is appended to your prompt for accurate responses
+
+### Configuration
+
+```bash
+# Required: embeddings provider API key
+RAG_OPENAI_API_KEY=sk-...
+
+# Optional tuning
+EMBEDDINGS_PROVIDER=openai        # openai, azure, huggingface, ollama
+EMBEDDINGS_MODEL=text-embedding-3-small
+CHUNK_SIZE=1500
+CHUNK_OVERLAP=100
+```
+
+### Resend Files Toggle
+
+By default, files are queried on every message. Toggle **Resend Files** off in conversation settings for targeted queries — retrieval only happens when files are explicitly attached to a message.
+
+## Vision & Multimodal
+
+Analyze images directly in conversations:
+
+- **Drag and drop** images into the chat
+- **Paste from clipboard** — screenshots, diagrams, photos
+- **Supported models** — zen3-omni, zen3-vl, GPT-4o, Claude Sonnet/Opus, Gemini
+
+## Conversation Management
+
+- **Persistent history** — all conversations stored in MongoDB
+- **Search** — full-text search across all conversations via Meilisearch
+- **Folders** — organize conversations into folders
+- **Bookmarks** — bookmark important conversations for quick access
+- **Import** — import conversations from ChatGPT, other LibreChat instances, or JSON
+- **Export** — export conversations as JSON or Markdown
+
+### Conversation Import
+
+Import conversations from:
+- **ChatGPT** — export from OpenAI and import the JSON
+- **LibreChat** — import from other instances
+- **JSON format** — standard conversation JSON
+
+## Search
+
+Full-text search powered by Meilisearch:
+
+- Search across all conversation messages
+- Instant results with typo tolerance
+- Requires Meilisearch service (included in Docker setup)
+
+```bash
+# Enable search
+SEARCH=true
+MEILI_HOST=http://meilisearch:7700
+MEILI_MASTER_KEY=your-key
+```
+
+## Code Artifacts
+
+When models generate code, Chat provides:
+
+- **Syntax highlighting** for all major languages
+- **Copy button** for quick clipboard access
+- **Code execution** (when enabled) for Python, JavaScript
+- **Diff view** for code modifications
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Enter` | Send message |
+| `Shift+Enter` | New line |
+| `Ctrl+/` | Toggle sidebar |
+| `Ctrl+Shift+S` | Save as preset |
+| `Ctrl+Shift+N` | New conversation |
+
+## Multi-Language Support
+
+Chat supports 50+ languages for the UI. Set the default language:
+
+```bash
+APP_LANG=en  # en, es, fr, de, ja, zh, ko, pt, ru, ar, ...
+```
+
+## Theming
+
+- **Dark mode** — default, optimized for extended use
+- **Light mode** — available via settings
+- **Custom CSS** — override styles for self-hosted instances

@@ -17,9 +17,19 @@ import {
   Workflow,
   Zap,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { CodeBlock } from '@/components/code-block';
 
-/* ── Ecosystem grid — big clickable squares ────────────────────── */
+/* -- Ecosystem grid -- big clickable squares -------------------------------- */
 
 const ecosystem = [
   {
@@ -109,7 +119,7 @@ const ecosystem = [
   },
 ];
 
-/* ── Developer quick links ─────────────────────────────────────── */
+/* -- Developer quick links -------------------------------------------------- */
 
 const devLinks = [
   {
@@ -138,19 +148,22 @@ const devLinks = [
   },
 ];
 
-/* ── Page ─────────────────────────────────────────────────────── */
+/* -- Page ------------------------------------------------------------------- */
 
 export default function Page() {
   return (
     <main className="pb-6 md:pb-12">
-      {/* ── Hero ──────────────────────────────────────────────── */}
+      {/* -- Hero ---------------------------------------------------------- */}
       <section className="relative flex flex-col items-center text-center mx-auto w-full max-w-[1400px] px-6 pt-24 pb-16 md:pt-36 md:pb-24">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_600px_300px_at_50%_0%,rgba(255,255,255,0.04),transparent_70%)]" />
 
-        <div className="relative inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-[#a3a3a3] mb-8 backdrop-blur">
-          <span className="h-1.5 w-1.5 rounded-full bg-white" />
+        <Badge
+          variant="outline"
+          className="relative mb-8 rounded-full border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-[#a3a3a3] backdrop-blur font-normal"
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-white mr-2" />
           One API &middot; 33 Services &middot; 200+ Models
-        </div>
+        </Badge>
 
         <h1 className="relative text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05]">
           <span className="text-white">Hanzo AI Cloud</span>
@@ -160,10 +173,10 @@ export default function Page() {
           Build, deploy, and scale intelligent applications.
         </p>
 
-        {/* ── Install command — the main CTA ─────────────────── */}
+        {/* -- Install command -- the main CTA ------------------------------ */}
         <div className="relative mt-10 w-full max-w-lg">
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-1">
-            <div className="flex items-center gap-3 rounded-xl bg-[#0a0a0a] px-5 py-4 font-mono text-sm">
+          <Card className="border-white/[0.08] bg-white/[0.03] p-1 shadow-none gap-0 py-0 rounded-2xl">
+            <CardContent className="flex items-center gap-3 rounded-xl bg-[#0a0a0a] px-5 py-4 font-mono text-sm">
               <span className="text-[#525252] select-none">$</span>
               <span className="text-white flex-1 text-left">curl hanzo.sh | sh</span>
               <button
@@ -176,8 +189,8 @@ export default function Page() {
                   <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
                 </svg>
               </button>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
           <p className="text-xs text-[#404040] mt-3">
             Installs the <code className="text-[#666] bg-white/5 px-1 py-0.5 rounded">hanzo</code> CLI.
             Then <code className="text-[#666] bg-white/5 px-1 py-0.5 rounded">hanzo login</code> to get started.
@@ -185,25 +198,23 @@ export default function Page() {
         </div>
 
         <div className="relative flex flex-row items-center gap-3 mt-8 flex-wrap justify-center">
-          <Link
-            href="/docs/services"
-            className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3 text-sm font-medium text-black hover:bg-neutral-200 transition-colors"
-          >
-            Get Started
-            <ArrowRight className="size-4" />
-          </Link>
-          <Link
-            href="/docs/openapi"
-            className="inline-flex items-center gap-2 rounded-full border border-white/15 px-7 py-3 text-sm font-medium text-white hover:bg-white/5 transition-colors"
-          >
-            API Reference
-          </Link>
+          <Button asChild size="lg" className="rounded-full bg-white px-7 text-black hover:bg-neutral-200">
+            <Link href="/docs/services">
+              Get Started
+              <ArrowRight className="size-4 ml-1" />
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="lg" className="rounded-full border-white/15 px-7 text-white hover:bg-white/5 bg-transparent">
+            <Link href="/docs/openapi">
+              API Reference
+            </Link>
+          </Button>
         </div>
       </section>
 
       <div className="mx-auto w-full max-w-[1400px] px-6 md:px-12 space-y-24">
 
-        {/* ── Quick Start Guide ──────────────────────────────── */}
+        {/* -- Quick Start Guide ------------------------------------------- */}
         <section>
           <h2 className="text-3xl font-bold tracking-tight mb-3">
             Quick Start
@@ -246,7 +257,7 @@ print(response.choices[0].message.content)`}
           </div>
         </section>
 
-        {/* ── Ecosystem — big clickable squares ──────────────── */}
+        {/* -- Ecosystem -- big clickable cards ----------------------------- */}
         <section>
           <h2 className="text-3xl font-bold tracking-tight mb-3">
             Ecosystem
@@ -256,41 +267,48 @@ print(response.choices[0].message.content)`}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {ecosystem.map((item) => {
-              const Wrapper = item.external ? 'a' : Link;
-              const extraProps = item.external
-                ? { target: '_blank', rel: 'noreferrer noopener' }
+              const isExternal = !!(item as { external?: boolean }).external;
+              const linkProps = isExternal
+                ? { target: '_blank' as const, rel: 'noreferrer noopener' }
                 : {};
               return (
-                <Wrapper
+                <Card
                   key={item.name}
-                  href={item.href}
-                  {...extraProps}
-                  className="group relative rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 sm:p-6 hover:border-white/20 hover:bg-white/[0.05] transition-all duration-300 no-underline flex flex-col min-h-[140px] sm:min-h-[160px]"
+                  className="group relative border-white/[0.08] bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05] transition-all duration-300 shadow-none py-0 gap-0 rounded-2xl min-h-[140px] sm:min-h-[160px]"
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="rounded-xl bg-white/[0.06] p-2">
-                      <item.icon className="size-5 text-[#666] group-hover:text-white transition-colors" />
+                  {isExternal ? (
+                    <a href={item.href} {...linkProps} className="absolute inset-0 z-10" />
+                  ) : (
+                    <Link href={item.href} className="absolute inset-0 z-10" />
+                  )}
+                  <CardHeader className="p-5 sm:p-6 pb-0 gap-0 grid-rows-none">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="rounded-xl bg-white/[0.06] p-2">
+                        <item.icon className="size-5 text-[#666] group-hover:text-white transition-colors" />
+                      </div>
+                      <Badge variant="ghost" className="text-[10px] uppercase tracking-wider text-[#333] font-medium border-none px-0">
+                        {item.tag}
+                      </Badge>
                     </div>
-                    <span className="text-[10px] uppercase tracking-wider text-[#333] font-medium">
-                      {item.tag}
+                    <CardTitle className="text-sm font-semibold text-white mb-1.5">
+                      {item.name}
+                    </CardTitle>
+                    <CardDescription className="text-xs text-[#525252] leading-relaxed group-hover:text-[#737373] transition-colors">
+                      {item.desc}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardFooter className="p-5 sm:p-6 pt-3">
+                    <span className="flex items-center gap-1 text-[10px] font-medium text-[#333] group-hover:text-white transition-colors">
+                      {isExternal ? 'Visit' : 'View docs'} <ArrowRight className="size-3" />
                     </span>
-                  </div>
-                  <div className="text-sm font-semibold text-white mb-1.5">
-                    {item.name}
-                  </div>
-                  <p className="text-xs text-[#525252] leading-relaxed group-hover:text-[#737373] transition-colors flex-1">
-                    {item.desc}
-                  </p>
-                  <div className="mt-3 flex items-center gap-1 text-[10px] font-medium text-[#333] group-hover:text-white transition-colors">
-                    {item.external ? 'Visit' : 'View docs'} <ArrowRight className="size-3" />
-                  </div>
-                </Wrapper>
+                  </CardFooter>
+                </Card>
               );
             })}
           </div>
         </section>
 
-        {/* ── Developer Tools ────────────────────────────────── */}
+        {/* -- Developer Tools --------------------------------------------- */}
         <section>
           <h2 className="text-3xl font-bold tracking-tight mb-3">
             Developer Tools
@@ -300,31 +318,33 @@ print(response.choices[0].message.content)`}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {devLinks.map((t) => (
-              <Link
+              <Card
                 key={t.name}
-                href={t.href}
-                className="group rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 hover:border-white/20 hover:bg-white/[0.04] transition-all duration-300 no-underline"
+                className="group relative border-white/[0.08] bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04] transition-all duration-300 shadow-none py-0 gap-0 rounded-2xl"
               >
-                <t.icon className="size-5 text-[#525252] mb-4 group-hover:text-white transition-colors" />
-                <div className="font-semibold text-sm text-white mb-1">{t.name}</div>
-                <div className="text-xs text-[#525252] group-hover:text-[#737373] transition-colors">{t.desc}</div>
-              </Link>
+                <Link href={t.href} className="absolute inset-0 z-10" />
+                <CardContent className="p-6">
+                  <t.icon className="size-5 text-[#525252] mb-4 group-hover:text-white transition-colors" />
+                  <CardTitle className="font-semibold text-sm text-white mb-1">{t.name}</CardTitle>
+                  <CardDescription className="text-xs text-[#525252] group-hover:text-[#737373] transition-colors">{t.desc}</CardDescription>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </section>
 
-        {/* ── What the CLI can do ─────────────────────────────── */}
-        <section className="rounded-2xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
-          <div className="p-8 md:p-10">
+        {/* -- What the CLI can do ----------------------------------------- */}
+        <Card className="border-white/[0.08] bg-white/[0.02] shadow-none py-0 gap-0 rounded-2xl overflow-hidden">
+          <CardContent className="p-8 md:p-10">
             <div className="flex items-center gap-3 mb-6">
               <div className="rounded-xl bg-white/[0.06] p-2.5">
                 <Terminal className="size-5 text-[#a3a3a3]" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold tracking-tight">
+                <CardTitle className="text-2xl font-bold tracking-tight">
                   The <code className="font-mono">hanzo</code> CLI
-                </h2>
-                <p className="text-xs text-[#525252] mt-0.5">One tool for everything</p>
+                </CardTitle>
+                <CardDescription className="text-xs text-[#525252] mt-0.5">One tool for everything</CardDescription>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -339,29 +359,28 @@ print(response.choices[0].message.content)`}
                 { cmd: 'hanzo bot', desc: 'Deploy and manage AI bots' },
                 { cmd: 'hanzo flow', desc: 'Run workflow automations' },
               ].map((item) => (
-                <div
-                  key={item.cmd}
-                  className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3"
-                >
-                  <div className="text-xs font-mono font-medium text-white mb-1">{item.cmd}</div>
-                  <div className="text-[11px] text-[#525252]">{item.desc}</div>
-                </div>
+                <Card key={item.cmd} className="border-white/[0.06] bg-white/[0.02] shadow-none py-0 gap-0 rounded-lg">
+                  <CardContent className="px-4 py-3">
+                    <div className="text-xs font-mono font-medium text-white mb-1">{item.cmd}</div>
+                    <div className="text-[11px] text-[#525252]">{item.desc}</div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
 
-        {/* ── Zen Models Banner ──────────────────────────────── */}
-        <section className="rounded-2xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
-          <div className="p-8 md:p-10">
+        {/* -- Zen Models Banner ------------------------------------------- */}
+        <Card className="border-white/[0.08] bg-white/[0.02] shadow-none py-0 gap-0 rounded-2xl overflow-hidden">
+          <CardContent className="p-8 md:p-10">
             <div className="flex items-center gap-3 mb-4">
               <Sparkles className="size-5 text-[#a3a3a3]" />
-              <h2 className="text-2xl font-bold tracking-tight">
+              <CardTitle className="text-2xl font-bold tracking-tight">
                 Zen
-              </h2>
-              <span className="text-xs text-[#525252] font-mono bg-white/5 px-2 py-0.5 rounded-full">
+              </CardTitle>
+              <Badge variant="secondary" className="text-xs text-[#525252] font-mono bg-white/5 px-2 py-0.5 rounded-full border-transparent">
                 44 models
-              </span>
+              </Badge>
             </div>
             <p className="text-[#737373] text-sm leading-relaxed max-w-2xl mb-6">
               Frontier AI models from 4B edge to 1T+ reasoning. MoDE (Mixture of Distilled Experts) architecture.
@@ -376,21 +395,24 @@ print(response.choices[0].message.content)`}
                 { name: 'zen3-nano', spec: '4B Edge' },
                 { name: 'zen3-guard', spec: '8B Safety' },
               ].map((m) => (
-                <div key={m.name} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
-                  <div className="text-xs font-mono font-medium text-white mb-1">{m.name}</div>
-                  <div className="text-[10px] text-[#525252]">{m.spec}</div>
-                </div>
+                <Card key={m.name} className="border-white/[0.06] bg-white/[0.02] shadow-none py-0 gap-0 rounded-lg">
+                  <CardContent className="p-3">
+                    <div className="text-xs font-mono font-medium text-white mb-1">{m.name}</div>
+                    <div className="text-[10px] text-[#525252]">{m.spec}</div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
             <div className="flex items-center gap-3 flex-wrap">
-              <a
-                href="https://zenlm.org"
-                target="_blank"
-                rel="noreferrer noopener"
-                className="text-xs font-medium text-white border border-white/20 rounded-full px-4 py-2 hover:bg-white/5 transition-colors"
-              >
-                zenlm.org &rarr;
-              </a>
+              <Button asChild variant="outline" size="sm" className="rounded-full border-white/20 text-white hover:bg-white/5 bg-transparent text-xs px-4 py-2 h-auto">
+                <a
+                  href="https://zenlm.org"
+                  target="_blank"
+                  rel="noreferrer noopener"
+                >
+                  zenlm.org &rarr;
+                </a>
+              </Button>
               <a
                 href="https://huggingface.co/zenlm"
                 target="_blank"
@@ -400,10 +422,10 @@ print(response.choices[0].message.content)`}
                 HuggingFace &rarr;
               </a>
             </div>
-          </div>
-        </section>
+          </CardContent>
+        </Card>
 
-        {/* ── CTA ────────────────────────────────────────────── */}
+        {/* -- CTA --------------------------------------------------------- */}
         <section className="relative text-center py-16">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_400px_200px_at_50%_50%,rgba(255,255,255,0.03),transparent_70%)]" />
           <h2 className="relative text-3xl md:text-4xl font-bold tracking-tight mb-3">
@@ -416,19 +438,17 @@ print(response.choices[0].message.content)`}
             curl hanzo.sh | sh
           </div>
           <div className="relative flex items-center justify-center gap-3 flex-wrap">
-            <a
-              href="https://hanzo.id/signup?redirect_uri=https://console.hanzo.ai"
-              className="inline-flex items-center gap-2 rounded-full bg-white px-8 py-3 text-sm font-medium text-black hover:bg-neutral-200 transition-colors"
-            >
-              Sign Up Free
-              <ArrowRight className="size-4" />
-            </a>
-            <Link
-              href="/docs/services"
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-8 py-3 text-sm font-medium text-white hover:bg-white/5 transition-colors"
-            >
-              Browse Documentation
-            </Link>
+            <Button asChild size="lg" className="rounded-full bg-white px-8 text-black hover:bg-neutral-200">
+              <a href="https://hanzo.id/signup?redirect_uri=https://console.hanzo.ai">
+                Sign Up Free
+                <ArrowRight className="size-4 ml-1" />
+              </a>
+            </Button>
+            <Button asChild variant="outline" size="lg" className="rounded-full border-white/15 px-8 text-white hover:bg-white/5 bg-transparent">
+              <Link href="/docs/services">
+                Browse Documentation
+              </Link>
+            </Button>
           </div>
         </section>
       </div>
