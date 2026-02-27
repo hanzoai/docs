@@ -1,0 +1,68 @@
+name: Sync Zen Pricing
+
+on:
+  schedule:
+    - cron: '30 4 * * *' # 30 min after pricing service daily sync at 04:00 UTC
+  repository_dispatch:
+    types: [pricing-updated]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Sync pricing from pricing.hanzo.ai
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm i --frozen-lockfile
+
+      - name: Run sync-pricing
+        id: sync
+        run: |
+          set +e
+          node packages/zen-models/scripts/sync-pricing.mjs
+          CODE=$?
+          set -e
+          echo "exit_code=$CODE" >> "$GITHUB_OUTPUT"
+          if [ "$CODE" -eq 2 ]; then
+            echo "::error::Pricing sync failed (API error)"
+            exit 1
+          fi
+
+      - name: Create changeset
+        if: steps.sync.outputs.exit_code == '0'
+        run: |
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          cat > .changeset/pricing-sync-${TIMESTAMP}.md << 'CHANGESET'
+          ---
+          '@hanzo/zen-models': patch
+          ---
+
+          Sync model pricing from pricing.hanzo.ai
+          CHANGESET
+
+      - name: Commit and push
+        if: steps.sync.outputs.exit_code == '0'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add packages/zen-models/src/ .changeset/
+          git commit -m "$(cat <<'EOF'
+          chore(zen-models): sync pricing from pricing.hanzo.ai
+
+          Automated daily pricing sync. Changes detected and changeset created.
+          EOF
+          )"
+          git push
