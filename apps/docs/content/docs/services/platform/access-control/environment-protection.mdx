@@ -1,0 +1,125 @@
+---
+title: Environment Protection
+description: Protection rules and approval workflows for production deployments
+---
+
+Environment protection adds a safety layer on top of [cluster permissions](/docs/services/platform/access-control/cluster-permissions). While cluster permissions control **who** can deploy, environment protection controls **how** deployments are reviewed and approved.
+
+## Protection Levels
+
+Each environment can be set to one of three protection levels:
+
+| Level | Behavior |
+|-------|----------|
+| **None** | Anyone with deploy permission can deploy freely |
+| **Restricted** | Deployments require approval from a designated reviewer |
+| **Locked** | Only Admins and Owners can deploy; all others are blocked |
+
+## Setting Protection Rules
+
+<Steps>
+
+### Open environment settings
+
+Navigate to **Projects > [Your Project] > Environments > [Environment] > Protection**.
+
+### Choose a level
+
+Select **None**, **Restricted**, or **Locked**.
+
+### Configure reviewers (Restricted only)
+
+If you chose Restricted, add one or more reviewers who can approve deployments.
+
+### Save
+
+The rule applies immediately to all future deployments in this environment.
+
+</Steps>
+
+## Approval Workflow
+
+When an environment is set to **Restricted**, deployments follow an approval workflow:
+
+```
+Developer triggers deploy
+    ↓
+Deployment enters "pending" state
+    ↓
+Reviewers are notified (email + dashboard)
+    ↓
+Reviewer approves or rejects
+    ↓
+If approved → deployment proceeds
+If rejected → deployment is cancelled
+```
+
+### Triggering a Deploy
+
+Developers trigger deploys normally (git push, CLI, or dashboard). The deployment is created but held in a **pending** state until approved.
+
+```bash
+# Deploy as usual -- it will be held for approval
+hanzo deploy --env production
+# Output: Deployment dep_abc123 created (pending approval)
+```
+
+### Approving or Rejecting
+
+Reviewers see pending deployments in **Deployments > Pending**. Each pending deployment shows:
+
+- Who triggered it
+- What changed (commit diff)
+- When it was triggered
+
+Click **Approve** to proceed or **Reject** to cancel. An optional comment can be added.
+
+### Auto-Approval
+
+Deployments triggered by Owners and Admins bypass the approval workflow, even in Restricted environments. This ensures that authorized personnel are never blocked.
+
+## Locked Environments
+
+In **Locked** mode, only Admins and Owners can deploy. All other users -- including those with deploy cluster permissions -- are blocked with a clear error:
+
+```
+Error: Environment "production" is locked. Only Admins and Owners can deploy.
+```
+
+This is useful during incidents, maintenance windows, or compliance freezes.
+
+<Callout type="info">
+Locked mode can be toggled quickly from the environment settings. Use it as a temporary freeze during incidents.
+</Callout>
+
+## Recommended Configuration
+
+| Environment | Protection | Rationale |
+|-------------|-----------|-----------|
+| Development | None | Fast iteration, no gates |
+| Staging | None or Restricted | Optional review before promoting |
+| Production | Restricted | Approval required for all deploys |
+| Production (during incident) | Locked | Freeze all changes |
+
+## API
+
+```bash
+# Set environment protection
+curl -X PATCH https://app.platform.hanzo.ai/api/environment.update \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "environmentId": "env_abc123",
+    "protection": "restricted",
+    "reviewers": ["user_def456", "user_ghi789"]
+  }'
+
+# Approve a pending deployment
+curl -X POST https://app.platform.hanzo.ai/api/environment.approveDeployment \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "deploymentId": "dep_abc123",
+    "comment": "Reviewed, looks good"
+  }'
+```
