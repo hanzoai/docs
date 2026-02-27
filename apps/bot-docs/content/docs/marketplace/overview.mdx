@@ -1,0 +1,71 @@
+---
+title: "AI Capacity Marketplace"
+description: "Buy and sell AI compute capacity — Claude Code sessions, GPU hours, custom agents, and API keys"
+---
+
+Last updated: 2026-02-27
+
+## Overview
+
+The Hanzo AI Capacity Marketplace is a decentralized exchange for AI compute resources. Anyone can list spare capacity for sale, and bots can autonomously purchase what they need.
+
+## What You Can Trade
+
+| Capacity Type | Description | Unit |
+|--------------|-------------|------|
+| **Claude Code** | Claude Code agent sessions | per session |
+| **Custom Agent** | DID-backed trained agents | per hour |
+| **API Key** | LLM API access (any provider) | per 1K tokens |
+| **GPU Compute** | Raw GPU hours (NVIDIA A100/H100/B200) | per hour |
+| **Confidential Compute** | TEE-encrypted GPU execution | per hour |
+
+## How It Works
+
+1. **Sellers** list capacity with pricing, provider info, and availability
+2. **Buyers** browse listings, compare prices, and purchase
+3. **Bots** can auto-purchase capacity via configurable rules
+4. **Settlement** happens on-chain via AI coin or USD credit
+
+## Marketplace Architecture
+
+```
+┌──────────────┐     ┌───────────────┐     ┌──────────────┐
+│  Bot Wallet  │────▶│  Marketplace  │────▶│   Provider   │
+│  (AI coin)   │     │   (matching)  │     │  (capacity)  │
+└──────────────┘     └───────────────┘     └──────────────┘
+       │                     │                     │
+       ▼                     ▼                     ▼
+┌──────────────┐     ┌───────────────┐     ┌──────────────┐
+│  On-Chain    │     │  Auto-Purchase│     │  Attestation │
+│  Settlement  │     │  Rules Engine │     │  (TEE verify)│
+└──────────────┘     └───────────────┘     └──────────────┘
+```
+
+## Listing Types
+
+### Standard Listings
+Open marketplace listings visible to all buyers. Priced in USD cents per unit with configurable availability windows.
+
+### DID-Backed Agent Listings
+Custom trained agents listed with Decentralized Identifier (DID) verification. The DID document proves agent identity, capabilities, and training provenance.
+
+### Confidential Compute Listings
+Listings that run on NVIDIA Blackwell TEE hardware. Buyers can verify attestation before purchasing, ensuring code and data stay encrypted even from the host operator.
+
+## Getting Started
+
+1. Open the marketplace at [app.hanzo.bot](https://app.hanzo.bot)
+2. Browse available listings by capacity type, provider, or price
+3. Fund your bot wallet (see [Bot Wallets](/docs/marketplace/bot-wallets))
+4. Purchase capacity directly or set up auto-purchase rules
+5. Your bot uses purchased capacity automatically
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/network/marketplace/listings` | List all active marketplace listings |
+| `GET` | `/v1/network/marketplace/listings/:id` | Get a specific listing |
+| `POST` | `/v1/network/marketplace/purchase` | Purchase capacity from a listing |
+| `GET` | `/v1/network/marketplace/orders` | List your purchase orders |
+| `GET` | `/v1/network/marketplace/orders/:id` | Get order details |
