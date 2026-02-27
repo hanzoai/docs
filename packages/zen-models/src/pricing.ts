@@ -3,6 +3,8 @@
  *
  * Zen models are priced at a sustainable multiplier over inference cost.
  * Third-party models available via the Hanzo API are priced with standard markup.
+ *
+ * Live pricing fetched from pricing.hanzo.ai; static values are fallbacks only.
  */
 
 /** Markup applied to third-party model pass-through pricing. */
@@ -38,7 +40,7 @@ export const gpu = [
   { name: 'GPU Ultra', gpu: '4x H100', vram: '320 GB', price: 13.92 },
 ] as const
 
-/** Third-party models available via Hanzo API. */
+/** Third-party models available via Hanzo API (static fallback). */
 export const thirdPartyModels = [
   {
     name: 'Claude Opus 4.6',
@@ -76,13 +78,6 @@ export const thirdPartyModels = [
     pricing: { input: 0.3, output: 2.4, cacheRead: 0.03, cacheWrite: null },
   },
   {
-    name: 'Qwen3-235B',
-    openrouterId: 'qwen/qwen3-235b-a22b',
-    features: ['131K context window', 'Open-weight MoE'],
-    contextWindow: 131_072,
-    pricing: { input: 0.546, output: 2.18, cacheRead: null, cacheWrite: null },
-  },
-  {
     name: 'DeepSeek R1',
     openrouterId: 'deepseek/deepseek-r1',
     features: ['64K context window', 'Reasoning model'],
@@ -96,18 +91,90 @@ export const thirdPartyModels = [
     contextWindow: 163_840,
     pricing: { input: 0.384, output: 1.07, cacheRead: null, cacheWrite: null },
   },
-  {
-    name: 'Kimi K2.5',
-    openrouterId: 'moonshotai/kimi-k2.5',
-    features: ['262K context window', 'Multimodal reasoning'],
-    contextWindow: 262_144,
-    pricing: { input: 0.276, output: 3.6, cacheRead: null, cacheWrite: null },
-  },
-  {
-    name: 'GLM-5',
-    openrouterId: 'z-ai/glm-5',
-    features: ['205K context window', 'Multilingual'],
-    contextWindow: 204_800,
-    pricing: { input: 0.36, output: 3.06, cacheRead: null, cacheWrite: null },
-  },
 ] as const
+
+// ---------------------------------------------------------------------------
+// Dynamic pricing fetch from pricing.hanzo.ai
+// ---------------------------------------------------------------------------
+
+const PRICING_API = 'https://pricing.hanzo.ai/v1/pricing'
+
+export interface PricingApiModel {
+  name: string
+  fullName?: string
+  description?: string
+  features?: string[]
+  tier?: string
+  context?: number | null
+  specs?: { params?: string; arch?: string }
+  endpoint?: string
+  pricingUnit?: string
+  contactSales?: boolean
+  pricing: {
+    input: number | null
+    output: number | null
+    perUnit?: number
+    cacheRead?: number | null
+    cacheWrite?: number | null
+  } | null
+}
+
+export interface PricingApiThirdParty {
+  id: string
+  name: string
+  provider: string
+  contextWindow?: number | null
+  features?: string[]
+  isFree?: boolean
+  featured?: boolean
+  pricing: {
+    input: number
+    output: number
+    cacheRead?: number | null
+    cacheWrite?: number | null
+  }
+}
+
+export interface PricingData {
+  updated?: string
+  hanzoModels: PricingApiModel[]
+  thirdPartyModels?: PricingApiThirdParty[]
+  tools?: Array<{ name: string; unit: string; price: number }>
+  infrastructure?: any
+  cloud?: any
+}
+
+/**
+ * Fetch live pricing from pricing.hanzo.ai.
+ * Returns full pricing data including Zen models, third-party models, and tools.
+ * Falls back to null on failure — callers should use static data as fallback.
+ */
+export async function fetchPricing(): Promise<PricingData | null> {
+  try {
+    const res = await fetch(PRICING_API, {
+      signal: AbortSignal.timeout(3_000),
+    })
+    if (!res.ok) return null
+    return await res.json()
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Fetch live model pricing from pricing.hanzo.ai/v1/pricing/models.
+ * Returns array of all models (Zen + third-party) with pricing.
+ * Falls back to null on failure.
+ */
+export async function fetchModelPricing(): Promise<Array<PricingApiModel | PricingApiThirdParty> | null> {
+  try {
+    const res = await fetch(`${PRICING_API.replace(/\/pricing$/, '')}/pricing/models`, {
+      signal: AbortSignal.timeout(3_000),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data.models ?? null
+  } catch {
+    return null
+  }
+}
