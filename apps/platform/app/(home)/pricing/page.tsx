@@ -84,12 +84,14 @@ const computeItems = [
   },
 ];
 
-/* ---- AI Model Pricing ---- */
+/* ---- AI Model Pricing (per 1M tokens, includes Hanzo markup) ---- */
 const aiModels = [
-  { name: 'Zen 1B', input: 'Free', output: 'Free', free: true },
-  { name: 'Zen 7B', input: '$0.20', output: '$0.60' },
-  { name: 'Claude Sonnet', input: '$3.00', output: '$15.00' },
-  { name: 'GPT-5', input: '$2.50', output: '$10.00' },
+  { name: 'zen4-mini', input: '$0.60', output: '$0.60' },
+  { name: 'zen4', input: '$3.00', output: '$9.60' },
+  { name: 'zen4-coder', input: '$3.60', output: '$3.60' },
+  { name: 'Claude Sonnet 4.6', input: '$3.60', output: '$18.00' },
+  { name: 'GPT-5', input: '$1.50', output: '$12.00' },
+  { name: 'DeepSeek R1', input: '$0.84', output: '$3.00' },
 ];
 
 /* ---- Comparison table ---- */
@@ -230,6 +232,7 @@ export default function PricingPage() {
         </div>
         <p className="text-sm text-fd-muted-foreground mb-6 max-w-[540px]">
           100+ models available via Hanzo LLM Gateway. Pricing per 1M tokens.
+          Zen models at 3x inference cost. Third-party models at 1.2x pass-through.
         </p>
         <div className="overflow-x-auto rounded-2xl border border-fd-border bg-[rgba(10,15,26,0.6)] backdrop-blur-sm">
           <table className="w-full text-sm">
@@ -263,7 +266,8 @@ export default function PricingPage() {
           </table>
         </div>
         <p className="text-xs text-fd-muted-foreground mt-3">
-          Or bring your own API keys for $0 token cost. Mix and match freely.
+          Or bring your own API keys for $0 token cost. Full pricing at{' '}
+          <a href="https://zenlm.org/docs/api/pricing" className="text-brand hover:underline">zenlm.org</a>.
         </p>
       </section>
 
