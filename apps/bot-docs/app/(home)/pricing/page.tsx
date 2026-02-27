@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import type { Metadata } from 'next';
 import { BillingFaq } from '../_components/billing-faq';
+import { DynamicTokenPricing } from './_components/DynamicTokenPricing';
 
 export const metadata: Metadata = {
   title: 'Pricing',
@@ -256,29 +257,7 @@ export default function PricingPage() {
           </div>
 
           {/* Tokens */}
-          <div className="p-6 rounded-2xl border border-fd-border bg-[rgba(10,15,26,0.6)] backdrop-blur-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <SparklesIcon className="w-5 h-5 text-brand" />
-              <h3 className="text-sm font-bold text-fd-foreground">Tokens</h3>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-fd-muted-foreground">GPT-5</span>
-                <span className="text-fd-foreground font-semibold">$0.03/1K</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-fd-muted-foreground">Claude Opus</span>
-                <span className="text-fd-foreground font-semibold">$0.025/1K</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-fd-muted-foreground">Open source</span>
-                <span className="text-fd-foreground font-semibold">$0.002/1K</span>
-              </div>
-            </div>
-            <p className="mt-3 text-xs text-fd-muted-foreground/70">
-              Or bring your own API keys for $0 token cost.
-            </p>
-          </div>
+          <DynamicTokenPricing />
 
           {/* Storage */}
           <div className="p-6 rounded-2xl border border-fd-border bg-[rgba(10,15,26,0.6)] backdrop-blur-sm">
