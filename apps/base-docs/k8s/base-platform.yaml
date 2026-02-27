@@ -1,0 +1,139 @@
+# Multi-tenant Base platform deployment
+# This runs Base with the platform plugin enabled
+# IAM auth via hanzo.id, KMS secrets via kms.hanzo.ai
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: base-platform
+  namespace: hanzo
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: base-platform
+  template:
+    metadata:
+      labels:
+        app: base-platform
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: base
+          image: ghcr.io/hanzoai/base:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8090
+              name: api
+          env:
+            - name: BASE_ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: base-platform-secrets
+                  key: ADMIN_EMAIL
+            - name: BASE_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: base-platform-secrets
+                  key: ADMIN_PASSWORD
+            - name: IAM_URL
+              value: "https://hanzo.id"
+            - name: IAM_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: base-platform-secrets
+                  key: IAM_CLIENT_ID
+            - name: IAM_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: base-platform-secrets
+                  key: IAM_CLIENT_SECRET
+            - name: KMS_URL
+              value: "https://kms.hanzo.ai"
+            - name: KMS_UNIVERSAL_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: base-platform-secrets
+                  key: KMS_TOKEN
+            - name: S3_ENDPOINT
+              value: "http://minio.hanzo.svc:9000"
+            - name: S3_BUCKET
+              value: "base-files"
+            - name: PLATFORM_ENABLED
+              value: "true"
+          volumeMounts:
+            - name: data
+              mountPath: /app/hz_data
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8090
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8090
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: base-platform-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: base-platform-data
+  namespace: hanzo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: do-block-storage
+  resources:
+    requests:
+      storage: 50Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: base-platform
+  namespace: hanzo
+spec:
+  selector:
+    app: base-platform
+  ports:
+    - port: 8090
+      targetPort: 8090
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: base-platform
+  namespace: hanzo
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+spec:
+  tls:
+    - hosts:
+        - api.base.hanzo.ai
+      secretName: api-base-hanzo-ai-tls
+  rules:
+    - host: api.base.hanzo.ai
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: base-platform
+                port:
+                  number: 8090

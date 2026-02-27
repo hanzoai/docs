@@ -1,0 +1,81 @@
+---
+title: File Storage
+description: Upload and serve files directly from collections with local filesystem or S3-compatible storage.
+---
+
+Every collection can have file fields. Files are uploaded alongside records and served via the API.
+
+## Uploading Files
+
+```typescript
+const formData = new FormData()
+formData.append('title', 'Quarterly Report')
+formData.append('document', fileInput.files[0])
+formData.append('thumbnail', imageInput.files[0])
+
+const record = await base.collection('documents').create(formData)
+```
+
+## Getting File URLs
+
+```typescript
+// Get the file URL
+const url = base.files.getURL(record, record.document)
+// → http://localhost:8090/api/files/documents/RECORD_ID/report.pdf
+
+// With image transformations
+const thumbUrl = base.files.getURL(record, record.thumbnail, {
+  thumb: '100x100',
+})
+```
+
+## Image Transformations
+
+For image files, request on-the-fly transformations:
+
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `thumb` | Resize to fit | `100x100` |
+| `thumb` | Resize width only | `200x0` |
+| `thumb` | Resize height only | `0x300` |
+| `thumb` | Crop to exact size | `100x100f` |
+| `thumb` | Crop from top | `100x100t` |
+| `thumb` | Crop from bottom | `100x100b` |
+
+## Storage Backends
+
+### Local Filesystem (Default)
+
+Files are stored in `hz_data/storage/`. No configuration needed.
+
+### S3-Compatible Storage
+
+For production, configure S3-compatible storage (AWS S3, MinIO, DigitalOcean Spaces, etc.):
+
+```bash
+S3_ENDPOINT=https://s3.amazonaws.com
+S3_BUCKET=my-base-files
+S3_REGION=us-east-1
+S3_ACCESS_KEY=...
+S3_SECRET=...
+```
+
+## File Field Configuration
+
+```javascript
+// In migration
+{
+  name: 'avatar',
+  type: 'file',
+  maxSize: 5242880,        // 5MB
+  maxSelect: 1,            // Single file
+  mimeTypes: ['image/png', 'image/jpeg', 'image/webp'],
+}
+
+{
+  name: 'attachments',
+  type: 'file',
+  maxSize: 10485760,       // 10MB
+  maxSelect: 5,            // Up to 5 files
+}
+```
