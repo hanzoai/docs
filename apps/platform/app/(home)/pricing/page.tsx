@@ -122,9 +122,6 @@ function CellDisplay({ value }: { value: CellValue }) {
 export default function PricingPage() {
   return (
     <main className="relative z-[1] max-w-[1000px] mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-10 overflow-hidden">
-      <div className="stars" />
-      <div className="nebula" />
-
       {/* Header */}
       <header className="text-center mb-12 animate-[fadeInUp_0.8s_ease-out]">
         <h1 className="text-4xl lg:text-5xl font-bold mb-4 tracking-tight">
