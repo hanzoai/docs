@@ -1,7 +1,12 @@
-import { BookOpenIcon, BoxesIcon } from 'lucide-react';
+import { BookOpenIcon, BoxesIcon, DollarSignIcon } from 'lucide-react';
 import type { BaseLayoutProps, LinkItemType } from '@hanzo/docs/ui/layouts/shared';
 
 export const linkItems: LinkItemType[] = [
+  {
+    icon: <DollarSignIcon />,
+    text: 'Pricing',
+    url: '/pricing',
+  },
   {
     icon: <BookOpenIcon />,
     text: 'Documentation',

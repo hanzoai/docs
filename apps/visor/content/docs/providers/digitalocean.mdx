@@ -1,0 +1,94 @@
+---
+title: "DigitalOcean"
+description: "Deploy VMs on DigitalOcean via Hanzo Visor"
+---
+
+Hanzo Visor integrates with DigitalOcean Droplets for fast, developer-friendly VM deployment.
+
+## Connecting DigitalOcean
+
+1. Generate a personal access token at [cloud.digitalocean.com/account/api/tokens](https://cloud.digitalocean.com/account/api/tokens)
+2. Grant both read and write scopes
+
+3. In the Visor dashboard, go to **Settings > Providers > DigitalOcean** and enter your token
+
+```bash
+curl -X POST https://api.visor.hanzo.ai/v1/providers \
+  -H "Authorization: Bearer $VISOR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "digitalocean",
+    "credentials": {
+      "api_token": "dop_v1_..."
+    },
+    "default_region": "nyc3"
+  }'
+```
+
+## Available regions
+
+| Region | Location |
+|--------|----------|
+| `nyc1`, `nyc3` | New York |
+| `sfo3` | San Francisco |
+| `ams3` | Amsterdam |
+| `sgp1` | Singapore |
+| `lon1` | London |
+| `fra1` | Frankfurt |
+| `blr1` | Bangalore |
+| `tor1` | Toronto |
+| `syd1` | Sydney |
+
+## Instance sizes
+
+Visor maps its standard sizes to DigitalOcean Droplet sizes:
+
+| Visor Size | DO Slug | vCPU | RAM | Storage |
+|-----------|---------|------|-----|---------|
+| `nano` | s-1vcpu-1gb | 1 | 1 GB | 25 GB |
+| `starter` | s-1vcpu-2gb | 1 | 2 GB | 50 GB |
+| `standard` | s-2vcpu-4gb | 2 | 4 GB | 80 GB |
+| `performance` | s-4vcpu-8gb | 4 | 8 GB | 160 GB |
+| `premium` | c-4vcpu-8gb | 4 | 8 GB | 200 GB |
+| `power` | c-4vcpu-16gb | 4 | 16 GB | 320 GB |
+
+## Creating a VM on DigitalOcean
+
+```bash
+curl -X POST https://api.visor.hanzo.ai/v1/vms \
+  -H "Authorization: Bearer $VISOR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "web-app-01",
+    "provider": "digitalocean",
+    "region": "nyc3",
+    "size": "standard",
+    "image": "ubuntu-24.04",
+    "ssh_keys": ["key_abc123"]
+  }'
+```
+
+## DigitalOcean-specific options
+
+```json
+{
+  "provider_options": {
+    "vpc_uuid": "xxx-xxx-xxx",
+    "monitoring": true,
+    "ipv6": true,
+    "user_data": "#!/bin/bash\napt-get update"
+  }
+}
+```
+
+## Block storage
+
+DigitalOcean volumes are NVMe-backed and can be attached to any Droplet in the same region. See [Volumes](/docs/features/volumes) for the unified API.
+
+Volumes can be created from 1 GB to 16 TB and support automatic filesystem expansion.
+
+## Networking
+
+DigitalOcean VMs get a public IPv4 address by default. You can optionally enable IPv6 and assign the VM to a VPC for private networking between Droplets.
+
+Firewalls can be managed through the Visor API or the DigitalOcean dashboard.
