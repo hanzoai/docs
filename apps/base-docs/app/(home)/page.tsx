@@ -14,6 +14,8 @@ import {
   LockIcon,
   FolderIcon,
   ArrowRightIcon,
+  CheckIcon,
+  MessageCircleIcon,
 } from 'lucide-react';
 
 const headingVariants = cva('font-medium tracking-tight', {
@@ -53,6 +55,61 @@ const cardVariants = cva('rounded-2xl text-sm p-6 bg-origin-border shadow-lg', {
   },
 });
 
+const pricingTiers = [
+  {
+    name: 'Starter',
+    price: '$5',
+    period: '/mo',
+    desc: '1 shared vCPU, 1 GB RAM, 10 GB storage.',
+    cta: 'Get Started',
+    ctaHref: '/docs',
+    features: [
+      '1 Base instance',
+      '10K API requests/day',
+      'SSE realtime subscriptions',
+      'Email/password auth',
+      'Local filesystem storage',
+      'Admin dashboard included',
+    ],
+  },
+  {
+    name: 'Pro',
+    price: '$12',
+    period: '/mo',
+    desc: '2 shared vCPUs, 4 GB RAM, 40 GB storage.',
+    cta: 'Start Free Trial',
+    ctaHref: '/docs',
+    highlight: true,
+    badge: 'Popular',
+    features: [
+      '3 Base instances',
+      '100K API requests/day',
+      'WebSocket + CRDT sync',
+      'OAuth2 + Hanzo IAM',
+      'S3-compatible file storage',
+      'Monitoring + alerts',
+      'Daily backups',
+    ],
+  },
+  {
+    name: 'Scale',
+    price: '$49',
+    period: '/mo',
+    desc: '4 dedicated vCPUs, 16 GB RAM, 160 GB storage.',
+    cta: 'Get Started',
+    ctaHref: '/docs',
+    features: [
+      'Unlimited Base instances',
+      'Unlimited API requests',
+      'Multi-tenant platform mode',
+      'Horizontal auto-scaling',
+      'Private networking',
+      'Point-in-time restore',
+      'Dedicated support',
+    ],
+  },
+];
+
 export default function Page() {
   return (
     <main className="text-fd-foreground pt-4 pb-6 md:pb-12">
@@ -67,12 +124,12 @@ export default function Page() {
           <h1 className={cn(headingVariants({ variant: 'h1' }), 'my-8 leading-tight')}>
             One Binary.
             <br />
-            Infinite Scale.
+            Auth, DB, API.
           </h1>
           <p className="text-lg text-fd-muted-foreground max-w-2xl mb-8">
-            Auth, database, realtime subscriptions, file storage, and cloud functions
-            in a single Go binary. Develop locally, deploy to the cloud with
-            multi-tenant scaling.
+            Auth, database, realtime subscriptions, file storage, and server-side functions
+            compiled into a single Go binary. SQLite locally, PostgreSQL in production.
+            REST API auto-generated from your schema.
           </p>
           <div className="flex flex-row items-center justify-center gap-4 flex-wrap w-fit">
             <Link href="/docs" className={cn(buttonVariants(), 'max-sm:text-sm')}>
@@ -122,9 +179,8 @@ $ `}<span className="text-fd-foreground">curl localhost:8090/api/collections/tas
       {/* Features Grid */}
       <div className="grid grid-cols-1 gap-10 mt-12 px-6 mx-auto w-full max-w-[1400px] md:px-12 lg:grid-cols-2">
         <p className="text-2xl tracking-tight leading-snug font-light col-span-full md:text-3xl xl:text-4xl">
-          Everything you need to build <span className="font-medium">full-stack applications</span> with
-          a <span className="font-medium">single binary</span> that scales to
-          <span className="font-medium"> millions of users</span>.
+          <span className="font-medium">Database, auth, files, realtime, and functions</span> in
+          a <span className="font-medium">~15 MB binary</span> with zero external dependencies.
         </p>
 
         {/* Database */}
@@ -134,8 +190,8 @@ $ `}<span className="text-fd-foreground">curl localhost:8090/api/collections/tas
             Database
           </h3>
           <p className="text-fd-muted-foreground mb-4">
-            SQLite for local dev, PostgreSQL for production. Full REST API auto-generated
-            from your schema with filtering, sorting, pagination, and relations.
+            SQLite for local dev, PostgreSQL for production. REST API auto-generated
+            from your schema with filtering, sorting, pagination, and relation expansion.
           </p>
           <pre className="bg-fd-muted/30 rounded-lg p-3 text-xs overflow-x-auto font-mono">
 {`// Create a record
@@ -161,17 +217,18 @@ const tasks = await base.collection('tasks').getList(1, 20, {
             Realtime Subscriptions
           </h3>
           <p className="mb-4">
-            Subscribe to database changes over SSE. Every collection record change is broadcast
-            in real-time with optimistic update support.
+            Subscribe to collection changes over SSE. Each create, update, or delete
+            event is broadcast with the full record payload. Client SDKs handle
+            reconnection and deduplication.
           </p>
           <pre className="bg-black/10 dark:bg-white/5 rounded-lg p-3 text-xs overflow-x-auto font-mono">
-{`// Subscribe to record changes
+{`// Subscribe to all changes in a collection
 base.collection('messages').subscribe('*', (e) => {
   console.log(e.action); // 'create' | 'update' | 'delete'
   console.log(e.record); // the changed record
 });
 
-// Subscribe to specific record
+// Subscribe to a single record by ID
 base.collection('tasks').subscribe(recordId, (e) => {
   updateUI(e.record);
 });`}
@@ -185,25 +242,26 @@ base.collection('tasks').subscribe(recordId, (e) => {
             Authentication
           </h3>
           <p className="text-fd-muted-foreground mb-4">
-            Built-in auth with email/password, OAuth2, and Hanzo IAM integration.
-            API rules engine for fine-grained access control per collection.
+            Built-in auth with email/password, OAuth2 providers, and Hanzo IAM integration.
+            Per-collection API rules define read/write/create/delete access using
+            filter expressions.
           </p>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="p-3 rounded-lg border">
               <p className="font-medium">Email/Password</p>
-              <p className="text-xs text-fd-muted-foreground">Built-in with verification</p>
+              <p className="text-xs text-fd-muted-foreground">With email verification flow</p>
             </div>
             <div className="p-3 rounded-lg border">
               <p className="font-medium">OAuth2</p>
-              <p className="text-xs text-fd-muted-foreground">Google, GitHub, Apple, etc.</p>
+              <p className="text-xs text-fd-muted-foreground">Google, GitHub, Apple, 10+ others</p>
             </div>
             <div className="p-3 rounded-lg border">
               <p className="font-medium">Hanzo IAM</p>
-              <p className="text-xs text-fd-muted-foreground">Enterprise SSO via hanzo.id</p>
+              <p className="text-xs text-fd-muted-foreground">SSO via hanzo.id, SAML/OIDC</p>
             </div>
             <div className="p-3 rounded-lg border">
               <p className="font-medium">API Rules</p>
-              <p className="text-xs text-fd-muted-foreground">Per-collection access control</p>
+              <p className="text-xs text-fd-muted-foreground">Filter-based access per collection</p>
             </div>
           </div>
         </div>
@@ -215,8 +273,9 @@ base.collection('tasks').subscribe(recordId, (e) => {
             File Storage
           </h3>
           <p className="text-fd-muted-foreground mb-4">
-            Upload files directly to collections. Local filesystem for dev, S3-compatible
-            storage for production. Automatic thumbnail generation.
+            Attach files to any collection record. Local filesystem in dev mode,
+            S3-compatible object storage in production. Generates thumbnails on read
+            via query parameters.
           </p>
           <pre className="bg-fd-muted/30 rounded-lg p-3 text-xs overflow-x-auto font-mono">
 {`// Upload a file
@@ -227,7 +286,7 @@ formData.append('title', 'Report Q4');
 const record = await base.collection('documents')
   .create(formData);
 
-// Get file URL
+// Get file URL (with optional thumb params)
 const url = base.files.getURL(record, record.document);`}
           </pre>
         </div>
@@ -236,20 +295,19 @@ const url = base.files.getURL(record, record.document);`}
         <div className={cn(cardVariants({ variant: 'secondary' }), 'col-span-full')}>
           <CloudIcon className="size-8 mb-4" />
           <h3 className={cn(headingVariants({ variant: 'h3', className: 'mb-6' }))}>
-            Cloud Functions
+            Server-Side Functions
           </h3>
           <p className="mb-6 max-w-2xl">
-            Server-side JavaScript hooks that run before/after any API operation.
-            Scheduled functions, custom endpoints, and event-driven workflows
-            with the full power of the JSVM runtime.
+            JavaScript hooks execute before or after any API operation. Define
+            custom HTTP routes, cron jobs, and event-driven logic in the embedded
+            JSVM runtime. No separate function deployment.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <h4 className="font-medium mb-2">Hooks</h4>
               <pre className="bg-black/10 dark:bg-white/5 rounded-lg p-3 text-xs overflow-x-auto font-mono">
 {`onRecordCreate((e) => {
-  // Validate, transform,
-  // or enrich before save
+  // Runs before record is saved
   e.record.set('slug',
     slugify(e.record.get('title'))
   );
@@ -262,7 +320,7 @@ const url = base.files.getURL(record, record.document);`}
 {`routerAdd("POST", "/webhook",
   (e) => {
     const body = e.requestBody();
-    // Process webhook
+    // Process incoming payload
     return e.json(200,
       { ok: true }
     );
@@ -271,12 +329,12 @@ const url = base.files.getURL(record, record.document);`}
               </pre>
             </div>
             <div>
-              <h4 className="font-medium mb-2">Scheduled</h4>
+              <h4 className="font-medium mb-2">Cron Jobs</h4>
               <pre className="bg-black/10 dark:bg-white/5 rounded-lg p-3 text-xs overflow-x-auto font-mono">
 {`cronAdd("daily cleanup",
   "0 3 * * *",
   () => {
-    // Run at 3am daily
+    // Runs at 03:00 UTC daily
     const old = findRecords(
       "logs", "created < -30d"
     );
@@ -298,9 +356,9 @@ const url = base.files.getURL(record, record.document);`}
             <div>
               <h4 className="font-medium mb-2">JavaScript / TypeScript</h4>
               <pre className="bg-fd-muted/30 rounded-lg p-3 text-xs overflow-x-auto font-mono">
-{`import Base from 'pocketbase'
+{`import { BaseClient } from '@hanzoai/base'
 
-const base = new Base('http://localhost:8090')
+const base = new BaseClient('http://localhost:8090')
 
 // Auth
 await base.collection('users')
@@ -333,9 +391,9 @@ app.Start()`}
             <div>
               <h4 className="font-medium mb-2">Dart / Flutter</h4>
               <pre className="bg-fd-muted/30 rounded-lg p-3 text-xs overflow-x-auto font-mono">
-{`import 'package:pocketbase/pocketbase.dart';
+{`import 'package:hanzo_base/hanzo_base.dart';
 
-final base = PocketBase('http://localhost:8090');
+final base = BaseClient('http://localhost:8090');
 
 // Realtime subscription
 base.collection('messages')
@@ -352,7 +410,7 @@ base.collection('messages')
         <div className={cn(cardVariants(), 'col-span-full')}>
           <ServerIcon className="size-8 mb-4" />
           <h3 className={cn(headingVariants({ variant: 'h3', className: 'mb-6' }))}>
-            Dev to Prod Architecture
+            Dev to Prod
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="p-6 rounded-xl border">
@@ -361,28 +419,28 @@ base.collection('messages')
                 <h4 className="font-medium text-lg">Local Development</h4>
               </div>
               <p className="text-fd-muted-foreground text-sm mb-4">
-                Single binary, zero dependencies. SQLite embedded, instant startup.
+                Single binary, no dependencies. Embedded SQLite, starts in under 1 second.
               </p>
               <pre className="bg-fd-muted/30 rounded-lg p-3 text-xs font-mono">
 {`$ base serve --dev
-# That's it. Auth, DB, API, Admin UI
+# Auth, DB, REST API, Admin UI
 # all running at localhost:8090`}
               </pre>
             </div>
             <div className="p-6 rounded-xl border">
               <div className="flex items-center gap-3 mb-4">
                 <CloudIcon className="size-5" />
-                <h4 className="font-medium text-lg">Production Cloud</h4>
+                <h4 className="font-medium text-lg">Production</h4>
               </div>
               <p className="text-fd-muted-foreground text-sm mb-4">
-                Multi-tenant PostgreSQL, horizontal scaling, K8s-native deployment.
+                PostgreSQL backend, horizontal replicas, K8s-native. Same binary, different config.
               </p>
               <pre className="bg-fd-muted/30 rounded-lg p-3 text-xs font-mono">
 {`# Kubernetes deployment
 apiVersion: apps/v1
 kind: Deployment
 spec:
-  replicas: 3  # Scale horizontally
+  replicas: 3
   template:
     spec:
       containers:
@@ -397,24 +455,24 @@ spec:
         <div className={cn(cardVariants())}>
           <ZapIcon className="size-8 mb-4" />
           <h3 className={cn(headingVariants({ variant: 'h3', className: 'mb-4' }))}>
-            Native ZAP Protocol
+            ZAP Protocol
           </h3>
           <p className="text-fd-muted-foreground mb-4">
-            Zero-copy binary protocol between Base instances and backend services.
-            10-100x faster than JSON serialization for inter-service communication.
+            Zero-copy binary protocol for inter-service communication between Base
+            instances. Uses Cap{"'"}n Proto RPC instead of JSON serialization.
           </p>
           <ul className="space-y-2 text-sm text-fd-muted-foreground">
             <li className="flex items-center gap-2">
               <ArrowRightIcon className="size-3" />
-              Cap'n Proto RPC for zero-copy message passing
+              Cap{"'"}n Proto RPC for zero-copy message passing
             </li>
             <li className="flex items-center gap-2">
               <ArrowRightIcon className="size-3" />
-              Native database, KV, and gateway transport
+              Database, KV, and gateway transport layers
             </li>
             <li className="flex items-center gap-2">
               <ArrowRightIcon className="size-3" />
-              Post-quantum security with ML-KEM/ML-DSA
+              ML-KEM / ML-DSA post-quantum TLS
             </li>
           </ul>
         </div>
@@ -426,13 +484,13 @@ spec:
             Admin Dashboard
           </h3>
           <p className="text-fd-muted-foreground mb-4">
-            Built-in admin UI at <code className="text-xs bg-fd-muted px-1 py-0.5 rounded">/_/</code> for managing
-            collections, records, users, and settings. No separate deployment needed.
+            Served at <code className="text-xs bg-fd-muted px-1 py-0.5 rounded">/_/</code>.
+            Embedded in the binary. No separate deployment.
           </p>
           <ul className="space-y-2 text-sm text-fd-muted-foreground">
             <li className="flex items-center gap-2">
               <ArrowRightIcon className="size-3" />
-              Visual collection schema editor
+              Visual schema editor for collections
             </li>
             <li className="flex items-center gap-2">
               <ArrowRightIcon className="size-3" />
@@ -440,15 +498,15 @@ spec:
             </li>
             <li className="flex items-center gap-2">
               <ArrowRightIcon className="size-3" />
-              User management and auth settings
+              User management and auth configuration
             </li>
             <li className="flex items-center gap-2">
               <ArrowRightIcon className="size-3" />
-              API rules and access control
+              API rules editor
             </li>
             <li className="flex items-center gap-2">
               <ArrowRightIcon className="size-3" />
-              Logs and system health monitoring
+              Request logs and system metrics
             </li>
           </ul>
         </div>
@@ -460,7 +518,7 @@ spec:
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <h4 className="font-medium mb-2">1. Download</h4>
+              <h4 className="font-medium mb-2">1. Install</h4>
               <pre className="bg-black/10 dark:bg-white/5 rounded-lg p-3 text-xs overflow-x-auto font-mono">
 {`# macOS
 brew install hanzoai/tap/base
@@ -473,7 +531,7 @@ docker pull ghcr.io/hanzoai/base`}
               </pre>
             </div>
             <div>
-              <h4 className="font-medium mb-2">2. Start</h4>
+              <h4 className="font-medium mb-2">2. Run</h4>
               <pre className="bg-black/10 dark:bg-white/5 rounded-lg p-3 text-xs overflow-x-auto font-mono">
 {`# Start with dev mode
 base serve --dev
@@ -483,11 +541,11 @@ base serve --dev
               </pre>
             </div>
             <div>
-              <h4 className="font-medium mb-2">3. Build</h4>
+              <h4 className="font-medium mb-2">3. Query</h4>
               <pre className="bg-black/10 dark:bg-white/5 rounded-lg p-3 text-xs overflow-x-auto font-mono">
-{`import Base from 'pocketbase'
+{`import { BaseClient } from '@hanzoai/base'
 
-const base = new Base(
+const base = new BaseClient(
   'http://localhost:8090'
 )
 
@@ -499,15 +557,91 @@ const records = await base
           </div>
         </div>
 
+        {/* Pricing */}
+        <div className="col-span-full" id="pricing">
+          <h2 className={cn(headingVariants({ variant: 'h2', className: 'mb-2' }))}>
+            Pricing
+          </h2>
+          <p className="text-fd-muted-foreground mb-8">
+            Each tier maps to a compute node. Pay for the resources you use.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {pricingTiers.map((tier) => (
+              <div
+                key={tier.name}
+                className={cn(
+                  'relative flex flex-col p-6 rounded-2xl border transition-colors',
+                  tier.highlight
+                    ? 'border-fd-foreground/40 bg-fd-card shadow-lg'
+                    : 'border-fd-border bg-fd-card',
+                )}
+              >
+                {tier.badge && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 text-xs font-medium bg-fd-foreground text-fd-background rounded-full">
+                    {tier.badge}
+                  </span>
+                )}
+                <h3 className="text-lg font-medium text-fd-foreground mb-1">{tier.name}</h3>
+                <div className="flex items-baseline gap-1 mb-2">
+                  <span className="text-3xl font-medium text-fd-foreground">{tier.price}</span>
+                  <span className="text-sm text-fd-muted-foreground">{tier.period}</span>
+                </div>
+                <p className="text-sm text-fd-muted-foreground mb-5">{tier.desc}</p>
+                <ul className="flex flex-col gap-2 mb-6 flex-1">
+                  {tier.features.map((feat) => (
+                    <li key={feat} className="flex items-start gap-2 text-sm text-fd-muted-foreground">
+                      <CheckIcon className="size-4 shrink-0 mt-0.5 text-fd-foreground" />
+                      {feat}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href={tier.ctaHref}
+                  className={cn(
+                    'inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full font-medium transition-colors text-center text-sm',
+                    tier.highlight
+                      ? 'bg-fd-foreground text-fd-background hover:bg-fd-foreground/90'
+                      : 'border border-fd-border text-fd-foreground hover:bg-fd-accent',
+                  )}
+                >
+                  {tier.cta}
+                  <ArrowRightIcon className="size-4" />
+                </Link>
+              </div>
+            ))}
+          </div>
+
+          {/* Enterprise */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-6 rounded-2xl border border-fd-border bg-fd-card">
+            <div>
+              <h3 className="text-lg font-medium text-fd-foreground mb-1">Enterprise</h3>
+              <p className="text-sm text-fd-muted-foreground max-w-lg">
+                Dedicated infrastructure, custom SLA, SSO/SAML, priority support,
+                and custom integrations. Runs on your cloud or ours.
+              </p>
+            </div>
+            <a
+              href="mailto:team@hanzo.ai"
+              className={cn(
+                buttonVariants({ variant: 'secondary' }),
+                'shrink-0 gap-2',
+              )}
+            >
+              <MessageCircleIcon className="size-4" />
+              Contact Sales
+            </a>
+          </div>
+        </div>
+
         {/* CTA */}
         <div className={cn(cardVariants(), 'col-span-full text-center py-12')}>
           <LockIcon className="size-8 mx-auto mb-4" />
           <h2 className={cn(headingVariants({ variant: 'h2', className: 'mb-4' }))}>
-            Ready to Build?
+            Start Building
           </h2>
           <p className="text-fd-muted-foreground mb-8 max-w-2xl mx-auto">
-            Start with a single binary locally and scale to millions of users in the cloud.
-            Open-source, battle-tested, and backed by Hanzo AI.
+            Install the binary, define your collections, and ship.
+            Open-source under MIT. Backed by Hanzo AI.
           </p>
           <div className="flex flex-row items-center justify-center gap-4">
             <Link href="/docs" className={cn(buttonVariants())}>
