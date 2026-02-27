@@ -67,3 +67,15 @@ jobs:
           docker build -t ghcr.io/hanzoai/docs:latest -t ghcr.io/hanzoai/docs:${{ github.sha }} .
           docker push ghcr.io/hanzoai/docs:latest
           docker push ghcr.io/hanzoai/docs:${{ github.sha }}
+
+      # Rollout new image to K8s
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Rollout K8s deployment
+        run: |
+          doctl kubernetes cluster kubeconfig save hanzo-k8s
+          kubectl rollout restart deploy/docs-landing -n hanzo
+          kubectl rollout status deploy/docs-landing -n hanzo --timeout=120s
