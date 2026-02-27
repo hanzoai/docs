@@ -7,6 +7,7 @@ import {
   Gauge, CloudLightning, Heart, Star, Users, Clock,
   Orbit, Infinity,
 } from 'lucide-react';
+import { allModels } from '@hanzo/zen-models';
 import DynamicPricing from './DynamicPricing';
 import ModelLibrary from './ModelLibrary';
 
@@ -36,7 +37,7 @@ export default function HomePage() {
           </p>
 
           <p className="text-base text-fd-muted-foreground max-w-2xl mx-auto mb-10">
-            49 models across 10 modalities. 15 production API models from 4B to 1T+ parameters.
+            {allModels.length} models across 10 modalities. Production API models from 4B to 1T+ parameters.
             Open weights on HuggingFace. OpenAI-compatible API. Built by{' '}
             <a href="https://hanzo.ai" className="text-fd-primary hover:underline">Hanzo AI</a> (Techstars &apos;17).
           </p>
@@ -77,9 +78,9 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-6 max-w-4xl mx-auto">
-            <Stat value="49" label="Models" />
+            <Stat value={`${allModels.length}`} label="Models" />
             <Stat value="1T+" label="Max Parameters" />
-            <Stat value="1M" label="Max Context" />
+            <Stat value="2M" label="Max Context" />
             <Stat value="10" label="Modalities" />
             <Stat value="$0.15" label="From $/MTok" />
           </div>
