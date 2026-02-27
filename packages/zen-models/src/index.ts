@@ -35,4 +35,12 @@ export {
   compute,
   gpu,
   thirdPartyModels,
+  fetchPricing,
+  fetchModelPricing,
+} from './pricing'
+
+export type {
+  PricingData,
+  PricingApiModel,
+  PricingApiThirdParty,
 } from './pricing'
