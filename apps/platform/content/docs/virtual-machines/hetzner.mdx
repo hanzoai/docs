@@ -1,0 +1,134 @@
+---
+title: Hetzner Cloud
+description: Launch and manage Hetzner Cloud servers with excellent price/performance.
+---
+
+Hetzner Cloud offers some of the best price-to-performance ratios in the industry, with data centers in Europe and the US. Ideal for production workloads where cost efficiency matters.
+
+## Prerequisites
+
+- A Hetzner Cloud account
+- An API token from a Hetzner Cloud project
+- Token added in **Settings > Cloud Providers > Hetzner**
+
+## Connecting Your Account
+
+<Steps>
+
+### Create an API Token
+
+In the Hetzner Cloud Console, go to your project, then **Security > API Tokens**. Create a token with **Read & Write** permissions.
+
+### Add to Hanzo Platform
+
+Navigate to **Settings > Cloud Providers > Hetzner** and paste the token.
+
+### Verify
+
+Available server types and locations will appear in the VM creation form.
+
+</Steps>
+
+## Server Types
+
+<Tabs items={["Shared vCPU (CX)", "Dedicated vCPU (CCX)", "ARM64 (CAX)"]}>
+
+<Tab value="Shared vCPU (CX)">
+
+| Type | vCPUs | Memory | Disk | Price |
+|------|-------|--------|------|-------|
+| cx22 | 2 | 4 GB | 40 GB | ~$4/mo |
+| cx32 | 4 | 8 GB | 80 GB | ~$7/mo |
+| cx42 | 8 | 16 GB | 160 GB | ~$14/mo |
+| cx52 | 16 | 32 GB | 320 GB | ~$29/mo |
+
+</Tab>
+
+<Tab value="Dedicated vCPU (CCX)">
+
+| Type | vCPUs | Memory | Disk | Price |
+|------|-------|--------|------|-------|
+| ccx13 | 2 | 8 GB | 80 GB | ~$13/mo |
+| ccx23 | 4 | 16 GB | 160 GB | ~$25/mo |
+| ccx33 | 8 | 32 GB | 240 GB | ~$50/mo |
+| ccx43 | 16 | 64 GB | 360 GB | ~$99/mo |
+| ccx53 | 32 | 128 GB | 600 GB | ~$197/mo |
+
+</Tab>
+
+<Tab value="ARM64 (CAX)">
+
+| Type | vCPUs | Memory | Disk | Price |
+|------|-------|--------|------|-------|
+| cax11 | 2 | 4 GB | 40 GB | ~$4/mo |
+| cax21 | 4 | 8 GB | 80 GB | ~$7/mo |
+| cax31 | 8 | 16 GB | 160 GB | ~$13/mo |
+| cax41 | 16 | 32 GB | 320 GB | ~$25/mo |
+
+<Callout type="info">
+ARM64 servers offer the best price/performance for compatible workloads. Most Linux software and container images support ARM64 natively.
+</Callout>
+
+</Tab>
+
+</Tabs>
+
+## Locations
+
+| Location | Code | Country |
+|----------|------|---------|
+| Falkenstein | `fsn1` | Germany |
+| Nuremberg | `nbg1` | Germany |
+| Helsinki | `hel1` | Finland |
+| Ashburn | `ash` | US |
+| Hillsboro | `hil` | US |
+
+## Firewalls
+
+Hetzner Cloud firewalls are stateful packet filters applied at the hypervisor level. Hanzo Platform creates a default firewall for each server:
+
+| Rule | Protocol | Port | Source | Direction |
+|------|----------|------|--------|-----------|
+| SSH | TCP | 22 | Your IP | Inbound |
+| HTTP | TCP | 80 | Any | Inbound |
+| HTTPS | TCP | 443 | Any | Inbound |
+| All | Any | All | Any | Outbound |
+
+Edit firewall rules from **VM Details > Firewall**.
+
+<Callout type="warn">
+Hetzner firewalls are applied before traffic reaches the server. Changes take effect immediately with no downtime.
+</Callout>
+
+## Price/Performance Comparison
+
+Hetzner consistently offers 2-3x the resources for the same price compared to major US cloud providers:
+
+| Spec | Hetzner (cx32) | AWS (t3.medium) | DO (s-2vcpu-4gb) |
+|------|----------------|-----------------|-------------------|
+| vCPUs | 4 | 2 | 2 |
+| Memory | 8 GB | 4 GB | 4 GB |
+| Disk | 80 GB NVMe | 8 GB EBS | 80 GB SSD |
+| Price | ~$7/mo | ~$30/mo | $24/mo |
+
+## Launching a Server
+
+<Steps>
+
+### Select Provider
+
+Go to **Virtual Machines > New** and choose **Hetzner**.
+
+### Configure
+
+Select a location, server type, and OS image. Choose an SSH key and optionally configure a private network.
+
+### Create
+
+Click **Create**. Hetzner servers typically provision in under 20 seconds.
+
+### Connect
+
+Use the browser terminal or SSH with the public IPv4/IPv6 address.
+
+</Steps>

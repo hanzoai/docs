@@ -1,0 +1,152 @@
+---
+title: DigitalOcean
+description: Launch and manage DigitalOcean Droplets from the Hanzo Platform dashboard.
+---
+
+DigitalOcean offers straightforward pricing and fast provisioning, making it ideal for development environments, staging servers, and small-to-medium production workloads.
+
+## Prerequisites
+
+- A DigitalOcean account
+- A personal access token with read/write scope
+- Token added in **Settings > Cloud Providers > DigitalOcean**
+
+## Connecting Your Account
+
+<Steps>
+
+### Generate an API Token
+
+In the DigitalOcean console, go to **API > Tokens** and create a new personal access token with **read** and **write** scopes.
+
+### Add to Hanzo Platform
+
+Navigate to **Settings > Cloud Providers > DigitalOcean** and paste your token. Click **Save**.
+
+### Verify
+
+The dashboard will display your available Droplet sizes and regions.
+
+</Steps>
+
+## Droplet Sizes
+
+<Tabs items={["Basic", "General Purpose", "CPU-Optimized", "Memory-Optimized"]}>
+
+<Tab value="Basic">
+
+| Size | vCPUs | Memory | Disk | Price |
+|------|-------|--------|------|-------|
+| s-1vcpu-1gb | 1 | 1 GB | 25 GB | $6/mo |
+| s-1vcpu-2gb | 1 | 2 GB | 50 GB | $12/mo |
+| s-2vcpu-2gb | 2 | 2 GB | 60 GB | $18/mo |
+| s-2vcpu-4gb | 2 | 4 GB | 80 GB | $24/mo |
+| s-4vcpu-8gb | 4 | 8 GB | 160 GB | $48/mo |
+
+</Tab>
+
+<Tab value="General Purpose">
+
+| Size | vCPUs | Memory | Disk | Price |
+|------|-------|--------|------|-------|
+| g-2vcpu-8gb | 2 | 8 GB | 25 GB | $63/mo |
+| g-4vcpu-16gb | 4 | 16 GB | 50 GB | $126/mo |
+| g-8vcpu-32gb | 8 | 32 GB | 100 GB | $252/mo |
+
+</Tab>
+
+<Tab value="CPU-Optimized">
+
+| Size | vCPUs | Memory | Disk | Price |
+|------|-------|--------|------|-------|
+| c-2vcpu-4gb | 2 | 4 GB | 25 GB | $42/mo |
+| c-4vcpu-8gb | 4 | 8 GB | 50 GB | $84/mo |
+| c-8vcpu-16gb | 8 | 16 GB | 100 GB | $168/mo |
+
+</Tab>
+
+<Tab value="Memory-Optimized">
+
+| Size | vCPUs | Memory | Disk | Price |
+|------|-------|--------|------|-------|
+| m-2vcpu-16gb | 2 | 16 GB | 50 GB | $84/mo |
+| m-4vcpu-32gb | 4 | 32 GB | 100 GB | $168/mo |
+| m-8vcpu-64gb | 8 | 64 GB | 200 GB | $336/mo |
+
+</Tab>
+
+</Tabs>
+
+## Regions
+
+| Region | Slug | Location |
+|--------|------|----------|
+| New York 1 | `nyc1` | New York, US |
+| New York 3 | `nyc3` | New York, US |
+| San Francisco 3 | `sfo3` | San Francisco, US |
+| Amsterdam 3 | `ams3` | Amsterdam, NL |
+| Singapore 1 | `sgp1` | Singapore |
+| London 1 | `lon1` | London, UK |
+| Frankfurt 1 | `fra1` | Frankfurt, DE |
+| Toronto 1 | `tor1` | Toronto, CA |
+| Bangalore 1 | `blr1` | Bangalore, IN |
+| Sydney 1 | `syd1` | Sydney, AU |
+
+## VPC Networking
+
+Every Droplet is placed in a VPC. By default, Hanzo Platform uses the region's default VPC. You can specify a custom VPC when creating a Droplet.
+
+- **Private networking** is enabled automatically within a VPC
+- Droplets in the same VPC communicate over the `10.x.x.x` private network
+- No bandwidth charges for private traffic
+
+```bash
+# Verify private networking from inside a Droplet
+ip addr show eth1
+```
+
+## Floating IPs
+
+Floating IPs are static public addresses you can reassign between Droplets in the same region. Useful for failover and blue/green deployments.
+
+<Steps>
+
+### Reserve a Floating IP
+
+Go to **Virtual Machines > Floating IPs > Reserve**. Select the target region.
+
+### Assign to a Droplet
+
+Select the Droplet to receive the floating IP. Traffic to the floating IP routes to that Droplet immediately.
+
+### Reassign
+
+To move the IP, select a different Droplet in the same region. The switch takes effect in seconds.
+
+</Steps>
+
+<Callout type="info">
+Floating IPs are free when assigned to a Droplet. Unassigned floating IPs cost $5/month.
+</Callout>
+
+## Launching a Droplet
+
+<Steps>
+
+### Select Provider
+
+Go to **Virtual Machines > New** and choose **DigitalOcean**.
+
+### Configure
+
+Pick a region, Droplet size, OS image, and SSH key. Optionally select a VPC and enable backups.
+
+### Create
+
+Click **Create**. The Droplet is typically ready in 30 seconds.
+
+### Connect
+
+Use the browser terminal or SSH directly with the assigned IP.
+
+</Steps>
