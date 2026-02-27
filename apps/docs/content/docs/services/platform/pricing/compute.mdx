@@ -1,0 +1,94 @@
+---
+title: Compute
+description: CPU and GPU compute pricing including NVIDIA T4, A100, and H100 instances
+---
+
+Hanzo Platform provides both CPU and GPU compute. CPU instances are available on-demand. GPU instances are available in select regions.
+
+## CPU Compute
+
+Standard CPU compute is covered by the [Cloud VM plans](/docs/services/platform/pricing/plans). All CPU instances run on AMD EPYC or Intel Xeon processors.
+
+| Tier | vCPU Type | Use Case |
+|------|-----------|----------|
+| Shared | Time-sliced vCPU | General workloads, web apps, APIs |
+| Dedicated | Reserved physical cores | Databases, latency-sensitive services |
+
+Shared instances are available on all plans (Nano through Power). Dedicated cores are available on the **Power Dedicated** plan ($160/mo).
+
+## GPU Instances
+
+GPU instances are designed for machine learning inference, training, and GPU-accelerated workloads.
+
+| GPU | VRAM | vCPU | RAM | Storage | Price |
+|-----|------|------|-----|---------|-------|
+| **NVIDIA T4** | 16 GB | 4 | 16 GB | 200 GB NVMe | $0.50/hr |
+| **NVIDIA A100 40GB** | 40 GB | 12 | 85 GB | 500 GB NVMe | $2.50/hr |
+| **NVIDIA A100 80GB** | 80 GB | 12 | 170 GB | 1 TB NVMe | $3.80/hr |
+| **NVIDIA H100** | 80 GB | 16 | 200 GB | 2 TB NVMe | $5.50/hr |
+
+### NVIDIA T4
+
+Entry-level GPU suitable for inference workloads and light fine-tuning. Good price-to-performance for serving models up to 7B parameters.
+
+- FP16 performance: 65 TFLOPS
+- INT8 performance: 130 TOPS
+- Best for: Model inference, video encoding, small-scale training
+
+### NVIDIA A100
+
+The workhorse for ML training and inference. Available in 40 GB and 80 GB VRAM configurations. Supports multi-instance GPU (MIG) for running multiple models on one card.
+
+- FP16 performance: 312 TFLOPS
+- TF32 performance: 156 TFLOPS
+- Best for: Training up to 70B parameter models, high-throughput inference
+
+### NVIDIA H100
+
+The latest generation GPU for frontier model training and large-scale inference. Transformer Engine with FP8 support.
+
+- FP16 performance: 989 TFLOPS
+- FP8 performance: 1,979 TFLOPS
+- Best for: Training 70B+ models, multi-GPU distributed training, lowest latency inference
+
+<Callout type="info">
+GPU instances are available in US-East, US-West, and EU-West regions. Availability varies by GPU type. Contact us for reserved capacity.
+</Callout>
+
+## Multi-GPU
+
+For distributed training, provision multiple GPU instances and connect them via high-bandwidth networking:
+
+```bash
+# Launch a 4x A100 training cluster
+hanzo vm launch \
+  --plan gpu-a100-80 \
+  --count 4 \
+  --region us-east \
+  --name training-cluster
+```
+
+Multi-GPU instances within the same region communicate over 100 Gbps InfiniBand (where available) or 25 Gbps Ethernet.
+
+## Reserved Instances
+
+For sustained GPU workloads, reserved instances offer significant savings:
+
+| Commitment | Discount |
+|-----------|----------|
+| 1 month | 10% off |
+| 3 months | 20% off |
+| 12 months | 40% off |
+
+Contact [sales@hanzo.ai](mailto:sales@hanzo.ai) for reserved pricing.
+
+## Regions
+
+| Region | CPU | T4 | A100 | H100 |
+|--------|-----|-----|------|------|
+| US-East (NYC) | Yes | Yes | Yes | Yes |
+| US-West (SFO) | Yes | Yes | Yes | Limited |
+| EU-West (AMS) | Yes | Yes | Yes | -- |
+| AP-South (SGP) | Yes | Yes | -- | -- |
+
+GPU availability is subject to capacity. Use `hanzo vm plans --gpu` to check real-time availability.

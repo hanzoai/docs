@@ -1,0 +1,160 @@
+---
+title: Authentication
+description: OAuth2 via Hanzo ID, API tokens, and bearer authentication
+---
+
+All API requests to Hanzo Platform require authentication. The platform supports OAuth2 via Hanzo ID and long-lived API tokens.
+
+## Authentication Methods
+
+| Method | Lifetime | Use Case |
+|--------|----------|----------|
+| **OAuth2 Access Token** | 1 hour | Dashboard sessions, user-facing apps |
+| **API Token** | Until revoked | CI/CD, scripts, server-to-server |
+
+Both methods use the same `Authorization: Bearer <token>` header.
+
+## OAuth2 via Hanzo ID
+
+Hanzo Platform uses [Hanzo ID](https://hanzo.id) as its identity provider. The OAuth2 Authorization Code flow is used for user authentication.
+
+### Authorization Code Flow
+
+<Steps>
+
+### Redirect to Hanzo ID
+
+```
+https://hanzo.id/login/oauth/authorize?
+  client_id=YOUR_CLIENT_ID&
+  redirect_uri=https://yourapp.com/callback&
+  response_type=code&
+  scope=openid profile email&
+  state=RANDOM_STATE
+```
+
+### User authenticates
+
+The user logs in at Hanzo ID and approves access.
+
+### Handle the callback
+
+Hanzo ID redirects to your `redirect_uri` with an authorization code:
+
+```
+https://yourapp.com/callback?code=AUTH_CODE&state=RANDOM_STATE
+```
+
+### Exchange code for tokens
+
+```bash
+curl -X POST https://hanzo.id/api/login/oauth/access_token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": "YOUR_CLIENT_ID",
+    "client_secret": "YOUR_CLIENT_SECRET",
+    "code": "AUTH_CODE",
+    "redirect_uri": "https://yourapp.com/callback",
+    "grant_type": "authorization_code"
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIs...",
+  "refresh_token": "eyJhbGciOiJSUzI1NiIs...",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}
+```
+
+</Steps>
+
+### Refreshing Tokens
+
+Access tokens expire after 1 hour. Use the refresh token to obtain a new access token:
+
+```bash
+curl -X POST https://hanzo.id/api/login/oauth/access_token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": "YOUR_CLIENT_ID",
+    "client_secret": "YOUR_CLIENT_SECRET",
+    "refresh_token": "YOUR_REFRESH_TOKEN",
+    "grant_type": "refresh_token"
+  }'
+```
+
+## API Tokens
+
+API tokens are long-lived credentials for programmatic access. They do not expire unless revoked.
+
+### Creating a Token
+
+<Tabs items={["Dashboard", "CLI"]}>
+  <Tab value="Dashboard">
+    Go to **Settings > API Tokens > Create Token**. Name the token and select its scope. The token is shown once -- copy it immediately.
+  </Tab>
+  <Tab value="CLI">
+    ```bash
+    hanzo token create --name "CI Pipeline" --scope "deploy:*"
+    # Output: tk_abc123def456...
+    ```
+  </Tab>
+</Tabs>
+
+<Callout type="warn">
+API tokens are shown only once at creation time. Store them securely. If lost, revoke the old token and create a new one.
+</Callout>
+
+### Using a Token
+
+```bash
+curl https://app.platform.hanzo.ai/api/cluster.all \
+  -H "Authorization: Bearer tk_abc123def456"
+```
+
+### Revoking a Token
+
+```bash
+# Via CLI
+hanzo token revoke tk_abc123def456
+
+# Via API
+curl -X POST https://app.platform.hanzo.ai/api/user.revokeToken \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "tokenId": "tk_abc123def456" }'
+```
+
+## Token Scopes
+
+Tokens can be scoped to limit access:
+
+| Scope | Access |
+|-------|--------|
+| `*` | Full access (default) |
+| `read:*` | Read-only across all resources |
+| `deploy:*` | Deploy to any cluster |
+| `deploy:cluster_abc` | Deploy to a specific cluster |
+| `admin:*` | Administrative operations |
+
+## Request Examples
+
+```bash
+# List organizations
+curl https://app.platform.hanzo.ai/api/organization.all \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Create a container
+curl -X POST https://app.platform.hanzo.ai/api/container.create \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "web",
+    "image": "ghcr.io/myorg/myapp:latest",
+    "clusterId": "cluster_abc123"
+  }'
+```
