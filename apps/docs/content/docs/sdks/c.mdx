@@ -44,7 +44,7 @@ int main() {
     hanzo::Client client("your-api-key");
 
     auto response = client.chat().completions().create({
-        .model = "gpt-4o",
+        .model = "gpt-5",
         .messages = {
             {"user", "Hello, world!"}
         }
@@ -69,7 +69,7 @@ int main() {
     };
 
     hanzo_request_t req = {
-        .model = "gpt-4o",
+        .model = "gpt-5",
         .messages = messages,
         .num_messages = 1
     };
@@ -96,7 +96,7 @@ int main() {
     hanzo::Client client("your-api-key");
 
     client.chat().completions().stream({
-        .model = "claude-sonnet-4-5-20250929",
+        .model = "claude-sonnet-4-6",
         .messages = {{"user", "Write a haiku about AI"}}
     }, [](const hanzo::StreamChunk& chunk) {
         if (!chunk.content.empty()) {
@@ -127,7 +127,7 @@ int main() {
     };
 
     hanzo_stream_request_t req = {
-        .model = "claude-sonnet-4-5-20250929",
+        .model = "claude-sonnet-4-6",
         .messages = messages,
         .num_messages = 1,
         .callback = on_chunk,
@@ -166,7 +166,7 @@ int main() {
     };
 
     auto response = client.chat().completions().create({
-        .model = "gpt-4o",
+        .model = "gpt-5",
         .messages = {{"user", "What's the weather in Tokyo?"}},
         .tools = {weather_tool}
     });
@@ -222,7 +222,7 @@ std::vector<std::thread> threads;
 for (int i = 0; i < 10; i++) {
     threads.emplace_back([&client, i]() {
         auto resp = client->chat().completions().create({
-            .model = "gpt-4o",
+            .model = "gpt-5",
             .messages = {{"user", "Thread " + std::to_string(i)}}
         });
         std::cout << resp.choices[0].message.content << std::endl;
