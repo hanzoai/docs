@@ -6,6 +6,8 @@ import {
   TerminalIcon, PuzzleIcon, MonitorIcon, ShieldIcon,
   DownloadIcon, LogInIcon, UsersIcon, BookOpenIcon,
   CheckIcon, ArrowRightIcon, SparklesIcon,
+  WalletIcon, StoreIcon, CpuIcon, LockKeyholeIcon,
+  CoinsIcon, BotIcon, ZapIcon, NetworkIcon,
 } from 'lucide-react';
 import testimonials from '@/data/testimonials.json';
 import { TestimonialCarousel } from './_components/testimonial-carousel';
@@ -55,7 +57,7 @@ const pricingTiers = [
       'All chat integrations',
       'Full system access',
       'Community skills & plugins',
-      'Open source',
+      'Browse marketplace listings',
     ],
   },
   {
@@ -70,10 +72,10 @@ const pricingTiers = [
     features: [
       'Full Linux desktop VM',
       '100+ AI models included',
-      'Always-on, no hardware needed',
-      'All chat integrations',
+      'Bot wallet with AI coin funding',
+      'Marketplace buying & selling',
+      'Auto-purchase compute rules',
       'Persistent memory & files',
-      'Auto-updates & backups',
     ],
   },
   {
@@ -85,10 +87,10 @@ const pricingTiers = [
     ctaHref: 'https://app.hanzo.bot/auth/signup?plan=cloud-pro',
     features: [
       'macOS or Windows desktop VM',
-      'Run native desktop apps',
+      'Confidential computing (TEE)',
       'Priority model access',
-      'Advanced browser automation',
-      'Team collaboration tools',
+      'On-chain settlement & earnings',
+      'Custom agent marketplace listings',
       'Priority support',
     ],
   },
@@ -118,8 +120,9 @@ export default function Page() {
 
         <p className="text-base sm:text-lg text-fd-muted-foreground max-w-[680px] mx-auto leading-relaxed animate-[fadeInUp_0.8s_ease-out_0.3s_both]">
           Stop hiring for every role. Hanzo Bot is a full-blown computer-using AI agent that runs locally
-          on your Mac or deploys to Hanzo Cloud. It codes, reviews, designs, tests, writes docs,
-          manages releases, and talks to your team on every chat platform.
+          on your Mac or deploys to Hanzo Cloud. Fund bots with real money, let them autonomously buy
+          compute on the AI Capacity Marketplace, and settle on-chain. One platform for AI teams that
+          code, design, test, ship, and earn.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8 animate-[fadeInUp_0.8s_ease-out_0.45s_both]">
@@ -149,9 +152,9 @@ export default function Page() {
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { emoji: '💸', title: 'Save $200K+/yr', desc: 'One bot replaces the cost of multiple specialized hires. It never sleeps, never takes PTO.' },
-            { emoji: '⚡', title: 'Ship 10x Faster', desc: 'Instant code reviews, automated testing, docs written as you code. No more waiting on teammates.' },
-            { emoji: '🔒', title: 'Private by Default', desc: 'Your data stays on your machine. No training on your code. Full control, always.' },
+            { emoji: '💸', title: 'Save $200K+/yr', desc: 'One bot replaces the cost of multiple specialized hires. Fund it once, let it buy its own compute.' },
+            { emoji: '⚡', title: 'Ship 10x Faster', desc: 'Instant code reviews, automated testing, docs written as you code. Bots auto-purchase capacity as they need it.' },
+            { emoji: '🔒', title: 'Private by Default', desc: 'Confidential computing with hardware-level isolation. Your data stays encrypted, even from the host.' },
           ].map((item) => (
             <div key={item.title} className="flex flex-col items-center text-center gap-3 p-5 rounded-2xl border border-fd-border bg-[rgba(10,15,26,0.6)] backdrop-blur-sm transition-all hover:-translate-y-1 hover:border-brand">
               <span className="text-3xl">{item.emoji}</span>
@@ -219,6 +222,77 @@ export default function Page() {
 
       {/* Integrations */}
       <IntegrationPills />
+
+      {/* Marketplace & Economy */}
+      <section className="mb-14" id="marketplace">
+        <h2 className="text-xl font-semibold flex items-center gap-2.5 mb-2">
+          <span className="text-brand font-bold">&#x27E9;</span> AI Capacity Marketplace
+        </h2>
+        <p className="text-sm text-fd-muted-foreground mb-6">
+          Buy and sell AI compute. Fund your bots. Let them purchase autonomously.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[
+            {
+              icon: StoreIcon,
+              title: 'Buy & Sell Compute',
+              desc: 'A real marketplace for AI capacity — Claude Code sessions, GPU hours, custom agents, API keys. List your spare capacity or buy what you need.',
+              tag: 'Marketplace',
+            },
+            {
+              icon: WalletIcon,
+              title: 'Bot Wallets',
+              desc: 'Each bot gets a real on-chain wallet. Fund it with AI coin or USD. Bots spend from their own balance to purchase compute autonomously.',
+              tag: 'On-Chain',
+            },
+            {
+              icon: ZapIcon,
+              title: 'Auto-Purchase Rules',
+              desc: 'Set rules for what your bot can buy — capacity type, max price, preferred model. When balance dips, bots buy more compute automatically.',
+              tag: 'Autonomous',
+            },
+            {
+              icon: LockKeyholeIcon,
+              title: 'Confidential Computing',
+              desc: 'NVIDIA Blackwell TEE for hardware-encrypted execution. Attestation verification, encrypted memory, zero-trust compute on the marketplace.',
+              tag: 'TEE',
+            },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <div
+                key={item.title}
+                className="flex flex-col gap-3 p-5 rounded-2xl border border-fd-border bg-[rgba(10,15,26,0.6)] backdrop-blur-sm transition-all hover:-translate-y-1 hover:border-[#00e5cc] hover:shadow-[0_12px_40px_rgba(0,229,204,0.15)]"
+              >
+                <div className="flex items-center gap-3">
+                  <Icon className="w-6 h-6 text-[#00e5cc]" />
+                  <h3 className="text-sm font-bold text-fd-foreground">{item.title}</h3>
+                  <span className="ml-auto px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#00e5cc] border border-[rgba(0,229,204,0.3)] rounded-full">
+                    {item.tag}
+                  </span>
+                </div>
+                <p className="text-xs text-fd-muted-foreground leading-relaxed">{item.desc}</p>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-5 grid grid-cols-3 gap-3">
+          {[
+            { icon: BotIcon, label: 'Custom Agents', desc: 'DID-backed trained agents for rent' },
+            { icon: CoinsIcon, label: 'AI Coin Settlement', desc: 'On-chain payments & earnings' },
+            { icon: NetworkIcon, label: 'Decentralized', desc: 'Anyone can list & sell capacity' },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.label} className="flex flex-col items-center text-center gap-2 p-4 rounded-xl border border-fd-border bg-[rgba(10,15,26,0.6)] backdrop-blur-sm transition-all hover:border-[#00e5cc]">
+                <Icon className="w-5 h-5 text-[#00e5cc]" />
+                <span className="text-xs font-semibold text-fd-foreground">{item.label}</span>
+                <span className="text-[10px] text-fd-muted-foreground">{item.desc}</span>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       {/* Pricing */}
       <section className="mb-14" id="pricing">
@@ -300,6 +374,26 @@ export default function Page() {
           </div>
           <div className="flex flex-col items-center gap-4 p-6 rounded-2xl border border-fd-border bg-[rgba(10,15,26,0.7)] backdrop-blur-sm text-center transition-all hover:-translate-y-1 hover:border-brand hover:shadow-[0_12px_40px_rgba(255,77,77,0.15)]">
             <div className="flex items-center gap-2.5">
+              <WalletIcon className="w-7 h-7 text-fd-muted-foreground" />
+              <span className="text-lg font-semibold text-fd-muted-foreground">Real Bot Wallets</span>
+            </div>
+            <blockquote className="text-sm font-medium leading-relaxed italic">
+              Fund your bots with AI coin or USD. They hold real balances, buy their own compute, and settle on-chain. Autonomous economic agents.
+            </blockquote>
+            <span className="text-sm text-[#00e5cc] font-medium">On-Chain Settlement</span>
+          </div>
+          <div className="flex flex-col items-center gap-4 p-6 rounded-2xl border border-fd-border bg-[rgba(10,15,26,0.7)] backdrop-blur-sm text-center transition-all hover:-translate-y-1 hover:border-brand hover:shadow-[0_12px_40px_rgba(255,77,77,0.15)]">
+            <div className="flex items-center gap-2.5">
+              <LockKeyholeIcon className="w-7 h-7 text-fd-muted-foreground" />
+              <span className="text-lg font-semibold text-fd-muted-foreground">Confidential Compute</span>
+            </div>
+            <blockquote className="text-sm font-medium leading-relaxed italic">
+              NVIDIA Blackwell TEE hardware enclaves. Your code and data stay encrypted in memory. Attestation-verified, zero-trust execution.
+            </blockquote>
+            <span className="text-sm text-[#00e5cc] font-medium">Hardware-Level Security</span>
+          </div>
+          <div className="flex flex-col items-center gap-4 p-6 rounded-2xl border border-fd-border bg-[rgba(10,15,26,0.7)] backdrop-blur-sm text-center transition-all hover:-translate-y-1 hover:border-brand hover:shadow-[0_12px_40px_rgba(255,77,77,0.15)]">
+            <div className="flex items-center gap-2.5">
               <ShieldIcon className="w-7 h-7 text-fd-muted-foreground" />
               <span className="text-lg font-semibold text-fd-muted-foreground">Secure by Default</span>
             </div>
@@ -319,9 +413,9 @@ export default function Page() {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
             { name: 'LLM Gateway', desc: '200+ AI models, one API', href: 'https://docs.hanzo.ai/docs/llm' },
+            { name: 'Marketplace', desc: 'Buy & sell AI capacity', href: 'https://app.hanzo.bot' },
             { name: 'MCP', desc: '260+ tools for agents', href: 'https://docs.hanzo.ai/docs/mcp' },
-            { name: 'Dev', desc: 'AI-native dev tools', href: 'https://docs.hanzo.ai/docs/dev' },
-            { name: 'Search', desc: 'AI-powered search', href: 'https://docs.hanzo.ai/docs/search' },
+            { name: 'Commerce', desc: 'Billing & on-chain settlement', href: 'https://docs.hanzo.ai/docs/commerce' },
             { name: 'Operative', desc: 'Computer use for AI', href: 'https://docs.hanzo.ai/docs/operative' },
             { name: 'Platform', desc: 'Deploy anywhere', href: 'https://docs.hanzo.ai/docs/platform' },
           ].map((product) => (
@@ -350,7 +444,7 @@ export default function Page() {
           <SparklesIcon className="w-5 h-5" />
           Deploy Your AI Team
         </a>
-        <p className="mt-3 text-sm text-fd-muted-foreground">Free locally. $5/mo in the cloud. Cancel anytime.</p>
+        <p className="mt-3 text-sm text-fd-muted-foreground">Free locally. $5/mo in the cloud. Fund your bots. Let them earn.</p>
       </div>
 
       {/* CTA Grid */}
