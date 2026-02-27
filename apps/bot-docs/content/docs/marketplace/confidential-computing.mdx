@@ -1,0 +1,87 @@
+---
+title: "Confidential Computing"
+description: "Hardware-encrypted AI execution with NVIDIA Blackwell TEE attestation"
+---
+
+Last updated: 2026-02-27
+
+## Overview
+
+Confidential computing on Hanzo uses NVIDIA Blackwell Trusted Execution Environments (TEE) to ensure that AI workloads run in hardware-encrypted enclaves. Code, data, and model weights stay encrypted in memory — even the host operator cannot read them.
+
+## Why Confidential Computing
+
+| Concern | How TEE Solves It |
+|---------|-------------------|
+| **Data privacy** | Input data encrypted in memory, never readable by host |
+| **Model protection** | Model weights stay encrypted, preventing extraction |
+| **Code integrity** | Enclave code hash verified via attestation |
+| **Regulatory compliance** | Meets HIPAA, GDPR, SOC2 requirements for data isolation |
+| **Zero-trust execution** | No trust required in the infrastructure operator |
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────┐
+│              NVIDIA Blackwell GPU              │
+│  ┌────────────────────────────────────────┐  │
+│  │        Trusted Execution Environment    │  │
+│  │  ┌──────────┐  ┌───────────────────┐  │  │
+│  │  │ Encrypted │  │  Encrypted Model  │  │  │
+│  │  │   Data    │  │    Weights        │  │  │
+│  │  └──────────┘  └───────────────────┘  │  │
+│  │  ┌──────────────────────────────────┐  │  │
+│  │  │    Verified Enclave Code         │  │  │
+│  │  │    (hash: 0xabc…def)             │  │  │
+│  │  └──────────────────────────────────┘  │  │
+│  └────────────────────────────────────────┘  │
+│  Attestation ────▶ Buyer Verification         │
+└──────────────────────────────────────────────┘
+```
+
+## Attestation Verification
+
+Before purchasing confidential compute capacity, buyers can verify the TEE attestation:
+
+1. **Request attestation** from the listing's `attestationUrl`
+2. **Verify the signature** against NVIDIA's root of trust
+3. **Compare enclave hash** with the expected code hash
+4. **Check memory encryption** is enabled
+5. **Purchase** with confidence that execution is private
+
+## Marketplace Integration
+
+Confidential compute listings on the marketplace include:
+
+| Field | Description |
+|-------|-------------|
+| `confidentialCompute.enabled` | Whether this listing uses TEE |
+| `confidentialCompute.teeType` | Hardware type (e.g., `nvidia-blackwell`) |
+| `confidentialCompute.attestationUrl` | Endpoint for attestation verification |
+| `confidentialCompute.enclaveHash` | SHA-256 hash of the enclave code |
+| `confidentialCompute.encryptedMemory` | Whether memory encryption is active |
+
+## Use Cases
+
+### Private AI Inference
+Run AI models on sensitive data (medical records, financial data, legal documents) without exposing data to the compute provider.
+
+### Secure Agent Execution
+Custom agents handling proprietary code or trade secrets run in isolated enclaves, ensuring IP protection even on shared infrastructure.
+
+### Compliance Workloads
+Meet regulatory requirements (HIPAA, GDPR, SOC2) by proving that data processing happens in hardware-isolated environments with cryptographic attestation.
+
+### Multi-Party Computation
+Multiple parties contribute data to an AI model running in TEE — no party can see another's data, only the aggregated output.
+
+## Pricing
+
+Confidential compute carries a premium over standard GPU compute due to TEE hardware requirements. Typical pricing:
+
+| Type | Approximate Price |
+|------|-------------------|
+| Standard GPU (H100) | $2.50/hr |
+| Confidential GPU (B200 TEE) | $4.00/hr |
+
+Exact pricing is set by marketplace sellers and varies by availability and demand.

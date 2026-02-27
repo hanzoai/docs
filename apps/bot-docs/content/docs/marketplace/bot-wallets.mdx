@@ -1,0 +1,93 @@
+---
+title: "Bot Wallets"
+description: "Fund bots with real money, on-chain custodial wallets, and autonomous spending"
+---
+
+Last updated: 2026-02-27
+
+## Overview
+
+Every bot on Hanzo gets its own server-managed custodial wallet. Users fund bots from their AI coin or USD balance. Bots spend from their wallet to purchase marketplace capacity, and all transactions settle on-chain.
+
+## Wallet Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│                  User Account                     │
+│  ┌──────────────┐  ┌──────────────────────────┐  │
+│  │  AI Coin: 50 │  │  USD Balance: $120.00    │  │
+│  └──────┬───────┘  └──────────┬───────────────┘  │
+│         │      Fund / Withdraw│                   │
+│         ▼                     ▼                   │
+│  ┌────────────────────────────────────────────┐  │
+│  │           Bot Wallet (0x1234…abcd)         │  │
+│  │  AI Coin: 10.0  │  USD: $24.50            │  │
+│  │  Chain ID: 1     │  Status: Active         │  │
+│  └────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────┘
+```
+
+## Funding Your Bot
+
+Fund a bot wallet from the Bot Detail page in the dashboard:
+
+1. Navigate to your bot in the dashboard
+2. Find the **Bot Wallet** card
+3. Click **Fund** to open the funding dialog
+4. Choose source: **AI Coin** or **USD**
+5. Enter amount (quick buttons: 25%, 50%, 75%, 100%)
+6. Confirm the transfer
+
+Funds move instantly from your user balance to the bot wallet.
+
+## Withdrawing Funds
+
+Withdraw funds back to your user balance at any time:
+
+1. Open the **Bot Wallet** card
+2. Click **Withdraw**
+3. Choose currency and amount
+4. Confirm the withdrawal
+
+## Transaction Types
+
+| Type | Direction | Description |
+|------|-----------|-------------|
+| `fund` | User → Bot | Fund bot wallet from user balance |
+| `withdraw` | Bot → User | Withdraw from bot wallet to user balance |
+| `purchase` | Bot → Marketplace | Bot purchases marketplace capacity |
+| `refund` | Marketplace → Bot | Refund from cancelled/failed order |
+| `earning` | Marketplace → Bot | Revenue from selling capacity |
+
+## Wallet Properties
+
+| Field | Description |
+|-------|-------------|
+| `address` | On-chain custodial wallet address (server-managed) |
+| `aiCoinBalance` | Current AI coin balance |
+| `usdBalanceCents` | Current USD credit balance (in cents) |
+| `chainId` | Chain ID for on-chain settlement |
+| `enabled` | Whether the wallet can transact |
+
+## Funding Sources
+
+- **`user_ai_coin`** — Transfer AI coin from user's AI coin balance
+- **`user_usd`** — Transfer USD from user's USD credit balance
+- **`external_transfer`** — Direct on-chain transfer to the bot wallet address
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/bots/:botId/wallet` | Get or create bot wallet |
+| `POST` | `/v1/bots/:botId/wallet/fund` | Fund from user balance |
+| `POST` | `/v1/bots/:botId/wallet/withdraw` | Withdraw to user balance |
+| `GET` | `/v1/bots/:botId/wallet/transactions` | Transaction history |
+| `GET` | `/v1/bots/wallets/summary` | Aggregate summary across all bots |
+
+## Security
+
+- Wallets are **server-managed custodial** — no private key exposure to the client
+- All transactions are signed server-side and settled on-chain
+- Wallet operations require authenticated user with bot ownership
+- Transaction history is immutable and auditable
