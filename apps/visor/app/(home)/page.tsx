@@ -89,9 +89,6 @@ const pricingTiers = [
 export default function Page() {
   return (
     <main className="relative z-[1] max-w-[860px] mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-10 overflow-hidden">
-      <div className="stars" />
-      <div className="nebula" />
-
       {/* Hero */}
       <header className="text-center mb-16 animate-[fadeInUp_0.8s_ease-out]">
         <div className="flex items-center justify-center mb-6">
