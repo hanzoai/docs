@@ -1,0 +1,277 @@
+---
+title: Virtual Machines API
+description: Launch, manage, and destroy Visor VMs via the API
+---
+
+The Virtual Machines API manages Visor VMs -- full Linux virtual machines with root access, persistent storage, and SSH connectivity.
+
+## Endpoints
+
+| Procedure | Method | Description |
+|-----------|--------|-------------|
+| `vm.all` | GET | List all VMs |
+| `vm.one` | GET | Get VM details |
+| `vm.launch` | POST | Launch a new VM |
+| `vm.start` | POST | Start a stopped VM |
+| `vm.stop` | POST | Stop a running VM |
+| `vm.restart` | POST | Restart a VM |
+| `vm.destroy` | DELETE | Permanently destroy a VM |
+| `vm.volumes` | GET | List attached volumes |
+| `vm.attachVolume` | POST | Attach a storage volume |
+| `vm.detachVolume` | POST | Detach a storage volume |
+| `vm.terminal` | GET | Open a web terminal session |
+
+## List VMs
+
+`GET /api/vm.all?organizationId=org_abc123`
+
+```bash
+curl "https://app.platform.hanzo.ai/api/vm.all?organizationId=org_abc123" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "result": {
+    "data": [
+      {
+        "id": "vm_abc123",
+        "name": "ml-training",
+        "plan": "power",
+        "region": "us-east",
+        "os": "ubuntu-22.04",
+        "ip": "203.0.113.50",
+        "status": "running",
+        "createdAt": "2026-01-10T10:00:00Z"
+      }
+    ]
+  }
+}
+```
+
+## Get VM
+
+`GET /api/vm.one?vmId=vm_abc123`
+
+```bash
+curl "https://app.platform.hanzo.ai/api/vm.one?vmId=vm_abc123" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "result": {
+    "data": {
+      "id": "vm_abc123",
+      "name": "ml-training",
+      "plan": "power",
+      "region": "us-east",
+      "os": "ubuntu-22.04",
+      "ip": "203.0.113.50",
+      "privateIp": "10.0.1.50",
+      "status": "running",
+      "specs": {
+        "vcpu": 8,
+        "memoryGb": 16,
+        "diskGb": 320,
+        "diskType": "ssd"
+      },
+      "sshKeys": ["ssh-ed25519 AAAA..."],
+      "volumes": [
+        {
+          "id": "vol_xyz789",
+          "name": "training-data",
+          "sizeGb": 500,
+          "mountPath": "/mnt/data"
+        }
+      ],
+      "createdAt": "2026-01-10T10:00:00Z"
+    }
+  }
+}
+```
+
+## Launch VM
+
+`POST /api/vm.launch`
+
+```bash
+curl -X POST https://app.platform.hanzo.ai/api/vm.launch \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "organizationId": "org_abc123",
+    "name": "ml-training",
+    "plan": "power",
+    "region": "us-east",
+    "os": "ubuntu-22.04",
+    "sshKeys": ["ssh-ed25519 AAAA..."],
+    "userData": "#!/bin/bash\napt-get update && apt-get install -y docker.io"
+  }'
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `organizationId` | string | Yes | Organization ID |
+| `name` | string | Yes | VM name |
+| `plan` | string | Yes | VM plan (nano, micro, small, medium, power, power-dedicated) |
+| `region` | string | Yes | Region code (us-east, us-west, eu-west, ap-south) |
+| `os` | string | Yes | OS image |
+| `sshKeys` | array | No | SSH public keys for root access |
+| `userData` | string | No | Cloud-init script (runs on first boot) |
+
+**Available OS images:**
+
+| Image | Description |
+|-------|-------------|
+| `ubuntu-22.04` | Ubuntu 22.04 LTS |
+| `ubuntu-24.04` | Ubuntu 24.04 LTS |
+| `debian-12` | Debian 12 Bookworm |
+| `rocky-9` | Rocky Linux 9 |
+| `fedora-40` | Fedora 40 |
+
+**Response:** `201 Created`
+
+```json
+{
+  "result": {
+    "data": {
+      "id": "vm_new456",
+      "name": "ml-training",
+      "status": "provisioning",
+      "ip": null,
+      "createdAt": "2026-02-26T10:00:00Z"
+    }
+  }
+}
+```
+
+The VM enters `provisioning` status. It transitions to `running` with an assigned IP within 30-90 seconds.
+
+## Stop VM
+
+`POST /api/vm.stop`
+
+Gracefully shuts down the VM. The VM retains its IP address and storage. You are not billed for compute while stopped, but storage charges continue.
+
+```bash
+curl -X POST https://app.platform.hanzo.ai/api/vm.stop \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "vmId": "vm_abc123" }'
+```
+
+## Start VM
+
+`POST /api/vm.start`
+
+Boots a stopped VM. The VM retains its previous IP and all attached volumes.
+
+```bash
+curl -X POST https://app.platform.hanzo.ai/api/vm.start \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "vmId": "vm_abc123" }'
+```
+
+## Restart VM
+
+`POST /api/vm.restart`
+
+Performs a graceful reboot.
+
+```bash
+curl -X POST https://app.platform.hanzo.ai/api/vm.restart \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "vmId": "vm_abc123" }'
+```
+
+## Destroy VM
+
+`DELETE /api/vm.destroy`
+
+Permanently destroys the VM and its boot disk. Attached volumes are detached but not deleted.
+
+```bash
+curl -X DELETE https://app.platform.hanzo.ai/api/vm.destroy \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "vmId": "vm_abc123" }'
+```
+
+**Response:** `204 No Content`
+
+<Callout type="warn">
+Destroying a VM deletes its boot disk permanently. Attached volumes are preserved. Back up any data on the boot disk before destroying.
+</Callout>
+
+## Volume Management
+
+### List Volumes
+
+```bash
+curl "https://app.platform.hanzo.ai/api/vm.volumes?vmId=vm_abc123" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Attach Volume
+
+```bash
+curl -X POST https://app.platform.hanzo.ai/api/vm.attachVolume \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmId": "vm_abc123",
+    "volumeId": "vol_xyz789",
+    "mountPath": "/mnt/data"
+  }'
+```
+
+The volume is attached as a block device. If `mountPath` is provided, the platform mounts it automatically (requires the Hanzo agent on the VM).
+
+### Detach Volume
+
+```bash
+curl -X POST https://app.platform.hanzo.ai/api/vm.detachVolume \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vmId": "vm_abc123",
+    "volumeId": "vol_xyz789"
+  }'
+```
+
+<Callout type="warn">
+Always unmount the filesystem inside the VM before detaching a volume to prevent data corruption.
+</Callout>
+
+## Web Terminal
+
+`GET /api/vm.terminal?vmId=vm_abc123`
+
+Opens a WebSocket-based terminal session to the VM. Used by the dashboard for browser-based SSH.
+
+```bash
+# The dashboard uses this endpoint internally.
+# For direct SSH access, use the VM's public IP:
+ssh root@203.0.113.50
+```
+
+## VM Status Values
+
+| Status | Description |
+|--------|-------------|
+| `provisioning` | VM is being created |
+| `running` | VM is up and accepting connections |
+| `stopping` | Graceful shutdown in progress |
+| `stopped` | VM is off (storage preserved) |
+| `restarting` | Reboot in progress |
+| `destroying` | VM is being deleted |
+| `error` | Provisioning or operation failed |

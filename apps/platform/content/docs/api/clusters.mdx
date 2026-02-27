@@ -1,0 +1,227 @@
+---
+title: Clusters API
+description: Manage Kubernetes and Docker Swarm clusters via the API
+---
+
+The Clusters API handles the full lifecycle of compute clusters: creation, configuration, scaling, and deletion.
+
+## Endpoints
+
+| Procedure | Method | Description |
+|-----------|--------|-------------|
+| `cluster.all` | GET | List all clusters in the organization |
+| `cluster.one` | GET | Get cluster details |
+| `cluster.create` | POST | Provision a new cluster |
+| `cluster.update` | PATCH | Update cluster settings |
+| `cluster.remove` | DELETE | Destroy a cluster |
+| `cluster.nodes` | GET | List nodes in a cluster |
+| `cluster.addNode` | POST | Add a node to a cluster |
+| `cluster.removeNode` | DELETE | Remove a node from a cluster |
+| `cluster.grantAccess` | POST | Grant user access to a cluster |
+| `cluster.listAccess` | GET | List cluster access permissions |
+| `cluster.revokeAccess` | DELETE | Revoke user access |
+
+## List Clusters
+
+`GET /api/cluster.all?organizationId=org_abc123`
+
+```bash
+curl "https://app.platform.hanzo.ai/api/cluster.all?organizationId=org_abc123" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "result": {
+    "data": [
+      {
+        "id": "cluster_abc123",
+        "name": "production",
+        "provider": "digitalocean",
+        "region": "sfo3",
+        "orchestrator": "kubernetes",
+        "status": "running",
+        "nodeCount": 3,
+        "createdAt": "2025-06-01T10:00:00Z"
+      },
+      {
+        "id": "cluster_def456",
+        "name": "staging",
+        "provider": "hetzner",
+        "region": "nbg1",
+        "orchestrator": "swarm",
+        "status": "running",
+        "nodeCount": 1,
+        "createdAt": "2025-08-15T14:00:00Z"
+      }
+    ]
+  }
+}
+```
+
+## Get Cluster
+
+`GET /api/cluster.one?clusterId=cluster_abc123`
+
+```bash
+curl "https://app.platform.hanzo.ai/api/cluster.one?clusterId=cluster_abc123" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Response:**
+
+```json
+{
+  "result": {
+    "data": {
+      "id": "cluster_abc123",
+      "name": "production",
+      "provider": "digitalocean",
+      "region": "sfo3",
+      "orchestrator": "kubernetes",
+      "status": "running",
+      "nodeCount": 3,
+      "nodes": [
+        {
+          "id": "node_001",
+          "role": "manager",
+          "plan": "medium",
+          "ip": "203.0.113.10",
+          "status": "running"
+        },
+        {
+          "id": "node_002",
+          "role": "worker",
+          "plan": "small",
+          "ip": "203.0.113.11",
+          "status": "running"
+        }
+      ],
+      "createdAt": "2025-06-01T10:00:00Z"
+    }
+  }
+}
+```
+
+## Create Cluster
+
+`POST /api/cluster.create`
+
+```bash
+curl -X POST https://app.platform.hanzo.ai/api/cluster.create \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "organizationId": "org_abc123",
+    "name": "production",
+    "provider": "digitalocean",
+    "region": "sfo3",
+    "orchestrator": "kubernetes",
+    "nodes": [
+      { "role": "manager", "plan": "medium", "count": 1 },
+      { "role": "worker", "plan": "small", "count": 2 }
+    ]
+  }'
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `organizationId` | string | Yes | Organization ID |
+| `name` | string | Yes | Cluster name |
+| `provider` | string | Yes | `digitalocean`, `hetzner`, or `aws` |
+| `region` | string | Yes | Provider region code |
+| `orchestrator` | string | Yes | `kubernetes` or `swarm` |
+| `nodes` | array | Yes | Node configuration |
+
+**Node object:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `role` | string | Yes | `manager` or `worker` |
+| `plan` | string | Yes | VM plan (nano, micro, small, medium, power) |
+| `count` | number | Yes | Number of nodes |
+
+**Response:** `201 Created`
+
+Cluster provisioning is asynchronous. The cluster enters `provisioning` status and transitions to `running` once all nodes are ready (typically 2-5 minutes).
+
+## Update Cluster
+
+`PATCH /api/cluster.update`
+
+```bash
+curl -X PATCH https://app.platform.hanzo.ai/api/cluster.update \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "clusterId": "cluster_abc123",
+    "name": "production-us-east"
+  }'
+```
+
+## Add Node
+
+`POST /api/cluster.addNode`
+
+```bash
+curl -X POST https://app.platform.hanzo.ai/api/cluster.addNode \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "clusterId": "cluster_abc123",
+    "role": "worker",
+    "plan": "small"
+  }'
+```
+
+The node joins the cluster automatically. For Kubernetes clusters, it is registered as a worker node. For Swarm clusters, it joins as a Swarm worker.
+
+## Remove Node
+
+`DELETE /api/cluster.removeNode`
+
+```bash
+curl -X DELETE https://app.platform.hanzo.ai/api/cluster.removeNode \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "clusterId": "cluster_abc123",
+    "nodeId": "node_002"
+  }'
+```
+
+<Callout type="warn">
+Workloads on the removed node are automatically rescheduled to remaining nodes. Ensure sufficient capacity before removing nodes.
+</Callout>
+
+## Delete Cluster
+
+`DELETE /api/cluster.remove`
+
+```bash
+curl -X DELETE https://app.platform.hanzo.ai/api/cluster.remove \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "clusterId": "cluster_abc123"
+  }'
+```
+
+**Response:** `204 No Content`
+
+Destroys all nodes and associated resources. Requires **Manage** cluster permission.
+
+## Cluster Status Values
+
+| Status | Description |
+|--------|-------------|
+| `provisioning` | Nodes are being created |
+| `running` | Cluster is healthy and accepting workloads |
+| `degraded` | One or more nodes are unhealthy |
+| `updating` | Cluster is being reconfigured |
+| `deleting` | Cluster is being destroyed |
+| `error` | Provisioning or operation failed |
