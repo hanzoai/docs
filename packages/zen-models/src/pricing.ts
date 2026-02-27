@@ -21,13 +21,14 @@ export const tools = [
   { name: 'Text-to-Speech', unit: 'per 1M characters', price: 15 },
 ] as const
 
-/** Infrastructure compute tiers. */
+/** Infrastructure compute tiers ($/mo). Syncs from pricing.hanzo.ai. */
 export const compute = [
-  { name: 'Starter', vcpus: 1, memory: '2 GB', storage: '50 GB', price: 8.4 },
-  { name: 'Basic', vcpus: 2, memory: '4 GB', storage: '80 GB', price: 21.6 },
-  { name: 'Standard', vcpus: 4, memory: '8 GB', storage: '160 GB', price: 57.6 },
-  { name: 'Professional', vcpus: 8, memory: '16 GB', storage: '320 GB', price: 115.2 },
-  { name: 'Enterprise', vcpus: 16, memory: '32 GB', storage: '640 GB', price: 230.4 },
+  { name: 'Nano', vcpus: 1, cpuType: 'shared', memory: '1 GB', storage: '25 GB', transfer: '1 TB', price: 5 },
+  { name: 'Starter', vcpus: 1, cpuType: 'shared', memory: '2 GB', storage: '50 GB', transfer: '2 TB', price: 6 },
+  { name: 'Standard', vcpus: 2, cpuType: 'shared', memory: '4 GB', storage: '80 GB', transfer: '4 TB', price: 12 },
+  { name: 'Performance', vcpus: 4, cpuType: 'shared', memory: '8 GB', storage: '160 GB', transfer: '5 TB', price: 24 },
+  { name: 'Premium', vcpus: 4, cpuType: 'dedicated', memory: '8 GB', storage: '200 GB', transfer: '6 TB', price: 36 },
+  { name: 'Power', vcpus: 4, cpuType: 'dedicated', memory: '16 GB', storage: '320 GB', transfer: '7 TB', price: 49 },
 ] as const
 
 /** GPU tiers. */
