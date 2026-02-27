@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { cn } from '@/lib/cn';
 import { cva } from 'class-variance-authority';
+import { fetchComputePlans, type ComputePlan } from '@/lib/pricing';
 import {
   DatabaseIcon,
   ShieldCheckIcon,
@@ -16,6 +17,7 @@ import {
   ArrowRightIcon,
   CheckIcon,
   MessageCircleIcon,
+  CpuIcon,
 } from 'lucide-react';
 
 const headingVariants = cva('font-medium tracking-tight', {
@@ -55,62 +57,17 @@ const cardVariants = cva('rounded-2xl text-sm p-6 bg-origin-border shadow-lg', {
   },
 });
 
-const pricingTiers = [
-  {
-    name: 'Starter',
-    price: '$5',
-    period: '/mo',
-    desc: '1 shared vCPU, 1 GB RAM, 10 GB storage.',
-    cta: 'Get Started',
-    ctaHref: '/docs',
-    features: [
-      '1 Base instance',
-      '10K API requests/day',
-      'SSE realtime subscriptions',
-      'Email/password auth',
-      'Local filesystem storage',
-      'Admin dashboard included',
-    ],
-  },
-  {
-    name: 'Pro',
-    price: '$12',
-    period: '/mo',
-    desc: '2 shared vCPUs, 4 GB RAM, 40 GB storage.',
-    cta: 'Start Free Trial',
-    ctaHref: '/docs',
-    highlight: true,
-    badge: 'Popular',
-    features: [
-      '3 Base instances',
-      '100K API requests/day',
-      'WebSocket + CRDT sync',
-      'OAuth2 + Hanzo IAM',
-      'S3-compatible file storage',
-      'Monitoring + alerts',
-      'Daily backups',
-    ],
-  },
-  {
-    name: 'Scale',
-    price: '$49',
-    period: '/mo',
-    desc: '4 dedicated vCPUs, 16 GB RAM, 160 GB storage.',
-    cta: 'Get Started',
-    ctaHref: '/docs',
-    features: [
-      'Unlimited Base instances',
-      'Unlimited API requests',
-      'Multi-tenant platform mode',
-      'Horizontal auto-scaling',
-      'Private networking',
-      'Point-in-time restore',
-      'Dedicated support',
-    ],
-  },
-];
+function formatPrice(cents: number): string {
+  return cents % 1 === 0 ? `$${cents}` : `$${cents.toFixed(0)}`
+}
 
-export default function Page() {
+function planSpecs(plan: ComputePlan): string {
+  return `${plan.vcpus} ${plan.cpuType} vCPU${plan.vcpus > 1 ? 's' : ''}, ${plan.memoryGB} GB RAM, ${plan.diskGB} GB disk`
+}
+
+export default async function Page() {
+  const plans = await fetchComputePlans()
+
   return (
     <main className="text-fd-foreground pt-4 pb-6 md:pb-12">
       {/* Hero Section */}
@@ -563,32 +520,54 @@ const records = await base
             Pricing
           </h2>
           <p className="text-fd-muted-foreground mb-8">
-            Each tier maps to a compute node. Pay for the resources you use.
+            Each Base instance runs on a dedicated compute node.
+            Pricing syncs from{' '}
+            <a href="https://pricing.hanzo.ai" className="underline underline-offset-4 hover:text-fd-foreground">
+              pricing.hanzo.ai
+            </a>
+            .
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {pricingTiers.map((tier) => (
+            {plans.map((plan) => (
               <div
-                key={tier.name}
+                key={plan.id}
                 className={cn(
                   'relative flex flex-col p-6 rounded-2xl border transition-colors',
-                  tier.highlight
+                  plan.popular
                     ? 'border-fd-foreground/40 bg-fd-card shadow-lg'
                     : 'border-fd-border bg-fd-card',
                 )}
               >
-                {tier.badge && (
+                {plan.popular && (
                   <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 text-xs font-medium bg-fd-foreground text-fd-background rounded-full">
-                    {tier.badge}
+                    Popular
                   </span>
                 )}
-                <h3 className="text-lg font-medium text-fd-foreground mb-1">{tier.name}</h3>
-                <div className="flex items-baseline gap-1 mb-2">
-                  <span className="text-3xl font-medium text-fd-foreground">{tier.price}</span>
-                  <span className="text-sm text-fd-muted-foreground">{tier.period}</span>
+                {plan.freeTier && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 text-xs font-medium bg-green-600 text-white rounded-full">
+                    Free Tier
+                  </span>
+                )}
+                <h3 className="text-lg font-medium text-fd-foreground mb-1">{plan.name}</h3>
+                <div className="flex items-baseline gap-1 mb-1">
+                  <span className="text-3xl font-medium text-fd-foreground">
+                    {formatPrice(plan.priceMonthly)}
+                  </span>
+                  <span className="text-sm text-fd-muted-foreground">/mo</span>
                 </div>
-                <p className="text-sm text-fd-muted-foreground mb-5">{tier.desc}</p>
+                <p className="text-xs text-fd-muted-foreground mb-1">
+                  ${plan.priceHourly.toFixed(3)}/hr
+                </p>
+                <div className="flex items-center gap-1.5 text-xs text-fd-muted-foreground mb-4">
+                  <CpuIcon className="size-3" />
+                  {planSpecs(plan)}
+                </div>
                 <ul className="flex flex-col gap-2 mb-6 flex-1">
-                  {tier.features.map((feat) => (
+                  <li className="flex items-start gap-2 text-sm text-fd-muted-foreground">
+                    <CheckIcon className="size-4 shrink-0 mt-0.5 text-fd-foreground" />
+                    {plan.transferTB} TB transfer
+                  </li>
+                  {plan.features.map((feat) => (
                     <li key={feat} className="flex items-start gap-2 text-sm text-fd-muted-foreground">
                       <CheckIcon className="size-4 shrink-0 mt-0.5 text-fd-foreground" />
                       {feat}
@@ -596,28 +575,28 @@ const records = await base
                   ))}
                 </ul>
                 <Link
-                  href={tier.ctaHref}
+                  href="/docs"
                   className={cn(
                     'inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full font-medium transition-colors text-center text-sm',
-                    tier.highlight
+                    plan.popular
                       ? 'bg-fd-foreground text-fd-background hover:bg-fd-foreground/90'
                       : 'border border-fd-border text-fd-foreground hover:bg-fd-accent',
                   )}
                 >
-                  {tier.cta}
+                  {plan.freeTier ? 'Start Free' : 'Get Started'}
                   <ArrowRightIcon className="size-4" />
                 </Link>
               </div>
             ))}
           </div>
 
-          {/* Enterprise */}
+          {/* Custom / Beyond */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6 p-6 rounded-2xl border border-fd-border bg-fd-card">
             <div>
-              <h3 className="text-lg font-medium text-fd-foreground mb-1">Enterprise</h3>
+              <h3 className="text-lg font-medium text-fd-foreground mb-1">Need More?</h3>
               <p className="text-sm text-fd-muted-foreground max-w-lg">
-                Dedicated infrastructure, custom SLA, SSO/SAML, priority support,
-                and custom integrations. Runs on your cloud or ours.
+                Custom clusters, bare-metal nodes, private networking, SLA guarantees,
+                and dedicated support. Runs on your infrastructure or ours.
               </p>
             </div>
             <a
