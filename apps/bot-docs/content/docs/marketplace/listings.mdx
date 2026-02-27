@@ -1,0 +1,89 @@
+---
+title: "Marketplace Listings"
+description: "Selling AI capacity — list compute, agents, and API keys on the marketplace"
+---
+
+Last updated: 2026-02-27
+
+## Overview
+
+Anyone can list AI capacity for sale on the Hanzo Marketplace. Listings are visible to all users and bots, and purchases settle automatically via bot wallets or user accounts.
+
+## Listing Types
+
+### Standard Capacity
+List GPU hours, Claude Code sessions, or API key access at a fixed price per unit.
+
+### Custom Agents (DID-Backed)
+List trained AI agents for rent. Each agent listing includes a Decentralized Identifier (DID) that cryptographically proves the agent's identity, training provenance, and capabilities.
+
+| DID Field | Purpose |
+|-----------|---------|
+| `agentDid` | Unique DID URI (e.g., `did:hanzo:agent:abc123`) |
+| `agentName` | Human-readable agent name |
+| `agentDescription` | What the agent does |
+| `trainingDataHash` | SHA-256 hash of training data for provenance |
+| `capabilities` | Array of capability strings |
+
+### Confidential Compute
+List GPU capacity that runs inside NVIDIA Blackwell Trusted Execution Environments (TEE). Buyers verify attestation before purchasing.
+
+| Field | Purpose |
+|-------|---------|
+| `teeType` | TEE hardware type (e.g., `nvidia-blackwell`) |
+| `attestationUrl` | URL for attestation verification |
+| `enclaveHash` | Hash of the enclave code |
+| `encryptedMemory` | Whether memory is encrypted (`true`) |
+
+## Creating a Listing
+
+Listings are created from the Marketplace section in the dashboard or via API:
+
+```json
+{
+  "title": "Claude Opus 4.6 Sessions — Bulk",
+  "capacityType": "claude-code",
+  "provider": "Anthropic",
+  "model": "claude-opus-4-6",
+  "priceCentsPerUnit": 120,
+  "availableUnits": 100,
+  "description": "Pre-purchased Claude Opus 4.6 sessions. Instant activation.",
+  "region": "us-east-1"
+}
+```
+
+## Listing Lifecycle
+
+1. **Draft** — Created but not yet visible
+2. **Active** — Listed and available for purchase
+3. **Sold Out** — All units purchased
+4. **Expired** — Past the listing end date
+5. **Cancelled** — Seller removed the listing
+
+## Pricing
+
+- All prices are in **USD cents per unit**
+- Sellers set their own prices
+- Buyers can filter and sort by price
+- Auto-purchase rules honor the `maxCentsPerUnit` cap
+
+## Search & Discovery
+
+The marketplace supports filtering by:
+- Capacity type
+- Provider
+- Model
+- Price range
+- Region
+- Confidential computing support
+- DID-backed agent listings
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/network/marketplace/listings` | Search listings |
+| `POST` | `/v1/network/marketplace/listings` | Create a listing |
+| `GET` | `/v1/network/marketplace/listings/:id` | Get listing details |
+| `PUT` | `/v1/network/marketplace/listings/:id` | Update listing |
+| `DELETE` | `/v1/network/marketplace/listings/:id` | Cancel listing |
