@@ -1,0 +1,178 @@
+---
+title: Register a Cluster
+description: Add existing Kubernetes clusters, Docker Swarm managers, and Docker hosts.
+---
+
+Connect your existing infrastructure to Hanzo Platform by registering clusters. Once registered, you can deploy applications, monitor resources, and manage workloads from the dashboard.
+
+## Registration Methods
+
+<Tabs items={["Kubernetes", "Docker Swarm", "Docker Host"]}>
+
+<Tab value="Kubernetes">
+
+### Kubernetes Cluster
+
+Register any Kubernetes cluster (managed or self-hosted) by uploading a kubeconfig file or pasting its contents.
+
+<Steps>
+
+### Navigate to Clusters
+
+Go to **Clusters > Register > Kubernetes**.
+
+### Upload Kubeconfig
+
+Upload your kubeconfig file or paste its contents. The platform detects available contexts automatically.
+
+```bash
+# Get your kubeconfig
+cat ~/.kube/config
+
+# Or export a specific context
+kubectl config view --minify --context=my-cluster --flatten
+```
+
+### Select Context
+
+If the kubeconfig contains multiple contexts, select the one to register.
+
+### Name and Label
+
+Give the cluster a display name and optional labels:
+
+```
+Name:    production-east
+Labels:  env=production, region=us-east-1, team=platform
+```
+
+### Test and Save
+
+Click **Test Connection**. If the API server is reachable, click **Save**.
+
+</Steps>
+
+<Callout type="info">
+The kubeconfig credentials are encrypted at rest. Hanzo Platform needs `cluster-admin` or equivalent RBAC permissions to manage workloads.
+</Callout>
+
+</Tab>
+
+<Tab value="Docker Swarm">
+
+### Docker Swarm
+
+Register a Docker Swarm cluster by connecting to a manager node.
+
+<Steps>
+
+### Navigate to Clusters
+
+Go to **Clusters > Register > Docker Swarm**.
+
+### Enter Connection Details
+
+Provide the Swarm manager's address and TLS credentials:
+
+```
+Host:        swarm-manager.example.com
+Port:        2376
+TLS CA:      [upload ca.pem]
+TLS Cert:    [upload cert.pem]
+TLS Key:     [upload key.pem]
+```
+
+### Test and Save
+
+Click **Test Connection** to verify. The dashboard shows the number of manager and worker nodes.
+
+</Steps>
+
+<Callout type="warn">
+Always use TLS when connecting to Docker Swarm. Never expose the Docker socket over TCP without encryption.
+</Callout>
+
+</Tab>
+
+<Tab value="Docker Host">
+
+### Standalone Docker Host
+
+Register a single Docker host for simple container deployments.
+
+<Steps>
+
+### Navigate to Clusters
+
+Go to **Clusters > Register > Docker Host**.
+
+### Enter Connection Details
+
+Provide the host's SSH connection info or Docker TLS endpoint:
+
+**Option A: SSH**
+```
+Host:     docker-host.example.com
+Port:     22
+User:     deploy
+SSH Key:  [select from keyring]
+```
+
+**Option B: Docker TLS**
+```
+Host:     docker-host.example.com
+Port:     2376
+TLS CA:   [upload ca.pem]
+TLS Cert: [upload cert.pem]
+TLS Key:  [upload key.pem]
+```
+
+### Test and Save
+
+Click **Test Connection** to verify Docker is reachable and running.
+
+</Steps>
+
+</Tab>
+
+</Tabs>
+
+## Post-Registration
+
+After registering a cluster, the platform:
+
+1. **Discovers resources** -- Enumerates namespaces, nodes, workloads, and services
+2. **Installs the agent** (Kubernetes only) -- Deploys a lightweight agent pod for metrics collection and log streaming
+3. **Starts health checks** -- Begins monitoring cluster health every 30 seconds
+4. **Syncs to fleet** -- The cluster appears in the [fleet dashboard](/docs/clusters/fleet)
+
+## Managing Registered Clusters
+
+### Update Credentials
+
+If your kubeconfig or TLS certificates are rotated, update them in **Clusters > [Cluster Name] > Settings > Credentials**.
+
+### Update Labels
+
+Add or remove labels from **Clusters > [Cluster Name] > Settings > Labels**. Labels are used for filtering in the fleet dashboard and targeting deployments.
+
+### Remove a Cluster
+
+To unregister a cluster:
+
+1. Go to **Clusters > [Cluster Name] > Settings**
+2. Click **Remove Cluster**
+3. Confirm removal
+
+<Callout type="info">
+Removing a cluster from the dashboard does not delete the cluster or its workloads. It only removes the platform's connection to it.
+</Callout>
+
+## Troubleshooting
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| Connection refused | Firewall blocking access | Allow the platform's IP on port 6443 (K8s) or 2376 (Docker) |
+| Certificate error | Expired or mismatched TLS certs | Re-upload valid certificates |
+| Unauthorized | Insufficient RBAC permissions | Ensure the kubeconfig user has `cluster-admin` role |
+| Timeout | Network latency or DNS failure | Verify DNS resolution and network path to the API server |

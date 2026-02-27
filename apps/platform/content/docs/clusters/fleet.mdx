@@ -1,0 +1,101 @@
+---
+title: Fleet Overview
+description: Monitor health, resources, and workloads across all clusters from one dashboard.
+---
+
+The fleet dashboard gives you a unified view of every cluster connected to Hanzo Platform. See health status, resource utilization, and workload distribution at a glance.
+
+## Dashboard Overview
+
+The fleet page displays all registered clusters in a grid or list view with real-time metrics:
+
+| Metric | Description |
+|--------|-------------|
+| **Status** | Healthy (green), Degraded (yellow), Unreachable (red) |
+| **Nodes** | Total node count and ready/not-ready breakdown |
+| **CPU** | Aggregate CPU usage vs. allocatable capacity |
+| **Memory** | Aggregate memory usage vs. allocatable capacity |
+| **Pods** | Running pods vs. total pod capacity |
+| **Workloads** | Deployments, StatefulSets, DaemonSets, Services |
+
+## Health Status
+
+Cluster health is determined by checking:
+
+1. **API Server Reachability** -- Can the platform reach the cluster's API endpoint?
+2. **Node Health** -- Are all nodes in `Ready` state?
+3. **System Pods** -- Are critical system workloads (DNS, networking, ingress) running?
+4. **Certificate Validity** -- Are TLS certificates current and not expiring soon?
+
+<Callout type="info">
+Health checks run every 30 seconds. Status changes trigger notifications if you have alerts configured in **Settings > Notifications**.
+</Callout>
+
+## Resource Utilization
+
+Click any cluster to see detailed resource breakdowns:
+
+### CPU and Memory
+
+A time-series graph shows CPU and memory usage over the last 1h, 6h, 24h, 7d, or 30d. Hover over the graph to see exact values at any point.
+
+### Node-Level Breakdown
+
+A table lists each node with its individual resource consumption:
+
+```
+Node              CPU Used   CPU Total   Memory Used   Memory Total   Pods
+worker-01         1.2 cores  4 cores     3.1 GB        8 GB           28/110
+worker-02         2.8 cores  4 cores     5.4 GB        8 GB           45/110
+worker-03         0.4 cores  4 cores     1.2 GB        8 GB           12/110
+```
+
+### Storage
+
+View PersistentVolumeClaim usage across the cluster:
+
+- Total provisioned storage
+- Used vs. available per PVC
+- Storage class distribution
+
+## Filtering and Search
+
+Use the toolbar to filter clusters by:
+
+- **Provider** -- AWS, DigitalOcean, Hetzner, or self-managed
+- **Orchestrator** -- Kubernetes, Docker Swarm, Docker Host
+- **Status** -- Healthy, Degraded, Unreachable
+- **Labels** -- Custom labels you assign (e.g., `env:production`, `team:backend`)
+
+```
+# Filter examples
+provider:digitalocean status:healthy
+label:env=production
+label:team=platform provider:aws
+```
+
+## Cluster Comparison
+
+Select multiple clusters (checkbox) and click **Compare** to see a side-by-side view:
+
+| Metric | adnexus-k8s | hanzo-k8s | staging-k8s |
+|--------|-------------|-----------|-------------|
+| Nodes | 3 | 5 | 2 |
+| CPU Used | 45% | 62% | 18% |
+| Memory Used | 58% | 71% | 22% |
+| Pods | 89 | 142 | 31 |
+| Deployments | 14 | 22 | 8 |
+
+## Alerts
+
+Configure fleet-wide alerts from **Settings > Notifications**:
+
+- **Node not ready** -- Alert when any node leaves the `Ready` state for more than 5 minutes
+- **High CPU** -- Alert when cluster CPU exceeds a threshold (default: 85%)
+- **High memory** -- Alert when cluster memory exceeds a threshold (default: 90%)
+- **Pod crash loop** -- Alert when a pod restarts more than 5 times in 10 minutes
+- **Certificate expiry** -- Alert 30 days before any cluster certificate expires
+
+<Callout type="warn">
+Fleet alerts are distinct from application-level monitoring. Use both for comprehensive coverage.
+</Callout>

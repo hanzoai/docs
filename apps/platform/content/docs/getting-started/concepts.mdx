@@ -1,0 +1,139 @@
+---
+title: Key Concepts
+description: Organizations, projects, environments, and clusters explained.
+---
+
+Hanzo Platform is organized around four core abstractions. Understanding how
+they relate makes it straightforward to model any infrastructure topology.
+
+## Organizations
+
+An organization is the top-level tenant. It owns clusters, projects, team
+members, and billing. A single hanzo.id account can belong to multiple
+organizations.
+
+| Property | Details |
+|----------|---------|
+| Isolation | Each org has its own clusters, secrets, and audit log |
+| Team roles | Owner, Admin, Developer, Billing, Viewer |
+| Multiple owners | Like GitHub -- more than one person can hold the Owner role |
+
+<Callout type="info">
+  Every new account starts with a personal organization. You can rename it
+  or create additional orgs at any time.
+</Callout>
+
+## Projects
+
+A project groups related services and resources that are deployed together.
+Think of it as one application or one product.
+
+- A project lives inside exactly one organization.
+- It contains one or more **services** (containers, databases, caches).
+- It has its own **environment** configuration and **secrets**.
+- Deployments, builds, and logs are scoped to the project.
+
+**Example:** A SaaS product might have a single project containing an API
+service, a web frontend, a PostgreSQL database, and a Redis cache.
+
+## Environments
+
+Environments let you promote the same project through stages like development,
+staging, and production without duplicating configuration.
+
+Each environment can have:
+
+- **Its own variables and secrets** -- override values per stage.
+- **A protection level:**
+
+| Level | Who can deploy | Approval required |
+|-------|---------------|-------------------|
+| None | Anyone with Developer+ role | No |
+| Restricted | Admin+ only | Optional approval workflow |
+| Locked | Owner only | Always requires approval |
+
+- **A target cluster** -- different environments can deploy to different
+  clusters or namespaces.
+
+<Callout type="warn">
+  Deleting an environment tears down all deployed resources in that
+  environment. This action is irreversible.
+</Callout>
+
+### Typical Setup
+
+```
+my-project/
+  dev         -> dev-cluster / namespace: my-project-dev
+  staging     -> staging-cluster / namespace: my-project-staging
+  production  -> prod-cluster / namespace: my-project-prod (Locked)
+```
+
+## Clusters
+
+A cluster is a deployment target -- the infrastructure where your services
+actually run. The platform supports three orchestrators:
+
+<Tabs items={["Kubernetes", "Docker Swarm", "Docker Compose"]}>
+<Tab value="Kubernetes">
+Full Kubernetes support including:
+
+- Deployments, StatefulSets, Jobs, CronJobs
+- Ingress and service mesh integration
+- Horizontal Pod Autoscaling
+- Namespace isolation per environment
+- Any conformant cluster (EKS, GKE, AKS, k3s, self-hosted)
+</Tab>
+
+<Tab value="Docker Swarm">
+Lightweight orchestration for teams that do not need full Kubernetes:
+
+- Service deployment with replica control
+- Built-in load balancing and service discovery
+- Rolling updates
+- Overlay networking
+</Tab>
+
+<Tab value="Docker Compose">
+Single-host deployments for development or small workloads:
+
+- Compose stack management
+- Volume and network configuration
+- Ideal for staging environments and demos
+</Tab>
+</Tabs>
+
+### Multi-Cluster Fleet
+
+You can connect as many clusters as you need. The dashboard shows a unified
+view across all clusters, and you can route different environments to
+different clusters.
+
+```
+Organization: acme-corp
+  Cluster: dev-k8s        (DigitalOcean, SFO)
+  Cluster: staging-swarm  (Hetzner, FSN)
+  Cluster: prod-k8s-us    (AWS, us-east-1)
+  Cluster: prod-k8s-eu    (AWS, eu-west-1)
+```
+
+## How They Fit Together
+
+```
+Organization
+  +-- Team Members (roles: Owner, Admin, Developer, Billing, Viewer)
+  +-- Clusters (K8s, Swarm, Compose targets)
+  +-- Projects
+        +-- Services (containers, databases, caches)
+        +-- Environments (dev, staging, prod)
+              +-- Variables & Secrets
+              +-- Deployed to a Cluster
+```
+
+## Next Steps
+
+- [Quickstart](/docs/getting-started/quickstart) -- Put these concepts into
+  practice by deploying your first app.
+- [Access Control](/docs/access-control) -- Deep dive into RBAC, team
+  management, and environment protection.
+- [Clusters](/docs/clusters) -- Connecting, managing, and monitoring clusters.
