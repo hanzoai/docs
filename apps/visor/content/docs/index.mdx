@@ -1,0 +1,73 @@
+---
+title: "Hanzo Visor"
+description: "Multi-cloud virtual machine management platform"
+---
+
+> *Launch and manage VMs across AWS, DigitalOcean, and Hetzner from one dashboard.*
+
+Hanzo Visor is a unified VM management platform that lets you deploy, monitor, and scale virtual machines across multiple cloud providers through a single API and dashboard.
+
+## Start here
+
+- **Quick start:** [Quickstart](/docs/getting-started/quickstart)
+- **Cloud providers:** [AWS](/docs/providers/aws) | [DigitalOcean](/docs/providers/digitalocean) | [Hetzner](/docs/providers/hetzner)
+- **Dashboard:** [app.platform.hanzo.ai](https://app.platform.hanzo.ai)
+
+## How it works
+
+```
+Dashboard / API / CLI
+        |
+        v
+  +-------------------+
+  |   Hanzo Visor      |  Unified control plane
+  |   Orchestrator     |
+  +--------+----------+
+           |
+    +------+------+------+
+    |      |      |      |
+   AWS    DO   Hetzner  (more)
+    |      |      |      |
+   EC2  Droplet  Cloud   ...
+```
+
+Visor abstracts away provider-specific APIs into a single, consistent interface. Create a VM with one API call regardless of the underlying cloud.
+
+## Features
+
+- **Multi-cloud deploy** -- Launch on AWS, DigitalOcean, or Hetzner from one API
+- **Browser terminal** -- Full SSH access via browser powered by Apache Guacamole
+- **Block storage** -- Attach and manage volumes, snapshots, and backups
+- **One-click images** -- Ubuntu, Debian, Fedora, Alpine, or custom ISOs
+- **Auto-scaling** -- Scale based on CPU, memory, or network thresholds
+- **Real-time monitoring** -- CPU, RAM, disk, network dashboards with alerting
+- **Unified billing** -- See costs across all providers in one place
+- **REST API** -- Full programmatic control over all resources
+- **Infrastructure as code** -- Declarative YAML configs for reproducible deployments
+
+## Quick example
+
+```bash
+# Create a VM on DigitalOcean
+curl -X POST https://api.visor.hanzo.ai/v1/vms \
+  -H "Authorization: Bearer $VISOR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "web-server-01",
+    "provider": "digitalocean",
+    "region": "nyc3",
+    "size": "standard",
+    "image": "ubuntu-24.04"
+  }'
+```
+
+## Pricing
+
+VMs start at **$5/mo** for a Nano instance (1 vCPU shared, 1 GB RAM, 25 GB SSD). See [full pricing](/docs/pricing/plans) for all tiers including GPU instances and block storage.
+
+## Links
+
+- [Dashboard](https://app.platform.hanzo.ai)
+- [API Reference](/docs/api/authentication)
+- [Pricing](/docs/pricing/plans)
+- [GitHub](https://github.com/hanzoai/visor)
