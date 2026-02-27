@@ -8,7 +8,7 @@
  * foundations and fusing them into a unified, high-performance family.
  */
 
-import type { ZenModel } from './types.js'
+import type { ZenModel } from './types'
 
 // ---------------------------------------------------------------------------
 // Zen4 Generation — Production API Models
@@ -18,7 +18,7 @@ export const zen4: ZenModel = {
   id: 'zen4',
   name: 'Zen4',
   fullName: 'Zen4 — Flagship',
-  description: 'Flagship model. Optimal for complex reasoning and multi-domain tasks.',
+  description: 'Flagship MoE model for complex reasoning and multi-domain tasks.',
   generation: 'zen4',
   tier: 'ultra max',
   category: 'flagship',
@@ -30,7 +30,7 @@ export const zen4: ZenModel = {
     arch: 'MoE',
   },
   pricing: { input: 3, output: 9.6, cacheRead: null, cacheWrite: null },
-  features: ['202K context window', 'Flagship intelligence'],
+  features: ['202K context window', 'Flagship intelligence', '100+ languages'],
   status: 'available',
   huggingface: 'https://huggingface.co/zenlm/zen4',
   github: 'https://github.com/zenlm/zen4',
@@ -41,7 +41,7 @@ export const zen4Pro: ZenModel = {
   id: 'zen4-pro',
   name: 'Zen4 Pro',
   fullName: 'Zen4 Pro — High Capability',
-  description: 'High-capability model with efficient MoE architecture for demanding workloads.',
+  description: 'Efficient MoE model for demanding workloads with strong reasoning at production-grade cost.',
   generation: 'zen4',
   tier: 'ultra',
   category: 'flagship',
@@ -52,7 +52,7 @@ export const zen4Pro: ZenModel = {
     context: 131_000,
     arch: 'MoE',
   },
-  pricing: { input: 2.7, output: 2.7, cacheRead: null, cacheWrite: null },
+  pricing: { input: 3.6, output: 3.6, cacheRead: null, cacheWrite: null },
   features: ['131K context window', 'MoE architecture'],
   status: 'available',
   huggingface: 'https://huggingface.co/zenlm/zen4-pro',
@@ -63,43 +63,66 @@ export const zen4Pro: ZenModel = {
 export const zen4Max: ZenModel = {
   id: 'zen4-max',
   name: 'Zen4 Max',
-  fullName: 'Zen4 Max — Maximum Scale',
-  description: 'Trillion-parameter frontier model with deep reasoning capabilities.',
+  fullName: 'Zen4 Max — Maximum Intelligence',
+  description: 'Most capable model for complex reasoning, analysis, and agentic tasks. 1M token context window.',
   generation: 'zen4',
   tier: 'ultra max',
   category: 'flagship',
   modalities: ['text', 'code', 'math'],
   spec: {
-    params: '1.04T',
-    activeParams: '32B',
-    context: 256_000,
-    arch: 'MoE',
+    params: 'N/A',
+    activeParams: null,
+    context: 1_000_000,
+    arch: 'Dense',
   },
-  pricing: { input: 3.6, output: 3.6, cacheRead: null, cacheWrite: null },
-  features: ['256K context window', '1.04T MoE parameters'],
+  pricing: { input: 15, output: 75, cacheRead: null, cacheWrite: null },
+  features: ['1M context window', 'Maximum intelligence', 'Agentic coding'],
   status: 'available',
-  huggingface: 'https://huggingface.co/zenlm/zen-max',
-  github: 'https://github.com/zenlm/zen-max',
+  huggingface: null,
+  github: null,
   aliases: ['zen-max'],
+}
+
+export const zen4_6: ZenModel = {
+  id: 'zen4.6',
+  name: 'Zen4.6',
+  fullName: 'Zen4.6 — Extended Context',
+  description: 'High-performance 1M context model for long-document analysis, large codebase reasoning, and agentic workflows. Best balance of intelligence and cost at million-token scale.',
+  generation: 'zen4',
+  tier: 'ultra',
+  category: 'flagship',
+  modalities: ['text', 'code', 'math'],
+  spec: {
+    params: 'N/A',
+    activeParams: null,
+    context: 1_000_000,
+    arch: 'Dense',
+  },
+  pricing: { input: 5, output: 25, cacheRead: null, cacheWrite: null },
+  features: ['1M context window', 'Agentic coding', 'Long-document analysis', 'Cost efficient'],
+  status: 'available',
+  huggingface: null,
+  github: null,
+  aliases: [],
 }
 
 export const zen4Mini: ZenModel = {
   id: 'zen4-mini',
   name: 'Zen4 Mini',
   fullName: 'Zen4 Mini — Fast & Efficient',
-  description: 'Lightweight model optimized for speed and cost efficiency.',
+  description: 'Ultra-fast lightweight model optimized for speed and cost efficiency. Ideal for free tier.',
   generation: 'zen4',
   tier: 'pro',
   category: 'flagship',
   modalities: ['text', 'code'],
   spec: {
-    params: '8B',
+    params: 'N/A',
     activeParams: null,
-    context: 40_000,
+    context: 128_000,
     arch: 'Dense',
   },
-  pricing: { input: 0.6, output: 0.6, cacheRead: null, cacheWrite: null },
-  features: ['40K context window', 'Ultra-fast inference'],
+  pricing: { input: 0.15, output: 1.2, cacheRead: null, cacheWrite: null },
+  features: ['128K context window', 'Ultra-fast inference', 'Free tier'],
   status: 'available',
   huggingface: 'https://huggingface.co/zenlm/zen4-mini',
   github: 'https://github.com/zenlm/zen4-mini',
@@ -110,7 +133,7 @@ export const zen4Ultra: ZenModel = {
   id: 'zen4-ultra',
   name: 'Zen4 Ultra',
   fullName: 'Zen4 Ultra — Maximum Reasoning',
-  description: 'Maximum reasoning capability with extended thinking for complex problems.',
+  description: 'Maximum reasoning capability with extended chain-of-thought on MoE architecture.',
   generation: 'zen4',
   tier: 'ultra max',
   category: 'flagship',
@@ -118,11 +141,11 @@ export const zen4Ultra: ZenModel = {
   spec: {
     params: '744B',
     activeParams: '40B',
-    context: 202_000,
+    context: 262_000,
     arch: 'MoE + CoT',
   },
-  pricing: { input: 3, output: 9.6, cacheRead: null, cacheWrite: null },
-  features: ['202K context window', 'Deep reasoning'],
+  pricing: { input: 2.7, output: 2.7, cacheRead: null, cacheWrite: null },
+  features: ['262K context window', 'Deep reasoning', 'Chain-of-thought'],
   status: 'available',
   huggingface: 'https://huggingface.co/zenlm/zen4-ultra',
   github: 'https://github.com/zenlm/zen4-ultra',
@@ -156,7 +179,7 @@ export const zen4Coder: ZenModel = {
   id: 'zen4-coder',
   name: 'Zen4 Coder',
   fullName: 'Zen4 Coder — Code Generation',
-  description: 'Code-specialized model for generation, review, and debugging.',
+  description: 'Code-specialized MoE model for generation, review, debugging, and agentic programming.',
   generation: 'zen4',
   tier: 'ultra',
   category: 'code',
@@ -164,11 +187,11 @@ export const zen4Coder: ZenModel = {
   spec: {
     params: '480B',
     activeParams: '35B',
-    context: 262_000,
+    context: 163_000,
     arch: 'MoE',
   },
-  pricing: { input: 3.6, output: 3.6, cacheRead: null, cacheWrite: null },
-  features: ['262K context window', '480B MoE parameters'],
+  pricing: { input: 2.7, output: 2.7, cacheRead: null, cacheWrite: null },
+  features: ['163K context window', 'All major languages'],
   status: 'available',
   huggingface: 'https://huggingface.co/zenlm/zen4-coder',
   github: 'https://github.com/zenlm/zen4-coder',
@@ -190,7 +213,7 @@ export const zen4CoderFlash: ZenModel = {
     context: 262_000,
     arch: 'MoE',
   },
-  pricing: { input: 1.5, output: 1.5, cacheRead: null, cacheWrite: null },
+  pricing: { input: 2.7, output: 2.7, cacheRead: null, cacheWrite: null },
   features: ['262K context window', 'Fast inference'],
   status: 'available',
   huggingface: 'https://huggingface.co/zenlm/zen4-coder-flash',
@@ -202,7 +225,7 @@ export const zen4CoderPro: ZenModel = {
   id: 'zen4-coder-pro',
   name: 'Zen4 Coder Pro',
   fullName: 'Zen4 Coder Pro — Premium Code',
-  description: 'Full-precision code model for maximum accuracy on complex codebases.',
+  description: 'Full-precision BF16 code model for maximum accuracy on complex codebases.',
   generation: 'zen4',
   tier: 'ultra max',
   category: 'code',
@@ -210,11 +233,11 @@ export const zen4CoderPro: ZenModel = {
   spec: {
     params: '480B',
     activeParams: null,
-    context: 262_000,
+    context: 131_000,
     arch: 'Dense BF16',
   },
-  pricing: { input: 4.5, output: 4.5, cacheRead: null, cacheWrite: null },
-  features: ['262K context window', 'BF16 full precision'],
+  pricing: { input: 2.7, output: 2.7, cacheRead: null, cacheWrite: null },
+  features: ['131K context window', 'BF16 full precision'],
   status: 'available',
   huggingface: 'https://huggingface.co/zenlm/zen4-coder-pro',
   github: 'https://github.com/zenlm/zen4-coder-pro',
@@ -222,14 +245,14 @@ export const zen4CoderPro: ZenModel = {
 }
 
 // ---------------------------------------------------------------------------
-// Zen3 Generation — Production API Models
+// Zen3 Generation — Production API Models (Chat)
 // ---------------------------------------------------------------------------
 
 export const zen3Omni: ZenModel = {
   id: 'zen3-omni',
   name: 'Zen3 Omni',
   fullName: 'Zen3 Omni — Hypermodal',
-  description: 'Multimodal model supporting text, vision, and structured output.',
+  description: 'Multimodal model supporting text, vision, audio, and structured output.',
   generation: 'zen3',
   tier: 'pro max',
   category: 'vision',
@@ -241,7 +264,7 @@ export const zen3Omni: ZenModel = {
     arch: 'Dense Multimodal',
   },
   pricing: { input: 1.8, output: 6.6, cacheRead: null, cacheWrite: null },
-  features: ['202K context window', 'Multimodal'],
+  features: ['202K context window', 'Text + Vision + Audio'],
   status: 'available',
   huggingface: null,
   github: null,
@@ -260,11 +283,11 @@ export const zen3Vl: ZenModel = {
   spec: {
     params: '30B',
     activeParams: '3B',
-    context: 131_000,
+    context: 262_000,
     arch: 'MoE Vision-Language',
   },
   pricing: { input: 0.45, output: 1.8, cacheRead: null, cacheWrite: null },
-  features: ['131K context window', 'Vision + language'],
+  features: ['262K context window', 'Vision + Language'],
   status: 'available',
   huggingface: null,
   github: null,
@@ -275,19 +298,19 @@ export const zen3Nano: ZenModel = {
   id: 'zen3-nano',
   name: 'Zen3 Nano',
   fullName: 'Zen3 Nano — Edge',
-  description: 'Ultra-lightweight model for edge deployment and low-latency tasks.',
+  description: 'Ultra-lightweight model for edge deployment and low-latency tasks. Available on free tier.',
   generation: 'zen3',
   tier: 'pro',
-  category: 'foundation',
+  category: 'flagship',
   modalities: ['text', 'code'],
   spec: {
-    params: '4B',
+    params: '8B',
     activeParams: null,
-    context: 40_000,
+    context: 128_000,
     arch: 'Dense',
   },
-  pricing: { input: 0.3, output: 0.3, cacheRead: null, cacheWrite: null },
-  features: ['40K context window', '4B parameters'],
+  pricing: { input: 0.6, output: 0.6, cacheRead: null, cacheWrite: null },
+  features: ['128K context window', '8B parameters', 'Free tier'],
   status: 'available',
   huggingface: null,
   github: null,
@@ -298,7 +321,7 @@ export const zen3Guard: ZenModel = {
   id: 'zen3-guard',
   name: 'Zen3 Guard',
   fullName: 'Zen3 Guard — Content Safety',
-  description: 'Content safety classifier for moderation and guardrails.',
+  description: 'Content safety classifier for moderation and guardrails. 9 safety categories, 119 languages.',
   generation: 'zen3',
   tier: 'pro',
   category: 'safety',
@@ -306,22 +329,26 @@ export const zen3Guard: ZenModel = {
   spec: {
     params: '4B',
     activeParams: null,
-    context: 40_000,
+    context: 65_000,
     arch: 'Dense',
   },
-  pricing: { input: 0.3, output: 0.3, cacheRead: null, cacheWrite: null },
-  features: ['40K context window', 'Safety classifier'],
+  pricing: { input: 3.6, output: 3.6, cacheRead: null, cacheWrite: null },
+  features: ['65K context window', 'Safety classifier', '119 languages'],
   status: 'available',
   huggingface: null,
   github: null,
   aliases: [],
 }
 
+// ---------------------------------------------------------------------------
+// Zen3 Embedding — via /v1/embeddings
+// ---------------------------------------------------------------------------
+
 export const zen3Embedding: ZenModel = {
   id: 'zen3-embedding',
   name: 'Zen3 Embedding',
   fullName: 'Zen3 Embedding — Text Embeddings',
-  description: 'High-quality text embeddings for search, clustering, and retrieval.',
+  description: 'High-quality text embeddings for RAG, search, and classification.',
   generation: 'zen3',
   tier: 'pro max',
   category: 'embedding',
@@ -340,6 +367,526 @@ export const zen3Embedding: ZenModel = {
   aliases: [],
 }
 
+export const zen3EmbeddingMedium: ZenModel = {
+  id: 'zen3-embedding-medium',
+  name: 'Zen3 Embedding Medium',
+  fullName: 'Zen3 Embedding Medium',
+  description: 'Balanced embedding model for cost-effective retrieval workloads.',
+  generation: 'zen3',
+  tier: 'pro',
+  category: 'embedding',
+  modalities: ['text', 'embedding'],
+  spec: {
+    params: '4B',
+    activeParams: null,
+    context: 40_000,
+    arch: 'Embedding',
+  },
+  pricing: null,
+  features: ['40K context window', '4B parameters'],
+  status: 'available',
+  huggingface: 'https://huggingface.co/zenlm/zen3-embedding-medium',
+  github: null,
+  aliases: [],
+}
+
+export const zen3EmbeddingSmall: ZenModel = {
+  id: 'zen3-embedding-small',
+  name: 'Zen3 Embedding Small',
+  fullName: 'Zen3 Embedding Small',
+  description: 'Lightweight embedding model for high-throughput, low-cost applications.',
+  generation: 'zen3',
+  tier: 'pro',
+  category: 'embedding',
+  modalities: ['text', 'embedding'],
+  spec: {
+    params: '0.6B',
+    activeParams: null,
+    context: 32_000,
+    arch: 'Embedding',
+  },
+  pricing: null,
+  features: ['32K context window', '0.6B parameters'],
+  status: 'available',
+  huggingface: 'https://huggingface.co/zenlm/zen3-embedding-small',
+  github: null,
+  aliases: [],
+}
+
+// ---------------------------------------------------------------------------
+// Zen3 Reranker — via /v1/rerank
+// ---------------------------------------------------------------------------
+
+export const zen3Reranker: ZenModel = {
+  id: 'zen3-reranker',
+  name: 'Zen3 Reranker',
+  fullName: 'Zen3 Reranker',
+  description: 'High-quality reranker for improving retrieval accuracy in RAG pipelines.',
+  generation: 'zen3',
+  tier: 'pro max',
+  category: 'embedding',
+  modalities: ['text', 'embedding'],
+  spec: {
+    params: '8B',
+    activeParams: null,
+    context: 40_000,
+    arch: 'Reranker',
+  },
+  pricing: null,
+  features: ['40K context window', '8B parameters'],
+  status: 'available',
+  huggingface: 'https://huggingface.co/zenlm/zen3-reranker',
+  github: null,
+  aliases: [],
+}
+
+export const zen3RerankerMedium: ZenModel = {
+  id: 'zen3-reranker-medium',
+  name: 'Zen3 Reranker Medium',
+  fullName: 'Zen3 Reranker Medium',
+  description: 'Balanced reranker for cost-effective retrieval quality improvement.',
+  generation: 'zen3',
+  tier: 'pro',
+  category: 'embedding',
+  modalities: ['text', 'embedding'],
+  spec: {
+    params: '4B',
+    activeParams: null,
+    context: 40_000,
+    arch: 'Reranker',
+  },
+  pricing: null,
+  features: ['40K context window', '4B parameters'],
+  status: 'available',
+  huggingface: 'https://huggingface.co/zenlm/zen3-reranker-medium',
+  github: null,
+  aliases: [],
+}
+
+export const zen3RerankerSmall: ZenModel = {
+  id: 'zen3-reranker-small',
+  name: 'Zen3 Reranker Small',
+  fullName: 'Zen3 Reranker Small',
+  description: 'Lightweight reranker for high-throughput reranking at minimal cost.',
+  generation: 'zen3',
+  tier: 'pro',
+  category: 'embedding',
+  modalities: ['text', 'embedding'],
+  spec: {
+    params: '0.6B',
+    activeParams: null,
+    context: 40_000,
+    arch: 'Reranker',
+  },
+  pricing: null,
+  features: ['40K context window', '0.6B parameters'],
+  status: 'available',
+  huggingface: 'https://huggingface.co/zenlm/zen3-reranker-small',
+  github: null,
+  aliases: [],
+}
+
+// ---------------------------------------------------------------------------
+// Zen3 Image — via /v1/images/generations
+// ---------------------------------------------------------------------------
+
+export const zen3Image: ZenModel = {
+  id: 'zen3-image',
+  name: 'Zen3 Image',
+  fullName: 'Zen3 Image',
+  description: 'Best general-purpose image generation.',
+  generation: 'zen3',
+  tier: 'pro max',
+  category: 'vision',
+  modalities: ['vision'],
+  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Diffusion' },
+  pricing: null,
+  features: ['Text-to-image', 'Image editing'],
+  status: 'available',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+export const zen3ImageMax: ZenModel = {
+  id: 'zen3-image-max',
+  name: 'Zen3 Image Max',
+  fullName: 'Zen3 Image Max',
+  description: 'Maximum quality image generation for professional creative work.',
+  generation: 'zen3',
+  tier: 'ultra max',
+  category: 'vision',
+  modalities: ['vision'],
+  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Diffusion' },
+  pricing: null,
+  features: ['Text-to-image', 'Maximum quality'],
+  status: 'available',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+export const zen3ImageDev: ZenModel = {
+  id: 'zen3-image-dev',
+  name: 'Zen3 Image Dev',
+  fullName: 'Zen3 Image Dev',
+  description: 'Development model for experimentation and iteration.',
+  generation: 'zen3',
+  tier: 'pro',
+  category: 'vision',
+  modalities: ['vision'],
+  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Diffusion' },
+  pricing: null,
+  features: ['Text-to-image', 'Development'],
+  status: 'available',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+export const zen3ImageFast: ZenModel = {
+  id: 'zen3-image-fast',
+  name: 'Zen3 Image Fast',
+  fullName: 'Zen3 Image Fast',
+  description: 'Fastest image model for real-time generation.',
+  generation: 'zen3',
+  tier: 'pro',
+  category: 'vision',
+  modalities: ['vision'],
+  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Diffusion' },
+  pricing: null,
+  features: ['Text-to-image', 'Ultra-fast'],
+  status: 'available',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+export const zen3ImageSdxl: ZenModel = {
+  id: 'zen3-image-sdxl',
+  name: 'Zen3 Image SDXL',
+  fullName: 'Zen3 Image SDXL',
+  description: 'High-resolution image generation at 1024px.',
+  generation: 'zen3',
+  tier: 'pro',
+  category: 'vision',
+  modalities: ['vision'],
+  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Diffusion' },
+  pricing: null,
+  features: ['Text-to-image', '1024px'],
+  status: 'available',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+export const zen3ImagePlayground: ZenModel = {
+  id: 'zen3-image-playground',
+  name: 'Zen3 Image Playground',
+  fullName: 'Zen3 Image Playground',
+  description: 'Aesthetic model for artistic image generation.',
+  generation: 'zen3',
+  tier: 'pro',
+  category: 'vision',
+  modalities: ['vision'],
+  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Diffusion' },
+  pricing: null,
+  features: ['Text-to-image', 'Aesthetic'],
+  status: 'available',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+export const zen3ImageSsd: ZenModel = {
+  id: 'zen3-image-ssd',
+  name: 'Zen3 Image SSD',
+  fullName: 'Zen3 Image SSD',
+  description: 'Fastest diffusion model for real-time generation.',
+  generation: 'zen3',
+  tier: 'pro',
+  category: 'vision',
+  modalities: ['vision'],
+  spec: { params: '1B', activeParams: null, context: 0, arch: 'Diffusion' },
+  pricing: null,
+  features: ['Text-to-image', 'Fastest'],
+  status: 'available',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+export const zen3ImageJp: ZenModel = {
+  id: 'zen3-image-jp',
+  name: 'Zen3 Image JP',
+  fullName: 'Zen3 Image JP',
+  description: 'Japanese-specialized image generation model.',
+  generation: 'zen3',
+  tier: 'pro',
+  category: 'vision',
+  modalities: ['vision'],
+  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Diffusion' },
+  pricing: null,
+  features: ['Text-to-image', 'Japanese'],
+  status: 'available',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+// ---------------------------------------------------------------------------
+// Zen3 Audio — Speech-to-Text via /v1/audio/transcriptions
+// ---------------------------------------------------------------------------
+
+export const zen3Audio: ZenModel = {
+  id: 'zen3-audio',
+  name: 'Zen3 Audio',
+  fullName: 'Zen3 Audio',
+  description: 'Best quality speech-to-text transcription. 100+ languages.',
+  generation: 'zen3',
+  tier: 'pro max',
+  category: 'audio',
+  modalities: ['audio', 'text'],
+  spec: { params: '1.5B', activeParams: null, context: 0, arch: 'ASR' },
+  pricing: null,
+  features: ['Multi-language', 'Best accuracy', '100+ languages'],
+  status: 'available',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+export const zen3AudioFast: ZenModel = {
+  id: 'zen3-audio-fast',
+  name: 'Zen3 Audio Fast',
+  fullName: 'Zen3 Audio Fast',
+  description: 'Fastest speech-to-text transcription for high-throughput workloads.',
+  generation: 'zen3',
+  tier: 'pro',
+  category: 'audio',
+  modalities: ['audio', 'text'],
+  spec: { params: '809M', activeParams: null, context: 0, arch: 'ASR' },
+  pricing: null,
+  features: ['Multi-language', 'Fastest', 'Batch optimized'],
+  status: 'available',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+export const zen3Asr: ZenModel = {
+  id: 'zen3-asr',
+  name: 'Zen3 ASR',
+  fullName: 'Zen3 ASR',
+  description: 'Real-time streaming speech recognition for live transcription and voice agents.',
+  generation: 'zen3',
+  tier: 'pro max',
+  category: 'audio',
+  modalities: ['audio', 'text'],
+  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Streaming ASR' },
+  pricing: null,
+  features: ['Streaming', 'Real-time', 'Sub-500ms latency'],
+  status: 'available',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+export const zen3AsrV1: ZenModel = {
+  id: 'zen3-asr-v1',
+  name: 'Zen3 ASR v1',
+  fullName: 'Zen3 ASR v1',
+  description: 'First-generation streaming ASR for legacy compatibility.',
+  generation: 'zen3',
+  tier: 'pro',
+  category: 'audio',
+  modalities: ['audio', 'text'],
+  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Streaming ASR' },
+  pricing: null,
+  features: ['Streaming', 'Legacy'],
+  status: 'available',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+// ---------------------------------------------------------------------------
+// Zen3 TTS — Text-to-Speech via /v1/audio/speech
+// ---------------------------------------------------------------------------
+
+export const zen3Tts: ZenModel = {
+  id: 'zen3-tts',
+  name: 'Zen3 TTS',
+  fullName: 'Zen3 TTS',
+  description: 'High-quality text-to-speech with natural prosody. 40+ voices, 8 languages.',
+  generation: 'zen3',
+  tier: 'pro max',
+  category: 'audio',
+  modalities: ['audio', 'text'],
+  spec: { params: '82M', activeParams: null, context: 0, arch: 'TTS' },
+  pricing: null,
+  features: ['40+ voices', '8 languages', 'Natural prosody'],
+  status: 'available',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+export const zen3TtsHd: ZenModel = {
+  id: 'zen3-tts-hd',
+  name: 'Zen3 TTS HD',
+  fullName: 'Zen3 TTS HD',
+  description: 'Maximum fidelity text-to-speech for broadcast-quality audio production.',
+  generation: 'zen3',
+  tier: 'ultra max',
+  category: 'audio',
+  modalities: ['audio', 'text'],
+  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'TTS HD' },
+  pricing: null,
+  features: ['HD quality', 'Broadcast-grade', '48kHz output'],
+  status: 'available',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+export const zen3TtsFast: ZenModel = {
+  id: 'zen3-tts-fast',
+  name: 'Zen3 TTS Fast',
+  fullName: 'Zen3 TTS Fast',
+  description: 'Low-latency text-to-speech for real-time voice agents and interactive applications.',
+  generation: 'zen3',
+  tier: 'pro',
+  category: 'audio',
+  modalities: ['audio', 'text'],
+  spec: { params: '82M', activeParams: null, context: 0, arch: 'TTS' },
+  pricing: null,
+  features: ['Low latency', 'Real-time', 'Voice agents'],
+  status: 'available',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+// ---------------------------------------------------------------------------
+// Zen5 Generation — Next-gen frontier models (Early Access)
+// ---------------------------------------------------------------------------
+
+export const zen5: ZenModel = {
+  id: 'zen5',
+  name: 'Zen5',
+  fullName: 'Zen5 — Next Generation',
+  description: 'Next-generation agentic frontier model trained on 10B+ tokens of real-world tool use, multi-step reasoning, and production workflows. 1M+ token context with native chain-of-thought.',
+  generation: 'zen5',
+  tier: 'ultra max',
+  category: 'flagship',
+  modalities: ['text', 'code', 'math'],
+  spec: {
+    params: 'TBA',
+    activeParams: null,
+    context: 1_048_576,
+    arch: 'MoDE + CoT',
+  },
+  pricing: null,
+  features: ['1M+ context window', 'Agentic-trained', 'Native CoT', 'Tool use', 'Multimodal native'],
+  status: 'contact-sales',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+export const zen5Pro: ZenModel = {
+  id: 'zen5-pro',
+  name: 'Zen5 Pro',
+  fullName: 'Zen5 Pro — Advanced',
+  description: 'High-throughput agentic model for demanding production workloads. Trained on real-world development patterns with deep chain-of-thought reasoning.',
+  generation: 'zen5',
+  tier: 'ultra',
+  category: 'flagship',
+  modalities: ['text', 'code', 'math'],
+  spec: {
+    params: 'TBA',
+    activeParams: null,
+    context: 524_288,
+    arch: 'MoDE + CoT',
+  },
+  pricing: null,
+  features: ['512K context window', 'Agentic-trained', 'Native CoT', 'Production optimized'],
+  status: 'contact-sales',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+export const zen5Max: ZenModel = {
+  id: 'zen5-max',
+  name: 'Zen5 Max',
+  fullName: 'Zen5 Max — Extended',
+  description: 'Maximum context agentic model for document-scale analysis. Trained on 10B+ tokens of real-world workflows with extended chain-of-thought.',
+  generation: 'zen5',
+  tier: 'ultra max',
+  category: 'flagship',
+  modalities: ['text', 'code', 'math'],
+  spec: {
+    params: 'TBA',
+    activeParams: null,
+    context: 2_097_152,
+    arch: 'MoDE + CoT',
+  },
+  pricing: null,
+  features: ['2M context window', 'Agentic-trained', 'Extended CoT', 'Document-scale'],
+  status: 'contact-sales',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+export const zen5Ultra: ZenModel = {
+  id: 'zen5-ultra',
+  name: 'Zen5 Ultra',
+  fullName: 'Zen5 Ultra — Deep Reasoning',
+  description: 'Deepest reasoning model in the Zen family. Multi-pass chain-of-thought with self-verification.',
+  generation: 'zen5',
+  tier: 'ultra max',
+  category: 'flagship',
+  modalities: ['text', 'code', 'math'],
+  spec: {
+    params: 'TBA',
+    activeParams: null,
+    context: 1_048_576,
+    arch: 'MoDE + Deep CoT',
+  },
+  pricing: null,
+  features: ['1M context window', 'Agentic-trained', 'Deep CoT', 'Self-verification'],
+  status: 'contact-sales',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
+export const zen5Mini: ZenModel = {
+  id: 'zen5-mini',
+  name: 'Zen5 Mini',
+  fullName: 'Zen5 Mini — Efficient',
+  description: 'Efficient agentic model delivering zen5-class intelligence at a fraction of the cost.',
+  generation: 'zen5',
+  tier: 'pro',
+  category: 'flagship',
+  modalities: ['text', 'code', 'math'],
+  spec: {
+    params: 'TBA',
+    activeParams: null,
+    context: 262_144,
+    arch: 'MoDE + CoT',
+  },
+  pricing: null,
+  features: ['256K context window', 'Agentic-trained', 'Native CoT', 'Cost efficient'],
+  status: 'contact-sales',
+  huggingface: null,
+  github: null,
+  aliases: [],
+}
+
 // ---------------------------------------------------------------------------
 // Foundation Models — Local Weights (HuggingFace)
 // ---------------------------------------------------------------------------
@@ -353,12 +900,7 @@ export const zenNano: ZenModel = {
   tier: 'pro',
   category: 'foundation',
   modalities: ['text', 'code', 'math'],
-  spec: {
-    params: '0.6B',
-    activeParams: null,
-    context: 32_000,
-    arch: 'Dense',
-  },
+  spec: { params: '0.6B', activeParams: null, context: 32_000, arch: 'Dense' },
   pricing: null,
   features: ['32K context', '44K tokens/sec', '0.4–1.2GB memory'],
   status: 'available',
@@ -376,12 +918,7 @@ export const zenEco: ZenModel = {
   tier: 'pro',
   category: 'foundation',
   modalities: ['text', 'code', 'math'],
-  spec: {
-    params: '4B',
-    activeParams: null,
-    context: 32_000,
-    arch: 'Dense',
-  },
+  spec: { params: '4B', activeParams: null, context: 32_000, arch: 'Dense' },
   pricing: null,
   features: ['32K context', '33K tokens/sec', '2–8GB memory'],
   status: 'available',
@@ -399,12 +936,7 @@ export const zen: ZenModel = {
   tier: 'pro',
   category: 'foundation',
   modalities: ['text', 'code', 'math'],
-  spec: {
-    params: '8–32B',
-    activeParams: null,
-    context: 32_000,
-    arch: 'Dense',
-  },
+  spec: { params: '8–32B', activeParams: null, context: 32_000, arch: 'Dense' },
   pricing: null,
   features: ['32K context', '28K tokens/sec', '4–64GB memory'],
   status: 'available',
@@ -422,12 +954,7 @@ export const zenPro: ZenModel = {
   tier: 'pro max',
   category: 'foundation',
   modalities: ['text', 'code', 'math'],
-  spec: {
-    params: '32B',
-    activeParams: null,
-    context: 32_000,
-    arch: 'Dense',
-  },
+  spec: { params: '32B', activeParams: null, context: 32_000, arch: 'Dense' },
   pricing: null,
   features: ['32K context', '19K tokens/sec', '16–64GB memory'],
   status: 'available',
@@ -445,18 +972,13 @@ export const zenMax: ZenModel = {
   tier: 'ultra',
   category: 'foundation',
   modalities: ['text', 'code', 'math'],
-  spec: {
-    params: '235B',
-    activeParams: '22B',
-    context: 131_000,
-    arch: 'MoE',
-  },
+  spec: { params: '235B', activeParams: '22B', context: 131_000, arch: 'MoE' },
   pricing: null,
   features: ['131K context', '14K tokens/sec', '48–128GB memory'],
   status: 'available',
   huggingface: 'https://huggingface.co/zenlm/zen-max',
   github: 'https://github.com/zenlm/zen-max',
-  aliases: ['zen4-max'],
+  aliases: [],
 }
 
 export const zenNext: ZenModel = {
@@ -468,12 +990,7 @@ export const zenNext: ZenModel = {
   tier: 'ultra max',
   category: 'foundation',
   modalities: ['text', 'code', 'math'],
-  spec: {
-    params: 'TBD',
-    activeParams: null,
-    context: 256_000,
-    arch: 'Dense',
-  },
+  spec: { params: 'TBD', activeParams: null, context: 256_000, arch: 'Dense' },
   pricing: null,
   features: ['256K context', 'Preview'],
   status: 'preview',
@@ -495,12 +1012,7 @@ export const zenCoder: ZenModel = {
   tier: 'pro max',
   category: 'code',
   modalities: ['text', 'code'],
-  spec: {
-    params: '32B',
-    activeParams: null,
-    context: 131_000,
-    arch: 'Dense',
-  },
+  spec: { params: '32B', activeParams: null, context: 131_000, arch: 'Dense' },
   pricing: null,
   features: ['131K context', 'Multi-language'],
   status: 'available',
@@ -518,12 +1030,7 @@ export const zenCoderFlash: ZenModel = {
   tier: 'pro',
   category: 'code',
   modalities: ['text', 'code'],
-  spec: {
-    params: '7B',
-    activeParams: null,
-    context: 32_000,
-    arch: 'Dense',
-  },
+  spec: { params: '7B', activeParams: null, context: 32_000, arch: 'Dense' },
   pricing: null,
   features: ['32K context', 'Low latency'],
   status: 'available',
@@ -541,12 +1048,7 @@ export const zenCode: ZenModel = {
   tier: 'pro',
   category: 'code',
   modalities: ['text', 'code'],
-  spec: {
-    params: '14B',
-    activeParams: null,
-    context: 32_000,
-    arch: 'Dense',
-  },
+  spec: { params: '14B', activeParams: null, context: 32_000, arch: 'Dense' },
   pricing: null,
   features: ['32K context'],
   status: 'available',
@@ -556,7 +1058,7 @@ export const zenCode: ZenModel = {
 }
 
 // ---------------------------------------------------------------------------
-// Vision & Image Models
+// Vision & Image Models (Open Weights)
 // ---------------------------------------------------------------------------
 
 export const zenVl: ZenModel = {
@@ -568,12 +1070,7 @@ export const zenVl: ZenModel = {
   tier: 'pro max',
   category: 'vision',
   modalities: ['text', 'vision'],
-  spec: {
-    params: '32B',
-    activeParams: null,
-    context: 32_000,
-    arch: 'Dense Multimodal',
-  },
+  spec: { params: '32B', activeParams: null, context: 32_000, arch: 'Dense Multimodal' },
   pricing: null,
   features: ['32K context', 'Image understanding'],
   status: 'available',
@@ -591,12 +1088,7 @@ export const zenOmni: ZenModel = {
   tier: 'ultra',
   category: 'vision',
   modalities: ['text', 'vision', 'audio', 'code'],
-  spec: {
-    params: '72B',
-    activeParams: null,
-    context: 131_000,
-    arch: 'Dense Multimodal',
-  },
+  spec: { params: '72B', activeParams: null, context: 131_000, arch: 'Dense Multimodal' },
   pricing: null,
   features: ['131K context', 'Multimodal'],
   status: 'available',
@@ -605,343 +1097,8 @@ export const zenOmni: ZenModel = {
   aliases: [],
 }
 
-export const zenArtist: ZenModel = {
-  id: 'zen-artist',
-  name: 'Zen Artist',
-  fullName: 'Zen Artist — Image Generation',
-  description: 'Image generation model for creative and professional artwork.',
-  generation: 'foundation',
-  tier: 'pro max',
-  category: 'vision',
-  modalities: ['vision'],
-  spec: {
-    params: 'N/A',
-    activeParams: null,
-    context: 0,
-    arch: 'Dense',
-  },
-  pricing: null,
-  features: ['High-resolution', 'Multiple styles'],
-  status: 'available',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
-export const zenArtistEdit: ZenModel = {
-  id: 'zen-artist-edit',
-  name: 'Zen Artist Edit',
-  fullName: 'Zen Artist Edit — Image Editing',
-  description: 'Instruction-based image editing model.',
-  generation: 'foundation',
-  tier: 'pro max',
-  category: 'vision',
-  modalities: ['vision'],
-  spec: {
-    params: 'N/A',
-    activeParams: null,
-    context: 0,
-    arch: 'Dense',
-  },
-  pricing: null,
-  features: ['Edit by instruction', 'Inpainting'],
-  status: 'available',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
-export const zenDesigner: ZenModel = {
-  id: 'zen-designer',
-  name: 'Zen Designer',
-  fullName: 'Zen Designer — Design Generation',
-  description: 'Design-focused generation model for UI/UX and graphics.',
-  generation: 'foundation',
-  tier: 'pro max',
-  category: 'vision',
-  modalities: ['vision'],
-  spec: {
-    params: 'N/A',
-    activeParams: null,
-    context: 0,
-    arch: 'Dense',
-  },
-  pricing: null,
-  features: ['UI/UX design', 'Graphics'],
-  status: 'coming-soon',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
 // ---------------------------------------------------------------------------
-// Video Models
-// ---------------------------------------------------------------------------
-
-export const zenDirector: ZenModel = {
-  id: 'zen-director',
-  name: 'Zen Director',
-  fullName: 'Zen Director — Video Generation',
-  description: 'Text-to-video generation model for cinematic content.',
-  generation: 'foundation',
-  tier: 'ultra',
-  category: 'video',
-  modalities: ['video'],
-  spec: {
-    params: 'N/A',
-    activeParams: null,
-    context: 0,
-    arch: 'Dense',
-  },
-  pricing: null,
-  features: ['Text-to-video', 'Cinematic quality'],
-  status: 'coming-soon',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
-export const zenVideo: ZenModel = {
-  id: 'zen-video',
-  name: 'Zen Video',
-  fullName: 'Zen Video — Video Understanding',
-  description: 'Video understanding and analysis model.',
-  generation: 'foundation',
-  tier: 'pro max',
-  category: 'video',
-  modalities: ['video', 'text'],
-  spec: {
-    params: 'N/A',
-    activeParams: null,
-    context: 0,
-    arch: 'Dense',
-  },
-  pricing: null,
-  features: ['Video understanding', 'Frame analysis'],
-  status: 'coming-soon',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
-export const zenVideoI2v: ZenModel = {
-  id: 'zen-video-i2v',
-  name: 'Zen Video I2V',
-  fullName: 'Zen Video I2V — Image to Video',
-  description: 'Image-to-video generation model.',
-  generation: 'foundation',
-  tier: 'pro max',
-  category: 'video',
-  modalities: ['video', 'vision'],
-  spec: {
-    params: 'N/A',
-    activeParams: null,
-    context: 0,
-    arch: 'Dense',
-  },
-  pricing: null,
-  features: ['Image-to-video', 'Animation'],
-  status: 'coming-soon',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
-export const zenVoyager: ZenModel = {
-  id: 'zen-voyager',
-  name: 'Zen Voyager',
-  fullName: 'Zen Voyager — World Model',
-  description: 'World model for spatial and temporal reasoning in video.',
-  generation: 'foundation',
-  tier: 'ultra',
-  category: 'video',
-  modalities: ['video', 'text'],
-  spec: {
-    params: 'N/A',
-    activeParams: null,
-    context: 0,
-    arch: 'Dense',
-  },
-  pricing: null,
-  features: ['World model', 'Spatial reasoning'],
-  status: 'coming-soon',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
-// ---------------------------------------------------------------------------
-// Audio & Speech Models
-// ---------------------------------------------------------------------------
-
-export const zenMusician: ZenModel = {
-  id: 'zen-musician',
-  name: 'Zen Musician',
-  fullName: 'Zen Musician — Music Generation',
-  description: 'Music generation model for compositions and sound design.',
-  generation: 'foundation',
-  tier: 'pro max',
-  category: 'audio',
-  modalities: ['audio'],
-  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Dense' },
-  pricing: null,
-  features: ['Music generation', 'Multi-instrument'],
-  status: 'coming-soon',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
-export const zenFoley: ZenModel = {
-  id: 'zen-foley',
-  name: 'Zen Foley',
-  fullName: 'Zen Foley — Sound Effects',
-  description: 'Sound effects generation from text descriptions.',
-  generation: 'foundation',
-  tier: 'pro',
-  category: 'audio',
-  modalities: ['audio'],
-  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Dense' },
-  pricing: null,
-  features: ['Text-to-SFX', 'Foley art'],
-  status: 'coming-soon',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
-export const zenDub: ZenModel = {
-  id: 'zen-dub',
-  name: 'Zen Dub',
-  fullName: 'Zen Dub — Voice Synthesis',
-  description: 'High-quality voice synthesis and dubbing.',
-  generation: 'foundation',
-  tier: 'pro max',
-  category: 'audio',
-  modalities: ['audio', 'text'],
-  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Dense' },
-  pricing: null,
-  features: ['Voice synthesis', 'Multi-language dubbing'],
-  status: 'coming-soon',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
-export const zenDubLive: ZenModel = {
-  id: 'zen-dub-live',
-  name: 'Zen Dub Live',
-  fullName: 'Zen Dub Live — Real-time Voice',
-  description: 'Real-time voice synthesis for live applications.',
-  generation: 'foundation',
-  tier: 'ultra',
-  category: 'audio',
-  modalities: ['audio', 'text'],
-  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Dense' },
-  pricing: null,
-  features: ['Real-time', 'Low latency'],
-  status: 'coming-soon',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
-export const zenScribe: ZenModel = {
-  id: 'zen-scribe',
-  name: 'Zen Scribe',
-  fullName: 'Zen Scribe — Speech-to-Text',
-  description: 'High-accuracy speech-to-text transcription.',
-  generation: 'foundation',
-  tier: 'pro',
-  category: 'audio',
-  modalities: ['audio', 'text'],
-  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Dense' },
-  pricing: null,
-  features: ['Transcription', 'Multi-language'],
-  status: 'available',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
-export const zenTranslator: ZenModel = {
-  id: 'zen-translator',
-  name: 'Zen Translator',
-  fullName: 'Zen Translator — Translation',
-  description: 'Neural machine translation across 100+ languages.',
-  generation: 'foundation',
-  tier: 'pro',
-  category: 'audio',
-  modalities: ['text'],
-  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Dense' },
-  pricing: null,
-  features: ['100+ languages', 'Context-aware'],
-  status: 'available',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
-export const zenLive: ZenModel = {
-  id: 'zen-live',
-  name: 'Zen Live',
-  fullName: 'Zen Live — Real-time Translation',
-  description: 'Real-time speech translation for live communication.',
-  generation: 'foundation',
-  tier: 'ultra',
-  category: 'audio',
-  modalities: ['audio', 'text'],
-  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Dense' },
-  pricing: null,
-  features: ['Real-time', 'Bidirectional'],
-  status: 'coming-soon',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
-// ---------------------------------------------------------------------------
-// 3D & Spatial Models
-// ---------------------------------------------------------------------------
-
-export const zen3d: ZenModel = {
-  id: 'zen-3d',
-  name: 'Zen 3D',
-  fullName: 'Zen 3D — 3D Generation',
-  description: '3D object and scene generation from text or images.',
-  generation: 'foundation',
-  tier: 'ultra',
-  category: 'spatial',
-  modalities: ['3d', 'vision', 'text'],
-  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Dense' },
-  pricing: null,
-  features: ['Text-to-3D', 'Image-to-3D'],
-  status: 'coming-soon',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
-export const zenWorld: ZenModel = {
-  id: 'zen-world',
-  name: 'Zen World',
-  fullName: 'Zen World — World Simulation',
-  description: 'World simulation model for spatial reasoning and navigation.',
-  generation: 'foundation',
-  tier: 'ultra',
-  category: 'spatial',
-  modalities: ['3d', 'text'],
-  spec: { params: 'N/A', activeParams: null, context: 0, arch: 'Dense' },
-  pricing: null,
-  features: ['World simulation', 'Spatial reasoning'],
-  status: 'coming-soon',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
-// ---------------------------------------------------------------------------
-// Safety Models
+// Safety Models (Open Weights)
 // ---------------------------------------------------------------------------
 
 export const zenGuard: ZenModel = {
@@ -953,12 +1110,7 @@ export const zenGuard: ZenModel = {
   tier: 'pro',
   category: 'safety',
   modalities: ['text', 'safety'],
-  spec: {
-    params: '8B',
-    activeParams: null,
-    context: 32_000,
-    arch: 'Dense',
-  },
+  spec: { params: '8B', activeParams: null, context: 32_000, arch: 'Dense' },
   pricing: null,
   features: ['Content moderation', 'Guardrails'],
   status: 'available',
@@ -967,54 +1119,8 @@ export const zenGuard: ZenModel = {
   aliases: [],
 }
 
-export const zenGuardGen: ZenModel = {
-  id: 'zen-guard-gen',
-  name: 'Zen Guard Gen',
-  fullName: 'Zen Guard Gen — Generative Safety',
-  description: 'Safety-aligned generation model with built-in guardrails.',
-  generation: 'foundation',
-  tier: 'pro',
-  category: 'safety',
-  modalities: ['text', 'safety'],
-  spec: {
-    params: '8B',
-    activeParams: null,
-    context: 32_000,
-    arch: 'Dense',
-  },
-  pricing: null,
-  features: ['Safe generation', 'Built-in guardrails'],
-  status: 'available',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
-export const zenGuardStream: ZenModel = {
-  id: 'zen-guard-stream',
-  name: 'Zen Guard Stream',
-  fullName: 'Zen Guard Stream — Streaming Safety',
-  description: 'Real-time streaming content moderation.',
-  generation: 'foundation',
-  tier: 'pro',
-  category: 'safety',
-  modalities: ['text', 'safety'],
-  spec: {
-    params: '4B',
-    activeParams: null,
-    context: 8_000,
-    arch: 'Dense',
-  },
-  pricing: null,
-  features: ['Streaming moderation', 'Low latency'],
-  status: 'available',
-  huggingface: null,
-  github: null,
-  aliases: [],
-}
-
 // ---------------------------------------------------------------------------
-// Embedding Models
+// Embedding Models (Open Weights)
 // ---------------------------------------------------------------------------
 
 export const zenEmbedding: ZenModel = {
@@ -1026,12 +1132,7 @@ export const zenEmbedding: ZenModel = {
   tier: 'pro',
   category: 'embedding',
   modalities: ['text', 'embedding'],
-  spec: {
-    params: '3072 dimensions',
-    activeParams: null,
-    context: 8_000,
-    arch: 'Embedding',
-  },
+  spec: { params: '3072 dimensions', activeParams: null, context: 8_000, arch: 'Embedding' },
   pricing: null,
   features: ['3072 dimensions', 'Cosine similarity'],
   status: 'available',
@@ -1049,12 +1150,7 @@ export const zenReranker: ZenModel = {
   tier: 'pro',
   category: 'embedding',
   modalities: ['text', 'embedding'],
-  spec: {
-    params: '568M',
-    activeParams: null,
-    context: 8_000,
-    arch: 'Dense',
-  },
+  spec: { params: '568M', activeParams: null, context: 8_000, arch: 'Reranker' },
   pricing: null,
   features: ['Cross-encoder', 'Search reranking'],
   status: 'available',
@@ -1076,12 +1172,7 @@ export const zenAgent: ZenModel = {
   tier: 'ultra',
   category: 'agents',
   modalities: ['text', 'code', 'agents'],
-  spec: {
-    params: '32B',
-    activeParams: null,
-    context: 131_000,
-    arch: 'Dense',
-  },
+  spec: { params: '32B', activeParams: null, context: 131_000, arch: 'Dense' },
   pricing: null,
   features: ['Tool use', 'Multi-step planning'],
   status: 'preview',
@@ -1097,25 +1188,31 @@ export const zenAgent: ZenModel = {
 /** All Zen models — the canonical list. */
 export const allModels: ZenModel[] = [
   // Zen4 production API models
-  zen4, zen4Pro, zen4Max, zen4Mini, zen4Ultra, zen4Thinking,
+  zen4, zen4Pro, zen4Max, zen4_6, zen4Mini, zen4Ultra, zen4Thinking,
   zen4Coder, zen4CoderFlash, zen4CoderPro,
-  // Zen3 production API models
-  zen3Omni, zen3Vl, zen3Nano, zen3Guard, zen3Embedding,
+  // Zen3 production API models (chat)
+  zen3Omni, zen3Vl, zen3Nano, zen3Guard,
+  // Zen3 embedding & reranker
+  zen3Embedding, zen3EmbeddingMedium, zen3EmbeddingSmall,
+  zen3Reranker, zen3RerankerMedium, zen3RerankerSmall,
+  // Zen3 image
+  zen3Image, zen3ImageMax, zen3ImageDev, zen3ImageFast,
+  zen3ImageSdxl, zen3ImagePlayground, zen3ImageSsd, zen3ImageJp,
+  // Zen3 audio
+  zen3Audio, zen3AudioFast, zen3Asr, zen3AsrV1,
+  // Zen3 TTS
+  zen3Tts, zen3TtsHd, zen3TtsFast,
+  // Zen5 next-gen (contact sales)
+  zen5, zen5Pro, zen5Max, zen5Ultra, zen5Mini,
   // Foundation local models
   zenNano, zenEco, zen, zenPro, zenMax, zenNext,
   // Code
   zenCoder, zenCoderFlash, zenCode,
-  // Vision & Image
-  zenVl, zenOmni, zenArtist, zenArtistEdit, zenDesigner,
-  // Video
-  zenDirector, zenVideo, zenVideoI2v, zenVoyager,
-  // Audio & Speech
-  zenMusician, zenFoley, zenDub, zenDubLive, zenScribe, zenTranslator, zenLive,
-  // 3D & Spatial
-  zen3d, zenWorld,
+  // Vision & Image (open weights)
+  zenVl, zenOmni,
   // Safety
-  zenGuard, zenGuardGen, zenGuardStream,
-  // Embedding
+  zenGuard,
+  // Embedding (open weights)
   zenEmbedding, zenReranker,
   // Agents
   zenAgent,
@@ -1130,6 +1227,7 @@ export const localModels: ZenModel[] = allModels.filter(m => m.huggingface !== n
 /** Models by generation. */
 export const zen4Models: ZenModel[] = allModels.filter(m => m.generation === 'zen4')
 export const zen3Models: ZenModel[] = allModels.filter(m => m.generation === 'zen3')
+export const zen5Models: ZenModel[] = allModels.filter(m => m.generation === 'zen5')
 export const foundationModels: ZenModel[] = allModels.filter(m => m.generation === 'foundation')
 
 /** Lookup by ID. */

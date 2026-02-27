@@ -2,22 +2,22 @@
  * @hanzo/zen-models — Model family groupings for display purposes.
  */
 
-import type { ModelFamily } from './types.js'
+import type { ModelFamily } from './types'
 
 export const families: ModelFamily[] = [
   {
-    id: 'foundation',
-    name: 'Foundation',
-    description: 'General-purpose models from 0.6B to 235B parameters.',
-    icon: 'Brain',
-    models: ['zen-nano', 'zen-eco', 'zen', 'zen-pro', 'zen-max', 'zen-next'],
+    id: 'zen5',
+    name: 'Zen 5',
+    description: 'Next-generation agentic models with native chain-of-thought.',
+    icon: 'Rocket',
+    models: ['zen5', 'zen5-pro', 'zen5-max', 'zen5-ultra', 'zen5-mini'],
   },
   {
     id: 'zen4',
     name: 'Zen 4',
     description: 'Latest generation production models with MoDE architecture.',
     icon: 'Sparkles',
-    models: ['zen4-mini', 'zen4', 'zen4-pro', 'zen4-max', 'zen4-ultra', 'zen4-thinking'],
+    models: ['zen4-max', 'zen4.6', 'zen4', 'zen4-ultra', 'zen4-pro', 'zen4-thinking', 'zen4-mini'],
   },
   {
     id: 'code',
@@ -27,46 +27,63 @@ export const families: ModelFamily[] = [
     models: ['zen4-coder', 'zen4-coder-flash', 'zen4-coder-pro', 'zen-coder', 'zen-coder-flash', 'zen-code'],
   },
   {
-    id: 'vision',
-    name: 'Vision & Image',
-    description: 'Visual understanding, generation, and editing models.',
+    id: 'zen3',
+    name: 'Zen 3 Multimodal',
+    description: 'Vision, safety, and multimodal chat models.',
     icon: 'Eye',
-    models: ['zen-vl', 'zen-omni', 'zen-artist', 'zen-artist-edit', 'zen-designer'],
+    models: ['zen3-omni', 'zen3-vl', 'zen3-nano', 'zen3-guard'],
   },
   {
-    id: 'video',
-    name: 'Video',
-    description: 'Video generation, understanding, and world models.',
-    icon: 'Video',
-    models: ['zen-director', 'zen-video', 'zen-video-i2v', 'zen-voyager'],
+    id: 'embedding',
+    name: 'Embedding & Retrieval',
+    description: 'Text embeddings and search reranking via API.',
+    icon: 'Search',
+    models: [
+      'zen3-embedding', 'zen3-embedding-medium', 'zen3-embedding-small',
+      'zen3-reranker', 'zen3-reranker-medium', 'zen3-reranker-small',
+      'zen-embedding', 'zen-reranker',
+    ],
+  },
+  {
+    id: 'image',
+    name: 'Image Generation',
+    description: 'Text-to-image generation via API.',
+    icon: 'Image',
+    models: [
+      'zen3-image', 'zen3-image-max', 'zen3-image-dev', 'zen3-image-fast',
+      'zen3-image-sdxl', 'zen3-image-playground', 'zen3-image-ssd', 'zen3-image-jp',
+    ],
   },
   {
     id: 'audio',
     name: 'Audio & Speech',
-    description: 'Music, voice synthesis, transcription, and translation.',
+    description: 'Speech-to-text, text-to-speech, and streaming ASR.',
     icon: 'Mic',
-    models: ['zen-musician', 'zen-foley', 'zen-dub', 'zen-dub-live', 'zen-scribe', 'zen-translator', 'zen-live'],
+    models: [
+      'zen3-audio', 'zen3-audio-fast', 'zen3-asr', 'zen3-asr-v1',
+      'zen3-tts', 'zen3-tts-hd', 'zen3-tts-fast',
+    ],
   },
   {
-    id: 'spatial',
-    name: '3D & Spatial',
-    description: '3D generation and world simulation models.',
-    icon: 'Box',
-    models: ['zen-3d', 'zen-world'],
+    id: 'foundation',
+    name: 'Foundation',
+    description: 'General-purpose open-weight models from 0.6B to 235B parameters.',
+    icon: 'Brain',
+    models: ['zen-nano', 'zen-eco', 'zen', 'zen-pro', 'zen-max', 'zen-next'],
+  },
+  {
+    id: 'vision',
+    name: 'Vision (Open Weights)',
+    description: 'Vision-language and multimodal open-weight models.',
+    icon: 'Eye',
+    models: ['zen-vl', 'zen-omni'],
   },
   {
     id: 'safety',
     name: 'Safety',
     description: 'Content moderation and safety guardrail models.',
     icon: 'Shield',
-    models: ['zen-guard', 'zen-guard-gen', 'zen-guard-stream'],
-  },
-  {
-    id: 'embedding',
-    name: 'Embedding',
-    description: 'Text embeddings and search reranking models.',
-    icon: 'Search',
-    models: ['zen-embedding', 'zen-reranker'],
+    models: ['zen3-guard', 'zen-guard'],
   },
   {
     id: 'agents',
