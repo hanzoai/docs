@@ -89,7 +89,7 @@ const aiModels = [
   { name: 'Zen 1B', input: 'Free', output: 'Free', free: true },
   { name: 'Zen 7B', input: '$0.20', output: '$0.60' },
   { name: 'Claude Sonnet', input: '$3.00', output: '$15.00' },
-  { name: 'GPT-4o', input: '$2.50', output: '$10.00' },
+  { name: 'GPT-5', input: '$2.50', output: '$10.00' },
 ];
 
 /* ---- Comparison table ---- */
