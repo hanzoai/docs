@@ -1,0 +1,122 @@
+---
+title: Collections
+description: Collections are the core data model in Base. They define your schema and generate REST APIs automatically.
+---
+
+Collections are typed data stores that auto-generate REST APIs. Think of them as database tables with built-in CRUD endpoints.
+
+## Collection Types
+
+| Type | Description | Use Case |
+|------|-------------|----------|
+| **Base** | Standard data collection | Posts, tasks, products |
+| **Auth** | User collection with auth methods | Users, admins, teams |
+| **View** | Read-only computed collection | Dashboards, aggregates |
+
+## Creating Collections
+
+### Via Admin UI
+
+Navigate to `/_/` and click **New Collection**. Define fields visually with the schema editor.
+
+### Via Migration
+
+```javascript
+// hz_migrations/1709000001_create_posts.js
+migrate((app) => {
+  const collection = new Collection({
+    name: 'posts',
+    type: 'base',
+    fields: [
+      { name: 'title', type: 'text', required: true, max: 200 },
+      { name: 'body', type: 'editor' },
+      { name: 'slug', type: 'text', unique: true },
+      { name: 'status', type: 'select', values: ['draft', 'published'] },
+      { name: 'author', type: 'relation', collection: 'users', required: true },
+      { name: 'tags', type: 'json' },
+      { name: 'cover', type: 'file', maxSize: 5242880, mimeTypes: ['image/*'] },
+    ],
+    indexes: [
+      'CREATE UNIQUE INDEX idx_posts_slug ON posts (slug)',
+    ],
+  })
+  return app.save(collection)
+})
+```
+
+## Field Types
+
+| Type | Go Type | Description |
+|------|---------|-------------|
+| `text` | `string` | Plain text with optional min/max/pattern |
+| `editor` | `string` | Rich text (HTML) |
+| `number` | `float64` | Integer or decimal |
+| `bool` | `bool` | True/false |
+| `email` | `string` | Validated email |
+| `url` | `string` | Validated URL |
+| `date` | `string` | ISO 8601 datetime |
+| `select` | `string` | Single or multi-select from defined values |
+| `json` | `any` | Arbitrary JSON |
+| `file` | `string` | File upload (single or multiple) |
+| `relation` | `string` | Foreign key to another collection |
+| `autodate` | `string` | Auto-set on create/update |
+
+## API Rules
+
+Control access per operation with filter expressions:
+
+```
+// Only authenticated users can create
+@request.auth.id != ""
+
+// Only the author can update
+@request.auth.id = author
+
+// Public read access
+(leave empty)
+
+// Admin only
+@request.auth.role = "admin"
+
+// Complex filter
+@request.auth.id != "" && status = "published"
+```
+
+## Querying
+
+### REST API
+
+```bash
+# List records
+GET /api/collections/posts/records?page=1&perPage=20&sort=-created
+
+# Filter
+GET /api/collections/posts/records?filter=(status='published')
+
+# Expand relations
+GET /api/collections/posts/records?expand=author
+
+# Get single record
+GET /api/collections/posts/records/RECORD_ID
+```
+
+### JavaScript SDK
+
+```typescript
+// List with filters
+const posts = await base.collection('posts').getList(1, 20, {
+  filter: 'status = "published"',
+  sort: '-created',
+  expand: 'author',
+})
+
+// Get one
+const post = await base.collection('posts').getOne(id, {
+  expand: 'author',
+})
+
+// Full list (auto-paginated)
+const allPosts = await base.collection('posts').getFullList({
+  sort: 'title',
+})
+```

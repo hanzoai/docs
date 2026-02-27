@@ -1,0 +1,140 @@
+---
+title: Cloud Functions
+description: Server-side JavaScript hooks, custom routes, and scheduled tasks running inside Base.
+---
+
+Base includes a built-in JavaScript runtime (JSVM) for server-side logic. Write hooks, custom API routes, and cron jobs without a separate service.
+
+## Hooks
+
+Hooks run before or after database operations:
+
+```javascript
+// hz_hooks/main.pb.js
+
+// Before creating a record
+onRecordCreate((e) => {
+  // Validate
+  if (e.record.get('title').length < 3) {
+    throw new BadRequestError('Title too short')
+  }
+  // Transform
+  e.record.set('slug', slugify(e.record.get('title')))
+  return e.next()
+}, 'posts')
+
+// After creating a record
+onRecordAfterCreateSuccess((e) => {
+  // Send notification
+  const author = $app.findRecordById('users', e.record.get('author'))
+  sendEmail(author.get('email'), 'Your post was published!')
+}, 'posts')
+
+// Before updating
+onRecordUpdate((e) => {
+  e.record.set('updatedBy', e.requestInfo().auth?.id)
+  return e.next()
+}, 'tasks')
+
+// Before deleting
+onRecordDelete((e) => {
+  // Soft delete instead
+  e.record.set('deletedAt', new Date().toISOString())
+  $app.save(e.record)
+  // Prevent actual deletion
+  throw new Error('Record soft-deleted')
+}, 'posts')
+```
+
+## Custom Routes
+
+Add API endpoints alongside the auto-generated collection routes:
+
+```javascript
+// hz_hooks/routes.pb.js
+
+// GET /api/stats
+routerAdd('GET', '/api/stats', (e) => {
+  const totalPosts = $app.findRecordsByFilter('posts', '1=1').length
+  const totalUsers = $app.findRecordsByFilter('users', '1=1').length
+
+  return e.json(200, {
+    posts: totalPosts,
+    users: totalUsers,
+  })
+})
+
+// POST /api/webhook
+routerAdd('POST', '/api/webhook', (e) => {
+  const body = e.requestBody()
+  // Process webhook payload
+  $app.findRecordById('events', body.eventId)
+  return e.json(200, { ok: true })
+})
+
+// Protected route
+routerAdd('GET', '/api/me/dashboard', (e) => {
+  const auth = e.requestInfo().auth
+  if (!auth) {
+    throw new UnauthorizedError('Login required')
+  }
+
+  const tasks = $app.findRecordsByFilter('tasks',
+    `assignee = "${auth.id}" && status = "active"`)
+
+  return e.json(200, { tasks })
+})
+```
+
+## Scheduled Functions
+
+Run functions on a cron schedule:
+
+```javascript
+// hz_hooks/cron.pb.js
+
+// Every hour — cleanup expired sessions
+cronAdd('cleanup sessions', '0 * * * *', () => {
+  const expired = $app.findRecordsByFilter('sessions',
+    `expiresAt < "${new Date().toISOString()}"`)
+  for (const session of expired) {
+    $app.delete(session)
+  }
+})
+
+// Daily at 3am — generate reports
+cronAdd('daily report', '0 3 * * *', () => {
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+  const events = $app.findRecordsByFilter('events',
+    `created >= "${yesterday}"`)
+
+  $app.save(new Record($app.findCollectionByNameOrId('reports'), {
+    date: yesterday,
+    eventCount: events.length,
+  }))
+})
+
+// Every 5 minutes — sync external data
+cronAdd('sync feed', '*/5 * * * *', () => {
+  const response = $http.send({
+    url: 'https://api.example.com/feed',
+    method: 'GET',
+  })
+
+  if (response.statusCode === 200) {
+    // Process and save
+  }
+})
+```
+
+## Available APIs
+
+The JSVM provides access to:
+
+| API | Description |
+|-----|-------------|
+| `$app` | Application instance (find, save, delete records) |
+| `$http` | HTTP client for external requests |
+| `$os` | OS utilities (env vars, file system) |
+| `$security` | Crypto functions (hash, encrypt, JWT) |
+| `$mail` | Email sending |
