@@ -1,0 +1,89 @@
+---
+title: "Auto-Purchase Rules"
+description: "Configure bots to autonomously purchase marketplace capacity based on rules"
+---
+
+Last updated: 2026-02-27
+
+## Overview
+
+Auto-purchase rules let bots autonomously buy marketplace capacity without human intervention. When wallet balance or available capacity drops below a threshold, the bot automatically purchases more from the marketplace based on your configured rules.
+
+## How It Works
+
+1. You create one or more auto-purchase rules per bot
+2. Each rule targets a specific capacity type (e.g., Claude Code, GPU, custom agent)
+3. When triggered, the bot searches marketplace listings matching your criteria
+4. If a listing is found within your price cap, the bot purchases automatically
+5. Payment comes from the bot's wallet balance
+
+## Rule Configuration
+
+| Field | Description | Example |
+|-------|-------------|---------|
+| **Capacity Type** | What to buy | `claude-code`, `gpu-compute`, `custom-agent`, `api-key` |
+| **Preferred Provider** | Specific provider (optional) | `Anthropic`, `NVIDIA`, or `null` for any |
+| **Preferred Model** | Specific model (optional) | `claude-opus-4-6`, or `null` for any |
+| **Max Price** | Maximum USD cents per unit | `100` ($1.00/unit) |
+| **Default Quantity** | How many units per purchase | `4` |
+| **Min Balance Trigger** | Minimum AI coin balance before auto-buy fires | `5.0` |
+| **Enabled** | Whether the rule is active | `true` / `false` |
+
+## Example Rules
+
+### Keep Claude Code Sessions Stocked
+```json
+{
+  "capacityType": "claude-code",
+  "preferredProvider": "Anthropic",
+  "preferredModel": "claude-opus-4-6",
+  "maxCentsPerUnit": 150,
+  "defaultQuantity": 4,
+  "minBalanceTrigger": 10,
+  "enabled": true
+}
+```
+
+### Budget GPU Compute
+```json
+{
+  "capacityType": "gpu-compute",
+  "preferredProvider": null,
+  "preferredModel": null,
+  "maxCentsPerUnit": 500,
+  "defaultQuantity": 2,
+  "minBalanceTrigger": 20,
+  "enabled": true
+}
+```
+
+### Confidential Compute Only
+```json
+{
+  "capacityType": "confidential-compute",
+  "preferredProvider": "NVIDIA",
+  "preferredModel": null,
+  "maxCentsPerUnit": 800,
+  "defaultQuantity": 1,
+  "minBalanceTrigger": 50,
+  "enabled": true
+}
+```
+
+## Manual Trigger
+
+You can manually trigger any auto-purchase rule from the dashboard by clicking **Buy Now** on the rule card. This executes the rule immediately regardless of the balance trigger threshold.
+
+## Budget Integration
+
+Auto-purchase respects the bot's budget limits. If the bot has a monthly or daily spend cap configured in the Budget settings, auto-purchase will not exceed those limits even if the wallet has sufficient funds.
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/bots/:botId/wallet/auto-purchase` | List all rules |
+| `POST` | `/v1/bots/:botId/wallet/auto-purchase` | Create a rule |
+| `PUT` | `/v1/bots/:botId/wallet/auto-purchase/:ruleId` | Update a rule |
+| `DELETE` | `/v1/bots/:botId/wallet/auto-purchase/:ruleId` | Delete a rule |
+| `POST` | `/v1/bots/:botId/wallet/auto-purchase/:ruleId/execute` | Manually trigger |
