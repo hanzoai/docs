@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: visor-docs
+  namespace: hanzo
+  labels:
+    app: visor-docs
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: visor-docs
+  template:
+    metadata:
+      labels:
+        app: visor-docs
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: visor-docs
+          image: ghcr.io/hanzoai/visor-docs:latest
+          ports:
+            - containerPort: 80
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "10m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: visor-docs
+  namespace: hanzo
+spec:
+  selector:
+    app: visor-docs
+  ports:
+    - port: 80
+      targetPort: 80

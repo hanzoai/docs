@@ -1,0 +1,121 @@
+---
+title: "Authentication"
+description: "Authenticate with the Hanzo Visor API"
+---
+
+All Visor API requests require authentication via a Bearer token.
+
+## API keys
+
+Generate API keys from the Visor dashboard at **Settings > API Keys**.
+
+Each key has a prefix that indicates its type:
+- `vsr_live_` -- Production key with full access
+- `vsr_test_` -- Test key for development (creates VMs in sandbox mode)
+
+## Using your API key
+
+Include the key in the `Authorization` header:
+
+```bash
+curl -X GET https://api.visor.hanzo.ai/v1/vms \
+  -H "Authorization: Bearer vsr_live_..."
+```
+
+## Key permissions
+
+API keys can be scoped to specific permissions:
+
+| Scope | Description |
+|-------|------------|
+| `vms:read` | List and get VM details |
+| `vms:write` | Create, update, delete VMs |
+| `volumes:read` | List and get volume details |
+| `volumes:write` | Create, attach, detach, delete volumes |
+| `providers:read` | List connected providers |
+| `providers:write` | Connect and disconnect providers |
+| `billing:read` | View billing and usage |
+| `*` | Full access (default) |
+
+## Rate limits
+
+| Endpoint | Limit |
+|----------|-------|
+| `GET` requests | 1000/min |
+| `POST/PATCH/DELETE` | 100/min |
+| VM creation | 10/min |
+
+Rate limit headers are included in every response:
+
+```
+X-RateLimit-Limit: 1000
+X-RateLimit-Remaining: 997
+X-RateLimit-Reset: 1709049600
+```
+
+## Error responses
+
+Authentication errors return HTTP 401:
+
+```json
+{
+  "error": {
+    "code": "unauthorized",
+    "message": "Invalid or expired API key"
+  }
+}
+```
+
+Insufficient permissions return HTTP 403:
+
+```json
+{
+  "error": {
+    "code": "forbidden",
+    "message": "API key does not have 'vms:write' permission"
+  }
+}
+```
+
+## API base URL
+
+All API requests use the base URL:
+
+```
+https://api.visor.hanzo.ai/v1
+```
+
+## SDKs
+
+Official SDKs handle authentication automatically:
+
+```bash
+# Node.js / TypeScript
+npm install @hanzo/visor
+
+# Python
+pip install hanzo-visor
+
+# Go
+go get github.com/hanzoai/visor-go
+```
+
+Example with the TypeScript SDK:
+
+```typescript
+import { Visor } from '@hanzo/visor';
+
+const visor = new Visor({
+  apiKey: process.env.VISOR_API_KEY,
+});
+
+const vms = await visor.vms.list();
+```
+
+## Security best practices
+
+- Never commit API keys to source control
+- Use environment variables or a secrets manager
+- Rotate keys periodically
+- Use scoped keys with minimum required permissions
+- Use test keys during development

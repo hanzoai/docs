@@ -1,0 +1,87 @@
+---
+title: "Quickstart"
+description: "Launch your first VM in under 5 minutes"
+---
+
+Get a virtual machine running in minutes. This guide walks you through creating an account, generating an API key, and launching your first VM.
+
+## Prerequisites
+
+- A Hanzo account at [app.platform.hanzo.ai](https://app.platform.hanzo.ai)
+- At least one cloud provider connected (AWS, DigitalOcean, or Hetzner)
+
+## Step 1: Create an account
+
+Sign up at [app.platform.hanzo.ai](https://app.platform.hanzo.ai). You can use email, GitHub, or Google OAuth.
+
+## Step 2: Connect a cloud provider
+
+Navigate to **Settings > Providers** and connect at least one cloud account:
+
+- **AWS**: Provide an IAM access key with EC2/VPC permissions
+- **DigitalOcean**: Generate a personal access token at [cloud.digitalocean.com/account/api/tokens](https://cloud.digitalocean.com/account/api/tokens)
+- **Hetzner**: Create an API token at [console.hetzner.cloud](https://console.hetzner.cloud)
+
+## Step 3: Generate an API key
+
+Go to **Settings > API Keys** and create a new key. Save it securely -- you will not be able to see it again.
+
+```bash
+export VISOR_API_KEY="vsr_live_..."
+```
+
+## Step 4: Launch a VM
+
+### Via Dashboard
+
+1. Click **New VM** in the dashboard
+2. Select a provider, region, and size
+3. Choose an OS image (Ubuntu 24.04 recommended)
+4. Click **Launch**
+
+### Via API
+
+```bash
+curl -X POST https://api.visor.hanzo.ai/v1/vms \
+  -H "Authorization: Bearer $VISOR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-first-vm",
+    "provider": "digitalocean",
+    "region": "nyc3",
+    "size": "nano",
+    "image": "ubuntu-24.04"
+  }'
+```
+
+Response:
+
+```json
+{
+  "id": "vm_abc123",
+  "name": "my-first-vm",
+  "status": "provisioning",
+  "provider": "digitalocean",
+  "region": "nyc3",
+  "size": "nano",
+  "ip": null,
+  "created_at": "2026-02-27T12:00:00Z"
+}
+```
+
+The VM will be ready in 30-90 seconds depending on the provider.
+
+## Step 5: Connect
+
+Once the VM status is `running`, you can connect via:
+
+- **Browser terminal**: Click **Terminal** in the dashboard for instant SSH access
+- **SSH**: `ssh root@<vm-ip>` using the SSH key you configured
+- **VNC**: Available on Standard plans and above for graphical desktop access
+
+## Next steps
+
+- [Attach block storage](/docs/features/volumes)
+- [Set up monitoring](/docs/features/terminal)
+- [Explore provider-specific options](/docs/providers/aws)
+- [API authentication](/docs/api/authentication)
