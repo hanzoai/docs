@@ -13,7 +13,7 @@ const billingFaqs = [
   },
   {
     q: 'How does AI model pricing work?',
-    a: 'AI models are priced per million tokens (input and output separately). Open-source models like Zen 1B are free. Larger models like Zen 7B, Claude Sonnet, and GPT-4o are billed at listed rates. You can also bring your own API keys and skip our token pricing entirely.',
+    a: 'AI models are priced per million tokens (input and output separately). Open-source models like Zen 1B are free. Larger models like Zen 7B, Claude Sonnet, and GPT-5 are billed at listed rates. You can also bring your own API keys and skip our token pricing entirely.',
   },
   {
     q: 'Can I scale up or down at any time?',
