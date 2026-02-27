@@ -17,7 +17,7 @@ export const families: ModelFamily[] = [
     name: 'Zen 4',
     description: 'Latest generation production models with MoDE architecture.',
     icon: 'Sparkles',
-    models: ['zen4-max', 'zen4.6', 'zen4', 'zen4-ultra', 'zen4-pro', 'zen4-thinking', 'zen4-mini'],
+    models: ['zen4-max', 'zen4.1', 'zen4', 'zen4-ultra', 'zen4-pro', 'zen4-thinking', 'zen4-mini'],
   },
   {
     id: 'code',
