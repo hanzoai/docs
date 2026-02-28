@@ -43,7 +43,7 @@ export default function HomePage() {
 
           <div className="flex flex-wrap gap-3 justify-center mb-16">
             <a
-              href="https://app.insights.hanzo.ai"
+              href="https://insights-app.hanzo.ai"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-lg bg-fd-primary px-6 py-3 text-sm font-medium text-fd-primary-foreground hover:opacity-90 transition"
@@ -414,6 +414,91 @@ kubectl apply -k \\
         </div>
       </section>
 
+      {/* ── Pricing ───────────────────────────────────────── */}
+      <section className="mx-auto max-w-6xl px-6 py-20">
+        <SectionHeader
+          title="Pricing"
+          subtitle="Start free with self-hosting, or let Hanzo manage it for you."
+        />
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <PricingCard
+            name="Open Source"
+            price="Free"
+            period="self-hosted"
+            description="Full feature set on your own infrastructure. Community support."
+            features={[
+              'All 45+ products',
+              'Unlimited events',
+              'Full data ownership',
+              'GDPR-compliant',
+              'Community support',
+              'Docker & Kubernetes',
+            ]}
+            cta="Deploy Now"
+            ctaHref="https://github.com/hanzoai/insights"
+            ctaExternal
+          />
+          <PricingCard
+            name="Cloud Starter"
+            price="$25"
+            period="/ month"
+            description="Managed cloud hosting. We handle infrastructure and updates."
+            features={[
+              '1M events / month',
+              'All 45+ products',
+              '1 year data retention',
+              '3 projects',
+              'Email support',
+              'Automatic updates',
+            ]}
+            cta="Start Free Trial"
+            ctaHref="https://insights-app.hanzo.ai"
+            ctaExternal
+          />
+          <PricingCard
+            name="Cloud Growth"
+            price="$149"
+            period="/ month"
+            description="For growing teams with high event volumes and compliance needs."
+            features={[
+              '10M events / month',
+              'All 45+ products',
+              '3 years data retention',
+              'Unlimited projects',
+              'SSO / SAML',
+              'Priority support',
+            ]}
+            cta="Get Started"
+            ctaHref="https://insights-app.hanzo.ai"
+            ctaExternal
+            highlighted
+          />
+          <PricingCard
+            name="Enterprise"
+            price="Custom"
+            period="contact us"
+            description="Dedicated cluster, unlimited events, compliance, and SLA."
+            features={[
+              'Unlimited events',
+              'Dedicated infrastructure',
+              'Unlimited retention',
+              'Custom SLA',
+              'HIPAA / SOC2 ready',
+              'Dedicated support',
+            ]}
+            cta="Contact Sales"
+            ctaHref="https://hanzo.ai"
+            ctaExternal
+          />
+        </div>
+
+        <div className="rounded-xl border border-fd-border bg-fd-muted/30 p-6 text-center text-sm text-fd-muted-foreground">
+          All plans include every product — no feature gating. Cloud plans include automatic updates, backups, and monitoring.
+          <a href="https://hanzo.ai" className="ml-1 text-fd-primary hover:underline">Questions? Talk to us →</a>
+        </div>
+      </section>
+
       {/* ── Ecosystem ─────────────────────────────────────── */}
       <section className="border-t border-fd-border bg-fd-muted/30">
         <div className="mx-auto max-w-6xl px-6 py-20">
@@ -462,7 +547,7 @@ kubectl apply -k \\
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <a
-              href="https://app.insights.hanzo.ai"
+              href="https://insights-app.hanzo.ai"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-lg bg-fd-primary px-8 py-3 text-sm font-medium text-fd-primary-foreground hover:opacity-90 transition"
@@ -533,7 +618,7 @@ kubectl apply -k \\
 
       {/* ── Floating CTA ─────────────────────────────────── */}
       <a
-        href="https://app.insights.hanzo.ai"
+        href="https://insights-app.hanzo.ai"
         target="_blank"
         rel="noopener noreferrer"
         className="fixed bottom-6 left-6 z-50 flex items-center gap-2 rounded-full bg-fd-primary px-4 py-2.5 text-sm font-medium text-fd-primary-foreground shadow-lg hover:opacity-90 transition"
@@ -707,6 +792,53 @@ function FooterColumn({ title, links }: { title: string; links: { text: string; 
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+function PricingCard({
+  name, price, period, description, features, cta, ctaHref, ctaExternal, highlighted,
+}: {
+  name: string; price: string; period: string; description: string;
+  features: string[]; cta: string; ctaHref: string; ctaExternal?: boolean; highlighted?: boolean;
+}) {
+  const Tag = ctaExternal ? 'a' : Link;
+  const tagProps = ctaExternal ? { href: ctaHref, target: '_blank', rel: 'noopener noreferrer' } : { href: ctaHref };
+  return (
+    <div className={`rounded-xl border p-6 flex flex-col ${
+      highlighted
+        ? 'border-fd-primary/40 bg-fd-primary/5 ring-1 ring-fd-primary/20'
+        : 'border-fd-border bg-fd-background'
+    }`}>
+      {highlighted && (
+        <div className="text-[10px] font-semibold tracking-widest uppercase text-fd-primary bg-fd-primary/10 px-2 py-0.5 rounded-full w-fit mb-3">
+          Most Popular
+        </div>
+      )}
+      <h3 className="font-semibold text-lg mb-1">{name}</h3>
+      <div className="flex items-baseline gap-1 mb-2">
+        <span className="text-3xl font-bold tracking-tight">{price}</span>
+        <span className="text-sm text-fd-muted-foreground">{period}</span>
+      </div>
+      <p className="text-sm text-fd-muted-foreground mb-5">{description}</p>
+      <ul className="space-y-2 mb-6 flex-1">
+        {features.map((f) => (
+          <li key={f} className="flex items-start gap-2 text-sm">
+            <CheckCircle className="h-4 w-4 text-fd-primary mt-0.5 shrink-0" />
+            {f}
+          </li>
+        ))}
+      </ul>
+      <Tag
+        {...tagProps as any}
+        className={`w-full text-center rounded-lg py-2.5 text-sm font-medium transition ${
+          highlighted
+            ? 'bg-fd-primary text-fd-primary-foreground hover:opacity-90'
+            : 'border border-fd-border hover:bg-fd-muted text-fd-foreground'
+        }`}
+      >
+        {cta}
+      </Tag>
     </div>
   );
 }
