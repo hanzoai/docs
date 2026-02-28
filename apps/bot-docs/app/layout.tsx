@@ -39,7 +39,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${geist.variable} ${mono.variable}`} suppressHydrationWarning>
       <head>
-        <script defer src="https://analytics.hanzo.ai/script.js" data-website-id="PLACEHOLDER" />
+        <script defer src="https://analytics.hanzo.ai/script.js" data-website-id="89cb4513-3384-491f-8eba-c393d51a16ef" data-do-not-track="true" data-exclude-search="true" />
       </head>
       <Body>
         <NextProvider>
