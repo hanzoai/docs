@@ -1,0 +1,87 @@
+---
+title: Session Replay
+description: Record and replay user sessions to understand exactly how users interact with your product.
+---
+
+# Session Replay
+
+Record, replay, and analyze real user sessions to understand friction points, debug issues, and improve UX.
+
+## Overview
+
+Session Replay captures every click, scroll, mouse movement, and network request — without recording passwords or sensitive inputs. Replays are stored on your own infrastructure.
+
+## Features
+
+### Automatic Capture
+- Records all user interactions without code changes (1 SDK line)
+- Captures DOM mutations, network requests, console logs, and errors
+- Privacy-safe: auto-masks input fields, passwords, and card numbers
+
+### Console & Network Logs
+- See JavaScript errors and warnings alongside the replay
+- Inspect network requests and responses during the session
+- Filter by error type or status code
+
+### Event Timeline
+- Jump to specific custom events (e.g., "checkout_started")
+- See feature flag states at any point in the session
+- Correlate replays with funnels and user paths
+
+### Session Filters
+- Filter by country, device, browser, OS
+- Filter by rage clicks, dead clicks, or error events
+- Search by user properties or custom events
+
+## Getting Started
+
+```bash
+# Already tracking events? Session Replay is automatic.
+# Just enable it in Project Settings → Session Recording
+```
+
+Or enable programmatically:
+
+```javascript
+posthog.init('<YOUR_PROJECT_API_KEY>', {
+  api_host: 'https://app.insights.hanzo.ai',
+  session_recording: {
+    recordCrossOriginIframes: true,
+  }
+})
+```
+
+## Privacy Controls
+
+All sensitive fields are masked by default. You can customize masking:
+
+```javascript
+// Unmask specific elements
+posthog.init('<YOUR_PROJECT_API_KEY>', {
+  session_recording: {
+    maskAllInputs: false,
+    maskInputOptions: {
+      password: true, // still mask passwords
+    },
+  }
+})
+```
+
+Or use CSS classes:
+```html
+<!-- Always mask this element -->
+<div class="ph-no-capture">Sensitive content</div>
+
+<!-- Never mask this element -->
+<input class="ph-no-mask" type="text" />
+```
+
+## Storage & Retention
+
+Sessions are stored in your MinIO/S3 bucket. Default retention is 30 days (configurable). Full-resolution recordings are compressed using LZ-string encoding.
+
+## Self-Hosting Notes
+
+Session Replay requires the `plugin-server` component to process and store recordings. Ensure your `OBJECT_STORAGE_ENDPOINT` is configured in your deployment.
+
+See [Self-Hosting Guide](/docs/self-hosting) for setup instructions.

@@ -1,0 +1,129 @@
+---
+title: LLM Analytics
+description: Monitor, debug, and optimize your AI applications with built-in LLM observability.
+---
+
+# LLM Analytics
+
+Purpose-built observability for AI applications. Track token usage, latency, cost, quality, and user feedback across every LLM call.
+
+## Overview
+
+LLM Analytics extends Hanzo Insights' event pipeline with AI-specific primitives: traces, spans, generations, and evaluations. Works with any LLM provider — OpenAI, Anthropic, Google, or your own models via Hanzo's LLM Gateway.
+
+## Core Concepts
+
+### Traces
+A trace represents a complete user interaction (e.g., one chat turn or one agent run). Traces contain one or more spans.
+
+### Spans
+A span represents a single step: an LLM call, a tool use, a retrieval, or a custom operation.
+
+### Generations
+A generation is an LLM call with full input/output capture, token counts, model name, and latency.
+
+## Instrumentation
+
+### Auto-Instrumentation (Hanzo LLM Gateway)
+If routing through `llm.hanzo.ai`, all calls are automatically traced:
+
+```bash
+curl https://llm.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -d '{"model": "zen-4o", "messages": [{"role": "user", "content": "Hello"}]}'
+# → Automatically creates trace + generation in Insights
+```
+
+### Manual Instrumentation (Python)
+
+```python
+from hanzo import HanzoInsights
+
+insights = HanzoInsights(
+  api_key="<YOUR_PROJECT_API_KEY>",
+  host="https://app.insights.hanzo.ai"
+)
+
+# Wrap LLM calls
+with insights.trace(name="chat-response", user_id="user_123") as trace:
+  with trace.span(name="generate", input={"messages": messages}) as span:
+    response = openai.chat.completions.create(
+      model="gpt-4o",
+      messages=messages
+    )
+    span.end(
+      output=response.choices[0].message.content,
+      usage={"input": response.usage.prompt_tokens, "output": response.usage.completion_tokens},
+      model="gpt-4o",
+      latency=span.elapsed_ms
+    )
+```
+
+### OpenTelemetry Support
+
+```python
+from opentelemetry.sdk.trace import TracerProvider
+from hanzo.integrations.otel import HanzoSpanExporter
+
+provider = TracerProvider()
+provider.add_span_processor(HanzoSpanExporter(api_key="<KEY>", host="https://app.insights.hanzo.ai"))
+```
+
+## Metrics Dashboard
+
+| Metric | Description |
+|--------|-------------|
+| **Total Traces** | Number of user interactions |
+| **Avg Latency (P50/P95/P99)** | Time-to-first-token and total latency |
+| **Token Usage** | Input + output tokens by model |
+| **Cost** | Estimated cost per model (configurable) |
+| **Error Rate** | Failed generations by error type |
+| **Cache Hit Rate** | Savings from semantic/exact caching |
+
+## Quality & Evaluation
+
+### Human Feedback
+Capture thumbs up/down or star ratings from users:
+
+```javascript
+// After showing AI response
+posthog.capture('llm_feedback', {
+  trace_id: '<trace_id>',
+  rating: 'positive', // or 'negative'
+  comment: 'Great answer!'
+})
+```
+
+### Automated Evaluations
+Run evals on sampled traces using LLM-as-judge:
+
+```python
+insights.evaluate(
+  trace_id=trace.id,
+  evaluator="helpfulness",    # built-in evaluators
+  model="claude-sonnet-4-6",  # judge model
+)
+```
+
+## Prompt Management
+
+Version and A/B test prompts without deploying:
+
+```python
+# Fetch prompt from registry
+prompt = insights.get_prompt("chat-system-prompt", version="production")
+
+response = openai.chat.completions.create(
+  model="gpt-4o",
+  messages=[
+    {"role": "system", "content": prompt.compile(user_name=name)},
+    *messages
+  ]
+)
+```
+
+## Self-Hosting Notes
+
+LLM Analytics uses ClickHouse for trace storage. The `plugin-server` processes and enriches traces async. For high-volume deployments, scale the plugin-server horizontally.
+
+See [Self-Hosting Guide](/docs/self-hosting) for configuration details.
