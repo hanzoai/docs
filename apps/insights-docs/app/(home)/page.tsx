@@ -7,7 +7,7 @@ import {
   Users, Clock, Gauge, CloudLightning, ScrollText,
   Radio, GitBranch, ChevronRight, BarChart, LineChart,
   PieChart, Funnel, UserCheck, Workflow, Bell, Search,
-  Sparkles, Bot, AlertTriangle, Send, Download, Cpu,
+  Bot, Cpu,
 } from 'lucide-react';
 
 /* ─────────────────────────────────────────────────────────── */
@@ -19,11 +19,9 @@ export default function HomePage() {
     <main className="min-h-screen">
 
       {/* ── Hero ─────────────────────────────────────────── */}
-      <section className="relative overflow-hidden border-b border-fd-border">
-        <div className="absolute inset-0 bg-gradient-to-b from-fd-primary/5 to-transparent" />
-        <div className="relative mx-auto max-w-6xl px-6 py-24 md:py-36 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-fd-border bg-fd-muted px-4 py-1.5 text-sm text-fd-muted-foreground mb-6">
-            <Sparkles className="h-4 w-4" />
+      <section className="border-b border-fd-border">
+        <div className="mx-auto max-w-6xl px-6 py-24 md:py-36 text-center">
+          <div className="inline-flex items-center rounded-full border border-fd-border px-4 py-1.5 text-xs text-fd-muted-foreground mb-6">
             Open Source · Self-Hosted · Privacy-First
           </div>
 
@@ -38,7 +36,7 @@ export default function HomePage() {
           <p className="text-base text-fd-muted-foreground max-w-2xl mx-auto mb-10">
             45+ built-in products. Fully self-hostable. GDPR-compliant by default.
             No usage limits. No third-party data sharing. Built by{' '}
-            <a href="https://hanzo.ai" className="text-fd-primary hover:underline">Hanzo AI</a> (Techstars &apos;17).
+            <a href="https://hanzo.ai" className="text-fd-foreground hover:underline">Hanzo AI</a> (Techstars &apos;17).
           </p>
 
           <div className="flex flex-wrap gap-3 justify-center mb-16">
@@ -46,21 +44,21 @@ export default function HomePage() {
               href="https://insights-app.hanzo.ai"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-fd-primary px-6 py-3 text-sm font-medium text-fd-primary-foreground hover:opacity-90 transition"
+              className="inline-flex items-center gap-2 rounded-full bg-fd-primary px-6 py-2.5 text-sm font-medium text-fd-primary-foreground hover:opacity-80 transition"
             >
               <Activity className="h-4 w-4" />
               Start Free
             </a>
             <Link
               href="/docs"
-              className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-background px-6 py-3 text-sm font-medium text-fd-foreground hover:bg-fd-muted transition"
+              className="inline-flex items-center gap-2 rounded-full border border-fd-border px-6 py-2.5 text-sm font-medium text-fd-foreground hover:bg-fd-muted transition"
             >
               <BookOpen className="h-4 w-4" />
               Documentation
             </Link>
             <Link
               href="/docs/api"
-              className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-background px-6 py-3 text-sm font-medium text-fd-foreground hover:bg-fd-muted transition"
+              className="inline-flex items-center gap-2 rounded-full border border-fd-border px-6 py-2.5 text-sm font-medium text-fd-foreground hover:bg-fd-muted transition"
             >
               <Terminal className="h-4 w-4" />
               API Reference
@@ -69,7 +67,7 @@ export default function HomePage() {
               href="https://github.com/hanzoai/insights"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-background px-6 py-3 text-sm font-medium text-fd-foreground hover:bg-fd-muted transition"
+              className="inline-flex items-center gap-2 rounded-full border border-fd-border px-6 py-2.5 text-sm font-medium text-fd-foreground hover:bg-fd-muted transition"
             >
               <Github className="h-4 w-4" />
               GitHub
@@ -152,7 +150,7 @@ export default function HomePage() {
             {ALL_PRODUCTS.map((product) => (
               <div
                 key={product}
-                className="rounded-lg border border-fd-border bg-fd-background px-3 py-2 text-sm text-fd-foreground hover:border-fd-primary/40 hover:bg-fd-primary/5 transition cursor-default"
+                className="rounded-lg border border-fd-border bg-fd-background px-3 py-2 text-sm text-fd-foreground hover:border-fd-border hover:bg-fd-muted transition cursor-default"
               >
                 {product}
               </div>
@@ -162,7 +160,7 @@ export default function HomePage() {
           <div className="text-center">
             <Link
               href="/docs/products"
-              className="inline-flex items-center gap-2 text-sm font-medium text-fd-primary hover:underline"
+              className="inline-flex items-center gap-2 text-sm font-medium text-fd-foreground hover:underline"
             >
               Browse all products <ArrowRight className="h-4 w-4" />
             </Link>
@@ -379,35 +377,35 @@ kubectl apply -k \\
           <h4 className="font-semibold mb-3">SDK Support</h4>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
             <div className="flex items-start gap-2">
-              <CheckCircle className="h-4 w-4 text-fd-primary mt-0.5 shrink-0" />
+              <CheckCircle className="h-4 w-4 text-fd-foreground mt-0.5 shrink-0" />
               <div><strong>JavaScript</strong> — Browser + Node.js</div>
             </div>
             <div className="flex items-start gap-2">
-              <CheckCircle className="h-4 w-4 text-fd-primary mt-0.5 shrink-0" />
+              <CheckCircle className="h-4 w-4 text-fd-foreground mt-0.5 shrink-0" />
               <div><strong>Python</strong> — pip install hanzo-insights</div>
             </div>
             <div className="flex items-start gap-2">
-              <CheckCircle className="h-4 w-4 text-fd-primary mt-0.5 shrink-0" />
+              <CheckCircle className="h-4 w-4 text-fd-foreground mt-0.5 shrink-0" />
               <div><strong>Go</strong> — github.com/hanzoai/insights-go</div>
             </div>
             <div className="flex items-start gap-2">
-              <CheckCircle className="h-4 w-4 text-fd-primary mt-0.5 shrink-0" />
+              <CheckCircle className="h-4 w-4 text-fd-foreground mt-0.5 shrink-0" />
               <div><strong>REST API</strong> — Any language</div>
             </div>
             <div className="flex items-start gap-2">
-              <CheckCircle className="h-4 w-4 text-fd-primary mt-0.5 shrink-0" />
+              <CheckCircle className="h-4 w-4 text-fd-foreground mt-0.5 shrink-0" />
               <div><strong>iOS / Android</strong> — Mobile SDKs</div>
             </div>
             <div className="flex items-start gap-2">
-              <CheckCircle className="h-4 w-4 text-fd-primary mt-0.5 shrink-0" />
+              <CheckCircle className="h-4 w-4 text-fd-foreground mt-0.5 shrink-0" />
               <div><strong>React Native</strong> — Cross-platform</div>
             </div>
             <div className="flex items-start gap-2">
-              <CheckCircle className="h-4 w-4 text-fd-primary mt-0.5 shrink-0" />
+              <CheckCircle className="h-4 w-4 text-fd-foreground mt-0.5 shrink-0" />
               <div><strong>Flutter</strong> — Dart SDK</div>
             </div>
             <div className="flex items-start gap-2">
-              <CheckCircle className="h-4 w-4 text-fd-primary mt-0.5 shrink-0" />
+              <CheckCircle className="h-4 w-4 text-fd-foreground mt-0.5 shrink-0" />
               <div><strong>Ruby / PHP / Java</strong> — Community SDKs</div>
             </div>
           </div>
@@ -495,7 +493,7 @@ kubectl apply -k \\
 
         <div className="rounded-xl border border-fd-border bg-fd-muted/30 p-6 text-center text-sm text-fd-muted-foreground">
           All plans include every product — no feature gating. Cloud plans include automatic updates, backups, and monitoring.
-          <a href="https://hanzo.ai" className="ml-1 text-fd-primary hover:underline">Questions? Talk to us →</a>
+          <a href="https://hanzo.ai" className="ml-1 text-fd-foreground hover:underline">Questions? Talk to us →</a>
         </div>
       </section>
 
@@ -537,7 +535,7 @@ kubectl apply -k \\
       </section>
 
       {/* ── CTA ──────────────────────────────────────────── */}
-      <section className="bg-gradient-to-b from-fd-primary/5 to-transparent">
+      <section className="border-t border-fd-border">
         <div className="mx-auto max-w-4xl px-6 py-20 text-center">
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
             Start building with Hanzo Insights
@@ -550,14 +548,14 @@ kubectl apply -k \\
               href="https://insights-app.hanzo.ai"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-fd-primary px-8 py-3 text-sm font-medium text-fd-primary-foreground hover:opacity-90 transition"
+              className="inline-flex items-center gap-2 rounded-full bg-fd-primary px-8 py-2.5 text-sm font-medium text-fd-primary-foreground hover:opacity-80 transition"
             >
               <Activity className="h-4 w-4" />
               Open Dashboard
             </a>
             <Link
               href="/docs"
-              className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-background px-8 py-3 text-sm font-medium text-fd-foreground hover:bg-fd-muted transition"
+              className="inline-flex items-center gap-2 rounded-full border border-fd-border px-8 py-2.5 text-sm font-medium text-fd-foreground hover:bg-fd-muted transition"
             >
               <BookOpen className="h-4 w-4" />
               Read the Docs
@@ -621,7 +619,7 @@ kubectl apply -k \\
         href="https://insights-app.hanzo.ai"
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed bottom-6 left-6 z-50 flex items-center gap-2 rounded-full bg-fd-primary px-4 py-2.5 text-sm font-medium text-fd-primary-foreground shadow-lg hover:opacity-90 transition"
+        className="fixed bottom-6 left-6 z-50 flex items-center gap-2 rounded-full bg-fd-primary px-4 py-2.5 text-sm font-medium text-fd-primary-foreground hover:opacity-80 transition"
         title="Open Hanzo Insights dashboard"
       >
         <Activity className="h-4 w-4" />
@@ -712,15 +710,15 @@ function ProductCard({
   return (
     <Link
       href={href}
-      className={`group rounded-xl border p-6 transition hover:border-fd-primary/40 block ${
-        featured ? 'border-fd-primary/30 bg-fd-primary/5 ring-1 ring-fd-primary/20' : 'border-fd-border bg-fd-background'
+      className={`group rounded-xl border p-6 transition hover:bg-fd-muted/40 block ${
+        featured ? 'border-fd-primary bg-fd-background' : 'border-fd-border bg-fd-background'
       }`}
     >
       <div className="flex items-center gap-3 mb-3">
-        <div className="rounded-lg bg-fd-muted p-2 text-fd-primary">{icon}</div>
-        <span className="text-[10px] font-semibold tracking-widest uppercase text-fd-primary bg-fd-primary/10 px-2 py-0.5 rounded-full">{badge}</span>
+        <div className="rounded-lg bg-fd-muted p-2 text-fd-foreground">{icon}</div>
+        <span className="text-[10px] font-semibold tracking-widest uppercase text-fd-muted-foreground bg-fd-muted px-2 py-0.5 rounded-full">{badge}</span>
       </div>
-      <h3 className="text-lg font-semibold mb-2 group-hover:text-fd-primary transition">{name}</h3>
+      <h3 className="text-lg font-semibold mb-2">{name}</h3>
       <p className="text-sm text-fd-muted-foreground">{description}</p>
     </Link>
   );
@@ -729,7 +727,7 @@ function ProductCard({
 function ReasonCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
     <div className="rounded-xl border border-fd-border bg-fd-background p-6">
-      <div className="rounded-lg bg-fd-muted p-2 w-fit text-fd-primary mb-3">{icon}</div>
+      <div className="rounded-lg bg-fd-muted p-2 w-fit text-fd-foreground mb-3">{icon}</div>
       <h4 className="font-semibold mb-2">{title}</h4>
       <p className="text-sm text-fd-muted-foreground">{description}</p>
     </div>
@@ -744,11 +742,11 @@ function StackCard({
   return (
     <div className="rounded-xl border border-fd-border bg-fd-background p-6">
       <div className="flex items-start justify-between mb-3">
-        <div className="rounded-lg bg-fd-muted p-2 text-fd-primary">{icon}</div>
+        <div className="rounded-lg bg-fd-muted p-2 text-fd-foreground">{icon}</div>
         <span className="text-[10px] font-semibold tracking-widest uppercase text-fd-muted-foreground bg-fd-muted px-2 py-0.5 rounded-full">{badge}</span>
       </div>
       <h4 className="font-semibold mb-0.5">{name}</h4>
-      <p className="text-xs text-fd-primary font-mono mb-2">{role}</p>
+      <p className="text-xs text-fd-muted-foreground font-mono mb-2">{role}</p>
       <p className="text-sm text-fd-muted-foreground">{description}</p>
     </div>
   );
@@ -762,11 +760,11 @@ function EcosystemCard({ title, description, href, cta }: {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group rounded-xl border border-fd-border bg-fd-background p-6 hover:border-fd-primary/40 transition block"
+      className="group rounded-xl border border-fd-border bg-fd-background p-6 hover:bg-fd-muted/40 transition block"
     >
-      <h4 className="font-semibold mb-2 group-hover:text-fd-primary transition">{title}</h4>
+      <h4 className="font-semibold mb-2">{title}</h4>
       <p className="text-sm text-fd-muted-foreground mb-4">{description}</p>
-      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-fd-primary">
+      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-fd-foreground">
         {cta} <ArrowRight className="h-3.5 w-3.5" />
       </span>
     </a>
@@ -807,11 +805,11 @@ function PricingCard({
   return (
     <div className={`rounded-xl border p-6 flex flex-col ${
       highlighted
-        ? 'border-fd-primary/40 bg-fd-primary/5 ring-1 ring-fd-primary/20'
+        ? 'border-fd-primary bg-fd-background'
         : 'border-fd-border bg-fd-background'
     }`}>
       {highlighted && (
-        <div className="text-[10px] font-semibold tracking-widest uppercase text-fd-primary bg-fd-primary/10 px-2 py-0.5 rounded-full w-fit mb-3">
+        <div className="text-[10px] font-semibold tracking-widest uppercase text-fd-muted-foreground bg-fd-muted px-2 py-0.5 rounded-full w-fit mb-3">
           Most Popular
         </div>
       )}
@@ -824,16 +822,16 @@ function PricingCard({
       <ul className="space-y-2 mb-6 flex-1">
         {features.map((f) => (
           <li key={f} className="flex items-start gap-2 text-sm">
-            <CheckCircle className="h-4 w-4 text-fd-primary mt-0.5 shrink-0" />
+            <CheckCircle className="h-4 w-4 text-fd-foreground mt-0.5 shrink-0" />
             {f}
           </li>
         ))}
       </ul>
       <Tag
         {...tagProps as any}
-        className={`w-full text-center rounded-lg py-2.5 text-sm font-medium transition ${
+        className={`w-full text-center rounded-full py-2.5 text-sm font-medium transition ${
           highlighted
-            ? 'bg-fd-primary text-fd-primary-foreground hover:opacity-90'
+            ? 'bg-fd-primary text-fd-primary-foreground hover:opacity-80'
             : 'border border-fd-border hover:bg-fd-muted text-fd-foreground'
         }`}
       >
