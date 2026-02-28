@@ -2,7 +2,7 @@ import Link from 'next/link';
 import {
   Atom, Code, Zap, Cpu, Eye, Shield, Search, Network,
   ArrowRight, Download, Terminal, BookOpen, Beaker, Database,
-  Mic, Video, Box, Sparkles, ExternalLink, GitBranch,
+  Mic, Video, Box, ExternalLink, GitBranch,
   MessageSquare, Globe, Lock, Layers, DollarSign, Package,
   Gauge, CloudLightning, Heart, Star, Users, Clock,
   Orbit, Infinity,
@@ -20,11 +20,9 @@ export default function HomePage() {
     <main className="min-h-screen">
 
       {/* ── Hero ─────────────────────────────────────────── */}
-      <section className="relative overflow-hidden border-b border-fd-border">
-        <div className="absolute inset-0 bg-gradient-to-b from-fd-primary/5 to-transparent" />
-        <div className="relative mx-auto max-w-6xl px-6 py-24 md:py-36 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-fd-border bg-fd-muted px-4 py-1.5 text-sm text-fd-muted-foreground mb-6">
-            <Sparkles className="h-4 w-4" />
+      <section className="border-b border-fd-border">
+        <div className="mx-auto max-w-6xl px-6 py-24 md:py-36 text-center">
+          <div className="inline-flex items-center rounded-full border border-fd-border px-4 py-1.5 text-xs text-fd-muted-foreground mb-6">
             Zen MoDE — Mixture of Distilled Experts
           </div>
 
@@ -39,7 +37,7 @@ export default function HomePage() {
           <p className="text-base text-fd-muted-foreground max-w-2xl mx-auto mb-10">
             {allModels.length} models across 10 modalities. Production API models from 4B to 1T+ parameters.
             Open weights on HuggingFace. OpenAI-compatible API. Built by{' '}
-            <a href="https://hanzo.ai" className="text-fd-primary hover:underline">Hanzo AI</a> (Techstars &apos;17).
+            <a href="https://hanzo.ai" className="text-fd-foreground hover:underline">Hanzo AI</a> (Techstars &apos;17).
           </p>
 
           <div className="flex flex-wrap gap-3 justify-center mb-16">
@@ -47,21 +45,21 @@ export default function HomePage() {
               href="https://hanzo.chat"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-fd-primary px-6 py-3 text-sm font-medium text-fd-primary-foreground hover:opacity-90 transition"
+              className="inline-flex items-center gap-2 rounded-full bg-fd-primary px-6 py-2.5 text-sm font-medium text-fd-primary-foreground hover:opacity-80 transition"
             >
               <MessageSquare className="h-4 w-4" />
               Try Zen Free
             </a>
             <Link
               href="/docs"
-              className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-background px-6 py-3 text-sm font-medium hover:bg-fd-muted transition"
+              className="inline-flex items-center gap-2 rounded-full border border-fd-border bg-transparent px-6 py-2.5 text-sm font-medium hover:bg-fd-muted transition"
             >
               <BookOpen className="h-4 w-4" />
               Documentation
             </Link>
             <Link
               href="/docs/api"
-              className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-background px-6 py-3 text-sm font-medium hover:bg-fd-muted transition"
+              className="inline-flex items-center gap-2 rounded-full border border-fd-border bg-transparent px-6 py-2.5 text-sm font-medium hover:bg-fd-muted transition"
             >
               <Terminal className="h-4 w-4" />
               API Reference
@@ -70,7 +68,7 @@ export default function HomePage() {
               href="https://huggingface.co/zenlm"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-background px-6 py-3 text-sm font-medium hover:bg-fd-muted transition"
+              className="inline-flex items-center gap-2 rounded-full border border-fd-border bg-transparent px-6 py-2.5 text-sm font-medium hover:bg-fd-muted transition"
             >
               <Download className="h-4 w-4" />
               HuggingFace
@@ -123,7 +121,7 @@ export default function HomePage() {
         </div>
 
         <div className="text-center">
-          <Link href="/docs/models" className="inline-flex items-center gap-2 text-sm font-medium text-fd-primary hover:underline">
+          <Link href="/docs/models" className="inline-flex items-center gap-2 text-sm font-medium text-fd-foreground hover:underline">
             View all models <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -235,19 +233,19 @@ for chunk in stream:
           <h4 className="font-semibold mb-3">SDK Features</h4>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
             <div className="flex items-start gap-2">
-              <Package className="h-4 w-4 text-fd-primary mt-0.5 shrink-0" />
+              <Package className="h-4 w-4 text-fd-muted-foreground mt-0.5 shrink-0" />
               <div><strong>Multi-SDK</strong> — Python, TypeScript, Go, Rust</div>
             </div>
             <div className="flex items-start gap-2">
-              <Globe className="h-4 w-4 text-fd-primary mt-0.5 shrink-0" />
+              <Globe className="h-4 w-4 text-fd-muted-foreground mt-0.5 shrink-0" />
               <div><strong>OpenAI Compatible</strong> — drop-in replacement</div>
             </div>
             <div className="flex items-start gap-2">
-              <Layers className="h-4 w-4 text-fd-primary mt-0.5 shrink-0" />
+              <Layers className="h-4 w-4 text-fd-muted-foreground mt-0.5 shrink-0" />
               <div><strong>100+ Providers</strong> — Zen + Claude + GPT + more</div>
             </div>
             <div className="flex items-start gap-2">
-              <CloudLightning className="h-4 w-4 text-fd-primary mt-0.5 shrink-0" />
+              <CloudLightning className="h-4 w-4 text-fd-muted-foreground mt-0.5 shrink-0" />
               <div><strong>Streaming</strong> — SSE, async, batch</div>
             </div>
           </div>
@@ -335,7 +333,7 @@ for chunk in stream:
         </div>
 
         <div className="text-center">
-          <Link href="/docs/datasets" className="inline-flex items-center gap-2 text-sm font-medium text-fd-primary hover:underline">
+          <Link href="/docs/datasets" className="inline-flex items-center gap-2 text-sm font-medium text-fd-foreground hover:underline">
             Dataset documentation <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -373,7 +371,7 @@ for chunk in stream:
               href="https://huggingface.co/zenlm"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-fd-primary px-6 py-3 text-sm font-medium text-fd-primary-foreground hover:opacity-90 transition"
+              className="inline-flex items-center gap-2 rounded-full bg-fd-primary px-6 py-2.5 text-sm font-medium text-fd-primary-foreground hover:opacity-80 transition"
             >
               <Download className="h-4 w-4" />
               Browse All on HuggingFace
@@ -449,13 +447,13 @@ for chunk in stream:
           </div>
 
           <div className="flex flex-wrap gap-4 justify-center">
-            <a href="https://papers.zenlm.org" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-fd-primary hover:underline">
+            <a href="https://papers.zenlm.org" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-fd-foreground hover:underline">
               Zen LM papers <ArrowRight className="h-4 w-4" />
             </a>
-            <a href="https://papers.hanzo.ai" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-fd-primary hover:underline">
+            <a href="https://papers.hanzo.ai" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-fd-foreground hover:underline">
               Hanzo AI papers <ArrowRight className="h-4 w-4" />
             </a>
-            <a href="https://papers.lux.network" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-fd-primary hover:underline">
+            <a href="https://papers.lux.network" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-fd-foreground hover:underline">
               Lux papers <ArrowRight className="h-4 w-4" />
             </a>
           </div>
@@ -463,7 +461,7 @@ for chunk in stream:
       </section>
 
       {/* ── CTA ──────────────────────────────────────────── */}
-      <section className="bg-gradient-to-b from-fd-primary/5 to-transparent">
+      <section className="border-t border-fd-border">
         <div className="mx-auto max-w-4xl px-6 py-20 text-center">
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
             Build with Zen LM
@@ -476,14 +474,14 @@ for chunk in stream:
               href="https://hanzo.chat"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-fd-primary px-8 py-3 text-sm font-medium text-fd-primary-foreground hover:opacity-90 transition"
+              className="inline-flex items-center gap-2 rounded-full bg-fd-primary px-8 py-2.5 text-sm font-medium text-fd-primary-foreground hover:opacity-80 transition"
             >
               <MessageSquare className="h-4 w-4" />
               Try Zen Free
             </a>
             <Link
               href="/docs"
-              className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-background px-8 py-3 text-sm font-medium hover:bg-fd-muted transition"
+              className="inline-flex items-center gap-2 rounded-full border border-fd-border bg-transparent px-8 py-2.5 text-sm font-medium hover:bg-fd-muted transition"
             >
               <BookOpen className="h-4 w-4" />
               Documentation
@@ -492,7 +490,7 @@ for chunk in stream:
               href="https://console.hanzo.ai"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-background px-8 py-3 text-sm font-medium hover:bg-fd-muted transition"
+              className="inline-flex items-center gap-2 rounded-full border border-fd-border bg-transparent px-8 py-2.5 text-sm font-medium hover:bg-fd-muted transition"
             >
               <Terminal className="h-4 w-4" />
               Get API Key
@@ -553,17 +551,6 @@ for chunk in stream:
         </div>
       </footer>
 
-      {/* ── Chat Widget ──────────────────────────────────── */}
-      <a
-        href="https://hanzo.chat"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-6 left-6 z-50 flex items-center gap-2 rounded-full bg-fd-primary px-4 py-2.5 text-sm font-medium text-fd-primary-foreground shadow-lg hover:opacity-90 transition"
-        title="Chat with Zen models"
-      >
-        <MessageSquare className="h-4 w-4" />
-        Try Zen
-      </a>
     </main>
   );
 }
@@ -602,15 +589,15 @@ function ModelHighlight({
   return (
     <Link
       href={href}
-      className={`group rounded-xl border p-6 transition hover:border-fd-primary/40 ${
-        featured ? 'border-fd-primary/30 bg-fd-primary/5 ring-1 ring-fd-primary/20' : 'border-fd-border bg-fd-background'
+      className={`group rounded-xl border p-6 transition hover:bg-fd-muted/30 ${
+        featured ? 'border-fd-primary bg-fd-background' : 'border-fd-border bg-fd-background'
       }`}
     >
       <div className="flex items-center gap-3 mb-3">
-        <div className="rounded-lg bg-fd-muted p-2 text-fd-primary">{icon}</div>
-        <span className="text-[10px] font-semibold tracking-widest uppercase text-fd-primary bg-fd-primary/10 px-2 py-0.5 rounded-full">{badge}</span>
+        <div className="rounded-lg bg-fd-muted p-2 text-fd-muted-foreground">{icon}</div>
+        <span className="text-[10px] font-semibold tracking-widest uppercase text-fd-muted-foreground bg-fd-muted px-2 py-0.5 rounded-full">{badge}</span>
       </div>
-      <h3 className="text-lg font-semibold mb-1 group-hover:text-fd-primary transition">{name}</h3>
+      <h3 className="text-lg font-semibold mb-1">{name}</h3>
       <p className="text-xs text-fd-muted-foreground font-mono mb-3">{spec}</p>
       <p className="text-sm text-fd-muted-foreground">{description}</p>
     </Link>
@@ -620,7 +607,7 @@ function ModelHighlight({
 function ArchCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
     <div className="rounded-xl border border-fd-border bg-fd-background p-6">
-      <div className="rounded-lg bg-fd-muted p-2 w-fit text-fd-primary mb-3">{icon}</div>
+      <div className="rounded-lg bg-fd-muted p-2 w-fit text-fd-muted-foreground mb-3">{icon}</div>
       <h4 className="font-semibold mb-2">{title}</h4>
       <p className="text-sm text-fd-muted-foreground">{description}</p>
     </div>
@@ -632,7 +619,7 @@ function ModalityCard({ icon, title, models, desc }: {
 }) {
   return (
     <div className="rounded-xl border border-fd-border bg-fd-background p-4 text-center">
-      <div className="flex justify-center mb-2 text-fd-primary">{icon}</div>
+      <div className="flex justify-center mb-2 text-fd-muted-foreground">{icon}</div>
       <h4 className="font-semibold text-sm mb-0.5">{title}</h4>
       <p className="text-xs text-fd-muted-foreground mb-1">{models} models</p>
       <p className="text-xs text-fd-muted-foreground">{desc}</p>
@@ -645,7 +632,7 @@ function CostExample({ task, model, tokens, cost }: { task: string; model: strin
     <div className="rounded-lg border border-fd-border bg-fd-background p-4">
       <div className="text-sm font-medium mb-1">{task}</div>
       <div className="text-xs text-fd-muted-foreground mb-2">{model} · {tokens}</div>
-      <div className="text-lg font-bold text-fd-primary">{cost}</div>
+      <div className="text-lg font-bold">{cost}</div>
     </div>
   );
 }
@@ -653,7 +640,7 @@ function CostExample({ task, model, tokens, cost }: { task: string; model: strin
 function DataCard({ pct, title, tokens }: { pct: string; title: string; tokens: string }) {
   return (
     <div className="rounded-xl border border-fd-border bg-fd-background p-5">
-      <div className="text-2xl font-bold text-fd-primary mb-1">{pct}</div>
+      <div className="text-2xl font-bold mb-1">{pct}</div>
       <h4 className="font-semibold text-sm mb-1">{title}</h4>
       <p className="text-xs text-fd-muted-foreground">{tokens}</p>
     </div>
@@ -666,7 +653,7 @@ function GetStartedCard({ title, description, href, external }: {
   const cls = "group rounded-xl border border-fd-border bg-fd-background p-5 hover:border-fd-primary/40 transition block";
   const content = (
     <>
-      <h4 className="font-semibold text-sm mb-1 group-hover:text-fd-primary transition flex items-center gap-1.5">
+      <h4 className="font-semibold text-sm mb-1 transition flex items-center gap-1.5">
         {title}
         {external && <ExternalLink className="h-3 w-3 text-fd-muted-foreground" />}
       </h4>
@@ -685,11 +672,11 @@ function EcosystemCard({ title, description, href, cta }: {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group rounded-xl border border-fd-border bg-fd-background p-6 hover:border-fd-primary/40 transition block"
+      className="group rounded-xl border border-fd-border bg-fd-background p-6 hover:bg-fd-muted/30 transition block"
     >
-      <h4 className="font-semibold mb-2 group-hover:text-fd-primary transition">{title}</h4>
+      <h4 className="font-semibold mb-2 transition">{title}</h4>
       <p className="text-sm text-fd-muted-foreground mb-4">{description}</p>
-      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-fd-primary">
+      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-fd-foreground">
         {cta} <ArrowRight className="h-3.5 w-3.5" />
       </span>
     </a>
@@ -702,9 +689,9 @@ function PaperCard({ title, pages, href }: { title: string; pages: string; href:
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group rounded-xl border border-fd-border bg-fd-background p-5 hover:border-fd-primary/40 transition block"
+      className="group rounded-xl border border-fd-border bg-fd-background p-5 hover:bg-fd-muted/30 transition block"
     >
-      <h4 className="font-semibold text-sm mb-1 group-hover:text-fd-primary transition">{title}</h4>
+      <h4 className="font-semibold text-sm mb-1 transition">{title}</h4>
       <p className="text-xs text-fd-muted-foreground">{pages}</p>
     </a>
   );
