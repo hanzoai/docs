@@ -12,14 +12,14 @@ export default function Layout({ children }: { children: ReactNode }) {
       }}
       sidebar={{
         banner: (
-          <div className="p-3 rounded-lg bg-primary/10 text-sm">
+          <div className="p-3 rounded-lg border border-fd-border bg-fd-muted text-sm">
             <strong>45+ Products</strong> — Self-hosted product analytics
           </div>
         ),
       }}
       links={[
         { text: 'GitHub', url: 'https://github.com/hanzoai/insights' },
-        { text: 'Dashboard', url: 'https://app.insights.hanzo.ai' },
+        { text: 'Dashboard', url: 'https://insights-app.hanzo.ai' },
       ]}
     >
       {children}
