@@ -46,21 +46,21 @@ export default function HomePage() {
               href="https://app.insights.hanzo.ai"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-fd-primary px-6 py-3 text-sm font-medium text-white hover:opacity-90 transition"
+              className="inline-flex items-center gap-2 rounded-lg bg-fd-primary px-6 py-3 text-sm font-medium text-fd-primary-foreground hover:opacity-90 transition"
             >
               <Activity className="h-4 w-4" />
               Start Free
             </a>
             <Link
               href="/docs"
-              className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-background px-6 py-3 text-sm font-medium hover:bg-fd-muted transition"
+              className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-background px-6 py-3 text-sm font-medium text-fd-foreground hover:bg-fd-muted transition"
             >
               <BookOpen className="h-4 w-4" />
               Documentation
             </Link>
             <Link
               href="/docs/api"
-              className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-background px-6 py-3 text-sm font-medium hover:bg-fd-muted transition"
+              className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-background px-6 py-3 text-sm font-medium text-fd-foreground hover:bg-fd-muted transition"
             >
               <Terminal className="h-4 w-4" />
               API Reference
@@ -69,7 +69,7 @@ export default function HomePage() {
               href="https://github.com/hanzoai/insights"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-background px-6 py-3 text-sm font-medium hover:bg-fd-muted transition"
+              className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-background px-6 py-3 text-sm font-medium text-fd-foreground hover:bg-fd-muted transition"
             >
               <Github className="h-4 w-4" />
               GitHub
@@ -465,14 +465,14 @@ kubectl apply -k \\
               href="https://app.insights.hanzo.ai"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-fd-primary px-8 py-3 text-sm font-medium text-white hover:opacity-90 transition"
+              className="inline-flex items-center gap-2 rounded-lg bg-fd-primary px-8 py-3 text-sm font-medium text-fd-primary-foreground hover:opacity-90 transition"
             >
               <Activity className="h-4 w-4" />
               Open Dashboard
             </a>
             <Link
               href="/docs"
-              className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-background px-8 py-3 text-sm font-medium hover:bg-fd-muted transition"
+              className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-background px-8 py-3 text-sm font-medium text-fd-foreground hover:bg-fd-muted transition"
             >
               <BookOpen className="h-4 w-4" />
               Read the Docs
@@ -536,7 +536,7 @@ kubectl apply -k \\
         href="https://app.insights.hanzo.ai"
         target="_blank"
         rel="noopener noreferrer"
-        className="fixed bottom-6 left-6 z-50 flex items-center gap-2 rounded-full bg-fd-primary px-4 py-2.5 text-sm font-medium text-white shadow-lg hover:opacity-90 transition"
+        className="fixed bottom-6 left-6 z-50 flex items-center gap-2 rounded-full bg-fd-primary px-4 py-2.5 text-sm font-medium text-fd-primary-foreground shadow-lg hover:opacity-90 transition"
         title="Open Hanzo Insights dashboard"
       >
         <Activity className="h-4 w-4" />
