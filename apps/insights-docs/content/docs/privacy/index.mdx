@@ -1,0 +1,63 @@
+---
+title: Privacy & GDPR
+description: How Hanzo Insights handles user privacy.
+---
+
+# Privacy & GDPR
+
+Hanzo Insights is built with privacy-first principles and full GDPR compliance.
+
+## What We Collect
+
+By default, Insights collects:
+- Page URLs (without query strings by default)
+- Custom events you explicitly capture
+- Browser/OS type
+- Country (from IP, then IP discarded)
+
+## IP Anonymization
+
+IP addresses are anonymized by default:
+- IPv4: last octet zeroed (`1.2.3.0`)
+- IPv6: lower 80 bits zeroed
+
+To disable: set `ANONYMIZE_IPS=false`.
+
+## Do Not Track
+
+Insights respects the browser `DNT` header and the `Sec-GPC` (Global Privacy Control) header by default.
+
+To disable: set `DISABLE_RESPECT_DNT=true`.
+
+## Data Deletion
+
+Users can request deletion of all their data via:
+
+```bash
+curl -X DELETE https://insights.hanzo.ai/api/person/USER_ID \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Cookie-Free Mode
+
+Use the JavaScript SDK in cookieless mode:
+
+```javascript
+Insights.init('API_KEY', {
+  persistence: 'memory',
+  disable_cookie: true,
+  disable_persistence: true,
+})
+```
+
+## Consent Management
+
+Gate tracking behind user consent:
+
+```javascript
+// Don't track until consent given
+Insights.opt_out_capturing()
+
+// User consents
+Insights.opt_in_capturing()
+```
