@@ -2,6 +2,8 @@ import { source } from '@/lib/source';
 import type { MetadataRoute } from 'next';
 import { baseUrl } from '@/lib/metadata';
 
+export const dynamic = 'force-static';
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const url = (path: string): string =>
     new URL(path, baseUrl).toString();
