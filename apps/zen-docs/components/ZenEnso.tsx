@@ -1,4 +1,4 @@
 /**
- * ZenEnso — re-exported from @hanzo/ui/models for use across all Hanzo sites.
+ * ZenEnso — re-exported from @zenlm/ui.
  */
-export { ZenEnso, ZenEnso as default } from '@hanzo/ui/models';
+export { ZenEnso, ZenEnso as default } from '@zenlm/ui';

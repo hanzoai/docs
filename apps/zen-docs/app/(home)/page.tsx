@@ -2,7 +2,7 @@ import Link from 'next/link';
 import {
   MessageSquare, Download, Terminal, ArrowRight, ExternalLink, Code,
 } from 'lucide-react';
-import { allModels } from '@hanzo/zen-models';
+import { allModels } from '@zenlm/models';
 import ModelLibrary from './ModelLibrary';
 import DownloadSection from './DownloadSection';
 import { ZenEnso } from '@/components/ZenEnso';

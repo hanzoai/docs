@@ -1,13 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { ModelLibrary as SharedModelLibrary } from '@hanzo/ui/models';
-import { allModels, families } from '@hanzo/zen-models';
+import { ModelLibrary as SharedModelLibrary } from '@zenlm/ui';
+import { allModels, families } from '@zenlm/models';
 
 /**
  * ModelLibrary — renders the full model card grid on the zen-docs home page.
- * Data: @hanzo/zen-models (SSOT)
- * UI: @hanzo/ui/models (shared across all Hanzo sites)
+ * Data: @zenlm/models (SSOT)
+ * UI: @zenlm/ui (shared components)
  */
 export default function ModelLibrary() {
   const router = useRouter();

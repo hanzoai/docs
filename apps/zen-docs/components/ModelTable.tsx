@@ -3,13 +3,13 @@
 /**
  * ModelTable for zen-docs MDX pages.
  *
- * Thin wrapper that pulls model data from @hanzo/zen-models (SSOT)
- * and renders with the shared ModelTable component from @hanzo/ui/models.
+ * Thin wrapper that pulls model data from @zenlm/models (SSOT)
+ * and renders with the shared ModelTable component from @zenlm/ui.
  */
 
-import { ModelTable as SharedModelTable } from '@hanzo/ui/models';
-import { allModels } from '@hanzo/zen-models';
-import type { ZenModel } from '@hanzo/zen-models';
+import { ModelTable as SharedModelTable } from '@zenlm/ui';
+import { allModels } from '@zenlm/models';
+import type { ZenModel } from '@zenlm/models';
 
 interface ModelTableProps {
   /** Explicit ordered list of model IDs to show */
