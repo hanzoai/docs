@@ -1,17 +1,8 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { blog } from '@/lib/source';
-import { getMDXComponents } from '@/mdx-components';
-
-interface BlogFrontmatter {
-  title: string;
-  description?: string;
-  author: string;
-  date: string;
-  tags?: string[];
-  load: () => Promise<{ body: React.ComponentType<{ components: object }> }>;
-}
+import { getPost, getSortedPosts } from '@/lib/blog';
+import { useMDXComponents } from '@/mdx-components';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -19,27 +10,34 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const page = blog.getPage([slug]);
-  if (!page) notFound();
-  const data = page.data as unknown as BlogFrontmatter;
+  const post = getPost(slug);
+  if (!post) notFound();
   return {
-    title: `${data.title} — Zen LM Blog`,
-    description: data.description,
+    title: `${post.title} — Zen LM Blog`,
+    description: post.description,
   };
 }
 
 export function generateStaticParams() {
-  return blog.getPages().map((page) => ({ slug: page.slugs[0] }));
+  return getSortedPosts().map((p) => ({ slug: p.slug }));
 }
 
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
-  const page = blog.getPage([slug]);
-  if (!page) notFound();
+  const post = getPost(slug);
+  if (!post) notFound();
 
-  const data = page.data as unknown as BlogFrontmatter;
-  const { body: Mdx } = await data.load();
-  const date = new Date(data.date);
+  // Dynamically import the MDX file
+  let Content: React.ComponentType<{ components?: object }>;
+  try {
+    const mod = await import(`../../../content/blog/${slug}.mdx`);
+    Content = mod.default;
+  } catch {
+    notFound();
+  }
+
+  const date = new Date(post.date);
+  const components = useMDXComponents({});
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-16">
@@ -54,32 +52,32 @@ export default async function BlogPostPage({ params }: Props) {
       {/* Meta */}
       <div className="mb-8">
         <time className="text-xs font-mono text-fd-muted-foreground uppercase tracking-wider">
-          {date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+          {date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}
         </time>
-        <h1 className="text-3xl font-bold mt-2 mb-3">{data.title}</h1>
-        {data.description && (
-          <p className="text-fd-muted-foreground text-lg">{data.description}</p>
-        )}
-        <div className="flex items-center gap-3 mt-4 pt-4 border-t border-fd-border">
-          <span className="text-sm text-fd-muted-foreground">By {data.author}</span>
-          {data.tags && data.tags.length > 0 && (
-            <div className="flex gap-1.5 ml-auto">
-              {data.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-[10px] font-mono uppercase tracking-wider bg-fd-muted text-fd-muted-foreground px-1.5 py-0.5 rounded"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
+        <h1 className="text-3xl font-bold mt-2 mb-3">{post.title}</h1>
+        <p className="text-fd-muted-foreground text-lg mb-4">{post.description}</p>
+        <div className="flex items-center gap-3 pt-4 border-t border-fd-border">
+          <span className="text-sm text-fd-muted-foreground">By {post.author}</span>
+          <div className="flex gap-1.5 ml-auto">
+            {post.tags.map((tag) => (
+              <span
+                key={tag}
+                className="text-[10px] font-mono uppercase tracking-wider bg-fd-muted text-fd-muted-foreground px-1.5 py-0.5 rounded"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="prose prose-invert max-w-none">
-        <Mdx components={getMDXComponents()} />
+      <div className="prose dark:prose-invert max-w-none">
+        <Content components={components} />
       </div>
     </main>
   );
