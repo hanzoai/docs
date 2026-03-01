@@ -12,3 +12,12 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     ...components,
   };
 }
+
+export function getMDXComponents(): MDXComponents {
+  return {
+    ...defaultComponents,
+    DynamicModelTable,
+    DynamicCostExamples,
+    ModelTable,
+  };
+}
