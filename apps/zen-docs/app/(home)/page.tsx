@@ -18,7 +18,7 @@ export default function HomePage() {
 
         <div className="relative mx-auto max-w-4xl px-6 py-28 md:py-40 text-center">
           <div className="flex justify-center mb-8">
-            <ZenEnso size={120} color="#A855F7" animate />
+            <ZenEnso size={120} color="white" animate />
           </div>
 
           <div className="inline-flex items-center rounded-full border border-fd-border px-4 py-1.5 text-xs text-fd-muted-foreground mb-8">
