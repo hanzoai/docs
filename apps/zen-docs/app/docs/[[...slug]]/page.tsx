@@ -7,7 +7,7 @@ import {
 } from '@hanzo/docs-ui/page';
 import { notFound } from 'next/navigation';
 import defaultMdxComponents from '@hanzo/docs-ui/mdx';
-import { DynamicModelTable, DynamicCostExamples } from './client-components';
+import { DynamicModelTable, DynamicCostExamples, ModelTable } from './client-components';
 
 export default async function Page(props: {
   params: Promise<{ slug?: string[] }>;
@@ -23,7 +23,7 @@ export default async function Page(props: {
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
       <DocsBody>
-        <MDX components={{ ...defaultMdxComponents, DynamicModelTable, DynamicCostExamples }} />
+        <MDX components={{ ...defaultMdxComponents, DynamicModelTable, DynamicCostExamples, ModelTable }} />
       </DocsBody>
     </DocsPage>
   );

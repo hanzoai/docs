@@ -106,6 +106,8 @@ export interface ZenModel {
   huggingface: string | null
   /** GitHub URL (null if none) */
   github: string | null
+  /** Technical paper / report URL (null if none) */
+  paper?: string | null
   /** Brand aliases (e.g., zen-max → zen4-max) */
   aliases: string[]
 }

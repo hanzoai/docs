@@ -28,8 +28,8 @@ export const families: ModelFamily[] = [
   },
   {
     id: 'zen3',
-    name: 'Zen 3 Multimodal',
-    description: 'Vision, safety, and multimodal chat models.',
+    name: 'Zen 3',
+    description: 'Previous generation API models — language, vision, multimodal, and safety.',
     icon: 'Eye',
     models: ['zen3-omni', 'zen3-vl', 'zen3-nano', 'zen3-guard'],
   },

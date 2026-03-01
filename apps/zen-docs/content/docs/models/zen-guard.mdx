@@ -1,0 +1,96 @@
+---
+title: zen-guard
+description: Content safety and moderation classifier.
+---
+
+# zen-guard
+
+**Content Safety Classifier**
+
+An 8B content safety and moderation classifier for detecting harmful, toxic, and policy-violating content. Built for integration into generation pipelines, moderation queues, and content platforms requiring reliable safety filtering.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen-guard` |
+| **Parameters** | 8B |
+| **Architecture** | Dense |
+| **Context Window** | 32K tokens |
+| **Tier** | pro |
+| **Status** | Available |
+| **HuggingFace** | [zenlm/zen-guard](https://huggingface.co/zenlm/zen-guard) |
+
+## Capabilities
+
+- Harmful content detection (violence, self-harm, hate speech)
+- Toxicity and profanity classification
+- Policy violation detection
+- NSFW content filtering
+- Multi-category safety scoring
+- Integration with generation pipelines for output filtering
+
+## API Usage
+
+```bash
+curl https://api.hanzo.ai/v1/moderations \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen-guard",
+    "input": "Text content to evaluate for safety"
+  }'
+```
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.moderations.create(
+    model="zen-guard",
+    input="Text content to evaluate for safety",
+)
+
+result = response.results[0]
+print(f"Flagged: {result.flagged}")
+for category, score in result.category_scores.items():
+    if score > 0.1:
+        print(f"  {category}: {score:.3f}")
+```
+
+## HuggingFace Usage
+
+```python
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+import torch
+
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-guard")
+model = AutoModelForSequenceClassification.from_pretrained("zenlm/zen-guard")
+
+text = "Text content to evaluate for safety"
+inputs = tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+
+with torch.no_grad():
+    outputs = model(**inputs)
+    scores = torch.sigmoid(outputs.logits)
+
+labels = model.config.id2label
+for i, score in enumerate(scores[0]):
+    print(f"{labels[i]}: {score.item():.3f}")
+```
+
+## Try It
+
+[Open in Hanzo Chat](https://hanzo.chat?model=zen-guard)
+
+## Resources
+
+- [HuggingFace](https://huggingface.co/zenlm/zen-guard)
+- [Technical Report](https://github.com/zenlm/zen/blob/main/paper/zen-technical-report.pdf)
+
+## See Also
+
+- [zen3-guard](/docs/models/zen3-guard) -- zen3-generation safety classifier
+- [zen-guard-gen](/docs/models/zen-guard-gen) -- Generative safety reasoning
+- [Pricing](/docs/api/pricing) -- Full pricing table

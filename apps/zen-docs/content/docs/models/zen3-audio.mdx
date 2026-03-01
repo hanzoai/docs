@@ -1,0 +1,76 @@
+---
+title: zen3-audio
+description: Best quality speech-to-text transcription. 100+ languages.
+---
+
+# zen3-audio
+
+**Best Quality Transcription**
+
+A 1.5B parameter speech-to-text model delivering the highest transcription accuracy in the Zen family. Supports 100+ languages with strong performance across accents, noisy environments, and domain-specific terminology.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen3-audio` |
+| **Parameters** | 1.5B |
+| **Architecture** | ASR |
+| **Languages** | 100+ |
+| **Input** | Audio (WAV, MP3, FLAC, M4A, OGG) |
+| **Tier** | pro max |
+| **Status** | Available |
+| **Deployment** | API only |
+
+## Capabilities
+
+- Highest accuracy transcription across 100+ languages
+- Speaker diarization (who spoke when)
+- Word and segment-level timestamps
+- Punctuation and capitalization restoration
+- Noise-robust transcription in challenging environments
+- Domain-specific vocabulary support (medical, legal, technical)
+
+## API Usage
+
+```bash
+curl https://api.hanzo.ai/v1/audio/transcriptions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -F model=zen3-audio \
+  -F file=@meeting.mp3 \
+  -F language=en \
+  -F response_format=verbose_json
+```
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+with open("meeting.mp3", "rb") as audio_file:
+    response = client.audio.transcriptions.create(
+        model="zen3-audio",
+        file=audio_file,
+        language="en",
+        response_format="verbose_json",
+        timestamp_granularities=["word", "segment"],
+    )
+
+for segment in response.segments:
+    print(f"[{segment.start:.1f}s - {segment.end:.1f}s] {segment.text}")
+```
+
+## Try It
+
+[Open in Hanzo Chat](https://hanzo.chat?model=zen3-audio)
+
+## Resources
+
+- [Audio API](/docs/api/audio) -- Endpoint documentation
+- [Technical Report](https://github.com/zenlm/zen/blob/main/paper/zen-technical-report.pdf)
+
+## See Also
+
+- [zen3-audio-fast](/docs/models/zen3-audio-fast) -- Fastest transcription for high throughput
+- [zen3-asr](/docs/models/zen3-asr) -- Real-time streaming speech recognition
+- [zen3-tts](/docs/models/zen3-tts) -- High-quality text-to-speech

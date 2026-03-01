@@ -1,0 +1,76 @@
+---
+title: zen3-tts-fast
+description: Low-latency text-to-speech for real-time voice agents and interactive applications.
+---
+
+# zen3-tts-fast
+
+**Low-Latency Voice Synthesis**
+
+An 82M parameter low-latency text-to-speech model built for real-time voice agents and interactive applications. Streams audio output with minimal first-byte latency, enabling fluid conversational AI experiences.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen3-tts-fast` |
+| **Parameters** | 82M |
+| **Architecture** | TTS |
+| **Output** | Audio (MP3, WAV, OPUS) |
+| **Tier** | pro |
+| **Status** | Available |
+| **Deployment** | API only |
+
+## Capabilities
+
+- Low first-byte latency for conversational responsiveness
+- Streaming audio output for real-time playback
+- Voice agent and chatbot integration
+- Interactive voice response (IVR) systems
+- Real-time narration and announcements
+- High-throughput TTS for cost-efficient scale
+
+## API Usage
+
+```bash
+curl https://api.hanzo.ai/v1/audio/speech \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen3-tts-fast",
+    "input": "Your order has been confirmed. It will arrive in 3 to 5 business days.",
+    "voice": "alloy",
+    "response_format": "opus"
+  }' \
+  --output response.opus
+```
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+# Streaming for real-time playback
+with client.audio.speech.with_streaming_response.create(
+    model="zen3-tts-fast",
+    input="Your order has been confirmed.",
+    voice="alloy",
+    response_format="opus",
+) as response:
+    response.stream_to_file("response.opus")
+```
+
+## Try It
+
+[Open in Hanzo Chat](https://hanzo.chat?model=zen3-tts-fast)
+
+## Resources
+
+- [Audio API](/docs/api/audio) -- Endpoint documentation
+- [Technical Report](https://github.com/zenlm/zen/blob/main/paper/zen-technical-report.pdf)
+
+## See Also
+
+- [zen3-tts](/docs/models/zen3-tts) -- High-quality TTS with 40+ voices
+- [zen3-tts-hd](/docs/models/zen3-tts-hd) -- Broadcast-quality audio production
+- [zen3-asr](/docs/models/zen3-asr) -- Real-time streaming speech recognition

@@ -1,0 +1,77 @@
+---
+title: zen3-asr
+description: Real-time streaming speech recognition for live transcription and voice agents.
+---
+
+# zen3-asr
+
+**Real-Time Streaming ASR**
+
+Real-time streaming automatic speech recognition for live transcription and voice agents. Delivers word-by-word output via WebSocket with minimal latency, enabling responsive voice-driven applications.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen3-asr` |
+| **Architecture** | Streaming ASR |
+| **Tier** | pro max |
+| **Status** | Available |
+| **Deployment** | API only (WebSocket) |
+
+## Capabilities
+
+- Real-time word-by-word streaming transcription
+- Sub-300ms latency for voice agent responsiveness
+- Live captioning and transcription
+- Voice-driven UI interaction
+- Speaker change detection
+- Interim and final result streaming
+
+## API Usage
+
+```python
+import asyncio
+import websockets
+import json
+
+async def stream_transcription(audio_source):
+    uri = "wss://api.hanzo.ai/v1/audio/stream"
+    headers = {"Authorization": f"Bearer {HANZO_API_KEY}"}
+
+    async with websockets.connect(uri, extra_headers=headers) as ws:
+        await ws.send(json.dumps({
+            "model": "zen3-asr",
+            "language": "en",
+            "interim_results": True,
+        }))
+
+        async for audio_chunk in audio_source:
+            await ws.send(audio_chunk)
+
+        await ws.send(json.dumps({"type": "end"}))
+
+        async for message in ws:
+            result = json.loads(message)
+            if result.get("is_final"):
+                print(f"[FINAL] {result['transcript']}")
+            else:
+                print(f"[INTERIM] {result['transcript']}", end="\r")
+
+asyncio.run(stream_transcription(audio_source))
+```
+
+## Try It
+
+[Open in Hanzo Chat](https://hanzo.chat?model=zen3-asr)
+
+## Resources
+
+- [Audio API](/docs/api/audio) -- Endpoint documentation
+- [Technical Report](https://github.com/zenlm/zen/blob/main/paper/zen-technical-report.pdf)
+
+## See Also
+
+- [zen3-asr-v1](/docs/models/zen3-asr-v1) -- First-generation streaming ASR
+- [zen3-audio](/docs/models/zen3-audio) -- Best quality batch transcription
+- [zen3-tts](/docs/models/zen3-tts) -- Text-to-speech for voice agents
