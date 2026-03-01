@@ -11,3 +11,8 @@ export const DynamicCostExamples = dynamic(
   () => import('@/components/DynamicModelTable').then((m) => m.DynamicCostExamples),
   { ssr: false }
 );
+
+export const ModelTable = dynamic(
+  () => import('@/components/ModelTable').then((m) => m.ModelTable),
+  { ssr: false }
+);
