@@ -1,6 +1,7 @@
 import { HomeLayout } from '@hanzo/docs-base-ui/layouts/home';
 import type { ReactNode } from 'react';
 import type { BaseLayoutProps, LinkItemType } from '@hanzo/docs-base-ui/layouts/shared';
+import { ZenEnso } from '@/components/ZenEnso';
 
 const linkItems: LinkItemType[] = [
   {
@@ -52,9 +53,10 @@ function baseOptions(): BaseLayoutProps {
   return {
     nav: {
       title: (
-        <>
-          <span className="text-lg font-bold">🪷 Zen LM</span>
-        </>
+        <span className="flex items-center gap-2">
+          <ZenEnso size={28} animate={false} />
+          <span className="text-lg font-bold">Zen LM</span>
+        </span>
       ),
       url: '/',
     },

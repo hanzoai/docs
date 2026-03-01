@@ -1,500 +1,299 @@
 import Link from 'next/link';
 import {
-  Atom, Code, Zap, Cpu, Eye, Shield, Search, Network,
-  ArrowRight, Download, Terminal, BookOpen, Beaker, Database,
-  Mic, Video, Box, ExternalLink, GitBranch,
-  MessageSquare, Globe, Lock, Layers, DollarSign, Package,
-  Gauge, CloudLightning, Heart, Star, Users, Clock,
-  Orbit, Infinity,
+  MessageSquare, Download, Terminal, ArrowRight, ExternalLink, Code,
 } from 'lucide-react';
 import { allModels } from '@hanzo/zen-models';
-import DynamicPricing from './DynamicPricing';
 import ModelLibrary from './ModelLibrary';
-
-/* ─────────────────────────────────────────────────────────── */
-/*  LANDING PAGE                                               */
-/* ─────────────────────────────────────────────────────────── */
+import DownloadSection from './DownloadSection';
+import { ZenEnso } from '@/components/ZenEnso';
 
 export default function HomePage() {
   return (
     <main className="min-h-screen">
 
       {/* ── Hero ─────────────────────────────────────────── */}
-      <section className="border-b border-fd-border">
-        <div className="mx-auto max-w-6xl px-6 py-24 md:py-36 text-center">
-          <div className="inline-flex items-center rounded-full border border-fd-border px-4 py-1.5 text-xs text-fd-muted-foreground mb-6">
-            Zen MoDE — Mixture of Distilled Experts
+      <section className="relative border-b border-fd-border overflow-hidden">
+        {/* subtle gradient bg */}
+        <div className="absolute inset-0 bg-gradient-to-b from-fd-primary/5 to-transparent pointer-events-none" />
+
+        <div className="relative mx-auto max-w-4xl px-6 py-28 md:py-40 text-center">
+          <div className="flex justify-center mb-8">
+            <ZenEnso size={120} color="#A855F7" animate />
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6">
-            Zen LM
+          <div className="inline-flex items-center rounded-full border border-fd-border px-4 py-1.5 text-xs text-fd-muted-foreground mb-8">
+            Open-source · Apache 2.0 · {allModels.length} models
+          </div>
+
+          <h1 className="text-6xl md:text-8xl font-bold tracking-tight mb-6 leading-none">
+            Zen AI
           </h1>
 
-          <p className="text-xl md:text-2xl text-fd-muted-foreground max-w-3xl mx-auto mb-4">
-            Frontier AI models for code, reasoning, vision, video, audio, 3D, and agentic workflows
+          <p className="text-xl md:text-2xl text-fd-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed">
+            A family of open-source AI models you can chat with for free — or download and run privately on your own machine.
           </p>
 
-          <p className="text-base text-fd-muted-foreground max-w-2xl mx-auto mb-10">
-            {allModels.length} models across 10 modalities. Production API models from 4B to 1T+ parameters.
-            Open weights on HuggingFace. OpenAI-compatible API. Built by{' '}
-            <a href="https://hanzo.ai" className="text-fd-foreground hover:underline">Hanzo AI</a> (Techstars &apos;17).
-          </p>
-
-          <div className="flex flex-wrap gap-3 justify-center mb-16">
+          {/* PRIMARY CTAs */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
             <a
               href="https://hanzo.chat"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-fd-primary px-6 py-2.5 text-sm font-medium text-fd-primary-foreground hover:opacity-80 transition"
+              className="inline-flex items-center justify-center gap-2.5 rounded-2xl bg-fd-primary px-8 py-4 text-base font-semibold text-fd-primary-foreground hover:opacity-90 transition shadow-lg"
             >
-              <MessageSquare className="h-4 w-4" />
-              Try Zen Free
+              <MessageSquare className="h-5 w-5" />
+              Start chatting — free
             </a>
-            <Link
-              href="/docs"
-              className="inline-flex items-center gap-2 rounded-full border border-fd-border bg-transparent px-6 py-2.5 text-sm font-medium hover:bg-fd-muted transition"
-            >
-              <BookOpen className="h-4 w-4" />
-              Documentation
-            </Link>
-            <Link
-              href="/docs/api"
-              className="inline-flex items-center gap-2 rounded-full border border-fd-border bg-transparent px-6 py-2.5 text-sm font-medium hover:bg-fd-muted transition"
-            >
-              <Terminal className="h-4 w-4" />
-              API Reference
-            </Link>
             <a
-              href="https://huggingface.co/zenlm"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-fd-border bg-transparent px-6 py-2.5 text-sm font-medium hover:bg-fd-muted transition"
+              href="#download"
+              className="inline-flex items-center justify-center gap-2.5 rounded-2xl border border-fd-border bg-fd-background px-8 py-4 text-base font-semibold hover:bg-fd-muted transition"
             >
-              <Download className="h-4 w-4" />
-              HuggingFace
+              <Download className="h-5 w-5" />
+              Download weights
             </a>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-6 max-w-4xl mx-auto">
-            <Stat value={`${allModels.length}`} label="Models" />
-            <Stat value="1T+" label="Max Parameters" />
-            <Stat value="2M" label="Max Context" />
-            <Stat value="10" label="Modalities" />
-            <Stat value="$0.15" label="From $/MTok" />
-          </div>
+          <p className="text-sm text-fd-muted-foreground">
+            No account needed to chat &middot; Open weights on{' '}
+            <a href="https://huggingface.co/zenlm" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-fd-foreground">HuggingFace</a>
+            {' '}&middot; Built by{' '}
+            <a href="https://hanzo.ai" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-fd-foreground">Hanzo AI</a>
+          </p>
         </div>
       </section>
 
-      {/* ── Flagship Models ──────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-6 py-20">
-        <SectionHeader
-          title="Flagship Models"
-          subtitle="Three tiers — from efficient edge to trillion-parameter frontier scale"
-        />
+      {/* ── Chat Free ────────────────────────────────────── */}
+      <section className="mx-auto max-w-5xl px-6 py-20">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
+            Chat with Zen — no signup required
+          </h2>
+          <p className="text-fd-muted-foreground max-w-xl mx-auto">
+            Try any Zen model instantly on Hanzo Chat. Free tier includes access to zen4, zen4-mini, zen3-nano and more.
+          </p>
+        </div>
 
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <ModelHighlight
-            icon={<Zap className="h-6 w-6" />}
-            name="zen4-max"
-            badge="FRONTIER"
-            spec="Maximum Intelligence · 1M ctx"
-            description="Most capable model for complex reasoning, analysis, and agentic coding. 1M token context."
-            href="/docs/models/zen4-max"
+        {/* Model pick cards → hanzo.chat links */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+          <ChatModelCard
+            id="zen4-max"
+            name="Zen4 Max"
+            tag="Most capable"
+            desc="1M context · Max intelligence"
+            color="primary"
           />
-          <ModelHighlight
-            icon={<Atom className="h-6 w-6" />}
-            name="zen4"
-            badge="FLAGSHIP"
-            spec="744B MoE · 40B active · 202K ctx"
-            description="Flagship MoE for complex reasoning and multi-domain tasks. Optimal intelligence-to-speed ratio."
-            href="/docs/models/zen4"
-            featured
+          <ChatModelCard
+            id="zen4"
+            name="Zen4"
+            tag="Flagship"
+            desc="744B MoE · 202K context"
           />
-          <ModelHighlight
-            icon={<Code className="h-6 w-6" />}
-            name="zen4-coder"
-            badge="CODE"
-            spec="480B MoE · 35B active · 262K ctx"
-            description="Code-specialized MoE model for generation, review, debugging, and agentic programming."
-            href="/docs/models/zen4-coder"
+          <ChatModelCard
+            id="zen4-coder"
+            name="Zen4 Coder"
+            tag="Code"
+            desc="480B MoE · Code & debugging"
+          />
+          <ChatModelCard
+            id="zen4-mini"
+            name="Zen4 Mini"
+            tag="Fast · Free"
+            desc="128K ctx · Ultra-fast"
+            color="muted"
           />
         </div>
 
         <div className="text-center">
-          <Link href="/docs/models" className="inline-flex items-center gap-2 text-sm font-medium text-fd-foreground hover:underline">
-            View all models <ArrowRight className="h-4 w-4" />
+          <a
+            href="https://hanzo.chat"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-sm font-medium hover:underline"
+          >
+            See all models on Hanzo Chat <ArrowRight className="h-4 w-4" />
+          </a>
+        </div>
+      </section>
+
+      {/* ── Download / Run Locally ────────────────────────── */}
+      <section id="download" className="border-t border-fd-border bg-fd-muted/30">
+        <div className="mx-auto max-w-5xl px-6 py-20">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
+              Run locally — 100% private
+            </h2>
+            <p className="text-fd-muted-foreground max-w-xl mx-auto">
+              Download open-weight Zen models and run them on your own hardware. Works with Ollama, LM Studio, llama.cpp, and Transformers.
+            </p>
+          </div>
+
+          <DownloadSection />
+        </div>
+      </section>
+
+      {/* ── Why Zen ──────────────────────────────────────── */}
+      <section className="mx-auto max-w-5xl px-6 py-20">
+        <div className="grid md:grid-cols-3 gap-8">
+          <WhyCard
+            icon={<MessageSquare className="h-6 w-6" />}
+            title="Free to chat"
+            desc="Try every model instantly on Hanzo Chat. No credit card, no signup. Upgrade for higher limits and API access."
+          />
+          <WhyCard
+            icon={<Download className="h-6 w-6" />}
+            title="Run it yourself"
+            desc="Apache 2.0 licensed weights on HuggingFace. Download GGUF for Ollama and LM Studio, or full precision for training."
+          />
+          <WhyCard
+            icon={<Code className="h-6 w-6" />}
+            title="Build with the API"
+            desc="OpenAI-compatible API at api.hanzo.ai. From $0.15/MTok. Drop-in replacement for GPT-4 or Claude."
+          />
+        </div>
+      </section>
+
+      {/* ── Open Weight Models ────────────────────────────── */}
+      <section className="border-t border-fd-border bg-fd-muted/30">
+        <div className="mx-auto max-w-5xl px-6 py-20">
+          <div className="flex items-end justify-between mb-10">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight mb-2">Open weight models</h2>
+              <p className="text-fd-muted-foreground">Download and run — Apache 2.0</p>
+            </div>
+            <a
+              href="https://huggingface.co/zenlm"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:inline-flex items-center gap-2 text-sm font-medium hover:underline"
+            >
+              All on HuggingFace <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <OpenModelCard name="Zen Nano" id="zen-nano" hf="zenlm/zen-nano-0.6b" size="0.6B" ctx="32K" arch="Dense" ollama="hf.co/zenlm/zen-nano-0.6b" />
+            <OpenModelCard name="Zen Eco" id="zen-eco" hf="zenlm/zen-eco-4b" size="4B" ctx="32K" arch="Dense" ollama="hf.co/zenlm/zen-eco-4b" />
+            <OpenModelCard name="Zen" id="zen" hf="zenlm/zen-8b" size="8–32B" ctx="32K" arch="Dense" ollama="hf.co/zenlm/zen-8b" />
+            <OpenModelCard name="Zen Pro" id="zen-pro" hf="zenlm/zen-pro-32b" size="32B" ctx="32K" arch="Dense" ollama="hf.co/zenlm/zen-pro-32b" />
+            <OpenModelCard name="Zen Max" id="zen-max" hf="zenlm/zen-max" size="235B (22B active)" ctx="131K" arch="MoE" ollama="hf.co/zenlm/zen-max" />
+            <OpenModelCard name="Zen Coder" id="zen-coder" hf="zenlm/zen-coder" size="32B" ctx="131K" arch="Dense" ollama="hf.co/zenlm/zen-coder" />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Quick API ─────────────────────────────────────── */}
+      <section className="mx-auto max-w-5xl px-6 py-20">
+        <div className="flex items-end justify-between mb-8">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight mb-2">Developer API</h2>
+            <p className="text-fd-muted-foreground">OpenAI-compatible. Drop-in replacement.</p>
+          </div>
+          <Link href="/docs/api" className="hidden sm:inline-flex items-center gap-2 text-sm font-medium hover:underline">
+            Full docs <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-      </section>
 
-      {/* ── API Pricing ──────────────────────────────────── */}
-      <section className="border-t border-fd-border bg-fd-muted/30">
-        <div className="mx-auto max-w-6xl px-6 py-20">
-          <SectionHeader
-            title="API Pricing"
-            subtitle="Pay-as-you-go. $5 free credit on signup. No minimum commitment."
-          />
-
-          <DynamicPricing />
-        </div>
-      </section>
-
-      {/* ── Quick Start with Hanzo SDK ────────────────────── */}
-      <section className="mx-auto max-w-6xl px-6 py-20">
-        <SectionHeader
-          title="Quick Start"
-          subtitle="Install the Hanzo SDK — supports OpenAI and Claude-style endpoints, plus 100+ providers"
-        />
-
-        <div className="grid md:grid-cols-2 gap-8 mb-8">
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
           <div className="rounded-xl border border-fd-border bg-fd-background overflow-hidden">
-            <div className="flex items-center gap-2 border-b border-fd-border px-4 py-2 text-xs text-fd-muted-foreground bg-fd-muted/50">
-              <Terminal className="h-3.5 w-3.5" />
-              Python — Hanzo SDK
+            <div className="flex items-center gap-2 border-b border-fd-border px-4 py-2.5 text-xs text-fd-muted-foreground bg-fd-muted/50">
+              <Terminal className="h-3.5 w-3.5" /> Python
             </div>
-            <pre className="p-4 text-sm overflow-x-auto"><code>{`pip install hanzoai
+            <pre className="p-5 text-sm overflow-x-auto"><code>{`pip install hanzoai
 
 from hanzoai import Hanzo
 
-client = Hanzo(api_key="hk-your-api-key")
-
-response = client.chat.completions.create(
+client = Hanzo(api_key="hk-...")
+r = client.chat.completions.create(
     model="zen4",
-    messages=[
-        {"role": "user", "content": "Hello, Zen."}
-    ],
+    messages=[{"role": "user", "content": "Hello!"}],
 )
-print(response.choices[0].message.content)`}</code></pre>
+print(r.choices[0].message.content)`}</code></pre>
           </div>
 
           <div className="rounded-xl border border-fd-border bg-fd-background overflow-hidden">
-            <div className="flex items-center gap-2 border-b border-fd-border px-4 py-2 text-xs text-fd-muted-foreground bg-fd-muted/50">
-              <Terminal className="h-3.5 w-3.5" />
-              TypeScript — Hanzo SDK
+            <div className="flex items-center gap-2 border-b border-fd-border px-4 py-2.5 text-xs text-fd-muted-foreground bg-fd-muted/50">
+              <Terminal className="h-3.5 w-3.5" /> curl
             </div>
-            <pre className="p-4 text-sm overflow-x-auto"><code>{`npm install hanzoai
-
-import Hanzo from "hanzoai";
-
-const client = new Hanzo({
-  apiKey: "hk-your-api-key",
-});
-
-const response = await client.chat.completions.create({
-  model: "zen4-coder",
-  messages: [
-    { role: "user", content: "Write a React hook" }
-  ],
-});
-console.log(response.choices[0].message.content);`}</code></pre>
-          </div>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-8 mb-12">
-          <div className="rounded-xl border border-fd-border bg-fd-background overflow-hidden">
-            <div className="flex items-center gap-2 border-b border-fd-border px-4 py-2 text-xs text-fd-muted-foreground bg-fd-muted/50">
-              <Terminal className="h-3.5 w-3.5" />
-              curl
-            </div>
-            <pre className="p-4 text-sm overflow-x-auto"><code>{`curl https://api.hanzo.ai/v1/chat/completions \\
-  -H "Authorization: Bearer hk-your-api-key" \\
+            <pre className="p-5 text-sm overflow-x-auto"><code>{`curl https://api.hanzo.ai/v1/chat/completions \\
+  -H "Authorization: Bearer hk-..." \\
   -H "Content-Type: application/json" \\
   -d '{
     "model": "zen4",
     "messages": [
-      {"role": "user", "content": "Hello, Zen."}
+      {"role": "user", "content": "Hello!"}
     ]
   }'`}</code></pre>
           </div>
-
-          <div className="rounded-xl border border-fd-border bg-fd-background overflow-hidden">
-            <div className="flex items-center gap-2 border-b border-fd-border px-4 py-2 text-xs text-fd-muted-foreground bg-fd-muted/50">
-              <Terminal className="h-3.5 w-3.5" />
-              Streaming (Python)
-            </div>
-            <pre className="p-4 text-sm overflow-x-auto"><code>{`from hanzoai import Hanzo
-
-client = Hanzo(api_key="hk-your-api-key")
-
-stream = client.chat.completions.create(
-    model="zen4-max",
-    messages=[
-        {"role": "user", "content": "Explain MoE"}
-    ],
-    stream=True,
-)
-for chunk in stream:
-    if chunk.choices[0].delta.content:
-        print(chunk.choices[0].delta.content, end="")`}</code></pre>
-          </div>
         </div>
 
-        <div className="rounded-xl border border-fd-border bg-fd-muted/30 p-6 mb-12">
-          <h4 className="font-semibold mb-3">SDK Features</h4>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-            <div className="flex items-start gap-2">
-              <Package className="h-4 w-4 text-fd-muted-foreground mt-0.5 shrink-0" />
-              <div><strong>Multi-SDK</strong> — Python, TypeScript, Go, Rust</div>
-            </div>
-            <div className="flex items-start gap-2">
-              <Globe className="h-4 w-4 text-fd-muted-foreground mt-0.5 shrink-0" />
-              <div><strong>OpenAI Compatible</strong> — drop-in replacement</div>
-            </div>
-            <div className="flex items-start gap-2">
-              <Layers className="h-4 w-4 text-fd-muted-foreground mt-0.5 shrink-0" />
-              <div><strong>100+ Providers</strong> — Zen + Claude + GPT + more</div>
-            </div>
-            <div className="flex items-start gap-2">
-              <CloudLightning className="h-4 w-4 text-fd-muted-foreground mt-0.5 shrink-0" />
-              <div><strong>Streaming</strong> — SSE, async, batch</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <GetStartedCard title="Python SDK" description="pip install hanzoai" href="https://github.com/hanzoai/python-sdk" external />
-          <GetStartedCard title="TypeScript SDK" description="npm install hanzoai" href="https://github.com/hanzoai/js-sdk" external />
-          <GetStartedCard title="Go SDK" description="go get github.com/hanzoai/go-sdk" href="https://github.com/hanzoai/go-sdk" external />
-          <GetStartedCard title="Rust SDK" description="cargo add hanzoai" href="https://github.com/hanzoai/rust-sdk" external />
+        <div className="flex flex-wrap gap-4 items-center">
+          <a href="https://console.hanzo.ai" target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-xl bg-fd-primary px-6 py-2.5 text-sm font-semibold text-fd-primary-foreground hover:opacity-90 transition">
+            Get API key
+          </a>
+          <Link href="/docs/api" className="inline-flex items-center gap-2 text-sm hover:underline">
+            API reference <ArrowRight className="h-4 w-4" />
+          </Link>
+          <span className="text-sm text-fd-muted-foreground">From $0.15 / 1M tokens</span>
         </div>
       </section>
 
       {/* ── Full Model Library ────────────────────────────── */}
       <section className="border-t border-fd-border bg-fd-muted/30">
         <div className="mx-auto max-w-6xl px-6 py-20">
-          <SectionHeader
-            title="Full Model Library"
-            subtitle="49 models across 10 categories — text, code, vision, video, audio, 3D, safety, embeddings, and agents"
-          />
-
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold tracking-tight mb-3">All {allModels.length} models</h2>
+            <p className="text-fd-muted-foreground">Text, code, vision, audio, image, 3D, safety, embeddings, and agents</p>
+          </div>
           <ModelLibrary />
-        </div>
-      </section>
-
-      {/* ── Capabilities & Modalities ─────────────────────── */}
-      <section className="mx-auto max-w-6xl px-6 py-20">
-        <SectionHeader
-          title="10 Modalities"
-          subtitle="One model family covering every AI capability"
-        />
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-12">
-          <ModalityCard icon={<MessageSquare />} title="Text" models="14" desc="Chat, reasoning, analysis" />
-          <ModalityCard icon={<Code />} title="Code" models="9" desc="Generation, review, debugging" />
-          <ModalityCard icon={<Eye />} title="Vision" models="5" desc="Understanding, generation, editing" />
-          <ModalityCard icon={<Video />} title="Video" models="4" desc="Generation, understanding, I2V" />
-          <ModalityCard icon={<Mic />} title="Audio" models="7" desc="Speech, music, translation" />
-          <ModalityCard icon={<Box />} title="3D" models="2" desc="Generation, world simulation" />
-          <ModalityCard icon={<Shield />} title="Safety" models="3" desc="Moderation, guardrails" />
-          <ModalityCard icon={<Search />} title="Embedding" models="2" desc="Search, retrieval, RAG" />
-          <ModalityCard icon={<Network />} title="Agents" models="1" desc="Tool use, planning" />
-          <ModalityCard icon={<Infinity />} title="Math" models="6" desc="Reasoning, proof, computation" />
-        </div>
-      </section>
-
-      {/* ── Architecture ─────────────────────────────────── */}
-      <section className="border-t border-fd-border bg-fd-muted/30">
-        <div className="mx-auto max-w-6xl px-6 py-20">
-          <SectionHeader
-            title="Architecture"
-            subtitle="Zen MoDE — curating best open-source foundations and fusing them into a unified, high-performance family"
-          />
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <ArchCard icon={<Orbit className="h-5 w-5" />} title="Consumer Line" description="Dense and MoE models from 4B to 80B. Edge-deployable dense models and efficient MoE flagships with only 3B active parameters." />
-            <ArchCard icon={<Code className="h-5 w-5" />} title="Coder Line" description="Code-specialized models trained on 8.47B tokens of real agentic programming data. Fast completions to full-precision code intelligence." />
-            <ArchCard icon={<Zap className="h-5 w-5" />} title="Ultra Line" description="Trillion-parameter MoE models for cloud deployment. 1.04T parameters with 32B active for frontier-scale reasoning." />
-            <ArchCard icon={<Cpu className="h-5 w-5" />} title="Efficient MoE" description="Mixture-of-Experts delivers frontier performance with only 3B active parameters — runs on consumer hardware." />
-            <ArchCard icon={<Gauge className="h-5 w-5" />} title="Long Context" description="Up to 262K context on code models, 256K on frontier models. Dense models support 32–40K for efficient local inference." />
-            <ArchCard icon={<Beaker className="h-5 w-5" />} title="Zen MoDE" description="Mixture of Distilled Experts — curating the best open-source foundations and fusing into a unified model family." />
-          </div>
-        </div>
-      </section>
-
-      {/* ── Agentic Dataset ──────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-6 py-20">
-        <SectionHeader
-          title="Zen Agentic Dataset"
-          subtitle="8.47 billion tokens of real-world agentic programming — not synthetic data"
-        />
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
-          <Stat value="8.47B" label="Training Tokens" large />
-          <Stat value="3.35M" label="Training Samples" large />
-          <Stat value="1,452" label="Repositories" large />
-          <Stat value="15yr" label="History (2010–2025)" large />
-        </div>
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-          <DataCard pct="48%" title="Git History" tokens="4.03B tokens" />
-          <DataCard pct="29%" title="Agentic Debug Sessions" tokens="2.42B tokens" />
-          <DataCard pct="13%" title="Architecture Discussions" tokens="1.14B tokens" />
-          <DataCard pct="10%" title="Code Review Sessions" tokens="0.86B tokens" />
-        </div>
-
-        <div className="text-center">
-          <Link href="/docs/datasets" className="inline-flex items-center gap-2 text-sm font-medium text-fd-foreground hover:underline">
-            Dataset documentation <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </section>
-
-      {/* ── Open Weights ─────────────────────────────────── */}
-      <section className="border-t border-fd-border bg-fd-muted/30">
-        <div className="mx-auto max-w-6xl px-6 py-20">
-          <SectionHeader
-            title="Open Weights"
-            subtitle="Download, self-host, and fine-tune — multiple formats for every platform"
-          />
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-            <div className="rounded-xl border border-fd-border bg-fd-background p-6 text-center">
-              <h4 className="font-semibold mb-2">SafeTensors</h4>
-              <p className="text-sm text-fd-muted-foreground">Full precision for HuggingFace Transformers</p>
-            </div>
-            <div className="rounded-xl border border-fd-border bg-fd-background p-6 text-center">
-              <h4 className="font-semibold mb-2">GGUF</h4>
-              <p className="text-sm text-fd-muted-foreground">Quantized for llama.cpp / Ollama</p>
-            </div>
-            <div className="rounded-xl border border-fd-border bg-fd-background p-6 text-center">
-              <h4 className="font-semibold mb-2">MLX</h4>
-              <p className="text-sm text-fd-muted-foreground">Apple Silicon optimized</p>
-            </div>
-            <div className="rounded-xl border border-fd-border bg-fd-background p-6 text-center">
-              <h4 className="font-semibold mb-2">ONNX</h4>
-              <p className="text-sm text-fd-muted-foreground">Cross-platform inference</p>
-            </div>
-          </div>
-
-          <div className="text-center">
-            <a
-              href="https://huggingface.co/zenlm"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-fd-primary px-6 py-2.5 text-sm font-medium text-fd-primary-foreground hover:opacity-80 transition"
-            >
-              <Download className="h-4 w-4" />
-              Browse All on HuggingFace
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Ecosystem ────────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-6 py-20">
-        <SectionHeader
-          title="Hanzo Ecosystem"
-          subtitle="Zen models power the entire Hanzo AI platform"
-        />
-
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-          <EcosystemCard
-            title="Hanzo Chat"
-            description="Chat with all 14 Zen models plus 100+ third-party models. MCP tools, file uploads, and persistent conversations."
-            href="https://hanzo.chat"
-            cta="Try Hanzo Chat"
-          />
-          <EcosystemCard
-            title="Hanzo Cloud"
-            description="Managed inference API. Console, billing, usage analytics, API key management."
-            href="https://console.hanzo.ai"
-            cta="Open Console"
-          />
-          <EcosystemCard
-            title="Hanzo MCP"
-            description="260+ Model Context Protocol tools. Connect Zen models to your codebase, browser, filesystem, and APIs."
-            href="https://docs.hanzo.ai/docs/mcp"
-            cta="Explore MCP"
-          />
-          <EcosystemCard
-            title="Hanzo Dev"
-            description="AI coding agent powered by Zen Coder. Code generation, debugging, and refactoring in your IDE."
-            href="https://hanzo.ai/dev"
-            cta="Get Hanzo Dev"
-          />
-          <EcosystemCard
-            title="LLM Gateway"
-            description="Unified proxy for 100+ LLM providers. Load balancing, caching, rate limiting, and observability."
-            href="https://docs.hanzo.ai/docs/llm"
-            cta="View Docs"
-          />
-          <EcosystemCard
-            title="Hanzo Industries"
-            description="Enterprise AI and defense. Custom model training, dedicated infrastructure, and compliance."
-            href="https://hanzo.industries"
-            cta="Learn More"
-          />
-        </div>
-      </section>
-
-      {/* ── Research ─────────────────────────────────────── */}
-      <section className="border-t border-fd-border bg-fd-muted/30">
-        <div className="mx-auto max-w-6xl px-6 py-20">
-          <SectionHeader
-            title="Research"
-            subtitle="130+ technical papers across AI, cryptography, and consensus"
-          />
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-            <PaperCard title="Zen Technical Report" pages="Model Architecture" href="https://github.com/zenlm/papers/blob/main/pdfs/zen-technical-report.pdf" />
-            <PaperCard title="Zen Coder" pages="Code Generation" href="https://github.com/zenlm/papers/blob/main/pdfs/zen-coder.pdf" />
-            <PaperCard title="Zen Agent" pages="Agent Systems" href="https://github.com/zenlm/papers/blob/main/pdfs/zen-agent.pdf" />
-            <PaperCard title="Zen Guard" pages="Safety Model" href="https://github.com/zenlm/papers/blob/main/pdfs/zen-guard.pdf" />
-            <PaperCard title="Zen Omni" pages="Multimodal" href="https://github.com/zenlm/papers/blob/main/pdfs/zen-omni.pdf" />
-            <PaperCard title="Zen Artist" pages="Image Generation" href="https://github.com/zenlm/papers/blob/main/pdfs/zen-artist.pdf" />
-            <PaperCard title="Zen Pro" pages="Professional Model" href="https://github.com/zenlm/papers/blob/main/pdfs/zen-pro.pdf" />
-            <PaperCard title="Zen MoDE" pages="Distilled Experts" href="https://github.com/zenlm/papers/blob/main/pdfs/zen-mode.pdf" />
-          </div>
-
-          <div className="flex flex-wrap gap-4 justify-center">
-            <a href="https://papers.zenlm.org" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-fd-foreground hover:underline">
-              Zen LM papers <ArrowRight className="h-4 w-4" />
-            </a>
-            <a href="https://papers.hanzo.ai" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-fd-foreground hover:underline">
-              Hanzo AI papers <ArrowRight className="h-4 w-4" />
-            </a>
-            <a href="https://papers.lux.network" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-fd-foreground hover:underline">
-              Lux papers <ArrowRight className="h-4 w-4" />
-            </a>
-          </div>
         </div>
       </section>
 
       {/* ── CTA ──────────────────────────────────────────── */}
       <section className="border-t border-fd-border">
-        <div className="mx-auto max-w-4xl px-6 py-20 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            Build with Zen LM
+        <div className="mx-auto max-w-3xl px-6 py-24 text-center">
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight mb-5">
+            Ready to start?
           </h2>
-          <p className="text-fd-muted-foreground mb-8 max-w-xl mx-auto">
-            49 models. 10 modalities. Open weights. From $0.15/MTok.
+          <p className="text-fd-muted-foreground mb-10 text-lg">
+            Chat for free, download weights, or build with the API.
           </p>
-          <div className="flex flex-wrap gap-4 justify-center">
-            <a
-              href="https://hanzo.chat"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-fd-primary px-8 py-2.5 text-sm font-medium text-fd-primary-foreground hover:opacity-80 transition"
-            >
-              <MessageSquare className="h-4 w-4" />
-              Try Zen Free
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="https://hanzo.chat" target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2.5 rounded-2xl bg-fd-primary px-8 py-4 text-base font-semibold text-fd-primary-foreground hover:opacity-90 transition shadow-lg">
+              <MessageSquare className="h-5 w-5" /> Start chatting free
             </a>
-            <Link
-              href="/docs"
-              className="inline-flex items-center gap-2 rounded-full border border-fd-border bg-transparent px-8 py-2.5 text-sm font-medium hover:bg-fd-muted transition"
-            >
-              <BookOpen className="h-4 w-4" />
-              Documentation
+            <a href="#download"
+              className="inline-flex items-center justify-center gap-2.5 rounded-2xl border border-fd-border px-8 py-4 text-base font-semibold hover:bg-fd-muted transition">
+              <Download className="h-5 w-5" /> Download weights
+            </a>
+            <a href="https://console.hanzo.ai" target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2.5 rounded-2xl border border-fd-border px-8 py-4 text-base font-semibold hover:bg-fd-muted transition">
+              <Terminal className="h-5 w-5" /> Get API key
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Research & Blog ──────────────────────────────── */}
+      <section className="border-t border-fd-border bg-fd-muted/30">
+        <div className="mx-auto max-w-5xl px-6 py-10 flex flex-wrap items-center justify-between gap-6">
+          <div>
+            <h3 className="text-sm font-semibold mb-1">Research &amp; Writing</h3>
+            <p className="text-xs text-fd-muted-foreground">Papers, technical reports, and updates from the Zen LM team</p>
+          </div>
+          <div className="flex flex-wrap gap-4">
+            <a href="https://papers.zenlm.org" target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl border border-fd-border bg-fd-background px-4 py-2.5 text-sm font-medium hover:bg-fd-muted transition">
+              <ArrowRight className="h-3.5 w-3.5" /> All papers
+            </a>
+            <Link href="/blog"
+              className="inline-flex items-center gap-2 rounded-xl border border-fd-border bg-fd-background px-4 py-2.5 text-sm font-medium hover:bg-fd-muted transition">
+              <ArrowRight className="h-3.5 w-3.5" /> Blog
             </Link>
-            <a
-              href="https://console.hanzo.ai"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full border border-fd-border bg-transparent px-8 py-2.5 text-sm font-medium hover:bg-fd-muted transition"
-            >
-              <Terminal className="h-4 w-4" />
-              Get API Key
-            </a>
+            <Link href="/docs" className="inline-flex items-center gap-2 rounded-xl border border-fd-border bg-fd-background px-4 py-2.5 text-sm font-medium hover:bg-fd-muted transition">
+              <ArrowRight className="h-3.5 w-3.5" /> Documentation
+            </Link>
           </div>
         </div>
       </section>
@@ -506,194 +305,112 @@ for chunk in stream:
             <div className="lg:col-span-2">
               <div className="text-lg font-bold mb-3">🪷 Zen LM</div>
               <p className="text-sm text-fd-muted-foreground mb-4 max-w-xs">
-                Frontier AI models by Hanzo AI. Open weights, transparent pricing, production-grade API.
+                Open-source AI models by Hanzo AI. Apache 2.0. Runs on your machine or in the cloud.
               </p>
               <div className="flex gap-3">
-                <a href="https://huggingface.co/zenlm" target="_blank" rel="noopener noreferrer" className="text-fd-muted-foreground hover:text-fd-foreground transition" title="HuggingFace">
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm-1.163 5.04c.687 0 1.244.558 1.244 1.244 0 .687-.557 1.244-1.244 1.244a1.244 1.244 0 1 1 0-2.488zm2.326 0c.687 0 1.244.558 1.244 1.244 0 .687-.557 1.244-1.244 1.244a1.244 1.244 0 1 1 0-2.488zM7.2 8.4a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4zm9.6 0a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4zm-8.16 5.04c.168-.024.336.072.408.24.696 1.608 2.04 2.52 3.72 2.52s3.024-.912 3.72-2.52a.39.39 0 0 1 .504-.216.39.39 0 0 1 .216.504C16.44 15.84 14.856 16.92 12.768 16.92c-2.088 0-3.672-1.08-4.44-2.952a.39.39 0 0 1 .312-.528z" /></svg>
-                </a>
-                <a href="https://github.com/zenlm" target="_blank" rel="noopener noreferrer" className="text-fd-muted-foreground hover:text-fd-foreground transition" title="GitHub">
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" /></svg>
-                </a>
+                <a href="https://huggingface.co/zenlm" target="_blank" rel="noopener noreferrer"
+                  className="text-fd-muted-foreground hover:text-fd-foreground transition text-xs">HuggingFace</a>
+                <a href="https://github.com/zenlm" target="_blank" rel="noopener noreferrer"
+                  className="text-fd-muted-foreground hover:text-fd-foreground transition text-xs">GitHub</a>
               </div>
             </div>
-
-            <FooterColumn title="Models" links={[
-              { text: 'All Models', href: '/docs/models' },
-              { text: 'zen4-max', href: '/docs/models/zen4-max' },
-              { text: 'zen4-coder', href: '/docs/models/zen4-coder' },
+            <FooterColumn title="Use it" links={[
+              { text: 'Hanzo Chat (free)', href: 'https://hanzo.chat', external: true },
+              { text: 'Download weights', href: '#download' },
               { text: 'HuggingFace', href: 'https://huggingface.co/zenlm', external: true },
+              { text: 'All models', href: '/docs/models' },
             ]} />
-            <FooterColumn title="Developers" links={[
-              { text: 'Documentation', href: '/docs' },
-              { text: 'API Reference', href: '/docs/api' },
-              { text: 'Pricing', href: '/docs/api/pricing' },
-              { text: 'Training', href: '/docs/training' },
+            <FooterColumn title="Build" links={[
+              { text: 'API reference', href: '/docs/api' },
+              { text: 'Get API key', href: 'https://console.hanzo.ai', external: true },
               { text: 'Python SDK', href: 'https://github.com/hanzoai/python-sdk', external: true },
+              { text: 'Pricing', href: '/docs/api/pricing' },
             ]} />
             <FooterColumn title="Hanzo" links={[
               { text: 'Hanzo AI', href: 'https://hanzo.ai', external: true },
-              { text: 'Hanzo Chat', href: 'https://hanzo.chat', external: true },
-              { text: 'Hanzo Cloud', href: 'https://console.hanzo.ai', external: true },
+              { text: 'Blog', href: '/blog' },
+              { text: 'Research papers', href: 'https://papers.zenlm.org', external: true },
+              { text: 'Console', href: 'https://console.hanzo.ai', external: true },
               { text: 'Hanzo Industries', href: 'https://hanzo.industries', external: true },
-              { text: 'Research Papers', href: 'https://papers.zenlm.org', external: true },
             ]} />
           </div>
-
           <div className="flex flex-wrap items-center justify-between gap-4 border-t border-fd-border pt-6 text-xs text-fd-muted-foreground">
             <span>&copy; 2016–2026 Hanzo AI Inc. Techstars &apos;17.</span>
             <div className="flex gap-4">
-              <a href="https://hanzo.ai/privacy" className="hover:text-fd-foreground transition">Privacy</a>
-              <a href="https://hanzo.ai/terms" className="hover:text-fd-foreground transition">Terms</a>
-              <a href="https://hanzo.ai/security" className="hover:text-fd-foreground transition">Security</a>
+              <a href="https://hanzo.ai/privacy" className="hover:text-fd-foreground">Privacy</a>
+              <a href="https://hanzo.ai/terms" className="hover:text-fd-foreground">Terms</a>
             </div>
           </div>
         </div>
       </footer>
-
     </main>
   );
 }
 
+/* ─── Sub-components ─────────────────────────────────── */
 
-/* ═══════════════════════════════════════════════════════════ */
-/*  SUB-COMPONENTS                                            */
-/* ═══════════════════════════════════════════════════════════ */
-
-function SectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
-  return (
-    <div className="mb-12">
-      <h2 className="text-3xl font-bold tracking-tight mb-3">{title}</h2>
-      <p className="text-fd-muted-foreground max-w-2xl">{subtitle}</p>
-    </div>
-  );
-}
-
-function Stat({ value, label, large }: { value: string; label: string; large?: boolean }) {
-  return (
-    <div className="text-center">
-      <div className={`font-bold tracking-tight ${large ? 'text-3xl md:text-4xl' : 'text-2xl md:text-3xl'}`}>
-        {value}
-      </div>
-      <div className="text-sm text-fd-muted-foreground mt-1">{label}</div>
-    </div>
-  );
-}
-
-function ModelHighlight({
-  icon, name, badge, spec, description, href, featured,
-}: {
-  icon: React.ReactNode; name: string; badge: string; spec: string;
-  description: string; href: string; featured?: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`group rounded-xl border p-6 transition hover:bg-fd-muted/30 ${
-        featured ? 'border-fd-primary bg-fd-background' : 'border-fd-border bg-fd-background'
-      }`}
-    >
-      <div className="flex items-center gap-3 mb-3">
-        <div className="rounded-lg bg-fd-muted p-2 text-fd-muted-foreground">{icon}</div>
-        <span className="text-[10px] font-semibold tracking-widest uppercase text-fd-muted-foreground bg-fd-muted px-2 py-0.5 rounded-full">{badge}</span>
-      </div>
-      <h3 className="text-lg font-semibold mb-1">{name}</h3>
-      <p className="text-xs text-fd-muted-foreground font-mono mb-3">{spec}</p>
-      <p className="text-sm text-fd-muted-foreground">{description}</p>
-    </Link>
-  );
-}
-
-function ArchCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
-  return (
-    <div className="rounded-xl border border-fd-border bg-fd-background p-6">
-      <div className="rounded-lg bg-fd-muted p-2 w-fit text-fd-muted-foreground mb-3">{icon}</div>
-      <h4 className="font-semibold mb-2">{title}</h4>
-      <p className="text-sm text-fd-muted-foreground">{description}</p>
-    </div>
-  );
-}
-
-function ModalityCard({ icon, title, models, desc }: {
-  icon: React.ReactNode; title: string; models: string; desc: string;
-}) {
-  return (
-    <div className="rounded-xl border border-fd-border bg-fd-background p-4 text-center">
-      <div className="flex justify-center mb-2 text-fd-muted-foreground">{icon}</div>
-      <h4 className="font-semibold text-sm mb-0.5">{title}</h4>
-      <p className="text-xs text-fd-muted-foreground mb-1">{models} models</p>
-      <p className="text-xs text-fd-muted-foreground">{desc}</p>
-    </div>
-  );
-}
-
-function CostExample({ task, model, tokens, cost }: { task: string; model: string; tokens: string; cost: string }) {
-  return (
-    <div className="rounded-lg border border-fd-border bg-fd-background p-4">
-      <div className="text-sm font-medium mb-1">{task}</div>
-      <div className="text-xs text-fd-muted-foreground mb-2">{model} · {tokens}</div>
-      <div className="text-lg font-bold">{cost}</div>
-    </div>
-  );
-}
-
-function DataCard({ pct, title, tokens }: { pct: string; title: string; tokens: string }) {
-  return (
-    <div className="rounded-xl border border-fd-border bg-fd-background p-5">
-      <div className="text-2xl font-bold mb-1">{pct}</div>
-      <h4 className="font-semibold text-sm mb-1">{title}</h4>
-      <p className="text-xs text-fd-muted-foreground">{tokens}</p>
-    </div>
-  );
-}
-
-function GetStartedCard({ title, description, href, external }: {
-  title: string; description: string; href: string; external?: boolean;
-}) {
-  const cls = "group rounded-xl border border-fd-border bg-fd-background p-5 hover:border-fd-primary/40 transition block";
-  const content = (
-    <>
-      <h4 className="font-semibold text-sm mb-1 transition flex items-center gap-1.5">
-        {title}
-        {external && <ExternalLink className="h-3 w-3 text-fd-muted-foreground" />}
-      </h4>
-      <p className="text-xs text-fd-muted-foreground font-mono">{description}</p>
-    </>
-  );
-  if (external) return <a href={href} target="_blank" rel="noopener noreferrer" className={cls}>{content}</a>;
-  return <Link href={href} className={cls}>{content}</Link>;
-}
-
-function EcosystemCard({ title, description, href, cta }: {
-  title: string; description: string; href: string; cta: string;
+function ChatModelCard({ id, name, tag, desc, color }: {
+  id: string; name: string; tag: string; desc: string; color?: 'primary' | 'muted';
 }) {
   return (
     <a
-      href={href}
+      href={`https://hanzo.chat?model=${id}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="group rounded-xl border border-fd-border bg-fd-background p-6 hover:bg-fd-muted/30 transition block"
+      className={`group rounded-2xl border p-5 hover:scale-[1.02] transition-transform block ${
+        color === 'primary'
+          ? 'border-fd-primary/40 bg-fd-primary/5'
+          : 'border-fd-border bg-fd-background hover:bg-fd-muted/30'
+      }`}
     >
-      <h4 className="font-semibold mb-2 transition">{title}</h4>
-      <p className="text-sm text-fd-muted-foreground mb-4">{description}</p>
-      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-fd-foreground">
-        {cta} <ArrowRight className="h-3.5 w-3.5" />
+      <span className="text-[10px] font-semibold tracking-widest uppercase text-fd-muted-foreground">{tag}</span>
+      <h3 className="text-base font-bold mt-1 mb-1">{name}</h3>
+      <p className="text-xs text-fd-muted-foreground mb-4">{desc}</p>
+      <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-fd-primary">
+        <MessageSquare className="h-3 w-3" /> Chat now →
       </span>
     </a>
   );
 }
 
-function PaperCard({ title, pages, href }: { title: string; pages: string; href: string }) {
+function WhyCard({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group rounded-xl border border-fd-border bg-fd-background p-5 hover:bg-fd-muted/30 transition block"
-    >
-      <h4 className="font-semibold text-sm mb-1 transition">{title}</h4>
-      <p className="text-xs text-fd-muted-foreground">{pages}</p>
-    </a>
+    <div className="text-center px-4">
+      <div className="inline-flex rounded-2xl bg-fd-muted p-4 text-fd-foreground mb-5">{icon}</div>
+      <h3 className="text-lg font-bold mb-3">{title}</h3>
+      <p className="text-sm text-fd-muted-foreground leading-relaxed">{desc}</p>
+    </div>
+  );
+}
+
+function OpenModelCard({ name, id, hf, size, ctx, arch, ollama }: {
+  name: string; id: string; hf: string; size: string; ctx: string; arch: string; ollama: string;
+}) {
+  return (
+    <div className="rounded-xl border border-fd-border bg-fd-background p-5">
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <h4 className="font-semibold">{name}</h4>
+          <p className="text-xs text-fd-muted-foreground font-mono mt-0.5">{size} · {arch} · {ctx} ctx</p>
+        </div>
+        <Link href={`/docs/models/${id}`} className="text-xs text-fd-muted-foreground hover:underline">docs</Link>
+      </div>
+      <div className="space-y-2 mb-4">
+        <div className="rounded-lg bg-fd-muted px-3 py-2 text-xs font-mono">
+          ollama run {ollama}
+        </div>
+      </div>
+      <div className="flex gap-2 flex-wrap">
+        <a href={`https://huggingface.co/${hf}`} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs bg-fd-muted px-2.5 py-1 rounded-full hover:bg-fd-border transition">
+          <Download className="h-2.5 w-2.5" /> Download
+        </a>
+        <a href={`https://hanzo.chat?model=${id}`} target="_blank" rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs bg-fd-primary text-fd-primary-foreground px-2.5 py-1 rounded-full hover:opacity-90 transition">
+          <MessageSquare className="h-2.5 w-2.5" /> Chat
+        </a>
+      </div>
+    </div>
   );
 }
 
@@ -702,11 +419,12 @@ function FooterColumn({ title, links }: { title: string; links: { text: string; 
     <div>
       <h4 className="font-semibold text-sm mb-3">{title}</h4>
       <ul className="space-y-2">
-        {links.map((link) => (
+        {links.map(link => (
           <li key={link.text}>
             {link.external ? (
-              <a href={link.href} target="_blank" rel="noopener noreferrer" className="text-sm text-fd-muted-foreground hover:text-fd-foreground transition flex items-center gap-1">
-                {link.text} <ExternalLink className="h-2.5 w-2.5" />
+              <a href={link.href} target="_blank" rel="noopener noreferrer"
+                className="text-sm text-fd-muted-foreground hover:text-fd-foreground transition">
+                {link.text}
               </a>
             ) : (
               <Link href={link.href} className="text-sm text-fd-muted-foreground hover:text-fd-foreground transition">

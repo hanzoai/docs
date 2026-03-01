@@ -1,0 +1,111 @@
+---
+title: zen-embedding
+description: Foundation embedding model for search and retrieval.
+---
+
+# zen-embedding
+
+**Foundation Embeddings**
+
+The foundation embedding model for search and retrieval. Produces 3072-dimensional dense vectors optimized for semantic similarity, enabling high-quality semantic search, RAG retrieval, and document clustering across an 8K token context window.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen-embedding` |
+| **Dimensions** | 3,072 |
+| **Architecture** | Embedding |
+| **Context Window** | 8K tokens |
+| **Tier** | pro |
+| **Status** | Available |
+| **HuggingFace** | [zenlm/zen-embedding](https://huggingface.co/zenlm/zen-embedding) |
+
+## Capabilities
+
+- 3072-dimensional dense vector embeddings
+- Semantic search by meaning, not just keywords
+- RAG pipeline document retrieval
+- Document clustering and deduplication
+- Classification feature generation
+- Cosine similarity scoring for ranking
+
+## API Usage
+
+```bash
+curl https://api.hanzo.ai/v1/embeddings \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen-embedding",
+    "input": "Zen LM is a family of frontier AI models"
+  }'
+```
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.embeddings.create(
+    model="zen-embedding",
+    input=["Hello world", "Zen LM models"],
+)
+
+for embedding in response.data:
+    print(f"Vector dim: {len(embedding.embedding)}")
+```
+
+## HuggingFace Usage
+
+```python
+from transformers import AutoModel, AutoTokenizer
+import torch
+
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen-embedding")
+model = AutoModel.from_pretrained("zenlm/zen-embedding")
+
+inputs = tokenizer("Zen LM is a family of frontier AI models",
+                   return_tensors="pt", truncation=True)
+with torch.no_grad():
+    outputs = model(**inputs)
+
+# Mean pool over token embeddings
+embeddings = outputs.last_hidden_state.mean(dim=1)
+print(f"Embedding shape: {embeddings.shape}")  # [1, 3072]
+```
+
+## Response Format
+
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "embedding",
+      "index": 0,
+      "embedding": [0.0023, -0.0091, 0.0152, "..."]
+    }
+  ],
+  "model": "zen-embedding",
+  "usage": {
+    "prompt_tokens": 8,
+    "total_tokens": 8
+  }
+}
+```
+
+## Try It
+
+[Open in Hanzo Chat](https://hanzo.chat?model=zen-embedding)
+
+## Resources
+
+- [HuggingFace](https://huggingface.co/zenlm/zen-embedding)
+- [Technical Report](https://github.com/zenlm/zen/blob/main/paper/zen-technical-report.pdf)
+
+## See Also
+
+- [zen3-embedding](/docs/models/zen3-embedding) -- Latest generation 3072-dim embeddings
+- [zen3-embedding-medium](/docs/models/zen3-embedding-medium) -- Balanced 4B embedding model
+- [Embeddings API](/docs/api/embeddings) -- Endpoint documentation
