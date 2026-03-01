@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * @zenlm/ui — React components for the Zen LM model library
  *
