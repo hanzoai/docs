@@ -364,7 +364,7 @@ print(response.choices[0].message.content)`}
               </span>
             </div>
             <p className="text-[#737373] text-sm leading-relaxed max-w-2xl mb-6">
-              Frontier AI models from 4B edge to 1T+ reasoning. MoDE (Mixture of Distilled Experts) architecture.
+              Frontier AI models from 4B edge to 1T+ reasoning. MoDE (Mixture of Diverse Experts) architecture.
               Text, code, vision, audio, video, 3D, and safety. Open weights on HuggingFace.
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">

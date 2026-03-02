@@ -1,5 +1,5 @@
 /**
- * @hanzo/zen-models — The single source of truth for all Zen model definitions.
+ * @zenlm/models — The single source of truth for all Zen model definitions.
  *
  * Every Hanzo site (hanzo.ai, hanzo.industries, zenlm.org, etc.) imports from here.
  * Never duplicate model specs elsewhere.
