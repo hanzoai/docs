@@ -22,7 +22,7 @@ import { cn } from '@/lib/cn';
 import { useTreeContext } from '@hanzo/docs/ui/contexts/tree';
 import type { Item, Node } from '@hanzo/docs/core/page-tree';
 import { useRouter } from 'next/navigation';
-import { orama } from '@/lib/orama/client';
+import { publishableKey, searchEndpoint } from '@/lib/hanzo/client';
 
 const items = [
   {
@@ -55,8 +55,9 @@ export default function CustomSearchDialog(props: SharedProps) {
   const [open, setOpen] = useState(false);
   const [tag, setTag] = useState<string | undefined>();
   const { search, setSearch, query } = useDocsSearch({
-    type: 'orama-cloud',
-    client: orama,
+    type: 'hanzo',
+    apiKey: publishableKey,
+    endpoint: searchEndpoint,
     tag,
   });
   const { full } = useTreeContext();
@@ -157,11 +158,11 @@ export default function CustomSearchDialog(props: SharedProps) {
             </PopoverContent>
           </Popover>
           <a
-            href="https://orama.com"
+            href="https://hanzo.ai"
             rel="noreferrer noopener"
             className="text-xs text-nowrap text-fd-muted-foreground"
           >
-            Powered by Orama
+            Powered by Hanzo Search
           </a>
         </SearchDialogFooter>
       </SearchDialogContent>
