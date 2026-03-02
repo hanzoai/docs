@@ -1,0 +1,331 @@
+---
+title: Hanzo KMS
+description: Key Management Service for secrets, API keys, and encryption
+---
+
+# Hanzo KMS
+
+Hanzo KMS is an open-source Key Management Service for managing secrets, API keys, certificates, and encryption keys across infrastructure. It provides enterprise-grade secret management with MPC signer integration.
+
+## Features
+
+- **Secrets Management**: Store and manage secrets, API keys, certificates
+- **Environment Sync**: Sync secrets across development, staging, production
+- **MPC Integration**: Threshold signatures via Hanzo MPC Signer
+- **Dynamic Secrets**: Auto-rotating database credentials
+- **Secret Versioning**: Full history and rollback
+- **Audit Logging**: Complete access audit trail
+- **RBAC**: Role-based access control
+- **Kubernetes Operator**: Native K8s secret injection
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                            HANZO KMS                                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌────────────────────────────────────────────────────────────────┐     │
+│  │                    KMS Control Plane                            │     │
+│  │  ┌──────────┬─────────────┬──────────────┬─────────────────┐   │     │
+│  │  │ Policy   │ Approvals   │  Audit Log   │  Key Registry   │   │     │
+│  │  └────┬─────┴──────┬──────┴───────┬──────┴───────┬─────────┘   │     │
+│  └───────┼────────────┼──────────────┼──────────────┼─────────────┘     │
+│          │            │              │              │                    │
+│  ┌───────▼────────────▼──────────────▼──────────────▼─────────────┐     │
+│  │                   Unified Signing API                           │     │
+│  └───────┬────────────┬──────────────┬──────────────┬─────────────┘     │
+│          │            │              │              │                    │
+│  ┌───────▼───┐  ┌─────▼─────┐  ┌─────▼─────┐  ┌─────▼─────┐             │
+│  │    HSM    │  │    MPC    │  │  Software │  │   AWS/    │             │
+│  │  Signer   │  │  Signer   │  │  Signer   │  │   GCP     │             │
+│  └───────────┘  └───────────┘  └───────────┘  └───────────┘             │
+│                       │                                                  │
+│                       ▼                                                  │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │                    Hanzo MPC Cluster                             │    │
+│  │   ┌─────────┐    ┌─────────┐    ┌─────────┐                     │    │
+│  │   │  Node1  │    │  Node2  │    │  Node3  │                     │    │
+│  │   │ (Share) │    │ (Share) │    │ (Share) │                     │    │
+│  │   └─────────┘    └─────────┘    └─────────┘                     │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+## Endpoints
+
+| Environment | URL |
+|-------------|-----|
+| Production | `https://kms.hanzo.ai` |
+| Staging | `https://stg.kms.hanzo.ai` |
+
+## Quick Start
+
+### 1. Development Setup
+
+```bash
+cd ~/work/hanzo/kms
+
+# Copy environment
+cp .env.dev.example .env
+
+# Start with Docker Compose
+docker compose -f docker-compose.dev.yml up
+
+# Or run separately
+cd backend && npm run dev
+cd frontend && npm run dev
+```
+
+### 2. Create a Secret
+
+```typescript
+import { HanzoKMS } from '@hanzo/kms'
+
+const kms = new HanzoKMS({
+  apiKey: process.env.HANZO_KMS_TOKEN
+})
+
+// Create a secret
+await kms.secrets.create({
+  environment: 'production',
+  path: '/api-keys',
+  key: 'STRIPE_SECRET',
+  value: 'sk_live_xxx'
+})
+```
+
+### 3. Retrieve Secrets
+
+```typescript
+// Get single secret
+const secret = await kms.secrets.get({
+  environment: 'production',
+  path: '/api-keys',
+  key: 'STRIPE_SECRET'
+})
+
+// Get all secrets in path
+const secrets = await kms.secrets.list({
+  environment: 'production',
+  path: '/api-keys'
+})
+```
+
+## Secret Types
+
+### Static Secrets
+
+Standard key-value secrets:
+
+```typescript
+await kms.secrets.create({
+  key: 'DATABASE_URL',
+  value: 'postgres://user:pass@host:5432/db',
+  type: 'static'
+})
+```
+
+### Dynamic Secrets
+
+Auto-rotating credentials:
+
+```typescript
+// PostgreSQL dynamic secret
+await kms.dynamicSecrets.create({
+  name: 'postgres-readonly',
+  type: 'postgresql',
+  config: {
+    host: 'db.example.com',
+    port: 5432,
+    database: 'myapp',
+    adminUsername: 'admin',
+    adminPassword: 'xxx'
+  },
+  ttl: '1h',
+  maxTtl: '24h'
+})
+
+// Lease a credential
+const lease = await kms.dynamicSecrets.lease('postgres-readonly')
+console.log(lease.username, lease.password) // Auto-generated, auto-rotated
+```
+
+### Signing Keys (MPC)
+
+Create keys backed by MPC threshold signatures:
+
+```typescript
+// Create MPC-backed signing key
+const key = await kms.keys.create({
+  name: 'ethereum-hot-wallet',
+  keyType: 'secp256k1',
+  signer: 'mpc',
+  scheme: '2-of-3',
+  policy: {
+    maxDailyTransactions: 100,
+    maxTransactionValue: '10000000000000000000' // 10 ETH
+  }
+})
+
+console.log('Address:', key.ethAddress)
+
+// Sign transaction
+const signature = await kms.keys.sign(key.id, {
+  chain: 'ethereum',
+  transaction: {
+    to: '0x...',
+    value: '1000000000000000000'
+  }
+})
+```
+
+## Environment Management
+
+### Sync Environments
+
+```bash
+# CLI: Pull secrets to .env
+hanzo-kms pull --env production --output .env
+
+# CLI: Push secrets from .env
+hanzo-kms push --env staging --input .env
+```
+
+### Environment Inheritance
+
+```
+production
+    └── staging (inherits, can override)
+           └── development (inherits, can override)
+```
+
+## Kubernetes Integration
+
+### Install Operator
+
+```bash
+helm repo add hanzo https://charts.hanzo.ai
+helm install hanzo-kms-operator hanzo/kms-operator
+```
+
+### Inject Secrets
+
+```yaml
+apiVersion: secrets.hanzo.ai/v1
+kind: HanzoSecret
+metadata:
+  name: api-secrets
+spec:
+  environment: production
+  path: /api-keys
+  target:
+    name: api-secrets
+    type: kubernetes.io/Opaque
+```
+
+## Access Control
+
+### Roles
+
+| Role | Permissions |
+|------|-------------|
+| Admin | Full access |
+| Developer | Read/write specific paths |
+| Viewer | Read-only access |
+| Machine | Programmatic access only |
+
+### Policies
+
+```typescript
+await kms.policies.create({
+  name: 'frontend-team',
+  rules: [
+    {
+      path: '/frontend/*',
+      permissions: ['read', 'write']
+    },
+    {
+      path: '/backend/*',
+      permissions: ['read']
+    }
+  ]
+})
+```
+
+## Audit Logging
+
+All secret access is logged:
+
+```typescript
+const logs = await kms.audit.list({
+  startTime: '2024-01-01',
+  endTime: '2024-01-31',
+  actions: ['read', 'write', 'delete']
+})
+
+for (const log of logs) {
+  console.log({
+    timestamp: log.timestamp,
+    user: log.userId,
+    action: log.action,
+    path: log.secretPath,
+    ip: log.ipAddress
+  })
+}
+```
+
+## MPC Signer Integration
+
+Hanzo KMS integrates with Hanzo MPC for threshold signatures:
+
+```typescript
+// Configure MPC backend
+await kms.config.update({
+  mpc: {
+    endpoint: 'https://mpc.hanzo.ai',
+    threshold: '2-of-3',
+    nodeEndpoints: [
+      'https://mpc-node1.hanzo.ai',
+      'https://mpc-node2.hanzo.ai',
+      'https://mpc-node3.hanzo.ai'
+    ]
+  }
+})
+```
+
+See [MPC Authentication](/docs/services/iam/mpc) for more details.
+
+## API Reference
+
+### Secrets
+
+- `POST /api/v1/secrets` - Create secret
+- `GET /api/v1/secrets` - List secrets
+- `GET /api/v1/secrets/:id` - Get secret
+- `PATCH /api/v1/secrets/:id` - Update secret
+- `DELETE /api/v1/secrets/:id` - Delete secret
+
+### Keys
+
+- `POST /api/v1/keys` - Create signing key
+- `GET /api/v1/keys/:id` - Get key info
+- `POST /api/v1/keys/:id/sign` - Sign with key
+
+### Dynamic Secrets
+
+- `POST /api/v1/dynamic-secrets` - Create dynamic secret
+- `POST /api/v1/dynamic-secrets/:id/lease` - Get credential lease
+- `DELETE /api/v1/dynamic-secrets/:id/lease/:leaseId` - Revoke lease
+
+## Next Steps
+
+<Cards>
+  <Card title="MPC Custody" href="/docs/services/kms/mpc-custody">
+    Threshold signature key management
+  </Card>
+  <Card title="IAM Integration" href="/docs/services/iam">
+    Identity and access management
+  </Card>
+</Cards>

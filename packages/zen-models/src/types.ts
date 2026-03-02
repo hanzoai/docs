@@ -1,5 +1,5 @@
 /**
- * @hanzo/zen-models — Canonical type definitions for the Zen model family.
+ * @zenlm/models — Canonical type definitions for the Zen model family.
  *
  * There should be one — and preferably only one — obvious place to define these.
  */
@@ -16,10 +16,18 @@ export type ModelArchitecture =
   | 'Dense'
   | 'MoE'
   | 'MoE + CoT'
+  | 'MoDE + CoT'
+  | 'MoDE + Deep CoT'
   | 'Dense BF16'
   | 'Dense Multimodal'
   | 'MoE Vision-Language'
   | 'Embedding'
+  | 'Reranker'
+  | 'Diffusion'
+  | 'ASR'
+  | 'Streaming ASR'
+  | 'TTS'
+  | 'TTS HD'
 
 export type ModelCategory =
   | 'foundation'
@@ -45,7 +53,7 @@ export type ModelModality =
   | 'safety'
   | 'embedding'
 
-export type ModelStatus = 'available' | 'cloud-only' | 'coming-soon' | 'preview'
+export type ModelStatus = 'available' | 'cloud-only' | 'coming-soon' | 'preview' | 'contact-sales'
 
 export interface ModelPricing {
   /** Cost per 1M input tokens in USD */
@@ -98,6 +106,8 @@ export interface ZenModel {
   huggingface: string | null
   /** GitHub URL (null if none) */
   github: string | null
+  /** Technical paper / report URL (null if none) */
+  paper?: string | null
   /** Brand aliases (e.g., zen-max → zen4-max) */
   aliases: string[]
 }

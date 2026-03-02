@@ -1,0 +1,94 @@
+---
+title: "Hetzner"
+description: "Deploy VMs on Hetzner Cloud via Hanzo Visor"
+---
+
+Hanzo Visor integrates with Hetzner Cloud for high-performance, cost-effective VM deployment. Hetzner offers some of the best price-to-performance ratios in the industry.
+
+## Connecting Hetzner
+
+1. Create an API token at [console.hetzner.cloud](https://console.hetzner.cloud) under your project settings
+2. Grant read/write access
+
+3. In the Visor dashboard, go to **Settings > Providers > Hetzner** and enter your token
+
+```bash
+curl -X POST https://api.visor.hanzo.ai/v1/providers \
+  -H "Authorization: Bearer $VISOR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "hetzner",
+    "credentials": {
+      "api_token": "..."
+    },
+    "default_region": "nbg1"
+  }'
+```
+
+## Available regions
+
+| Region | Location |
+|--------|----------|
+| `nbg1` | Nuremberg, DE |
+| `fsn1` | Falkenstein, DE |
+| `hel1` | Helsinki, FI |
+| `ash` | Ashburn, US |
+| `hil` | Hillsboro, US |
+| `sin` | Singapore |
+
+## Instance sizes
+
+Visor maps its standard sizes to Hetzner server types:
+
+| Visor Size | Hetzner Type | vCPU | RAM | Storage |
+|-----------|-------------|------|-----|---------|
+| `nano` | cx22 | 2 | 4 GB | 40 GB |
+| `starter` | cx32 | 2 | 8 GB | 80 GB |
+| `standard` | cx42 | 4 | 16 GB | 160 GB |
+| `performance` | cx52 | 8 | 32 GB | 240 GB |
+| `premium` | ccx23 | 4 | 16 GB | 160 GB |
+| `power` | ccx33 | 8 | 32 GB | 240 GB |
+
+> **Note:** Hetzner often provides more resources per dollar than other providers. The Visor size mappings reflect the closest equivalent specs. Actual Hetzner specs may exceed the listed values.
+
+## Creating a VM on Hetzner
+
+```bash
+curl -X POST https://api.visor.hanzo.ai/v1/vms \
+  -H "Authorization: Bearer $VISOR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "db-primary-01",
+    "provider": "hetzner",
+    "region": "nbg1",
+    "size": "standard",
+    "image": "ubuntu-24.04",
+    "ssh_keys": ["key_abc123"]
+  }'
+```
+
+## Hetzner-specific options
+
+```json
+{
+  "provider_options": {
+    "network_id": 123,
+    "placement_group_id": 456,
+    "enable_ipv4": true,
+    "enable_ipv6": true,
+    "user_data": "#!/bin/bash\napt-get update"
+  }
+}
+```
+
+## Block storage
+
+Hetzner volumes use high-performance SSDs. They can be attached to any server in the same location. See [Volumes](/docs/features/volumes) for the unified volume API.
+
+## Why Hetzner
+
+- Excellent price-to-performance ratio (often 2-3x better than AWS/DO)
+- European data centers with GDPR compliance
+- Low-latency networking
+- Dedicated vCPU options at competitive prices
+- Carbon-neutral data centers

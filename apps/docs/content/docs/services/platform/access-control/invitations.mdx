@@ -1,0 +1,109 @@
+---
+title: Invitations
+description: Invite team members, manage pending invitations, and auto-accept behavior
+---
+
+Invitations are how new members join an organization on Hanzo Platform. Owners and Admins can send invitations; the invitee receives an email with a link to accept.
+
+## Sending an Invitation
+
+<Steps>
+
+### Go to Members
+
+Navigate to **Settings > Members** and click **Invite Member**.
+
+### Enter email and role
+
+Provide the invitee's email address and select a [role](/docs/services/platform/access-control/roles):
+
+- Owner
+- Admin
+- Developer
+- Billing
+- Viewer
+
+### Send
+
+Click **Send Invitation**. The invitee receives an email with a link to accept.
+
+</Steps>
+
+```bash
+# Or via CLI
+hanzo org invite --email alice@example.com --role developer
+```
+
+## Accepting an Invitation
+
+When a user clicks the invitation link:
+
+<Tabs items={["New User", "Existing User"]}>
+  <Tab value="New User">
+    The user is directed to create a Hanzo ID account. After registration, they are automatically added to the organization with the assigned role.
+  </Tab>
+  <Tab value="Existing User">
+    If the email matches an existing Hanzo ID account, the user is **auto-accepted** into the organization immediately. No manual confirmation step is required. They see the new organization in their org switcher on next login.
+  </Tab>
+</Tabs>
+
+<Callout type="info">
+Auto-accept for existing users eliminates friction. The invitee does not need to click a confirmation link if they already have a Hanzo ID.
+</Callout>
+
+## Managing Invitations
+
+### Viewing Pending Invitations
+
+Go to **Settings > Members > Pending** to see all outstanding invitations with:
+
+- Invitee email
+- Assigned role
+- Sent date
+- Status (pending / expired)
+
+### Revoking an Invitation
+
+Click **Revoke** next to any pending invitation to cancel it. The invitation link becomes invalid immediately.
+
+### Resending an Invitation
+
+If the invitee did not receive the email, click **Resend** to send a fresh invitation email. The original invitation link remains valid.
+
+## Invitation Expiry
+
+Invitations expire after **7 days**. Expired invitations can be resent from the Pending tab. The expiry period is not configurable.
+
+## Bulk Invitations
+
+For large teams, use the CLI to invite multiple members at once:
+
+```bash
+hanzo org invite \
+  --email alice@example.com --role developer \
+  --email bob@example.com --role developer \
+  --email carol@example.com --role admin
+```
+
+Or via the API:
+
+```bash
+curl -X POST https://app.platform.hanzo.ai/api/invitation.create \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "invitations": [
+      { "email": "alice@example.com", "role": "developer" },
+      { "email": "bob@example.com", "role": "developer" },
+      { "email": "carol@example.com", "role": "admin" }
+    ]
+  }'
+```
+
+## Removing Members
+
+To remove a member after they have joined, go to **Settings > Members**, click the menu next to their name, and select **Remove**. Removal is immediate and revokes all access.
+
+<Callout type="warn">
+Removing an Owner requires at least one other Owner to remain. You cannot remove the last Owner of an organization.
+</Callout>

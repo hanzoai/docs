@@ -1,25 +1,16 @@
-import { FieldKey } from './types';
-
-/**
- * test if array a starts with array b, only compare values via `===`.
- */
-export function arrayStartsWith(a: unknown[], b: unknown[]): boolean {
-  if (b.length > a.length) return false;
-
-  for (let i = 0; i < b.length; i++) {
-    if (a[i] !== b[i]) return false;
-  }
-
-  return true;
-}
+import type { FieldKey } from './types';
 
 export function objectGet(obj: unknown, key: (string | number)[]): unknown | undefined {
   let cur = obj;
 
   for (const prop of key) {
-    if (typeof cur !== 'object' || cur === null || !(prop in cur)) return;
-
-    cur = cur[prop as keyof typeof cur];
+    if (isPlainObject(cur) && prop in cur) {
+      cur = cur[prop];
+    } else if (typeof prop === 'number' && Array.isArray(cur)) {
+      cur = cur[prop];
+    } else {
+      return;
+    }
   }
 
   return cur;
@@ -30,14 +21,20 @@ export function objectGet(obj: unknown, key: (string | number)[]): unknown | und
  *
  * @returns updated value, throw error if parent object doesn't exist
  */
-export function objectSet(obj: unknown, key: FieldKey, value: unknown): unknown {
-  if (key.length === 0) {
+export function objectSet(obj: unknown, field: FieldKey, value: unknown): unknown {
+  if (field.length === 0) {
     return value;
   }
 
-  const parent = objectGet(obj, key.slice(0, -1));
-  if (typeof parent !== 'object' || parent === null) throw new Error('missing parent object');
-  (parent as Record<string, unknown>)[key[key.length - 1]] = value;
+  const parent = objectGet(obj, field.slice(0, -1));
+  const key = field[field.length - 1];
+  if (isPlainObject(parent)) {
+    parent[key] = value;
+  } else if (typeof key === 'number' && Array.isArray(parent)) {
+    parent[key] = value;
+  } else {
+    throw new Error('missing parent object');
+  }
   return obj;
 }
 
@@ -68,20 +65,39 @@ export function deepEqual(a: unknown, b: unknown): boolean {
     return false;
   }
 
-  const keysA = Object.keys(a as object);
-  const keysB = Object.keys(b as object);
+  if (!isPlainObject(a) || !isPlainObject(b)) {
+    return false;
+  }
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
 
   if (keysA.length !== keysB.length) {
     return false;
   }
 
-  return keysA.every(
-    (key) =>
-      Object.prototype.hasOwnProperty.call(b, key) &&
-      deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]),
-  );
+  return keysA.every((key) => key in b && deepEqual(a[key], b[key]));
 }
 
 export function stringifyFieldKey(fieldKey: FieldKey) {
-  return fieldKey.map((v) => `${typeof v}:${v}`).join('.');
+  return fieldKey.map((v) => (typeof v === 'string' ? `_${v}` : `n${v}`)).join('.');
+}
+
+/**
+ * @returns if `a` starts with `b`.
+ */
+export function fieldKeyStartsWith(a: string, b: string): boolean {
+  return b.length === 0 || a === b || a.startsWith(b + '.');
+}
+
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  return (
+    prototype === null ||
+    prototype === Object.prototype ||
+    Object.getPrototypeOf(prototype) === null
+  );
 }

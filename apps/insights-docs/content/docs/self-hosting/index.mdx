@@ -1,0 +1,62 @@
+---
+title: Self-Hosting
+description: Deploy Hanzo Insights on your own infrastructure.
+---
+
+# Self-Hosting
+
+Hanzo Insights is fully self-hostable. All data stays on your infrastructure.
+
+## Docker Compose
+
+The simplest way to run Insights locally or on a single server:
+
+```bash
+git clone https://github.com/hanzoai/insights
+cd insights
+docker compose up -d
+```
+
+Services started:
+- `insights-web` — Django web server (port 8000)
+- `insights-capture` — Rust event ingestion (port 3000)
+- `insights-worker` — Celery background worker
+- `insights-sql` — PostgreSQL (hanzoai/sql)
+- `insights-datastore` — ClickHouse (hanzoai/datastore)
+- `insights-kv` — Valkey/Redis (hanzoai/kv)
+- `insights-stream` — Kafka (hanzoai/stream)
+- `insights-plugin` — Node.js event pipeline
+
+## Kubernetes
+
+Deploy to Kubernetes using manifests from the Hanzo Universe repo:
+
+```yaml
+# Apply the full insights stack
+kubectl apply -k https://github.com/hanzoai/universe/infra/k8s/insights
+```
+
+## Resource Requirements
+
+| Component | CPU | Memory | Storage |
+|-----------|-----|--------|---------|
+| Web | 250m–2 | 512Mi–4Gi | — |
+| Capture | 100m–500m | 128Mi–512Mi | — |
+| Worker | 250m–1 | 512Mi–2Gi | — |
+| PostgreSQL | 250m–1 | 512Mi–2Gi | 20Gi |
+| ClickHouse | 500m–2 | 1Gi–8Gi | 50Gi |
+| Valkey | 100m–500m | 256Mi–512Mi | — |
+
+## Configuration
+
+Key environment variables:
+
+```bash
+DATABASE_URL=postgresql://hanzo:password@sql:5432/insights
+CLICKHOUSE_HOST=datastore
+REDIS_URL=redis://kv:6379
+SECRET_KEY=your-secret-key-here
+SITE_URL=https://insights.yourdomain.com
+IS_DOCKER=true
+DISABLE_SECURE_SSL_REDIRECT=true
+```

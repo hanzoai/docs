@@ -1,0 +1,76 @@
+---
+title: Project Structure
+description: Understanding the Base project layout and data directory.
+---
+
+## Data Directory
+
+When Base starts, it creates a data directory (default `hz_data/`) with the following structure:
+
+<Files>
+  <Folder name="hz_data" defaultOpen>
+    <File name="data.db" />
+    <File name="logs.db" />
+    <Folder name="storage" defaultOpen>
+      <Folder name="..." />
+    </Folder>
+    <Folder name="backups" />
+  </Folder>
+  <Folder name="hz_hooks" defaultOpen>
+    <File name="main.pb.js" />
+  </Folder>
+  <Folder name="hz_migrations" defaultOpen>
+    <File name="1709000000_initial.js" />
+  </Folder>
+</Files>
+
+| Path | Description |
+|------|-------------|
+| `hz_data/data.db` | Main SQLite database (dev mode) |
+| `hz_data/logs.db` | Request and audit logs |
+| `hz_data/storage/` | Uploaded files (local filesystem) |
+| `hz_data/backups/` | Automatic backups |
+| `hz_hooks/` | JavaScript hooks and custom routes |
+| `hz_migrations/` | Schema migration files |
+
+## Custom Hooks
+
+Place JavaScript files in `hz_hooks/` to extend Base with custom logic:
+
+```javascript
+// hz_hooks/main.pb.js
+
+// Before creating a task, auto-generate a slug
+onRecordCreate((e) => {
+  if (e.collection.name === 'tasks') {
+    const title = e.record.get('title')
+    e.record.set('slug', title.toLowerCase().replace(/\s+/g, '-'))
+  }
+  return e.next()
+}, 'tasks')
+
+// Custom API endpoint
+routerAdd('GET', '/api/stats', (e) => {
+  const tasks = $app.findRecordsByFilter('tasks', 'status = "done"')
+  return e.json(200, { completed: tasks.length })
+})
+```
+
+## Migrations
+
+Migration files in `hz_migrations/` run automatically on startup with `--automigrate`:
+
+```javascript
+// hz_migrations/1709000000_create_tasks.js
+migrate((app) => {
+  const collection = new Collection({
+    name: 'tasks',
+    type: 'base',
+    fields: [
+      { name: 'title', type: 'text', required: true },
+      { name: 'status', type: 'select', values: ['active', 'done'] },
+    ],
+  })
+  return app.save(collection)
+})
+```

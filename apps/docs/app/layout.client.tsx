@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation';
 import { type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { getSection } from '@/lib/source/navigation';
+import { getMenuBarSVG } from '@hanzo/logo';
 
 export function Body({ children }: { children: ReactNode }): React.ReactElement {
   const mode = useMode();
@@ -17,14 +18,12 @@ export function useMode(): string | undefined {
   if (Array.isArray(slug)) return getSection(slug[0]);
 }
 
-export function HanzoDocsIcon(props: React.SVGProps<SVGSVGElement>) {
+export function HanzoDocsIcon({ className, ...props }: React.SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 67 67" fill="currentColor" {...props}>
-      <path d="M22.21 67V44.6369H0V67H22.21Z" />
-      <path d="M66.7038 22.3184H22.2534L0.0878906 44.6367H44.4634L66.7038 22.3184Z" />
-      <path d="M22.21 0H0V22.3184H22.21V0Z" />
-      <path d="M66.7198 0H44.5098V22.3184H66.7198V0Z" />
-      <path d="M66.7198 67V44.6369H44.5098V67H66.7198Z" />
-    </svg>
+    <div
+      className={className}
+      dangerouslySetInnerHTML={{ __html: getMenuBarSVG() }}
+      {...(props as React.HTMLAttributes<HTMLDivElement>)}
+    />
   );
 }

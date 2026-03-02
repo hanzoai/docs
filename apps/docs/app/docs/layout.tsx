@@ -1,6 +1,7 @@
 import { DocsLayout } from '@hanzo/docs-base-ui/layouts/docs';
 import { baseOptions, linkItems, logo } from '@/components/layouts/shared';
 import { source } from '@/lib/source';
+import { getSection } from '@/lib/source/navigation';
 import { AISearch, AISearchPanel, AISearchTrigger } from '@/components/ai/search';
 import { MessageCircleIcon } from 'lucide-react';
 import { cn } from '@/lib/cn';

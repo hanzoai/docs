@@ -1,0 +1,177 @@
+---
+title: Git Deployments
+description: Push-to-deploy with GitHub, GitLab, and Bitbucket using Tekton pipelines and Kaniko builds.
+---
+
+Connect a Git repository to any container and the platform will build and deploy automatically on every push. Builds run as Tekton pipelines inside your cluster using Kaniko for rootless container image builds.
+
+## Supported Providers
+
+| Provider | OAuth | Webhooks | Branch Selection |
+|----------|-------|----------|-----------------|
+| GitHub | Yes | Yes | Yes |
+| GitLab | Yes | Yes | Yes |
+| Bitbucket | Yes | Yes | Yes |
+
+## Connecting a Git Provider
+
+<Steps>
+
+### Authenticate via OAuth
+
+Navigate to **Settings > Git Providers** and click **Connect**. The platform redirects to the provider's OAuth flow.
+
+After authorization, the platform stores your access token (and refresh token where applicable). Tokens are never exposed in the UI after initial connection.
+
+### Select a Repository
+
+Once connected, browse your repositories directly from the container creation form. The platform lists repos with search and pagination.
+
+### Choose a Branch
+
+Select the branch to track. The platform creates a webhook on the repository that triggers builds on push events to this branch.
+
+### Configure the Build Path
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `path` | `/` | Root directory of the build context |
+| `dockerfile` | `Dockerfile` | Path to the Dockerfile relative to `path` |
+| `watchPath` | (all) | Comma-separated paths — only trigger builds when these paths change |
+
+```yaml
+repoConfig:
+  provider: github
+  url: "https://github.com/myorg/api"
+  branch: "main"
+  path: "/"
+  dockerfile: "Dockerfile"
+  gitProviderId: "git-abc123"
+```
+
+</Steps>
+
+## Build Pipeline
+
+Every build runs as a Tekton `PipelineRun` with the following stages:
+
+```
+setup → build → push → deploy
+```
+
+### Pipeline Stages
+
+| Stage | Tool | Description |
+|-------|------|-------------|
+| **setup** | git-clone | Clones the repository at the target branch and commit |
+| **build** | Kaniko | Builds the container image from the Dockerfile (rootless, no Docker daemon) |
+| **push** | Kaniko | Pushes the built image to the configured registry |
+| **deploy** | Platform API | Updates the container to use the new image tag |
+
+<Callout type="info">
+Kaniko builds run without a Docker daemon, making them safe for multi-tenant clusters. Each build gets its own pod with isolated build context.
+</Callout>
+
+### Build Metadata
+
+Every build records Git metadata for traceability:
+
+```
+GIT_REPO: myorg/api
+GIT_BRANCH: main
+GIT_REVISION: abc123def
+GIT_COMMITTER_USERNAME: developer
+GIT_COMMIT_MESSAGE: "fix: resolve race condition in auth"
+GIT_COMMIT_TIMESTAMP: 2026-02-26T10:30:00Z
+GIT_COMMIT_URL: https://github.com/myorg/api/commit/abc123def
+```
+
+## Triggering Builds
+
+### Automatic (Webhook)
+
+Pushes to the tracked branch trigger a build automatically. The webhook payload includes the commit SHA, branch, and changed files. If `watchPath` is configured, only pushes touching those paths trigger builds.
+
+### Manual
+
+Trigger a build from the UI or API:
+
+```bash
+# Platform UI: Container → Builds → Trigger Build
+# API:
+build.trigger({ containerId: "ctr-abc" })
+```
+
+Manual builds use the latest commit on the tracked branch.
+
+## Build Logs
+
+Stream logs in real time from each pipeline stage. Logs are organized by step:
+
+```
+[setup]  Cloning https://github.com/myorg/api.git (branch: main)
+[setup]  Checked out commit abc123def
+[build]  Step 1/8: FROM node:22-alpine AS base
+[build]  Step 2/8: WORKDIR /app
+[build]  Step 3/8: COPY package*.json ./
+[build]  ...
+[push]   Pushing ghcr.io/myorg/api:abc123d
+[push]   Successfully pushed image
+[deploy] Updating container api-xk8f3m2n with new image tag
+[deploy] Deployment rollout complete
+```
+
+### Pipeline Status
+
+| Status | Meaning |
+|--------|---------|
+| `Started` | Pipeline created, waiting for pod |
+| `Running` | Build in progress |
+| `Succeeded` | Build and deploy completed |
+| `Failed` | One or more stages failed |
+| `Error` | Pipeline infrastructure error |
+| `Connected` | Webhook connected, awaiting first push |
+
+## Cancelling Builds
+
+Cancel a queued or running build:
+
+```bash
+build.cancel({ deploymentId: "dep-xyz" })
+```
+
+Only builds in `queued` or `building` status can be cancelled.
+
+## Build History
+
+View the full deployment history for each container, including:
+
+- Trigger type (webhook push or manual)
+- Git commit SHA and message
+- Image tag produced
+- Duration
+- Status and logs
+
+```bash
+build.list({ containerId: "ctr-abc", limit: 20, offset: 0 })
+```
+
+## Environment Protection
+
+Builds respect environment protection levels:
+
+| Protection | Who Can Deploy |
+|-----------|---------------|
+| `none` | Any project member |
+| `restricted` | Admin, Owner, or allowlisted users |
+| `locked` | Owner only |
+
+When **approval required** is enabled, non-admin users create a pending approval instead of deploying directly. An Admin or Owner must approve before the build deploys.
+
+## Best Practices
+
+- **Pin your base images** — Use specific tags (e.g., `node:22-alpine`) instead of `latest` to ensure reproducible builds.
+- **Use multi-stage builds** — Keep final images small by separating build dependencies from runtime.
+- **Set `watchPath`** — Avoid unnecessary builds by scoping triggers to relevant directories.
+- **Use `.dockerignore`** — Exclude `node_modules`, `.git`, and test files from the build context to speed up Kaniko.
+- **Tag with commit SHA** — The platform automatically tags images with the short commit SHA for traceability.

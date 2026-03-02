@@ -1,0 +1,90 @@
+---
+title: Quickstart
+description: Build a simple task manager with Base in 5 minutes.
+---
+
+## Create Your First Collection
+
+<Steps>
+<Step>
+
+### Start Base
+
+```bash
+base serve --dev
+```
+
+</Step>
+<Step>
+
+### Open the Admin UI
+
+Navigate to [http://localhost:8090/_/](http://localhost:8090/_/) and create your admin account.
+
+</Step>
+<Step>
+
+### Create a Collection
+
+Click **New Collection** and name it `tasks`. Add these fields:
+
+| Field | Type | Required |
+|-------|------|----------|
+| `title` | Text | Yes |
+| `status` | Select (`active`, `done`) | Yes |
+| `assignee` | Relation → users | No |
+
+</Step>
+<Step>
+
+### Set API Rules
+
+In the collection settings, configure API rules:
+
+- **List/Search**: Leave empty (public read)
+- **Create**: `@request.auth.id != ""` (authenticated users only)
+- **Update**: `@request.auth.id = assignee` (only assignee can update)
+- **Delete**: `@request.auth.id = assignee` (only assignee can delete)
+
+</Step>
+<Step>
+
+### Use the API
+
+```typescript
+import { BaseClient } from '@hanzoai/base'
+
+const base = new BaseClient('http://localhost:8090')
+
+// Sign up
+await base.collection('users').create({
+  email: 'user@example.com',
+  password: 'securepassword',
+  passwordConfirm: 'securepassword',
+})
+
+// Sign in
+await base.collection('users').authWithPassword(
+  'user@example.com',
+  'securepassword',
+)
+
+// Create a task
+const task = await base.collection('tasks').create({
+  title: 'Ship the feature',
+  status: 'active',
+})
+
+// List tasks
+const tasks = await base.collection('tasks').getList(1, 20, {
+  sort: '-created',
+})
+
+// Subscribe to changes
+base.collection('tasks').subscribe('*', (e) => {
+  console.log(e.action, e.record)
+})
+```
+
+</Step>
+</Steps>

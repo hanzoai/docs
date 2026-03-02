@@ -1,0 +1,152 @@
+---
+title: "Zen LM: 100+ Open-Source Models for Every Use Case"
+description: "Hanzo AI, Zoo Labs Foundation, and Lux Partners jointly release over 100 open-weight models. Generations 1 through 5, spanning text, code, vision, audio, and safety research. Apache 2.0."
+date: "2025-03-01"
+author: "Zen LM Team"
+tags: ["Announcement", "Open-Source", "Zen LM"]
+---
+
+[TRY HANZO.CHAT](https://hanzo.chat) [DOWNLOAD WEIGHTS](https://huggingface.co/zenlm) [API ACCESS](https://console.hanzo.ai)
+
+Today we are releasing **Zen LM**: a family of 100+ open-weight models spanning text, code, vision, audio, embeddings, and safety. Every weight file is Apache 2.0. You can download them, run them locally, fine-tune them, and deploy them commercially — no royalty, no permission request, no vendor lock.
+
+This is the result of three years of joint work between Hanzo AI, Zoo Labs Foundation, and Lux Partners Limited.
+
+## The Backstory
+
+Hanzo AI was founded in 2017 (Techstars '17) to build AI infrastructure at scale. We operate the LLM gateway at [api.hanzo.ai](https://api.hanzo.ai), serving production traffic across 100+ model providers. We know what it costs to run models at scale, what developers actually need, and where proprietary APIs fall short.
+
+Zoo Labs Foundation is a 501(c)(3) research organization advancing open AI and decentralized science. The Foundation runs the Zoo Improvement Proposals (ZIPs) process — open governance for model architecture, training methodology, and data standards. Training experiments happen in the open, negative results included.
+
+Lux Partners Limited provides the settlement and compute infrastructure layer. Decentralized training and inference at this scale requires more than cloud credits — it requires a purpose-built compute coordination layer, which is what Lux provides.
+
+Together, these three organizations have been training the Zen model family since 2023. Today we make the full catalog public.
+
+## The Research Lineage
+
+We have been at this for a while. Each generation built on the last:
+
+- **Zen 1 (Q4 2023)**: Foundation. Dense transformer architecture. First multilingual training runs. Proof that the approach worked at 7B, 14B, and 72B.
+- **Zen 2 (Q2 2024)**: 128K context window. First production deployments. Extended to code and math specialist variants.
+- **Zen 3 (Q3–Q4 2024)**: Sparse MoE routing. Multimodal expansion — vision, audio, and image generation integrated into the same family. Embedding and reranker models added.
+- **Zen 4 (Q1 2025, current)**: Frontier generation. 480B MoE at the top end. 1M token context. Full coverage from 0.6B edge models to research-scale.
+- **Zen 5 (in training)**: Introduces **Zen MoDE** — Mixture of Diverse Experts. 1T+ parameters, 2M context, native video, real-time audio.
+
+## The Catalog
+
+One hundred models is not a typo. We cover the full stack:
+
+| Model | Parameters | Use Case |
+|-------|-----------|---------|
+| Zen4 Ultra | 480B (35B active) | Maximum capability, complex reasoning |
+| Zen Max | 72B | General enterprise use |
+| Zen4 Pro | 32B (22B active) | Balanced capability / cost |
+| Zen4 Flash | 7B (3B active) | Low-latency production |
+| Zen4 Coder | 480B (35B active) | Code generation, agentic software engineering |
+| Zen Omni | 32B | Vision + text + audio, unified |
+| Zen VL | 72B | Image understanding, OCR, document parsing |
+| Zen Nano | 0.6B | On-device inference, edge deployment |
+| Zen Embedding | 7680-dim | Semantic search, RAG pipelines |
+| Zen Guard | 3B | Safety classification, content filtering |
+| Zen Reranker | 1.5B | Cross-encoder reranking for retrieval |
+
+Beyond these flagship sizes, the catalog includes instruction-tuned variants, base weights for fine-tuning, quantized versions for consumer hardware, and safety research variants.
+
+## AI Safety Research Variants
+
+As part of our alignment research program, we release safety research variants across major Zen generations. These are models where constraint overlays have been studied and removed — enabling rigorous safety evaluation, red-teaming, and alignment benchmarking.
+
+This work is part of how we build better safety systems. You cannot improve what you cannot measure. Understanding how models behave without safety overlays tells us precisely where constraints are effective, where they are superficial, and where they create false confidence.
+
+**Research applications:** Red-teaming, alignment evaluation, jailbreak robustness testing, capability assessment, adversarial probing, building custom safety layers from scratch.
+
+Safety research variants are available for Zen 1 through Zen 4. They are clearly labeled in the catalog.
+
+## Open Weights Is the Only Credible Commitment
+
+We have watched enough AI companies announce "open" models that ship without weights, or with licenses so restrictive they are effectively closed. We are not doing that.
+
+Every general-purpose Zen model is released under Apache 2.0. You can:
+
+- Download weights from [huggingface.co/zenlm](https://huggingface.co/zenlm)
+- Run locally with `transformers`, `vLLM`, or `llama.cpp`
+- Fine-tune on your own data
+- Deploy commercially without a royalty agreement
+- Fork, modify, and redistribute
+
+APIs can disappear. Weights are permanent.
+
+## How to Use Zen
+
+**Try it free:** [hanzo.chat](https://hanzo.chat) — no account required, 14 Zen models in one interface.
+
+**API access:** [console.hanzo.ai](https://console.hanzo.ai) — OpenAI-compatible endpoint, per-token billing, all Zen models available.
+
+**Download weights:** [huggingface.co/zenlm](https://huggingface.co/zenlm) — full catalog, all variants, Apache 2.0.
+
+```bash
+# Run with vLLM (recommended for production)
+pip install vllm
+vllm serve zenlm/zen4-pro --tensor-parallel-size 4
+
+# Run with Transformers (development / smaller models)
+pip install transformers torch
+python -c "
+from transformers import pipeline
+pipe = pipeline('text-generation', model='zenlm/zen4-pro')
+print(pipe('Explain sparse expert routing in three sentences.')[0]['generated_text'])
+"
+
+# Run quantized on a laptop (Zen Nano)
+pip install llama-cpp-python
+# download zenlm/zen-nano-q4_k_m.gguf from HuggingFace
+```
+
+**Use the Hanzo API:**
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen4-pro",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+```
+
+## Training Is Open Too
+
+Zoo Labs Foundation publishes training infrastructure under the Zoo Gym project:
+
+- GRPO (Group Relative Policy Optimization) implementation
+- ASO (Active Semantic Optimization, HIP-002) for continuous improvement from production signals
+- BitDelta (ZIP-007) for behavioral compression and efficient weight updates
+- DSO (Decentralized Semantic Optimization, ZIP-001) for federated fine-tuning
+
+The full training stack is available on GitHub. We publish training logs, data provenance documentation, and evaluation results — including failures. Reproducibility is not an afterthought.
+
+## What Is Coming
+
+Zen 5 is in training now. The targets:
+
+- **Zen MoDE** architecture — Mixture of Diverse Experts, sparse activation at 1T+ scale
+- 2M token native context window
+- Native video understanding
+- Real-time audio processing
+- Reduced hallucination in long-horizon agentic tasks
+
+We expect to begin releasing Zen 5 checkpoints later this year.
+
+## Join the Community
+
+The work happens in public. Come help:
+
+- **GitHub**: [github.com/hanzoai](https://github.com/hanzoai) — model code, training infrastructure, evaluation
+- **Zoo Foundation**: [zoo.ngo](https://zoo.ngo) — ZIPs governance, research proposals, community discussion
+- **Hugging Face**: [huggingface.co/zenlm](https://huggingface.co/zenlm) — weights, datasets, demo spaces
+
+If you build something with Zen, we want to know about it.
+
+---
+
+_Zen LM is a joint initiative of Hanzo AI Inc. (Techstars '17), Zoo Labs Foundation (501c3), and Lux Partners Limited._

@@ -1,0 +1,145 @@
+---
+title: Auto-Provisioning
+description: Create managed Kubernetes clusters directly from the Hanzo Platform dashboard.
+---
+
+Hanzo Platform can provision managed Kubernetes clusters on supported cloud providers. Instead of using provider consoles separately, create and configure clusters from a single interface.
+
+## Supported Providers
+
+| Provider | Service | Status |
+|----------|---------|--------|
+| DigitalOcean | DOKS (DigitalOcean Kubernetes) | Available |
+| AWS | EKS (Elastic Kubernetes Service) | Coming soon |
+| Hetzner | HKE (Hetzner Kubernetes Engine) | Coming soon |
+
+<Callout type="info">
+Cloud provider credentials must be configured in **Settings > Cloud Providers** before provisioning clusters.
+</Callout>
+
+## Provisioning a DOKS Cluster
+
+<Steps>
+
+### Navigate to Clusters
+
+Go to **Clusters > New > DigitalOcean Kubernetes**.
+
+### Configure the Cluster
+
+Fill in the cluster configuration:
+
+```
+Name:               production
+Region:             sfo3
+Kubernetes Version: 1.29
+VPC:                default (or select existing)
+```
+
+### Configure Node Pools
+
+Add one or more node pools:
+
+```
+Pool Name:    workers
+Node Size:    s-4vcpu-8gb
+Node Count:   3
+Auto-scale:   Enabled
+  Min Nodes:  2
+  Max Nodes:  10
+```
+
+### Add Tags
+
+Optional tags for organization:
+
+```
+env:production
+team:platform
+managed-by:hanzo
+```
+
+### Review and Create
+
+Review the configuration summary and estimated monthly cost. Click **Create Cluster**.
+
+</Steps>
+
+## Provisioning Timeline
+
+Cluster creation takes approximately 5-8 minutes on DigitalOcean. The dashboard shows real-time progress:
+
+| Phase | Duration | Description |
+|-------|----------|-------------|
+| Initializing | ~30s | API request accepted, resources allocating |
+| Provisioning | ~3m | Control plane deploying |
+| Node Setup | ~2m | Worker nodes joining the cluster |
+| System Pods | ~1m | CoreDNS, kube-proxy, CNI deploying |
+| Ready | -- | Cluster is operational |
+
+<Callout type="info">
+You receive a notification when the cluster is ready. The platform automatically registers it in the fleet dashboard.
+</Callout>
+
+## Cluster Configuration Options
+
+### Kubernetes Version
+
+Select from supported versions. Hanzo Platform shows the latest stable and the previous two minor versions:
+
+- **1.29** (latest) -- Recommended for new clusters
+- **1.28** -- Previous stable
+- **1.27** -- Maintenance mode
+
+### High Availability
+
+For production clusters, enable HA mode which provisions the control plane across multiple availability zones. This is managed by the cloud provider at no extra node cost on DOKS.
+
+### Maintenance Windows
+
+Set a preferred maintenance window for automatic Kubernetes patch upgrades:
+
+```
+Day:    Sunday
+Start:  02:00 UTC
+Length: 4 hours
+```
+
+## Post-Provisioning
+
+Once the cluster is ready, the platform automatically:
+
+1. **Downloads the kubeconfig** and stores it securely
+2. **Installs the monitoring agent** for metrics and log collection
+3. **Configures RBAC** based on your organization's roles
+4. **Registers in the fleet** with the tags you specified
+
+You can immediately deploy applications to the new cluster.
+
+## Scaling After Provisioning
+
+See [Node Pools](/docs/clusters/node-pools) for instructions on adding capacity, configuring autoscaling, and managing node pool lifecycle after the cluster is created.
+
+## Deleting a Provisioned Cluster
+
+<Callout type="warn">
+Deleting a provisioned cluster destroys all nodes, volumes, and workloads running on it. This action is irreversible.
+</Callout>
+
+<Steps>
+
+### Navigate to Settings
+
+Go to **Clusters > [Cluster Name] > Settings**.
+
+### Delete Cluster
+
+Click **Delete Cluster**. You must type the cluster name to confirm.
+
+### Confirm Destruction
+
+Review the list of resources that will be destroyed (nodes, volumes, load balancers). Click **Confirm Delete**.
+
+</Steps>
+
+The platform removes the cluster from the cloud provider and deregisters it from the fleet dashboard.

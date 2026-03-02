@@ -1,11 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
-import { objectGet, objectSet, stringifyFieldKey } from './utils';
+import {
+  fieldKeyStartsWith,
+  isPlainObject,
+  objectGet,
+  objectSet,
+  stringifyFieldKey,
+} from './utils';
 import type { FieldKey } from './types';
-import { Stf, useDataEngine } from './stf';
 
 export type DefaultValue<T = unknown> = T | (() => T);
 
-function getDefaultValue<T>(defaultValue: DefaultValue<T>): T {
+export function getDefaultValue<T>(defaultValue: DefaultValue<T>): T {
   return typeof defaultValue === 'function' ? (defaultValue as () => T)() : defaultValue;
 }
 
@@ -15,24 +19,43 @@ export interface DataEngineListener {
    */
   field?: FieldKey;
   /**
-   * when field value is changed
+   * when field value is changed.
    */
   onUpdate?: (key: FieldKey, ctx: OnUpdateContext) => void;
   /**
-   * when `init(field)` is called
+   * fired on `init(field)`.
    */
-  onInit?: (key: FieldKey) => void;
+  onInit?: (key: FieldKey, ctx: OnInitContext) => void;
   /**
-   * when `delete(field)` is called
+   * fired on `delete(field)`.
+   *
+   * when `field` is specified, this is also fired when parent is deleted.
    */
-  onDelete?: (key: FieldKey) => void;
+  onDelete?: (key: FieldKey, ctx: OnDeleteContext) => void;
 }
 
-interface OnUpdateContext {
+export interface OnUpdateContext {
   /**
    * An update is swallow if the change doesn't affect the values of children fields.
    */
   swallow: boolean;
+
+  /** custom data */
+  custom?: Record<string, unknown>;
+}
+
+export interface OnDeleteContext {
+  /** custom data */
+  custom?: Record<string, unknown>;
+}
+
+export interface OnInitContext {
+  /** custom data */
+  custom?: Record<string, unknown>;
+}
+
+export interface NamespaceConfig {
+  reset?: (ctx: { engine: DataEngine }) => void;
 }
 
 class ListenerManager {
@@ -67,29 +90,34 @@ class ListenerManager {
       if (set) for (const v of set) v.onUpdate?.(field, ctx);
     } else {
       for (const [k, listeners] of this.indexed.entries()) {
-        if (updatedKey.length !== 0 && k !== updatedKey && !k.startsWith(updatedKey + '.'))
-          continue;
+        if (!fieldKeyStartsWith(k, updatedKey)) continue;
+
         for (const v of listeners) v.onUpdate?.(field, ctx);
       }
     }
   }
 
-  onInit(field: FieldKey) {
-    for (const v of this.unindexed) v.onInit?.(field);
+  onInit(field: FieldKey, ctx: OnInitContext) {
+    for (const v of this.unindexed) v.onInit?.(field, ctx);
     const set = this.indexed.get(stringifyFieldKey(field));
-    if (set) for (const v of set) v.onInit?.(field);
+    if (set) for (const v of set) v.onInit?.(field, ctx);
   }
 
-  onDelete(field: FieldKey) {
-    for (const v of this.unindexed) v.onDelete?.(field);
-    const set = this.indexed.get(stringifyFieldKey(field));
-    if (set) for (const v of set) v.onDelete?.(field);
+  onDelete(field: FieldKey, ctx: OnDeleteContext) {
+    const fieldKey = stringifyFieldKey(field);
+    for (const v of this.unindexed) v.onDelete?.(field, ctx);
+
+    for (const [k, listeners] of this.indexed.entries()) {
+      if (!fieldKeyStartsWith(k, fieldKey)) continue;
+
+      for (const v of listeners) v.onDelete?.(field, ctx);
+    }
   }
 }
 
 export class DataEngine {
   private data: NonNullable<object>;
-  private attachedDataMap = new Map<string, unknown>();
+  readonly namespaces = new Map<string, { engine: DataEngine } & NamespaceConfig>();
   private readonly listeners = new ListenerManager();
 
   constructor(defaultValues: DefaultValue<NonNullable<object>> = {}) {
@@ -110,57 +138,77 @@ export class DataEngine {
 
   /**
    * init a field
-   * @param key the key of field
+   * @param field the key of field
    * @param defaultValue the initial value, the field is also created for `undefined`
    * @returns the value of initialized field, or the current value of field if already initialized
    */
-  init(key: FieldKey, defaultValue?: DefaultValue): unknown {
-    if (key.length === 0) return this.data;
-    let cur = this.data as Record<string, unknown>;
-    const currentKey: FieldKey = [];
+  init(field: FieldKey, defaultValue?: DefaultValue, ctx: OnInitContext = {}): unknown {
+    if (field.length === 0) return this.data;
+    const parentKey: FieldKey = [];
+    const parentUpdateCtx: OnUpdateContext = { swallow: true, ...ctx };
+    let parent = this.data as Record<string, unknown> | unknown[];
 
-    for (let i = 0; i < key.length; i++) {
-      const propKey = key[i];
-      const propValue = cur[propKey];
+    const fieldsToInit: FieldKey[] = [];
+    let initStart: FieldKey | null = null;
 
-      if (i === key.length - 1) {
-        if (propValue !== undefined) return propValue;
-        cur[propKey] = getDefaultValue(defaultValue);
+    for (let i = 0; i < field.length; i++) {
+      const key = field[i];
+      // @ts-expect-error -- allow access
+      const value: unknown = parent[key];
 
-        this.listeners.onUpdate(currentKey, { swallow: true });
-        this.listeners.onInit(key);
-        return cur[propKey];
-      } else if (typeof propValue === 'object' && propValue !== null) {
-        cur = propValue as Record<string, unknown>;
+      if (i === field.length - 1) {
+        if (value !== undefined) return value;
+        // @ts-expect-error -- allow access
+        const out = (parent[key] = getDefaultValue(defaultValue));
+
+        fieldsToInit.push(field);
+        for (const initField of fieldsToInit) this.listeners.onInit(initField, ctx);
+        this.listeners.onUpdate(initStart ?? parentKey, parentUpdateCtx);
+        return out;
+      } else if (isPlainObject(value) || Array.isArray(value)) {
+        parent = value;
+        parentKey.push(key);
       } else {
-        if (propValue !== undefined)
-          console.warn(
-            `the original value of field ${currentKey.join('.')} is overidden, this might be unexpected.`,
-          );
+        const nextKey = field[i + 1];
+        // @ts-expect-error -- allow access
+        parent = parent[key] = typeof nextKey === 'number' ? new Array(nextKey + 1) : {};
 
-        cur = cur[propKey] = {};
-        this.listeners.onUpdate(currentKey, { swallow: true });
+        if (value === undefined) {
+          initStart ??= [...parentKey];
+          parentKey.push(key);
+          fieldsToInit.push([...parentKey]);
+        } else {
+          parentKey.push(key);
+          this.listeners.onUpdate(parentKey, parentUpdateCtx);
+          console.warn(
+            `the original value of field ${parentKey.join('.')} is overidden, this might be unexpected.`,
+          );
+        }
       }
-      currentKey.push(propKey);
     }
   }
 
-  delete(key: FieldKey): unknown | undefined {
+  delete(key: FieldKey, ctx: OnDeleteContext = {}): unknown | undefined {
     if (key.length === 0) return;
     const parentKey = key.slice(0, -1);
     const prop = key[key.length - 1];
     const parent = this.get(parentKey);
 
-    if (Array.isArray(parent) && typeof prop === 'number') {
-      const [deleted] = parent.splice(prop, 1);
-      this.listeners.onUpdate(parentKey, { swallow: false });
-      this.listeners.onDelete(key);
-      return deleted;
-    } else if (typeof parent === 'object' && parent !== null) {
-      const temp = (parent as Record<string, unknown>)[prop];
-      delete parent[prop as never];
-      this.listeners.onUpdate(parentKey, { swallow: true });
-      this.listeners.onDelete(key);
+    if (typeof prop === 'number' && Array.isArray(parent)) {
+      if (parent.length === 0) return;
+      const isLast = prop === parent.length - 1;
+      const deleted: unknown[] = parent.splice(prop, 1);
+      if (deleted.length === 0) return;
+
+      this.listeners.onDelete(key, ctx);
+      // it will change children's field value when removed at middle
+      this.listeners.onUpdate(parentKey, { swallow: isLast, ...ctx });
+      return deleted[0];
+    } else if (isPlainObject(parent) && prop in parent) {
+      const temp = parent[prop];
+      delete parent[prop];
+      this.listeners.onDelete(key, ctx);
+      this.listeners.onUpdate(parentKey, { swallow: true, ...ctx });
       return temp;
     }
   }
@@ -173,101 +221,37 @@ export class DataEngine {
    * update the value of field if it exists
    * @returns if the field is updated
    */
-  update(key: FieldKey, value: unknown): boolean {
+  update(key: FieldKey, value: unknown, ctx?: Partial<OnUpdateContext>): boolean {
     try {
       this.data = objectSet(this.data, key, value) as NonNullable<object>;
-      this.listeners.onUpdate(key, { swallow: false });
+      this.listeners.onUpdate(key, { swallow: false, ...ctx });
       return true;
     } catch {
       return false;
     }
   }
 
-  attachedData<T>(namespace: string) {
-    return {
-      get: (field: FieldKey): T | undefined => {
-        return this.attachedDataMap.get(`${namespace}:${stringifyFieldKey(field)}`) as
-          | T
-          | undefined;
-      },
-      set: (field: FieldKey, value: T) => {
-        this.attachedDataMap.set(`${namespace}:${stringifyFieldKey(field)}`, value);
-      },
-      delete: (field?: FieldKey) => {
-        if (field) {
-          this.attachedDataMap.delete(`${namespace}:${stringifyFieldKey(field)}`);
-        } else {
-          for (const key of this.attachedDataMap.keys()) {
-            if (key.startsWith(`${namespace}:`)) this.attachedDataMap.delete(key);
-          }
-        }
-      },
-    };
+  /**
+   * create an isolated data engine
+   */
+  namespace(
+    namespace: string,
+    initialValue?: DefaultValue<NonNullable<object>>,
+    config?: NamespaceConfig,
+  ) {
+    let child = this.namespaces.get(namespace);
+    if (!child) {
+      child = { engine: new DataEngine(initialValue), ...config };
+      this.namespaces.set(namespace, child);
+    } else {
+      Object.assign(child, config);
+    }
+
+    return child.engine;
   }
 
-  reset(data: Record<string, unknown>) {
-    this.attachedDataMap.clear();
+  reset(data: NonNullable<object>) {
     this.update([], data);
+    for (const { engine, reset } of this.namespaces.values()) reset?.({ engine });
   }
-}
-
-export function useFieldValue<V = unknown>(
-  key: FieldKey,
-  options: {
-    stf?: Stf;
-    defaultValue?: DefaultValue;
-
-    /**
-     * compute value from the actual field value.
-     *
-     * to re-compute on in-place updates (may happen on objects, arrays), you should clone the object here.
-     */
-    compute?: (currentValue: unknown) => V;
-    /** determine whether the value/computed value is changed */
-    isChanged?: (prev: V, next: V) => boolean;
-  } = {},
-) {
-  const engine = useDataEngine(options.stf);
-  const { compute = (v) => v as V, defaultValue, isChanged = (a, b) => a !== b } = options;
-  const [value, setValue] = useState<V>(() => compute(engine.init(key, defaultValue)));
-
-  useListener({
-    field: key,
-    onUpdate() {
-      const computed = compute(engine.get(key));
-      if (isChanged(value, computed)) setValue(computed);
-    },
-    onDelete() {
-      const computed = compute(undefined);
-      if (isChanged(value, computed)) setValue(computed);
-    },
-  });
-
-  return [value, (newValue: unknown) => engine.update(key, newValue)] as const;
-}
-
-export function useListener(listener: DataEngineListener & { stf?: Stf }) {
-  const engine = useDataEngine(listener.stf);
-  const listenerRef = useRef(listener);
-  listenerRef.current = listener;
-
-  useEffect(() => {
-    const internal: DataEngineListener = {
-      field: listener.field,
-      onDelete(...args) {
-        return listenerRef.current.onDelete?.(...args);
-      },
-      onInit(...args) {
-        return listenerRef.current.onInit?.(...args);
-      },
-      onUpdate(...args) {
-        return listenerRef.current.onUpdate?.(...args);
-      },
-    };
-
-    engine.listen(internal);
-    return () => {
-      engine.unlisten(internal);
-    };
-  }, [engine, listener.field]);
 }

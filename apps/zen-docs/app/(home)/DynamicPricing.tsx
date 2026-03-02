@@ -16,11 +16,12 @@ interface ZenModel {
   specs?: { params: string; arch: string };
   endpoint?: string;
   pricingUnit?: string;
+  contactSales?: boolean;
   pricing: {
     input: number | null;
     output: number | null;
     perUnit?: number;
-  };
+  } | null;
 }
 
 interface PricingData {
@@ -53,10 +54,10 @@ function ModelRow({ m, featured }: { m: ZenModel; featured?: boolean }) {
       <td className="py-3 pr-4 text-sm text-fd-muted-foreground">{fmtCtx(m.context)}</td>
       <td className="py-3 pr-4 text-sm text-fd-muted-foreground">{m.tier}</td>
       <td className="py-3 pr-4 text-sm text-right font-mono">
-        {m.pricingUnit ? `${fmtPrice(m.pricing.perUnit)}/${m.pricingUnit}` : `${fmtPrice(m.pricing.input)}`}
+        {m.pricingUnit ? `${fmtPrice(m.pricing?.perUnit)}/${m.pricingUnit}` : `${fmtPrice(m.pricing?.input)}`}
       </td>
       <td className="py-3 text-sm text-right font-mono">
-        {m.pricingUnit ? '—' : `${fmtPrice(m.pricing.output)}`}
+        {m.pricingUnit ? '—' : `${fmtPrice(m.pricing?.output)}`}
       </td>
     </tr>
   );
@@ -99,15 +100,16 @@ export default function DynamicPricing() {
     return <p className="text-center text-fd-muted-foreground py-8">Loading pricing...</p>;
   }
 
-  const chatModels = data.hanzoModels.filter((m) => !m.endpoint && !m.pricingUnit);
+  const chatModels = data.hanzoModels.filter((m) => !m.endpoint && !m.pricingUnit && !m.contactSales);
   const zen4 = chatModels.filter((m) => m.name.startsWith('zen4') && !m.name.includes('coder'));
   const zen4Coder = chatModels.filter((m) => m.name.startsWith('zen4-coder'));
   const zen3 = chatModels.filter((m) => m.name.startsWith('zen3'));
+  const zen5Models = data.hanzoModels.filter((m) => m.name.startsWith('zen5'));
   const allChat = [...zen4, ...zen4Coder, ...zen3];
 
   // Find cheapest for the "From" stat
   const cheapest = allChat.reduce((min, m) => {
-    const p = m.pricing.input ?? Infinity;
+    const p = m.pricing?.input ?? Infinity;
     return p < min ? p : min;
   }, Infinity);
 
@@ -209,17 +211,44 @@ export default function DynamicPricing() {
         </table>
       </div>
 
+      {/* Zen5 — Early Access */}
+      {zen5Models.length > 0 && (
+        <>
+          <h3 className="text-xl font-semibold mb-6">Zen5 Generation — Early Access</h3>
+          <div className="rounded-xl border border-purple-500/20 bg-purple-500/5 p-6 mb-10">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+              {zen5Models.map((m) => (
+                <div key={m.name} className="rounded-lg border border-purple-500/10 bg-fd-background p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-mono text-sm font-semibold">{m.name}</span>
+                    <span className="text-[9px] font-semibold tracking-wider uppercase bg-purple-500/20 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded-full">EARLY ACCESS</span>
+                  </div>
+                  <div className="text-xs text-fd-muted-foreground mb-1">{m.specs?.arch} · {fmtCtx(m.context)} ctx</div>
+                  <p className="text-xs text-fd-muted-foreground">{m.description}</p>
+                </div>
+              ))}
+            </div>
+            <div className="text-center">
+              <a href="https://hanzo.industries/contact" target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg bg-purple-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-purple-700 transition">
+                Contact Sales for Early Access <ArrowRight className="h-4 w-4" />
+              </a>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Cost examples */}
       {mini && coderFlash && embed && flagship && (
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <CostExample task="100 chat messages" model="zen4-mini" tokens="50K in + 50K out"
-            input={(mini.pricing.input ?? 0) * 0.05} output={(mini.pricing.output ?? 0) * 0.05} />
+            input={(mini.pricing?.input ?? 0) * 0.05} output={(mini.pricing?.output ?? 0) * 0.05} />
           <CostExample task="1K code completions" model="zen4-coder-flash" tokens="500K in + 500K out"
-            input={(coderFlash.pricing.input ?? 0) * 0.5} output={(coderFlash.pricing.output ?? 0) * 0.5} />
+            input={(coderFlash.pricing?.input ?? 0) * 0.5} output={(coderFlash.pricing?.output ?? 0) * 0.5} />
           <CostExample task="10K embeddings" model="zen3-embedding" tokens="1M input"
-            input={embed.pricing.input ?? 0} output={0} />
+            input={embed.pricing?.input ?? 0} output={0} />
           <CostExample task="Heavy daily use" model="zen4" tokens="1M in + 1M out"
-            input={flagship.pricing.input ?? 0} output={flagship.pricing.output ?? 0} />
+            input={flagship.pricing?.input ?? 0} output={flagship.pricing?.output ?? 0} />
         </div>
       )}
 

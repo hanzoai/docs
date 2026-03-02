@@ -1,0 +1,181 @@
+---
+title: Node Pools
+description: Scale cluster capacity by adding, removing, and autoscaling node pools.
+---
+
+Node pools are groups of identically configured nodes within a Kubernetes cluster. Use node pools to separate workloads by resource requirements, isolate tenants, or maintain different machine types.
+
+## Overview
+
+Each cluster has at least one node pool (the default pool created during provisioning). You can add additional pools with different configurations.
+
+| Property | Description |
+|----------|-------------|
+| **Name** | Identifier for the pool (e.g., `workers`, `gpu-pool`) |
+| **Node Size** | Instance type / Droplet size |
+| **Count** | Current number of nodes |
+| **Min / Max** | Autoscaling bounds |
+| **Labels** | Kubernetes labels applied to nodes |
+| **Taints** | Kubernetes taints for workload isolation |
+
+## Adding a Node Pool
+
+<Steps>
+
+### Navigate to the Cluster
+
+Go to **Clusters > [Cluster Name] > Node Pools**.
+
+### Click Add Pool
+
+Click **Add Node Pool** and configure:
+
+```
+Name:        gpu-workers
+Node Size:   g-8vcpu-32gb
+Node Count:  2
+Auto-scale:  Enabled
+  Min Nodes: 1
+  Max Nodes: 5
+```
+
+### Set Labels and Taints
+
+Optionally add labels and taints to control pod scheduling:
+
+```yaml
+# Labels
+node-type: gpu
+environment: production
+
+# Taints
+gpu=true:NoSchedule
+```
+
+### Create
+
+Click **Create**. New nodes join the cluster within 2-3 minutes.
+
+</Steps>
+
+## Scaling a Node Pool
+
+### Manual Scaling
+
+<Steps>
+
+### Select the Pool
+
+Go to **Clusters > [Cluster Name] > Node Pools** and click the pool to scale.
+
+### Adjust Count
+
+Set the desired node count and click **Apply**.
+
+### Monitor
+
+Watch nodes join or drain in real time from the node list.
+
+</Steps>
+
+### Autoscaling
+
+When autoscaling is enabled, the cluster automatically adjusts the node count based on pod scheduling pressure:
+
+- **Scale up** -- When pods are pending due to insufficient resources
+- **Scale down** -- When nodes are underutilized for a configurable period (default: 10 minutes)
+
+Configure autoscaling from the node pool settings:
+
+```
+Auto-scale:     Enabled
+Min Nodes:      2
+Max Nodes:      10
+Scale-down delay: 10 minutes
+```
+
+<Callout type="info">
+Autoscaling respects PodDisruptionBudgets. Nodes are drained gracefully before removal, ensuring no unplanned downtime.
+</Callout>
+
+## Node Labels and Taints
+
+### Labels
+
+Labels let you target specific node pools with `nodeSelector` or `nodeAffinity` in your pod specs:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml-inference
+spec:
+  template:
+    spec:
+      nodeSelector:
+        node-type: gpu
+      containers:
+        - name: inference
+          image: ghcr.io/myorg/inference:latest
+```
+
+### Taints and Tolerations
+
+Taints prevent pods from scheduling on a node unless they have a matching toleration:
+
+```yaml
+# Pod with toleration for GPU nodes
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gpu-job
+spec:
+  tolerations:
+    - key: "gpu"
+      operator: "Equal"
+      value: "true"
+      effect: "NoSchedule"
+  containers:
+    - name: job
+      image: ghcr.io/myorg/gpu-job:latest
+```
+
+## Removing a Node Pool
+
+<Callout type="warn">
+Removing a node pool drains all nodes and deletes them. Pods are rescheduled to other available nodes if capacity permits.
+</Callout>
+
+<Steps>
+
+### Select the Pool
+
+Go to **Clusters > [Cluster Name] > Node Pools** and click the pool to remove.
+
+### Verify Capacity
+
+Ensure other node pools have enough capacity to absorb the workloads. The dashboard shows projected resource utilization after removal.
+
+### Delete
+
+Click **Delete Pool**. Nodes are drained gracefully (respecting PodDisruptionBudgets) before termination.
+
+</Steps>
+
+## Recycling Nodes
+
+To replace a specific node (e.g., after a kernel update or to clear local state):
+
+1. Go to **Node Pools > [Pool] > Nodes**
+2. Click the node to recycle
+3. Click **Recycle**
+
+The platform drains the node, terminates it, and provisions a fresh replacement.
+
+## Best Practices
+
+- **Separate workload types** -- Use dedicated pools for CPU-intensive, memory-intensive, and GPU workloads
+- **Set resource requests** -- Always set CPU and memory requests on pods so the autoscaler can make accurate decisions
+- **Use PodDisruptionBudgets** -- Protect stateful workloads during scale-down and node recycling
+- **Start small** -- Begin with autoscaling enabled and a conservative max, then increase as you understand your traffic patterns
+- **Label everything** -- Consistent labels across node pools and pods simplify scheduling and debugging

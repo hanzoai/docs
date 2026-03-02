@@ -1,0 +1,108 @@
+---
+title: zen3-reranker
+description: High-quality reranker for improving retrieval accuracy in RAG pipelines.
+---
+
+# zen3-reranker
+
+**Maximum Reranking Quality**
+
+An 8B cross-encoder reranker that dramatically improves retrieval accuracy in RAG pipelines and search systems. Takes query-document pairs and produces calibrated relevance scores for precise ranking.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen3-reranker` |
+| **Parameters** | 8B |
+| **Architecture** | Reranker |
+| **Context Window** | 40K tokens |
+| **Tier** | pro max |
+| **Status** | Available |
+| **HuggingFace** | [zenlm/zen3-reranker](https://huggingface.co/zenlm/zen3-reranker) |
+
+## Capabilities
+
+- Cross-encoder query-document relevance scoring
+- Long-document reranking up to 40K tokens
+- RAG pipeline retrieval quality improvement
+- Multi-stage search refinement
+- Calibrated relevance scores for threshold filtering
+- Multi-lingual reranking support
+
+## API Usage
+
+```bash
+curl https://api.hanzo.ai/v1/rerank \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen3-reranker",
+    "query": "What is retrieval augmented generation?",
+    "documents": [
+      "RAG combines retrieval with language model generation.",
+      "The weather in Tokyo is sunny today.",
+      "Vector databases store embeddings for semantic search."
+    ]
+  }'
+```
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.rerank.create(
+    model="zen3-reranker",
+    query="What is retrieval augmented generation?",
+    documents=[
+        "RAG combines retrieval with language model generation.",
+        "The weather in Tokyo is sunny today.",
+        "Vector databases store embeddings for semantic search.",
+    ],
+)
+
+for result in response.results:
+    print(f"[{result.relevance_score:.3f}] {result.document.text}")
+```
+
+## HuggingFace Usage
+
+```python
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+import torch
+
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen3-reranker")
+model = AutoModelForSequenceClassification.from_pretrained("zenlm/zen3-reranker")
+
+query = "What is retrieval augmented generation?"
+documents = [
+    "RAG combines retrieval with language model generation.",
+    "The weather in Tokyo is sunny today.",
+]
+
+pairs = [[query, doc] for doc in documents]
+inputs = tokenizer(pairs, padding=True, truncation=True, return_tensors="pt")
+
+with torch.no_grad():
+    scores = model(**inputs).logits.squeeze()
+
+ranked = sorted(zip(documents, scores.tolist()), key=lambda x: x[1], reverse=True)
+for doc, score in ranked:
+    print(f"[{score:.3f}] {doc}")
+```
+
+## Try It
+
+[Open in Hanzo Chat](https://hanzo.chat?model=zen3-reranker)
+
+## Resources
+
+- [HuggingFace](https://huggingface.co/zenlm/zen3-reranker)
+- [Technical Report](https://github.com/zenlm/zen/blob/main/paper/zen-technical-report.pdf)
+
+## See Also
+
+- [zen3-reranker-medium](/docs/models/zen3-reranker-medium) -- Balanced reranking
+- [zen3-reranker-small](/docs/models/zen3-reranker-small) -- Lightweight, high-throughput
+- [zen3-embedding](/docs/models/zen3-embedding) -- Text embeddings for retrieval

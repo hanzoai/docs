@@ -1,0 +1,173 @@
+---
+title: Volumes
+description: Create, attach, resize, and snapshot block storage volumes.
+---
+
+Block storage volumes provide persistent, high-performance storage that can be attached to any VM. Volumes survive VM termination and can be moved between instances.
+
+## Overview
+
+| Feature | AWS EBS | DO Volumes | Hetzner Volumes |
+|---------|---------|------------|-----------------|
+| Min Size | 1 GB | 10 GB | 10 GB |
+| Max Size | 16 TB | 16 TB | 10 TB |
+| Snapshots | Yes | Yes | Yes |
+| Resize | Expand only | Expand only | Expand only |
+| Multi-attach | io2 only | No | No |
+
+## Creating a Volume
+
+<Steps>
+
+### Navigate to Volumes
+
+Go to **Virtual Machines > Volumes > New**.
+
+### Configure
+
+Select the cloud provider, region, and size. Optionally name the volume and choose a filesystem type.
+
+```
+Name:       data-vol-01
+Provider:   Hetzner
+Region:     fsn1
+Size:       50 GB
+Filesystem: ext4
+```
+
+### Create
+
+Click **Create**. The volume is provisioned in seconds.
+
+</Steps>
+
+## Attaching a Volume
+
+<Steps>
+
+### Select the Volume
+
+From the volumes list, click the volume you want to attach.
+
+### Choose a VM
+
+Select the target VM. The VM must be in the same region as the volume.
+
+### Mount Point
+
+Specify where to mount the volume on the filesystem:
+
+```bash
+/mnt/data
+```
+
+### Attach
+
+Click **Attach**. The volume is mounted automatically if the VM is running.
+
+</Steps>
+
+<Callout type="info">
+Volumes can only be attached to one VM at a time (except AWS io2 with multi-attach). Detach first before moving to another instance.
+</Callout>
+
+## Resizing a Volume
+
+Volumes can be expanded without downtime. Shrinking is not supported.
+
+<Steps>
+
+### Select the Volume
+
+Go to **Volumes** and click the volume to resize.
+
+### Enter New Size
+
+Enter the new size. It must be larger than the current size.
+
+### Apply
+
+Click **Resize**. The block device expands immediately.
+
+### Extend the Filesystem
+
+If the volume is mounted, the filesystem is extended automatically. For manual extension:
+
+```bash
+# ext4
+sudo resize2fs /dev/sda1
+
+# xfs
+sudo xfs_growfs /mnt/data
+```
+
+</Steps>
+
+<Callout type="warn">
+Always back up critical data before resizing. While online resize is safe in practice, snapshots provide an extra safety net.
+</Callout>
+
+## Snapshots
+
+Snapshots capture the state of a volume at a point in time. They are incremental -- only changed blocks are stored.
+
+### Creating a Snapshot
+
+<Steps>
+
+### Select the Volume
+
+Go to **Volumes** and click the target volume.
+
+### Create Snapshot
+
+Click **Snapshots > Create**. Enter a name and optional description.
+
+### Wait for Completion
+
+Snapshot creation runs in the background. Small volumes complete in seconds; large volumes may take a few minutes.
+
+</Steps>
+
+### Restoring from a Snapshot
+
+<Steps>
+
+### Select the Snapshot
+
+Go to **Volumes > Snapshots** and click the snapshot you want to restore.
+
+### Create Volume from Snapshot
+
+Click **Restore**. A new volume is created with the snapshot's data.
+
+### Attach
+
+Attach the new volume to a VM as described above.
+
+</Steps>
+
+## Detaching and Deleting
+
+### Detach a Volume
+
+1. Go to the volume detail page
+2. Click **Detach**
+3. The volume is unmounted and disconnected from the VM
+
+### Delete a Volume
+
+1. Detach the volume first
+2. Click **Delete** on the volume detail page
+3. Confirm deletion
+
+<Callout type="warn">
+Deleting a volume permanently destroys all data. This action cannot be undone. Create a snapshot first if you may need the data later.
+</Callout>
+
+## Best Practices
+
+- **Name volumes descriptively** -- include the purpose and environment (e.g., `postgres-prod-data`)
+- **Snapshot before changes** -- always snapshot before OS upgrades or schema migrations
+- **Monitor disk usage** -- set alerts at 80% capacity to avoid out-of-space errors
+- **Use separate volumes for data** -- keep OS and application data on separate volumes for easier backups and migrations

@@ -1,5 +1,5 @@
 /**
- * @hanzo/zen-models — The single source of truth for the Zen model family.
+ * @zenlm/models — The single source of truth for the Zen model family.
  *
  * "There should be one — and preferably only one — obvious way to do it."
  *
@@ -19,13 +19,13 @@ export type {
   ModelStatus,
   ModelPricing,
   ModelSpec,
-} from './types.js'
+} from './types'
 
 // All models (named exports)
-export * from './models.js'
+export * from './models'
 
 // Model families
-export { families } from './families.js'
+export { families } from './families'
 
 // Pricing
 export {
@@ -35,4 +35,12 @@ export {
   compute,
   gpu,
   thirdPartyModels,
-} from './pricing.js'
+  fetchPricing,
+  fetchModelPricing,
+} from './pricing'
+
+export type {
+  PricingData,
+  PricingApiModel,
+  PricingApiThirdParty,
+} from './pricing'

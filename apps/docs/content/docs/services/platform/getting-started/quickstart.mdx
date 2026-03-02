@@ -1,0 +1,138 @@
+---
+title: Quickstart
+description: Deploy your first application in five minutes.
+---
+
+This guide walks you through signing up, connecting a cluster, and deploying
+an application. Total time: about five minutes.
+
+## Prerequisites
+
+- A [hanzo.id](https://hanzo.id) account (sign up is free)
+- One of: a Kubernetes cluster, Docker Swarm, or Docker Compose host
+- A Git repository or Docker image to deploy
+
+<Callout type="info">
+  No cluster yet? The platform can provision one on DigitalOcean or Hetzner
+  for you during setup.
+</Callout>
+
+## Deploy in Five Minutes
+
+<Steps>
+
+<Step>
+### Sign up and create an organization
+
+Go to [app.platform.hanzo.ai](https://app.platform.hanzo.ai) and sign in
+with your [hanzo.id](https://hanzo.id) account. Create a new organization
+to hold your projects, clusters, and team members.
+</Step>
+
+<Step>
+### Connect a cluster
+
+Navigate to **Clusters** and click **Add Cluster**. Choose your orchestrator:
+
+<Tabs items={["Kubernetes", "Docker Swarm", "Docker Compose"]}>
+<Tab value="Kubernetes">
+Run the agent install command on any machine with `kubectl` access:
+
+```bash
+hanzo cluster add --name my-cluster --type kubernetes
+```
+
+The command outputs a `kubectl apply` manifest that installs the Hanzo agent
+into the `hanzo-system` namespace. The agent connects outbound to the
+platform -- no inbound firewall rules needed.
+</Tab>
+
+<Tab value="Docker Swarm">
+On a Swarm manager node:
+
+```bash
+hanzo cluster add --name my-cluster --type swarm
+```
+
+The agent runs as a Swarm service and reports node/service state to the
+platform.
+</Tab>
+
+<Tab value="Docker Compose">
+On the target host:
+
+```bash
+hanzo cluster add --name my-cluster --type compose
+```
+
+The agent runs as a container alongside your Compose stacks.
+</Tab>
+</Tabs>
+
+Wait for the cluster status to show **Connected** in the dashboard.
+</Step>
+
+<Step>
+### Create a project
+
+Click **New Project**. Give it a name and select the cluster you just
+connected.
+
+A project groups related services, databases, and other resources under
+one roof. You can add multiple environments (dev, staging, production) later.
+</Step>
+
+<Step>
+### Deploy your application
+
+Choose your deployment source:
+
+<Tabs items={["Git Repository", "Docker Image"]}>
+<Tab value="Git Repository">
+1. Click **Add Service** and select **Git**.
+2. Connect your GitHub, GitLab, or Bitbucket account.
+3. Pick the repository and branch.
+4. The platform auto-detects your `Dockerfile` (or you can specify a
+   Buildpack). Every push to the branch triggers a build and deploy.
+
+```bash
+git push origin main
+# Platform builds and deploys automatically
+```
+</Tab>
+
+<Tab value="Docker Image">
+1. Click **Add Service** and select **Docker Image**.
+2. Enter the image reference, e.g. `ghcr.io/yourorg/app:latest`.
+3. If the registry is private, add credentials under **Settings > Registries**.
+4. Click **Deploy**.
+
+```bash
+# Or deploy from the CLI
+hanzo deploy --project my-project --image ghcr.io/yourorg/app:latest
+```
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Verify the deployment
+
+Open the service in the dashboard to see real-time logs and status. Once
+the health check passes, your app is live.
+
+```bash
+# Or check from the terminal
+hanzo logs --project my-project --service app --follow
+```
+</Step>
+
+</Steps>
+
+## What's Next
+
+- [Key Concepts](/docs/services/platform/getting-started/concepts) -- Deeper look at orgs,
+  projects, environments, and clusters.
+- [CLI Reference](/docs/services/platform/getting-started/cli) -- Full list of CLI commands.
+- [Deployments](/docs/services/platform/deployments) -- Advanced deployment strategies,
+  rollbacks, and scaling.

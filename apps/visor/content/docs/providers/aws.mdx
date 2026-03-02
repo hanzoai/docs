@@ -1,0 +1,106 @@
+---
+title: "AWS"
+description: "Deploy VMs on Amazon Web Services via Hanzo Visor"
+---
+
+Hanzo Visor integrates with AWS EC2 to let you launch and manage instances through the unified Visor API.
+
+## Connecting AWS
+
+1. Create an IAM user or role with the following permissions:
+   - `ec2:*` (EC2 full access)
+   - `elasticblockstore:*` (EBS volumes)
+   - `vpc:Describe*` (VPC read access)
+
+2. Generate an access key and secret key
+
+3. In the Visor dashboard, go to **Settings > Providers > AWS** and enter your credentials
+
+```bash
+curl -X POST https://api.visor.hanzo.ai/v1/providers \
+  -H "Authorization: Bearer $VISOR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "aws",
+    "credentials": {
+      "access_key_id": "AKIA...",
+      "secret_access_key": "..."
+    },
+    "default_region": "us-east-1"
+  }'
+```
+
+## Available regions
+
+Visor supports all AWS regions. Common choices:
+
+| Region | Location |
+|--------|----------|
+| `us-east-1` | N. Virginia |
+| `us-west-2` | Oregon |
+| `eu-west-1` | Ireland |
+| `eu-central-1` | Frankfurt |
+| `ap-southeast-1` | Singapore |
+| `ap-northeast-1` | Tokyo |
+
+## Instance sizes
+
+Visor maps its standard sizes to AWS instance types:
+
+| Visor Size | AWS Instance | vCPU | RAM | Storage |
+|-----------|-------------|------|-----|---------|
+| `nano` | t3.micro | 1 | 1 GB | 25 GB EBS |
+| `starter` | t3.small | 1 | 2 GB | 50 GB EBS |
+| `standard` | t3.medium | 2 | 4 GB | 80 GB EBS |
+| `performance` | t3.xlarge | 4 | 8 GB | 160 GB EBS |
+| `premium` | c6i.xlarge | 4 | 8 GB | 200 GB EBS |
+| `power` | c6i.2xlarge | 4 | 16 GB | 320 GB EBS |
+
+## Creating a VM on AWS
+
+```bash
+curl -X POST https://api.visor.hanzo.ai/v1/vms \
+  -H "Authorization: Bearer $VISOR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "prod-api-01",
+    "provider": "aws",
+    "region": "us-east-1",
+    "size": "standard",
+    "image": "ubuntu-24.04",
+    "ssh_keys": ["key_abc123"],
+    "vpc_id": "vpc-xxx",
+    "tags": {
+      "env": "production",
+      "team": "backend"
+    }
+  }'
+```
+
+## AWS-specific options
+
+When targeting AWS, you can pass additional provider-specific options:
+
+```json
+{
+  "provider_options": {
+    "subnet_id": "subnet-xxx",
+    "security_group_ids": ["sg-xxx"],
+    "iam_instance_profile": "my-role",
+    "ebs_optimized": true,
+    "spot": false
+  }
+}
+```
+
+## EBS Volumes
+
+Block storage on AWS uses EBS. See [Volumes](/docs/features/volumes) for the unified API. AWS-specific volume types:
+
+- `gp3` (default) -- General purpose SSD
+- `io2` -- Provisioned IOPS SSD
+- `st1` -- Throughput optimized HDD
+
+## Networking
+
+By default, Visor creates VMs in your default VPC. You can specify a VPC, subnet, and security groups in the request. Visor will automatically assign a public IP unless you set `"public_ip": false`.

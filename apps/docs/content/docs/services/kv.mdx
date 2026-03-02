@@ -1,0 +1,516 @@
+---
+title: Hanzo KV
+description: Redis/Valkey-compatible in-memory key-value store with pub/sub, streams, Lua scripting, and cluster mode.
+---
+
+# Hanzo KV
+
+Hanzo KV is a managed, Redis/Valkey-compatible in-memory key-value store providing sub-millisecond reads and writes, pub/sub messaging, stream processing, and rich data structures. It speaks the Redis wire protocol (RESP3), so any Redis or Valkey client works out of the box.
+
+**Endpoint:** `kv.hanzo.ai`
+**Gateway:** `api.hanzo.ai/v1/kv/*`
+**Protocol:** Redis wire protocol (RESP2/RESP3) on port `6379`
+
+## Features
+
+- **In-Memory Key-Value Storage** -- Sub-millisecond GET/SET with optional TTL-based expiration
+- **Rich Data Structures** -- Strings, hashes, lists, sets, sorted sets, bitmaps, HyperLogLog, geospatial indexes
+- **Pub/Sub Messaging** -- Channel-based and pattern-based publish/subscribe for real-time event fanout
+- **Streams** -- Append-only log with consumer groups for reliable event processing
+- **Lua Scripting** -- Server-side scripting via EVAL/EVALSHA for atomic multi-step operations
+- **Cluster Mode** -- Horizontal sharding across nodes with automatic slot migration
+- **Persistence** -- RDB snapshots and AOF (append-only file) journaling for durability
+- **TLS Encryption** -- In-transit encryption for all client and cluster connections
+- **ACL-Based Access Control** -- Per-user command and key-pattern restrictions
+- **Wire Compatible** -- Drop-in replacement for Redis 7.x and Valkey 8.x clients
+
+## Architecture
+
+```
++----------------------------------------------------------------+
+|                         HANZO KV                                |
++----------------------------------------------------------------+
+|                                                                 |
+|  +-------------------+  +--------------------+  +------------+  |
+|  |    Data Engine     |  |     Pub/Sub        |  |  Streams   |  |
+|  |  +------+  +----+  |  |  +--------+        |  | +--------+ |  |
+|  |  |String|  |Hash|  |  |  |Channel |        |  | |Consumer| |  |
+|  |  +------+  +----+  |  |  +--------+        |  | | Groups | |  |
+|  |  +------+  +----+  |  |  +--------+        |  | +--------+ |  |
+|  |  | List |  | Set|  |  |  |Pattern |        |  |            |  |
+|  |  +------+  +----+  |  |  +--------+        |  |            |  |
+|  |  +------+  +----+  |  +--------------------+  +------------+  |
+|  |  |ZSet  |  | Geo|  |                                         |
+|  |  +------+  +----+  |  +--------------------+  +------------+  |
+|  +-------------------+  |     Lua Engine       |  | Cluster    |  |
+|                          |  EVAL / EVALSHA      |  | Slot Mgmt  |  |
+|  +-------------------+  +--------------------+  +------------+  |
+|  |   Persistence      |                                         |
+|  |  RDB + AOF         |  +------------------------------------+ |
+|  +-------------------+  |  ACL  |  TLS  |  Replication        | |
+|                          +------------------------------------+ |
++----------------------------------------------------------------+
+```
+
+### Internal Services That Use Hanzo KV
+
+| Service | Env Var | Purpose |
+|---------|---------|---------|
+| Commerce | `VALKEY_ADDR`, `VALKEY_PASSWORD` | Session cache, rate limiting, cart state |
+| Chat | `REDIS_URL` | Conversation cache, presence, pub/sub |
+| Console | `REDIS_URL` | Job queues (Hanzo MQ), session store |
+| Gateway | `REDIS_URL` | Rate limiting, API key cache, token bucket |
+
+## Quick Start
+
+### redis-cli
+
+Connect directly using any Redis-compatible CLI.
+
+```bash
+# Connect to Hanzo KV
+redis-cli -h kv.hanzo.ai -p 6379 -a "$VALKEY_PASSWORD" --tls
+
+# Basic operations
+SET session:abc '{"user":"alice","role":"admin"}' EX 3600
+GET session:abc
+DEL session:abc
+
+# Check latency
+redis-cli -h kv.hanzo.ai --tls -a "$VALKEY_PASSWORD" --latency
+```
+
+### Python
+
+```python
+import redis
+
+kv = redis.Redis(
+    host="kv.hanzo.ai",
+    port=6379,
+    password=VALKEY_PASSWORD,
+    ssl=True,
+    decode_responses=True,
+)
+
+# String with TTL
+kv.set("user:1001:token", "tok_abc123", ex=3600)
+token = kv.get("user:1001:token")
+
+# Hash
+kv.hset("user:1001", mapping={
+    "name": "Alice",
+    "email": "alice@example.com",
+    "plan": "pro",
+})
+user = kv.hgetall("user:1001")
+
+# Sorted set (leaderboard)
+kv.zadd("leaderboard", {"alice": 9500, "bob": 8700, "carol": 9200})
+top3 = kv.zrevrange("leaderboard", 0, 2, withscores=True)
+
+# Pipeline for batch operations
+pipe = kv.pipeline()
+pipe.incr("stats:requests")
+pipe.incr("stats:tokens_used", amount=150)
+pipe.expire("stats:requests", 86400)
+pipe.execute()
+```
+
+### Node.js
+
+```typescript
+import { createClient } from 'redis'
+
+const kv = createClient({
+  url: `rediss://:${process.env.VALKEY_PASSWORD}@kv.hanzo.ai:6379`,
+})
+await kv.connect()
+
+// String with TTL
+await kv.set('session:xyz', JSON.stringify({ userId: '1001' }), { EX: 3600 })
+const session = JSON.parse(await kv.get('session:xyz') ?? '{}')
+
+// Hash
+await kv.hSet('config:app', {
+  maxRetries: '3',
+  timeout: '5000',
+  region: 'us-east-1',
+})
+const config = await kv.hGetAll('config:app')
+
+// Sorted set
+await kv.zAdd('queue:priority', [
+  { score: 1, value: 'job:low' },
+  { score: 10, value: 'job:high' },
+  { score: 5, value: 'job:medium' },
+])
+const next = await kv.zPopMax('queue:priority')
+
+await kv.disconnect()
+```
+
+### Go
+
+```go
+package main
+
+import (
+    "context"
+    "crypto/tls"
+    "fmt"
+    "time"
+
+    "github.com/redis/go-redis/v9"
+)
+
+func main() {
+    ctx := context.Background()
+
+    kv := redis.NewClient(&redis.Options{
+        Addr:      "kv.hanzo.ai:6379",
+        Password:  os.Getenv("VALKEY_PASSWORD"),
+        TLSConfig: &tls.Config{MinVersion: tls.VersionTLS12},
+    })
+    defer kv.Close()
+
+    // String with TTL
+    kv.Set(ctx, "cache:result:42", `{"answer":42}`, 10*time.Minute)
+    val, _ := kv.Get(ctx, "cache:result:42").Result()
+    fmt.Println(val)
+
+    // Hash
+    kv.HSet(ctx, "user:1001", map[string]interface{}{
+        "name":  "Alice",
+        "email": "alice@example.com",
+    })
+    name, _ := kv.HGet(ctx, "user:1001", "name").Result()
+    fmt.Println(name)
+
+    // Atomic increment
+    kv.IncrBy(ctx, "api:calls:today", 1)
+}
+```
+
+## Data Types
+
+### Strings
+
+The simplest type. Stores text, serialized JSON, or binary data up to 512 MB.
+
+```bash
+SET key value [EX seconds] [PX milliseconds] [NX|XX]
+GET key
+MSET key1 val1 key2 val2
+MGET key1 key2
+INCR counter
+INCRBY counter 10
+APPEND key " more data"
+```
+
+### Hashes
+
+Maps of field-value pairs. Ideal for objects.
+
+```bash
+HSET user:1001 name "Alice" email "alice@example.com" plan "pro"
+HGET user:1001 name
+HGETALL user:1001
+HDEL user:1001 plan
+HINCRBY user:1001 credits 100
+```
+
+### Lists
+
+Ordered sequences with O(1) push/pop at both ends.
+
+```bash
+LPUSH queue:jobs '{"type":"inference","model":"qwen3-32b"}'
+RPOP queue:jobs
+LRANGE queue:jobs 0 -1
+LLEN queue:jobs
+BRPOP queue:jobs 30          # Blocking pop with 30s timeout
+```
+
+### Sets
+
+Unordered collections of unique strings.
+
+```bash
+SADD tags:post:42 "ai" "ml" "llm"
+SMEMBERS tags:post:42
+SISMEMBER tags:post:42 "ai"
+SINTER tags:post:42 tags:post:43    # Intersection
+SUNION tags:post:42 tags:post:43    # Union
+```
+
+### Sorted Sets
+
+Sets ordered by a floating-point score. Used for leaderboards, priority queues, and time-series indexes.
+
+```bash
+ZADD leaderboard 9500 "alice" 8700 "bob" 9200 "carol"
+ZREVRANGE leaderboard 0 2 WITHSCORES   # Top 3
+ZRANK leaderboard "bob"                 # Rank (0-indexed)
+ZRANGEBYSCORE leaderboard 9000 +inf     # Score range query
+ZINCRBY leaderboard 300 "bob"           # Increment score
+```
+
+### Streams
+
+Append-only log for event sourcing and message processing with consumer groups.
+
+```bash
+# Produce
+XADD events:orders * action "created" orderId "ord_123" total "99.00"
+
+# Consume (simple)
+XRANGE events:orders - + COUNT 10
+
+# Consumer group
+XGROUP CREATE events:orders workers $ MKSTREAM
+XREADGROUP GROUP workers worker-1 COUNT 5 BLOCK 2000 STREAMS events:orders >
+XACK events:orders workers 1234567890-0
+```
+
+## Pub/Sub
+
+Hanzo KV provides channel-based and pattern-based pub/sub for real-time messaging between services.
+
+### Channel Subscribe
+
+```python
+import redis
+
+kv = redis.Redis(host="kv.hanzo.ai", port=6379, password=VALKEY_PASSWORD, ssl=True)
+pubsub = kv.pubsub()
+pubsub.subscribe("events:orders")
+
+for message in pubsub.listen():
+    if message["type"] == "message":
+        print(f"Received: {message['data']}")
+```
+
+### Pattern Subscribe
+
+```python
+# Subscribe to all events channels
+pubsub.psubscribe("events:*")
+
+for message in pubsub.listen():
+    if message["type"] == "pmessage":
+        channel = message["channel"]
+        data = message["data"]
+        print(f"{channel}: {data}")
+```
+
+### Publish
+
+```python
+# From any connected client
+kv.publish("events:orders", '{"action":"created","orderId":"ord_456"}')
+```
+
+### Pub/Sub in Node.js
+
+```typescript
+import { createClient } from 'redis'
+
+const subscriber = createClient({
+  url: `rediss://:${process.env.VALKEY_PASSWORD}@kv.hanzo.ai:6379`,
+})
+await subscriber.connect()
+
+await subscriber.subscribe('events:orders', (message) => {
+  const event = JSON.parse(message)
+  console.log('Order event:', event)
+})
+```
+
+## Lua Scripting
+
+Execute atomic server-side logic with `EVAL`. The script runs as a single command -- no other client can interleave operations.
+
+```bash
+# Atomic rate limiter: increment and set TTL if new
+EVAL "
+  local current = redis.call('INCR', KEYS[1])
+  if current == 1 then
+    redis.call('EXPIRE', KEYS[1], ARGV[1])
+  end
+  return current
+" 1 ratelimit:user:1001 60
+```
+
+```python
+# Python: load script for repeated use
+rate_limit_script = kv.register_script("""
+local current = redis.call('INCR', KEYS[1])
+if current == 1 then
+    redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1]))
+end
+if current > tonumber(ARGV[2]) then
+    return 0
+end
+return 1
+""")
+
+# Returns 1 if allowed, 0 if rate limited
+allowed = rate_limit_script(keys=["ratelimit:api:user:1001"], args=[60, 100])
+```
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# Connection (plain host:port format, not a URI)
+VALKEY_ADDR=kv.hanzo.ai:6379
+VALKEY_PASSWORD=your-secret-password
+
+# Alternative Redis-style URI (used by some services)
+REDIS_URL=rediss://:your-secret-password@kv.hanzo.ai:6379
+
+# TLS (enabled by default on managed instances)
+VALKEY_TLS=true
+
+# Database index (0-15, default 0)
+VALKEY_DB=0
+```
+
+### Connection Formats
+
+Different Hanzo services expect different formats. Use the correct one for each.
+
+| Service | Env Var | Format | Example |
+|---------|---------|--------|---------|
+| Commerce | `VALKEY_ADDR` | `host:port` | `kv.hanzo.ai:6379` |
+| Commerce | `VALKEY_PASSWORD` | plain string | `your-secret-password` |
+| Chat | `REDIS_URL` | URI | `rediss://:pass@kv.hanzo.ai:6379` |
+| Console | `REDIS_URL` | URI | `rediss://:pass@kv.hanzo.ai:6379` |
+| Gateway | `REDIS_URL` | URI | `rediss://:pass@kv.hanzo.ai:6379` |
+
+**Important:** Commerce uses go-redis, which requires plain `host:port` in `VALKEY_ADDR` -- not a URI. Other services using ioredis or the `redis` Python/Node packages accept full URIs.
+
+### Persistence
+
+Hanzo KV supports two persistence mechanisms that can run independently or together.
+
+| Mode | Description | Trade-off |
+|------|-------------|-----------|
+| **RDB** | Point-in-time snapshots at configurable intervals | Fast restarts, possible data loss between snapshots |
+| **AOF** | Append-only file logging every write | Minimal data loss, larger disk usage |
+| **RDB + AOF** | Both active (recommended) | Best durability with fast restart |
+
+```bash
+# RDB: snapshot every 60s if >= 1000 keys changed
+save 60 1000
+
+# AOF: fsync every second (balance of safety and performance)
+appendonly yes
+appendfsync everysec
+```
+
+### ACL (Access Control Lists)
+
+Restrict commands and key patterns per user.
+
+```bash
+# Create a read-only user for analytics
+ACL SETUSER analytics on >analytics-secret ~stats:* ~metrics:* +get +mget +hgetall +zrange -@write
+
+# Create a user limited to pub/sub
+ACL SETUSER subscriber on >sub-secret ~events:* +subscribe +psubscribe -@write -@read
+
+# List users
+ACL LIST
+```
+
+### Cluster Mode
+
+For datasets exceeding single-node memory or requiring higher throughput.
+
+```bash
+# Cluster info
+redis-cli -h kv.hanzo.ai --tls -a "$VALKEY_PASSWORD" CLUSTER INFO
+
+# Key slot lookup
+redis-cli -h kv.hanzo.ai --tls -a "$VALKEY_PASSWORD" CLUSTER KEYSLOT "user:1001"
+```
+
+When using cluster mode, use cluster-aware clients:
+
+```python
+from redis.cluster import RedisCluster
+
+kv = RedisCluster(
+    host="kv.hanzo.ai",
+    port=6379,
+    password=VALKEY_PASSWORD,
+    ssl=True,
+)
+```
+
+## Monitoring
+
+### Built-in Commands
+
+```bash
+# Server info
+redis-cli -h kv.hanzo.ai --tls -a "$VALKEY_PASSWORD" INFO
+
+# Memory usage
+redis-cli -h kv.hanzo.ai --tls -a "$VALKEY_PASSWORD" INFO memory
+
+# Connected clients
+redis-cli -h kv.hanzo.ai --tls -a "$VALKEY_PASSWORD" CLIENT LIST
+
+# Slow query log
+redis-cli -h kv.hanzo.ai --tls -a "$VALKEY_PASSWORD" SLOWLOG GET 10
+
+# Key count per database
+redis-cli -h kv.hanzo.ai --tls -a "$VALKEY_PASSWORD" DBSIZE
+```
+
+### Key Metrics
+
+| Metric | Command | Healthy Range |
+|--------|---------|---------------|
+| Used memory | `INFO memory` | < 80% of maxmemory |
+| Connected clients | `INFO clients` | < max configured |
+| Ops/sec | `INFO stats` | Baseline-dependent |
+| Hit rate | `INFO stats` (keyspace_hits / total) | > 90% for caches |
+| Evicted keys | `INFO stats` | 0 for non-cache workloads |
+
+## Best Practices
+
+1. **Use key namespaces.** Prefix keys with `service:entity:id` (e.g., `commerce:session:abc`, `chat:presence:user:1001`).
+
+2. **Always set TTLs on cache keys.** Prevent unbounded memory growth.
+
+3. **Use pipelines for batch operations.** Reduces round-trip latency by 10-100x for multi-key operations.
+
+4. **Prefer hashes over serialized JSON** when you need to read/write individual fields.
+
+5. **Use Lua scripts for atomic multi-step logic.** Avoids race conditions without client-side locking.
+
+6. **Monitor memory and eviction.** Set `maxmemory-policy` to `allkeys-lru` for caches, `noeviction` for persistent data.
+
+7. **Separate concerns with database indexes** or key prefixes. Use DB 0 for cache, DB 1 for sessions, etc.
+
+## Related Services
+
+<Cards>
+  <Card title="MQ" href="/docs/services/mq">
+    Message queues and durable pub/sub with Hanzo PubSub.
+  </Card>
+  <Card title="DB" href="/docs/services/db">
+    Serverless PostgreSQL for relational data and persistence.
+  </Card>
+  <Card title="Commerce" href="/docs/services/commerce">
+    E-commerce platform using Hanzo KV for sessions and caching.
+  </Card>
+  <Card title="Chat" href="/docs/services/chat">
+    AI chat using Hanzo KV for presence and conversation cache.
+  </Card>
+</Cards>
