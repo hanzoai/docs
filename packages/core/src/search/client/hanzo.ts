@@ -4,7 +4,7 @@ export interface HanzoSearchOptions {
   /**
    * The Hanzo Search API endpoint.
    *
-   * @defaultValue 'https://api.cloud.hanzo.ai/api/search-docs'
+   * @defaultValue 'https://cloud-api.hanzo.ai/api/search-docs'
    */
   endpoint?: string;
 
@@ -54,7 +54,7 @@ export async function searchDocs(
   options: HanzoSearchOptions,
 ): Promise<SortedResult[]> {
   const {
-    endpoint = 'https://api.cloud.hanzo.ai/api/search-docs',
+    endpoint = 'https://cloud-api.hanzo.ai/api/search-docs',
     apiKey,
     tag,
     mode = 'hybrid',
