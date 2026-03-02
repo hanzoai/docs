@@ -33,36 +33,46 @@ The key observation: most variants share an identical base model. The behavioral
 **Paper** : arXiv:2402.10193
 
 BitDelta decomposes a fine-tuned weight matrix as:
-[code]
+```
+
     W_ft = W_base + Δ
     
-[/code]
+
+```
 
 and approximates the delta with 1-bit quantization:
-[code]
+```
+
     Δ ≈ α · sign(Δ)
     
-[/code]
+
+```
 
 where the scale factor α is the mean absolute value of the delta entries:
-[code]
+```
+
     α = (1/n) Σ |Δ_ij|
     
-[/code]
+
+```
 
 This is a single scalar per weight matrix. The sign matrix is 1-bit per element. Total storage for the delta: n bits + 1 float32. For a 4096×4096 weight matrix, that is 16MB → 2MB. For the full zen-max 72B delta, the storage requirement drops from ~144GB to ~9GB.
 
 Why does 1-bit sign quantization work? The delta values in fine-tuned LLMs follow a near-Laplace distribution centered at zero. The signs carry the directional information; the scale α captures the magnitude. The residual error:
-[code]
+```
+
     ε = Δ - α · sign(Δ)
     
-[/code]
+
+```
 
 has bounded expected squared norm:
-[code]
+```
+
     E[||ε||²] ≤ (1 - 2/π) · ||Δ||²  ≈ 0.36 · ||Δ||²
     
-[/code]
+
+```
 
 In practice (and this is the empirical surprise), the effective error on model outputs is far smaller than this bound suggests, because the residuals are uncorrelated with the task-relevant signal directions. The model’s behavioral accuracy degrades gracefully rather than catastrophically.
 
@@ -74,10 +84,9 @@ The critical implementation detail is efficiency. Reconstructing `W_ft = W_base 
   2. Unpack and scale: `delta_row = alpha * sign_bits.float() * 2 - 1`
   3. Add to base weight tile in shared memory before GEMM
 
-
-
 The result: delta reconstruction adds less than 1ms overhead per forward pass on an A100. In practice the overhead is dominated by memory bandwidth to load the sign bits, which at 1/16th the size of the base weight tensor is negligible.
-[code]
+```python
+
     import torch
     
     def compress_delta(W_ft: torch.Tensor, W_base: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
@@ -102,7 +111,8 @@ The result: delta reconstruction adds less than 1ms overhead per forward pass on
             'compression_ratio': full_bytes / bitdelta_bytes,
         }
     
-[/code]
+
+```
 
 ## Quality Results
 
@@ -125,10 +135,12 @@ Average behavioral retention: **99.3%**. The 0.7% average degradation is below t
 BitDelta works well when the delta is well-behaved (small, distributed, near-Laplace). Some fine-tuned checkpoints — particularly those from aggressive few-shot fine-tuning or noisy datasets — produce deltas that are large and spiky. In these cases, 1-bit quantization introduces perceptible degradation.
 
 MonoSoup provides a complementary approach: instead of compressing the delta, decompose the full fine-tuned weight via SVD and keep only the top-k singular triplets:
-[code]
+```
+
     W_ft ≈ U_k Σ_k V_k^T
     
-[/code]
+
+```
 
 where k is chosen to keep 95% of the Frobenius norm. This is not a delta compression technique — it operates on the single fine-tuned checkpoint directly. But for weak checkpoints where BitDelta degrades, MonoSoup recovers up to 8% of the lost behavioral accuracy at comparable memory cost.
 
@@ -141,17 +153,20 @@ In our pipeline: we try BitDelta first. If behavioral retention falls below 98.5
 The cloud serving stack above does not address edge deployment. A local user running zen-nano on a 16GB laptop cannot afford a delta cache for 14 variants — even at 1-bit compression, storing all nano variants would consume significant RAM.
 
 K-Merge addresses this with an **online LoRA adapter pool under fixed storage budget**. The algorithm maintains a priority queue of adapters scored by utility:
-[code]
+```
+
     utility(adapter_i) = request_frequency(i) × behavioral_gain(i) / storage_cost(i)
     
-[/code]
+
+```
 
 When the budget is exceeded, the lowest-utility adapter is evicted. Utility scores are updated online using exponential decay, so recently used adapters are preferred over historical ones.
 
 For a 16GB laptop with 4GB allocated to the adapter pool, K-Merge keeps 6-8 zen-nano variants hot simultaneously, with eviction latency of ~200ms to load a new adapter from local disk.
 
 ## Full Zen Serving Stack
-[code]
+```
+
                         ┌──────────────────────────────┐
                         │      Request Router           │
                         │  (model ID → variant key)     │
@@ -180,7 +195,8 @@ For a 16GB laptop with 4GB allocated to the adapter pool, K-Merge keeps 6-8 zen-
                         │  (vLLM with continuous batch) │
                         └──────────────────────────────┘
     
-[/code]
+
+```
 
 The architecture keeps one base model loaded per GPU cluster. All variants share it. The delta cache fits in Redis (NVMe-backed), loading on demand in under 50ms. In practice, our top-5 variants stay hot in Redis memory; the remaining variants load from NVMe on first request.
 

@@ -13,13 +13,9 @@ author: "Zen LM Team"
 
 In recent months, our focus has been on developing a “good” model while optimizing the developer experience. As we progress towards **Qwen1.5** , the next iteration in our Qwen series, this update arrives just before the Chinese New Year.
 
-![](https://qianwen-res.oss-accelerate-overseas.aliyuncs.com/assets/blog/qwen1.5/intro.jpg#center)
-
 With Qwen1.5, we are open-sourcing base and chat models across six sizes: 0.5B, 1.8B, 4B, 7B, 14B, 32B, 72B, and 110B, and also an MoE model (see [blog](https://qwenlm.github.io/blog/qwen-moe/) for more information). In line with tradition, we’re also providing quantized models, including Int4 and Int8 GPTQ models, as well as AWQ and GGUF quantized models. To enhance the developer experience, we’ve merged Qwen1.5’s code into Hugging Face transformers, making it accessible with `transformers>=4.37.0` without needing `trust_remote_code`.
 
 We’ve collaborated with frameworks like [vLLM](https://vllm.readthedocs.io/), [SGLang](https://github.com/sgl-project/sglang) for deployment, [AutoAWQ](https://github.com/casper-hansen/AutoAWQ), [AutoGPTQ](https://github.com/AutoGPTQ/AutoGPTQ) for quantization, [Axolotl](https://github.com/OpenAccess-AI-Collective/axolotl), [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory) for finetuning, and [llama.cpp](https://github.com/ggerganov/llama.cpp) for local LLM inference, all of which now support Qwen1.5. The Qwen1.5 series is available on platforms such as [Ollama](https://ollama.ai/) and [LMStudio](https://lmstudio.ai/). Additionally, API services are offered not only on DashScope but also on [together.ai](https://together.ai/), with global accessibility. Visit [here](https://api.together.ai/) to get started, and we recommend trying out [Qwen1.5-72B-chat](https://api.together.xyz/playground/chat/Qwen/Qwen1.5-72B-Chat).
-
-![](https://qianwen-res.oss-accelerate-overseas.aliyuncs.com/assets/blog/qwen1.5/com.jpg#center)
 
 This release brings substantial improvements to the alignment of chat models with human preferences and enhanced multilingual capabilities. All models now uniformly support a context length of up to 32768 tokens. There have also been minor improvements in the quality of base language models that may benefit your finetuning endeavors. This step represents a small stride toward our objective of creating a truly “good” model.
 
@@ -70,8 +66,6 @@ Alignment aims to enhance instruction-following capabilities of LLMs and help pr
 
 However, assessing the quality of such chat models poses a significant challenge. Admittedly, while comprehensive human evaluation is the optimal approach, it faces significant challenges pertaining to scalability and reproducibility. Therefore, we initially evaluate our models on two widely-used benchmarks, utilizing advanced LLMs as judges: MT-Bench and Alpaca-Eval. The results are presented below:
 
-![](https://qianwen-res.oss-accelerate-overseas.aliyuncs.com/assets/blog/qwen1.5/sft.jpg#center)
-
 We notice there are non-negligible variance in the scores on MT-Bench. So we have three runs with different seeds in our results and we report the average score with standard deviation.
 
 Models| MT-Bench| AlpacaEval 2.0  
@@ -121,8 +115,6 @@ Qwen1.5-14B| 55.72| 74.10| 49.93| 31.69
 Qwen1.5-72B| 66.35| 78.16| 61.67| 35.57  
   
 The base models of Qwen1.5 showcase impressive multilingual capabilities, as demonstrated by its performance across a diverse set of 12 languages. In evaluations covering various dimensions such as exams, understanding, translation, and math, Qwen1.5 consistently delivers strong results. From languages like Arabic, Spanish, and French to Japanese, Korean, and Thai, Qwen1.5 demonstrates its ability to comprehend and generate high-quality content across different linguistic contexts. We compared Qwen1.5-72B-Chat with GPT-3.5, and the results are shown below:
-
-![](https://qianwen-res.oss-accelerate-overseas.aliyuncs.com/assets/blog/qwen1.5/lang.png#center)
 
 These results demonstrate the strong multilingual capabilities of Qwen1.5 chat models, which can serve downstream applications, such as translation, language understanding, and multilingual chat. Also, we believe that the improvements in multilingual capabilities can also level up the general capabilities.
 
@@ -228,17 +220,20 @@ Larger Qwen1.5-Chat models generally outperform smaller ones, nearing GPT-4’s 
 # Develop with Qwen1.5
 
 The biggest difference in Qwen1.5 is the integration of Qwen1.5 to Hugging Face transformers. Since 4.37.0, you can use Qwen1.5 without our custom code, which means that you can load the model like the following:
-[code]
+```python
+
     from transformers import AutoModelForCausalLM
     # This is what we previously used
     model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen-7B-Chat", device_map="auto", trust_remote_code=True)
     # This is what you can use now
     model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen1.5-7B-Chat", device_map="auto")
     
-[/code]
+
+```
 
 The usage of Qwen1.5 for chat is different from the previous version. You can use the following code to chat with Qwen1.5:
-[code]
+```python
+
     from transformers import AutoModelForCausalLM, AutoTokenizer
     device = "cuda" # the device to load the model onto
     
@@ -270,18 +265,22 @@ The usage of Qwen1.5 for chat is different from the previous version. You can us
     
     response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
     
-[/code]
+
+```
 
 For chat models, we no longer use a specific `model.chat()` method, but instead we use `model.generate()` with the chat template written in `tokenizer_config.json` so that we can use `tokenizer.apply_chat_template()` to generate the input, and we use `eos_token` to control when to stop the generation.
 
 We also provide AWQ models and GPTQ models (including Int4 and Int8 models) for you to use Qwen1.5 in low-resource or deployment scenarios. As Huggingface transformers supports [AWQ](https://github.com/casper-hansen/AutoAWQ) and [GPTQ](https://github.com/AutoGPTQ/AutoGPTQ), you can use them in the same way above only with the corresponding model names.
 
 Furthermore, we have integrated our code to popular inference frameworks so that you can deploy your model easily. Now `vLLM>=0.3.0` and `SGLang>=0.1.11` officially support Qwen1.5. Check their official github repos and docs to learn about the detailed usage. Here we demonstrate an example to show how to use vLLM to build an OpenAI-API compatible interface for our model:
-[code]
+```
+
     python -m vllm.entrypoints.openai.api_server --model Qwen/Qwen1.5-7B-Chat
     
-[/code]
-[code]
+
+```
+```bash
+
     curl http://localhost:8000/v1/chat/completions \
         -H "Content-Type: application/json" \
         -d '{
@@ -292,19 +291,24 @@ Furthermore, we have integrated our code to popular inference frameworks so that
         ]
         }'
     
-[/code]
+
+```
 
 For users to run LLM locally, llama.cpp also provides support to Qwen1.5, and we officially provide quantized models in the GGUF format in our HF model hub. You can use the following code to run Qwen1.5 in llama.cpp:
-[code]
+```
+
     ./main -m qwen1.5-7b-chat-q2_k.gguf -n 512 --color -i -cml -f prompts/chat-with-qwen.txt
     
-[/code]
+
+```
 
 Besides, you can use the GGUF file with Ollama. Thanks to the support of [Ollama](https://ollama.ai/), you can now directly use one line of command:
-[code]
+```
+
     ollama run qwen
     
-[/code]
+
+```
 
 Or you can use the GGUF file to play with [llamafile](https://github.com/Mozilla-Ocho/llamafile) to run our models with a single file.
 
@@ -321,7 +325,8 @@ Overall, as we care about your developing experience, we not only have tried our
 We are excited to introduce Qwen1.5, the next version of our Qwen series. In this release, we have opensourced both base and chat models of 6 sizes, including 0.5B, 1.8B, 4B, 7B, 14B, and 72B, and we have also provided quantized models. We have merged our code of Qwen1.5 to Hugging face transformers, and you can directly use it with `transformers>=4.37.0` without `trust_remote_code`. Additionally, we have had frameworks, e.g., vLLM, SGLang, AutoGPTQ, etc., supported Qwen1.5. We believe from now on, using our models will be much easier. We believe that this release is though a small step towards model quality, but it is a big step towards developer experience. Hope you like it and enjoy using it. Join our [Discord](https://discord.gg/yPEP2vHTu4) or [WeChat](https://github.com/QwenLM/Qwen/blob/main/assets/wechat.png) to share your experience, comments, or whatever you like with us. We are looking forward to hearing from you.
 
 # Citation
-[code]
+```
+
     @misc{qwen1.5,
         title = {Introducing Qwen1.5},
         url = {https://qwenlm.github.io/blog/qwen1.5/},
@@ -330,4 +335,5 @@ We are excited to introduce Qwen1.5, the next version of our Qwen series. In thi
         year = {2024}
     }
     
-[/code]
+
+```
