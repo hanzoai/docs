@@ -1,5 +1,5 @@
 import env from '@next/env';
-import { updateSearchIndexes } from './update-orama-index';
+import { updateSearchIndexes } from './update-hanzo-index';
 
 env.loadEnvConfig(process.cwd());
 
