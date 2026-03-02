@@ -132,7 +132,7 @@ export default function HomePage() {
             <div className="rounded-xl border border-fd-border bg-fd-background/60 p-4">
               <div className="text-xs font-semibold text-fd-primary mb-1">Zen MoDE Architecture</div>
               <p className="text-xs text-fd-muted-foreground leading-relaxed">
-                Mixture of Diverse Experts — 2T+ parameters, 2M+ context. Expert populations trained across diverse specializations for broad capability.
+                The largest open-source LLM ever built. Zen MoDE — Mixture of Diverse Experts — training now on Hanzo Network.
               </p>
             </div>
             <div className="rounded-xl border border-fd-border bg-fd-background/60 p-4">

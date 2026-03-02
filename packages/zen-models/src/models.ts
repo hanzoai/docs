@@ -4,8 +4,8 @@
  * Every Hanzo site (hanzo.ai, hanzo.industries, zenlm.org, etc.) imports from here.
  * Never duplicate model specs elsewhere.
  *
- * Zen MoDE (Mixture of Distilled Experts) — curating the best open-source
- * foundations and fusing them into a unified, high-performance family.
+ * Zen MoDE (Mixture of Diverse Experts) — Zen 5 architecture with deliberately
+ * diverse expert specializations for maximum coverage at efficient per-token compute.
  */
 
 import type { ZenModel } from './types'
