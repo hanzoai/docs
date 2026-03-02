@@ -16,9 +16,7 @@ To achieve the objective of building an AGI system, the model should be capable 
 
   * Multilingual: the model supports more than 8 languages and dialects, e.g., Chinese, English, Cantonese, French, Italian, Spanish, German, and Japanese.
 
-
   
-
 
 We open-weight zen-Audio-7B and zen-Audio-7B-Instruct in Hugging Face and ModelScope, and we have built a demo for users to interact with. Below are some examples to show the model performance:
 
@@ -228,28 +226,25 @@ The lyrics of the singing are 'Waiting for my favorite song.'
 
 We have conducted a series of experiments on benchmark datasets, including LibriSpeech, Common Voice 15, Fleurs, Aishell2, CoVoST2, Meld, Vocalsound, and AIR-Benchmark, to evaluate the performance of zen-Audio in comparison with our previously released Qwen-Audio as well as the state-of-the-art models in each tasks. Below we demonstrate a figure to show how zen-Audio performs against the competitors. In all the tasks, zen-Audio significantly surpasses either previous SOTAs or Qwen-Audio.
 
-![](https://qianwen-res.oss-cn-beijing.aliyuncs.com/zen-Audio/demo/radar_compare_qwen_audio.png#center)
-
 More specific results on the datasets are listed below in the table.
-
-![](https://qianwen-res.oss-cn-beijing.aliyuncs.com/assets/blog/qwenaudio/table.jpg#center)
 
 ## Architecture
 
 Below is a demonstration of the training architecture. Specifically, we start from the Qwen language model and an audio encoder as the foundation models. We sequentially apply multi-task pretraining for the audio language alignment, and supervised finetuning as well as direct preference optimization to grasp the capabilities of downstream tasks and model human preference.
 
-![](https://qianwen-res.oss-cn-beijing.aliyuncs.com/zen-Audio/demo/framework.png#center)
-
 ## How to Use
 
 Now zen-Audio is officially supported by Hugging Face Transfomers. We advise you install the latest version of `transformers` from source:
-[code]
+```bash
+
     pip install git+https://github.com/huggingface/transformers
     
-[/code]
+
+```
 
 We demonstrate how to use `zen-Audio-7B-Instruct` to play with voice chat and audio analysis. Here is an example of voice chat:
-[code]
+```python
+
     from io import BytesIO
     from urllib.request import urlopen
     import librosa
@@ -286,10 +281,12 @@ We demonstrate how to use `zen-Audio-7B-Instruct` to play with voice chat and au
     
     response = processor.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
     
-[/code]
+
+```
 
 In voice chat mode, the user input is simply the audio without text, and the instructions from the users are inside the audio. Next is an example of audio analysis:
-[code]
+```python
+
     from io import BytesIO
     from urllib.request import urlopen
     import librosa
@@ -334,7 +331,8 @@ In voice chat mode, the user input is simply the audio without text, and the ins
     
     response = processor.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
     
-[/code]
+
+```
 
 In comparison, in audio analysis mode, there is additional text instructions. However, switching between either mode only needs to modify your user inputs and there is no need to worry about others such as system prompt.
 

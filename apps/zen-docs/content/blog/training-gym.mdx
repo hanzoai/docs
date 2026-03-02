@@ -18,12 +18,11 @@ Open AI development faces an infrastructure gap. Publishing model weights is val
   * Experiment management
   * Data processing tools
 
-
-
 Training Gym provides all of this in an integrated, open source package.
 
 ## Architecture
-[code]
+```
+
     +------------------+     +------------------+     +------------------+
     |   Data Pipeline  | --> |  Training Loop   | --> |   Evaluation     |
     +------------------+     +------------------+     +------------------+
@@ -39,7 +38,8 @@ Training Gym provides all of this in an integrated, open source package.
                         |   Tracker        |
                         +------------------+
     
-[/code]
+
+```
 
 ### Data Pipeline
 
@@ -50,8 +50,8 @@ The data pipeline handles:
   * **Mixing** : Combine multiple data sources with configurable ratios
   * **Streaming** : Memory-efficient data loading for large corpora
 
+```python
 
-[code]
     from training_gym.data import DataPipeline, MixedDataset
     
     pipeline = DataPipeline(
@@ -66,7 +66,8 @@ The data pipeline handles:
     
     dataset = pipeline.build()
     
-[/code]
+
+```
 
 ### Distributed Training
 
@@ -78,10 +79,9 @@ Training Gym supports multiple distributed training strategies:
   * **ZeRO** : Memory-efficient data parallelism
   * **FSDP** : Fully sharded data parallel (PyTorch native)
 
-
-
 Configuration is declarative:
-[code]
+```
+
     distributed:
       strategy: fsdp
       world_size: 64
@@ -89,12 +89,14 @@ Configuration is declarative:
       mixed_precision: bf16
       gradient_checkpointing: true
     
-[/code]
+
+```
 
 ### Training Loop
 
 The training loop is modular and extensible:
-[code]
+```python
+
     from training_gym import Trainer, TrainingConfig
     
     config = TrainingConfig(
@@ -110,7 +112,8 @@ The training loop is modular and extensible:
     trainer = Trainer(config)
     trainer.fit(dataset)
     
-[/code]
+
+```
 
 Built-in features:
 
@@ -120,12 +123,11 @@ Built-in features:
   * Automatic checkpointing
   * Loss spike detection and recovery
 
-
-
 ### Evaluation
 
 Standardized evaluation across common benchmarks:
-[code]
+```python
+
     from training_gym.eval import Evaluator
     
     evaluator = Evaluator(
@@ -135,7 +137,8 @@ Standardized evaluation across common benchmarks:
     
     results = evaluator.run()
     
-[/code]
+
+```
 
 Supported benchmarks:
 
@@ -147,12 +150,11 @@ Supported benchmarks:
   * HumanEval (code generation)
   * GSM8K (math reasoning)
 
-
-
 ### Experiment Tracking
 
 Every training run is tracked:
-[code]
+```python
+
     from training_gym import Experiment
     
     with Experiment("zen-7b-v2") as exp:
@@ -161,7 +163,8 @@ Every training run is tracked:
         exp.log_metrics(results)
         exp.log_artifacts(["model.pt", "tokenizer/"])
     
-[/code]
+
+```
 
 The experiment tracker records:
 
@@ -171,20 +174,20 @@ The experiment tracker records:
   * System metrics (GPU utilization, memory)
   * Artifacts (checkpoints, configs)
 
-
-
 ## Reproducibility
 
 Training Gym emphasizes reproducibility:
 
 ### Deterministic Training
-[code]
+```
+
     reproducibility:
       seed: 42
       deterministic_algorithms: true
       cublas_workspace_config: ":4096:8"
     
-[/code]
+
+```
 
 Same seed, same results (within floating point precision).
 
@@ -197,12 +200,11 @@ Every experiment records:
   * Hardware configuration
   * CUDA/cuDNN versions
 
-
-
 ### Configuration as Code
 
 All configs are versioned YAML:
-[code]
+```
+
     # experiments/zen-7b-v2.yaml
     model:
       architecture: llama
@@ -216,7 +218,8 @@ All configs are versioned YAML:
       learning_rate: 3e-4
       max_steps: 150000
     
-[/code]
+
+```
 
 ## Community Features
 
@@ -225,7 +228,8 @@ Training Gym includes tools for collaborative development:
 ### Model Registry
 
 Share and discover models:
-[code]
+```python
+
     from training_gym.registry import ModelRegistry
     
     registry = ModelRegistry()
@@ -236,21 +240,25 @@ Share and discover models:
     # Load a model
     model = registry.pull("zoo-labs/zen-7b")
     
-[/code]
+
+```
 
 ### Leaderboards
 
 Automatic benchmark submission:
-[code]
+```
+
     evaluator.submit_to_leaderboard(
         model_name="zen-7b-v2",
         organization="zoo-labs",
     )
     
-[/code]
+
+```
 
 ### Dataset Sharing
-[code]
+```python
+
     from training_gym.data import DatasetRegistry
     
     # Share processed datasets
@@ -259,12 +267,14 @@ Automatic benchmark submission:
     # Load shared datasets
     dataset = DatasetRegistry.pull("zoo-labs/zen-pretrain-v1")
     
-[/code]
+
+```
 
 ## Getting Started
 
 ### Installation
-[code]
+```bash
+
     pip install training-gym
     
     # For distributed training
@@ -273,10 +283,12 @@ Automatic benchmark submission:
     # For evaluation suite
     pip install training-gym[eval]
     
-[/code]
+
+```
 
 ### Quick Start
-[code]
+```python
+
     from training_gym import quickstart
     
     # Train a small model to verify setup
@@ -285,7 +297,8 @@ Automatic benchmark submission:
     # Run evaluation suite
     quickstart.evaluate_model("my-model")
     
-[/code]
+
+```
 
 ### Documentation
 
@@ -296,8 +309,6 @@ Full documentation at docs.training-gym.ai:
   * API reference
   * Example configurations
   * Troubleshooting
-
-
 
 ## Roadmap
 

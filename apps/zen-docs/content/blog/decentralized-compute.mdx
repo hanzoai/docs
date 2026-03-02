@@ -17,8 +17,6 @@ Current AI training is dominated by:
   * **High costs** : Training GPT-4 class models costs $100M+
   * **Geographic concentration** : Most clusters are in a few regions
 
-
-
 This concentration creates risks:
 
   1. **Access barriers** : Only well-funded organizations can train frontier models
@@ -26,14 +24,13 @@ This concentration creates risks:
   3. **Regulatory exposure** : One jurisdiction can impact global AI development
   4. **Vendor lock-in** : Switching costs are enormous
 
-
-
 ## The Zoo Compute Network
 
 The Zoo Compute Network aggregates distributed GPU resources into a unified training substrate. Anyone with suitable hardware can contribute. Anyone can access the aggregated compute.
 
 ### Architecture
-[code]
+```
+
     +------------------+     +------------------+     +------------------+
     |  Compute Node 1  |     |  Compute Node 2  |     |  Compute Node N  |
     |  (8x H100)       |     |  (4x A100)       |     |  (16x H100)      |
@@ -56,7 +53,8 @@ The Zoo Compute Network aggregates distributed GPU resources into a unified trai
     |  - Result retrieval                                                    |
     +-----------------------------------------------------------------------+
     
-[/code]
+
+```
 
 ### Node Requirements
 
@@ -77,7 +75,8 @@ The coordination layer handles distributed training logistics:
 **Task Scheduling**
 
 Jobs are divided into tasks and assigned to available nodes:
-[code]
+```
+
     # Job submission
     job = ComputeJob(
         model_config=model_config,
@@ -88,7 +87,8 @@ Jobs are divided into tasks and assigned to available nodes:
     
     job_id = await network.submit(job)
     
-[/code]
+
+```
 
 The scheduler optimizes for:
 
@@ -96,8 +96,6 @@ The scheduler optimizes for:
   * Network topology (co-locate communicating nodes)
   * Cost efficiency (use cheapest suitable nodes)
   * Reliability (distribute across failure domains)
-
-
 
 **Gradient Aggregation**
 
@@ -107,14 +105,13 @@ Distributed training requires gradient synchronization. The network supports:
   * Point-to-point for pipeline/tensor parallelism
   * Asynchronous updates for fault tolerance
 
-
-
 Aggregation happens through a tree topology that minimizes bandwidth usage.
 
 **Checkpoint Management**
 
 Training state is continuously checkpointed:
-[code]
+```
+
     # Automatic checkpointing
     checkpoint_config = CheckpointConfig(
         interval=1000,  # steps
@@ -122,7 +119,8 @@ Training state is continuously checkpointed:
         redundancy=3,
     )
     
-[/code]
+
+```
 
 Checkpoints are content-addressed and distributed. Training can resume from any node.
 
@@ -136,15 +134,11 @@ Providers stake ZEN tokens as collateral and earn rewards for:
   * Computation completed (work reward)
   * Network contribution (bandwidth bonus)
 
-
-
 Slashing occurs for:
 
   * Downtime during committed periods
   * Incorrect computation (detected via verification)
   * Bandwidth violations
-
-
 
 Expected returns: 15-25% APY on staked tokens plus hardware depreciation coverage.
 
@@ -168,8 +162,6 @@ Prices are market-determined through ongoing auctions. Users can specify maximum
   * Security audits
   * Community grants
 
-
-
 ### Verification
 
 How do we know compute was done correctly?
@@ -177,10 +169,12 @@ How do we know compute was done correctly?
 **Sampling-Based Verification**
 
 Random subsets of computation are re-run by verifiers. Discrepancies trigger investigation:
-[code]
+```
+
     P(detection) = 1 - (1 - sample_rate)^n
     
-[/code]
+
+```
 
 With 1% sampling and 100 steps, detection probability is 63%. With 5% sampling, it’s 99.4%.
 
@@ -204,8 +198,6 @@ We’ve run several training jobs on the network:
   * **Cost** : 21,000 ZEN (~$42,000)
   * **Efficiency** : 89% of centralized equivalent
 
-
-
 ### Embedding Model Training
 
   * **Duration** : 5 days
@@ -213,8 +205,6 @@ We’ve run several training jobs on the network:
   * **Total compute** : 960 GPU-hours
   * **Cost** : 2,400 ZEN (~$4,800)
   * **Efficiency** : 94% of centralized equivalent
-
-
 
 Efficiency losses come from coordination overhead and network heterogeneity. Ongoing optimizations are closing the gap.
 
@@ -228,8 +218,6 @@ Efficiency losses come from coordination overhead and network heterogeneity. Ong
   4. **Benchmark** : Complete verification benchmarks
   5. **Operate** : Maintain uptime and connectivity
 
-
-
 Documentation: docs.zoo.ngo/compute/providers
 
 ### As a User
@@ -238,8 +226,8 @@ Documentation: docs.zoo.ngo/compute/providers
   2. **Fund account** : Acquire ZEN tokens
   3. **Submit jobs** : Use API or CLI
 
+```python
 
-[code]
     from zoo_compute import Client
     
     client = Client(api_key="...")
@@ -251,7 +239,8 @@ Documentation: docs.zoo.ngo/compute/providers
     
     await job.wait()
     
-[/code]
+
+```
 
 Documentation: docs.zoo.ngo/compute/users
 

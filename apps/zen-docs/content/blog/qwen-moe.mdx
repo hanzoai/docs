@@ -14,8 +14,6 @@ Since the surge in interest sparked by Mixtral, research on mixture-of-expert (M
 
 Compared to Qwen1.5-7B, which contains 6.5 billion non-embedding parameters, Qwen1.5-MoE-A2.7B contains only 2.0 billion non-embedding parameters, approximately one-third of Qwen1.5-7B’s size. Notably, it achieves a 75% decrease in training expenses and accelerates inference speed by a factor of 1.74, offering substantial improvements in resource utilization without compromising performance.
 
-![](https://qianwen-res.oss-accelerate.aliyuncs.com/assets/blog/qwen1.5/qwen-moe.jpg#center)
-
 # Architecture
 
 We build the Qwen1.5-MoE models with a specially designed MoE architecture. Typically, as seen in methods like Mixtral, MoE layers within each transformer block employ eight experts and utilize a top-2 gating strategy for routing purposes. This configuration, while straightforward and efficacious, presents ample scope for enhancement. Consequently, through an extensive series of experiments, we have introduced several modifications to this architecture:
@@ -24,9 +22,6 @@ We build the Qwen1.5-MoE models with a specially designed MoE architecture. Typi
   * Initialization, which we call it “upcycling”
   * Routing mechanism, with shared and routing experts  
   
-
-
-
 
 Previous research projects such as DeepSeek-MoE and DBRX have demonstrated the effectiveness of using fine-grained experts. Conventionally, when transitioning from a standard FFN layer to a Mixture-of-Experts (MoE) layer, one merely replicates the FFN multiple times to create multiple experts. However, in the context of fine-grained experts, the goal is to generate a larger number of experts without increasing the parameter count. To accomplish this, we partition a single FFN into several segments, each serving as an individual expert. This is a more nuanced approach to constructing experts. We have identified an optimal configuration with a total of 64 experts, representing an 8-time increase compared to the conventional MoE setup of 8 experts.
 
@@ -76,15 +71,18 @@ The Qwen1.5-MoE-A2.7B model exhibits an impressive improvement in speed, being a
 # Develop with Qwen1.5-MoE
 
 To utilize the Qwen1.5-MoE model with the `qwen2_moe` implementation in Hugging Face’s transformers, since the latest release does not include this feature yet, you will have to install transformers from source instead of installing it via pip or conda:
-[code]
+```bash
+
     git clone https://github.com/huggingface/transformers
     cd transformers
     pip install -e .
     
-[/code]
+
+```
 
 The following step is indeed straightforward and akin to using models such as Qwen1.5, Mistral, or Llama. We demonstrate an example of the usage of Qwen1.5-MoE-A2.7B-Chat. To use the quantized model instead, you can just substitute the model name `Qwen1.5-MoE-A2.7B-Chat` with `Qwen1.5-MoE-A2.7B-Chat-GPTQ-Int4` (temporarily AWQ is not supported).
-[code]
+```python
+
     from transformers import AutoModelForCausalLM, AutoTokenizer
     
     model = AutoModelForCausalLM.from_pretrained(
@@ -115,22 +113,28 @@ The following step is indeed straightforward and akin to using models such as Qw
     
     response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
     
-[/code]
+
+```
 
 To use the model with vLLM, follow our fork first and then install vLLM from source as well:
-[code]
+```bash
+
     git clone https://github.com/vllm-project/vllm.git
     cd vllm
     pip install -e .
     
-[/code]
+
+```
 
 Here we demonstrate an example to show how to use vLLM to build an OpenAI-API compatible interface for our model:
-[code]
+```
+
     python -m vllm.entrypoints.openai.api_server --model Qwen/Qwen1.5-MoE-A2.7B-Chat
     
-[/code]
-[code]
+
+```
+```bash
+
     curl http://localhost:8000/v1/chat/completions \
         -H "Content-Type: application/json" \
         -d '{
@@ -141,7 +145,8 @@ Here we demonstrate an example to show how to use vLLM to build an OpenAI-API co
         ]
         }'
     
-[/code]
+
+```
 
 There remains an extensive array of tasks on our agenda, including the support of llama.cpp for GGUF files, MLX support, etc. We will continue updating the support of third-party frameworks.
 
@@ -150,7 +155,8 @@ There remains an extensive array of tasks on our agenda, including the support o
 We are thrilled to introduce our pioneering MoE model, Qwen1.5-MoE-A2.7B, which achieves parity with contemporary 7B parameter models. Furthermore, we have shown substantial reductions in both training costs and inference time when compared to conventional 7B models. Our model developments underscore the vast potential of MoE models. In light of these encouraging outcomes, we remain steadfast in our commitment to advancing this technology further.
 
 # Citation
-[code]
+```
+
     @misc{qwen_moe,
         title = {Qwen1.5-MoE: Matching 7B Model Performance with 1/3 Activated Parameters"},
         url = {https://qwenlm.github.io/blog/qwen-moe/},
@@ -159,4 +165,5 @@ We are thrilled to introduce our pioneering MoE model, Qwen1.5-MoE-A2.7B, which 
         year = {2024}
     }
     
-[/code]
+
+```

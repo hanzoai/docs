@@ -19,8 +19,6 @@ QwQ-32B is open-weight in [Hugging Face](https://huggingface.co/Qwen/QwQ-32B) an
 
 QwQ-32B is evaluated across a range of benchmarks designed to assess its mathematical reasoning, coding proficiency, and general problem-solving capabilities. The results below highlight QwQ-32B’s performance in comparison to other leading models, including DeepSeek-R1-Distilled-Qwen-32B, DeepSeek-R1-Distilled-Llama-70B, o1-mini, and the original DeepSeek-R1.
 
-![](https://qianwen-res.oss-accelerate-overseas.aliyuncs.com/qwq-32b-final.jpg)
-
 ## Reinforcement Learning
 
 We began with a cold-start checkpoint and implemented a reinforcement learning (RL) scaling approach driven by outcome-based rewards. In the initial stage, we scale RL specifically for math and coding tasks. Rather than relying on traditional reward models, we utilized an accuracy verifier for math problems to ensure the correctness of final solutions and a code execution server to assess whether the generated codes successfully pass predefined test cases. As training episodes progress, performance in both domains shows continuous improvement. After the first stage, we add another stage of RL for general capabilities. It is trained with rewards from general reward model and some rule-based verifiers. We find that this stage of RL training with a small amount of steps can increase the performance of other general capabilities, such as instruction following, alignment with human preference, and agent performance, without significant performance drop in math and coding.
@@ -28,7 +26,8 @@ We began with a cold-start checkpoint and implemented a reinforcement learning (
 ## Use QwQ-32B
 
 Below are brief examples demonstrating how to use QwQ-32B via Hugging Face Transformers and Alibaba Cloud DashScope API.
-[code]
+```python
+
     from transformers import AutoModelForCausalLM, AutoTokenizer
     
     model_name = "Qwen/QwQ-32B"
@@ -63,8 +62,10 @@ Below are brief examples demonstrating how to use QwQ-32B via Hugging Face Trans
     response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
     print(response)
     
-[/code]
-[code]
+
+```
+```python
+
     from openai import OpenAI
     import os
     
@@ -114,7 +115,8 @@ Below are brief examples demonstrating how to use QwQ-32B via Hugging Face Trans
                 print(delta.content, end='', flush=True)
                 content += delta.content
     
-[/code]
+
+```
 
 ## Future Work
 

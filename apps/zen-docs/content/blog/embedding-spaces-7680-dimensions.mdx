@@ -18,17 +18,17 @@ We investigate what happens when we scale embedding dimensions to 7680—ten tim
 
 ### Capacity Arguments
 
-A $d$-dimensional embedding space can represent $\mathcal{O}(e^d)$ nearly-orthogonal vectors. For semantic search, we want documents with different meanings to map to different regions. Higher dimensions provide more room.
+A $d$-dimensional embedding space can represent $\mathcal&#123;O&#125;(e^d)$ nearly-orthogonal vectors. For semantic search, we want documents with different meanings to map to different regions. Higher dimensions provide more room.
 
 ### Information-Theoretic View
 
 Consider a corpus of $N$ documents, each with entropy $H$ bits. A $d$-dimensional float32 embedding stores $32d$ bits. For lossless encoding:
 
-$$32d \geq N \cdot H$$
+`32d \geq N \cdot H`
 
 For a corpus of 1 billion documents with 100 bits of effective information each, we need:
 
-$$d \geq \frac{10^9 \cdot 100}{32} \approx 3 \times 10^9$$
+`d \geq \frac\{10^9 \cdot 100\}\{32\} \approx 3 \times 10^9`
 
 Clearly, embeddings are lossy compression. But higher dimensions reduce the loss.
 
@@ -41,8 +41,6 @@ Retrieval quality on our internal benchmarks plateaued around:
   * 3072 dimensions: 83% recall@10
   * 7680 dimensions: 87% recall@10
 
-
-
 Diminishing returns set in, but gains persist well beyond conventional wisdom.
 
 ## Training High-Dimensional Embeddings
@@ -50,10 +48,12 @@ Diminishing returns set in, but gains persist well beyond conventional wisdom.
 ### Architecture
 
 We use a standard transformer encoder with a projection head:
-[code]
+```
+
     Input --> Transformer(L=12, H=768) --> Pool --> Linear(768, 7680) --> Normalize
     
-[/code]
+
+```
 
 The projection head maps from the transformer’s hidden dimension to the embedding space. This decouples representation capacity from compute requirements.
 
@@ -61,7 +61,7 @@ The projection head maps from the transformer’s hidden dimension to the embedd
 
 We train with InfoNCE loss over batches of (query, positive, negatives):
 
-$$\mathcal{L} = -\log \frac{\exp(q \cdot p^+ / \tau)}{\sum_{i} \exp(q \cdot p_i / \tau)}$$
+`\mathcal\{L\} = -\log \frac\{\exp(q \cdot p^+ / \tau)\}\{\sum_\{i\} \exp(q \cdot p_i / \tau)\}`
 
 With temperature $\tau = 0.01$ for high-dimensional spaces (lower than typical).
 
@@ -73,8 +73,6 @@ High-dimensional spaces require harder negatives to provide gradient signal. Our
   2. Filter to exclude true positives
   3. Sample negatives weighted by similarity (harder = more likely)
 
-
-
 This curriculum focuses training on the decision boundary.
 
 ## Practical Considerations
@@ -83,7 +81,7 @@ This curriculum focuses training on the decision boundary.
 
 7680-dimensional float32 embeddings require 30KB per vector. For 1 billion documents:
 
-$$10^9 \times 30\text{KB} = 30\text{TB}$$
+`10^9 \times 30\text\{KB\} = 30\text\{TB\}`
 
 This is substantial but manageable with modern storage.
 
@@ -157,15 +155,11 @@ For the query “What causes inflation?”, nearest neighbors at different dimen
   2. How does inflation work? (similar query)
   3. Inflation rates by country (tangential)
 
-
-
 **7680 dimensions:**
 
   1. Inflation is caused by… (direct answer)
   2. The primary drivers of inflation include… (direct answer)
   3. Central bank policies affect inflation through… (relevant detail)
-
-
 
 Higher dimensions better distinguish queries from answers.
 
@@ -177,8 +171,6 @@ Based on our experiments:
   2. **Use int8 quantization** for production deployments
   3. **Invest in hard negative mining** to realize the benefits of capacity
   4. **Benchmark on your data** —gains vary by domain
-
-
 
 Conventional embedding sizes are conventions, not laws. Question them.
 
