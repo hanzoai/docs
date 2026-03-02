@@ -7,6 +7,7 @@ import { type AlgoliaOptions } from '@/search/client/algolia';
 import { type OramaCloudOptions } from '@/search/client/orama-cloud';
 import { type OramaCloudLegacyOptions } from '@/search/client/orama-cloud-legacy';
 import { type MixedbreadOptions } from '@/search/client/mixedbread';
+import { type HanzoSearchOptions } from '@/search/client/hanzo';
 import type { SortedResult } from '@/search';
 
 interface UseDocsSearch {
@@ -37,7 +38,10 @@ export type Client =
     } & OramaCloudLegacyOptions)
   | ({
       type: 'mixedbread';
-    } & MixedbreadOptions);
+    } & MixedbreadOptions)
+  | ({
+      type: 'hanzo';
+    } & HanzoSearchOptions);
 
 function isDeepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
@@ -131,6 +135,10 @@ export function useDocsSearch(
             const { search } = await import('./client/mixedbread');
             return search(debouncedValue, client);
           }
+          case 'hanzo': {
+            const { searchDocs } = await import('./client/hanzo');
+            return searchDocs(debouncedValue, client);
+          }
           case 'static': {
             const { search } = await import('./client/static');
             return search(debouncedValue, client);
@@ -160,4 +168,10 @@ export function useDocsSearch(
   return { search, setSearch, query: { isLoading, data: results, error } };
 }
 
-export type { OramaCloudOptions, FetchOptions, StaticOptions, AlgoliaOptions };
+export type {
+  OramaCloudOptions,
+  FetchOptions,
+  StaticOptions,
+  AlgoliaOptions,
+  HanzoSearchOptions,
+};
