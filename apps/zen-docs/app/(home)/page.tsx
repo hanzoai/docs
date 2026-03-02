@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import {
-  MessageSquare, Download, Terminal, ArrowRight, ExternalLink, Code,
+  MessageSquare, Download, Terminal, ArrowRight, ExternalLink, Code, FlaskConical, Network, Database,
 } from 'lucide-react';
 import { allModels } from '@zenlm/models';
 import ModelLibrary from './ModelLibrary';
@@ -78,6 +78,75 @@ export default function HomePage() {
                className="rounded-full border border-fd-border px-3 py-1 hover:bg-fd-muted transition text-fd-muted-foreground hover:text-fd-foreground">
               Hanzo AI
             </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Zen 5 Research Preview ───────────────────────── */}
+      <section className="border-b border-fd-border bg-gradient-to-r from-fd-primary/10 via-fd-primary/5 to-transparent">
+        <div className="mx-auto max-w-5xl px-6 py-10">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-6 justify-between">
+            <div className="flex-1">
+              <div className="inline-flex items-center gap-2 rounded-full border border-fd-primary/30 bg-fd-primary/10 px-3 py-1 text-xs font-semibold text-fd-primary mb-3">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-fd-primary opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-fd-primary" />
+                </span>
+                Zen 5 — Training now
+              </div>
+              <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-2">
+                Next generation. Open training.
+              </h2>
+              <p className="text-fd-muted-foreground text-sm md:text-base max-w-lg">
+                Zen 5 trains openly on Hanzo Network with verifiable compute. Contribute agentic training data and help shape the model.
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 shrink-0">
+              <Link
+                href="/docs/models/zen5"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-fd-primary px-5 py-2.5 text-sm font-semibold text-fd-primary-foreground hover:opacity-90 transition"
+              >
+                <FlaskConical className="h-4 w-4" /> Research preview
+              </Link>
+              <a
+                href="https://hanzo.ai/zen5/contribute"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-fd-border bg-fd-background px-5 py-2.5 text-sm font-semibold hover:bg-fd-muted transition"
+              >
+                <Database className="h-4 w-4" /> Submit training data
+              </a>
+              <a
+                href="https://hanzo.network"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-fd-border bg-fd-background px-5 py-2.5 text-sm font-semibold hover:bg-fd-muted transition"
+              >
+                <Network className="h-4 w-4" /> Live training
+              </a>
+            </div>
+          </div>
+
+          {/* Three pillars */}
+          <div className="grid sm:grid-cols-3 gap-4 mt-8">
+            <div className="rounded-xl border border-fd-border bg-fd-background/60 p-4">
+              <div className="text-xs font-semibold text-fd-primary mb-1">Zen MoDE Architecture</div>
+              <p className="text-xs text-fd-muted-foreground leading-relaxed">
+                Mixture of Diverse Experts — 2T+ parameters, 2M+ context. Expert populations trained across diverse specializations for broad capability.
+              </p>
+            </div>
+            <div className="rounded-xl border border-fd-border bg-fd-background/60 p-4">
+              <div className="text-xs font-semibold text-fd-primary mb-1">Verifiable Open Training</div>
+              <p className="text-xs text-fd-muted-foreground leading-relaxed">
+                Every training step runs inside NVIDIA TEE on Hanzo Network. Cryptographic proof of compute. Loss curves and evals published live.
+              </p>
+            </div>
+            <div className="rounded-xl border border-fd-border bg-fd-background/60 p-4">
+              <div className="text-xs font-semibold text-fd-primary mb-1">Community Data Program</div>
+              <p className="text-xs text-fd-muted-foreground leading-relaxed">
+                Submit agentic trajectories, reasoning chains, and domain expert data. Get attribution, API credits, and early model access.
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -297,12 +366,38 @@ print(r.choices[0].message.content)`}</code></pre>
 
       {/* ── Research & Blog ──────────────────────────────── */}
       <section className="border-t border-fd-border bg-fd-muted/30">
-        <div className="mx-auto max-w-5xl px-6 py-10 flex flex-wrap items-center justify-between gap-6">
-          <div>
-            <h3 className="text-sm font-semibold mb-1">Research &amp; Writing</h3>
-            <p className="text-xs text-fd-muted-foreground">Papers, technical reports, and updates from the Zen LM team</p>
+        <div className="mx-auto max-w-5xl px-6 py-12">
+          <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
+            <div>
+              <h3 className="text-lg font-bold mb-1">Research &amp; Writing</h3>
+              <p className="text-sm text-fd-muted-foreground">Papers, technical reports, and updates from the Zen LM team</p>
+            </div>
+            <Link href="/blog" className="text-sm hover:underline inline-flex items-center gap-1">
+              All posts <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
-          <div className="flex flex-wrap gap-4">
+          {/* Featured posts */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            <Link href="/blog/open-training-hanzo-network"
+              className="rounded-xl border border-fd-primary/30 bg-fd-primary/5 p-5 hover:bg-fd-primary/10 transition block">
+              <div className="text-[10px] font-semibold tracking-widest uppercase text-fd-primary mb-2">New · Open Training</div>
+              <h4 className="text-sm font-bold mb-2 leading-snug">Training Zen 5 in the Open: Contribute Data, Shape the Model</h4>
+              <p className="text-xs text-fd-muted-foreground leading-relaxed">How Hanzo Network works, how to submit agentic training data, and what contributors receive.</p>
+            </Link>
+            <Link href="/docs/models/zen5"
+              className="rounded-xl border border-fd-border bg-fd-background p-5 hover:bg-fd-muted/30 transition block">
+              <div className="text-[10px] font-semibold tracking-widest uppercase text-fd-muted-foreground mb-2">Research Preview</div>
+              <h4 className="text-sm font-bold mb-2 leading-snug">Zen 5 — Zen MoDE, 2M Context, Open Training</h4>
+              <p className="text-xs text-fd-muted-foreground leading-relaxed">Architecture overview, training data program, research access, and live training dashboard.</p>
+            </Link>
+            <Link href="/blog/zen-lm-launch"
+              className="rounded-xl border border-fd-border bg-fd-background p-5 hover:bg-fd-muted/30 transition block">
+              <div className="text-[10px] font-semibold tracking-widest uppercase text-fd-muted-foreground mb-2">Launch</div>
+              <h4 className="text-sm font-bold mb-2 leading-snug">Zen LM: 100+ Open-Source Models for Every Use Case</h4>
+              <p className="text-xs text-fd-muted-foreground leading-relaxed">The full catalog: Zen 1 through Zen 4, AI safety research variants, specialist verticals. Apache 2.0.</p>
+            </Link>
+          </div>
+          <div className="flex flex-wrap gap-3">
             <a href="https://papers.zenlm.org" target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-xl border border-fd-border bg-fd-background px-4 py-2.5 text-sm font-medium hover:bg-fd-muted transition">
               <ArrowRight className="h-3.5 w-3.5" /> All papers
@@ -346,12 +441,12 @@ print(r.choices[0].message.content)`}</code></pre>
               { text: 'Python SDK', href: 'https://github.com/hanzoai/python-sdk', external: true },
               { text: 'Pricing', href: '/docs/api/pricing' },
             ]} />
-            <FooterColumn title="Hanzo" links={[
-              { text: 'Hanzo AI', href: 'https://hanzo.ai', external: true },
+            <FooterColumn title="Research" links={[
+              { text: 'Zen 5 preview', href: '/docs/models/zen5' },
+              { text: 'Hanzo Network', href: 'https://hanzo.network', external: true },
+              { text: 'Submit training data', href: 'https://hanzo.ai/zen5/contribute', external: true },
               { text: 'Blog', href: '/blog' },
-              { text: 'Research papers', href: 'https://papers.zenlm.org', external: true },
-              { text: 'Console', href: 'https://console.hanzo.ai', external: true },
-              { text: 'Hanzo Industries', href: 'https://hanzo.industries', external: true },
+              { text: 'Papers', href: 'https://papers.zenlm.org', external: true },
             ]} />
           </div>
           <div className="flex flex-wrap items-center justify-between gap-4 border-t border-fd-border pt-6 text-xs text-fd-muted-foreground">
