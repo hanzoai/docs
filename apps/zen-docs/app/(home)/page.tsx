@@ -59,6 +59,26 @@ export default function HomePage() {
             {' '}&middot; Built by{' '}
             <a href="https://hanzo.ai" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-fd-foreground">Hanzo AI</a>
           </p>
+
+          {/* External app links */}
+          <div className="flex flex-wrap gap-3 justify-center mt-6 text-sm">
+            <a href="https://hanzo.chat" target="_blank" rel="noopener noreferrer"
+               className="rounded-full border border-fd-border px-3 py-1 hover:bg-fd-muted transition text-fd-muted-foreground hover:text-fd-foreground">
+              Hanzo Chat
+            </a>
+            <a href="https://hanzo.app" target="_blank" rel="noopener noreferrer"
+               className="rounded-full border border-fd-border px-3 py-1 hover:bg-fd-muted transition text-fd-muted-foreground hover:text-fd-foreground">
+              Hanzo App
+            </a>
+            <a href="https://console.hanzo.ai" target="_blank" rel="noopener noreferrer"
+               className="rounded-full border border-fd-border px-3 py-1 hover:bg-fd-muted transition text-fd-muted-foreground hover:text-fd-foreground">
+              API Console
+            </a>
+            <a href="https://hanzo.ai" target="_blank" rel="noopener noreferrer"
+               className="rounded-full border border-fd-border px-3 py-1 hover:bg-fd-muted transition text-fd-muted-foreground hover:text-fd-foreground">
+              Hanzo AI
+            </a>
+          </div>
         </div>
       </section>
 
