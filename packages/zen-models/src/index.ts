@@ -1,5 +1,5 @@
 /**
- * @hanzo/zen-models — The single source of truth for the Zen model family.
+ * @zenlm/models — The single source of truth for the Zen model family.
  *
  * "There should be one — and preferably only one — obvious way to do it."
  *

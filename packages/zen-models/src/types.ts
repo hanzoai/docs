@@ -1,5 +1,5 @@
 /**
- * @hanzo/zen-models — Canonical type definitions for the Zen model family.
+ * @zenlm/models — Canonical type definitions for the Zen model family.
  *
  * There should be one — and preferably only one — obvious place to define these.
  */
