@@ -1,0 +1,219 @@
+---
+title: Docker Swarm
+description: Deploy services on Docker Swarm clusters with overlay networking, rolling updates, and replica scaling.
+---
+
+Docker Swarm provides a simpler alternative to Kubernetes for teams that want container orchestration without the complexity. The platform translates its container abstraction into native Swarm services.
+
+## Prerequisites
+
+- A cluster registered in the platform with **Docker Swarm** as the orchestrator
+- Swarm mode initialized on the target node(s)
+
+## Creating a Swarm Service
+
+<Steps>
+
+### Select the Cluster
+
+Choose a Swarm-type cluster from your project's environment. The platform detects the orchestrator type automatically.
+
+### Configure the Container
+
+The same container creation form is used for all orchestrators. For Swarm, the platform maps fields as follows:
+
+| Platform Field | Swarm Equivalent |
+|---------------|-----------------|
+| `name` | Service name |
+| `type: deployment` | Replicated service |
+| `replicas` | `--replicas N` |
+| `containerPort` | Published port |
+| `variables` | `--env` flags |
+| `cpuLimit` / `memoryLimit` | `--limit-cpu` / `--limit-memory` |
+| `strategy: RollingUpdate` | `--update-parallelism` + `--update-delay` |
+
+### Specify the Image
+
+Swarm services pull directly from a registry. Provide the full image reference:
+
+```yaml
+registryConfig:
+  imageName: "ghcr.io/myorg/api"
+  imageTag: "v2.1.0"
+```
+
+<Callout type="info">
+Git-based builds are supported on Swarm clusters. The platform builds the image via Kaniko, pushes it to the configured registry, then creates the Swarm service referencing the new tag.
+</Callout>
+
+### Deploy
+
+The platform runs the equivalent of:
+
+```bash
+docker service create \
+  --name api-xk8f3m2n \
+  --replicas 3 \
+  --publish 8080:8080 \
+  --env DATABASE_URL=postgres://... \
+  --limit-cpu 0.5 \
+  --limit-memory 512M \
+  ghcr.io/myorg/api:v2.1.0
+```
+
+</Steps>
+
+## Scaling
+
+Scale a service by adjusting the replica count:
+
+```bash
+# Platform maps this to: docker service scale <service>=N
+container.scale({ containerId: "ctr-abc", replicas: 5 })
+```
+
+Swarm distributes replicas across available nodes automatically.
+
+## Update Policies
+
+Rolling updates replace tasks incrementally. Configure the update behavior:
+
+```yaml
+deploymentConfig:
+  replicas: 3
+  strategy: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1          # parallelism — tasks updated at once
+    maxUnavailable: 0    # maps to --update-failure-action
+```
+
+This translates to:
+
+```bash
+docker service update \
+  --update-parallelism 1 \
+  --update-delay 10s \
+  --update-failure-action rollback \
+  api-xk8f3m2n
+```
+
+Use `Recreate` strategy to stop all tasks before starting new ones (equivalent to `--update-order stop-first`).
+
+## Overlay Networking
+
+Swarm services communicate over overlay networks. The platform creates a dedicated overlay network per environment:
+
+```bash
+# Automatic — created when the first service deploys to an environment
+docker network create \
+  --driver overlay \
+  --attachable \
+  env-production
+```
+
+All services in the same environment share the overlay and can reach each other by service name.
+
+## Port Publishing
+
+Expose services externally by enabling ingress:
+
+```yaml
+networking:
+  containerPort: 3000
+  ingress:
+    enabled: true
+```
+
+Swarm's routing mesh distributes incoming traffic across all healthy replicas on the published port.
+
+For TCP services (databases, message queues), use the TCP proxy:
+
+```yaml
+networking:
+  containerPort: 5432
+  tcpProxy:
+    enabled: true
+    publicPort: 5432
+```
+
+## Environment Variables
+
+Pass configuration to services:
+
+```yaml
+variables:
+  - name: REDIS_URL
+    value: "redis://kv:6379"
+  - name: LOG_LEVEL
+    value: "info"
+```
+
+## Resource Limits
+
+Constrain CPU and memory per task:
+
+```yaml
+podConfig:
+  cpuRequest: 250        # millicores
+  cpuLimit: 500
+  memoryRequest: 128     # MiB
+  memoryLimit: 512
+  restartPolicy: Always
+```
+
+<Callout type="warn">
+Swarm does not support resource **requests** (only limits). The platform stores request values for consistency but only enforces limits on Swarm clusters.
+</Callout>
+
+## Volumes
+
+Named volumes for persistent data:
+
+```yaml
+storageConfig:
+  enabled: true
+  mountPath: /var/lib/postgresql/data
+  size: 10
+  sizeType: gibibyte
+```
+
+On Swarm, this creates a named Docker volume. For multi-node clusters, use a volume driver that supports shared storage (e.g., NFS, GlusterFS).
+
+## Health Checks
+
+Swarm supports a single health check per service (mapped from the platform's liveness probe):
+
+```yaml
+probes:
+  liveness:
+    enabled: true
+    checkMechanism: httpGet
+    httpPath: /health
+    httpPort: 3000
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+```
+
+This translates to:
+
+```bash
+--health-cmd "curl -f http://localhost:3000/health || exit 1" \
+--health-interval 30s \
+--health-timeout 5s \
+--health-retries 3 \
+--health-start-period 10s
+```
+
+## Limitations vs. Kubernetes
+
+| Feature | Kubernetes | Swarm |
+|---------|-----------|-------|
+| StatefulSets | Native | Simulated (replicated service + named volumes) |
+| CronJobs | Native | Not supported (use external cron) |
+| HPA (autoscaling) | Native | Not supported |
+| Resource requests | Yes | No (limits only) |
+| Readiness/startup probes | Yes | No (health check only) |
+| PVC storage classes | Yes | Volume drivers |
+| Ingress controllers | Yes | Routing mesh |

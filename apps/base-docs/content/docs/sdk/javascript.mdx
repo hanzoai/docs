@@ -1,0 +1,168 @@
+---
+title: JavaScript SDK
+description: Official JavaScript/TypeScript SDK for Base.
+---
+
+## Installation
+
+<Tabs items={['npm', 'pnpm', 'bun', 'yarn']}>
+<Tab value="npm">
+```bash
+npm install @hanzoai/base
+```
+</Tab>
+<Tab value="pnpm">
+```bash
+pnpm add @hanzoai/base
+```
+</Tab>
+<Tab value="bun">
+```bash
+bun add @hanzoai/base
+```
+</Tab>
+<Tab value="yarn">
+```bash
+yarn add @hanzoai/base
+```
+</Tab>
+</Tabs>
+
+## Initialize Client
+
+```typescript
+import { BaseClient } from '@hanzoai/base'
+
+const base = new BaseClient('http://localhost:8090')
+```
+
+## Authentication
+
+```typescript
+// Email/password
+const auth = await base.collection('users').authWithPassword(
+  'user@example.com',
+  'password123',
+)
+
+// OAuth2
+const auth = await base.collection('users').authWithOAuth2({
+  provider: 'google',
+})
+
+// Check auth state
+if (base.authStore.isValid) {
+  console.log('Logged in as:', base.authStore.record?.email)
+}
+
+// Logout
+base.authStore.clear()
+```
+
+## CRUD Operations
+
+```typescript
+// Create
+const record = await base.collection('posts').create({
+  title: 'Hello World',
+  body: 'My first post',
+  status: 'published',
+})
+
+// Read one
+const post = await base.collection('posts').getOne(record.id)
+
+// Read list
+const list = await base.collection('posts').getList(1, 20, {
+  filter: 'status = "published"',
+  sort: '-created',
+  expand: 'author',
+})
+
+// Read all (auto-paginated)
+const all = await base.collection('posts').getFullList({
+  sort: '-created',
+})
+
+// Update
+await base.collection('posts').update(record.id, {
+  title: 'Updated Title',
+})
+
+// Delete
+await base.collection('posts').delete(record.id)
+```
+
+## Filtering
+
+```typescript
+// Equals
+filter: 'status = "active"'
+
+// Not equals
+filter: 'status != "draft"'
+
+// Contains
+filter: 'title ~ "hello"'
+
+// Greater than
+filter: 'views > 100'
+
+// AND / OR
+filter: 'status = "active" && views > 10'
+filter: 'status = "active" || featured = true'
+
+// Relation filter
+filter: 'author.role = "admin"'
+
+// Date filter
+filter: 'created >= "2024-01-01 00:00:00"'
+```
+
+## Realtime
+
+```typescript
+// Subscribe to all changes
+base.collection('messages').subscribe('*', (e) => {
+  if (e.action === 'create') {
+    addMessage(e.record)
+  }
+})
+
+// Subscribe to single record
+base.collection('tasks').subscribe(taskId, (e) => {
+  updateTask(e.record)
+})
+
+// Unsubscribe
+base.collection('messages').unsubscribe('*')
+```
+
+## File Upload
+
+```typescript
+const formData = new FormData()
+formData.append('title', 'My Document')
+formData.append('file', document.querySelector('input[type=file]').files[0])
+
+const record = await base.collection('documents').create(formData)
+
+// Get file URL
+const url = base.files.getURL(record, record.file)
+```
+
+## TypeScript Types
+
+```typescript
+interface Post {
+  id: string
+  title: string
+  body: string
+  status: 'draft' | 'published'
+  author: string
+  created: string
+  updated: string
+}
+
+const posts = await base.collection('posts').getFullList<Post>()
+```

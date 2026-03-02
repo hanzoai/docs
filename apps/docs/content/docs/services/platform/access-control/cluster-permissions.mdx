@@ -1,0 +1,106 @@
+---
+title: Cluster Permissions
+description: Per-cluster access control with manage, deploy, and view permissions
+---
+
+Cluster permissions provide fine-grained control over what each user can do on a specific cluster. While [roles](/docs/services/platform/access-control/roles) govern organization-wide access, cluster permissions let you restrict access per cluster.
+
+## Permission Levels
+
+Each user can be granted one of three permission levels per cluster:
+
+| Level | Can View | Can Deploy | Can Manage |
+|-------|----------|------------|------------|
+| **View** | Yes | -- | -- |
+| **Deploy** | Yes | Yes | -- |
+| **Manage** | Yes | Yes | Yes |
+
+### View
+
+Read-only access to the cluster. The user can see deployments, logs, and metrics but cannot make changes. Suitable for on-call engineers who need visibility into production.
+
+### Deploy
+
+Can push new deployments, restart services, and view logs. Cannot change cluster settings, add nodes, or modify networking. This is the typical permission for developers on a staging cluster.
+
+### Manage
+
+Full control over the cluster including node management, networking, storage, and DNS configuration. Reserved for platform engineers and DevOps.
+
+## Assigning Permissions
+
+<Steps>
+
+### Open cluster settings
+
+Navigate to **Clusters > [Your Cluster] > Settings > Access**.
+
+### Add a member
+
+Click **Add Member** and select a user from your organization.
+
+### Set the permission level
+
+Choose **View**, **Deploy**, or **Manage** from the dropdown.
+
+### Save
+
+The permission takes effect immediately.
+
+</Steps>
+
+## Default Behavior
+
+When a new cluster is created, the following defaults apply:
+
+| Role | Default Cluster Permission |
+|------|---------------------------|
+| Owner | Manage |
+| Admin | Manage |
+| Developer | Deploy |
+| Billing | None |
+| Viewer | View |
+
+Admins and Owners can override these defaults per user per cluster.
+
+## Example: Production vs. Staging
+
+A common pattern is to give developers full deploy access to staging but restrict production:
+
+```
+Cluster: staging-us-east
+  alice (Developer) → Deploy
+  bob   (Developer) → Deploy
+
+Cluster: production-us-east
+  alice (Developer) → View
+  bob   (Developer) → View
+  carol (Admin)     → Deploy
+```
+
+In this setup, only `carol` can deploy to production. Alice and Bob can view production logs but must go through the staging pipeline first.
+
+## Combining with Environment Protection
+
+Cluster permissions control **who** can deploy. [Environment protection](/docs/services/platform/access-control/environment-protection) controls **how** deployments happen (e.g., requiring approval). Use both together for defense in depth:
+
+- Cluster permission: only Admins can deploy to production
+- Environment protection: production deployments require approval from an Owner
+
+## API
+
+```bash
+# Grant deploy permission on a cluster
+curl -X POST https://app.platform.hanzo.ai/api/cluster.grantAccess \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "clusterId": "cluster_abc123",
+    "userId": "user_def456",
+    "permission": "deploy"
+  }'
+
+# List permissions for a cluster
+curl https://app.platform.hanzo.ai/api/cluster.listAccess?clusterId=cluster_abc123 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```

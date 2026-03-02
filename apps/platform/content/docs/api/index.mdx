@@ -1,0 +1,127 @@
+---
+title: API Reference
+description: Platform REST and tRPC API for managing organizations, clusters, containers, and VMs
+---
+
+Hanzo Platform exposes two API surfaces: **tRPC** for the dashboard and **REST** for external integrations. Both share the same authentication and authorization layer.
+
+## Base URL
+
+```
+https://app.platform.hanzo.ai/api
+```
+
+All endpoints are relative to this base URL.
+
+## API Surfaces
+
+| Surface | Protocol | Use Case |
+|---------|----------|----------|
+| **tRPC** | HTTP POST with JSON | Dashboard, SDK, programmatic access |
+| **REST** | Standard HTTP methods | External integrations, webhooks, CI/CD |
+
+The tRPC API uses procedure calls (e.g., `organization.all`, `cluster.create`). The REST API uses standard resource paths (e.g., `GET /clusters`, `POST /containers`).
+
+## Authentication
+
+All requests require a Bearer token in the `Authorization` header:
+
+```bash
+curl https://app.platform.hanzo.ai/api/organization.all \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+See [Authentication](/docs/api/authentication) for details on obtaining tokens.
+
+## tRPC Procedures
+
+The platform exposes 16 tRPC routers:
+
+| Router | Description |
+|--------|-------------|
+| `organization` | Organization CRUD |
+| `orgTeam` | Team member management |
+| `cluster` | Cluster lifecycle |
+| `container` | Container deployments |
+| `project` | Project management |
+| `environment` | Environment configuration |
+| `build` | Build pipelines |
+| `log` | Log streaming |
+| `registry` | Container registry |
+| `domain` | Domain and DNS management |
+| `git` | Git integration |
+| `user` | User profile |
+| `provisioner` | Infrastructure provisioning |
+| `audit` | Audit log |
+| `invitation` | Team invitations |
+| `system` | System health and status |
+
+## Request Format
+
+tRPC requests use HTTP POST with a JSON body:
+
+```bash
+curl -X POST https://app.platform.hanzo.ai/api/cluster.create \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "production",
+    "provider": "digitalocean",
+    "region": "sfo3"
+  }'
+```
+
+## Response Format
+
+All responses return JSON:
+
+```json
+{
+  "result": {
+    "data": {
+      "id": "cluster_abc123",
+      "name": "production",
+      "status": "provisioning"
+    }
+  }
+}
+```
+
+## Error Responses
+
+Errors return an appropriate HTTP status code with a JSON body:
+
+```json
+{
+  "error": {
+    "message": "Cluster not found",
+    "code": "NOT_FOUND",
+    "httpStatus": 404
+  }
+}
+```
+
+| Code | Meaning |
+|------|---------|
+| `BAD_REQUEST` | Invalid input |
+| `UNAUTHORIZED` | Missing or invalid token |
+| `FORBIDDEN` | Insufficient permissions |
+| `NOT_FOUND` | Resource does not exist |
+| `CONFLICT` | Resource already exists |
+| `INTERNAL_SERVER_ERROR` | Server error |
+
+## Rate Limits
+
+| Endpoint Type | Rate Limit |
+|--------------|------------|
+| Read operations | 100 requests/minute |
+| Write operations | 30 requests/minute |
+| Log streaming | 10 concurrent connections |
+
+Rate limit headers are included in every response:
+
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 97
+X-RateLimit-Reset: 1709000000
+```

@@ -24,7 +24,7 @@ To create a page-level feedback UI, add the `<Feedback />` component to your doc
 ```tsx
 import { DocsPage } from '@hanzo/docs-ui/layout/docs/page';
 import { Feedback } from '@/components/feedback/client';
-import posthog from 'posthog-js';
+import ha from '@hanzo/insights';
 
 export default async function Page() {
   return (
@@ -34,7 +34,7 @@ export default async function Page() {
         onSendAction={async (feedback) => {
           'use server';
 
-          await posthog.capture('on_rate_docs', feedback);
+          await ha.capture('on_rate_docs', feedback);
         }}
       />
     </DocsPage>
@@ -45,7 +45,7 @@ export default async function Page() {
 - `onSendAction`: fired when user submit feedback.
 
 You can specify a server action, or any function (in client component) to handle the user feedback.
-For example, to report user feedback as a `on_rate_docs` event on PostHog.
+For example, to report user feedback as a `on_rate_docs` event on Hanzo Insights.
 
 ### Feedback Block
 

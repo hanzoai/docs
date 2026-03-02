@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: base-docs
+  namespace: hanzo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: base-docs
+  template:
+    metadata:
+      labels:
+        app: base-docs
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: base-docs
+          image: ghcr.io/hanzoai/base-docs:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: base-docs
+  namespace: hanzo
+spec:
+  selector:
+    app: base-docs
+  ports:
+    - port: 3000
+      targetPort: 3000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: base-docs
+  namespace: hanzo
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+    - hosts:
+        - base.hanzo.ai
+      secretName: base-hanzo-ai-tls
+  rules:
+    - host: base.hanzo.ai
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: base-docs
+                port:
+                  number: 3000

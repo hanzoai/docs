@@ -1,0 +1,110 @@
+---
+title: Realtime
+description: Subscribe to database changes with Server-Sent Events for live, reactive applications.
+---
+
+Base broadcasts every record change over Server-Sent Events (SSE). Subscribe from any client to build reactive UIs without polling.
+
+## Subscribing to Changes
+
+### All Records in a Collection
+
+```typescript
+// Subscribe to all changes in 'messages'
+base.collection('messages').subscribe('*', (e) => {
+  console.log(e.action)  // 'create' | 'update' | 'delete'
+  console.log(e.record)  // the changed record
+})
+```
+
+### Specific Record
+
+```typescript
+// Subscribe to a single record
+base.collection('tasks').subscribe(recordId, (e) => {
+  console.log('Task updated:', e.record)
+})
+```
+
+## Event Structure
+
+Each event contains:
+
+```typescript
+interface RecordSubscription {
+  action: 'create' | 'update' | 'delete'
+  record: Record           // The full record after the change
+}
+```
+
+## Unsubscribing
+
+```typescript
+// Unsubscribe from specific topic
+base.collection('messages').unsubscribe('*')
+base.collection('tasks').unsubscribe(recordId)
+
+// Unsubscribe from all subscriptions
+base.collection('messages').unsubscribe()
+```
+
+## React Integration
+
+```tsx
+import { useEffect, useState } from 'react'
+import { BaseClient } from '@hanzoai/base'
+
+const base = new BaseClient('http://localhost:8090')
+
+function MessageList({ channelId }: { channelId: string }) {
+  const [messages, setMessages] = useState<Message[]>([])
+
+  useEffect(() => {
+    // Initial load
+    base.collection('messages')
+      .getFullList({ filter: `channel = "${channelId}"`, sort: 'created' })
+      .then(setMessages)
+
+    // Subscribe to new messages
+    base.collection('messages').subscribe('*', (e) => {
+      if (e.record.channel !== channelId) return
+
+      if (e.action === 'create') {
+        setMessages(prev => [...prev, e.record])
+      } else if (e.action === 'update') {
+        setMessages(prev =>
+          prev.map(m => m.id === e.record.id ? e.record : m)
+        )
+      } else if (e.action === 'delete') {
+        setMessages(prev =>
+          prev.filter(m => m.id !== e.record.id)
+        )
+      }
+    })
+
+    return () => {
+      base.collection('messages').unsubscribe()
+    }
+  }, [channelId])
+
+  return (
+    <ul>
+      {messages.map(msg => (
+        <li key={msg.id}>{msg.text}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+## Auth-Aware Subscriptions
+
+Realtime subscriptions respect API rules. If a user doesn't have read access to a record, they won't receive change events for it.
+
+## Connection Management
+
+The SDK automatically manages the SSE connection:
+
+- **Auto-reconnect** on network interruption
+- **Token refresh** when auth expires
+- **Deduplication** of identical subscriptions

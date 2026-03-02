@@ -1,0 +1,106 @@
+---
+title: Go SDK
+description: Extend Base with Go for custom backends, plugins, and high-performance applications.
+---
+
+Base is written in Go and can be used as a framework for building custom backends.
+
+## Installation
+
+```bash
+go get github.com/hanzoai/base
+```
+
+## Custom Backend
+
+```go
+package main
+
+import (
+    "log"
+    "github.com/hanzoai/base"
+    "github.com/hanzoai/base/core"
+)
+
+func main() {
+    app := base.New()
+
+    // Custom hooks
+    app.OnRecordCreate("tasks").BindFunc(func(e *core.RecordEvent) error {
+        // Auto-generate slug
+        title := e.Record.GetString("title")
+        e.Record.Set("slug", slugify(title))
+        return e.Next()
+    })
+
+    // Custom routes
+    app.OnServe().BindFunc(func(se *core.ServeEvent) error {
+        se.Router.GET("/api/stats", func(e *core.RequestEvent) error {
+            tasks, _ := app.FindRecordsByFilter("tasks", "1=1", "", 0, 0)
+            return e.JSON(200, map[string]int{
+                "total": len(tasks),
+            })
+        })
+        return se.Next()
+    })
+
+    if err := app.Start(); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+
+## Plugins
+
+Base supports JSVM plugins for JavaScript hooks:
+
+```go
+import "github.com/hanzoai/base/plugins/jsvm"
+
+app := base.New()
+
+// Enable JavaScript hooks from hz_hooks/
+jsvm.MustRegister(app, jsvm.Config{
+    HooksDir: "hz_hooks",
+})
+```
+
+## Database Access
+
+```go
+// Find record by ID
+record, err := app.FindRecordById("posts", recordId)
+
+// Find records with filter
+records, err := app.FindRecordsByFilter("posts",
+    "status = 'published'",
+    "-created",  // sort
+    10,          // limit
+    0,           // offset
+)
+
+// Create record
+collection, _ := app.FindCollectionByNameOrId("posts")
+record := core.NewRecord(collection)
+record.Set("title", "Hello")
+record.Set("status", "draft")
+err := app.Save(record)
+
+// Update record
+record.Set("status", "published")
+err = app.Save(record)
+
+// Delete record
+err = app.Delete(record)
+```
+
+## Migrations
+
+```go
+import "github.com/hanzoai/base/core"
+
+app.OnServe().BindFunc(func(se *core.ServeEvent) error {
+    // Run migrations
+    return se.Next()
+})
+```

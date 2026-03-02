@@ -1,0 +1,93 @@
+---
+title: Surveys
+description: Collect in-product feedback with targeted, customizable surveys.
+---
+
+# Surveys
+
+Collect qualitative feedback directly from your users at the right moment — without leaving your product.
+
+## Overview
+
+Surveys appear as in-product popups, triggered by events, user properties, or feature flag conditions. Responses are automatically correlated with behavioral data.
+
+## Survey Types
+
+### NPS (Net Promoter Score)
+The classic 0–10 scale with optional follow-up text question. Auto-calculates your NPS score over time.
+
+### CSAT (Customer Satisfaction)
+1–5 star rating or emoji scale. Ideal for post-interaction feedback.
+
+### Multiple Choice
+Single or multi-select options. Good for feature prioritization or demographic research.
+
+### Open Text
+Free-form response. Best for discovery research and bug reports.
+
+### Rating Scale
+Custom numeric or labeled scale (e.g., "Not useful" → "Very useful").
+
+### Link Survey
+Send surveys via email or link — no in-product integration required.
+
+## Targeting
+
+Surveys are shown based on:
+- **User properties**: plan, role, signup_date, country
+- **Events**: "completed_onboarding", "viewed_pricing"
+- **Feature flags**: only show to beta users
+- **Frequency**: once per user, once per month, always
+
+```javascript
+// Example: trigger survey after user completes key action
+posthog.capture('completed_first_report')
+// → Survey configured to show after this event fires
+```
+
+## Customization
+
+### Styling
+```javascript
+posthog.init('<KEY>', {
+  surveys: {
+    forceShow: false,
+    // Custom colors, fonts, positioning
+  }
+})
+```
+
+### Programmatic Control
+```javascript
+// Show survey manually
+posthog.getSurveys((surveys) => {
+  const mySurvey = surveys.find(s => s.name === 'Q1 NPS')
+  posthog.renderSurvey(mySurvey.id, '#survey-container')
+})
+
+// Check if user has seen survey
+posthog.isSurveySeen(surveyId) // returns boolean
+```
+
+## Analyzing Responses
+
+The Surveys dashboard shows:
+- Response rate over time
+- NPS breakdown (Promoters / Passives / Detractors)
+- Individual responses with user context (events, feature flags, session replay link)
+- Word cloud for open-text responses
+- Export to CSV
+
+## API Access
+
+```bash
+# List surveys
+GET /api/projects/{project_id}/surveys/
+
+# Get responses
+GET /api/projects/{project_id}/surveys/{survey_id}/responses/
+```
+
+## Self-Hosting Notes
+
+Surveys are rendered from the `@posthog/surveys-js` package embedded in the JS SDK. No additional infrastructure required beyond the standard Hanzo Insights stack.

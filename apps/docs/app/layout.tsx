@@ -46,6 +46,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </TreeContextProvider>
         </NextProvider>
       </Body>
+      <script defer src="https://analytics.hanzo.ai/script.js" data-website-id="a323a8ae-c811-4061-9626-22caaffc612f" data-do-not-track="true" data-exclude-search="true" />
     </html>
   );
 }

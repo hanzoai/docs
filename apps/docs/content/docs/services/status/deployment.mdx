@@ -1,0 +1,259 @@
+---
+title: Deployment
+description: Deploy Hanzo Status to Kubernetes, Docker, or bare metal
+---
+
+# Deployment
+
+Hanzo Status ships as a single Docker image at `ghcr.io/hanzoai/status:latest`. Deploy it with Docker, Kubernetes, or as a standalone binary.
+
+## Docker
+
+```bash
+docker run -d \
+  --name status \
+  -p 8080:8080 \
+  -v ./config.yaml:/config/config.yaml:ro \
+  -v status-data:/data \
+  ghcr.io/hanzoai/status:latest
+```
+
+## Kubernetes
+
+### Namespace and ConfigMap
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: status-config
+  namespace: monitoring
+data:
+  config.yaml: |
+    web:
+      port: 8080
+    storage:
+      type: sqlite
+      path: /data/status.db
+    ui:
+      title: "Status"
+      logo: "/brands/hanzo/logo.svg"
+      link: "https://example.com"
+      dark-mode: true
+      buttons:
+        - name: "Docs"
+          link: "https://docs.example.com"
+    endpoints:
+      - name: "Website"
+        group: "Web"
+        url: "https://example.com"
+        interval: 60s
+        conditions:
+          - "[STATUS] == 200"
+          - "[RESPONSE_TIME] < 3000"
+```
+
+### Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: status
+  namespace: monitoring
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate           # SQLite requires single writer
+  selector:
+    matchLabels:
+      app: status
+  template:
+    metadata:
+      labels:
+        app: status
+    spec:
+      containers:
+        - name: status
+          image: ghcr.io/hanzoai/status:latest
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: status-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: status-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: status-data
+  namespace: monitoring
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+### Service and Ingress
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: status
+  namespace: monitoring
+spec:
+  selector:
+    app: status
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: status
+  namespace: monitoring
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: status.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: status
+                port:
+                  number: 80
+  tls:
+    - hosts: [status.example.com]
+      secretName: status-tls
+```
+
+## Multi-Brand Deployment
+
+Deploy multiple instances from the same image with different ConfigMaps:
+
+```yaml
+# Brand A
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: status-config
+  namespace: brand-a
+data:
+  config.yaml: |
+    ui:
+      title: "Brand A Status"
+      logo: "/brands/branda/logo.svg"
+      link: "https://branda.com"
+    endpoints:
+      - name: "Website"
+        url: "https://branda.com"
+        # ...
+
+---
+# Brand B (same image, different namespace)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: status-config
+  namespace: brand-b
+data:
+  config.yaml: |
+    ui:
+      title: "Brand B Status"
+      logo: "/brands/brandb/logo.svg"
+      link: "https://brandb.com"
+    endpoints:
+      - name: "Website"
+        url: "https://brandb.com"
+        # ...
+```
+
+Each brand gets its own namespace, PVC, and ingress — all sharing the same `ghcr.io/hanzoai/status:latest` image.
+
+## CI/CD
+
+The repository includes a GitHub Actions workflow that builds and pushes on every commit to `main`:
+
+```yaml
+# .github/workflows/deploy.yml
+name: Build & Deploy
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+```
+
+After the image is pushed, restart deployments to pick up the new image:
+
+```bash
+kubectl rollout restart deployment/status -n monitoring
+```
+
+## Health Check
+
+The `/health` endpoint returns `200 OK` when the service is running:
+
+```bash
+curl -s http://localhost:8080/health
+# {"status":"UP"}
+```
+
+Use this for Kubernetes liveness and readiness probes, load balancer health checks, and external monitoring.

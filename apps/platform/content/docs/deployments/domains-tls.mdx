@@ -1,0 +1,244 @@
+---
+title: Domains & TLS
+description: Add custom domains to your deployments with automatic TLS certificates from Let's Encrypt via cert-manager.
+---
+
+Every container with ingress enabled gets a platform-generated URL. You can also add custom domains with automatic TLS certificates issued by Let's Encrypt.
+
+## Default URLs
+
+When ingress is enabled, the platform assigns a URL based on the ingress type:
+
+| Ingress Type | URL Pattern |
+|-------------|-------------|
+| `subdomain` | `<container-slug>.<cluster-domain>` |
+| `path` | `<cluster-domain>/<container-slug>` |
+
+## Adding a Custom Domain
+
+<Steps>
+
+### Register the Domain
+
+Navigate to your cluster's **Domains** settings and add the domain:
+
+```bash
+# Platform UI: Cluster → Settings → Domains → Add Domain
+# API:
+domain.add({ clusterId: "cls-xyz", domain: "api.example.com" })
+```
+
+<Callout type="info">
+Only organization Admins and Owners can add or remove domains.
+</Callout>
+
+### Configure DNS
+
+Point your domain to the cluster's ingress IP address. Create an A record (or CNAME for subdomains) at your DNS provider:
+
+```
+# A record — for apex domains
+api.example.com.    A    134.199.141.68
+
+# CNAME — for subdomains pointing to a cluster domain
+app.example.com.    CNAME    cluster.platform.hanzo.ai.
+```
+
+For **wildcard domains**, create a wildcard DNS record:
+
+```
+*.example.com.    A    134.199.141.68
+```
+
+### Enable on the Container
+
+Set the custom domain in the container's networking config:
+
+```yaml
+networking:
+  containerPort: 8080
+  ingress:
+    enabled: true
+  customDomain:
+    enabled: true
+    domain: "api.example.com"
+```
+
+### TLS Certificate Provisioning
+
+The platform automatically provisions a TLS certificate via cert-manager and Let's Encrypt. No manual steps required.
+
+</Steps>
+
+## TLS with cert-manager
+
+The platform uses [cert-manager](https://cert-manager.io) with Let's Encrypt for automatic TLS:
+
+### How It Works
+
+```
+Domain added → Ingress created → cert-manager detects →
+ACME challenge → Let's Encrypt issues cert → cert stored as K8s Secret
+```
+
+### ClusterIssuer
+
+Each cluster is configured with a `ClusterIssuer` for Let's Encrypt production:
+
+```yaml
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: ops@example.com
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+```
+
+### Ingress Annotation
+
+The platform annotates ingress resources to trigger certificate issuance:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-xk8f3m2n
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+    - hosts:
+        - api.example.com
+      secretName: api-example-com-tls
+  rules:
+    - host: api.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-xk8f3m2n
+                port:
+                  number: 8080
+```
+
+### Certificate Renewal
+
+cert-manager automatically renews certificates 30 days before expiry. No intervention required.
+
+## Wildcard Certificates
+
+For wildcard domains (`*.example.com`), cert-manager uses DNS-01 challenges instead of HTTP-01:
+
+```yaml
+solvers:
+  - dns01:
+      cloudflare:
+        email: ops@example.com
+        apiTokenSecretRef:
+          name: cloudflare-api-token
+          key: api-token
+    selector:
+      dnsZones:
+        - "example.com"
+```
+
+<Callout type="warn">
+Wildcard certificates require a DNS provider integration (Cloudflare, Route53, Cloud DNS, etc.). The platform supports Cloudflare out of the box. For other providers, configure the DNS solver in your cluster's cert-manager settings.
+</Callout>
+
+## Cloudflare Integration
+
+If your domain uses Cloudflare (recommended), configure SSL mode to **Full** so Cloudflare trusts the Let's Encrypt certificate on your origin:
+
+```
+Client → Cloudflare (edge TLS) → Origin (Let's Encrypt TLS)
+```
+
+| Cloudflare SSL Mode | Behavior |
+|--------------------|----------|
+| `Off` | No encryption (not recommended) |
+| `Flexible` | Cloudflare terminates TLS, plain HTTP to origin |
+| `Full` | TLS on both legs, origin cert not validated |
+| `Full (Strict)` | TLS on both legs, origin cert must be valid |
+
+Use **Full** or **Full (Strict)** with Let's Encrypt certificates.
+
+<Callout type="info">
+When using Cloudflare proxy (orange cloud), disable PROXY protocol on your ingress controller. The platform's K8s clusters are pre-configured for this.
+</Callout>
+
+## DNS Configuration Examples
+
+<Tabs items={["Cloudflare", "Route 53", "Manual"]}>
+<Tab value="Cloudflare">
+```bash
+# Using the Cloudflare dashboard or API:
+# Type: A
+# Name: api
+# Content: 134.199.141.68
+# Proxy: Proxied (orange cloud)
+# TTL: Auto
+```
+</Tab>
+<Tab value="Route 53">
+```bash
+# AWS CLI:
+aws route53 change-resource-record-sets \
+  --hosted-zone-id Z1234567890 \
+  --change-batch '{
+    "Changes": [{
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "api.example.com",
+        "Type": "A",
+        "TTL": 300,
+        "ResourceRecords": [{"Value": "134.199.141.68"}]
+      }
+    }]
+  }'
+```
+</Tab>
+<Tab value="Manual">
+Add an A record at your DNS provider:
+
+| Type | Name | Value | TTL |
+|------|------|-------|-----|
+| A | `api` | `134.199.141.68` | 300 |
+
+Or for a CNAME:
+
+| Type | Name | Value | TTL |
+|------|------|-------|-----|
+| CNAME | `app` | `cluster.platform.hanzo.ai` | 300 |
+</Tab>
+</Tabs>
+
+## Removing a Domain
+
+Remove a domain from a cluster to stop serving traffic on it:
+
+```bash
+domain.remove({ domainId: "dom-xyz" })
+```
+
+This deletes the ingress rule and TLS certificate. Existing DNS records must be cleaned up separately at your DNS provider.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Certificate pending for > 5 minutes | DNS not propagated | Verify A/CNAME record resolves to cluster IP |
+| `ERR_TOO_MANY_REDIRECTS` | Cloudflare SSL set to Flexible | Change to Full or Full (Strict) |
+| `502 Bad Gateway` | Container not running or wrong port | Check container status and `containerPort` |
+| Certificate invalid in browser | Using self-signed cert | Ensure `letsencrypt-prod` issuer is configured (not staging) |
+| Wildcard cert not issuing | Missing DNS-01 solver | Configure Cloudflare or Route53 DNS solver in cert-manager |

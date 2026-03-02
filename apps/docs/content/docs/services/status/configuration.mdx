@@ -1,0 +1,213 @@
+---
+title: Configuration
+description: Complete configuration reference for Hanzo Status
+---
+
+# Configuration
+
+Hanzo Status is configured via a single YAML file mounted at `/config/config.yaml`. The file defines the web server, storage, UI branding, and monitored endpoints.
+
+## UI Configuration
+
+```yaml
+ui:
+  title: "Hanzo Status"                          # Browser tab title
+  description: "Real-time infrastructure health"  # Meta description
+  header: "Status"                                # Page header text
+  logo: "/brands/hanzo/logo.svg"                  # Logo image path
+  link: "https://hanzo.ai"                        # Brand link (logo click target)
+  dark-mode: true                                 # Default to dark theme
+  default-sort-by: "name"                         # name | group | health
+  default-filter-by: "none"                       # none | failing | unstable
+  favicon:
+    default: "/brands/hanzo/favicon.svg"
+    size16x16: "/brands/hanzo/favicon-16.png"
+    size32x32: "/brands/hanzo/favicon-32.png"
+  buttons:
+    - name: "HIPs"
+      link: "https://github.com/hanzoai/hips"
+    - name: "Docs"
+      link: "https://docs.hanzo.ai"
+    - name: "GitHub"
+      link: "https://github.com/hanzoai"
+    - name: "Support"
+      link: "https://hanzo.ai/support"
+```
+
+## Endpoint Configuration
+
+Each endpoint defines a target to monitor with conditions that determine health.
+
+```yaml
+endpoints:
+  - name: "API Gateway"
+    group: "Platform"                  # Group for visual organization
+    url: "https://api.example.com"
+    interval: 60s                      # Check interval
+    conditions:
+      - "[STATUS] == 200"                           # HTTP status code
+      - "[RESPONSE_TIME] < 2000"                    # Max response time (ms)
+      - "[CERTIFICATE_EXPIRATION] > 720h"           # Min cert validity (30 days)
+```
+
+### Condition Syntax
+
+| Condition | Description |
+|-----------|-------------|
+| `[STATUS] == 200` | Exact status code match |
+| `[STATUS] == any(200, 301, 302)` | Status in set |
+| `[RESPONSE_TIME] < 2000` | Response under 2 seconds |
+| `[CERTIFICATE_EXPIRATION] > 720h` | Certificate valid for 30+ days |
+| `[BODY] == pat(*"healthy"*)` | Body contains string |
+| `[BODY].status == "ok"` | JSON body field match |
+| `[DNS_RCODE] == NOERROR` | DNS response code |
+| `[CONNECTED] == true` | TCP/ICMP connectivity |
+
+### Multiple Status Codes
+
+Use `any()` to accept multiple valid status codes:
+
+```yaml
+conditions:
+  - "[STATUS] == any(200, 301, 302)"    # Redirects are OK
+  - "[STATUS] == any(200, 401)"          # Auth-gated endpoints
+```
+
+### Protocol Support
+
+```yaml
+# HTTP/HTTPS (default)
+- url: "https://api.example.com/health"
+
+# TCP
+- url: "tcp://db.example.com:5432"
+  conditions:
+    - "[CONNECTED] == true"
+
+# DNS
+- url: "dns://8.8.8.8"
+  dns:
+    query-name: "example.com"
+    query-type: "A"
+  conditions:
+    - "[DNS_RCODE] == NOERROR"
+
+# ICMP (ping)
+- url: "icmp://server.example.com"
+  conditions:
+    - "[CONNECTED] == true"
+    - "[RESPONSE_TIME] < 100"
+
+# STARTTLS
+- url: "starttls://mail.example.com:587"
+  conditions:
+    - "[CONNECTED] == true"
+    - "[CERTIFICATE_EXPIRATION] > 720h"
+```
+
+## Storage Configuration
+
+```yaml
+storage:
+  type: sqlite                         # sqlite | postgres | memory
+  path: /data/status.db                # SQLite file path
+  # caching: true                      # Enable in-memory caching
+```
+
+For PostgreSQL:
+
+```yaml
+storage:
+  type: postgres
+  path: "postgres://user:pass@host:5432/status?sslmode=require"
+```
+
+## Announcements
+
+Display maintenance windows or incident notifications:
+
+```yaml
+announcements:
+  - title: "Scheduled Maintenance"
+    description: "Database migration on March 1st, 2026 from 02:00-04:00 UTC"
+    severity: "warning"                # info | warning | critical
+    start-time: "2026-03-01T02:00:00Z"
+    end-time: "2026-03-01T04:00:00Z"
+```
+
+## Alerting
+
+Configure alerts for endpoint state changes:
+
+```yaml
+alerting:
+  slack:
+    webhook-url: "https://hooks.slack.com/services/..."
+    default-alert:
+      enabled: true
+      send-on-resolved: true
+      failure-threshold: 3
+      success-threshold: 2
+
+  discord:
+    webhook-url: "https://discord.com/api/webhooks/..."
+
+  email:
+    from: "status@example.com"
+    host: "smtp.example.com"
+    port: 587
+    username: "${SMTP_USER}"
+    password: "${SMTP_PASS}"
+```
+
+Then reference alerts on endpoints:
+
+```yaml
+endpoints:
+  - name: "API"
+    url: "https://api.example.com/health"
+    interval: 30s
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: slack
+        enabled: true
+```
+
+## White-Label Branding
+
+Create a new brand by adding assets and config:
+
+```
+web/static/brands/mybrand/
+├── logo.svg          # Header logo (dark:invert applied automatically)
+├── favicon.svg       # Default favicon
+├── favicon-16.png    # 16x16 favicon
+├── favicon-32.png    # 32x32 favicon
+└── favicon.ico       # ICO fallback
+```
+
+Then reference in your config:
+
+```yaml
+ui:
+  title: "MyBrand Status"
+  logo: "/brands/mybrand/logo.svg"
+  link: "https://mybrand.com"
+  favicon:
+    default: "/brands/mybrand/favicon.svg"
+    size16x16: "/brands/mybrand/favicon-16.png"
+    size32x32: "/brands/mybrand/favicon-32.png"
+```
+
+## Environment Variables
+
+Configuration values support environment variable substitution:
+
+```yaml
+alerting:
+  slack:
+    webhook-url: "${SLACK_WEBHOOK_URL}"
+  email:
+    password: "${SMTP_PASSWORD}"
+```

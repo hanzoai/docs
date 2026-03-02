@@ -1,0 +1,94 @@
+---
+title: Roles
+description: Organization roles and their permissions
+---
+
+Every member of an organization is assigned exactly one role. Roles determine what actions a member can perform across the organization.
+
+## Role Hierarchy
+
+```
+Owner > Admin > Developer > Billing > Viewer
+```
+
+Higher roles inherit all permissions of lower roles (except Billing, which is a separate track).
+
+## Permission Matrix
+
+| Permission | Owner | Admin | Developer | Billing | Viewer |
+|-----------|-------|-------|-----------|---------|--------|
+| View projects and clusters | Yes | Yes | Yes | -- | Yes |
+| Deploy applications | Yes | Yes | Yes | -- | -- |
+| Manage builds and logs | Yes | Yes | Yes | -- | -- |
+| Create projects | Yes | Yes | -- | -- | -- |
+| Manage cluster settings | Yes | Yes | -- | -- | -- |
+| Invite and remove members | Yes | Yes | -- | -- | -- |
+| Change member roles | Yes | Yes | -- | -- | -- |
+| Manage billing | Yes | Yes | -- | Yes | -- |
+| View invoices | Yes | Yes | -- | Yes | -- |
+| Delete organization | Yes | -- | -- | -- | -- |
+| Transfer ownership | Yes | -- | -- | -- | -- |
+| Manage environment protection | Yes | Yes | -- | -- | -- |
+
+## Role Details
+
+### Owner
+
+Full control over the organization. Can delete the org, transfer ownership, and perform any action. **Multiple users can be Owners** -- this works like GitHub's model where an organization can have more than one owner for redundancy.
+
+<Callout type="info">
+We recommend having at least two Owners per organization to prevent lockout if one leaves.
+</Callout>
+
+### Admin
+
+Manages the day-to-day operations. Admins can invite members, change roles (up to Admin), create projects, and manage cluster settings. Admins cannot delete the organization or remove Owners.
+
+### Developer
+
+The default role for engineers. Developers can deploy applications, view logs and builds, and manage their own deployments. They cannot create new projects or modify cluster settings.
+
+### Billing
+
+A specialized role for finance teams. Billing members can view and manage payment methods, download invoices, and see usage reports. They cannot view or interact with clusters, deployments, or code.
+
+### Viewer
+
+Read-only access to projects, clusters, and deployments. Viewers can browse the dashboard and view logs but cannot make any changes. Useful for stakeholders who need visibility without write access.
+
+## Changing Roles
+
+Owners and Admins can change a member's role from **Settings > Members**:
+
+<Steps>
+
+### Navigate to members
+
+Go to **Settings > Members** and find the user.
+
+### Select the new role
+
+Click the role dropdown next to their name and select the new role.
+
+### Confirm
+
+The change takes effect immediately. The user's permissions update on their next page load.
+
+</Steps>
+
+<Callout type="warn">
+An Admin cannot promote a member to Owner or demote an existing Owner. Only Owners can manage other Owners.
+</Callout>
+
+## Role via API
+
+```bash
+# Update a member's role
+curl -X PATCH https://app.platform.hanzo.ai/api/orgTeam.update \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "user_abc123",
+    "role": "developer"
+  }'
+```

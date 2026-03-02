@@ -1,0 +1,204 @@
+---
+title: CLI Reference
+description: Install and use the Hanzo CLI for platform operations.
+---
+
+The `hanzo` CLI lets you manage clusters, deploy applications, stream logs,
+and control your platform resources from the terminal. It talks to the same
+API that powers the dashboard.
+
+## Installation
+
+<Tabs items={["macOS", "Linux", "Windows"]}>
+<Tab value="macOS">
+```bash
+brew install hanzoai/tap/hanzo
+```
+</Tab>
+
+<Tab value="Linux">
+```bash
+curl -fsSL https://get.hanzo.ai/cli | sh
+```
+
+Or with your package manager:
+
+```bash
+# Debian/Ubuntu
+sudo apt install hanzo
+
+# Arch
+yay -S hanzo-cli
+```
+</Tab>
+
+<Tab value="Windows">
+```powershell
+scoop bucket add hanzo https://github.com/hanzoai/scoop-bucket
+scoop install hanzo
+```
+
+Or download the binary from
+[GitHub Releases](https://github.com/hanzoai/cli/releases).
+</Tab>
+</Tabs>
+
+Verify the installation:
+
+```bash
+hanzo version
+```
+
+## Authentication
+
+Log in with your [hanzo.id](https://hanzo.id) account:
+
+```bash
+hanzo login
+```
+
+This opens a browser window for OAuth. Once authenticated, the CLI stores
+a token locally. All subsequent commands use this token.
+
+<Callout type="info">
+  For CI/CD environments, set the `HANZO_API_TOKEN` environment variable
+  instead of running `hanzo login`.
+</Callout>
+
+```bash
+# Check current auth status
+hanzo whoami
+```
+
+## Core Commands
+
+### Clusters
+
+```bash
+# List connected clusters
+hanzo cluster list
+
+# Add a new cluster
+hanzo cluster add --name prod-k8s --type kubernetes
+
+# Show cluster details
+hanzo cluster info prod-k8s
+
+# Remove a cluster (does not delete infrastructure)
+hanzo cluster remove prod-k8s
+```
+
+### Projects
+
+```bash
+# List projects in current org
+hanzo project list
+
+# Create a new project
+hanzo project create --name my-app --cluster prod-k8s
+
+# Switch active project context
+hanzo project use my-app
+```
+
+### Deployments
+
+```bash
+# Deploy from a Docker image
+hanzo deploy --project my-app --image ghcr.io/org/app:v1.2.0
+
+# Deploy from current Git directory (auto-detects Dockerfile)
+hanzo deploy --project my-app
+
+# Deploy to a specific environment
+hanzo deploy --project my-app --env staging --image ghcr.io/org/app:v1.2.0
+
+# List recent deployments
+hanzo deploy list --project my-app
+
+# Roll back to previous deployment
+hanzo deploy rollback --project my-app
+```
+
+### Logs
+
+```bash
+# Stream logs from a service
+hanzo logs --project my-app --service api --follow
+
+# Last 100 lines from all services
+hanzo logs --project my-app --lines 100
+
+# Filter by time range
+hanzo logs --project my-app --since 1h
+```
+
+### Secrets
+
+```bash
+# List secrets for a project
+hanzo secrets list --project my-app
+
+# Set a secret
+hanzo secrets set --project my-app DATABASE_URL="postgres://..."
+
+# Remove a secret
+hanzo secrets remove --project my-app DATABASE_URL
+```
+
+<Callout type="warn">
+  Updating a secret does not automatically redeploy services. Run
+  `hanzo deploy` after changing secrets to pick up new values.
+</Callout>
+
+### Organizations
+
+```bash
+# List your organizations
+hanzo org list
+
+# Switch active organization
+hanzo org use acme-corp
+
+# Invite a team member
+hanzo org invite user@example.com --role developer
+```
+
+## Global Flags
+
+| Flag | Description |
+|------|-------------|
+| `--org` | Override active organization |
+| `--project` | Override active project |
+| `--env` | Target environment (default: `production`) |
+| `--output json` | Machine-readable JSON output |
+| `--verbose` | Show HTTP requests for debugging |
+
+## Configuration
+
+The CLI stores configuration in `~/.config/hanzo/config.json`:
+
+```json title="~/.config/hanzo/config.json"
+{
+  "current_org": "acme-corp",
+  "current_project": "my-app",
+  "api_url": "https://app.platform.hanzo.ai/api"
+}
+```
+
+Override any value with environment variables:
+
+```bash
+export HANZO_ORG=acme-corp
+export HANZO_PROJECT=my-app
+export HANZO_API_URL=https://app.platform.hanzo.ai/api
+export HANZO_API_TOKEN=hzo_...
+```
+
+## Next Steps
+
+- [Quickstart](/docs/services/platform/getting-started/quickstart) -- Use the CLI to deploy
+  your first app.
+- [Deployments](/docs/services/platform/deployments) -- Advanced deployment strategies and
+  pipeline configuration.
+- [API Reference](/docs/services/platform/api) -- Full REST API documentation for automation.

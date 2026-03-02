@@ -44,6 +44,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${geist.variable} ${mono.variable} dark`}>
       <body className="antialiased">{children}</body>
+      <script defer src="https://analytics.hanzo.ai/script.js" data-website-id="811b5039-8438-453a-9c8a-e1f4cff05353" data-do-not-track="true" data-exclude-search="true" />
     </html>
   );
 }
