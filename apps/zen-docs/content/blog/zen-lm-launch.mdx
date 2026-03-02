@@ -1,6 +1,6 @@
 ---
 title: "Zen LM: 100+ Open-Source Models for Every Use Case"
-description: "Hanzo AI, Zoo Labs Foundation, and Lux Partners jointly release over 100 open-weight models under the Zen MoDE architecture. Apache 2.0. Runs on your machine. Free to try."
+description: "Hanzo AI, Zoo Labs Foundation, and Lux Partners jointly release over 100 open-weight models. Generations 1 through 5, spanning text, code, vision, audio, and safety research. Apache 2.0."
 date: "2025-03-01"
 author: "Zen LM Team"
 tags: ["Announcement", "Open-Source", "Zen LM"]
@@ -22,28 +22,15 @@ Lux Partners Limited provides the settlement and compute infrastructure layer. D
 
 Together, these three organizations have been training the Zen model family since 2023. Today we make the full catalog public.
 
-## The Zen MoDE Architecture
-
-Zen MoDE stands for **Mixture of Distilled Experts**. The core idea is straightforward:
-
-- Each model contains a large set of specialized expert networks
-- During inference, only a small subset of experts activates per token (sparse routing)
-- Experts are initialized from, and continuously refined against, best-in-class research foundations
-- The result is a model that matches the capability of much larger dense models at a fraction of the inference cost
-
-This is not a gimmick. The combination of sparse expert routing and distillation-based initialization lets us achieve frontier capability at model sizes that actually run on hardware people own.
-
-For the full technical treatment, see [Zen MoDE Architecture](/blog/zen-mode-architecture/).
-
 ## The Research Lineage
 
-We have been working on this for a while:
+We have been at this for a while. Each generation built on the last:
 
-- **Zen 1 (2023)**: Initial architecture exploration. Small models, public training logs, proof that the distillation approach worked.
-- **Zen 2 (2024)**: First production-quality release. 7B to 70B parameter range. Adopted by Zoo Foundation partners for research use.
-- **Zen 3**: Multimodal expansion — vision and audio integrated into the same model family. Embedding and reranker models added.
-- **Zen 4 (current)**: Flagship generation. 480B MoE at the top end. 1M token context. Full coverage from 0.6B edge models to 744B research-scale.
-- **Zen 5 (in training)**: 1T+ parameter scale, 2M context, tighter vision-text-audio integration.
+- **Zen 1 (Q4 2023)**: Foundation. Dense transformer architecture. First multilingual training runs. Proof that the approach worked at 7B, 14B, and 72B.
+- **Zen 2 (Q2 2024)**: 128K context window. First production deployments. Extended to code and math specialist variants.
+- **Zen 3 (Q3–Q4 2024)**: Sparse MoE routing. Multimodal expansion — vision, audio, and image generation integrated into the same family. Embedding and reranker models added.
+- **Zen 4 (Q1 2025, current)**: Frontier generation. 480B MoE at the top end. 1M token context. Full coverage from 0.6B edge models to research-scale.
+- **Zen 5 (in training)**: Introduces **Zen MoDE** — Mixture of Diverse Experts. 1T+ parameters, 2M context, native video, real-time audio.
 
 ## The Catalog
 
@@ -63,13 +50,17 @@ One hundred models is not a typo. We cover the full stack:
 | Zen Guard | 3B | Safety classification, content filtering |
 | Zen Reranker | 1.5B | Cross-encoder reranking for retrieval |
 
-Beyond these flagship sizes, the catalog includes instruction-tuned variants, base weights for fine-tuning, quantized versions for consumer hardware, and abliterated variants for research use.
+Beyond these flagship sizes, the catalog includes instruction-tuned variants, base weights for fine-tuning, quantized versions for consumer hardware, and safety research variants.
 
-## On the Abliterated Variants
+## AI Safety Research Variants
 
-We release abliterated versions of the major models — variants with safety refusals removed at the weight level. These exist for legitimate research purposes: studying model behavior, evaluating jailbreak robustness, and building custom safety layers from scratch rather than working around ours.
+As part of our alignment research program, we release safety research variants across major Zen generations. These are models where constraint overlays have been studied and removed — enabling rigorous safety evaluation, red-teaming, and alignment benchmarking.
 
-They are clearly labeled. If you need to ask whether you should use them, you probably shouldn't.
+This work is part of how we build better safety systems. You cannot improve what you cannot measure. Understanding how models behave without safety overlays tells us precisely where constraints are effective, where they are superficial, and where they create false confidence.
+
+**Research applications:** Red-teaming, alignment evaluation, jailbreak robustness testing, capability assessment, adversarial probing, building custom safety layers from scratch.
+
+Safety research variants are available for Zen 1 through Zen 4. They are clearly labeled in the catalog.
 
 ## Open Weights Is the Only Credible Commitment
 
@@ -102,7 +93,7 @@ vllm serve zenlm/zen4-pro --tensor-parallel-size 4
 pip install transformers torch
 python -c "
 from transformers import pipeline
-pipe = pipeline('text-generation', model='zenlm/zen4-flash')
+pipe = pipeline('text-generation', model='zenlm/zen4-pro')
 print(pipe('Explain sparse expert routing in three sentences.')[0]['generated_text'])
 "
 
@@ -138,7 +129,7 @@ The full training stack is available on GitHub. We publish training logs, data p
 
 Zen 5 is in training now. The targets:
 
-- 1T+ parameter scale (MoDE, sparse activation)
+- **Zen MoDE** architecture — Mixture of Diverse Experts, sparse activation at 1T+ scale
 - 2M token native context window
 - Native video understanding
 - Real-time audio processing
