@@ -1,0 +1,131 @@
+---
+title: Storage
+description: Block storage pricing for SSD and NVMe volumes
+---
+
+Hanzo Platform provides network-attached block storage that can be mounted to any VM. Volumes persist independently of VMs and can be moved between instances.
+
+## Storage Tiers
+
+| Tier | Type | IOPS | Throughput | Price |
+|------|------|------|------------|-------|
+| **SSD** | Network SSD | Up to 5,000 | 200 MB/s | $0.10/GB/mo |
+| **NVMe** | Local NVMe | Up to 50,000 | 1,000 MB/s | $0.20/GB/mo |
+
+### SSD Storage
+
+General-purpose network-attached SSD. Suitable for most workloads including web applications, databases, and file storage.
+
+- Persistent across VM restarts
+- Snapshots included
+- Can be detached and reattached to different VMs
+- Sizes from 10 GB to 10 TB
+
+### NVMe Storage
+
+High-performance locally-attached NVMe. Ideal for I/O-intensive workloads like databases, search indexes, and data processing pipelines.
+
+- Lowest latency, highest throughput
+- Snapshots included
+- Can be detached and reattached to different VMs in the same region
+- Sizes from 50 GB to 10 TB
+
+<Callout type="warn">
+NVMe volumes are region-locked. You cannot move an NVMe volume to a VM in a different region. Use SSD volumes if cross-region portability is needed.
+</Callout>
+
+## Managing Volumes
+
+### Create a Volume
+
+<Tabs items={["Dashboard", "CLI", "API"]}>
+  <Tab value="Dashboard">
+    Navigate to **Storage > Create Volume**. Select the tier, size, and region. Attach it to a VM.
+  </Tab>
+  <Tab value="CLI">
+    ```bash
+    # Create a 100GB SSD volume
+    hanzo volume create \
+      --name my-data \
+      --size 100 \
+      --tier ssd \
+      --region us-east
+
+    # Attach to a VM
+    hanzo volume attach my-data --vm my-server --mount /mnt/data
+    ```
+  </Tab>
+  <Tab value="API">
+    ```bash
+    curl -X POST https://app.platform.hanzo.ai/api/volume.create \
+      -H "Authorization: Bearer YOUR_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "my-data",
+        "sizeGb": 100,
+        "tier": "ssd",
+        "region": "us-east"
+      }'
+    ```
+  </Tab>
+</Tabs>
+
+### Resize a Volume
+
+Volumes can be expanded (never shrunk) without downtime:
+
+```bash
+hanzo volume resize my-data --size 200
+```
+
+After resizing, extend the filesystem inside the VM:
+
+```bash
+# ext4
+sudo resize2fs /dev/vdb
+
+# xfs
+sudo xfs_growfs /mnt/data
+```
+
+### Snapshots
+
+Snapshots are point-in-time copies of a volume. They are incremental and stored separately from the volume.
+
+```bash
+# Create a snapshot
+hanzo volume snapshot create my-data --name backup-2026-02-26
+
+# List snapshots
+hanzo volume snapshot list my-data
+
+# Restore from snapshot
+hanzo volume create --from-snapshot snap_abc123 --name restored-data
+```
+
+Snapshot pricing: **$0.05/GB/mo** for stored snapshot data.
+
+## Included Storage
+
+Each [VM plan](/docs/pricing/plans) includes base storage:
+
+| Plan | Included Storage | Type |
+|------|-----------------|------|
+| Nano | 25 GB | SSD |
+| Micro | 50 GB | SSD |
+| Small | 80 GB | SSD |
+| Medium | 160 GB | SSD |
+| Power | 320 GB | SSD |
+| Power Dedicated | 640 GB | NVMe |
+
+The included storage is the VM's boot disk. Additional volumes are billed separately at the rates above.
+
+## Pricing Examples
+
+| Configuration | Monthly Cost |
+|--------------|-------------|
+| 100 GB SSD | $10.00 |
+| 500 GB SSD | $50.00 |
+| 100 GB NVMe | $20.00 |
+| 1 TB NVMe | $200.00 |
+| 100 GB SSD + 50 GB snapshots | $12.50 |

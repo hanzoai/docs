@@ -1,0 +1,76 @@
+---
+title: "Browser Terminal"
+description: "Access your VMs via SSH directly in your browser"
+---
+
+Hanzo Visor includes a browser-based terminal powered by [Apache Guacamole](https://guacamole.apache.org/) that gives you instant SSH access to any VM without installing an SSH client.
+
+## How it works
+
+1. Navigate to your VM in the Visor dashboard
+2. Click the **Terminal** button
+3. A full terminal session opens in your browser
+
+The connection is established through a secure WebSocket tunnel. All traffic is encrypted with TLS.
+
+## Supported protocols
+
+| Protocol | Description | Plans |
+|----------|------------|-------|
+| SSH | Command-line terminal | All plans |
+| VNC | Graphical desktop | Standard and above |
+| RDP | Windows remote desktop | Power plan |
+
+## Features
+
+### Clipboard support
+
+Copy and paste works between your local machine and the remote terminal. Use `Ctrl+Shift+C` / `Ctrl+Shift+V` (or `Cmd+C` / `Cmd+V` on macOS).
+
+### File transfer
+
+Drag and drop files into the terminal window to upload them to the VM. Files are uploaded to the home directory by default.
+
+To download files, use the built-in file browser or `scp` from the terminal.
+
+### Session recording
+
+Terminal sessions can be recorded for audit and compliance purposes. Enable session recording in **Settings > Security > Audit Logs**.
+
+Recordings are stored encrypted and can be replayed from the dashboard.
+
+### Multi-tab
+
+Open multiple terminal tabs to the same VM or different VMs. Each tab maintains its own independent session.
+
+## SSH key management
+
+Visor manages SSH keys for you. When you create a VM, your SSH public key is automatically injected.
+
+To add additional SSH keys:
+
+```bash
+curl -X POST https://api.visor.hanzo.ai/v1/ssh-keys \
+  -H "Authorization: Bearer $VISOR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-laptop",
+    "public_key": "ssh-ed25519 AAAA... user@laptop"
+  }'
+```
+
+## Direct SSH access
+
+You can also connect directly via your local SSH client:
+
+```bash
+ssh root@<vm-ip>
+```
+
+The VM's IP address is shown in the dashboard and returned by the API.
+
+## Troubleshooting
+
+- **Terminal not loading**: Ensure your browser allows WebSocket connections. Check for corporate proxy or firewall restrictions.
+- **Connection dropped**: The terminal will automatically reconnect. If it persists, check the VM's status in the dashboard.
+- **Slow rendering**: VNC desktop sessions require more bandwidth. Use SSH for command-line workloads.

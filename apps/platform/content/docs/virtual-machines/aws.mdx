@@ -1,0 +1,160 @@
+---
+title: AWS EC2
+description: Launch and manage AWS EC2 instances from the Hanzo Platform dashboard.
+---
+
+Hanzo Platform integrates directly with the AWS EC2 API, letting you provision instances, manage security groups, and monitor resources without touching the AWS console.
+
+## Prerequisites
+
+- An AWS account with an IAM user or role
+- Permissions: `ec2:*`, `iam:PassRole` (scoped to your deployment)
+- API credentials added in **Settings > Cloud Providers > AWS**
+
+## Connecting Your AWS Account
+
+<Steps>
+
+### Create an IAM Policy
+
+Create a policy with the minimum required permissions:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:RunInstances",
+        "ec2:TerminateInstances",
+        "ec2:DescribeInstances",
+        "ec2:DescribeImages",
+        "ec2:DescribeSecurityGroups",
+        "ec2:CreateSecurityGroup",
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:CreateVolume",
+        "ec2:AttachVolume",
+        "ec2:DetachVolume",
+        "ec2:DeleteVolume",
+        "ec2:DescribeVolumes",
+        "ec2:CreateTags"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+### Create Access Keys
+
+Generate an access key pair for the IAM user and add them in **Settings > Cloud Providers > AWS**.
+
+### Verify Connection
+
+The dashboard will list available regions and instance types once credentials are validated.
+
+</Steps>
+
+## Supported Instance Types
+
+<Tabs items={["General Purpose", "Compute Optimized", "Memory Optimized"]}>
+
+<Tab value="General Purpose">
+
+| Type | vCPUs | Memory | Use Case |
+|------|-------|--------|----------|
+| t3.micro | 2 | 1 GB | Dev/test |
+| t3.medium | 2 | 4 GB | Small apps |
+| m6i.large | 2 | 8 GB | Production workloads |
+| m6i.xlarge | 4 | 16 GB | Databases, APIs |
+| m6i.2xlarge | 8 | 32 GB | Heavy workloads |
+
+</Tab>
+
+<Tab value="Compute Optimized">
+
+| Type | vCPUs | Memory | Use Case |
+|------|-------|--------|----------|
+| c6i.large | 2 | 4 GB | Batch processing |
+| c6i.xlarge | 4 | 8 GB | CI/CD runners |
+| c6i.2xlarge | 8 | 16 GB | ML inference |
+| c6i.4xlarge | 16 | 32 GB | High-throughput |
+
+</Tab>
+
+<Tab value="Memory Optimized">
+
+| Type | vCPUs | Memory | Use Case |
+|------|-------|--------|----------|
+| r6i.large | 2 | 16 GB | In-memory caches |
+| r6i.xlarge | 4 | 32 GB | Redis, Memcached |
+| r6i.2xlarge | 8 | 64 GB | Large databases |
+
+</Tab>
+
+</Tabs>
+
+## Regions
+
+Hanzo Platform supports all standard AWS regions. The most common:
+
+| Region | Code | Location |
+|--------|------|----------|
+| US East (N. Virginia) | `us-east-1` | Virginia, US |
+| US West (Oregon) | `us-west-2` | Oregon, US |
+| EU (Frankfurt) | `eu-central-1` | Frankfurt, DE |
+| EU (Ireland) | `eu-west-1` | Dublin, IE |
+| Asia Pacific (Tokyo) | `ap-northeast-1` | Tokyo, JP |
+| Asia Pacific (Singapore) | `ap-southeast-1` | Singapore |
+
+## AMIs
+
+When launching an instance, select from curated OS images:
+
+- **Ubuntu 24.04 LTS** -- Default, recommended for most workloads
+- **Ubuntu 22.04 LTS** -- Long-term support
+- **Debian 12** -- Minimal and stable
+- **Amazon Linux 2023** -- AWS-optimized kernel
+
+<Callout type="info">
+Custom AMIs are supported. Enter the AMI ID directly when creating a VM.
+</Callout>
+
+## Networking and Security Groups
+
+Each VM is launched into your default VPC or a VPC you specify. Hanzo Platform creates a security group per VM with the following defaults:
+
+| Rule | Port | Source | Purpose |
+|------|------|--------|---------|
+| SSH | 22 | Your IP | Remote access |
+| HTTP | 80 | 0.0.0.0/0 | Web traffic |
+| HTTPS | 443 | 0.0.0.0/0 | Secure web traffic |
+
+You can edit security group rules from **VM Details > Networking**.
+
+<Callout type="warn">
+Avoid opening port 22 to `0.0.0.0/0`. Use the browser terminal or restrict SSH access to known IPs.
+</Callout>
+
+## Launching an Instance
+
+<Steps>
+
+### Select Provider
+
+Go to **Virtual Machines > New** and choose **AWS**.
+
+### Configure
+
+Pick your region, instance type, AMI, and SSH key. Optionally set a VPC and subnet.
+
+### Review and Create
+
+Confirm the configuration and estimated cost. Click **Create** to launch.
+
+### Monitor
+
+The VM appears in your dashboard within 30-60 seconds. View logs, metrics, and connection details from the detail page.
+
+</Steps>

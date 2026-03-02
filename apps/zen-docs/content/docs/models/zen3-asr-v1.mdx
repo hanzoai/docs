@@ -1,0 +1,76 @@
+---
+title: zen3-asr-v1
+description: First-generation streaming ASR for legacy compatibility.
+---
+
+# zen3-asr-v1
+
+**Legacy Streaming ASR**
+
+First-generation streaming automatic speech recognition model maintained for backward compatibility. Applications built on zen3-asr-v1 can continue operating while new projects should use zen3-asr for improved accuracy and features.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen3-asr-v1` |
+| **Architecture** | Streaming ASR |
+| **Tier** | pro |
+| **Status** | Available |
+| **Deployment** | API only (WebSocket) |
+
+## Capabilities
+
+- Real-time streaming speech recognition
+- WebSocket-based audio streaming
+- Interim and final transcription results
+- Legacy API compatibility
+
+## API Usage
+
+```python
+import asyncio
+import websockets
+import json
+
+async def stream_transcription(audio_source):
+    uri = "wss://api.hanzo.ai/v1/audio/stream"
+    headers = {"Authorization": f"Bearer {HANZO_API_KEY}"}
+
+    async with websockets.connect(uri, extra_headers=headers) as ws:
+        await ws.send(json.dumps({
+            "model": "zen3-asr-v1",
+            "language": "en",
+            "interim_results": True,
+        }))
+
+        async for audio_chunk in audio_source:
+            await ws.send(audio_chunk)
+
+        await ws.send(json.dumps({"type": "end"}))
+
+        async for message in ws:
+            result = json.loads(message)
+            print(result.get("transcript", ""))
+
+asyncio.run(stream_transcription(audio_source))
+```
+
+## Migration
+
+New projects should use [zen3-asr](/docs/models/zen3-asr) for improved accuracy, lower latency, and additional features including speaker change detection and enhanced interim results.
+
+## Try It
+
+[Open in Hanzo Chat](https://hanzo.chat?model=zen3-asr-v1)
+
+## Resources
+
+- [Audio API](/docs/api/audio) -- Endpoint documentation
+- [Technical Report](https://github.com/zenlm/zen/blob/main/paper/zen-technical-report.pdf)
+
+## See Also
+
+- [zen3-asr](/docs/models/zen3-asr) -- Current generation streaming ASR (recommended)
+- [zen3-audio](/docs/models/zen3-audio) -- Best quality batch transcription
+- [Pricing](/docs/api/pricing) -- Full pricing table

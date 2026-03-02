@@ -1,0 +1,149 @@
+---
+title: Browser Terminal
+description: Access VMs via a WebSocket-based browser terminal powered by Apache Guacamole.
+---
+
+Hanzo Platform includes a browser-based terminal that lets you SSH into any managed VM without installing an SSH client or exposing port 22 to the public internet.
+
+## Architecture
+
+The terminal is powered by [Apache Guacamole](https://guacamole.apache.org/), providing a secure WebSocket bridge between your browser and the VM:
+
+```
+Browser (WebSocket) --> Platform Gateway --> Guacamole --> SSH --> VM
+```
+
+- **No client software required** -- works in any modern browser
+- **No public SSH port needed** -- the gateway connects over the private network
+- **Session recording** -- terminal sessions can be recorded for audit
+- **Clipboard support** -- copy/paste between your local machine and the remote terminal
+
+## Opening a Terminal Session
+
+<Steps>
+
+### Navigate to the VM
+
+Go to **Virtual Machines** and click the VM you want to access.
+
+### Click Terminal
+
+On the VM detail page, click the **Terminal** tab. A new terminal session opens in your browser.
+
+### Authenticate
+
+The terminal connects using the SSH key associated with the VM. No password prompt is needed if key-based auth is configured.
+
+</Steps>
+
+<Callout type="info">
+The terminal opens as the default user for the OS image (e.g., `ubuntu` for Ubuntu, `root` for Debian/Hetzner).
+</Callout>
+
+## SSH Key Management
+
+Hanzo Platform maintains a centralized SSH keyring. Keys are synced to VMs at creation time and can be updated on running instances.
+
+### Adding a Key
+
+<Steps>
+
+### Go to SSH Keys
+
+Navigate to **Settings > SSH Keys > Add Key**.
+
+### Paste Your Public Key
+
+```bash
+# Copy your public key
+cat ~/.ssh/id_ed25519.pub
+```
+
+Paste the contents and give it a name (e.g., `work-laptop`).
+
+### Save
+
+The key is stored in your account and available when creating new VMs.
+
+</Steps>
+
+### Generating a New Key Pair
+
+If you don't have an SSH key:
+
+```bash
+ssh-keygen -t ed25519 -C "you@example.com"
+```
+
+<Callout type="warn">
+Never share your private key. Only upload the `.pub` file to Hanzo Platform.
+</Callout>
+
+### Updating Keys on Running VMs
+
+To add or remove keys on an existing VM:
+
+1. Go to **VM Details > SSH Keys**
+2. Add or remove keys from the list
+3. Click **Sync Keys**
+
+The platform updates `~/.ssh/authorized_keys` on the VM via the Guacamole connection.
+
+## Terminal Features
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+Shift+C` | Copy selection |
+| `Ctrl+Shift+V` | Paste from clipboard |
+| `Ctrl+Shift+F` | Toggle fullscreen |
+| `Ctrl+Shift+R` | Reconnect session |
+
+### Window Resizing
+
+The terminal automatically resizes when you resize your browser window. The remote PTY dimensions update in real time.
+
+### Multiple Sessions
+
+Open multiple terminal tabs to the same VM by clicking **Terminal > New Tab**. Each tab is an independent SSH session.
+
+## Troubleshooting
+
+### Terminal won't connect
+
+<Tabs items={["Connection Timeout", "Authentication Failed", "Black Screen"]}>
+
+<Tab value="Connection Timeout">
+
+- Verify the VM is in **Running** state
+- Check that the VM's security group/firewall allows SSH from the platform gateway
+- Try restarting the VM from the dashboard
+
+</Tab>
+
+<Tab value="Authentication Failed">
+
+- Confirm the correct SSH key is assigned to the VM
+- Click **Sync Keys** on the VM detail page to re-push keys
+- Check `/var/log/auth.log` on the VM if you have alternate access
+
+</Tab>
+
+<Tab value="Black Screen">
+
+- Press `Enter` to wake the terminal
+- Try `Ctrl+Shift+R` to reconnect
+- Clear browser cache and reload the page
+
+</Tab>
+
+</Tabs>
+
+### Latency
+
+The terminal streams over WebSocket. For best performance:
+
+- Use a wired connection or stable Wi-Fi
+- Choose a VM region close to your location
+- Avoid running the terminal through a VPN if possible

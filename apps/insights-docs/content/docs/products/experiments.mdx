@@ -1,0 +1,93 @@
+---
+title: A/B Testing & Experiments
+description: Run statistically rigorous experiments to make data-driven product decisions.
+---
+
+# A/B Testing & Experiments
+
+Run controlled experiments with automatic statistical analysis. Test UI changes, new features, pricing, copy, and more.
+
+## Overview
+
+Experiments in Hanzo Insights use feature flags under the hood, giving you full control over rollout percentage, targeting, and stopping conditions.
+
+## Experiment Types
+
+### A/B Test
+Split traffic between control and variant. Classic 50/50 or any custom split.
+
+### Multi-Variant Test
+Test multiple variants simultaneously (A/B/C/D). Automatically accounts for multiple comparisons.
+
+### Holdout Test
+Measure long-term impact by maintaining a permanent holdout group.
+
+## Statistical Methods
+
+- **Frequentist**: p-values, confidence intervals, Bayesian-adjusted thresholds
+- **Bayesian**: Probability of being best, expected loss
+- **Sequential testing**: Stop early when significance is reached (reduces sample waste)
+
+Hanzo Insights uses a **Bayesian approach by default** with a configurable significance threshold (default: 95%).
+
+## Setting Up an Experiment
+
+### 1. Create via UI
+
+Navigate to **Experiments** → **New Experiment**:
+1. Choose your primary metric (conversion, retention, revenue)
+2. Set minimum detectable effect (MDE) to calculate required sample size
+3. Configure targeting conditions (same as Feature Flags)
+4. Launch when ready
+
+### 2. Create via API
+
+```bash
+curl -X POST https://app.insights.hanzo.ai/api/projects/{project_id}/experiments/ \
+  -H "Authorization: Bearer $PERSONAL_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Checkout Button Color Test",
+    "description": "Test green vs blue checkout button",
+    "feature_flag_key": "checkout-button-color",
+    "filters": {},
+    "metrics": [{"id": "purchase_completed", "type": "primary"}]
+  }'
+```
+
+### 3. Integrate in Code
+
+```javascript
+const variant = posthog.getFeatureFlag('checkout-button-color')
+
+if (variant === 'control') {
+  // Show blue button
+} else if (variant === 'test') {
+  // Show green button
+}
+
+// Track conversion
+posthog.capture('purchase_completed', { variant })
+```
+
+## Analyzing Results
+
+The experiment dashboard shows:
+- Conversion rates per variant with confidence intervals
+- Statistical significance (p-value)
+- Estimated impact on revenue/retention
+- Sample size progress toward significance
+- Time-series graph of variant performance
+
+## Stopping an Experiment
+
+Stop when:
+1. Statistical significance is reached (green indicator)
+2. You've reached your minimum sample size
+3. A winner is declared with >95% probability
+
+**Ship the winner**: One-click to update the feature flag to 100% rollout.
+
+## Self-Hosting Notes
+
+Experiments require ClickHouse for statistical computations. Ensure `CLICKHOUSE_HOST` is configured. See [Self-Hosting Guide](/docs/self-hosting).

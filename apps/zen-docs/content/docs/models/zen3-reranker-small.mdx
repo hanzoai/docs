@@ -1,0 +1,107 @@
+---
+title: zen3-reranker-small
+description: Lightweight reranker for high-throughput reranking at minimal cost.
+---
+
+# zen3-reranker-small
+
+**High-Throughput Reranking**
+
+A 0.6B lightweight cross-encoder reranker for high-throughput reranking at minimal cost. Purpose-built for applications that must rerank large result sets in real time without sacrificing retrieval accuracy.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen3-reranker-small` |
+| **Parameters** | 0.6B |
+| **Architecture** | Reranker |
+| **Context Window** | 40K tokens |
+| **Tier** | pro |
+| **Status** | Available |
+| **HuggingFace** | [zenlm/zen3-reranker-small](https://huggingface.co/zenlm/zen3-reranker-small) |
+
+## Capabilities
+
+- High-throughput query-document relevance scoring
+- Long-document reranking up to 40K tokens
+- Real-time reranking for live search applications
+- Minimal latency for interactive search experiences
+- Cost-efficient large-scale reranking
+
+## API Usage
+
+```bash
+curl https://api.hanzo.ai/v1/rerank \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen3-reranker-small",
+    "query": "What is retrieval augmented generation?",
+    "documents": [
+      "RAG combines retrieval with language model generation.",
+      "The weather in Tokyo is sunny today.",
+      "Vector databases store embeddings for semantic search."
+    ]
+  }'
+```
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.rerank.create(
+    model="zen3-reranker-small",
+    query="What is retrieval augmented generation?",
+    documents=[
+        "RAG combines retrieval with language model generation.",
+        "The weather in Tokyo is sunny today.",
+        "Vector databases store embeddings for semantic search.",
+    ],
+)
+
+for result in response.results:
+    print(f"[{result.relevance_score:.3f}] {result.document.text}")
+```
+
+## HuggingFace Usage
+
+```python
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
+import torch
+
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen3-reranker-small")
+model = AutoModelForSequenceClassification.from_pretrained("zenlm/zen3-reranker-small")
+
+query = "What is retrieval augmented generation?"
+documents = [
+    "RAG combines retrieval with language model generation.",
+    "Vector databases store embeddings for semantic search.",
+]
+
+pairs = [[query, doc] for doc in documents]
+inputs = tokenizer(pairs, padding=True, truncation=True, return_tensors="pt")
+
+with torch.no_grad():
+    scores = model(**inputs).logits.squeeze()
+
+ranked = sorted(zip(documents, scores.tolist()), key=lambda x: x[1], reverse=True)
+for doc, score in ranked:
+    print(f"[{score:.3f}] {doc}")
+```
+
+## Try It
+
+[Open in Hanzo Chat](https://hanzo.chat?model=zen3-reranker-small)
+
+## Resources
+
+- [HuggingFace](https://huggingface.co/zenlm/zen3-reranker-small)
+- [Technical Report](https://github.com/zenlm/zen/blob/main/paper/zen-technical-report.pdf)
+
+## See Also
+
+- [zen3-reranker](/docs/models/zen3-reranker) -- Maximum reranking quality (8B)
+- [zen3-reranker-medium](/docs/models/zen3-reranker-medium) -- Balanced cost and quality
+- [zen3-embedding](/docs/models/zen3-embedding) -- Text embeddings for retrieval

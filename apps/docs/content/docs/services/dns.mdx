@@ -1,0 +1,248 @@
+---
+title: Hanzo DNS
+description: Authoritative DNS management with Cloudflare integration, automatic TLS certificates, GeoDNS routing, and DNSSEC across all Hanzo domains.
+---
+
+# Hanzo DNS
+
+Hanzo DNS manages domain routing and DNS infrastructure for the entire Hanzo ecosystem. All zones are Cloudflare-managed with automatic SSL/TLS certificate provisioning via cert-manager, DNSSEC signing, GeoDNS routing, and a REST API for programmatic zone and record management.
+
+## Features
+
+- **Cloudflare-Managed Zones**: All production domains proxied through Cloudflare for DDoS protection, caching, and edge routing
+- **Automatic TLS**: cert-manager with Let's Encrypt issues and renews certificates for all K8s ingresses
+- **Multi-Domain Management**: Unified control over hanzo.ai, hanzo.id, hanzo.bot, hanzo.space, hanzo.chat, hanzo.app, hanzo.team, lux.network, and zoo.ngo
+- **DNSSEC**: Cryptographic signing for all authoritative zones to prevent cache poisoning and spoofing
+- **GeoDNS Routing**: Latency-based and geographic routing for global traffic distribution
+- **Wildcard Subdomains**: `*.hanzo.ai` and `*.lux.network` wildcards for dynamic service provisioning
+- **REST API**: Programmatic zone and record management via the Hanzo Gateway
+- **Query Analytics**: Real-time DNS query logging, latency metrics, and threat dashboards
+
+## Endpoints
+
+| Environment | URL |
+|-------------|-----|
+| API | `https://api.hanzo.ai/v1/dns/*` |
+| Dashboard | `https://console.hanzo.ai/dns` |
+
+## Architecture
+
+```
+                         Client Query
+                              |
+                              v
+                    +-------------------+
+                    |    Cloudflare     |
+                    |   Edge Network    |
+                    |  (Anycast DNS)    |
+                    +--------+----------+
+                             |
+              +--------------+--------------+
+              |              |              |
+              v              v              v
+      +-----------+  +-----------+  +-----------+
+      | hanzo.ai  |  |lux.network|  |  zoo.ngo  |
+      |   zone    |  |   zone    |  |   zone    |
+      +-----------+  +-----------+  +-----------+
+              |              |              |
+              v              v              v
+      +-----------+  +-----------+  +-----------+
+      | hanzo-k8s |  |  lux-k8s  |  | hanzo-k8s |
+      |24.199.76  |  |24.144.69  |  |24.199.76  |
+      |   .156    |  |   .101    |  |   .156    |
+      +-----------+  +-----------+  +-----------+
+              |              |              |
+              +-------+------+------+------+
+                      v
+          +-------------------------+
+          |  cert-manager (ACME)    |
+          |  Let's Encrypt + DNS-01 |
+          +-------------------------+
+```
+
+## Managed Domains
+
+| Domain | Cluster | Primary Use |
+|--------|---------|-------------|
+| `hanzo.ai` | hanzo-k8s | Core platform, API, IAM, console |
+| `hanzo.id` | hanzo-k8s | Identity provider (Hanzo IAM) |
+| `hanzo.bot` | hanzo-k8s | Bot platform, skills, automations |
+| `hanzo.space` | hanzo-k8s | Object storage (Hanzo S3 console + API) |
+| `hanzo.chat` | hanzo-k8s | AI chat interface |
+| `hanzo.app` | hanzo-k8s | Main application |
+| `hanzo.team` | hanzo-k8s | Team collaboration |
+| `lux.network` | lux-k8s | Blockchain RPC, markets, cloud |
+| `zoo.ngo` | hanzo-k8s | Zoo Foundation, governance |
+
+### Load Balancer A Records
+
+| Cluster | IP | Domains |
+|---------|-----|---------|
+| **hanzo-k8s** | `24.199.76.156` | hanzo.ai, hanzo.id, hanzo.bot, hanzo.space, hanzo.chat, hanzo.app, hanzo.team, zoo.ngo |
+| **lux-k8s** | `24.144.69.101` | lux.network |
+
+## Quick Start
+
+### List DNS Zones
+
+```bash
+curl -H "Authorization: Bearer $HANZO_API_KEY" \
+  https://api.hanzo.ai/v1/dns/zones
+```
+
+### Create a Record
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/dns/zones/hanzo.ai/records \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "A",
+    "name": "myapp",
+    "content": "24.199.76.156",
+    "ttl": 300,
+    "proxied": true
+  }'
+```
+
+### Delete a Record
+
+```bash
+curl -X DELETE -H "Authorization: Bearer $HANZO_API_KEY" \
+  https://api.hanzo.ai/v1/dns/zones/hanzo.ai/records/rec_abc123
+```
+
+## Configuration
+
+### cert-manager ClusterIssuer
+
+```yaml
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: ops@hanzo.ai
+    privateKeySecretRef:
+      name: letsencrypt-prod-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+```
+
+### Ingress with TLS
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-service
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+    - hosts:
+        - myapp.hanzo.ai
+      secretName: myapp-hanzo-ai-tls
+  rules:
+    - host: myapp.hanzo.ai
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: my-service
+                port:
+                  number: 80
+```
+
+### Cloudflare Settings
+
+| Setting | Value |
+|---------|-------|
+| SSL Mode | Full (strict) |
+| Minimum TLS | 1.2 |
+| Always Use HTTPS | On |
+| HSTS | On (max-age 31536000) |
+| Brotli | On |
+| HTTP/3 | On |
+
+### DNSSEC
+
+DNSSEC is enabled at the Cloudflare zone level. DS records are published to each registrar. Verify with:
+
+```bash
+dig +dnssec hanzo.ai
+dig DS hanzo.ai @8.8.8.8
+```
+
+### GeoDNS
+
+Cloudflare load balancing with geographic steering distributes traffic by region:
+
+| Region | Primary Pool | Fallback |
+|--------|-------------|----------|
+| North America | hanzo-k8s (NYC) | lux-k8s (SFO) |
+| Europe | hanzo-k8s (NYC) | -- |
+| Asia Pacific | hanzo-k8s (NYC) | -- |
+
+## Wildcard Subdomains
+
+| Pattern | Target | Use Case |
+|---------|--------|----------|
+| `*.hanzo.ai` | `24.199.76.156` | Dynamic service subdomains |
+| `*.lux.network` | `24.144.69.101` | Blockchain service subdomains |
+| `*.hanzo.bot` | `24.199.76.156` | Bot skills and app subdomains |
+
+Wildcard TLS certificates are issued via DNS-01 challenge (Cloudflare solver).
+
+## Key Subdomain Mappings
+
+| Subdomain | Service |
+|-----------|---------|
+| `api.hanzo.ai` | Gateway (unified API) |
+| `console.hanzo.ai` | Console (observability) |
+| `cloud.hanzo.ai` | Cloud platform |
+| `platform.hanzo.ai` | Hanzo Platform (PaaS) |
+| `kms.hanzo.ai` | Hanzo KMS |
+| `iam.hanzo.ai` | Hanzo IAM |
+| `s3.hanzo.space` | Hanzo S3 API |
+| `hanzo.space` | Hanzo S3 console |
+| `api.lux.network` | Lux blockchain RPC |
+| `markets.lux.network` | DEX and markets |
+
+## Environment Variables
+
+```bash
+CF_API_TOKEN=xxx              # Cloudflare API token (DNS edit + zone read)
+CF_ZONE_ID_HANZO=xxx          # hanzo.ai zone ID
+CF_ZONE_ID_LUX=xxx            # lux.network zone ID
+CF_ZONE_ID_ZOO=xxx            # zoo.ngo zone ID
+LETSENCRYPT_EMAIL=ops@hanzo.ai
+```
+
+## Related Services
+
+<Cards>
+  <Card title="Gateway" href="/docs/services/gateway">
+    API gateway routing behind DNS records
+  </Card>
+  <Card title="IAM" href="/docs/services/iam">
+    Identity provider at hanzo.id
+  </Card>
+  <Card title="S3 Storage" href="/docs/services/s3">
+    Object storage at hanzo.space
+  </Card>
+  <Card title="Zero Trust" href="/docs/services/zt">
+    Zero-trust mesh networking at zt.hanzo.ai
+  </Card>
+</Cards>

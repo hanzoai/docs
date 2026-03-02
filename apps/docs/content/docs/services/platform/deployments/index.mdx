@@ -1,0 +1,65 @@
+---
+title: Deployment Overview
+description: Choose an orchestrator and deploy applications from Git or a container registry.
+---
+
+Hanzo Platform supports three orchestration backends. Every backend uses the same container abstraction — a unified resource that maps to Kubernetes Deployments, Docker Swarm services, or Compose stacks depending on the cluster type.
+
+## Orchestrators
+
+| Backend | Best For | HA Support | Volumes |
+|---------|----------|------------|---------|
+| **Kubernetes** | Production workloads, autoscaling, CronJobs | Yes | PVC with storage classes |
+| **Docker Swarm** | Simpler clusters, overlay networking | Yes (multi-node) | Named volumes |
+| **Docker Compose** | Single-node dev/staging environments | No | Bind mounts, named volumes |
+
+## Container Types
+
+The platform models every workload as a **container** with one of three types:
+
+- **Deployment** — Long-running services with configurable replicas, rolling updates, and horizontal pod autoscaling.
+- **StatefulSet** — Ordered, stable workloads with persistent volumes (databases, caches).
+- **CronJob** — Scheduled tasks with cron expressions, concurrency policies, and job history limits.
+
+## Source Types
+
+Containers pull their image from one of two sources:
+
+<Tabs items={["Git Repository", "Container Registry"]}>
+<Tab value="Git Repository">
+Connect GitHub, GitLab, or Bitbucket. On every push (or manual trigger), the platform runs a Tekton pipeline that builds a container image with Kaniko and deploys it automatically.
+
+```
+repo → webhook → Tekton pipeline → Kaniko build → deploy
+```
+</Tab>
+<Tab value="Container Registry">
+Pull a pre-built image from any supported registry — GHCR, Docker Hub, ECR, ACR, GCR, GAR, Quay, or a private registry. Specify the image name and tag directly.
+
+```
+registry → pull image → deploy
+```
+</Tab>
+</Tabs>
+
+## Deployment Hierarchy
+
+Every container lives inside this hierarchy:
+
+```
+Organization
+  └── Project
+        └── Environment (dev, staging, production)
+              └── Container (deployment / statefulset / cronjob)
+```
+
+Environments can have **protection levels** (`none`, `restricted`, `locked`) and optionally require **deployment approvals** before changes land.
+
+## Next Steps
+
+- [Kubernetes Deployments](/deployments/kubernetes) — Create deployments, statefulsets, cronjobs on K8s clusters
+- [Docker Swarm](/deployments/docker-swarm) — Deploy services on Swarm clusters
+- [Docker Compose](/deployments/docker-compose) — Deploy stacks on single-node clusters
+- [Git Deployments](/deployments/git-deployments) — Push-to-deploy with Tekton and Kaniko
+- [Container Registry](/deployments/container-registry) — Configure pull credentials for private registries
+- [Domains & TLS](/deployments/domains-tls) — Custom domains with automatic Let's Encrypt certificates

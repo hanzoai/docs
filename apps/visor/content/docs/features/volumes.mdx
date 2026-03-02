@@ -1,0 +1,136 @@
+---
+title: "Block Storage"
+description: "Attach persistent volumes, snapshots, and backups to your VMs"
+---
+
+Hanzo Visor provides a unified block storage API that works across all cloud providers. Attach persistent volumes to any VM, take snapshots, and manage backups.
+
+## Creating a volume
+
+```bash
+curl -X POST https://api.visor.hanzo.ai/v1/volumes \
+  -H "Authorization: Bearer $VISOR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "data-vol-01",
+    "size_gb": 100,
+    "provider": "digitalocean",
+    "region": "nyc3"
+  }'
+```
+
+Response:
+
+```json
+{
+  "id": "vol_xyz789",
+  "name": "data-vol-01",
+  "size_gb": 100,
+  "status": "available",
+  "provider": "digitalocean",
+  "region": "nyc3",
+  "attached_to": null,
+  "created_at": "2026-02-27T12:00:00Z"
+}
+```
+
+## Attaching a volume
+
+```bash
+curl -X POST https://api.visor.hanzo.ai/v1/volumes/vol_xyz789/attach \
+  -H "Authorization: Bearer $VISOR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vm_id": "vm_abc123",
+    "mount_point": "/mnt/data",
+    "auto_mount": true
+  }'
+```
+
+When `auto_mount` is `true`, Visor will format the volume (if unformatted) with ext4 and add an entry to `/etc/fstab`.
+
+## Detaching a volume
+
+```bash
+curl -X POST https://api.visor.hanzo.ai/v1/volumes/vol_xyz789/detach \
+  -H "Authorization: Bearer $VISOR_API_KEY"
+```
+
+Volumes are detached cleanly with a filesystem sync before unmounting.
+
+## Resizing
+
+Volumes can be expanded (but not shrunk) without downtime:
+
+```bash
+curl -X PATCH https://api.visor.hanzo.ai/v1/volumes/vol_xyz789 \
+  -H "Authorization: Bearer $VISOR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "size_gb": 200
+  }'
+```
+
+The filesystem is automatically resized after the volume expansion completes.
+
+## Snapshots
+
+Create point-in-time copies of volumes:
+
+```bash
+curl -X POST https://api.visor.hanzo.ai/v1/volumes/vol_xyz789/snapshots \
+  -H "Authorization: Bearer $VISOR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "before-migration"
+  }'
+```
+
+Snapshots are stored incrementally and billed at $0.05/GB/mo.
+
+### Restoring from a snapshot
+
+```bash
+curl -X POST https://api.visor.hanzo.ai/v1/volumes \
+  -H "Authorization: Bearer $VISOR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "restored-vol",
+    "snapshot_id": "snap_abc123",
+    "provider": "digitalocean",
+    "region": "nyc3"
+  }'
+```
+
+## Automated backups
+
+Enable automated daily backups on any volume:
+
+```bash
+curl -X PATCH https://api.visor.hanzo.ai/v1/volumes/vol_xyz789 \
+  -H "Authorization: Bearer $VISOR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "backup": {
+      "enabled": true,
+      "retention_days": 7,
+      "schedule": "daily"
+    }
+  }'
+```
+
+Backups are taken during low-usage hours and retained for the configured number of days.
+
+## Pricing
+
+| Resource | Price |
+|----------|-------|
+| Volume storage (NVMe SSD) | $0.10/GB/mo |
+| Snapshots | $0.05/GB/mo |
+| Bandwidth (overage) | $0.01/GB |
+
+## Provider-specific notes
+
+- **AWS**: Uses EBS gp3 by default. io2 available for high IOPS workloads.
+- **DigitalOcean**: NVMe-backed volumes. Max 16 TB per volume.
+- **Hetzner**: SSD volumes. Max 10 TB per volume. Automatically encrypted at rest.

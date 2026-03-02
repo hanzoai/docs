@@ -1,0 +1,221 @@
+---
+title: Docker Compose
+description: Deploy Compose stacks on single-node clusters with environment variables, volumes, and service networking.
+---
+
+Docker Compose is the simplest orchestrator — ideal for single-node development and staging environments. The platform manages Compose stacks through the same container API used for Kubernetes and Swarm.
+
+## When to Use Compose
+
+- **Development environments** that mirror production topology
+- **Staging** on a single VM where Kubernetes overhead is unnecessary
+- **Side projects** and internal tools with low traffic
+
+<Callout type="warn">
+Compose runs on a single node with no built-in HA. For production workloads, use Kubernetes or Docker Swarm.
+</Callout>
+
+## Creating a Compose Service
+
+<Steps>
+
+### Register a Compose Cluster
+
+Add a cluster with Docker Compose as the orchestrator. This is typically a single VM with Docker installed.
+
+### Create a Container
+
+Use the standard container creation flow. The platform generates a `compose.yml` and applies it via the Docker Compose API.
+
+```yaml
+# What the platform generates internally:
+services:
+  api-xk8f3m2n:
+    image: ghcr.io/myorg/api:v1.0.0
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: "postgres://user:pass@db:5432/app"
+      NODE_ENV: "production"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+    restart: always
+```
+
+### Deploy
+
+The platform applies the stack:
+
+```bash
+docker compose -f /opt/hanzo/envs/<env-id>/compose.yml up -d
+```
+
+</Steps>
+
+## Environment Variables
+
+Pass configuration as key-value pairs:
+
+```yaml
+variables:
+  - name: REDIS_URL
+    value: "redis://kv:6379"
+  - name: SECRET_KEY
+    value: "change-me"
+```
+
+These map directly to the `environment` block in the generated Compose file.
+
+## Volume Management
+
+Attach persistent storage to Compose services:
+
+```yaml
+storageConfig:
+  enabled: true
+  mountPath: /var/lib/postgresql/data
+  size: 10
+  sizeType: gibibyte
+```
+
+The platform creates a named volume:
+
+```yaml
+services:
+  postgres-abc123:
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
+    driver: local
+```
+
+<Callout type="info">
+Volume size is tracked by the platform for monitoring but is not enforced by Docker. The underlying filesystem determines actual capacity.
+</Callout>
+
+## Networking
+
+All services in the same environment share a Compose network and can reach each other by service name:
+
+```yaml
+# Auto-generated:
+networks:
+  env-staging:
+    driver: bridge
+
+services:
+  api:
+    networks: [env-staging]
+  db:
+    networks: [env-staging]
+```
+
+Within the network, services resolve by name: `postgres://db:5432/app`.
+
+### Port Publishing
+
+Expose a service externally:
+
+```yaml
+networking:
+  containerPort: 3000
+  ingress:
+    enabled: true
+```
+
+Maps to:
+
+```yaml
+ports:
+  - "3000:3000"
+```
+
+## Resource Limits
+
+Set CPU and memory constraints:
+
+```yaml
+podConfig:
+  cpuLimit: 500          # millicores → "0.5" CPUs
+  memoryLimit: 512       # MiB
+  restartPolicy: Always  # Always | OnFailure | Never (maps to restart policy)
+```
+
+Generated output:
+
+```yaml
+deploy:
+  resources:
+    limits:
+      cpus: "0.5"
+      memory: 512M
+restart: always
+```
+
+## Health Checks
+
+The liveness probe maps to Compose's `healthcheck` directive:
+
+```yaml
+probes:
+  liveness:
+    enabled: true
+    checkMechanism: httpGet
+    httpPath: /health
+    httpPort: 3000
+    initialDelaySeconds: 10
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 3
+```
+
+Generated:
+
+```yaml
+healthcheck:
+  test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  start_period: 10s
+```
+
+## Updating Services
+
+When you update a container's image tag or configuration, the platform regenerates the Compose file and runs:
+
+```bash
+docker compose -f /opt/hanzo/envs/<env-id>/compose.yml up -d --no-deps <service-name>
+```
+
+The `--no-deps` flag ensures only the target service restarts, leaving other services untouched.
+
+## Multiple Services per Environment
+
+Each container in an environment becomes a service in the same Compose file. This lets you define full application stacks:
+
+| Container | Role | Image |
+|-----------|------|-------|
+| `web` | Frontend | `ghcr.io/org/web:latest` |
+| `api` | Backend | `ghcr.io/org/api:latest` |
+| `db` | Database | `postgres:17-alpine` |
+| `kv` | Cache | `valkey/valkey:8-alpine` |
+
+All four share the environment network and can communicate by service name.
+
+## Limitations vs. Kubernetes/Swarm
+
+| Feature | Compose | Swarm | Kubernetes |
+|---------|---------|-------|------------|
+| Multi-node | No | Yes | Yes |
+| Autoscaling | No | No | Yes (HPA) |
+| Rolling updates | Recreate only | Yes | Yes |
+| Service discovery | DNS (bridge) | DNS (overlay) | DNS (ClusterIP) |
+| Load balancing | No | Routing mesh | Ingress + Service |
+| StatefulSets | Named volumes | Named volumes | Native PVC |
+| CronJobs | No | No | Native |

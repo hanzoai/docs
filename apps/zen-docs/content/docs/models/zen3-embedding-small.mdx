@@ -1,0 +1,85 @@
+---
+title: zen3-embedding-small
+description: Lightweight embedding model for high-throughput, low-cost applications.
+---
+
+# zen3-embedding-small
+
+**High-Throughput Embeddings**
+
+A 0.6B lightweight embedding model built for maximum throughput at minimal cost. Ideal for applications that process millions of documents daily where cost and speed are paramount.
+
+## Specifications
+
+| Property | Value |
+|----------|-------|
+| **Model ID** | `zen3-embedding-small` |
+| **Parameters** | 0.6B |
+| **Architecture** | Embedding |
+| **Context Window** | 32K tokens |
+| **Tier** | pro |
+| **Status** | Available |
+| **HuggingFace** | [zenlm/zen3-embedding-small](https://huggingface.co/zenlm/zen3-embedding-small) |
+
+## Capabilities
+
+- High-throughput document embedding at minimal cost
+- Semantic search for large-scale corpora
+- Real-time embedding for live search applications
+- Edge and on-device embedding generation
+- Fast RAG pipeline ingestion
+
+## API Usage
+
+```bash
+curl https://api.hanzo.ai/v1/embeddings \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen3-embedding-small",
+    "input": "Zen LM is a family of frontier AI models"
+  }'
+```
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.embeddings.create(
+    model="zen3-embedding-small",
+    input=["Hello world", "Zen LM models"],
+)
+
+for embedding in response.data:
+    print(f"Vector dim: {len(embedding.embedding)}")
+```
+
+## HuggingFace Usage
+
+```python
+from transformers import AutoModel, AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained("zenlm/zen3-embedding-small")
+model = AutoModel.from_pretrained("zenlm/zen3-embedding-small")
+
+inputs = tokenizer("Zen LM is a family of frontier AI models",
+                   return_tensors="pt", truncation=True)
+outputs = model(**inputs)
+embeddings = outputs.last_hidden_state[:, 0, :]  # CLS token
+```
+
+## Try It
+
+[Open in Hanzo Chat](https://hanzo.chat?model=zen3-embedding-small)
+
+## Resources
+
+- [HuggingFace](https://huggingface.co/zenlm/zen3-embedding-small)
+- [Technical Report](https://github.com/zenlm/zen/blob/main/paper/zen-technical-report.pdf)
+
+## See Also
+
+- [zen3-embedding](/docs/models/zen3-embedding) -- High-quality 3072-dim embeddings
+- [zen3-embedding-medium](/docs/models/zen3-embedding-medium) -- Balanced performance and cost
+- [Embeddings API](/docs/api/embeddings) -- Endpoint documentation

@@ -1,0 +1,291 @@
+---
+title: Kubernetes Deployments
+description: Create Deployments, StatefulSets, and CronJobs on Kubernetes clusters with resource limits, health checks, and rolling updates.
+---
+
+Kubernetes is the default orchestrator for production workloads. The platform maps its container abstraction directly to native K8s resources — Deployments, StatefulSets, and CronJobs.
+
+## Creating a Container
+
+<Steps>
+
+### Choose the Container Type
+
+Select one of three types based on your workload:
+
+| Type | K8s Resource | Use Case |
+|------|-------------|----------|
+| `deployment` | Deployment + ReplicaSet | Stateless services, APIs, web apps |
+| `statefulset` | StatefulSet | Databases, caches, ordered pods |
+| `cronjob` | CronJob | Scheduled batch jobs, cleanups |
+
+### Configure the Source
+
+Pick either **Git Repository** (build from source) or **Container Registry** (pre-built image).
+
+For a registry source, provide the image name and tag:
+
+```yaml
+sourceType: registry
+registryConfig:
+  registryId: "reg-abc123"      # optional — links to a saved registry
+  imageName: "ghcr.io/org/app"
+  imageTag: "v1.2.0"
+```
+
+### Set Resource Limits
+
+Every container requires CPU and memory requests/limits. These map directly to K8s resource specifications.
+
+```yaml
+podConfig:
+  cpuRequest: 100        # millicores (10-1000m) or cores (0.1-4)
+  cpuRequestType: millicores
+  cpuLimit: 1
+  cpuLimitType: cores
+  memoryRequest: 128     # mebibytes (10-1024Mi) or gibibytes (0.1-16Gi)
+  memoryRequestType: mebibyte
+  memoryLimit: 1
+  memoryLimitType: gibibyte
+  restartPolicy: Always  # Always | OnFailure | Never
+```
+
+<Callout type="info">
+CPU request must be less than or equal to CPU limit. Same for memory. The platform validates this before deploying.
+</Callout>
+
+### Configure Networking
+
+Expose your container with a port, optional ingress, custom domain, or raw TCP proxy:
+
+```yaml
+networking:
+  containerPort: 8080
+  ingress:
+    enabled: true
+    type: subdomain       # "path" or "subdomain"
+  customDomain:
+    enabled: true
+    domain: "api.example.com"
+  tcpProxy:
+    enabled: false
+    publicPort: 5432
+```
+
+### Add Environment Variables
+
+Pass configuration as key-value pairs. These become K8s `env` entries on the pod spec.
+
+```yaml
+variables:
+  - name: DATABASE_URL
+    value: "postgres://user:pass@db:5432/app"
+  - name: NODE_ENV
+    value: "production"
+```
+
+### Deploy
+
+The platform creates the namespace (idempotent), applies the K8s manifest, and begins tracking status.
+
+</Steps>
+
+## Deployments (Replicas & Autoscaling)
+
+### Static Replicas
+
+Set a fixed replica count (1-100):
+
+```yaml
+deploymentConfig:
+  replicas: 3
+  strategy: RollingUpdate
+```
+
+### Horizontal Pod Autoscaling
+
+Enable CPU or memory-based autoscaling by setting min/max replicas and a metric target:
+
+```yaml
+deploymentConfig:
+  minReplicas: 2
+  maxReplicas: 10
+  strategy: RollingUpdate
+  cpuMetric:
+    enabled: true
+    metricType: AverageUtilization
+    metricValue: 70
+  memoryMetric:
+    enabled: false
+```
+
+Available metric types:
+
+| Resource | Metric Types |
+|----------|-------------|
+| CPU | `AverageUtilization`, `AverageValueMillicores`, `AverageValueCores` |
+| Memory | `AverageValueMebibyte`, `AverageValueGibibyte` |
+
+<Callout type="warn">
+When autoscaling is enabled, `minReplicas` and `maxReplicas` are required. `minReplicas` must be less than or equal to `maxReplicas`.
+</Callout>
+
+## Rolling Updates
+
+Control how pods are replaced during a deployment:
+
+```yaml
+deploymentConfig:
+  strategy: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1              # or "25%"
+    maxSurgeType: number     # "number" or "percentage"
+    maxUnavailable: 0
+    maxUnavailableType: number
+```
+
+For downtime-tolerant workloads, use `Recreate` — all old pods are terminated before new ones start.
+
+## StatefulSets
+
+StatefulSets provide stable network identities and persistent storage:
+
+```yaml
+statefulSetConfig:
+  desiredReplicas: 3
+  strategy: RollingUpdate
+  podManagementPolicy: OrderedReady  # or "Parallel"
+  rollingUpdate:
+    maxUnavailable: 1
+    partition: 0
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+```
+
+### Persistent Volumes
+
+Attach a PVC to any StatefulSet:
+
+```yaml
+storageConfig:
+  enabled: true
+  mountPath: /data
+  size: 10
+  sizeType: gibibyte           # "mebibyte" (10-1024) or "gibibyte" (0.1-5000)
+  accessModes:
+    - ReadWriteOnce            # ReadWriteOnce | ReadOnlyMany | ReadWriteMany
+```
+
+## CronJobs
+
+Schedule recurring tasks using standard cron expressions:
+
+```yaml
+cronJobConfig:
+  schedule: "0 */6 * * *"       # every 6 hours
+  timeZone: "America/New_York"
+  concurrencyPolicy: Forbid     # Allow | Forbid | Replace
+  suspend: false
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+```
+
+## Health Checks (Probes)
+
+Configure startup, readiness, and liveness probes with three check mechanisms:
+
+<Tabs items={["HTTP", "TCP", "Exec"]}>
+<Tab value="HTTP">
+```yaml
+probes:
+  readiness:
+    enabled: true
+    checkMechanism: httpGet
+    httpPath: /healthz
+    httpPort: 8080
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  liveness:
+    enabled: true
+    checkMechanism: httpGet
+    httpPath: /healthz
+    httpPort: 8080
+    initialDelaySeconds: 15
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 3
+  startup:
+    enabled: false
+```
+</Tab>
+<Tab value="TCP">
+```yaml
+probes:
+  readiness:
+    enabled: true
+    checkMechanism: tcpSocket
+    tcpPort: 5432
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+```
+</Tab>
+<Tab value="Exec">
+```yaml
+probes:
+  liveness:
+    enabled: true
+    checkMechanism: exec
+    execCommand: "pg_isready -U postgres"
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+```
+</Tab>
+</Tabs>
+
+## Scaling
+
+Scale a running container to a specific replica count (0 to scale down, up to 100):
+
+```bash
+# Via the platform UI: Container → Scale → set replica count
+# Via API:
+container.scale({ containerId: "ctr-abc", replicas: 5 })
+```
+
+Scaling to `0` removes all pods but keeps the container definition intact.
+
+## Container Status
+
+The platform polls the orchestrator for live status:
+
+| Status | Meaning |
+|--------|---------|
+| `Creating` | K8s resources are being applied |
+| `Running` | All desired replicas are ready |
+| `Updating` | Rolling update in progress |
+| `Pending` | Pods are scheduled but not yet running |
+| `Failed` | One or more pods failed to start |
+| `Terminating` | Container is being deleted |
+
+## Templates
+
+Deploy pre-configured database and service templates with a single click:
+
+| Template | Type | Category |
+|----------|------|----------|
+| PostgreSQL | StatefulSet | Database |
+| MySQL | StatefulSet | Database |
+| MariaDB | StatefulSet | Database |
+| MongoDB | StatefulSet | Database |
+| Redis | StatefulSet | KV Store |
+| Memcached | StatefulSet | KV Store |
+| MinIO | StatefulSet | Object Storage |
+
+Templates pre-fill resource limits, storage mounts, probes, and default environment variables (credentials are auto-generated).

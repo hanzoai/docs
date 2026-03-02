@@ -2,22 +2,20 @@ name: Deploy Cloud Landing Page
 
 on:
   push:
-    branches: [dev]
+    branches: [main, dev]
     paths:
       - 'apps/cloud/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
       - '.github/workflows/deploy-cloud.yml'
   workflow_dispatch:
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: hanzoai/cloud-site
-
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      deployments: write
     steps:
       - uses: actions/checkout@v4
 
@@ -25,36 +23,24 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
       - run: pnpm --filter @hanzo/cloud build
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Cloudflare Pages project (if needed)
+        continue-on-error: true
+        run: npx wrangler pages project create cloud-site --production-branch=main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: apps/cloud/Dockerfile
-          push: true
-          tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-
-      - name: Deploy to K8s
-        uses: digitalocean/action-doctl@v2
-        with:
-          token: ${{ secrets.DO_API_TOKEN }}
-
-      - name: Rollout new image
-        run: |
-          doctl kubernetes cluster kubeconfig save ${{ secrets.DO_K8S_CLUSTER_ID }}
-          kubectl -n hanzo set image deployment/cloud cloud=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          kubectl -n hanzo rollout status deployment/cloud --timeout=120s
+      - name: Deploy to Cloudflare Pages
+        run: npx wrangler pages deploy apps/cloud/out --project-name=cloud-site --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

@@ -1,0 +1,118 @@
+---
+title: Authentication
+description: Built-in auth with email/password, OAuth2, and enterprise SSO via Hanzo IAM.
+---
+
+Base provides a complete authentication system built into every auth-type collection.
+
+## Auth Methods
+
+### Email/Password
+
+```typescript
+// Register
+await base.collection('users').create({
+  email: 'user@example.com',
+  password: 'securepassword123',
+  passwordConfirm: 'securepassword123',
+  name: 'Jane Doe',
+})
+
+// Login
+const auth = await base.collection('users').authWithPassword(
+  'user@example.com',
+  'securepassword123',
+)
+
+console.log(auth.token)   // JWT token
+console.log(auth.record)  // User record
+```
+
+### OAuth2
+
+```typescript
+// Start OAuth2 flow (opens popup)
+const auth = await base.collection('users').authWithOAuth2({
+  provider: 'google',
+})
+```
+
+Supported providers: Google, GitHub, GitLab, Discord, Microsoft, Apple, Facebook, Twitter, Spotify, and more.
+
+### Hanzo IAM
+
+For enterprise SSO, Base integrates with Hanzo IAM (`hanzo.id`):
+
+```typescript
+// Configure in Base settings
+// IAM_URL=https://hanzo.id
+// IAM_CLIENT_ID=app-myapp
+// IAM_CLIENT_SECRET=...
+
+const auth = await base.collection('users').authWithOAuth2({
+  provider: 'hanzo',
+})
+```
+
+## Session Management
+
+```typescript
+// Check if authenticated
+base.authStore.isValid
+
+// Get current user
+base.authStore.record
+
+// Get token
+base.authStore.token
+
+// Listen to auth changes
+base.authStore.onChange((token, record) => {
+  console.log('Auth changed:', record?.email)
+})
+
+// Logout
+base.authStore.clear()
+```
+
+## API Rules
+
+Use `@request.auth` in API rules to control access:
+
+```
+// Authenticated users only
+@request.auth.id != ""
+
+// Only the record owner
+@request.auth.id = userId
+
+// Admin role required
+@request.auth.role = "admin"
+
+// Specific collection auth
+@request.auth.collectionName = "admins"
+```
+
+## Email Verification
+
+```typescript
+// Request verification email
+await base.collection('users').requestVerification('user@example.com')
+
+// Confirm verification (from email link token)
+await base.collection('users').confirmVerification(token)
+```
+
+## Password Reset
+
+```typescript
+// Request password reset
+await base.collection('users').requestPasswordReset('user@example.com')
+
+// Confirm reset
+await base.collection('users').confirmPasswordReset(
+  token,
+  'newpassword123',
+  'newpassword123',
+)
+```

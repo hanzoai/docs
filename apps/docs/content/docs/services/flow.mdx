@@ -1,0 +1,175 @@
+---
+title: Hanzo Flow
+description: Visual AI workflow builder for LLM applications
+---
+
+# Hanzo Flow
+
+Hanzo Flow is a visual AI workflow builder for designing, prototyping, and deploying LLM-powered applications. Build complex AI pipelines by connecting components visually -- from prompts and chains to RAG systems and multi-agent architectures.
+
+## Features
+
+- **Visual Builder**: Drag-and-drop canvas for composing LLM pipelines
+- **100+ Components**: LLMs, embeddings, vector stores, tools, agents, chains
+- **Multi-Model Support**: OpenAI, Anthropic, Google, Ollama, HuggingFace, and more
+- **RAG Pipelines**: Build retrieval-augmented generation workflows visually
+- **Agent Systems**: Design multi-agent architectures with tool use
+- **API Export**: Every flow becomes a REST API endpoint automatically
+- **Multi-Tenant**: Isolated workspaces per organization via Hanzo IAM
+- **Python Extensibility**: Add custom components in Python
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           HANZO FLOW                                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐ │
+│  │  React UI    │  │  FastAPI     │  │  LangChain   │  │  Component  │ │
+│  │  (@xyflow)   │  │  Backend     │  │  Runtime     │  │  Registry   │ │
+│  │              │  │              │  │              │  │             │ │
+│  │  - Canvas    │  │  - REST API  │  │  - Chains    │  │  - LLMs     │ │
+│  │  - Sidebar   │  │  - WebSocket │  │  - Agents    │  │  - Vectors  │ │
+│  │  - Chat      │  │  - Auth      │  │  - RAG       │  │  - Tools    │ │
+│  │  - Logs      │  │  - Storage   │  │  - Memory    │  │  - Custom   │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └─────────────┘ │
+│                                                                          │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │              Provider Integrations                                │   │
+│  │  OpenAI · Anthropic · Google · Ollama · HuggingFace · Cohere    │   │
+│  │  Pinecone · Chroma · Weaviate · pgvector · Qdrant               │   │
+│  └──────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+## Endpoints
+
+| Environment | URL |
+|-------------|-----|
+| Production | `https://flow.hanzo.ai` |
+| API Base | `https://flow.hanzo.ai/api/v1` |
+
+## Quick Start
+
+### Build an AI Flow
+
+1. Navigate to [flow.hanzo.ai](https://flow.hanzo.ai)
+2. Sign in with your Hanzo account
+3. Click **New Flow** or start from a template
+4. Drag components from the sidebar onto the canvas
+5. Connect components by dragging between ports
+6. Click **Run** to test your flow
+7. Use the **API** tab to get your flow's REST endpoint
+
+### Example: RAG Chatbot
+
+Build a retrieval-augmented chatbot in minutes:
+
+1. **Add components**: File Loader → Text Splitter → Embeddings → Vector Store → Retriever → LLM → Chat Output
+2. **Configure**: Set your OpenAI/Anthropic API key, upload documents
+3. **Connect**: Wire components together visually
+4. **Test**: Use the built-in chat interface
+5. **Deploy**: Get your API endpoint and integrate
+
+### API Access
+
+```bash
+# Run a flow
+curl -X POST https://flow.hanzo.ai/api/v1/run/:flow_id \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input_value": "What is Hanzo AI?",
+    "output_type": "chat",
+    "input_type": "chat"
+  }'
+
+# List flows
+curl https://flow.hanzo.ai/api/v1/flows \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+
+# Get flow details
+curl https://flow.hanzo.ai/api/v1/flows/:flow_id \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+```
+
+## Component Categories
+
+| Category | Examples | Description |
+|----------|----------|-------------|
+| **LLMs** | OpenAI, Anthropic, Ollama, HuggingFace | Language model providers |
+| **Embeddings** | OpenAI, Cohere, HuggingFace, Sentence Transformers | Text embedding models |
+| **Vector Stores** | Pinecone, Chroma, Weaviate, pgvector, Qdrant | Vector databases |
+| **Document Loaders** | PDF, CSV, Web, GitHub, Notion, Confluence | Data ingestion |
+| **Text Splitters** | Recursive, Character, Token, Semantic | Document chunking |
+| **Chains** | LLM Chain, Sequential, Router, Conversation | LangChain chains |
+| **Agents** | ReAct, OpenAI Functions, Plan-and-Execute | Autonomous agents |
+| **Tools** | Search, Calculator, Python REPL, API Call | Agent tools |
+| **Memory** | Buffer, Summary, Entity, Conversation | Context management |
+| **Prompts** | Template, Few-shot, Chat, System | Prompt engineering |
+
+## Multi-Tenant Configuration
+
+Hanzo Flow supports multi-tenant isolation:
+
+- **Per-org workspaces**: Each organization sees only their flows
+- **Shared components**: Admins can publish org-wide custom components
+- **API key isolation**: Each org manages their own provider API keys
+- **Usage tracking**: Per-org token usage and cost monitoring
+
+## Environment Variables
+
+```bash
+# Core
+HANZO_FLOW_HOST=0.0.0.0
+HANZO_FLOW_PORT=7860
+HANZO_FLOW_AUTO_LOGIN=false
+HANZO_FLOW_CONFIG_DIR=/app/flow
+
+# Database
+HANZO_FLOW_DATABASE_URL=postgresql://hanzo:password@postgres.hanzo.svc:5432/flow
+
+# Auth
+HANZO_FLOW_SUPERUSER=admin
+HANZO_FLOW_SUPERUSER_PASSWORD=<from-kms>
+
+# Store
+HANZO_FLOW_STORE=true
+HANZO_FLOW_STORE_ENVIRONMENT_VARIABLES=true
+```
+
+## Development
+
+```bash
+# Install (Python)
+pip install hanzo-flow
+
+# Or with uv
+uv pip install hanzo-flow
+
+# Run locally
+hanzo-flow run --host 0.0.0.0 --port 7860
+
+# Custom components
+# Place .py files in HANZO_FLOW_CONFIG_DIR/components/
+```
+
+## Hanzo Auto vs Hanzo Flow
+
+| Feature | Hanzo Auto | Hanzo Flow |
+|---------|-----------|-----------|
+| **Purpose** | Service-to-service automation | AI/LLM pipeline building |
+| **Language** | TypeScript/Node.js | Python |
+| **Focus** | Triggers, webhooks, integrations | LLM chains, RAG, agents |
+| **Integrations** | 600+ SaaS connectors | 100+ AI/ML components |
+| **Use Case** | "When X happens, do Y" | "Build an AI that does Z" |
+
+Use **Auto** for connecting business services (Slack + Jira + Salesforce). Use **Flow** for building AI applications (RAG chatbot, agent pipelines, document processing).
+
+## Related
+
+- [Hanzo Auto](/docs/services/auto) -- Workflow automation
+- [Hanzo Gateway](/docs/services/gateway) -- LLM API gateway
+- [Hanzo MCP](/docs/mcp) -- Model Context Protocol tools
