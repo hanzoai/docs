@@ -1,6 +1,6 @@
 ---
 title: "Drop-Upcycling and the Birth of Zen MoDE Architecture"
-description: "How Drop-Upcycling (arXiv:2502.19261) transforms dense checkpoints into MoE models at 1/4 training cost, and how it shapes Zen MoDE — our Mixture of Distilled Experts architecture."
+description: "How Drop-Upcycling (arXiv:2502.19261) transforms dense checkpoints into MoE models at 1/4 training cost, and how it shapes Zen MoDE — Mixture of Diverse Experts with genuine expert specialization."
 date: "2026-02-28"
 author: "Zen LM Team"
 tags: ["Research", "MoE", "Architecture", "Drop-Upcycling", "Zen MoDE"]
@@ -10,7 +10,7 @@ tags: ["Research", "MoE", "Architecture", "Drop-Upcycling", "Zen MoDE"]
 
 Mixture of Experts (MoE) is the architecture that makes trillion-parameter models economically viable. By routing each token through a small subset of expert networks rather than the full parameter set, MoE achieves large-model quality at dense-model inference cost. The problem: training an MoE from scratch is expensive. You are paying for both the scale and the specialization overhead.
 
-Drop-Upcycling is a technique that converts a trained dense checkpoint into an MoE at roughly 1/4 the training cost of building the MoE from scratch. It is one of the foundational techniques behind **Zen MoDE** — our Mixture of Distilled Experts architecture. This post explains how it works, why it works, and how we apply it at three scales.
+Drop-Upcycling is a technique that converts a trained dense checkpoint into an MoE at roughly 1/4 the training cost of building the MoE from scratch. It is one of the foundational techniques behind **Zen MoDE** — our Mixture of Diverse Experts architecture. This post explains how it works, why it works, and how we apply it at three scales.
 
 ## Why Naive Expert Cloning Fails
 
@@ -125,7 +125,7 @@ The 1/4 FLOP claim requires context: the dense checkpoint training cost is amort
 
 ## Zen MoDE: Three Scales of Application
 
-Zen MoDE (Mixture of Distilled Experts) applies Drop-Upcycling at three scales:
+Zen MoDE (Mixture of Diverse Experts) applies Drop-Upcycling at three scales:
 
 **zen4-mini (4B total, 4B active)** — Dense. No upcycling needed at this scale; the routing overhead would dominate the compute savings. Zen4-mini uses a dense Qwen3 base.
 

@@ -1,5 +1,5 @@
 /**
- * @hanzo/zen-models — Pricing configuration.
+ * @zenlm/models — Pricing configuration.
  *
  * Zen models are priced at a sustainable multiplier over inference cost.
  * Third-party models available via the Hanzo API are priced with standard markup.

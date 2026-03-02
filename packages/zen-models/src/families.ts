@@ -1,5 +1,5 @@
 /**
- * @hanzo/zen-models — Model family groupings for display purposes.
+ * @zenlm/models — Model family groupings for display purposes.
  */
 
 import type { ModelFamily } from './types'
