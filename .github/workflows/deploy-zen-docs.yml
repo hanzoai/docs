@@ -30,20 +30,18 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm install -g wrangler
-
       - run: pnpm build --filter=zen-docs
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Create Cloudflare Pages project (if needed)
         continue-on-error: true
-        run: wrangler pages project create zen-docs --production-branch=main
+        run: pnpm dlx wrangler pages project create zen-docs --production-branch=main
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - run: wrangler pages deploy apps/zen-docs/out --project-name=zen-docs --commit-dirty=true
+      - run: pnpm dlx wrangler pages deploy apps/zen-docs/out --project-name=zen-docs --commit-dirty=true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
