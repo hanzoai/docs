@@ -24,16 +24,14 @@ Abliteration is representation engineering applied to refusal suppression. The t
 
   4. **Project out** the refusal direction from the relevant weight matrices (typically the output projections of attention layers). For a weight matrix W and refusal direction r:
 
+```
 
-
-[code]
     W_abliterated = W - (W r^T r) / (r^T r)
     
-[/code]
+
+```
 
   5. The resulting weights produce a model that, when it would have activated the refusal direction, instead activates its complement.
-
-
 
 This technique is elegant, computationally cheap (no gradient computation required), and highly effective on dense models. The hamsaOmar release of `Kimi-K2.5-abliterated` uses this exact approach — but it contains only the direction vectors (`refusal_direction.pt`, `refusal_subspace.pt`) and the apply script (`apply_abliteration.py`), not standalone weights. You apply it to your own copy of the base model.
 
@@ -46,8 +44,6 @@ MoE models have a different structure. The FFN block is replaced by a **router +
   1. The router computes a score for each token against each expert: `s_i = softmax(W_gate · h)`
   2. The top-k experts are selected based on these scores
   3. The selected experts process the token; the others do not
-
-
 
 The critical implication: the routing decision happens _before_ the residual stream accumulates the expert’s contribution. Refusal behavior in MoE models can be encoded at two levels:
 
@@ -78,7 +74,8 @@ The gate weight matrix `W_gate` for each MoE layer has shape `(n_experts, d_mode
 Crucially: **we do not use LoRA on the gate weights**. Gate weights are too small (168M total) and the routing changes we need are too structured for low-rank approximation to capture. We unfreeze the gate weights and apply direct gradient descent.
 
 The training objective is DPO (Direct Preference Optimization) on a refusal contrast dataset:
-[code]
+```python
+
     import torch
     import torch.nn.functional as F
     from transformers import AutoModelForCausalLM, BitsAndBytesConfig
@@ -157,7 +154,8 @@ The training objective is DPO (Direct Preference Optimization) on a refusal cont
             outputs = model(input_ids=input_ids, labels=input_ids)
             return -outputs.loss  # mean log probability
     
-[/code]
+
+```
 
 The two optimizer groups run at different learning rates: LoRA adapters at 2e-4, gate weights at 5e-6. Gate weights need a lower learning rate because they directly control routing — large updates cause routing collapse where most tokens go to a single expert.
 
@@ -171,8 +169,6 @@ The quantization strategy:
   * **Gate weights** : Full bfloat16 precision. At 168M parameters, gate weights fit comfortably in high-bandwidth GPU memory and must be in full precision to receive clean gradient signal.
   * **Shared experts** : INT4 for storage, bfloat16 for computation via the LoRA path.
   * **LoRA adapters** : bfloat16. Small enough (~400MB for rank-32 adapters) to not matter.
-
-
 
 Minimum hardware: 4× A100 80GB. The base model quantized to INT4 occupies roughly 280GB across the 4 GPUs (70GB each). Gate weights and LoRA adapters add ~4GB. The remaining headroom per GPU handles activation memory during forward/backward.
 
@@ -202,8 +198,6 @@ The training code is complete and available at [github.com/zenlm/zen4-ultra-trai
   * `dataset/refusal_contrast.py`: Contrast dataset construction utilities
   * `eval/routing_analysis.py`: Expert routing attribution for diagnostic use
   * `paper/main.tex`: Technical paper with full derivations
-
-
 
 We are awaiting the compute budget for the full training run (estimated 72-96 GPU-hours on 4× A100 80GB). Until then, `zen4-ultra` ships as vanilla Kimi K2.5 SafeTensors, and `zen4-ultra-gguf` ships as the GGUF abliteration for users who need reduced restrictions today.
 

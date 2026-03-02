@@ -16,8 +16,6 @@ Standard RLHF follows three steps:
   2. Use the reward model to provide training signal
   3. Optimize the policy with reinforcement learning (typically PPO)
 
-
-
 Step 3 is problematic. PPO requires careful hyperparameter tuning, extensive sampling, and still often produces unstable training dynamics.
 
 ## Key Insight: Relative Comparisons
@@ -34,19 +32,19 @@ Instead of optimizing absolute rewards, GRPO optimizes within groups of sampled 
 
 For each prompt $x$, sample a group of $k$ responses:
 
-$$G = {y_1, y_2, …, y_k} \sim \pi_\theta(y|x)$$
+`G = \{y_1, y_2, …, y_k\} \sim \pi_\theta(y|x)`
 
 ### Ranking
 
 Rank responses within the group using the reward model:
 
-$$r_i = R(x, y_i)$$ $$\text{rank}(y_i) = |{j : r_j > r_i}| + 1$$
+`r_i = R(x, y_i)` `\text\{rank\}(y_i) = |\{j : r_j > r_i\}| + 1`
 
 ### Relative Advantage
 
 Compute advantages relative to the group:
 
-$$A_i = \frac{r_i - \mu_G}{\sigma_G}$$
+`A_i = \frac\{r_i - \mu_G\}\{\sigma_G\}`
 
 where $\mu_G$ and $\sigma_G$ are the group mean and standard deviation.
 
@@ -54,7 +52,7 @@ where $\mu_G$ and $\sigma_G$ are the group mean and standard deviation.
 
 Update the policy to increase probability of high-ranked responses:
 
-$$\mathcal{L}(\theta) = -\mathbb{E}_{y \sim G}\left[\min\left(\frac{\pi_ \theta(y|x)}{\pi_{\text{old}}(y|x)} A, \text{clip}\left(\frac{\pi_\theta(y|x)}{\pi_{\text{old}}(y|x)}, 1-\epsilon, 1+\epsilon\right) A\right)\right]$$
+`\mathcal\{L\}(\theta) = -\mathbb\{E\}_\{y \sim G\}\left[\min\left(\frac\{\pi_ \theta(y|x)\}\{\pi_\{\text\{old\}\}(y|x)\} A, \text\{clip\}\left(\frac\{\pi_\theta(y|x)\}\{\pi_\{\text\{old\}\}(y|x)\}, 1-\epsilon, 1+\epsilon\right) A\right)\right]`
 
 The clipping stabilizes training, similar to PPO, but the relative advantages provide better signal.
 
@@ -93,8 +91,6 @@ Training dynamics also improve significantly:
   * **Convergence** : Reaches final performance 2x faster
   * **Robustness** : Less sensitive to learning rate choice
 
-
-
 ## Implementation Details
 
 Key hyperparameters:
@@ -103,14 +99,13 @@ Key hyperparameters:
   * **Clipping** ($\epsilon$): 0.1-0.2
   * **KL penalty** : Lower than PPO (0.01 vs 0.1)
 
-
-
 The larger group size compared to PPO’s typical 2-response setup is essential. More comparisons mean better gradient estimates.
 
 ## Code Release
 
 We’re releasing our GRPO implementation integrated with the Zen training framework:
-[code]
+```python
+
     from zen.alignment import GRPOTrainer
     
     trainer = GRPOTrainer(
@@ -122,7 +117,8 @@ We’re releasing our GRPO implementation integrated with the Zen training frame
     
     trainer.train(prompts)
     
-[/code]
+
+```
 
 Full documentation and examples at github.com/zoo-labs/zen-align.
 
@@ -133,8 +129,6 @@ GRPO opens several research directions:
   * **Multi-objective GRPO** : Separate groups for different alignment dimensions
   * **Online preference learning** : Update reward model during training
   * **Constitutional GRPO** : Use principles instead of learned rewards
-
-
 
 Alignment is the central challenge of AI development. GRPO is one step toward making it more reliable.
 

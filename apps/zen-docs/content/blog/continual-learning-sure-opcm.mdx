@@ -26,14 +26,17 @@ We use four papers from late 2024 / early 2025, each addressing a different laye
 
 The simplest insight in continual learning is that not all parameter directions are equally important. The top singular vectors of the base model’s weight matrices encode the most “load-bearing” representations — the ones responsible for broad capabilities. Fine-tuning along those directions is how forgetting happens.
 
-OPLoRA adds a projection step after each LoRA update. Let `Δ = BA` be the standard low-rank update (B ∈ ℝ^{d×r}, A ∈ ℝ^{r×k}). Before applying this update, we project it onto the orthogonal complement of the base model’s top singular subspace:
-[code]
+OPLoRA adds a projection step after each LoRA update. Let `Δ = BA` be the standard low-rank update (B ∈ ℝ^&#123;d×r&#125;, A ∈ ℝ^&#123;r×k&#125;). Before applying this update, we project it onto the orthogonal complement of the base model’s top singular subspace:
+```
+
     Δ_orth = Δ - V_k V_k^T Δ
     
-[/code]
+
+```
 
 where `V_k` are the top-k right singular vectors of the pretrained weight matrix W₀. The result: updates flow only through directions that the base model does not heavily use. New knowledge accumulates in the null space of the existing representation.
-[code]
+```python
+
     import torch
     
     def oplora_project(delta: torch.Tensor, base_weight: torch.Tensor, k: int = 64) -> torch.Tensor:
@@ -63,7 +66,8 @@ where `V_k` are the top-k right singular vectors of the pretrained weight matrix
             delta_orth = delta - self.V_k @ (self.V_k.T @ delta)
             return x @ (self.base_weight + delta_orth).T
     
-[/code]
+
+```
 
 The k hyperparameter controls the trade-off: larger k preserves more of the base model but leaves less room for new knowledge. We use k=64 for most Zen fine-tuning passes.
 
@@ -74,10 +78,12 @@ The k hyperparameter controls the trade-off: larger k preserves more of the base
 Replay-based continual learning maintains a buffer of old examples and mixes them into each training batch. The problem is buffer efficiency: most buffered examples are easy for the current model and contribute nothing. SuRe fixes this with surprise-based prioritization.
 
 The surprise score for a token sequence x_t is simply the negative log-likelihood under the current model:
-[code]
+```
+
     r_t = -log p_θ(x_t | x_{<t})
     
-[/code]
+
+```
 
 High surprise means the current model is uncertain about this sequence — it is more likely to be a case where forgetting is occurring. SuRe preferentially replays high-surprise examples, maximizing the utility of a fixed replay budget.
 
@@ -86,16 +92,17 @@ Beyond replay prioritization, SuRe introduces a **dual EMA** (Exponential Moving
   * **Fast LoRA** θ_f: high learning rate, adapts quickly to new data
   * **Slow LoRA** θ_s: low learning rate, tracks long-run behavioral drift
 
-
-
 At merge time, the two adapters are combined:
-[code]
+```
+
     θ_merged = (1-α)θ_s + αθ_f
     
-[/code]
+
+```
 
 where α is a schedule parameter (typically 0.3). The slow adapter acts as a stability anchor while the fast adapter absorbs new signal. On the LNT (Learn-Not-To-Forget) benchmark, SuRe delivers +5 accuracy points over standard replay.
-[code]
+```python
+
     import heapq
     from collections import deque
     from dataclasses import dataclass, field
@@ -144,7 +151,8 @@ where α is a schedule parameter (typically 0.3). The slow adapter acts as a sta
                 for k in theta_fast
             }
     
-[/code]
+
+```
 
 In practice we run SuRe with a buffer of 50K sequences, sampling 512 high-surprise examples per training batch alongside 512 new-data examples. The buffer is refreshed every 1K steps as model NLL scores shift.
 
@@ -157,15 +165,18 @@ OPLoRA and SuRe handle forgetting during training. OPCM handles forgetting durin
 Naive merging (simple average of adapter weights) produces interference between tasks. OPCM applies sequential orthogonal projection: when merging adapter k+1 into the accumulated projection matrix, it removes the component that interferes with previously merged adapters.
 
 The update rule for the projection matrix P is:
-[code]
+```
+
     P_{k+1} = P_k - P_k φ_k^T (φ_k P_k φ_k^T)^{-1} φ_k P_k
     
-[/code]
+
+```
 
 where φ_k is the gradient direction (or adapter weight direction) of the k-th task. This is the standard Gram-Schmidt orthogonalization applied iteratively to the task gradient subspace.
 
 The memory cost is O(|θ|) — a single projection matrix regardless of the number of tasks. This is a significant improvement over methods that cache full gradient histories. On sequential merge benchmarks, OPCM achieves 5-8% better retention than simultaneous averaging.
-[code]
+```python
+
     import torch
     
     class OPCMStep:
@@ -191,7 +202,8 @@ The memory cost is O(|θ|) — a single projection matrix regardless of the numb
             self.P = self.P - outer
             return Pp
     
-[/code]
+
+```
 
 The key insight is ordering: merge tasks from largest to smallest gradient norm. This ensures the most influential task anchors the subspace, and subsequent tasks fill in orthogonal directions.
 
@@ -212,7 +224,8 @@ For Zen, we run Youtu-Agent as a lightweight inference-time layer: the ledger is
 ## How These Four Stack for Zen
 
 The four techniques operate at different timescales and are composable:
-[code]
+```
+
     1. OPLoRA base training
        └─ All Zen fine-tuning uses OPLoRA projection
           Prevents overwriting base model subspace
@@ -229,7 +242,8 @@ The four techniques operate at different timescales and are composable:
        └─ Experience ledger enables training-free behavioral adaptation
           Zero weight updates, ~15ms overhead
     
-[/code]
+
+```
 
 In production, layers 1-3 run during scheduled training passes (nightly for Zen nano/eco, weekly for larger models). Layer 4 is always active.
 

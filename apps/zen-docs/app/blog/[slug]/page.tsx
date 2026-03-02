@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { getPost, getSortedPosts } from '@/lib/blog';
+import { getPost, getAllSlugs } from '@/lib/blog';
 import { useMDXComponents } from '@/mdx-components';
 
 interface Props {
@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export function generateStaticParams() {
-  return getSortedPosts().map((p) => ({ slug: p.slug }));
+  return getAllSlugs().map((slug) => ({ slug }));
 }
 
 export default async function BlogPostPage({ params }: Props) {

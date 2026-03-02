@@ -10,8 +10,6 @@ author: "Zen LM Team"
 
 We release **Qwen3 Embedding series** , a new proprietary model of the Qwen model family. These models are specifically designed for **text embedding** , **retrieval** , and **reranking** tasks, built on the Qwen3 foundation model. Leveraging Qwen3’s robust multilingual text understanding capabilities, the series achieves state-of-the-art performance across multiple benchmarks for text embedding and reranking tasks. We have open-sourced this series of text embedding and reranking models under the Apache 2.0 license on Hugging Face and ModelScope, and published the technical report and related code on GitHub.
 
-![](https://mitalinlp.oss-cn-hangzhou.aliyuncs.com/dingkun/models/qwen-embedding/q3e-mteb-result-0605.png)
-
 **Evaluation results for reranking models**
 
 Model| Param| MTEB-R| CMTEB-R| MMTEB-R| MLDR| MTEB-Code| FollowIR  
@@ -29,7 +27,6 @@ BGE-reranker-v2-m3| 0.6B| 57.03| 72.16| 58.36| 59.51| 41.38| -0.01
 >   * We use the text retrieval subsets of MTEB(eng, v2), MTEB(cmn, v1), MTEB (Multilingual) and MTEB (Code), which are denoted as MTEB-R, CMTEB-R, MMTEB-R and MTEB-Code.
 >   * All scores are our runs based on the top-100 candidates retrieved by dense embedding model [Qwen3-Embedding-0.6B](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B).
 > 
-
 
 **Key Features** :
 
@@ -56,13 +53,9 @@ Model Type| Models| Size| Layers| Sequence Length| Embedding Dimension| MRL Supp
 
 Based on the Qwen3 foundation model, our Embedding and Reranking models are designed using dual-encoder and cross-encoder architectures. Through LoRA fine-tuning, we aim to fully preserve and enhance the text understanding capabilities of the base model. The Embedding model processes a single text segment as input, extracting the semantic representation by utilizing the hidden state vector corresponding to the final `[EOS]` token. In contrast, the Reranking model takes text pairs (such as user queries and candidate documents) as input, calculating and outputting a relevance score between the pairs using a cross-encoder structure.
 
-![](https://mitalinlp.oss-cn-hangzhou.aliyuncs.com/dingkun/models/qwen-embedding/q3e-model-arc.png)
-
 ## Model Training
 
 The training framework for the Qwen3 Embedding series follows the multi-stage training paradigm established by the GTE-Qwen series. During the training of the Embedding model, we implemented a three-stage training structure: the first stage involves contrastive pre-training with a large volume of weakly supervised data; the second stage focuses on supervised training using high-quality labeled data; and the final stage integrates multiple candidate models through a merging strategy to enhance overall performance. This staged training mechanism effectively balances the model’s generalization ability and task adaptability. For the Reranking model, based on empirical validation results, we directly employed high-quality labeled data for supervised training, significantly improving training efficiency. Notably, during the first stage of weakly supervised training for the Embedding model, we developed an innovative multi-task adaptable prompt system. By leveraging the text generation capabilities of the Qwen3 foundation model, we dynamically generated weakly supervised text pairs tailored to different task types and languages. This approach addressed the limitations of traditional methods, which often relied on community forums or open-source data for text relevance pair collection, facilitating the efficient generation of large-scale weakly supervised data.
-
-![](https://mitalinlp.oss-cn-hangzhou.aliyuncs.com/dingkun/models/qwen-embedding/q3e-train-pipeline.png)
 
 ## Future work
 

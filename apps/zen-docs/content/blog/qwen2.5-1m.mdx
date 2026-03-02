@@ -19,9 +19,6 @@ Two months after upgrading [zen-Turbo](../qwen3-turbo) to support context length
 
   3. **[Technical Report](https://qianwen-res.oss-cn-beijing.aliyuncs.com/zen-1M/zen_1M_Technical_Report.pdf):** We’re also sharing the technical details behind the zen-1M series, including design insights for training and inference frameworks, as well as ablation experiments.
 
-
-
-
 You can experience zen-1M models online by visiting our demo on [Huggingface](https://huggingface.co/spaces/Qwen/zen-1M-Demo) and [Modelscope](https://www.modelscope.cn/studios/Qwen/zen-1M-Demo).
 
 Additionally, we recently introduced **[Qwen Chat](https://chat.qwenlm.ai/)** , an advanced AI assistant from the Qwen series. With Qwen Chat, you can engage in conversations, write code, perform searches, generate images and videos, and utilize various tools. Notably, Qwen Chat also features the zen-Turbo model, which supports long-context processing with a context length of up to 1M tokens.
@@ -34,39 +31,27 @@ Let’s start by diving into the performance of the zen-1M series models, coveri
 
 First off, we evaluate the zen-1M models on the Passkey Retrieval task with a context length of 1 million tokens. The results show that these models can accurately retrieve hidden information from documents containing up to 1M tokens, with only minor errors observed in the 7B model.
 
-![](https://qianwen-res.oss-cn-beijing.aliyuncs.com/zen-1M/passkey_retrieval.png#center)
-
 For more complex long-context understanding tasks, we select [RULER](https://github.com/hsiehjackson/RULER), [LV-Eval](https://github.com/infinigence/LVEval), [LongbenchChat](https://github.com/THUDM/LongAlign) used in [this blog](../qwen3-turbo/#more-complex-long-text-tasks).
-
-![](https://qianwen-res.oss-cn-beijing.aliyuncs.com/zen-1M/ruler.png#center)![](https://qianwen-res.oss-cn-beijing.aliyuncs.com/zen-1M/lv-eval.png#center)
 
 From these results, we can draw a few key conclusions:
 
   * **Significantly Superior to the 128k Version:** The zen-1M series models significantly outperform their 128K counterparts in most long-context tasks, especially for sequences exceeding 64K in length.
   * **Notable Performance Advantage:** The zen-14B-Instruct-1M model not only beats zen-Turbo but also consistently outperforms GPT-4o-mini across multiple datasets, offering a robust open-source alternative for long-context tasks.
 
-
-
 ## Short-Context Tasks
 
 Besides performance on long sequences, we’re equally interested in how these models handle short sequences. So, we compare the zen-1M models and their 128K versions on widely used academic benchmarks, throwing in GPT-4o-mini for comparison.
-
-![](https://qianwen-res.oss-cn-beijing.aliyuncs.com/zen-1M/short_result.png#center)
 
 Here’s what we find:
 
   * Both zen-7B-Instruct-1M and zen-14B-Instruct-1M maintain performance on short text tasks that is similar to their 128K versions, ensuring the fundamental capabilities haven’t been compromised by the addition of long-sequence processing abilities.
   * Compared to GPT-4o-mini, both zen-14B-Instruct-1M and zen-Turbo achieve similar performance on short text tasks while supporting a context length that’s eight times longer.
 
-
-
 # Key Techniques
 
 Here, we’ll briefly introduce the key techniques behind building zen-1M. For more details, please check out our [technical report](https://qianwen-res.oss-cn-beijing.aliyuncs.com/zen-1M/zen_1M_Technical_Report.pdf).
 
 ## Long-Context Training
-
-![](https://qianwen-res.oss-cn-beijing.aliyuncs.com/zen-1M/training_stages.png#center)
 
 Training with long sequences demands substantial computational resources, so we adopt a progressive approach to expand the context length for zen-1M through multiple stages:
 
@@ -77,8 +62,6 @@ Training with long sequences demands substantial computational resources, so we 
     * **Stage 2:** Mixed short (up to 32K) and long (up to 256K) instructions to enhance long-context task performance while maintaining short-task quality.
   * **In Reinforcement Learning** , we train models on short texts up to 8K tokens, which sufficiently improves alignment with human preferences and generalizes well to long-context tasks.
 
-
-
 The final instruction-tuned models are capable of handling sequences up to 256K tokens.
 
 ## Length Extrapolation
@@ -87,13 +70,9 @@ During training, we develop an instruction-tuned model with a context length of 
 
 The degradation of LLMs based on RoPE in long-context tasks is mainly due to unseen, large relative positional distances between queries and keys in computing attention weight. We employ [**Dual Chunk Attention**](https://arxiv.org/abs/2402.17463) (DCA), which addresses this issue by remapping relative positions to smaller values, avoiding the large distances not seen during training.
 
-![](https://qianwen-res.oss-cn-beijing.aliyuncs.com/zen-1M/dca.png#center)
-
 We evaluat the zen-1M models and their 128K counterparts with and without the length extrapolation method. We can find:
 
 Even models trained on just 32K tokens, such as the zen-7B-Instruct, achieve nearly perfect accuracy in passkey retrieval tasks with 1M-token contexts. This underscores the remarkable ability of DCA to extend supported context lengths, without any training required.
-
-![](https://qianwen-res.oss-cn-beijing.aliyuncs.com/zen-1M/dca_ablation.png#center)
 
 ## Sparse Attention
 
@@ -107,12 +86,7 @@ For long-context language models, inference speed is crucial for user experience
 
   * **More Optimizations:** We introduce additional optimizations, such as enhanced kernel efficiency and dynamic chunked pipeline parallelism, to fully unlock the potential of the entire framework.
 
-
-
-
 With these enhancements, our inference framework results in a 3.2x to 6.7x acceleration in the prefill speed across different model sizes and GPU devices for sequences of 1M token length.
-
-![](https://qianwen-res.oss-cn-beijing.aliyuncs.com/zen-1M/speed.png#center)
 
 # Deploy zen-1M Models Locally
 
@@ -125,33 +99,32 @@ To achieve the best performance, we recommend using GPUs with Ampere or Hopper a
 Ensure your system meets the following requirements:
 
   * **CUDA Version** : 12.1 or 12.3
-  * **Python Version** : >=3.9 and <=3.12
-
-
+  * **Python Version** : &gt;=3.9 and &lt;=3.12
 
 VRAM Requirement for processing 1 million-token sequences:
 
   * **zen-7B-Instruct-1M** : At least 120GB VRAM (total across GPUs).
   * **zen-14B-Instruct-1M** : At least 320GB VRAM (total across GPUs).
 
-
-
 If your GPUs do not have sufficient VRAM, you can still use zen-1M models for shorter tasks.
 
 ### 2\. Install Dependencies
 
 For now, you need to clone the vLLM repository from our custom branch and install it manually. We are working on getting our branch merged into the main vLLM project.
-[code]
+```bash
+
     git clone -b dev/dual-chunk-attn git@github.com:QwenLM/vllm.git
     cd vllm
     pip install -e . -v
     
-[/code]
+
+```
 
 ### 3\. Launch OpenAI-Compatible API Service
 
 Use the following command to start the service, configuring it based on your hardware setup:
-[code]
+```
+
     vllm serve Qwen/zen-7B-Instruct-1M \
       --tensor-parallel-size 4 \
       --max-model-len 1010000 \
@@ -161,7 +134,8 @@ Use the following command to start the service, configuring it based on your har
     
     # --quantization fp8 # Enabling FP8 quantization for model weights can reduce memory usage.
     
-[/code]
+
+```
 
 If you encounter any issues, please refer to the [Troubleshooting](https://huggingface.co/Qwen/zen-7B-Instruct-1M#troubleshooting) section for more information.
 
@@ -181,14 +155,13 @@ If you encounter any issues, please refer to the [Troubleshooting](https://huggi
 
     * Limits concurrent sequences processed.
 
-
-
 ### 4\. Interact with the Model
 
 You can interact with the deployed model using one of the following methods:
 
 **Option 1. Using Curl**
-[code]
+```bash
+
      curl http://localhost:8000/v1/chat/completions \
       -H "Content-Type: application/json" \
       -d '{
@@ -202,10 +175,12 @@ You can interact with the deployed model using one of the following methods:
         "max_tokens": 512
       }'
     
-[/code]
+
+```
 
 **Option 2. Using Python**
-[code]
+```python
+
      from openai import OpenAI
     
     openai_api_key = "EMPTY"
@@ -232,7 +207,8 @@ You can interact with the deployed model using one of the following methods:
     )
     print("Chat response:", chat_response.choices[0].message.content)
     
-[/code]
+
+```
 
 **Other Options**
 

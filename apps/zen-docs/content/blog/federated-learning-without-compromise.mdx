@@ -15,8 +15,6 @@ Federated learning promises to train models on distributed data without centrali
   * **Data heterogeneity** causes convergence problems
   * **Byzantine participants** can poison the model
 
-
-
 We present techniques that mitigate these tradeoffs.
 
 ## Our Approach
@@ -25,18 +23,19 @@ We present techniques that mitigate these tradeoffs.
 
 Standard gradient clipping uses a fixed threshold $C$:
 
-$$g_i^{clipped} = g_i \cdot \min\left(1, \frac{C}{|g_i|}\right)$$
+`g_i^\{clipped\} = g_i \cdot \min\left(1, \frac\{C\}\{|g_i|\}\right)`
 
 This destroys information when gradients naturally vary in magnitude across layers and training phases. Our adaptive approach learns per-layer, per-phase thresholds:
 
-$$C_{l,t} = \alpha \cdot \text{median}(|g_{l,1:t}|) + \beta \cdot \text{std}(|g_{l,1:t}|)$$
+`C_\{l,t\} = \alpha \cdot \text\{median\}(|g_\{l,1:t\}|) + \beta \cdot \text\{std\}(|g_\{l,1:t\}|)`
 
 This preserves gradient structure while bounding sensitivity.
 
 ### Hierarchical Aggregation
 
 Instead of flat aggregation across all participants, we organize contributors into hierarchical clusters:
-[code]
+```
+
                         Global Model
                             |
                +------------+------------+
@@ -47,7 +46,8 @@ Instead of flat aggregation across all participants, we organize contributors in
             |     |      |     |      |     |
            n1    n2     n3    n4     n5    n6
     
-[/code]
+
+```
 
 Benefits:
 
@@ -55,13 +55,11 @@ Benefits:
   2. **Natural trust boundaries** : Clusters can enforce local policies
   3. **Improved convergence** : Intra-cluster data is more homogeneous
 
-
-
 ### Byzantine-Resilient Selection
 
 We filter malicious updates using coordinate-wise median aggregation with outlier detection:
 
-$$\hat{g}_j = \text{median}{g_{i,j} : d(g_{i,j}, \mu_j) < k \cdot \sigma_j}$$
+`\hat\{g\}_j = \text\{median\}\{g_\{i,j\} : d(g_\{i,j\}, \mu_j) < k \cdot \sigma_j\}`
 
 For each coordinate $j$, we exclude updates more than $k$ standard deviations from the median. This provides Byzantine resilience without requiring honest majority assumptions.
 
@@ -81,7 +79,7 @@ Our approach achieves near-baseline accuracy with stronger privacy guarantees an
 
 Under standard smoothness and convexity assumptions, our hierarchical aggregation converges at rate:
 
-$$\mathbb{E}[F(\bar{w}_T) - F(w^*)] \leq \mathcal{O}\left(\frac{1}{\sqrt{T}} + \frac{\sigma^2}{K} + \frac{\delta^2}{H}\right)$$
+`\mathbb\{E\}[F(\bar\{w\}_T) - F(w^*)] \leq \mathcal\{O\}\left(\frac\{1\}\{\sqrt\{T\}\} + \frac\{\sigma^2\}\{K\} + \frac\{\delta^2\}\{H\}\right)`
 
 Where:
 
@@ -91,14 +89,13 @@ Where:
   * $\sigma^2$ = gradient variance
   * $\delta^2$ = inter-cluster heterogeneity
 
-
-
 The hierarchical structure reduces the effective heterogeneity term.
 
 ## Implementation
 
 Our reference implementation is available under Apache 2.0:
-[code]
+```python
+
     from zen_fl import FederatedTrainer, AdaptiveClipping, HierarchicalAggregator
     
     trainer = FederatedTrainer(
@@ -110,7 +107,8 @@ Our reference implementation is available under Apache 2.0:
     
     trainer.train(participants, rounds=500)
     
-[/code]
+
+```
 
 ## Deployment Considerations
 
@@ -120,8 +118,6 @@ Real-world federated learning faces practical challenges:
   2. **Dropout** : Robust aggregation tolerates missing updates
   3. **Compute heterogeneity** : Adaptive local steps match device capabilities
   4. **Bandwidth limits** : Gradient compression reduces communication
-
-
 
 Our implementation addresses each through configurable policies.
 

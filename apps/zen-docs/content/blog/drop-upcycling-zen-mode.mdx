@@ -25,14 +25,17 @@ This is not a training instability — it is a symmetry problem. Identical initi
 **Paper** : arXiv:2502.19261
 
 Drop-Upcycling solves the symmetry problem by deliberately damaging each expert’s initialization in a structured way. For each expert i, randomly select p% of the FFN rows and reinitialize them from a normal distribution:
-[code]
+```
+
     w_j^(i) = N(0, σ²)   if j ∈ dropped_rows(i)
     w_j^(i) = w_j^dense  otherwise
     
-[/code]
+
+```
 
 The dropped set is different for each expert (sampled independently). This breaks the symmetry: experts start from the same functional foundation but with different “holes” in their weight matrices.
-[code]
+```python
+
     import torch
     import torch.nn as nn
     from typing import List
@@ -91,9 +94,10 @@ The dropped set is different for each expert (sampled independently). This break
             'down_proj': drop_upcycle(dense_block.down_proj, n_experts, drop_rate),
         }
     
-[/code]
 
-The `drop_rate` hyperparameter is the key dial. Too low (< 5%) and experts remain too correlated. Too high (> 30%) and you lose the functional initialization benefit — the expert essentially starts from random weights. The sweet spot we found empirically: **8-12% for general language models, 15% for code-specialized models** (where more aggressive diversity is needed to separate syntax vs. semantics experts).
+```
+
+The `drop_rate` hyperparameter is the key dial. Too low (&lt; 5%) and experts remain too correlated. Too high (> 30%) and you lose the functional initialization benefit — the expert essentially starts from random weights. The sweet spot we found empirically: **8-12% for general language models, 15% for code-specialized models** (where more aggressive diversity is needed to separate syntax vs. semantics experts).
 
 ## Training Dynamics: Implicit Specialization Signal
 
@@ -106,8 +110,6 @@ This is the **implicit specialization signal** : experts do not specialize by de
   * Intact experts (low drop rate) converge toward high-frequency, syntactic functions
   * Heavily-dropped experts develop novel representations for rare or complex tokens
 
-
-
 The dense-to-MoE transition effectively turns a capability gap (some experts start worse) into a specialization signal (those experts become domain-specific).
 
 ## Results at Scale
@@ -118,8 +120,6 @@ On the primary benchmark suite (comparing Drop-Upcycled MoE vs. MoE trained from
   * **MMLU** : Drop-Upcycling reaches 75.4 vs. from-scratch MoE at 74.8 (at same FLOP budget)
   * **HumanEval** : 68.2 vs. 65.1 — Drop-Upcycling is better here because code has cleaner specialization axes
   * **Training efficiency** : 4x speedup to target quality vs. from-scratch MoE
-
-
 
 The 1/4 FLOP claim requires context: the dense checkpoint training cost is amortized. If you already have the dense model (which you do, because you trained it first), the incremental cost to get an MoE is roughly 1/4 of a from-scratch MoE run. The total cost (dense + MoE) is higher than from-scratch, but for organizations that already have dense checkpoints — which is everyone — the marginal cost argument is what matters.
 
@@ -156,8 +156,6 @@ Training a 30B MoE requires careful memory management. We use Q-GaLore (Quantize
   * Gradient projection: instead of storing full gradients for all parameters, project them into a low-rank subspace (rank 128 for most layers)
   * Quantize the projected gradients to INT8 before accumulation
   * Result: 50% memory reduction vs. standard LoRA, with +5.19 MMLU points vs. QLoRA on equivalent compute
-
-
 
 The memory savings matter because upcycling requires loading both the dense checkpoint (for initialization) and the growing MoE checkpoint (for training) simultaneously. Q-GaLore makes this tractable on 8×A100 80GB configurations where it would otherwise OOM.
 

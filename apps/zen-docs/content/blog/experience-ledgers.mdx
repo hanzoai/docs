@@ -19,8 +19,6 @@ Current language models operate in bounded context windows. Information from pas
   3. **No learning** : Agents don’t improve from experience within deployment
   4. **Trust gap** : Users can’t verify what the agent “remembers”
 
-
-
 ## Experience Ledgers
 
 An experience ledger is an append-only log of agent experiences with cryptographic attestation. Think of it as a blockchain for agent memory, but optimized for AI workloads.
@@ -36,13 +34,15 @@ An experience ledger is an append-only log of agent experiences with cryptograph
 **Hierarchical summarization** : Raw experiences are continuously summarized at multiple abstraction levels. Agents can navigate from high-level patterns to specific instances.
 
 ### Architecture
-[code]
+```
+
     Raw Experience -> Embedding -> Index -> Summary Layer -> Abstract Layer
            |              |           |            |              |
            v              v           v            v              v
         [Ledger]    [Vector DB]  [Search]   [Compression]   [Reasoning]
     
-[/code]
+
+```
 
 Each layer serves a different purpose:
 
@@ -52,8 +52,6 @@ Each layer serves a different purpose:
   * **Summary layer** : Compressed representations
   * **Abstract layer** : High-level patterns and beliefs
 
-
-
 ## Implementation
 
 We’ve built a reference implementation using:
@@ -62,8 +60,6 @@ We’ve built a reference implementation using:
   * **Attestation** : Ed25519 signatures for each entry
   * **Indexing** : HNSW vectors with metadata filtering
   * **Summarization** : Hierarchical abstractive compression
-
-
 
 The system maintains consistency between layers. When raw experiences update, summaries regenerate. When summaries change, abstractions refresh.
 
@@ -89,8 +85,6 @@ Persistent memory raises legitimate privacy concerns. Our design addresses these
   * **Selective sync** : Choose what experiences to persist
   * **Cryptographic deletion** : Encrypted entries can be made unreadable
   * **Audit logs** : All access is recorded
-
-
 
 ## What’s Next
 

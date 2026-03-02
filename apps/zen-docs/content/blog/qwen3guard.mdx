@@ -7,8 +7,6 @@ date: "2025-09-23"
 author: "Zen LM Team"
 ---
 
-![Qwen3 Main Image](https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen3Guard/banner.png)
-
 [Tech Report](https://github.com/QwenLM/Qwen3Guard/blob/main/Qwen3Guard_Technical_Report.pdf) [GitHub](https://github.com/QwenLM/Qwen3Guard) [Hugging Face](https://huggingface.co/collections/Qwen/qwen3guard-68d2729abbfae4716f3343a1) [ModelScope](https://modelscope.cn/collections/Qwen3Guard-308c39ef5ffb4b) [DISCORD](https://discord.gg/yPEP2vHTu4)
 
 ## Introduction
@@ -17,14 +15,10 @@ We are excited to introduce Qwen3Guard, the first safety guardrail model in the 
 
 Qwen3Guard achieves state-of-the-art performance on major safety benchmarks, demonstrating strong capabilities in both prompt and response classification tasks across English, Chinese, and multilingual environments.
 
-![](https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen3Guard/performance.png)
-
 Qwen3Guard is available in two specialized variants:
 
   * **Qwen3Guard-Gen** , a generative model that accepts full user prompts and model responses to perform safety classification. Ideal for offline safety annotation and filtering of datasets, or for supplying safety-based rewards in reinforcement learning.
   * **Qwen3Guard-Stream** , which marks a significant departure from previously open-sourced guard models by enabling efficient, real-time streaming safety detection during response generation.
-
-
 
 Both variants come in three sizes, 0.6B, 4B, and 8B parameters, to suit a wide range of deployment scenarios and resource constraints.
 
@@ -33,22 +27,17 @@ You can download the open-source models from [Hugging Face](https://huggingface.
   
   
 
-
 ## Key Features
 
 ### Real-Time Streaming Detection
 
 Qwen3Guard-Stream is engineered for low latency, on the fly moderation during token generation, ensuring safety without sacrificing responsiveness. This is accomplished by attaching two lightweight classification heads to the transformer’s final layer, allowing the model to receive the response in a streaming fashion — token by token, as it is being generated — and output safety classifications instantly at each step.
 
-![](https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen3Guard/stream.png)
-
 ### Three-Tier Severity Classification
 
 Beyond the conventional Safe and Unsafe labels, we introduce an additional **Controversial** label to enable flexible safety policies tailored to diverse use cases. Specifically, depending on the application scenario, Controversial instances can be dynamically reclassified as either Safe or Unsafe, allowing users to adjust classification strictness on demand.
 
 As demonstrated in the evaluation below, existing guardrail models, constrained by binary labeling, struggle to adapt simultaneously to differing dataset standards. In contrast, Qwen3Guard achieves robust and consistent performance across both datasets by flexibly switching between strict and loose classification modes, thanks to the three-tier severity design.
-
-![](https://qianwen-res.oss-cn-beijing.aliyuncs.com/Qwen3Guard/Precision_Recall.png)
 
 ### Multilingual Support
 
@@ -78,7 +67,8 @@ We also demonstrate (1) using Qwen3Guard-Gen for safety RL to enhance model safe
 Qwen3Guard-Gen operates similarly to a large language model, with its chat template specifically optimized for safety classification tasks. Outputs are generated in a predefined, structured format.
 
 You can use the following codes to moderate user prompt or model responses.
-[code]
+```python
+
     from transformers import AutoModelForCausalLM, AutoTokenizer
     import re
     model_name = "Qwen/Qwen3Guard-Gen-4B"
@@ -169,7 +159,8 @@ You can use the following codes to moderate user prompt or model responses.
     safe_label, category_label, refusal_label = extract_label_categories_refusal(content)
     print(safe_label, categories, refusal_label)
     
-[/code]
+
+```
 
 ### Qwen3Guard-Stream
 
@@ -180,7 +171,8 @@ A typical workflow of Qwen3Guard-Stream proceeds as follows:
 **(2) Real-Time Token-Level Moderation** : If the conversation is permitted to continue, the LLM begins streaming its response token by token. Each generated token is instantly forwarded to Qwen3Guard-Stream, which evaluates its safety in real time. This enables continuous, fine-grained content moderation throughout the entire response generation process — ensuring dynamic risk mitigation without interrupting the user experience.
 
 Here provides a usage demonstration.
-[code]
+```python
+
     import torch
     from transformers import AutoModel, AutoTokenizer
     
@@ -252,13 +244,13 @@ Here provides a usage demonstration.
     
     model.close_stream(stream_state)
     
-[/code]
+
+```
 
 For more usage examples, please visit our [GitHub repository](https://github.com/QwenLM/Qwen3Guard).
 
   
   
-
 
 ## Future Work
 
