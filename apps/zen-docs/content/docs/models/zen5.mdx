@@ -1,42 +1,161 @@
 ---
-title: zen5
-description: Next-generation flagship model. 2T+ MoE with on-chain training via NVIDIA TEE. Research Preview.
+title: Zen 5 — Research Preview
+description: Next-generation open model. Zen MoDE architecture. Training openly on Hanzo Network — contribute agentic data and help shape Zen 5.
 ---
 
-# zen5
+# Zen 5 — Research Preview
 
-**Research Preview -- Request Access**
+<div className="rounded-xl border border-fd-primary/30 bg-fd-primary/5 px-6 py-4 mb-8">
+  **Status:** In training · **Architecture:** Zen MoDE (Mixture of Diverse Experts) · **Open training:** [hanzo.network](https://hanzo.network)
+</div>
 
-Next-generation flagship model currently training on-chain via NVIDIA TEE on [hanzo.network](https://hanzo.network). Zen5 targets 2T+ parameters with significant improvements in reasoning, code, and multimodal capabilities over zen4.
+Zen 5 is the next generation of the Zen LM family. It is currently training openly on [Hanzo Network](https://hanzo.network) — decentralized compute with verifiable execution via NVIDIA Trusted Execution Environments (TEE).
 
-## Status
+We are accepting agentic training data submissions from the community. If you build agents, run evals, or generate high-quality reasoning traces, you can contribute to Zen 5 directly.
 
-| Property | Value |
-|----------|-------|
-| **Model ID** | `zen5` |
-| **Parameters** | 2T+ MoE (estimated) |
-| **Architecture** | MoE |
-| **Status** | Training |
-| **Training** | On-chain via NVIDIA TEE |
-| **Network** | [hanzo.network](https://hanzo.network) |
+## What's New
 
-## What's New in Zen5
+| Capability | Zen 4 | Zen 5 |
+|------------|-------|-------|
+| Architecture | Dense / standard MoE | Zen MoDE (Mixture of Diverse Experts) |
+| Scale | Up to 1T parameters | 2T+ parameters |
+| Context | Up to 1M tokens | 2M+ tokens |
+| Training | Centralized | Open — Hanzo Network |
+| Reasoning | Chain-of-thought | Extended multi-step, tree-search |
+| Vision | Separate model (Zen VL) | Native multimodal |
+| Audio | Separate model (Zen3 Audio) | Native real-time |
+| Data | Curated | Curated + community agentic traces |
 
-- 2T+ total parameters -- double the scale of zen4-max
-- On-chain training with verifiable compute via NVIDIA TEE
-- Improved reasoning, math, and agentic capabilities
-- Extended context window
-- Native multimodal support
+## Zen MoDE Architecture
 
-## Request Access
+**Zen MoDE** stands for **Mixture of Diverse Experts**. Unlike standard MoE models that route tokens to experts drawn from a single training distribution, Zen MoDE trains a population of experts with deliberately diverse specializations:
 
-Zen5 is currently in research preview. Request early access:
+- **Expert diversity**: Each expert is initialized and fine-tuned on a different data mixture, creating genuine specialization rather than redundant capacity.
+- **Diversity-aware routing**: The router maximizes coverage across expert specializations rather than just capacity utilization.
+- **Cross-expert distillation**: Experts learn from each other during training — strong experts in one domain improve weak experts via targeted distillation steps.
+- **Sparse activation**: Only a small fraction of parameters activate per token, maintaining inference efficiency at 2T+ scale.
 
-- Apply at [hanzo.ai/research-access](https://hanzo.ai/research-access)
-- Include your use case and organization
+The result: a model that covers more ground at lower per-token compute than either dense models or standard MoE at equivalent parameter counts.
+
+## Open Training on Hanzo Network
+
+Zen 5 is trained on [Hanzo Network](https://hanzo.network) — a decentralized compute marketplace with cryptographic proof of execution.
+
+**How it works:**
+1. Compute providers contribute GPU capacity and stake compute bonds
+2. Training jobs are dispatched across the network via auction
+3. Each compute node runs inside an NVIDIA TEE — execution is cryptographically verified
+4. Gradient updates are aggregated and validated before being applied to the global model state
+5. Providers earn rewards proportional to verified compute contribution
+
+This is not a research experiment — it is the live training infrastructure for Zen 5. All training runs, gradient norms, and loss curves are published publicly at [hanzo.network/zen5](https://hanzo.network).
+
+## Contribute Training Data
+
+We are collecting **agentic training data** for Zen 5. This means:
+
+- Multi-step reasoning traces (chain-of-thought, tree-of-thought)
+- Tool use sequences (function calling, code execution, web search)
+- Agent trajectories (task → plan → action → observation → revision loops)
+- Preference data (chosen vs. rejected completions with reasoning)
+- Domain-specific expert demonstrations (legal, medical, financial, scientific)
+
+**How to submit:**
+
+```bash
+pip install hanzoai
+
+from hanzoai import TrainingClient
+
+client = TrainingClient(api_key="hk-...")
+
+# Submit a single reasoning trace
+client.submit_trace(
+    messages=[
+        {"role": "user", "content": "Solve this step by step: ..."},
+        {"role": "assistant", "content": "<thinking>...</thinking>\n\nFinal answer: ..."},
+    ],
+    quality_score=0.9,   # your estimated quality (0–1)
+    domain="reasoning",  # reasoning | code | math | tool-use | multimodal
+)
+
+# Submit a batch from a JSONL file
+client.submit_batch("my_traces.jsonl")
+```
+
+**Data format (JSONL):**
+
+```json
+{
+  "messages": [
+    {"role": "user", "content": "..."},
+    {"role": "assistant", "content": "..."}
+  ],
+  "metadata": {
+    "domain": "code",
+    "quality": 0.85,
+    "source": "your-org",
+    "license": "apache-2.0"
+  }
+}
+```
+
+**What we're looking for:**
+- Long reasoning chains with intermediate steps visible
+- Agentic traces showing real tool use (not simulated)
+- Diverse domains: science, math, law, medicine, coding, creative writing
+- Preference pairs: same prompt, two completions, labeled by quality
+- Multilingual data, especially non-English
+
+**What we will not use:**
+- Data with PII or sensitive personal information
+- Synthetic data generated by closed models (GPT-4, Claude, Gemini)
+- Data submitted without a compatible open license (Apache 2.0, MIT, CC BY)
+
+## Community Rewards
+
+Contributors who submit accepted training data receive:
+
+- **HF credits**: $10–$1000 depending on data volume and quality
+- **API credits**: Usage credit on api.hanzo.ai proportional to contribution
+- **Attribution**: Your organization listed in the Zen 5 data card and model card
+- **Early access**: Priority access to Zen 5 model checkpoints during training
+
+Quality is evaluated by automated filters (perplexity, deduplication, format validation) and a human review sample. Acceptance rate targets 60–80% for well-formatted submissions.
+
+[Submit data → hanzo.ai/zen5/contribute](https://hanzo.ai/zen5/contribute)
+
+## Research Access
+
+Zen 5 checkpoint access during training is available to:
+
+- AI safety researchers (apply with institution + use case)
+- Academic labs (apply with PI name + publication intent)
+- Hanzo API enterprise customers (automatic access)
+- Community contributors with 50+ accepted training traces
+
+[Request access → hanzo.ai/zen5/research-access](https://hanzo.ai/zen5/research-access)
+
+## Timeline
+
+Training is live. We do not publish fixed release dates — checkpoints will be released as they reach quality thresholds on our eval suite.
+
+Track training progress at [hanzo.network](https://hanzo.network).
+
+## Zen 5 Family
+
+| Model | Parameters | Context | Focus |
+|-------|-----------|---------|-------|
+| zen-5-mini | TBA | 256K | Efficient, on-device |
+| zen-5 | TBA | 1M | Flagship |
+| zen-5-pro | TBA | 512K | Professional |
+| zen-5-coder | TBA | 256K | Code & agentic |
+
+All Zen 5 variants will be released under Apache 2.0.
 
 ## See Also
 
-- [zen4](/docs/models/zen4) -- Current flagship (744B MoE)
-- [zen4-max](/docs/models/zen4-max) -- Current frontier (1.04T MoE)
-- [zen4-ultra](/docs/models/zen4-ultra) -- Reasoning with chain-of-thought
+- [Open Training on Hanzo Network](/blog/open-training-hanzo-network) — full technical overview
+- [Zen MoDE Architecture](/blog/zen-mode-architecture) — architecture deep dive
+- [zen4-max](/docs/models/zen4-max) — current frontier (1T MoE, 1M context)
+- [Hanzo Network](https://hanzo.network) — live training dashboard

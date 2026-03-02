@@ -1,0 +1,197 @@
+---
+title: "Training Zen 5 in the Open: Contribute Data, Shape the Model"
+description: "Zen 5 is training right now on Hanzo Network — decentralized compute with verifiable execution. Here's how the community can submit agentic training data and contribute to the next generation of open AI."
+date: "2026-03-01"
+author: "Zen LM Team"
+tags: ["Research", "Training", "Open Source", "Zen 5", "Hanzo Network"]
+---
+
+[LIVE TRAINING DASHBOARD](https://hanzo.network) [SUBMIT DATA](https://hanzo.ai/zen5/contribute) [REQUEST ACCESS](https://hanzo.ai/zen5/research-access)
+
+Zen 5 is training right now. Not in a private cluster. On [Hanzo Network](https://hanzo.network) — a decentralized compute marketplace where training jobs run inside NVIDIA Trusted Execution Environments, execution is cryptographically verified, and results are published in real time.
+
+We are also opening data contributions to the community. If you generate high-quality reasoning traces, agentic trajectories, or domain-expert demonstrations, you can submit them for inclusion in Zen 5's training run — and get attribution, API credits, and early model access in return.
+
+This post explains both: how open training works, and how to contribute.
+
+## Why Train Openly
+
+The dominant approach to training frontier models is: rent a large private GPU cluster, train for months in secret, release a model and a brief technical report. The compute, the data, and the intermediate checkpoints are all proprietary.
+
+We think this approach has problems.
+
+**Verifiability**: When a company says "we trained on only licensed data" or "we ran safety evals," there is no way to verify this. The training process is a black box. You trust the PR.
+
+**Data quality**: Closed training pipelines rely entirely on internal curation teams. They miss what the research community knows, what domain experts have produced, and what practitioners discover from real deployment.
+
+**Safety research**: You cannot study emergent behaviors, capability thresholds, or alignment dynamics in a model if you have no visibility into how it was trained or access to intermediate checkpoints.
+
+Open training — with cryptographically verified compute, published training logs, and community data contributions — addresses all three.
+
+## How Hanzo Network Works
+
+[Hanzo Network](https://hanzo.network) is a compute marketplace for AI training. Here is the infrastructure stack:
+
+**Compute providers** contribute GPU capacity and stake compute bonds — cryptographic commitments that are slashed if they fail to deliver correct computation. This aligns incentives: providers who cheat lose stake.
+
+**Job dispatch**: Training jobs are decomposed into tasks and dispatched to providers via an on-chain auction. Providers bid on tasks; the protocol selects for price, latency, and reliability history.
+
+**NVIDIA TEE**: Each compute node runs the training job inside an NVIDIA Trusted Execution Environment. The TEE produces a cryptographic attestation — proof that specific code ran on specific hardware and produced specific outputs. This attestation is verifiable by anyone.
+
+**Gradient aggregation**: After each training step, gradient updates from distributed nodes are aggregated and validated. Byzantine-fault-tolerant aggregation means a fraction of malicious or failing nodes cannot corrupt the global model state.
+
+**Public logging**: Every training step is logged — loss curves, gradient norms, learning rate schedules, eval scores on fixed benchmarks. This runs in real time at [hanzo.network](https://hanzo.network).
+
+The result: anyone can verify that Zen 5 was trained on the compute and data we claim, using the code we published.
+
+## What We're Training For
+
+Zen 5 targets meaningful advances over Zen 4 across several dimensions:
+
+**Scale and architecture**: Zen MoDE (Mixture of Diverse Experts) at 2T+ total parameters. The key architectural innovation is expert diversity — experts are trained on different data mixtures with different inductive biases, and the router learns to leverage this diversity rather than just capacity. Per-token compute stays efficient via sparse activation.
+
+**Context**: 2M+ token native context window. We believe multi-million-token context will become the baseline expectation for frontier models within two years. We are building for that now.
+
+**Reasoning**: Extended chain-of-thought with tree-search inference. The model learns to explore multiple reasoning paths and select the best, not just follow a single chain. This significantly improves performance on math, code, and multi-step planning.
+
+**Agentic capability**: Tool use, function calling, and multi-turn task completion are first-class training objectives, not afterthoughts. Zen 5 training includes real agentic trajectories — tool calls, observation processing, error recovery, and task completion.
+
+**Multimodal**: Native vision, audio, and text in a single unified architecture. No more separate model families for VL, ASR, TTS — one model, one context window, all modalities.
+
+## How to Contribute Training Data
+
+We are accepting community data submissions. Here is what we are looking for and how to submit.
+
+### What We Want
+
+**Agentic trajectories**: The most valuable data is real agentic traces — a model (or human) using tools to complete a task. Format: `user message → tool call → tool response → reasoning → tool call → ... → final answer`. The more authentic the tool use (real code execution, real web search, real file operations), the better.
+
+**Reasoning chains**: Step-by-step problem solving with intermediate steps visible. For math and science: show work. For code: explain the approach before implementing. For writing: show planning. Long-form reasoning with visible thinking is much more valuable than short answers.
+
+**Preference data**: Pairs of completions for the same prompt, labeled by quality. Ideally with reasoning for the preference: "A is better because it handles the edge case X which B misses." Human preference labels from domain experts are especially valuable.
+
+**Domain expertise**: If you have access to or can generate high-quality data in specific domains — medical, legal, financial, scientific, engineering — this is high signal. The general web is over-represented in most training data; domain expert knowledge is under-represented.
+
+**Multilingual**: Non-English data, especially for lower-resource languages. We are specifically looking for reasoning and instruction data in: Arabic, Bengali, Hindi, Swahili, Vietnamese, Indonesian, Turkish, and Ukrainian.
+
+### What We Will Not Accept
+
+- Data generated by closed models (GPT-4, Claude, Gemini, etc.) — this creates closed-data contamination and potential license issues
+- Data containing PII or sensitive personal information
+- Data submitted under a restrictive license (must be Apache 2.0, MIT, CC BY, or public domain)
+- Synthetic data that lacks quality signal — garbage-in-garbage-out applies directly
+
+### Submission Format
+
+```jsonl
+{"messages":[{"role":"user","content":"Solve this integral..."},{"role":"assistant","content":"<thinking>\nLet me break this down...\n</thinking>\n\nThe answer is..."}],"metadata":{"domain":"math","quality":0.9,"license":"apache-2.0"}}
+{"messages":[{"role":"user","content":"..."},{"role":"assistant","content":"..."}],"metadata":{"domain":"code","quality":0.85,"license":"apache-2.0"}}
+```
+
+### How to Submit
+
+```bash
+pip install hanzoai
+```
+
+```python
+from hanzoai import TrainingClient
+
+client = TrainingClient(api_key="hk-...")
+
+# Single trace
+client.submit_trace(
+    messages=[
+        {"role": "user", "content": "..."},
+        {"role": "assistant", "content": "..."},
+    ],
+    domain="reasoning",   # reasoning | code | math | tool-use | multilingual | domain-expert
+    quality=0.9,
+    license="apache-2.0",
+)
+
+# Batch from file
+result = client.submit_batch("my_traces.jsonl")
+print(f"Submitted: {result.submitted}, Accepted: {result.accepted}")
+```
+
+### Quality Evaluation
+
+All submissions go through automated quality filtering:
+
+1. **Deduplication**: Near-duplicate detection at the document and n-gram level. Duplicates across the web or our existing training data are filtered.
+2. **Format validation**: Correct JSON, valid role alternation, minimum length thresholds by domain.
+3. **Perplexity filtering**: Submissions that are too easy (low perplexity on existing models) or too noisy (very high perplexity) are filtered.
+4. **Safety screening**: We screen for CSAM, targeted harassment content, and other absolute prohibitions.
+5. **Human review sample**: 10% of accepted submissions are reviewed by human annotators for quality calibration.
+
+Current acceptance rate: approximately 65% of well-formatted submissions from experienced contributors. First-time submissions trend lower until contributors calibrate to what we are looking for.
+
+## What You Get
+
+**Attribution**: If your submission is accepted and included in the training run, your organization is listed in the Zen 5 data card and model card. This is a permanent record in the training provenance.
+
+**API credits**: $10–$1000 in api.hanzo.ai credits depending on volume and quality. High-quality domain expert data in scarce domains earns at the high end. Volume submissions of general-domain data earn at the low end.
+
+**HuggingFace credits**: We will distribute HuggingFace Pro credits to top contributors each month.
+
+**Early access**: Contributors with 50+ accepted traces get priority access to Zen 5 checkpoints during training — before public release.
+
+**Recognition**: Top contributors by domain are highlighted on the Zen 5 model card and in our release announcement.
+
+## Research Access During Training
+
+We are giving research access to Zen 5 checkpoints during training — not just the final model. This is useful for:
+
+- Capability elicitation research (what can the model do at various training stages?)
+- Alignment research (how do safety properties evolve during training?)
+- Scaling law research (how does performance scale with compute and data?)
+- Emergent capability detection (what abilities appear suddenly vs. gradually?)
+
+Who qualifies:
+- AI safety researchers at academic institutions or nonprofit research organizations
+- Academic labs with a track record of publishing alignment or interpretability research
+- Hanzo enterprise API customers
+- Community contributors with 50+ accepted training traces
+
+[Apply for research access → hanzo.ai/zen5/research-access](https://hanzo.ai/zen5/research-access)
+
+## Training Progress
+
+Live metrics are published at [hanzo.network](https://hanzo.network):
+
+- Loss curves (training and validation)
+- Gradient norms and learning rate schedule
+- Eval scores on fixed benchmarks (updated every 1000 steps)
+- Compute provider leaderboard
+- Data contributor leaderboard
+
+We publish training logs without cherry-picking. When loss spikes or training runs diverge, that shows up too. This is what open training means.
+
+## Governance
+
+Data inclusion decisions are governed by Zoo Labs Foundation's ZIPs (Zoo Improvement Proposals) process. Changes to data curation standards, quality thresholds, or domain priorities go through a public comment period before implementation.
+
+If you disagree with a rejection decision, you can appeal via the ZIPs process. If you think we are missing an important data domain, propose it as a ZIP at [zips.zoo.ngo](https://zips.zoo.ngo).
+
+## Get Started
+
+If you have data to contribute:
+
+1. [Create a Hanzo account](https://console.hanzo.ai) if you don't have one
+2. `pip install hanzoai`
+3. [Read the data format guide](https://zenlm.org/docs/training/overview)
+4. Submit your first batch
+5. Check acceptance rates in the contributor dashboard
+
+If you want to follow training progress without contributing data:
+
+- Watch live metrics at [hanzo.network](https://hanzo.network)
+- Subscribe to the [Zen LM newsletter](https://zenlm.org) for checkpoint release announcements
+- Join the discussion at [zoo.ngo](https://zoo.ngo)
+
+Zen 5 will be released under Apache 2.0, the same as every other Zen model. The training infrastructure, data pipelines, and evaluation code will all be open. If you want to run your own training on Hanzo Network using the same stack, you will be able to.
+
+---
+
+_Zen LM is a joint initiative of Hanzo AI Inc. (Techstars '17), Zoo Labs Foundation (501c3), and Lux Partners Limited._
