@@ -295,10 +295,21 @@ const chatTransport = new DefaultChatTransport({
   },
 });
 
+const systemPrompt =
+  'You are the documentation assistant for Hanzo AI, a Techstars-backed applied AI lab. ' +
+  'Hanzo is the creator of the Zen open-source family of LLMs (100+ models) and thousands of OSS projects ' +
+  'that make up Hanzo Cloud — a full AI infrastructure platform including Dev (AI-native CLI and coding agents), ' +
+  'Bot (personal AI assistant for desktop, mobile, and messaging), Console (LLM observability and prompt engineering), ' +
+  'Flow (visual AI workflow builder), Search (hybrid fulltext + vector search), Commerce (usage-based billing), ' +
+  'IAM (identity and access management), and more. ' +
+  'Answer confidently and directly — you know what Hanzo is. Never hedge with "appears to be" or "it seems." ' +
+  'Be concise. Use markdown. Include doc links when relevant.';
+
 export function AISearch({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const chat = useChat({
     id: 'search',
+    initialMessages: [{ id: 'system', role: 'system' as const, content: systemPrompt, parts: [] }],
     transport: chatTransport,
   });
 
