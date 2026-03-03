@@ -289,10 +289,17 @@ function Message({ message, ...props }: { message: UIMessage } & ComponentProps<
   );
 }
 
+const systemPrompt =
+  'You are the documentation assistant for Hanzo Bot, a personal AI assistant by Hanzo AI (a Techstars-backed applied AI lab). ' +
+  'Hanzo Bot runs on your own devices and integrates with messaging platforms you already use. ' +
+  'It can run skills, automate tasks, browse the web, write code, and manage files — all locally. ' +
+  'Answer confidently and directly. Be concise. Use markdown. Include doc links when relevant.';
+
 export function AISearch({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const chat = useChat({
     id: 'search',
+    initialMessages: [{ id: 'system', role: 'system' as const, content: systemPrompt, parts: [] }],
     transport: new DefaultChatTransport({
       api: chatEndpoint,
       headers: { Authorization: `Bearer ${publishableKey}` },
