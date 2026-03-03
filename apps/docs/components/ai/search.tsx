@@ -19,7 +19,6 @@ import { type UIMessage, useChat, type UseChatHelpers } from '@ai-sdk/react';
 import type { ProvideLinksToolSchema } from '@/lib/chat/inkeep-qa-schema';
 import type { z } from 'zod';
 import { DefaultChatTransport } from 'ai';
-import { chatEndpoint, publishableKey } from '@/lib/hanzo/client';
 import { Markdown } from './markdown';
 import { Presence } from '@radix-ui/react-presence';
 
@@ -290,8 +289,10 @@ function Message({ message, ...props }: { message: UIMessage } & ComponentProps<
 }
 
 const chatTransport = new DefaultChatTransport({
-  api: chatEndpoint,
-  headers: { Authorization: `Bearer ${publishableKey}` },
+  api: process.env.NEXT_PUBLIC_HANZO_CHAT_ENDPOINT ?? 'https://cloud-api.hanzo.ai/api/chat-docs',
+  headers: {
+    Authorization: `Bearer ${process.env.NEXT_PUBLIC_HANZO_SEARCH_KEY ?? 'pk-hanzo-docs-search-2026'}`,
+  },
 });
 
 export function AISearch({ children }: { children: ReactNode }) {
