@@ -7,23 +7,77 @@ jobs:
   fix-domain:
     runs-on: ubuntu-latest
     steps:
-      - name: List Pages projects and domains
+      - name: Get zone ID for hanzo.ai
+        id: zone
         run: |
-          echo "=== Listing all Pages projects ==="
-          curl -s "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects" \
-            -H "Authorization: Bearer ${CF_API_TOKEN}" | jq '.result[] | {name: .name, domains: .domains, subdomain: .subdomain}'
-
-          echo ""
-          echo "=== Check hanzo-docs project domains ==="
-          curl -s "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects/hanzo-docs/domains" \
-            -H "Authorization: Bearer ${CF_API_TOKEN}" | jq '.'
+          ZONE_ID=$(curl -s "https://api.cloudflare.com/client/v4/zones?name=hanzo.ai" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" | jq -r '.result[0].id')
+          echo "zone_id=$ZONE_ID" >> "$GITHUB_OUTPUT"
+          echo "Zone ID: $ZONE_ID"
         env:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Add docs.hanzo.ai to hanzo-docs project
+      - name: List current DNS records for docs.hanzo.ai
         run: |
-          echo "=== Adding docs.hanzo.ai to hanzo-docs ==="
+          echo "=== Current DNS records for docs.hanzo.ai ==="
+          curl -s "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?name=docs.hanzo.ai" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" | jq '.result[] | {id: .id, type: .type, name: .name, content: .content, proxied: .proxied}'
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ZONE_ID: ${{ steps.zone.outputs.zone_id }}
+
+      - name: Update DNS to point to hanzo-docs.pages.dev
+        run: |
+          echo "=== Checking existing CNAME for docs.hanzo.ai ==="
+          EXISTING=$(curl -s "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?name=docs.hanzo.ai&type=CNAME" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}")
+          RECORD_ID=$(echo "$EXISTING" | jq -r '.result[0].id // empty')
+
+          if [ -n "$RECORD_ID" ]; then
+            echo "Updating existing CNAME record $RECORD_ID"
+            curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${RECORD_ID}" \
+              -H "Authorization: Bearer ${CF_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d '{"type":"CNAME","name":"docs","content":"hanzo-docs.pages.dev","proxied":true}' | jq '.'
+          else
+            echo "No existing CNAME, checking for A record"
+            A_RECORD=$(curl -s "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?name=docs.hanzo.ai&type=A" \
+              -H "Authorization: Bearer ${CF_API_TOKEN}")
+            A_ID=$(echo "$A_RECORD" | jq -r '.result[0].id // empty')
+
+            if [ -n "$A_ID" ]; then
+              echo "Deleting A record $A_ID and creating CNAME"
+              curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${A_ID}" \
+                -H "Authorization: Bearer ${CF_API_TOKEN}" | jq '.success'
+              # Delete any additional A records
+              A_RECORD2=$(curl -s "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?name=docs.hanzo.ai&type=A" \
+                -H "Authorization: Bearer ${CF_API_TOKEN}")
+              A_ID2=$(echo "$A_RECORD2" | jq -r '.result[0].id // empty')
+              if [ -n "$A_ID2" ]; then
+                curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${A_ID2}" \
+                  -H "Authorization: Bearer ${CF_API_TOKEN}" | jq '.success'
+              fi
+            fi
+
+            echo "Creating CNAME record"
+            curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records" \
+              -H "Authorization: Bearer ${CF_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d '{"type":"CNAME","name":"docs","content":"hanzo-docs.pages.dev","proxied":true}' | jq '.'
+          fi
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ZONE_ID: ${{ steps.zone.outputs.zone_id }}
+
+      - name: Reactivate Pages custom domain
+        run: |
+          echo "=== Patching hanzo-docs domain ==="
+          curl -s -X PATCH "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects/hanzo-docs/domains/docs.hanzo.ai" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" | jq '.'
+
+          echo ""
+          echo "=== Re-adding domain if needed ==="
           curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects/hanzo-docs/domains" \
             -H "Authorization: Bearer ${CF_API_TOKEN}" \
             -H "Content-Type: application/json" \
@@ -31,3 +85,18 @@ jobs:
         env:
           CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Verify final state
+        run: |
+          echo "=== Final DNS record ==="
+          curl -s "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?name=docs.hanzo.ai" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" | jq '.result[] | {type: .type, name: .name, content: .content, proxied: .proxied}'
+
+          echo ""
+          echo "=== Final Pages domain state ==="
+          curl -s "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects/hanzo-docs/domains" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" | jq '.result[] | {name: .name, status: .status}'
+        env:
+          CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ZONE_ID: ${{ steps.zone.outputs.zone_id }}
