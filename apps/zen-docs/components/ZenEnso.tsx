@@ -2,7 +2,7 @@
 
 import type { CSSProperties } from 'react'
 
-// Mathematically perfect circle: r=172, center=256,256
+// Geometrically exact circle: r=172, center=(256,256), viewBox=512x512
 const R = 172
 const CIRC = Math.round(2 * Math.PI * R) // 1081
 
@@ -40,6 +40,7 @@ export function ZenEnso({
       className={`inline-flex items-center justify-center ${className}`}
       style={{ width: size, height: size }}
       aria-label="Zen LM"
+      data-v="2"
     >
       <style>{`
         @keyframes zenDraw-${uid} {
