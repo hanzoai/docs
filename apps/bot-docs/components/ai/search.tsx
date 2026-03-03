@@ -19,7 +19,7 @@ import { type UIMessage, useChat, type UseChatHelpers } from '@ai-sdk/react';
 import type { ProvideLinksToolSchema } from '@/lib/chat/inkeep-qa-schema';
 import type { z } from 'zod';
 import { DefaultChatTransport } from 'ai';
-import { chatEndpoint } from '@/lib/hanzo/client';
+import { chatEndpoint, publishableKey } from '@/lib/hanzo/client';
 import { Markdown } from './markdown';
 import { Presence } from '@radix-ui/react-presence';
 
@@ -295,6 +295,7 @@ export function AISearch({ children }: { children: ReactNode }) {
     id: 'search',
     transport: new DefaultChatTransport({
       api: chatEndpoint,
+      headers: { Authorization: `Bearer ${publishableKey}` },
     }),
   });
 
