@@ -1,161 +1,156 @@
 ---
-title: Zen 5 — Research Preview
-description: The largest open-source LLM ever built. Training openly on Hanzo Network — contribute agentic data and help shape Zen 5.
+title: Zen 5 — Mixture of Diverse Experts
+description: 3.1T parameters, 0.8B to 100B+ active. Complexity-aware routing across 6 diverse model families. Training openly on Hanzo Network.
 ---
 
-# Zen 5 — Research Preview
+# Zen 5 — Mixture of Diverse Experts (MoDE)
 
 <div className="rounded-xl border border-fd-primary/30 bg-fd-primary/5 px-6 py-4 mb-8">
-  **Status:** In training · **Goal:** Largest open-source LLM ever built · **Open training:** [hanzo.network](https://hanzo.network)
+  **Status:** Training Q2-Q4 2026 · **Total parameters:** 3.1T · **Active parameters:** 0.8B to 100B+ · **GitHub:** [zenlm/zen5](https://github.com/zenlm/zen5) · **Open training:** [hanzo.network](https://hanzo.network)
 </div>
 
-Zen 5 is the next generation of the Zen LM family. It is currently training openly on [Hanzo Network](https://hanzo.network) — decentralized compute with verifiable execution via NVIDIA Trusted Execution Environments (TEE).
+zen5 introduces **MoDE (Mixture of Diverse Experts)** — a novel architecture that routes across frozen expert modules harvested from the world's largest open-source models with **complexity-aware hierarchical routing**.
 
-We are accepting agentic training data submissions from the community. If you build agents, run evals, or generate high-quality reasoning traces, you can contribute to Zen 5 directly.
+Unlike standard models that always use the same compute, zen5 **adapts compute to task difficulty**:
 
-## What's New
+| Tier | Active Params | Latency | Example |
+|------|--------------|---------|---------|
+| T0 — Trivial | 0.8B | <50ms | "Hello, how are you?" |
+| T1 — Standard | 9B | <200ms | "Summarize this article" |
+| T2 — Complex | 10-40B | <2s | "Compare economic policies with examples" |
+| T3 — Advanced | 40-80B | <5s | "Derive Black-Scholes from first principles" |
+| T4 — Frontier | 80-100B+ | <10s | "Design a novel consensus algorithm" |
 
-| Capability | Zen 4 | Zen 5 |
-|------------|-------|-------|
-| Architecture | Dense / standard MoE | Zen MoDE (Mixture of Diverse Experts) |
-| Scale | Up to 1T parameters | The largest open-source LLM ever |
-| Context | Up to 1M tokens | 2M+ tokens |
-| Training | Centralized | Open — Hanzo Network |
-| Reasoning | Chain-of-thought | Extended multi-step, tree-search |
-| Vision | Separate model (Zen VL) | Native multimodal |
-| Audio | Separate model (Zen3 Audio) | Native real-time |
-| Data | Curated | Curated + community agentic traces |
+## Expert Pool — 3.1T+ Parameters
 
-## Zen MoDE Architecture
+Frozen experts harvested from 6 diverse model families:
 
-**Zen MoDE** stands for **Mixture of Diverse Experts**. Unlike standard MoE models that route tokens to experts drawn from a single training distribution, Zen MoDE trains a population of experts with deliberately diverse specializations:
+| Expert Source | Parameters | Type | Architecture | Tier |
+|--------------|-----------|------|-------------|------|
+| Qwen3.5-0.8B | 0.8B | Dense | Gated DeltaNet | T0 |
+| Qwen3.5-9B | 9B | Dense | Gated DeltaNet | T1 |
+| MiniMax-M2.5 | 230B | MoE (64 experts) | Lightning Attention | T2 |
+| GLM-5 | 744B | MoE (256 experts) | GLM MoE | T3 |
+| Kimi K2.5 | 1.04T | MoE (384 experts) | DeepseekV3 MoE | T4 |
+| Ling-1T | 1T | MoE | FP8 MoE | T4 |
 
-- **Expert diversity**: Each expert is initialized and fine-tuned on a different data mixture, creating genuine specialization rather than redundant capacity.
-- **Diversity-aware routing**: The router maximizes coverage across expert specializations rather than just capacity utilization.
-- **Cross-expert distillation**: Experts learn from each other during training — strong experts in one domain improve weak experts via targeted distillation steps.
-- **Sparse activation**: Only a small fraction of parameters activate per token — frontier capability at a fraction of the inference cost.
+### Omnimodal Experts
 
-The result: a model that covers more ground at lower per-token compute than either dense models or standard MoE at equivalent parameter counts.
+| Modality | Expert | Architecture |
+|----------|--------|-------------|
+| Vision | Qwen3-VL | Native Vision Transformer |
+| Video | Wan2.2 / CogVideoX | MoE Video Diffusion |
+| 3D | TRELLIS.2 | Rectified Flow DiT + SC-VAE |
+| Audio | Qwen3-Omni / zen-tts | Thinker-Talker |
+
+## Key Innovations
+
+1. **Complexity-Aware Routing** — 207M parameter estimator analyzes the first 64 tokens and routes to the optimal tier. 85%+ of real-world queries served at T0-T1, reducing inference cost 10-50x.
+
+2. **Cross-Architecture Alignment** — 134M parameter projection layer unifies expert representations from 6 diverse architectures into a shared latent space — a technical first.
+
+3. **MoE++ Zero Experts** (ICLR 2025 Oral) — Zero/Copy/Constant experts handle trivial tokens with zero computation, delivering 1.1-2.1x throughput.
+
+4. **ReMoE ReLU Routing** (ICLR 2025) — Replaces fixed Top-K with ReLU activation for adaptive expert count per token.
+
+5. **Adaptive Escalation** — If confidence drops mid-generation, zen5 promotes to a higher tier automatically.
+
+6. **Transfusion** — Unified autoregressive (text) and diffusion (3D/video) in a single forward pass.
+
+## Training Efficiency
+
+Only **394M parameters** are trained — 0.013% of total model:
+
+| Component | Parameters | Purpose |
+|-----------|-----------|---------|
+| ComplexityEstimator | 207M | Predicts task difficulty tier (T0-T4) |
+| AlignmentLayer | 134M | Cross-architecture projection to shared space |
+| MoDERouter | 52M | Per-tier expert routing with ReLU gating |
+| **Total trainable** | **394M** | **0.013% of 3.1T total** |
+
+All expert weights are **frozen** — extracted and served as-is from source models.
+
+**Estimated training cost: $200-350K** (vs $500M-1B+ to train from scratch).
+
+## zen5 Model Lineup
+
+| Model | Total Params | Active Params | Target | Modalities |
+|-------|-------------|--------------|--------|-----------|
+| **zen5** | 750B | 0.8-50B | General | Text |
+| **zen5-coder** | 1.8T | 0.8-80B | Code | Text + Code |
+| **zen5-omni** | 2.5T | 0.8-100B | Omnimodal | Text + Vision + Video + 3D + Audio |
+| **zen5-max** | 3.1T | 0.8-100B+ | Frontier | All |
+
+All zen5 variants released under Apache 2.0.
+
+## Training Phases
+
+| Phase | Description | Timeline |
+|-------|------------|---------|
+| 1. Expert Extraction | Harvest FFN/MoE blocks from all 6 source models | Q1-Q2 2026 |
+| 2. Alignment | Cross-architecture projection training | Q2 2026 |
+| 3. Router Training | ComplexityEstimator + per-tier MoDERouter | Q2-Q3 2026 |
+| 4. Integration | Joint fine-tuning with frozen expert pool | Q3 2026 |
+| 5. Omnimodal Fusion | Vision, video, 3D, audio expert integration | Q4 2026 |
 
 ## Open Training on Hanzo Network
 
-Zen 5 is trained on [Hanzo Network](https://hanzo.network) — a decentralized compute marketplace with cryptographic proof of execution.
+zen5 is trained openly on [Hanzo Network](https://hanzo.network) — decentralized compute with verifiable execution via NVIDIA Trusted Execution Environments (TEE).
 
-**How it works:**
-1. Compute providers contribute GPU capacity and stake compute bonds
-2. Training jobs are dispatched across the network via auction
-3. Each compute node runs inside an NVIDIA TEE — execution is cryptographically verified
-4. Gradient updates are aggregated and validated before being applied to the global model state
-5. Providers earn rewards proportional to verified compute contribution
+All checkpoints, data pipelines, and training logs are published publicly.
 
-This is not a research experiment — it is the live training infrastructure for Zen 5. All training runs, gradient norms, and loss curves are published publicly at [hanzo.network/zen5](https://hanzo.network).
+## Quick Start
+
+```bash
+git clone https://github.com/zenlm/zen5
+cd zen5
+
+# List expert pool
+python scripts/expert_extraction.py list
+
+# Train complexity router
+python scripts/router_training.py train --output ./checkpoints/
+
+# Benchmark routing accuracy
+python scripts/benchmark.py routing --checkpoint ./checkpoints/router/best.pt
+```
 
 ## Contribute Training Data
 
-We are collecting **agentic training data** for Zen 5. This means:
+We are collecting **agentic training data** for zen5:
 
 - Multi-step reasoning traces (chain-of-thought, tree-of-thought)
-- Tool use sequences (function calling, code execution, web search)
-- Agent trajectories (task → plan → action → observation → revision loops)
-- Preference data (chosen vs. rejected completions with reasoning)
-- Domain-specific expert demonstrations (legal, medical, financial, scientific)
-
-**How to submit:**
+- Tool use sequences (function calling, code execution)
+- Agent trajectories (task → plan → action → observation loops)
+- Domain-specific expert demonstrations
 
 ```bash
 pip install hanzoai
 
 from hanzoai import TrainingClient
-
 client = TrainingClient(api_key="hk-...")
-
-# Submit a single reasoning trace
 client.submit_trace(
     messages=[
         {"role": "user", "content": "Solve this step by step: ..."},
         {"role": "assistant", "content": "<thinking>...</thinking>\n\nFinal answer: ..."},
     ],
-    quality_score=0.9,   # your estimated quality (0–1)
-    domain="reasoning",  # reasoning | code | math | tool-use | multimodal
+    quality_score=0.9,
+    domain="reasoning",
 )
-
-# Submit a batch from a JSONL file
-client.submit_batch("my_traces.jsonl")
 ```
 
-**Data format (JSONL):**
+## Research Foundations
 
-```json
-{
-  "messages": [
-    {"role": "user", "content": "..."},
-    {"role": "assistant", "content": "..."}
-  ],
-  "metadata": {
-    "domain": "code",
-    "quality": 0.85,
-    "source": "your-org",
-    "license": "apache-2.0"
-  }
-}
-```
-
-**What we're looking for:**
-- Long reasoning chains with intermediate steps visible
-- Agentic traces showing real tool use (not simulated)
-- Diverse domains: science, math, law, medicine, coding, creative writing
-- Preference pairs: same prompt, two completions, labeled by quality
-- Multilingual data, especially non-English
-
-**What we will not use:**
-- Data with PII or sensitive personal information
-- Synthetic data generated by closed models (GPT-4, Claude, Gemini)
-- Data submitted without a compatible open license (Apache 2.0, MIT, CC BY)
-
-## Community Rewards
-
-Contributors who submit accepted training data receive:
-
-- **HF credits**: $10–$1000 depending on data volume and quality
-- **API credits**: Usage credit on api.hanzo.ai proportional to contribution
-- **Attribution**: Your organization listed in the Zen 5 data card and model card
-- **Early access**: Priority access to Zen 5 model checkpoints during training
-
-Quality is evaluated by automated filters (perplexity, deduplication, format validation) and a human review sample. Acceptance rate targets 60–80% for well-formatted submissions.
-
-[Submit data → hanzo.ai/zen5/contribute](https://hanzo.ai/zen5/contribute)
-
-## Research Access
-
-Zen 5 checkpoint access during training is available to:
-
-- AI safety researchers (apply with institution + use case)
-- Academic labs (apply with PI name + publication intent)
-- Hanzo API enterprise customers (automatic access)
-- Community contributors with 50+ accepted training traces
-
-[Request access → hanzo.ai/zen5/research-access](https://hanzo.ai/zen5/research-access)
-
-## Timeline
-
-Training is live. We do not publish fixed release dates — checkpoints will be released as they reach quality thresholds on our eval suite.
-
-Track training progress at [hanzo.network](https://hanzo.network).
-
-## Zen 5 Family
-
-| Model | Parameters | Context | Focus |
-|-------|-----------|---------|-------|
-| zen-5-mini | TBA | 256K | Efficient, on-device |
-| zen-5 | TBA | 1M | Flagship |
-| zen-5-pro | TBA | 512K | Professional |
-| zen-5-coder | TBA | 256K | Code & agentic |
-
-All Zen 5 variants will be released under Apache 2.0.
+- [MoE++ (ICLR 2025 Oral)](https://arxiv.org/abs/2410.07348) — Zero-Computation Experts
+- [ReMoE (ICLR 2025)](https://arxiv.org/abs/2412.14711) — ReLU-based MoE routing
+- [HMoE (EMNLP 2025)](https://arxiv.org/abs/2505.12209) — Heterogeneous expert sizes
+- [Symbolic-MoE (2025)](https://arxiv.org/abs/2503.05641) — Skill-based routing
+- [Uni-MoE-2.0](https://arxiv.org/abs/2511.12609) — Dynamic capacity multimodal MoE
+- [Transfusion (Meta 2024)](https://arxiv.org/abs/2408.11039) — Unified AR + diffusion
 
 ## See Also
 
-- [Open Training on Hanzo Network](/blog/open-training-hanzo-network) — full technical overview
-- [Zen MoDE Architecture](/blog/zen-mode-architecture) — architecture deep dive
-- [zen4-max](/docs/models/zen4-max) — current frontier (1T MoE, 1M context)
-- [Hanzo Network](https://hanzo.network) — live training dashboard
+- [zen5 GitHub](https://github.com/zenlm/zen5) — Full source code and architecture doc
+- [Architecture Paper](https://zenlm.org/zen5-mode) — Coming soon
+- [Open Training Blog Post](/blog/open-training-hanzo-network) — Technical overview
+- [Hanzo Network](https://hanzo.network) — Live training dashboard
