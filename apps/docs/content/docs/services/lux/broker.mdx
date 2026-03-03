@@ -1,30 +1,43 @@
 ---
 title: Broker (brokerd)
-description: Multi-liquidity-provider smart order router with best execution across 10+ venues.
+description: Federated smart order router with best execution across 16 providers — crypto, equities, FX, and precious metals.
 ---
 
-# Broker — Smart Order Router
+# Broker — Federated Smart Order Router
 
-`brokerd` is a multi-liquidity-provider smart order router that aggregates quotes from 10+ liquidity providers and routes orders for best execution. It sits between the client-facing API and the execution venues (CEX, DEX, and external LPs).
+`brokerd` is an institutional-grade federated broker that aggregates 16 providers behind a unified API. It routes orders for best execution across crypto exchanges, equity brokers, institutional FX venues, custody platforms, and market data providers.
 
-## Liquidity Providers
+## Providers (16)
 
-The broker aggregates liquidity from:
-
-1. **Lux CEX** (internal ATS)
-2. **Lux DEX** (on-chain matching)
-3. **External CEX connectors** (via FIX/REST)
-4. **OTC desks** (RFQ-based)
-5. **Market makers** (streaming quotes)
+| Provider | Asset Classes | Type |
+|----------|-------------|------|
+| **Alpaca** | Equities, Crypto | Broker-dealer |
+| **Interactive Brokers** | Equities, Options, Futures, FX | Prime broker |
+| **Tradier** | Equities, Options | Broker-dealer |
+| **Coinbase** | Crypto | Exchange (Advanced Trade) |
+| **Binance** | Crypto | Exchange |
+| **Kraken** | Crypto | Exchange |
+| **Gemini** | Crypto | Exchange |
+| **SFOX** | Crypto | Prime dealer / SOR |
+| **FalconX** | Crypto | Institutional RFQ |
+| **Fireblocks** | Crypto | Custody + OTC |
+| **BitGo** | Crypto | Custody + Prime |
+| **Circle** | USDC / Stablecoins | Stablecoin infrastructure |
+| **CurrencyCloud** (Visa) | FX (35 pairs) | Institutional FX |
+| **LMAX Digital** | FX, Crypto, Metals | Institutional CLOB |
+| **Polygon.io** | Equities, FX, Crypto | Market data aggregator |
+| **Finix** | Payments | Payment processing |
 
 ## Smart Routing Logic
 
 ```
 1. Client submits order
-2. Broker queries all connected venues in parallel
-3. Compare: effective price, available depth, fees, latency
-4. Route to best venue (or split across venues for large orders)
-5. Execute and report fill back to client
+2. Broker queries all capable venues in parallel
+3. Compute net price: raw price + maker/taker fees per venue
+4. Rank by effective cost, depth, and latency
+5. If order fits single venue: route to best
+6. If order exceeds venue depth: split across venues (VWAP)
+7. Execute and report fills
 ```
 
 ### Split Orders
@@ -33,21 +46,25 @@ For orders larger than single-venue depth, the broker splits across venues:
 
 ```
 Order: Buy 100 BTC
-  - CEX depth: 40 BTC at $45,000
-  - DEX depth: 30 BTC at $45,010
-  - LP1 quote: 50 BTC at $45,020
-  -> Split: 40 CEX + 30 DEX + 30 LP1
-  -> VWAP: $45,008.57
+  - Coinbase depth: 40 BTC at $45,000 (8 bps taker)
+  - Kraken depth: 30 BTC at $45,010 (6 bps taker)
+  - LMAX quote: 50 BTC at $45,020 (3 bps taker)
+  -> Split: 40 Coinbase + 30 Kraken + 30 LMAX
+  -> VWAP: $45,008.57 (net of fees)
 ```
+
+### Fee-Aware Net-Price Routing
+
+Each provider has a configured fee schedule (maker/taker bps). The router computes net effective price including fees before ranking venues, ensuring true best execution.
 
 ## Best Execution Policy
 
 The broker implements regulatory best-execution requirements:
 
-- **Price**: Primary factor, lowest effective cost
+- **Price**: Net effective cost after fees (primary factor)
 - **Speed**: Latency-adjusted pricing
 - **Likelihood of fill**: Venue reliability and depth
-- **Cost**: Trading fees and spread
+- **Cost**: Trading fees, spread, and slippage
 - **Size**: Available depth at quoted price
 
 All routing decisions are logged for regulatory audit (MiFID II best-execution reports, FINRA Rule 5310).
@@ -56,13 +73,26 @@ All routing decisions are logged for regulatory audit (MiFID II best-execution r
 
 | Env Var | Description |
 |---------|-------------|
-| `BROKER_CEX_URL` | CEX API endpoint |
-| `BROKER_DEX_URL` | DEX RPC endpoint |
-| `BROKER_LP_CONFIG` | JSON config for external LPs |
-| `BROKER_MAX_SPLIT` | Maximum number of venue splits |
-| `BROKER_TIMEOUT_MS` | Quote timeout per venue |
+| `BROKER_LISTEN` | Listen address (default `:8090`) |
+| `ALPACA_API_KEY` / `ALPACA_API_SECRET` | Alpaca (equities + crypto) |
+| `IBKR_ACCESS_TOKEN` / `IBKR_ACCOUNT_ID` | Interactive Brokers |
+| `COINBASE_API_KEY` / `COINBASE_API_SECRET` | Coinbase Advanced Trade |
+| `BINANCE_API_KEY` / `BINANCE_API_SECRET` | Binance |
+| `KRAKEN_API_KEY` / `KRAKEN_API_SECRET` | Kraken |
+| `GEMINI_API_KEY` / `GEMINI_API_SECRET` | Gemini |
+| `SFOX_API_KEY` | SFOX Prime |
+| `FALCON_API_KEY` / `FALCON_API_SECRET` | FalconX |
+| `FIREBLOCKS_API_KEY` / `FIREBLOCKS_PRIVATE_KEY` | Fireblocks |
+| `BITGO_ACCESS_TOKEN` / `BITGO_ENTERPRISE` | BitGo |
+| `CIRCLE_API_KEY` | Circle |
+| `TRADIER_ACCESS_TOKEN` / `TRADIER_ACCOUNT_ID` | Tradier |
+| `POLYGON_API_KEY` | Polygon.io |
+| `CURRENCYCLOUD_LOGIN_ID` / `CURRENCYCLOUD_API_KEY` | CurrencyCloud |
+| `LMAX_API_KEY` / `LMAX_USERNAME` / `LMAX_PASSWORD` | LMAX Digital |
+| `FINIX_USERNAME` / `FINIX_PASSWORD` | Finix |
 
 ## Source
 
 - Repository: `luxfi/broker`
 - Language: Go
+- Key packages: `pkg/provider`, `pkg/router`, `pkg/api`
