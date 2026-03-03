@@ -1,6 +1,6 @@
 ---
 title: Lux Financial
-description: Regulated multi-jurisdiction trading platform with MPC-powered non-custodial wallets, CEX/DEX smart routing, and full compliance automation.
+description: Regulated multi-jurisdiction trading platform with MPC-powered non-custodial wallets, CEX/DEX/Broker smart routing across 16 providers, treasury management, and full compliance automation.
 ---
 
 import { Cards, Card } from '@hanzo/docs-ui/components/card'
@@ -26,8 +26,8 @@ Lux Financial is a regulated, multi-jurisdiction trading platform for digital an
      [CEX ATS]  [DEX Router]  [Broker]      |
         |            |            |          |
    [Compliance]  [Match Engine]  [SOR]      |
-        |            |            |          |
-   [Surveillance] [Order Book] [10 LPs]     |
+        |            |         [16 providers]|
+   [Surveillance] [Order Book]              |
         |                                    |
    [Reporting]                               |
         |                                    |
@@ -37,9 +37,16 @@ Lux Financial is a regulated, multi-jurisdiction trading platform for digital an
    |         |            wallet signing
    +---------+
         |
-     [Bank]
-   NestJS API
-        |
+   +----+----+
+   |         |
+ [Bank]  [Treasury]
+ NestJS   treasuryd
+   |         |
+   |    +----+----+----+
+   |    |    |    |    |
+   | Banking Cards FX Compliance
+   |  (6)   (2) (2)   (1)
+   |
    +----+----+
    |         |
 [CurrencyCloud] [IFX]
@@ -50,7 +57,7 @@ Lux Financial is a regulated, multi-jurisdiction trading platform for digital an
 <Cards>
   <Card icon={<ArrowLeftRight />} title="CEX (cexd)" href="/docs/services/lux/cex" description="Internal ATS with CLOB matching engine, compliance gating, and FINRA/SEC reporting" />
   <Card icon={<Network />} title="DEX" href="/docs/services/lux/dex" description="On-chain matching engine with gRPC, JSON-RPC, and ZAP protocol support" />
-  <Card icon={<Building2 />} title="Broker (brokerd)" href="/docs/services/lux/broker" description="Smart order router across 10 liquidity providers with best-execution" />
+  <Card icon={<Building2 />} title="Broker (brokerd)" href="/docs/services/lux/broker" description="Federated smart order router across 16 providers with best-execution" />
   <Card icon={<Wallet />} title="MPC Wallets" href="/docs/services/lux/wallets" description="Non-custodial MPC wallets with CGGMP21/FROST threshold signatures" />
 </Cards>
 
@@ -68,6 +75,7 @@ Lux Financial is a regulated, multi-jurisdiction trading platform for digital an
 <Cards>
   <Card icon={<FileCheck />} title="Regulatory Reporting" href="/docs/services/lux/reporting" description="FINRA OATS, ATS-N, CAT, MiFID II transaction reporting" />
   <Card icon={<Scale />} title="Bank Integration" href="/docs/services/lux/bank" description="NestJS API with Currency Cloud, IFX, compliance sync to CEX" />
+  <Card icon={<Building2 />} title="Treasury (treasuryd)" href="/docs/services/lux/treasury" description="13 banking/payment providers, double-entry ledger, OFAC sanctions screening" />
   <Card icon={<Globe />} title="Federated Entities" href="/docs/services/lux/federation" description="Multi-entity network with EU passporting, IOM crown dependency equivalence" />
   <Card icon={<Zap />} title="ZAP Protocol" href="/docs/zap" description="Zero-copy binary protocol with microsecond latency for inter-service communication" />
 </Cards>
@@ -145,6 +153,7 @@ curl -X POST https://mpc.lux.network/api/v1/vaults/{vaultId}/wallets \
 | CEX (cexd) | `luxfi/cex` | Go |
 | DEX | `luxfi/dex` | Go |
 | Broker (brokerd) | `luxfi/broker` | Go |
+| Treasury (treasuryd) | `luxfi/treasury` | Go |
 | Bank API | `luxfi/bank` | TypeScript/NestJS |
 | KMS | `luxfi/kms` | TypeScript/Go |
 | MPC Signer | `luxfi/mpc` | Go |
