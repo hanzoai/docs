@@ -1,0 +1,472 @@
+---
+title: Insights Event Catalog
+description: Reference for @hanzo/insights event tracking — standard events, custom events, feature flags, and session recording.
+---
+
+# Insights Event Catalog
+
+Hanzo Insights is a self-hosted behavioral analytics platform (fork of PostHog) running at `insights.hanzo.ai`. The `@hanzo/insights-*` ecosystem provides 13 packages for browser, server, and framework-specific event tracking.
+
+**Platform:** [insights.hanzo.ai](https://insights.hanzo.ai)
+**Core SDK:** `@hanzo/insights` (browser)
+**Server SDK:** `@hanzo/insights-node` (Node.js)
+**React SDK:** `@hanzo/insights-react` (hooks and providers)
+**Total Packages:** 13 in the `@hanzo/insights-*` namespace
+
+## Package Ecosystem
+
+| Package | Purpose |
+|---------|---------|
+| `@hanzo/insights` | Browser SDK -- autocapture, pageviews, session recording |
+| `@hanzo/insights-node` | Server-side SDK for Node.js |
+| `@hanzo/insights-react` | React hooks (`useInsights`, `useFeatureFlag`) and `<InsightsProvider>` |
+| `@hanzo/insights-react-native` | React Native SDK |
+| `@hanzo/insights-next` | Next.js integration (App Router + Pages Router) |
+| `@hanzo/insights-web` | Lightweight web-only variant |
+| `@hanzo/insights-js-lite` | Minimal SDK for bandwidth-constrained environments |
+| `@hanzo/insights-android` | Android SDK |
+| `@hanzo/insights-ios` | iOS SDK |
+| `@hanzo/insights-flutter` | Flutter SDK |
+| `@hanzo/insights-python` | Python SDK |
+| `@hanzo/insights-ruby` | Ruby SDK |
+| `@hanzo/insights-go` | Go SDK (separate repo: `hanzoai/insights-go`) |
+
+## Quick Start
+
+### Browser
+
+```bash tab="npm"
+npm install @hanzo/insights
+```
+
+```bash tab="pnpm"
+pnpm add @hanzo/insights
+```
+
+```typescript
+import insights from '@hanzo/insights';
+
+insights.init('your-project-api-key', {
+  api_host: 'https://insights.hanzo.ai',
+  autocapture: true,
+  capture_pageview: true,
+  capture_pageleave: true,
+  session_recording: {
+    maskAllInputs: true,
+  },
+});
+```
+
+### React
+
+```bash
+npm install @hanzo/insights @hanzo/insights-react
+```
+
+```tsx
+import { InsightsProvider, useInsights, useFeatureFlag } from '@hanzo/insights-react';
+
+function App() {
+  return (
+    <InsightsProvider
+      apiKey="your-project-api-key"
+      options={{
+        api_host: 'https://insights.hanzo.ai',
+        autocapture: true,
+      }}
+    >
+      <MyApp />
+    </InsightsProvider>
+  );
+}
+
+function MyApp() {
+  const insights = useInsights();
+  const showNewUI = useFeatureFlag('new-dashboard-ui');
+
+  const handleSignup = () => {
+    insights.capture('user_signed_up', {
+      plan: 'pro',
+      source: 'landing_page',
+    });
+  };
+
+  return showNewUI ? <NewDashboard /> : <LegacyDashboard />;
+}
+```
+
+### Server-Side (Node.js)
+
+```bash
+npm install @hanzo/insights-node
+```
+
+```typescript
+import { Insights } from '@hanzo/insights-node';
+
+const insights = new Insights('your-project-api-key', {
+  host: 'https://insights.hanzo.ai',
+});
+
+// Capture a server-side event
+insights.capture({
+  distinctId: 'user-123',
+  event: 'api_request',
+  properties: {
+    endpoint: '/v1/chat/completions',
+    model: 'zen-coder-32b-instruct',
+    tokens: 1500,
+    latency_ms: 340,
+  },
+});
+
+// Identify a user
+insights.identify({
+  distinctId: 'user-123',
+  properties: {
+    email: 'user@example.com',
+    plan: 'pro',
+    organization: 'acme-corp',
+  },
+});
+
+// Graceful shutdown
+await insights.shutdown();
+```
+
+## Standard Events
+
+These events are captured automatically by the browser SDK when enabled.
+
+### $pageview
+
+Captured on every page load and client-side navigation.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `$current_url` | `string` | Full page URL |
+| `$pathname` | `string` | URL path without query string |
+| `$host` | `string` | Hostname |
+| `$referrer` | `string` | Referrer URL |
+| `$referring_domain` | `string` | Referrer domain |
+| `$screen_height` | `number` | Screen height in pixels |
+| `$screen_width` | `number` | Screen width in pixels |
+| `$viewport_height` | `number` | Viewport height |
+| `$viewport_width` | `number` | Viewport width |
+| `$browser` | `string` | Browser name |
+| `$browser_version` | `string` | Browser version |
+| `$os` | `string` | Operating system |
+| `$device_type` | `string` | `Desktop`, `Mobile`, or `Tablet` |
+
+### $pageleave
+
+Captured when the user leaves a page (before unload or visibility change).
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `$current_url` | `string` | Page being left |
+| `$pathname` | `string` | Path being left |
+| `$prev_pageview_duration` | `number` | Time spent on page in seconds |
+| `$prev_pageview_last_scroll` | `number` | Deepest scroll position (0-1) |
+
+### $autocapture
+
+Captured on clicks, form submissions, and input changes when `autocapture: true`.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `$event_type` | `string` | `click`, `submit`, `change`, `rageclick` |
+| `$elements` | `array` | DOM element chain from target to body |
+| `$elements[].tag_name` | `string` | HTML tag name |
+| `$elements[].text` | `string` | Element text content (truncated) |
+| `$elements[].href` | `string` | Link href (if applicable) |
+| `$elements[].attr__class` | `string` | CSS class names |
+| `$elements[].attr__id` | `string` | Element ID |
+| `$elements[].nth_child` | `number` | Position among siblings |
+| `$elements[].nth_of_type` | `number` | Position among same-type siblings |
+
+### $identify
+
+Captured when `insights.identify()` is called to associate an anonymous user with a known identity.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `$anon_distinct_id` | `string` | Previous anonymous ID |
+| `$set` | `object` | Properties to set on the person profile |
+| `$set_once` | `object` | Properties to set only if not already set |
+
+### $groupidentify
+
+Captured when `insights.group()` is called to associate a user with a group (organization, company, workspace).
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `$group_type` | `string` | Group type (e.g., `organization`, `company`) |
+| `$group_key` | `string` | Group identifier |
+| `$group_set` | `object` | Properties to set on the group |
+
+### $feature_flag_called
+
+Captured when a feature flag is evaluated.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `$feature_flag` | `string` | Flag key |
+| `$feature_flag_response` | `any` | Flag value (boolean, string, or JSON) |
+
+### $session_recording
+
+Session recording events (captured continuously when session recording is enabled).
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `$snapshot_data` | `object` | rrweb recording snapshot |
+| `$session_id` | `string` | Session identifier |
+| `$window_id` | `string` | Window/tab identifier |
+
+## Custom Events
+
+Capture domain-specific events with `insights.capture()`:
+
+```typescript
+// E-commerce
+insights.capture('product_viewed', {
+  product_id: 'prod_001',
+  product_name: 'AI API Credits',
+  price: 49.99,
+  currency: 'USD',
+  category: 'credits',
+});
+
+insights.capture('purchase_completed', {
+  order_id: 'ord_abc123',
+  total: 149.99,
+  currency: 'USD',
+  items: [
+    { item_id: 'prod_001', quantity: 2, price: 49.99 },
+  ],
+});
+
+// AI/LLM
+insights.capture('model_inference', {
+  model: 'zen-coder-32b-instruct',
+  tokens_in: 150,
+  tokens_out: 500,
+  latency_ms: 1240,
+  stream: true,
+});
+
+insights.capture('agent_task_completed', {
+  agent_id: 'agent_xyz',
+  task_type: 'code_review',
+  duration_ms: 45000,
+  tools_used: ['read_file', 'grep', 'edit'],
+  success: true,
+});
+
+// User lifecycle
+insights.capture('onboarding_step_completed', {
+  step: 3,
+  step_name: 'connect_repository',
+  total_steps: 5,
+  duration_seconds: 45,
+});
+```
+
+## Feature Flags
+
+Evaluate feature flags for gradual rollouts and A/B testing:
+
+```typescript
+// Boolean flag
+if (insights.isFeatureEnabled('new-checkout-flow')) {
+  renderNewCheckout();
+}
+
+// Multivariate flag
+const variant = insights.getFeatureFlag('pricing-experiment');
+switch (variant) {
+  case 'control':
+    showOriginalPricing();
+    break;
+  case 'variant-a':
+    showDiscountedPricing();
+    break;
+  case 'variant-b':
+    showUsageBasedPricing();
+    break;
+}
+
+// Flag with payload (JSON)
+const config = insights.getFeatureFlagPayload('dashboard-layout');
+// { "columns": 3, "showSidebar": true, "theme": "dark" }
+```
+
+### React Feature Flags
+
+```tsx
+import { useFeatureFlag, useFeatureFlagPayload } from '@hanzo/insights-react';
+
+function Dashboard() {
+  const showNewNav = useFeatureFlag('new-navigation');
+  const layoutConfig = useFeatureFlagPayload('dashboard-layout');
+
+  return (
+    <div>
+      {showNewNav ? <NewNavigation /> : <LegacyNavigation />}
+      <DashboardGrid columns={layoutConfig?.columns ?? 2} />
+    </div>
+  );
+}
+```
+
+## Experiments
+
+Run A/B tests with automatic statistical significance tracking:
+
+```typescript
+// Experiments use feature flags under the hood
+const experiment = insights.getFeatureFlag('signup-cta-experiment');
+
+// Track the conversion metric
+insights.capture('signup_completed', {
+  experiment_variant: experiment,
+});
+```
+
+Experiments are configured in the Insights UI at `insights.hanzo.ai` with:
+- Minimum sample size calculation
+- Bayesian or frequentist significance testing
+- Automatic winner detection
+- Holdout groups
+
+## Session Recording
+
+Capture full session replays with privacy controls:
+
+```typescript
+insights.init('your-api-key', {
+  api_host: 'https://insights.hanzo.ai',
+  session_recording: {
+    maskAllInputs: true,          // Mask all input values
+    maskTextSelector: '.sensitive', // Mask elements with this class
+    blockSelector: '.no-record',   // Block elements entirely
+    recordCrossOriginIframes: false,
+  },
+});
+```
+
+Session recordings capture:
+- DOM mutations (via rrweb)
+- Mouse movements and clicks
+- Scroll events
+- Network requests (optional)
+- Console logs (optional)
+- Performance metrics
+
+## Super Properties
+
+Set properties that are automatically included with every event:
+
+```typescript
+// Set once (persisted in localStorage)
+insights.register({
+  app_version: '2.4.1',
+  environment: 'production',
+  deployment: 'us-east-1',
+});
+
+// Set per-session only
+insights.registerForSession({
+  ab_test_group: 'variant-b',
+});
+
+// Unregister
+insights.unregister('ab_test_group');
+```
+
+## Person Properties
+
+Set properties on the identified user profile:
+
+```typescript
+insights.identify('user-123', {
+  $set: {
+    email: 'user@example.com',
+    plan: 'pro',
+    company: 'Acme Corp',
+    signup_date: '2026-01-15',
+  },
+  $set_once: {
+    first_seen: new Date().toISOString(),
+    original_referrer: document.referrer,
+  },
+});
+```
+
+## Group Analytics
+
+Track organization or workspace-level metrics:
+
+```typescript
+// Associate user with a group
+insights.group('organization', 'org-acme', {
+  name: 'Acme Corporation',
+  plan: 'enterprise',
+  employee_count: 500,
+  industry: 'technology',
+});
+
+// Events are now tagged with this group
+insights.capture('api_key_created', {
+  key_type: 'production',
+});
+// This event is attributed to both user-123 AND org-acme
+```
+
+## Configuration Reference
+
+### Browser SDK Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `api_host` | `string` | `https://insights.hanzo.ai` | Insights server URL |
+| `autocapture` | `boolean` | `true` | Auto-capture clicks, forms, page changes |
+| `capture_pageview` | `boolean` | `true` | Auto-capture `$pageview` events |
+| `capture_pageleave` | `boolean` | `true` | Auto-capture `$pageleave` events |
+| `cross_subdomain_cookie` | `boolean` | `true` | Share identity across subdomains |
+| `persistence` | `string` | `localStorage+cookie` | Storage method for identity |
+| `session_recording` | `object` | `{}` | Session recording configuration |
+| `disable_session_recording` | `boolean` | `false` | Disable session recording entirely |
+| `mask_all_text` | `boolean` | `false` | Mask all text in session recordings |
+| `mask_all_element_attributes` | `boolean` | `false` | Mask all HTML attributes |
+| `loaded` | `function` | -- | Callback after SDK initialization |
+| `bootstrap` | `object` | -- | Pre-load feature flags and distinct ID |
+| `advanced_disable_decide` | `boolean` | `false` | Skip `/decide` call (disables autocapture config) |
+
+### Server SDK Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `host` | `string` | `https://insights.hanzo.ai` | Insights server URL |
+| `flushAt` | `number` | `20` | Events per batch |
+| `flushInterval` | `number` | `10000` | Flush interval in ms |
+| `personalApiKey` | `string` | -- | Personal API key for feature flag evaluation |
+| `featureFlagsPollingInterval` | `number` | `300000` | Flag refresh interval in ms |
+
+## Related Services
+
+<Cards>
+  <Card title="Analytics" href="/docs/services/analytics">
+    Platform-level usage and cost analytics (distinct from Insights behavioral analytics)
+  </Card>
+  <Card title="Commerce Events" href="/docs/services/commerce-events">
+    Commerce event catalog for order and checkout tracking
+  </Card>
+  <Card title="AST" href="/docs/sdks/ast">
+    AI training data collection (distinct from behavioral analytics)
+  </Card>
+  <Card title="Console" href="/docs/services/console">
+    LLM observability with tracing and prompt management
+  </Card>
+</Cards>

@@ -1,0 +1,317 @@
+---
+title: AST (AI Structured Training)
+description: Structured AI training data collection SDK for capturing interactions, feedback, and model outputs.
+---
+
+# Hanzo AST
+
+Hanzo AST (`@hanzo/ast`) is a structured AI training data collection library. It captures interactions, feedback, and model outputs in a normalized format for fine-tuning, evaluation, and RLHF pipelines. AST works in both browser and server environments with zero-config auto-initialization for web pages.
+
+**Package:** `@hanzo/ast` on [npm](https://www.npmjs.com/package/@hanzo/ast)
+**Format:** ESM + CJS dual format (built with tsup)
+**Source:** [github.com/hanzoai/js-sdk](https://github.com/hanzoai/js-sdk)
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Interaction Capture** | Record user-model interactions with structured metadata |
+| **Feedback Collection** | Collect thumbs-up/down, ratings, corrections, and free-text feedback |
+| **Model Output Logging** | Capture completions, tool calls, and chain-of-thought traces |
+| **Browser Auto-Init** | Drop-in script tag for automatic browser instrumentation |
+| **Server SDK** | Full programmatic API for backend and pipeline integration |
+| **Dataset Routing** | Route collected data to specific datasets by ID |
+| **Organization Scoping** | Multi-tenant data isolation via organization ID |
+| **Batched Uploads** | Automatic batching and retry for efficient data transport |
+| **Dual Format** | ESM and CJS builds for universal compatibility |
+
+## Quick Start
+
+### Install
+
+```bash tab="npm"
+npm install @hanzo/ast
+```
+
+```bash tab="pnpm"
+pnpm add @hanzo/ast
+```
+
+```bash tab="bun"
+bun add @hanzo/ast
+```
+
+### Browser Auto-Init
+
+Add a single script tag to any page to start collecting interaction data automatically. No code changes required.
+
+```html
+<script
+  data-api-key="your-api-key"
+  data-dataset-id="web-interactions"
+  data-organization-id="org-hanzo"
+  src="https://unpkg.com/@hanzo/ast/browser"
+></script>
+```
+
+The browser auto-init script captures:
+- Page views and navigation events
+- Form interactions (with PII redaction)
+- Click targets and UI interaction paths
+- Session duration and engagement signals
+
+### Programmatic Usage
+
+```typescript
+import { AstClient } from '@hanzo/ast';
+
+const ast = new AstClient({
+  apiKey: process.env.HANZO_API_KEY,
+  baseUrl: 'https://api.hanzo.ai',
+  datasetId: 'training-v3',
+  organizationId: 'org-hanzo',
+});
+```
+
+## Recording Interactions
+
+An interaction represents a single user-model exchange -- a prompt, a completion, and associated metadata.
+
+```typescript
+import { AstClient, AstInteractionType } from '@hanzo/ast';
+import type { AstInteractionParams } from '@hanzo/ast';
+
+const ast = new AstClient({
+  apiKey: process.env.HANZO_API_KEY,
+  baseUrl: 'https://api.hanzo.ai',
+  datasetId: 'chat-training',
+  organizationId: 'org-hanzo',
+});
+
+// Record a chat interaction
+await ast.recordInteraction({
+  type: AstInteractionType.CHAT,
+  input: {
+    messages: [
+      { role: 'system', content: 'You are a helpful assistant.' },
+      { role: 'user', content: 'Explain quantum computing in simple terms.' },
+    ],
+  },
+  output: {
+    message: {
+      role: 'assistant',
+      content: 'Quantum computing uses quantum bits (qubits) that can be 0, 1, or both at the same time...',
+    },
+    model: 'zen-coder-32b-instruct',
+    tokens: { input: 42, output: 156 },
+    latencyMs: 1240,
+  },
+  metadata: {
+    sessionId: 'sess_abc123',
+    userId: 'user_456',
+    environment: 'production',
+  },
+});
+```
+
+### Interaction Types
+
+| Type | Description |
+|------|-------------|
+| `AstInteractionType.CHAT` | Conversational exchange (messages array) |
+| `AstInteractionType.COMPLETION` | Single-turn text completion |
+| `AstInteractionType.EMBEDDING` | Embedding generation request |
+| `AstInteractionType.TOOL_CALL` | Function/tool invocation and result |
+| `AstInteractionType.CHAIN` | Multi-step chain-of-thought trace |
+
+## Collecting Feedback
+
+Feedback links human judgments to recorded interactions for RLHF and evaluation.
+
+```typescript
+import type { AstFeedbackParams } from '@hanzo/ast';
+
+// Binary feedback (thumbs up/down)
+await ast.recordFeedback({
+  interactionId: 'int_abc123',
+  type: 'binary',
+  value: 'positive',
+  userId: 'user_456',
+});
+
+// Numeric rating
+await ast.recordFeedback({
+  interactionId: 'int_abc123',
+  type: 'rating',
+  value: 4,
+  scale: 5,
+  userId: 'user_456',
+});
+
+// Correction (preferred output)
+await ast.recordFeedback({
+  interactionId: 'int_abc123',
+  type: 'correction',
+  value: 'Quantum computing uses qubits instead of classical bits. Unlike regular bits that are either 0 or 1, qubits can exist in a superposition of both states simultaneously.',
+  userId: 'user_456',
+  metadata: {
+    reason: 'Original response was too vague',
+  },
+});
+
+// Free-text comment
+await ast.recordFeedback({
+  interactionId: 'int_abc123',
+  type: 'comment',
+  value: 'Good explanation but could include a real-world analogy.',
+  userId: 'user_456',
+});
+```
+
+## Configuration
+
+### AstClient Options
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `apiKey` | `string` | Yes | Hanzo API key for authentication |
+| `baseUrl` | `string` | No | API base URL (default: `https://api.hanzo.ai`) |
+| `datasetId` | `string` | Yes | Target dataset for collected data |
+| `organizationId` | `string` | Yes | Organization ID for multi-tenant isolation |
+| `batchSize` | `number` | No | Records per upload batch (default: `50`) |
+| `flushIntervalMs` | `number` | No | Auto-flush interval in ms (default: `5000`) |
+| `maxRetries` | `number` | No | Retry count for failed uploads (default: `3`) |
+| `debug` | `boolean` | No | Enable debug logging (default: `false`) |
+
+### Browser Script Attributes
+
+| Attribute | Required | Description |
+|-----------|----------|-------------|
+| `data-api-key` | Yes | Hanzo API key |
+| `data-dataset-id` | No | Target dataset (default: `web-auto`) |
+| `data-organization-id` | No | Organization ID |
+| `data-capture-clicks` | No | Enable click tracking (default: `true`) |
+| `data-capture-forms` | No | Enable form tracking (default: `true`) |
+| `data-capture-navigation` | No | Enable navigation tracking (default: `true`) |
+| `data-redact-pii` | No | Redact emails, phones, etc. (default: `true`) |
+| `data-debug` | No | Enable console logging (default: `false`) |
+
+### Environment Variables
+
+```bash
+HANZO_API_KEY=your-api-key
+HANZO_AST_DATASET_ID=training-v3
+HANZO_AST_ORGANIZATION_ID=org-hanzo
+HANZO_AST_BASE_URL=https://api.hanzo.ai  # optional
+```
+
+## Server-Side Integration
+
+### Express Middleware
+
+```typescript
+import { AstClient } from '@hanzo/ast';
+import express from 'express';
+
+const app = express();
+const ast = new AstClient({
+  apiKey: process.env.HANZO_API_KEY,
+  datasetId: 'api-interactions',
+  organizationId: 'org-hanzo',
+});
+
+app.post('/api/chat', async (req, res) => {
+  const { messages } = req.body;
+
+  const completion = await llm.chat.completions.create({
+    model: 'zen-coder-32b-instruct',
+    messages,
+  });
+
+  // Record the interaction for training data
+  await ast.recordInteraction({
+    type: AstInteractionType.CHAT,
+    input: { messages },
+    output: {
+      message: completion.choices[0].message,
+      model: completion.model,
+      tokens: {
+        input: completion.usage.prompt_tokens,
+        output: completion.usage.completion_tokens,
+      },
+    },
+    metadata: {
+      userId: req.user.id,
+      sessionId: req.sessionID,
+      requestId: req.headers['x-request-id'],
+    },
+  });
+
+  res.json(completion);
+});
+```
+
+### Batch Processing
+
+```typescript
+// Flush pending records manually
+await ast.flush();
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  await ast.flush();
+  await ast.close();
+  process.exit(0);
+});
+```
+
+## Data Format
+
+AST stores all records in a normalized JSON format compatible with common fine-tuning pipelines (OpenAI JSONL, Hugging Face datasets, Axolotl).
+
+```json
+{
+  "id": "int_abc123",
+  "type": "chat",
+  "dataset_id": "training-v3",
+  "organization_id": "org-hanzo",
+  "timestamp": "2026-03-03T12:00:00.000Z",
+  "input": {
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Explain quantum computing."}
+    ]
+  },
+  "output": {
+    "message": {"role": "assistant", "content": "..."},
+    "model": "zen-coder-32b-instruct",
+    "tokens": {"input": 42, "output": 156},
+    "latency_ms": 1240
+  },
+  "feedback": [
+    {"type": "binary", "value": "positive", "user_id": "user_456"}
+  ],
+  "metadata": {
+    "session_id": "sess_abc123",
+    "user_id": "user_456",
+    "environment": "production"
+  }
+}
+```
+
+## Related Services
+
+<Cards>
+  <Card title="Console" href="/docs/services/console">
+    LLM observability and tracing -- complements AST's training data collection
+  </Card>
+  <Card title="Cloud" href="/docs/services/cloud">
+    LLM Gateway -- the primary source of model interactions to capture
+  </Card>
+  <Card title="Insights" href="/docs/services/insights-events">
+    Behavioral analytics -- distinct from AST's training-focused collection
+  </Card>
+  <Card title="TypeScript SDK" href="/docs/sdks/typescript">
+    The @hanzo/ai SDK for LLM inference
+  </Card>
+</Cards>

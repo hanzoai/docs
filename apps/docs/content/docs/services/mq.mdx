@@ -486,6 +486,46 @@ for (const queueName of QUEUE_NAMES) {
 }
 ```
 
+## Database Detection
+
+Hanzo MQ automatically detects the backend database engine and adapts its behavior accordingly. Supported backends:
+
+| Backend | Detection | Notes |
+|---------|-----------|-------|
+| **Redis** 6.2+ | `INFO server` response contains `redis_version` | Full feature support |
+| **Valkey** 7.2+ | `INFO server` response contains `valkey_version` | Recommended for Hanzo KV deployments |
+| **Dragonfly** | `INFO server` response contains `dragonfly_version` | Supported with minor limitations on Lua script caching |
+
+Detection happens automatically on first connection. No configuration needed -- MQ reads the `INFO server` response and adjusts internal command usage (e.g., `WAITAOF` availability, cluster slot handling) based on the detected engine.
+
+```typescript
+import { Queue } from '@hanzo/mq';
+
+// Hanzo MQ detects the backend automatically
+const queue = new Queue('tasks', {
+  connection: {
+    host: 'kv.hanzo.ai',
+    port: 6379,
+    password: process.env.KV_PASSWORD,
+  },
+});
+
+// Check detected backend (after first command)
+const client = await queue.client;
+console.log(client.serverVersion); // e.g., "valkey:8.0.1"
+```
+
+### Dependencies
+
+Hanzo MQ bundles the following dependencies:
+
+| Package | Purpose |
+|---------|---------|
+| `ioredis` | Redis/Valkey client with cluster, sentinel, and pipeline support |
+| `cron-parser` | Parsing cron expressions for repeatable job schedules |
+| `msgpackr` | MessagePack serialization for efficient job payload encoding |
+| `semver` | Semantic version comparison for backend feature detection |
+
 ## Multi-Language SDKs
 
 Hanzo MQ provides SDKs beyond the primary TypeScript package:
