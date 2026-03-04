@@ -1,0 +1,137 @@
+---
+title: Hanzo Cloud
+description: AI Cloud OS — model gateway, knowledge base, and infrastructure management
+---
+
+# Hanzo Cloud
+
+Hanzo Cloud is the core AI Cloud OS that powers `api.hanzo.ai`. It provides a unified model gateway (ZAP protocol), knowledge base with RAG, container orchestration, and infrastructure management across the Hanzo ecosystem.
+
+## Features
+
+- **Model Gateway**: Route inference requests across 50+ models via ZAP protocol
+- **Knowledge Base**: RAG-powered document stores with vector embeddings
+- **Container Cloud**: Kubernetes application templates and management
+- **Multi-Provider**: OpenAI, Anthropic, Fireworks, DO-AI, and custom Zen models
+- **IAM Authentication**: OAuth2/OIDC via Hanzo IAM, API keys (`hk-*`), widget keys (`hz-*`)
+- **Usage Billing**: Per-request metering via Hanzo Commerce API
+- **Rate Limiting**: Dynamic tier-based limits (free → enterprise)
+- **Node Management**: Remote infrastructure via VNC/RDP
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        HANZO CLOUD                               │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────────────┐    ┌──────────────────────────────┐    │
+│  │   ZAP Model Gateway │    │     Knowledge / RAG          │    │
+│  │  ┌───────┐ ┌──────┐ │    │  ┌────────┐  ┌───────────┐  │    │
+│  │  │OpenAI │ │Zen   │ │    │  │ Stores │  │ Vectors   │  │    │
+│  │  │Anthro │ │Models│ │    │  │ (docs) │  │ (embeds)  │  │    │
+│  │  │Firew. │ │      │ │    │  └────────┘  └───────────┘  │    │
+│  │  └───────┘ └──────┘ │    └──────────────────────────────┘    │
+│  └─────────────────────┘                                        │
+│                                                                  │
+│  ┌─────────────────────┐    ┌──────────────────────────────┐    │
+│  │   Auth & Billing    │    │     Container Cloud          │    │
+│  │  ┌───────┐ ┌──────┐ │    │  ┌────────┐  ┌───────────┐  │    │
+│  │  │ IAM   │ │Comm. │ │    │  │  K8s   │  │ Templates │  │    │
+│  │  │ OIDC  │ │ API  │ │    │  │ Apps   │  │           │  │    │
+│  │  └───────┘ └──────┘ │    │  └────────┘  └───────────┘  │    │
+│  └─────────────────────┘    └──────────────────────────────┘    │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+## Endpoints
+
+| Environment | URL | Purpose |
+|-------------|-----|---------|
+| Production | `https://api.hanzo.ai` | API gateway |
+| Console | `https://console.hanzo.ai` | Admin UI |
+| Lux Cloud | `https://cloud.lux.network` | Lux network instance |
+
+## Quick Start
+
+### 1. Get an API Key
+
+Create an API key at [console.hanzo.ai](https://console.hanzo.ai) or via the API:
+
+```bash
+curl -X POST https://api.hanzo.ai/api/add-token \
+  -H "Authorization: Bearer $IAM_TOKEN" \
+  -d '{"name": "my-key", "organization": "hanzo"}'
+```
+
+### 2. Chat Completion (OpenAI-Compatible)
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer hk-your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen4-mini",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+```
+
+### 3. SDK Usage
+
+```typescript
+import OpenAI from 'openai'
+
+const client = new OpenAI({
+  baseURL: 'https://api.hanzo.ai/v1',
+  apiKey: 'hk-your-api-key'
+})
+
+const response = await client.chat.completions.create({
+  model: 'zen4-mini',
+  messages: [{ role: 'user', content: 'Hello' }]
+})
+```
+
+## Authentication
+
+Hanzo Cloud supports multiple auth methods:
+
+| Method | Format | Use Case |
+|--------|--------|----------|
+| IAM API Key | `hk-*` | Server-side API access |
+| IAM JWT | Bearer token | User sessions via hanzo.id |
+| Provider Key | `sk-*` | Direct provider passthrough |
+| Widget Key | `hz-*` | Public-facing chat widgets |
+
+All auth flows integrate with [Hanzo IAM](/docs/services/iam) for identity management.
+
+## Rate Limits
+
+| Tier | Requests/min | Set By |
+|------|-------------|--------|
+| Free | 10 | Default |
+| Starter | 60 | Commerce billing |
+| Pro | 300 | Commerce billing |
+| Enterprise | 1000 | Commerce billing |
+
+## KMS Integration
+
+All secrets (provider API keys, database credentials, IAM client secrets) are managed by [Hanzo KMS](/docs/services/kms). See [KMS Service Integration](/docs/services/kms/service-integration) for the pattern.
+
+## Next Steps
+
+<Cards>
+  <Card title="Getting Started" href="/docs/services/cloud/basic/core-concepts">
+    Core concepts: providers, stores, vectors, chats
+  </Card>
+  <Card title="Providers" href="/docs/services/cloud/providers">
+    Configure model, storage, and embedding providers
+  </Card>
+  <Card title="API Compatibility" href="/docs/services/cloud/connect">
+    OpenAI-compatible API and SDK integration
+  </Card>
+  <Card title="Container Cloud" href="/docs/services/cloud/container-cloud">
+    Kubernetes application management
+  </Card>
+</Cards>

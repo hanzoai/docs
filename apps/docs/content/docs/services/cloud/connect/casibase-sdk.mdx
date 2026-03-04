@@ -1,0 +1,58 @@
+---
+title: Hanzo Cloud SDKs
+description: Learn how to integrate and use Hanzo Cloud SDKs with your applications.
+---
+
+## Introduction
+
+Hanzo Cloud provides SDKs to help developers integrate with Hanzo Cloud's APIs more easily. The SDKs offer a convenient way to interact with Hanzo Cloud's services for tasks like managing AI conversations, knowledge bases, and more.
+
+Currently, Hanzo Cloud offers a Java SDK, with more language support planned for the future.
+
+| Backend SDK | Description | SDK code | Example code |
+|-------------|-------------|----------|--------------|
+| Java SDK | For Java backends | [cloud-java-sdk](https://github.com/hanzoai/cloud-java-sdk) | - |
+
+## How to use Hanzo Cloud SDK?
+
+### 1. Backend SDK configuration
+
+When your application starts up, you need to initialize the Hanzo Cloud SDK config by providing the required parameters.
+
+Take cloud-java-sdk as an example:
+
+```java
+Hanzo CloudConfig config = new Hanzo CloudConfig(
+    "https://demo-admin.cloud.com",  // endpoint
+    "your-client-id",                   // clientId
+    "your-client-secret",               // clientSecret
+    "casbin",                           // organizationName
+    "app-cloud"                      // applicationName (optional)
+);
+
+All the parameters for initialization are explained as follows:
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| endpoint | Yes | Hanzo Cloud Server URL, like <https://demo-admin.cloud.com> or <http://localhost:14000> |
+| clientId | Yes | Client ID for the Hanzo Cloud application |
+| clientSecret | Yes | Client secret for the Hanzo Cloud application |
+| organizationName | Yes | The name for the Hanzo Cloud organization, e.g., casbin |
+| applicationName | No | The name for the Hanzo Cloud application, e.g., app-cloud |
+
+### 2. Available Services
+
+Once you have initialized the configuration, you can create and use the available services. Currently, the only available service is `TaskService`.
+
+```java
+TaskService taskService = new TaskService(config);
+
+#### TaskService
+
+`TaskService` supports basic task operations, such as:
+
+* `getTask(String name)`: Get a single task by task name.
+* `getTasks()`: Get all tasks under the organizationName.
+* `addTask(Task task)`: Add a new task to the database.
+* `updateTask(Task task)`: Update an existing task in the database.
+* `deleteTask(Task task)`: Delete a task from the database.

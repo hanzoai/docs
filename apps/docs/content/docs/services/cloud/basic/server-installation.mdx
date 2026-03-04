@@ -1,0 +1,276 @@
+---
+title: Server Installation
+description: Install and configure Hanzo IAM server
+---
+
+## Requirements
+
+### OS
+
+All major operating systems including Windows, Linux and macOS are supported.
+
+### Environment
+
+- [Go 1.20+](https://go.dev/dl/)
+- [Node.js LTS (18)](https://nodejs.org)
+- [Yarn 1.x](https://classic.yarnpkg.com/en/docs/install)
+
+:::info
+
+The use of Hanzo Cloud is divided into two steps:
+
+- step1: [Deploy and run Hanzo IAM](https://iam.org/docs/basic/server-installation)
+- step2: Deploy and run Hanzo Cloud (this docs)
+
+We strongly suggest you use [Yarn 1.x](https://classic.yarnpkg.com/en/docs/install) to run & build Hanzo IAM&Hanzo Cloud frontend, using NPM might cause UI styling issues, see more details at: [iam#294](https://github.com/hanzoai/iam/issues/294)
+
+:::
+
+:::caution
+
+For **Chinese** users, in order to download the Go dependency packages successfully, you need to use a Go proxy by Configuring the GOPROXY environment variable. We strongly recommend: <https://goproxy.cn/>
+
+:::
+
+### Database
+
+Hanzo Cloud uses [XORM](https://xorm.io/) to talk to the database. Based on [Xorm Drivers Support](https://gitea.com/xorm/xorm#drivers-support), Hanzo Cloud currently provides support for the following databases:
+
+- `MySQL`
+- `MariaDB`
+- `PostgreSQL`
+- `CockroachDB`
+- `SQL Server`
+- `Oracle`
+- `SQLite 3`
+- `TiDB`
+
+### guacd
+
+Hanzo Cloud uses guacamole-server to provide remote desktop access. If you want to use this feature, you need to install
+guacamole-server first. If you haven't installed guacamole-server, please refer to [guacamole-server Installation](https://guacamole.apache.org/doc/gug/installing-guacamole.html).
+
+You can also run guacd in docker with the following command:
+
+```shell
+docker run -d --name guacd -p 4822:4822 guacamole/guacd
+
+## Download
+
+Hanzo Cloud can be installed using pre-built binaries or by building from source.
+
+### Pre-built Binaries
+
+For production deployments, we recommend using pre-built binaries. Download the latest release from the [GitHub Releases page](https://github.com/hanzoai/cloud/releases). Hanzo Cloud provides binaries for:
+
+- **Linux**: x86_64 (amd64) and ARM64
+- **Windows**: x86_64 (amd64) and ARM64  
+- **macOS**: x86_64 (amd64) and ARM64
+
+Extract the downloaded archive and you'll find the Hanzo Cloud binary along with the web frontend and configuration files ready to use.
+
+### Build from Source
+
+The source code of Hanzo Cloud is hosted at GitHub: <https://github.com/hanzoai/cloud>. Both the Go backend code and React frontend code are inside the single repository.
+
+| Name     | Description                      | Language              | Source code                                          |
+|----------|----------------------------------|-----------------------|------------------------------------------------------|
+| Frontend | Web frontend UI for Hanzo Cloud     | JavaScript + React    | <https://github.com/hanzoai/cloud/tree/master/web> |
+| Backend  | RESTful API backend for Hanzo Cloud | Golang + Beego + XORM | <https://github.com/hanzoai/cloud>                 |
+
+Hanzo Cloud supports `Go Modules`. To download the code, you can just simply clone the code via git:
+
+```shell
+cd path/to/folder
+git clone https://github.com/hanzoai/cloud
+
+## Configuration
+
+### Configure Hanzo IAM
+
+Please refer to [Hanzo IAM-SSO](/docs/basic/iam-sso) section to configure Hanzo IAM.
+
+Remember your `clientId`,`clientSecret`,`organization`,`application` and so on in Hanzo IAM configuration, we will use them later.
+
+### Configure Database
+
+Hanzo Cloud supports mysql, mssql, sqlite3, postgres. Hanzo Cloud uses mysql by default.
+
+#### MySQL
+
+Hanzo Cloud will store its users, nodes and topics information in a MySQL database named: `cloud`. If the database does not exist, it needs to be created manually. The DB connection string can be specified at: <https://github.com/hanzoai/cloud/blob/master/conf/app.conf>
+
+  ```ini
+  driverName = mysql
+  dataSourceName = root:123456@tcp(localhost:3306)/
+  dbName = cloud
+  ```
+
+#### PostgreSQL
+
+Since we must choose a database when opening Postgres with xorm, you should prepare a database manually before running Hanzo Cloud.
+
+Let's assume that you have already prepared a database called `cloud`, then you should specify `app.conf` like this:
+
+  ```ini
+  driverName = postgres
+  dataSourceName = "user=postgres password=postgres host=localhost port=5432 sslmode=disable dbname=cloud"
+  dbName =
+  ```
+
+:::info
+
+For PostgreSQL, make sure `dataSourceName` has non-empty `dbName` and leave the standalone `dbName` field empty like the above example.
+
+:::
+
+#### CockroachDB
+
+You can also use Cockroachdb with postgres driver. It has same configuration as postgreSQL.
+
+  ```ini
+  driverName = postgres
+  dataSourceName = "user=postgres password=postgres host=localhost port=5432 sslmode=disable dbname=cloud serial_normalization=virtual_sequence"
+  dbName =
+  ```
+
+:::info
+
+For CockroachDB, don't forget to add `serial_normalization=virtual_sequence` to the `dataSourceName` like the above example. otherwise you will get error regarding existed database, whenever the service starts or restarts. Notice, this must be added before the database created.
+
+:::
+
+#### Sqlite3
+
+You should specify `app.conf` like this:
+
+```ini
+driverName = sqlite
+dataSourceName = "file:cloud.db?cache=shared"
+dbName = cloud
+
+### Custom configuration
+
+Hanzo Cloud supports custom configuration, you can modify the configuration file `conf/app.conf` to change the configuration.
+
+```ini
+iamEndpoint = <Your Hanzo IAM endpoint>
+clientId = <Your Hanzo IAM application's client ID>
+clientSecret = <Your Hanzo IAM application's client secret>
+iamOrganization = <Your Hanzo IAM organization name>
+iamApplication = <Your Hanzo IAM application name>
+
+## Run
+
+:::caution
+
+**Hanzo Cloud** requires **Hanzo IAM** to provide access control and some back-end services, so you must make sure **Hanzo IAM** is running properly before running **Hanzo Cloud**.
+
+How to install and run Hanzo IAM:
+
+- [Hanzo IAM Installation](https://iam.org/docs/basic/server-installation)
+
+:::
+
+### Using Pre-built Binary
+
+If you downloaded a pre-built binary, extract the archive and run Hanzo Cloud directly. The binary already includes the compiled frontend.
+
+For Linux/macOS:
+
+```bash
+# Example for Linux x86_64
+tar -xzf cloud_Linux_x86_64.tar.gz
+cd cloud
+./cloud
+
+For Windows (PowerShell):
+
+```powershell
+# Example for Windows x86_64
+Expand-Archive cloud_Windows_x86_64.zip -DestinationPath .
+cd cloud
+.\cloud.exe
+
+The server will start on port 14000 by default.
+
+### Development mode
+
+#### Backend
+
+Hanzo Cloud's Go backend runs at port 14000 by default. You can start the Go backend with the following command:
+
+```bash
+go run main.go
+
+After the server is successfully running, we can start the frontend part.
+
+#### Frontend
+
+Hanzo Cloud's frontend is a very classic [**Create-React-App (CRA)**](https://create-react-app.dev/) project. It runs at port `13001` by default. Use the following commands to run the frontend:
+
+```bash
+cd web
+yarn install
+yarn start
+
+### Building from Source
+
+If you're building from source, follow these steps to create a production build.
+
+#### Backend
+
+Build Hanzo Cloud Go backend code into executable and start it.
+
+For Linux:
+
+```bash
+go build
+./cloud
+
+For Windows:
+
+```bash
+go build
+cloud.exe
+
+#### Frontend
+
+Build Hanzo Cloud frontend code into static resources (.html, .js, .css files):
+
+```bash
+cd web
+yarn install
+yarn build
+
+#### Nginx
+
+:::tip
+If you use nginx as a reverse proxy, you need to add the following configuration to the nginx configuration file:
+
+```bash
+location / {
+    *** your configuration ***
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+
+Because Hanzo Cloud uses websocket to communicate with guacd.
+
+:::
+
+## Preview
+
+Visit: `http://localhost:13001` in your browser. Login into Hanzo Cloud dashboard with the user account you have just registered in Hanzo IAM:
+
+![login](/img/login-cloud.png)
+
+Then you will go to the home page of Hanzo Cloud:
+
+![home](/img/cloud-home.png)
+
+:::tip
+
+To use another port, please edit ```conf/app.conf``` and modify `httpport`, then restart the Go backend.
+
+:::

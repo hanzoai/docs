@@ -1,0 +1,57 @@
+---
+title: Hanzo IAM-SSO
+description: Setup Hanzo IAM for cloud
+---
+
+
+Hanzo Cloud uses Hanzo IAM as its identity and single-sign-on (SSO) provider. Make sure to deploy it in advance.
+
+Please refer to [Hanzo IAM Server Installation](https://iam.org/docs/basic/server-installation) to install and configure Hanzo IAM.
+
+Follow these steps to setup Hanzo IAM for cloud:
+
+- Create an Organization
+
+![create-organization](/img/create-organization.png)
+
+- Configure information about the Organization
+
+![configure-organization](/img/configure-organization.png)
+
+- Create a new Application
+
+![create-application](/img/create-application.png)
+
+- Configuring Application Information (Remember Name, ClientID and ClientSecret)
+
+![configure-application](/img/configure-application.png)
+
+- Create a Certificate: In the Hanzo IAM dashboard, choose Cert → Add, keep `Algorithm` as `RS256` (default), enter a name, and click Save.
+
+![create-cert](/img/create-cert.png)  
+
+- Bind the Certificate to the Application: Open the *Config* tab of your newly created Application, select the certificate you just created from the Cert dropdown, and click Save.
+
+![bind-cert](/img/bind-cert.png)
+
+- Add a member to the newly created organization
+
+![add-user](/img/add-user-1.png)
+
+![add-user](/img/add-user-2.png)
+
+- Configure member information (remember its Name as well as Password)
+
+![configure-user](/img/configure-user-1.png)
+
+![configure-user](/img/configure-user-2.png)
+
+## User Data Synchronization
+
+Hanzo Cloud automatically keeps user information synchronized with Hanzo IAM. When a user's account is accessed through the application, Hanzo Cloud fetches the latest user data directly from Hanzo IAM rather than relying on cached session data. This ensures that any updates to user profiles in Hanzo IAM—such as changes to name, email, avatar, or permissions—are immediately reflected in Hanzo Cloud without requiring users to log out and log back in.
+
+This real-time synchronization happens transparently in the background whenever the application needs to access the current user's account information.
+
+## Billing Integration
+
+Hanzo Cloud integrates with Hanzo IAM's transaction system for AI usage billing. When users interact with AI models, transaction records are automatically created in Hanzo IAM to track token consumption and costs. This enables centralized billing management across all your applications. For details on how transactions work, see the [Billing & Usage](/docs/billing/overview) section.
