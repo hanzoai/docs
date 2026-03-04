@@ -1,0 +1,259 @@
+---
+title: Spring Security OAuth
+description: Using Spring Security as an example to demonstrate how to use OIDC to connect to your applications
+---
+
+Hanzo IAM can use the OIDC protocol as an IDP to connect various applications. In this guide, we will use Spring Security as an example to show you how to use OIDC to connect to your applications.
+
+## Step 1: Deploy Hanzo IAM
+
+Deploy Hanzo IAM. See [Server installation](/docs/basic/server-installation). Ensure the server is running and you can open the login page and sign in (e.g. `admin` / `123`).
+
+## Step 2. Configure Hanzo IAM application
+
+1. Create a new Hanzo IAM application or use an existing one.
+2. Add your redirect URL (You can find more details on how to obtain the redirect URL in the next section).
+   ![Hanzo IAM Application Settings](/img/integration/appsetting_spring_security.png)
+3. Add the desired provider and fill in any additional settings.
+
+Note **Client ID** and **Client secret** from the application page for the next step. OIDC discovery: `http://<IAM_HOSTNAME>/.well-known/openid-configuration`.
+
+## Step 3. Configure Spring Security
+
+Spring Security natively supports OIDC.
+
+You can customize the settings of Spring Security OAuth2 Client:
+
+:::caution
+Replace the placeholders with your own Hanzo IAM instance (Client ID, Client secret, etc.).
+:::
+
+````mdx-code-block
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs
+  defaultValue="yml"
+  groupId="import-sdk"
+  values={[
+    { label: 'application.yml', value: 'yml', },
+    { label: 'application.properties', value: 'properties', },
+  ]
+}>
+
+<TabItem value="yml">
+
+```yml
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          iam:
+            client-id: <Client ID>
+            client-secret: <Client Secret>
+            scope: <Scope>
+            authorization-grant-type: authorization_code
+            redirect-uri: <Redirect URL>
+        provider:
+          iam:
+            authorization-uri: http://IAM_HOSTNAME:7001/login/oauth/authorize
+            token-uri: http://IAM_HOSTNAME:8000/api/login/oauth/access_token
+            user-info-uri: http://IAM_HOSTNAME:8000/api/get-account
+            user-name-attribute: name
+
+</TabItem>
+
+<TabItem value="properties">
+
+```properties
+spring.security.oauth2.client.registration.iam.client-id=<Client ID>
+spring.security.oauth2.client.registration.iam.client-secret=<Client Secret>
+spring.security.oauth2.client.registration.iam.scope=<Scope>
+spring.security.oauth2.client.registration.iam.authorization-grant-type=authorization_code
+spring.security.oauth2.client.registration.iam.redirect-uri=<Redirect URL>
+
+spring.security.oauth2.client.provider.iam.authorization-uri=http://IAM_HOSTNAME:7001/login/oauth/authorize
+spring.security.oauth2.client.provider.iam.token-uri=http://IAM_HOSTNAME:8000/api/login/oauth/access_token
+spring.security.oauth2.client.provider.iam.user-info-uri=http://IAM_HOSTNAME:8000/api/get-account
+spring.security.oauth2.client.provider.iam.user-name-attribute=name
+
+</TabItem>
+
+</Tabs>
+````
+
+:::caution
+
+For the default situation of Spring Security, the `<Redirect URL>` should be like `http://<Your Spring Boot Application Endpoint>/<Servlet Prefix if it is configured>/login/oauth2/code/custom`.
+For example, in the following demo, the redirect URL should be `http://localhost:8080/login/oauth2/code/custom`.
+
+You should also configure this in the `iam` application.
+
+:::
+
+You can also customize the settings using `ClientRegistration` in your code. You can find the mapping [here](https://docs.spring.io/spring-security/site/docs/5.2.12.RELEASE/reference/html/oauth2.html#oauth2login-boot-property-mappings)
+
+## Step 4: Get Started with a Demo
+
+1. We can create a Spring Boot application.
+
+2. We can add a configuration that protects all endpoints except `/` and `/login**` for users to log in.
+
+    ```java
+    @EnableWebSecurity
+    public class UiSecurityConfig extends WebSecurityConfigurerAdapter {
+
+        @Override
+        protected void configure(HttpSecurity http) throws Exception {
+            http.authorizeRequests()
+                .antMatchers("/", "/login**")
+                .permitAll()
+                .anyRequest()
+                .authenticated()
+                .and()
+                .oauth2Login();
+
+        }
+    }
+    ```
+
+3. We can add a naive page for the user to log in.
+
+    ```html
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Spring OAuth Client Thymeleaf - 1</title>
+    <link rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" />
+    </head>
+    <body>
+        <nav
+            class="navbar navbar-expand-lg navbar-light bg-light shadow-sm p-3 mb-5">
+            <a class="navbar-brand" th:href="@{/foos/}">Spring OAuth Client
+                Thymeleaf - 1</a>
+        </nav>
+        <div class="container">
+            <label>Welcome!</label> <br /> <a th:href="@{/foos/}"
+                class="btn btn-primary">Login</a>
+        </div>
+    </body>
+    </html>
+    ```
+
+    When the user clicks the `login` button, they will be redirected to `iam`.
+
+4. Next, we can define our protected resources. We can expose an endpoint called `/foos` and a web page for display.
+
+    Data Model
+
+    ```java
+    public class FooModel {
+        private Long id;
+        private String name;
+
+        public FooModel(Long id, String name) {
+            super();
+            this.id = id;
+            this.name = name;
+        }
+        public Long getId() {
+            return id;
+        }
+        public void setId(Long id) {
+            this.id = id;
+        }
+        public String getName() {
+            return name;
+        }
+        public void setName(String name) {
+            this.name = name;
+        }
+    }
+    ```
+
+    Controller
+
+    ```java
+    @Controller
+    public class FooClientController {
+        @GetMapping("/foos")
+        public String getFoos(Model model) {
+            List<FooModel> foos = new ArrayList<>();
+            foos.add(new FooModel(1L, "a"));
+            foos.add(new FooModel(2L, "b"));
+            foos.add(new FooModel(3L, "c"));
+            model.addAttribute("foos", foos);
+            return "foos";
+        }
+    }
+    ```
+
+    Web page
+
+    ```html
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Spring OAuth Client Thymeleaf - 1</title>
+    <link rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" />
+    </head>
+    <body>
+        <nav
+            class="navbar navbar-expand-lg navbar-light bg-light shadow-sm p-3 mb-5">
+            <a class="navbar-brand" th:href="@{/foos/}">Spring OAuth Client
+                Thymeleaf -1</a>
+            <ul class="navbar-nav ml-auto">
+                <li class="navbar-text">Hi, <span sec:authentication="name">preferred_username</span>&nbsp;&nbsp;&nbsp;</li>
+            </ul>
+        </nav>
+        <div class="container">
+            <h1>All Foos:</h1>
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <td>ID</td>
+                        <td>Name</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${foos.empty}">
+                        <td colspan="4">No foos</td>
+                    </tr>
+                    <tr th:each="foo : ${foos}">
+                        <td>
+                            <span th:text="${foo.id}">ID</span>
+                        </td>
+                        <td>
+                            <span th:text="${foo.name}">Name</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </body>
+    </html>
+    ```
+
+:::caution
+
+All the web page templates should be placed under `resources/templates`.
+
+:::
+
+## Step 5: Try the demo!
+
+Open `/foos` in a browser; you are redirected to Hanzo IAM’s login page. Sign in there or from the root page.
+
+If you visit your root page, you will see the Hanzo IAM Application Setting.
+![Hanzo IAM Application Setting](/img/integration/java/spring-security/spring_security_welcome.png)
+
+Click the `login` button and the page will redirect you to Hanzo IAM's login page.
+![Hanzo IAM Application Setting](/img/integration/java/spring-security/spring_security_iam.png)
+
+After logging in, the page will redirect you to `/foos`.
+![Hanzo IAM Application Setting](/img/integration/java/spring-security/spring_security_resource.png)

@@ -1,0 +1,47 @@
+---
+title: Apache DolphinScheduler
+description: Using Hanzo IAM for DolphinScheduler SSO login
+---
+
+Hanzo IAM is one of the supported login methods for [Apache DolphinScheduler](https://github.com/apache/dolphinscheduler).
+
+## Step 1: Deploy Hanzo IAM
+
+Deploy Hanzo IAM. See [Server installation](/docs/basic/server-installation). Ensure the server is running (e.g. `http://localhost:8000`) and you can open the login page (e.g. `http://localhost:7001`) and sign in with `admin` / `123`.
+
+## Step 2: Configure Hanzo IAM Application
+
+1. Create a new Hanzo IAM application or use an existing one.
+2. Add your redirect URL (see the next section for how to obtain it).
+   ![Hanzo IAM Application Setting](/img/integration/java/spring_security/iam_setting.png)
+3. Add the desired provider and fill in other necessary settings.
+
+Note **Client ID** and **Client secret** from the application page for the next step.
+
+Open your favorite browser and visit **http://`IAM_HOSTNAME`/.well-known/openid-configuration** to view the OIDC configuration of Hanzo IAM.
+
+## Step 3: Configure DolphinScheduler
+
+> dolphinscheduler-api/src/main/resources/application.yaml
+
+```yaml
+security:
+  authentication:
+    # Authentication types (supported types: PASSWORD, LDAP, IAM_SSO)
+    type: IAM_SSO
+iam:
+  # The URL of your Hanzo IAM server
+  endpoint:
+  client-id:
+  client-secret:
+  # Use `|-` for multi-line certificate
+  certificate: 
+  # The organization name you added in Hanzo IAM
+  organization-name:
+  # The application name you added in Hanzo IAM
+  application-name:
+  # The DolphinScheduler login URL
+  redirect-url: http://localhost:5173/login 
+
+Now, DolphinScheduler will automatically redirect you to Hanzo IAM for authentication.
+![Demo](/img/integration/java/dolphinscheduler/dolphinscheduler.gif)

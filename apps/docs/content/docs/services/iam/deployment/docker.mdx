@@ -1,0 +1,462 @@
+---
+title: Deploying with Docker
+description: Run Hanzo IAM with Docker or Docker Compose and optional reverse proxies.
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+This page describes deploying Hanzo IAM with Docker or Docker Compose, with optional reverse proxy (Traefik, Nginx, Caddy) configs.
+
+## Prerequisites
+
+- Docker
+- Docker Compose (for the compose method)
+- A domain pointing to your server (for reverse proxy setups)
+
+## Deployment options
+
+````mdx-code-block
+
+<Tabs
+  defaultValue="docker-compose"
+  values={[
+    { label: 'Docker Compose', value: 'docker-compose', },
+    { label: 'Docker Run', value: 'docker-run', },
+  ]
+}>
+
+<TabItem value="docker-compose">
+
+### Using Docker Compose
+
+Create a `docker-compose.yml` file:
+
+```yaml
+services:
+  iam:
+    image: casbin/iam:latest
+    container_name: iam
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - GIN_MODE=release
+    volumes:
+      - ./conf:/conf
+      - ./logs:/logs
+    networks:
+      - iam-network
+
+networks:
+  iam-network:
+    driver: bridge
+
+Start the service:
+
+```bash
+docker-compose up -d
+
+</TabItem>
+
+<TabItem value="docker-run">
+
+### Using Docker Run
+
+Run Hanzo IAM directly with Docker:
+
+```bash
+docker run -d \
+  --name iam \
+  --restart unless-stopped \
+  -p 8000:8000 \
+  -v $(pwd)/conf:/conf \
+  -v $(pwd)/logs:/logs \
+  -e GIN_MODE=release \
+  casbin/iam:latest
+
+</TabItem>
+
+</Tabs>
+
+````
+
+## Reverse Proxy Configuration
+
+For production deployments, it's recommended to use a reverse proxy with TLS certificates. Choose your preferred reverse proxy:
+
+````mdx-code-block
+
+<Tabs
+  defaultValue="traefik-labels"
+  values={[
+    { label: 'Traefik (Labels)', value: 'traefik-labels', },
+    { label: 'Traefik (Dynamic)', value: 'traefik-dynamic', },
+    { label: 'Nginx', value: 'nginx', },
+    { label: 'Caddy', value: 'caddy', },
+  ]
+}>
+
+<TabItem value="traefik-labels">
+
+### Traefik with Docker Labels
+
+Create a `docker-compose.yml` with Traefik labels:
+
+```yaml
+services:
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/acme.json:/acme.json
+    command:
+      - --api.dashboard=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.email=your-email@example.com
+      - --certificatesresolvers.letsencrypt.acme.storage=/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+    networks:
+      - iam-network
+
+  iam:
+    image: casbin/iam:latest
+    container_name: iam
+    restart: unless-stopped
+    environment:
+      - GIN_MODE=release
+    volumes:
+      - ./conf:/conf
+      - ./logs:/logs
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.iam.rule=Host(`your-domain.com`)"
+      - "traefik.http.routers.iam.entrypoints=websecure"
+      - "traefik.http.routers.iam.tls.certresolver=letsencrypt"
+      - "traefik.http.services.iam.loadbalancer.server.port=8000"
+    networks:
+      - iam-network
+
+networks:
+  iam-network:
+    driver: bridge
+
+Create the acme.json file:
+
+```bash
+touch traefik/acme.json
+chmod 600 traefik/acme.json
+
+</TabItem>
+
+<TabItem value="traefik-dynamic">
+
+### Traefik with Dynamic Configuration
+
+Create a `docker-compose.yml` with dynamic configuration:
+
+```yaml
+services:
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/acme.json:/acme.json
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml
+    command:
+      - --configfile=/etc/traefik/traefik.yml
+    networks:
+      - iam-network
+
+  iam:
+    image: casbin/iam:latest
+    container_name: iam
+    restart: unless-stopped
+    environment:
+      - GIN_MODE=release
+    volumes:
+      - ./conf:/conf
+      - ./logs:/logs
+    networks:
+      - iam-network
+
+networks:
+  iam-network:
+    driver: bridge
+
+Create `traefik/traefik.yml`:
+
+```yaml
+api:
+  dashboard: true
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entrypoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+  file:
+    directory: /etc/traefik
+    watch: true
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: your-email@example.com
+      storage: /acme.json
+      httpChallenge:
+        entryPoint: web
+
+Create `traefik/dynamic.yml`:
+
+```yaml
+http:
+  routers:
+    iam:
+      rule: "Host(`your-domain.com`)"
+      service: iam
+      tls:
+        certResolver: letsencrypt
+      entryPoints:
+        - websecure
+
+  services:
+    iam:
+      loadBalancer:
+        servers:
+          - url: "http://iam:8000"
+
+</TabItem>
+
+<TabItem value="nginx">
+
+### Nginx with Let's Encrypt
+
+Create a `docker-compose.yml` with Nginx:
+
+```yaml
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - iam
+    networks:
+      - iam-network
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    command: certonly --webroot --webroot-path=/var/www/certbot --email your-email@example.com --agree-tos --no-eff-email -d your-domain.com
+
+  iam:
+    image: casbin/iam:latest
+    container_name: iam
+    restart: unless-stopped
+    environment:
+      - GIN_MODE=release
+    volumes:
+      - ./conf:/conf
+      - ./logs:/logs
+    networks:
+      - iam-network
+
+networks:
+  iam-network:
+    driver: bridge
+
+Create `nginx/conf.d/default.conf`:
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+    
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+    
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name your-domain.com;
+    
+    ssl_certificate /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+    
+    location / {
+        proxy_pass http://iam:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+Initialize SSL certificates:
+
+```bash
+# Create directories
+mkdir -p certbot/conf certbot/www nginx/conf.d
+
+# Get initial certificate
+docker-compose run --rm certbot
+
+# Add to crontab for renewal
+echo "0 12 * * * docker-compose run --rm certbot renew" | crontab -
+
+</TabItem>
+
+<TabItem value="caddy">
+
+### Caddy with Automatic HTTPS
+
+Create a `docker-compose.yml` with Caddy:
+
+```yaml
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - iam
+    networks:
+      - iam-network
+
+  iam:
+    image: casbin/iam:latest
+    container_name: iam
+    restart: unless-stopped
+    environment:
+      - GIN_MODE=release
+    volumes:
+      - ./conf:/conf
+      - ./logs:/logs
+    networks:
+      - iam-network
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  iam-network:
+    driver: bridge
+
+Create `caddy/Caddyfile`:
+
+```caddyfile
+your-domain.com {
+    reverse_proxy iam:8000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+</TabItem>
+
+</Tabs>
+
+````
+
+## Configuration
+
+### Create the necessary configuration directories
+
+```bash
+mkdir -p conf logs
+
+### Download the Hanzo IAM configuration files
+
+```bash
+wget https://raw.githubusercontent.com/iam/iam/master/conf/app.conf -O conf/app.conf
+wget https://raw.githubusercontent.com/iam/iam/master/init_data.json.template -O conf/init_data.json
+
+### Edit `conf/app.conf` to match your environment settings
+
+:::note
+The default user of Hanzo IAM has a uid and gid of 1000. When using volume mapping with SQLite (or any storage requiring file permissions), ensure that the path (e.g., `/folder/of/app.conf` in the example above) is accessible to uid 1000. This avoids permission errors like `permission denied` when Hanzo IAM writes to mapped volumes.
+:::
+
+## Testing
+
+After deployment, visit your domain in your browser:
+
+- **Docker Run/Compose only**: `http://your-server-ip:8000`
+- **With Reverse Proxy**: `https://your-domain.com`
+
+## Troubleshooting
+
+### Check container logs
+
+```bash
+# For docker-compose
+docker-compose logs iam
+
+# For docker run
+docker logs iam
+
+### Verify reverse proxy configuration
+
+```bash
+# Check if containers are running
+docker ps
+
+# Test connectivity
+curl -I http://localhost:8000
+
+### SSL Certificate Issues
+
+- Ensure your domain points to the correct server IP
+- Check that ports 80 and 443 are open in your firewall
+- Verify DNS propagation with `nslookup your-domain.com`

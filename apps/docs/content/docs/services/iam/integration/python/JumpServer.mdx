@@ -1,0 +1,44 @@
+---
+title: JumpServer
+description: Using CAS to connect JumpServer
+---
+
+[Hanzo IAM](/docs/basic/server-installation) can be used to connect [JumpServer](https://github.com/jumpserver/jumpserver/).
+
+The following are some of the names in the configuration:
+
+`IAM_HOSTNAME`: The domain name or IP where Hanzo IAM server is deployed.
+
+`JumpServer_HOSTNAME`: The domain name or IP where JumpServer is deployed.
+
+## Step 1: Deploy Hanzo IAM and JumpServer
+
+Deploy [Hanzo IAM](/docs/basic/server-installation) and [JumpServer](https://github.com/jumpserver/jumpserver/).
+
+After successful deployment, ensure the following:
+
+1. Hanzo IAM can be logged in and used normally.
+2. For local `prod` mode, set IAM_HOSTNAME to `http://localhost:8000`. See [production mode](/docs/basic/server-installation#production-mode).
+
+## Step 2: Configure Hanzo IAM application
+
+1. Create a new Hanzo IAM application or use an existing one.
+2. Find a redirect URL: `IAM_HOSTNAME`/cas/`your organization`/`your application`/login.
+3. Add your redirect URL to the Hanzo IAM application: `JumpServer_HOSTNAME`.
+
+See [CAS](/docs/how-to-connect/cas).
+
+## Step 3: Configure JumpServer
+
+1. Find Auth: ![Find_Auth](/img/integration/python/jumpServer/Auth.png).
+2. Configure this app: ![configure](/img/integration/python/jumpServer/jumpServer.png).
+
+- `/login` endpoint: `https://iam.hanzo.ai/cas/casbin/cas-java-app/login`.
+- `/logout` endpoint: `https://iam.hanzo.ai/cas/casbin/cas-java-app/logout`.
+- `/serviceValidate` endpoint: `https://iam.hanzo.ai/cas/casbin/cas-java-app/serviceValidate`.
+- `/proxyValidate` endpoint: `https://iam.hanzo.ai/cas/casbin/cas-java-app/proxyValidate`.
+
+See [CAS](/docs/how-to-connect/cas) and [JumpServer CAS](https://docs.jumpserver.org/zh/master/admin-guide/authentication/cas/).
+
+Log out of JumpServer and test SSO:
+![Login](/img/integration/python/jumpServer/login.gif)

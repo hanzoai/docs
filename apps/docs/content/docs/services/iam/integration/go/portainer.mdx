@@ -1,0 +1,42 @@
+---
+title: Portainer
+description: Using Hanzo IAM for authentication in Portainer
+---
+
+[Portainer](https://www.portainer.io/) supports OAuth for sign-in. This guide configures Hanzo IAM as the identity provider. Ensure Portainer is installed and running.
+
+The following are the configuration names:
+
+`IAM_HOST`: The domain name or IP address where the Hanzo IAM server is deployed.
+
+`PORTAINER_HOST`: The domain name or IP address where Portainer is deployed.
+
+## Step 1: Create an app for Portainer in Hanzo IAM
+
+Here is an example of creating an app in Hanzo IAM:
+
+![portainer_1](/img/integration/go/portainer/portainer_1.png)
+
+1. Copy the client secret and client ID for the next step.
+
+2. Add a Redirect URL. It's your Portainer host.
+
+## Step 2: Configure Portainer
+
+Expand the **Settings** from the left navigation bar, click on the **Authentication** option from this list.
+
+1. Enable **Use SSO** and **Automatic user provisioning**: ![portainer_2](/img/integration/go/portainer/portainer_2.png)
+
+2. Fill in the necessary information as follows: ![portainer_3](/img/integration/go/portainer/portainer_3.png)
+
+- `Authorization URL`: **https://`IAM_HOST`/login/oauth/authorize**
+
+- `Access token URL`: **https://`IAM_HOST`/api/login/oauth/access_token**
+
+- `Resource URL`: **https://`IAM_HOST`/api/userinfo**
+
+- `Redirect URL`: **https://`PORTAINER_HOST`**
+
+Log out of Portainer and test.
+
+![Login](/img/integration/go/portainer/login.gif)

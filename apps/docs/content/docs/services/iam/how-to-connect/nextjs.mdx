@@ -1,0 +1,100 @@
+---
+title: Next.js
+description: Integrate Hanzo IAM in a Next.js app with middleware and the JS SDK.
+---
+
+The [nextjs-auth](https://github.com/iam/nextjs-auth) repo demonstrates Hanzo IAM integration in Next.js. Steps below.
+
+## Step 1: Deploy Hanzo IAM
+
+Deploy Hanzo IAM in [production mode](/docs/basic/server-installation). Confirm the login page works (e.g. at `http://localhost:8000` with `admin` / `123` in dev).
+
+## Step 2: Add middleware
+
+Put `middleware.ts` (or `.js`) at the project root (same level as `pages` or `app`, or inside `src`). Middleware runs before the request completes and can redirect or modify the response.
+
+Example:
+
+```js
+const protectedRoutes = ["/profile"];
+
+export default function middleware(req) {
+  if (protectedRoutes.includes(req.nextUrl.pathname)) {
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+}
+
+See [Next.js middleware](https://nextjs.org/docs/app/building-your-application/routing/middleware).
+
+## Step 3: Use Hanzo IAM SDK
+
+### Install
+
+```shell
+npm install iam-js-sdk
+# or: yarn add iam-js-sdk
+
+### Initialize
+
+Provide these six string parameters:
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| **serverUrl** | Yes | Hanzo IAM server URL (e.g. `http://localhost:8000`). |
+| **clientId** | Yes | Application client ID. |
+| **clientSecret** | Yes | Application client secret. |
+| **organizationName** | Yes | Organization name. |
+| **appName** | Yes | Application name. |
+| **redirectPath** | Yes | Callback path (e.g. `/callback`). |
+
+Example:
+
+```js
+const sdkConfig = {
+  serverUrl: "https://iam.hanzo.ai",
+  clientId: "294b09fbc17f95daf2fe",
+  clientSecret: "dd8982f7046ccba1bbd7851d5c1ece4e52bf039d",
+  organizationName: "casbin",
+  appName: "app-vue-python-example",
+  redirectPath: "/callback",
+};
+
+:::caution
+Replace with your own Hanzo IAM instance: `serverUrl`, `clientId`, and `clientSecret`.
+:::
+
+Add the callback URL (e.g. `http://localhost:8080/callback`) in the application’s Redirect URLs.
+
+### Redirect to sign-in and handle callback
+
+```js
+const Hanzo IAMSDK = new Sdk(sdkConfig);
+Hanzo IAMSDK.signin_redirect();
+
+After sign-in, Hanzo IAM redirects back with a code. Exchange for a token and optionally store the user in a cookie:
+
+```js
+Hanzo IAMSDK.exchangeForAccessToken()
+  .then((res) => {
+    if (res && res.access_token) {
+      return Hanzo IAMSDK.getUserInfo(res.access_token);
+    }
+  })
+  .then((res) => {
+    Cookies.set("iamUser", JSON.stringify(res));
+  });
+
+See [How to use Hanzo IAM SDK](/docs/how-to-connect/sdk).
+
+## Step 4: Protect routes in middleware
+
+In middleware, treat the presence of the Hanzo IAM user cookie as authenticated and redirect unauthenticated users away from protected routes:
+
+```js
+const protectedRoutes = ["/profile"];
+const iamUserCookie = req.cookies.get("iamUser");
+const isAuthenticated = !!iamUserCookie;
+
+if (!isAuthenticated && protectedRoutes.includes(req.nextUrl.pathname)) {
+  return NextResponse.redirect(new URL("/login", req.url));
+}

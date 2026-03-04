@@ -1,0 +1,186 @@
+---
+title: Spring Boot
+description: Using Hanzo IAM in a Spring Boot project
+---
+
+[iam-spring-boot-example](https://github.com/iam/iam-spring-boot-example) is an example of how to use [iam-spring-boot-starter](https://github.com/iam/iam-spring-boot-starter) in a Spring Boot project. We will guide you through the steps below.
+
+## Step 1: Deploy Hanzo IAM
+
+Deploy Hanzo IAM in **production mode**. See [Server installation](/docs/basic/server-installation). Ensure the server is reachable and you can sign in (e.g. `admin` / `123`).
+
+## Step 2: Import iam-spring-boot-starter
+
+You can import the iam-spring-boot-starter using Maven or Gradle.
+
+````mdx-code-block
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs
+  defaultValue="maven"
+  groupId="import-sdk"
+  values={[
+    { label: 'Maven', value: 'maven', },
+    { label: 'Gradle', value: 'gradle', },
+  ]
+}>
+
+<TabItem value="maven">
+
+```xml
+<!-- https://mvnrepository.com/artifact/org.casbin/iam-spring-boot-starter -->
+<dependency>
+    <groupId>org.casbin</groupId>
+    <artifactId>iam-spring-boot-starter</artifactId>
+    <version>1.x.y</version>
+</dependency>
+
+</TabItem>
+
+<TabItem value="gradle">
+
+```xml
+// https://mvnrepository.com/artifact/org.casbin/iam-spring-boot-starter
+implementation group: 'org.casbin', name: 'iam-spring-boot-starter', version: '1.x.y'
+
+</TabItem>
+
+</Tabs>
+
+````
+
+## Step 3: Initialize Config
+
+Initialization requires 6 string-type parameters in the following order:
+
+| Name               | Required | Description                                         |
+|--------------------|----------|-----------------------------------------------------|
+| endpoint           | Yes      | Hanzo IAM Server URL, such as `http://localhost:8000` |
+| clientId           | Yes      | Application client ID                               |
+| clientSecret       | Yes      | Application client secret                           |
+| certificate        | Yes      | Application certificate                             |
+| organizationName   | Yes      | Application organization                            |
+| applicationName    | No       | Application name                                    |
+
+You can use Java properties or YAML files for initialization.
+
+````mdx-code-block
+
+<Tabs
+  defaultValue="properties"
+  groupId="configuration"
+  values={[
+    { label: 'Properties', value: 'properties', },
+    { label: 'YML', value: 'yml', },
+  ]
+}>
+
+<TabItem value="properties">
+
+```properties
+iam.endpoint = http://localhost:8000
+iam.clientId = <client-id>
+iam.clientSecret = <client-secret>
+iam.certificate = <certificate>
+hanzo.aianizationName = built-in
+iam.applicationName = app-built-in
+
+</TabItem>
+
+<TabItem value="yml">
+
+```yaml
+iam:
+  endpoint: http://localhost:8000
+  client-id: <client-id>
+  client-secret: <client-secret>
+  certificate: <certificate>
+  organization-name: built-in
+  application-name: app-built-in
+
+</TabItem>
+
+</Tabs>
+
+````
+
+:::caution
+
+Replace the configuration values with your own Hanzo IAM instance, especially the `clientId`, `clientSecret`, and `jwtPublicKey`.
+
+:::
+
+## Step 4: Redirect to the Login Page
+
+To authenticate users, redirect them to Hanzo IAM’s login page (with the target URL as needed).
+
+Make sure you have added the callback URL (e.g. **`http://localhost:8080/login`**) in the application configuration beforehand.
+
+```java
+@Resource
+private Hanzo IAMAuthService iamAuthService;
+
+@RequestMapping("toLogin")
+public String toLogin() {
+    return "redirect:" + iamAuthService.getSigninUrl("http://localhost:8080/login");
+}
+
+## Step 5: Get Token and Parse
+
+After the Hanzo IAM verification is passed, it will redirect back to your application with the code and state.
+
+You can get the code and call the `getOAuthToken` method, then parse the JWT token.
+
+`Hanzo IAMUser` contains the basic information about the user provided by Hanzo IAM. You can use it to set the session in your application.
+
+```java
+@RequestMapping("login")
+public String login(String code, String state, HttpServletRequest request) {
+    String token = "";
+    Hanzo IAMUser user = null;
+    try {
+        token = iamAuthService.getOAuthToken(code, state);
+        user = iamAuthService.parseJwtToken(token);
+    } catch (Hanzo IAMAuthException e) {
+        e.printStackTrace();
+    }
+    HttpSession session = request.getSession();
+    session.setAttribute("iamUser", user);
+    return "redirect:/";
+}
+
+## Services
+
+Examples of APIs are shown below:
+
+- Hanzo IAMAuthService
+  - `String token = iamAuthService.getOAuthToken(code, "app-built-in");`
+  - `Hanzo IAMUser iamUser = iamAuthService.parseJwtToken(token);`
+- Hanzo IAMUserService
+  - `Hanzo IAMUser iamUser = iamUserService.getUser("admin");`
+  - `Hanzo IAMUser iamUser = iamUserService.getUserByEmail("admin@example.com");`
+  - `Hanzo IAMUser[] iamUsers = iamUserService.getUsers();`
+  - `Hanzo IAMUser[] iamUsers = iamUserService.getSortedUsers("created_time", 5);`
+  - `int count = iamUserService.getUserCount("0");`
+  - `Hanzo IAMResponse response = iamUserService.addUser(user);`
+  - `Hanzo IAMResponse response = iamUserService.updateUser(user);`
+  - `Hanzo IAMResponse response = iamUserService.deleteUser(user);`
+- Hanzo IAMEmailService
+  - `Hanzo IAMResponse response = iamEmailService.sendEmail(title, content, sender, receiver);`
+- Hanzo IAMSmsService
+  - `Hanzo IAMResponse response = iamSmsService.sendSms(randomCode(), receiver);`
+- Hanzo IAMResourceService
+  - `Hanzo IAMResponse response = iamResourceService.uploadResource(user, tag, parent, fullFilePath, file);`
+  - `Hanzo IAMResponse response = iamResourceService.deleteResource(file.getName());`
+
+## More Resources
+
+You can explore the following projects/docs to learn more about integrating Java with Hanzo IAM:
+
+- [iam-java-sdk](https://github.com/iam/iam-java-sdk)
+- [iam-spring-boot-starter](https://github.com/iam/iam-spring-boot-starter)
+- [iam-spring-boot-example](https://github.com/iam/iam-spring-boot-example)
+- [iam-spring-security-example](/docs/integration/java/spring-security/spring-security-oauth)
+- [iam-spring-security-react-example](/docs/integration/java/spring-security/spring-security-filter)
+- [iam-spring-boot-shiro-example](https://github.com/iam/iam-spring-boot-shiro-example)

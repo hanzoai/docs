@@ -1,0 +1,77 @@
+---
+title: Deploying behind Nginx
+description: Put Nginx in front of the Hanzo IAM backend to serve and proxy traffic.
+---
+
+In production, the Hanzo IAM backend serves the frontend static files and the API. You can put [Nginx](https://www.nginx.com/) in front of it to proxy all traffic for your domain to the backend port.
+
+## 1. Build frontend static files
+
+With Hanzo IAM cloned and configured (see [Server installation](/docs/basic/server-installation)), build the frontend:
+
+````mdx-code-block
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs
+  defaultValue="yarn"
+  values={[
+    { label: 'Yarn', value: 'yarn', },
+    { label: 'npm', value: 'npm', },
+  ]
+}>
+
+<TabItem value="yarn">
+
+```bash
+yarn install && yarn run build
+
+</TabItem>
+
+<TabItem value="npm">
+
+```bash
+npm install && npm run build
+
+</TabItem>
+
+</Tabs>
+
+````
+
+## 2. Run the backend
+
+```sh
+go run main.go
+
+Or build and run:
+
+```sh
+go build && ./iam
+
+## 3. Configure Nginx
+
+Edit your Nginx config and add a `server` block:
+
+```nginx
+server {
+    listen 80;
+    server_name YOUR_DOMAIN_NAME;
+    location / {
+        proxy_set_header    Host            $http_host;
+        proxy_set_header    X-Real-IP       $remote_addr;
+        proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_redirect      off;
+        proxy_pass http://127.0.0.1:8000;
+    }
+}
+
+Next, restart your Nginx process. Run:
+
+```bash
+nginx -s reload
+
+## 4. Test
+
+Visit `http://YOUR_DOMAIN_NAME` in your favorite browser.

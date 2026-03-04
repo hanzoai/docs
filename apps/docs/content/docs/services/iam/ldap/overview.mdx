@@ -1,0 +1,16 @@
+---
+title: Overview
+description: Sync users from an LDAP server into Hanzo IAM and authenticate them against LDAP.
+---
+
+Hanzo IAM can sync users from an LDAP server into Hanzo IAM and use the LDAP server to authenticate them. Sync can also run on a schedule (e.g. via cron).
+
+## How Hanzo IAM works with LDAP
+
+1. **Sync:** Hanzo IAM connects to the LDAP server and reads user attributes (e.g. `uidNumber`, `uid`, `cn`, `gidNumber`, `mail`, `email`, `telephoneNumber`, `mobile`, `registeredAddress`, `postalAddress`). It creates corresponding Hanzo IAM accounts and stores them in the database.
+
+2. **Authentication:** Hanzo IAM does not store or sync LDAP passwords. When a synced user signs in, Hanzo IAM checks the password against the LDAP server. Application-level settings (e.g. failed sign-in limit, captcha) still apply to LDAP sign-ins.
+
+3. **Identity:** Hanzo IAM uses `uid` as the unique user identifier. Ensure every LDAP user has a unique `uid`.
+
+After sync, Hanzo IAM user records are independent: changes in Hanzo IAM do not update LDAP, and changes in LDAP (except password) do not automatically update the Hanzo IAM user. Password checks always go to LDAP.
