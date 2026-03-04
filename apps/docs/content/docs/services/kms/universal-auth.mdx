@@ -1,0 +1,155 @@
+---
+title: Universal Auth
+description: Machine Identity authentication for service-to-KMS communication
+---
+
+# Universal Auth
+
+Universal Auth is the authentication method used by Hanzo services to access secrets in KMS. It uses Machine Identities — non-human credentials designed for automated service-to-service communication.
+
+## How It Works
+
+```
+┌──────────────┐     clientId + clientSecret     ┌──────────────┐
+│   Service    │ ──────────────────────────────▶ │   KMS API    │
+│   (Pod)      │                                 │              │
+│              │ ◀────────────────────────────── │              │
+│              │     access_token (JWT)           │              │
+│              │                                 │              │
+│              │     Bearer <access_token>        │              │
+│              │ ──────────────────────────────▶ │              │
+│              │                                 │              │
+│              │ ◀────────────────────────────── │              │
+│              │     { secrets }                  │              │
+└──────────────┘                                 └──────────────┘
+```
+
+1. The kms-operator (or service SDK) presents `clientId` + `clientSecret` to KMS
+2. KMS validates credentials against the Machine Identity record
+3. KMS returns a short-lived JWT access token
+4. The token is used to fetch secrets from the authorized project/environment/path
+5. The token is refreshed automatically before expiry
+
+## Machine Identity Types
+
+### Shared Identity (Most Services)
+
+A single Machine Identity is shared across all standard services. Each service is scoped to its own path via the KMSSecret CRD's `secretsPath` field.
+
+```yaml
+# K8s Secret holding the shared credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: universal-auth-credentials
+  namespace: hanzo
+type: Opaque
+stringData:
+  clientId: "<machine-identity-client-id>"
+  clientSecret: "<machine-identity-client-secret>"
+```
+
+**Access scope**: `secrets-639-c` project, `prod` environment, all paths.
+
+### Dedicated Identity (IAM)
+
+IAM has its own Machine Identity (`iam-service`) to isolate its secrets in a separate KMS project.
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: iam-kms-auth
+  namespace: hanzo
+type: Opaque
+stringData:
+  clientId: "<iam-machine-identity-client-id>"
+  clientSecret: "<iam-machine-identity-client-secret>"
+```
+
+**Access scope**: `hanzo-iam` project, `prod` environment, all paths.
+
+## Creating a Machine Identity
+
+### Via KMS UI
+
+1. Navigate to [kms.hanzo.ai](https://kms.hanzo.ai) → **Organization Settings** → **Machine Identities**
+2. Click **Create Identity**
+3. Set a descriptive name (e.g., `my-service`)
+4. Under **Authentication**, enable **Universal Auth**
+5. Copy the generated `clientId` and `clientSecret`
+6. Under **Projects**, grant access to the appropriate project with the required role (typically **Viewer** for read-only)
+
+### Via API
+
+```bash
+# Create identity
+curl -X POST https://kms.hanzo.ai/api/v1/identities \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -d '{"name": "my-service", "role": "member"}'
+
+# Enable Universal Auth
+curl -X POST https://kms.hanzo.ai/api/v1/auth/universal-auth/identities/$IDENTITY_ID \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# Grant project access
+curl -X POST https://kms.hanzo.ai/api/v1/projects/$PROJECT_ID/identity-memberships \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -d '{"identityId": "$IDENTITY_ID", "role": "viewer"}'
+```
+
+## Storing Credentials in K8s
+
+After creating the Machine Identity, store the credentials as a K8s Secret:
+
+```bash
+kubectl create secret generic my-service-kms-auth \
+  --namespace hanzo \
+  --from-literal=clientId="<client-id>" \
+  --from-literal=clientSecret="<client-secret>"
+```
+
+Then reference it in your KMSSecret CRD:
+
+```yaml
+spec:
+  authentication:
+    universalAuth:
+      credentialsRef:
+        secretName: my-service-kms-auth
+        secretNamespace: hanzo
+```
+
+## Token Lifecycle
+
+| Property | Value |
+|----------|-------|
+| Token type | JWT |
+| Default TTL | 7200 seconds (2 hours) |
+| Max TTL | Configurable per identity |
+| Refresh | Automatic by kms-operator |
+| Revocation | Delete the Machine Identity or its Universal Auth config |
+
+## Access Control
+
+Machine Identities support fine-grained access control:
+
+| Role | Capabilities |
+|------|-------------|
+| **Viewer** | Read secrets |
+| **Developer** | Read/write secrets |
+| **Admin** | Full project access including member management |
+| **No Access** | Explicitly deny (overrides inherited permissions) |
+
+Access is scoped per-project. A single identity can have different roles on different projects.
+
+## Next Steps
+
+<Cards>
+  <Card title="KMSSecret CRD" href="/docs/services/kms/kmssecret-crd">
+    Complete CRD reference
+  </Card>
+  <Card title="Service Integration" href="/docs/services/kms/service-integration">
+    Full service inventory and patterns
+  </Card>
+</Cards>

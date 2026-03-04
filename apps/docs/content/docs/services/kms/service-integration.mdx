@@ -1,0 +1,246 @@
+---
+title: Service Integration
+description: How Hanzo services consume secrets from KMS using KMSSecret CRDs and Universal Auth
+---
+
+# KMS Service Integration
+
+Every Hanzo service retrieves its secrets from KMS rather than storing them in environment variables or git. This page documents the architecture, the KMSSecret CRD pattern, and the complete service inventory.
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                   Hanzo KMS (kms.hanzo.svc)                      │
+│                                                                  │
+│  Project: secrets-639-c          Project: hanzo-iam              │
+│  (shared service secrets)        (IAM-specific secrets)          │
+│                                                                  │
+│  Paths:                          Path: /                         │
+│    /chat        /console           23 secrets (client secrets,   │
+│    /commerce    /analytics         social provider creds,        │
+│    /iam         /flow              admin passwords)              │
+│    /rag         /search                                          │
+│    /pricing     /vector                                          │
+│    /bootnode    /studio                                          │
+│    /app         /bot-hub                                         │
+│    /crawl       /auto                                            │
+│    /lux-chat                                                     │
+└──────────┬──────────────────────────────────┬────────────────────┘
+           │                                  │
+   Universal Auth                    Machine Identity
+   (shared credentials)             (iam-service)
+           │                                  │
+           ▼                                  ▼
+┌─────────────────────┐          ┌─────────────────────┐
+│  kms-operator       │          │  IAM Pod            │
+│  (watches KMSSecret │          │  (direct SDK fetch) │
+│   CRDs, syncs to    │          │                     │
+│   K8s Secrets)      │          │                     │
+└─────────┬───────────┘          └─────────────────────┘
+          │
+          ▼
+┌──────────────────────────────────────────────────────┐
+│  K8s Secrets (one per service)                       │
+│                                                      │
+│  chat-secrets    console-secrets    commerce-secrets  │
+│  analytics-secrets    flow-secrets    rag-secrets     │
+│  pricing-secrets    search-secrets    vector-secrets  │
+│  bootnode-secrets   studio-secrets   bot-hub-secrets  │
+│  hanzo-app-secrets  crawl-secrets    auto-secrets     │
+│  lux-chat-secrets   iam-secrets                      │
+└──────────────────────────────────────────────────────┘
+```
+
+## Two Authentication Patterns
+
+### 1. Universal Auth (Most Services)
+
+Most services share a single `universal-auth-credentials` K8s Secret containing a Machine Identity that has access to the `secrets-639-c` project. Each service's KMSSecret CRD specifies a different `secretsPath` to scope which secrets it receives.
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: universal-auth-credentials
+  namespace: hanzo
+type: Opaque
+stringData:
+  clientId: "<shared-machine-identity-client-id>"
+  clientSecret: "<shared-machine-identity-client-secret>"
+```
+
+### 2. Dedicated Machine Identity (IAM)
+
+IAM has its own Machine Identity (`iam-service`) with a separate `iam-kms-auth` Secret. This provides isolation — IAM secrets are in a separate KMS project (`hanzo-iam`) and IAM's credentials cannot access other services' secrets.
+
+See [IAM KMS Integration](/docs/services/iam/kms-integration) for details.
+
+## KMSSecret CRD Reference
+
+The `KMSSecret` custom resource (API version `secrets.lux.network/v1alpha1`) tells the kms-operator to sync secrets from KMS to a K8s Secret.
+
+```yaml
+apiVersion: secrets.lux.network/v1alpha1
+kind: KMSSecret
+metadata:
+  name: <service>-kms-sync
+  namespace: hanzo
+  labels:
+    app.kubernetes.io/name: <service>
+    app.kubernetes.io/component: secrets
+    app.kubernetes.io/part-of: hanzo-platform
+spec:
+  hostAPI: http://kms.hanzo.svc.cluster.local/api
+  resyncInterval: 60
+  authentication:
+    universalAuth:
+      credentialsRef:
+        secretName: universal-auth-credentials
+        secretNamespace: hanzo
+      secretsScope:
+        projectSlug: secrets-639-c
+        envSlug: prod
+        secretsPath: /<service>
+  managedSecretReference:
+    creationPolicy: Orphan
+    secretName: <service>-secrets
+    secretNamespace: hanzo
+    secretType: Opaque
+```
+
+### Spec Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `hostAPI` | Yes | KMS API URL. Use in-cluster address `http://kms.hanzo.svc.cluster.local/api` |
+| `resyncInterval` | Yes | How often (seconds) to re-fetch secrets. Default: `60` |
+| `authentication.universalAuth.credentialsRef` | Yes | K8s Secret containing `clientId` and `clientSecret` |
+| `authentication.universalAuth.secretsScope.projectSlug` | Yes | KMS project slug |
+| `authentication.universalAuth.secretsScope.envSlug` | Yes | KMS environment (`prod`, `staging`, `dev`) |
+| `authentication.universalAuth.secretsScope.secretsPath` | Yes | Path within the project to sync |
+| `managedSecretReference.secretName` | Yes | Target K8s Secret name |
+| `managedSecretReference.secretNamespace` | Yes | Target K8s Secret namespace |
+| `managedSecretReference.secretType` | No | Secret type. Default: `Opaque` |
+| `managedSecretReference.creationPolicy` | No | `Orphan` keeps the K8s Secret if the CRD is deleted. Default: delete with CRD |
+
+## Complete Service Inventory
+
+Every service in the Hanzo platform uses this pattern. Here is the full list:
+
+| Service | KMS Path | K8s Secret | Auth |
+|---------|----------|------------|------|
+| Chat | `/chat` | `chat-secrets` | Universal Auth |
+| Console | `/console` | `console-secrets` | Universal Auth |
+| Analytics | `/analytics` | `analytics-secrets` | Universal Auth |
+| Commerce | `/commerce` | `commerce-secrets` | Universal Auth |
+| IAM | `/` (own project) | `iam-secrets` | Dedicated (`iam-kms-auth`) |
+| Flow | `/flow` | `flow-secrets` | Universal Auth |
+| RAG API | `/rag` | `rag-secrets` | Universal Auth |
+| Search | `/search` | `search-secrets` | Universal Auth |
+| Pricing | `/pricing` | `pricing-secrets` | Universal Auth |
+| Vector | `/vector` | `vector-secrets` | Universal Auth |
+| Bootnode | `/bootnode` | `bootnode-secrets` | Universal Auth |
+| Studio | `/studio` | `studio-secrets` | Universal Auth |
+| Bot Hub | `/bot-hub` | `bot-hub-secrets` | Universal Auth |
+| Hanzo App | `/app` | `hanzo-app-secrets` | Universal Auth |
+| Crawl | `/crawl` | `crawl-secrets` | Universal Auth |
+| Auto | `/auto` | `auto-secrets` | Universal Auth |
+| Lux Chat | `/lux-chat` | `lux-chat-secrets` | Universal Auth |
+
+## Example: Adding Secrets for a New Service
+
+### 1. Create the KMS path
+
+In [kms.hanzo.ai](https://kms.hanzo.ai), navigate to the `secrets-639-c` project, `prod` environment. Create a new folder (e.g., `/my-service`) and add your secrets.
+
+### 2. Create the KMSSecret CRD
+
+```yaml
+apiVersion: secrets.lux.network/v1alpha1
+kind: KMSSecret
+metadata:
+  name: my-service-kms-sync
+  namespace: hanzo
+  labels:
+    app.kubernetes.io/name: my-service
+    app.kubernetes.io/component: secrets
+    app.kubernetes.io/part-of: hanzo-platform
+spec:
+  hostAPI: http://kms.hanzo.svc.cluster.local/api
+  resyncInterval: 60
+  authentication:
+    universalAuth:
+      credentialsRef:
+        secretName: universal-auth-credentials
+        secretNamespace: hanzo
+      secretsScope:
+        projectSlug: secrets-639-c
+        envSlug: prod
+        secretsPath: /my-service
+  managedSecretReference:
+    creationPolicy: Orphan
+    secretName: my-service-secrets
+    secretNamespace: hanzo
+    secretType: Opaque
+```
+
+### 3. Reference in your deployment
+
+```yaml
+env:
+  - name: DATABASE_URL
+    valueFrom:
+      secretKeyRef:
+        name: my-service-secrets
+        key: DATABASE_URL
+  - name: API_KEY
+    valueFrom:
+      secretKeyRef:
+        name: my-service-secrets
+        key: API_KEY
+```
+
+### 4. Apply and verify
+
+```bash
+kubectl apply -f kms-secrets.yaml
+# Wait up to 60 seconds for sync
+kubectl get secret my-service-secrets -n hanzo -o yaml
+```
+
+## Secret Rotation
+
+When a secret is rotated in KMS:
+
+1. Update the value in [kms.hanzo.ai](https://kms.hanzo.ai)
+2. The kms-operator detects the change within `resyncInterval` seconds (default 60)
+3. The K8s Secret is updated
+4. Pods that mount the secret as environment variables need a restart to pick up the new value:
+   ```bash
+   kubectl rollout restart deployment/<service> -n hanzo
+   ```
+
+For secrets mounted as volume files, Kubernetes propagates updates automatically (within kubelet sync period).
+
+## Security Considerations
+
+- **In-cluster only** — `kms.hanzo.svc.cluster.local` is not exposed externally. Secret sync never leaves the cluster network.
+- **Scoped access** — Universal Auth credentials only have access to `secrets-639-c`. IAM has a separate identity scoped to `hanzo-iam`.
+- **Orphan policy** — `creationPolicy: Orphan` ensures K8s Secrets survive if a KMSSecret CRD is accidentally deleted.
+- **No git secrets** — Secret YAML files contain only CRD definitions, never plaintext values. The actual `clientId`/`clientSecret` are populated by KMS bootstrap, not checked in.
+- **Audit trail** — All secret access is logged in KMS (who read what, when, from where).
+
+## Next Steps
+
+<Cards>
+  <Card title="KMS Overview" href="/docs/services/kms">
+    Architecture, SDK, and API reference
+  </Card>
+  <Card title="Universal Auth" href="/docs/services/kms/universal-auth">
+    Machine Identity authentication for services
+  </Card>
+  <Card title="IAM KMS Integration" href="/docs/services/iam/kms-integration">
+    How IAM specifically uses KMS
+  </Card>
+</Cards>
