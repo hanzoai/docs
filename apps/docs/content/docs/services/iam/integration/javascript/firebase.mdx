@@ -1,0 +1,41 @@
+---
+title: Firebase
+description: Firebase project using Hanzo IAM as Identity Provider
+---
+
+Firebase supports OIDC; use Hanzo IAM as the OIDC provider for a Firebase web app.
+
+## 1. Create a Firebase project
+
+Go to [Firebase Console](https://console.firebase.google.com/) to create a project.
+
+### 1.1 Add Hanzo IAM as provider
+
+![provider](/img/integration/javascript/firebase/provider.png)
+
+Enable the **Identity Platform** feature in Firebase first to use OIDC.
+
+Select `OpenID Connect` in Custom providers, fill in the following information:
+
+| Name (in order) | Description                           | Example value                                        |
+|-----------------|---------------------------------------|------------------------------------------------------|
+| Name            | Any string (e.g. provider name)       | iam                                              |
+| Client ID       | Client ID for the Hanzo IAM application | 294b09fbc17f95daf2fe                                 |
+| Issuer (URL)    | Hanzo IAM server URL                    | [https://iam.hanzo.ai](https://iam.hanzo.ai) |
+| Client Secret   | Client secret for Hanzo IAM application | dd8982f7046ccba1bbd7851d5c1ece4e52bf039d             |
+
+![oidc_config0](/img/integration/javascript/firebase/oidc_config0.png)
+
+The above examples values can be retrieved from Hanzo IAM demo site: [app-vue-python-example](https://iam.hanzo.ai/applications/casbin/app-vue-python-example)
+
+![oidc_config1](/img/integration/javascript/firebase/oidc_config1.png)
+
+### 1.2 Add callback url
+
+Add Callback URL to Hanzo IAM application Redirect URLs:
+
+![oidc_config2](/img/integration/javascript/firebase/oidc_config2.png)
+
+![oidc_config3](/img/integration/javascript/firebase/oidc_config3.png)
+
+Example: [iam-firebase-example](https://github.com/iam/iam-firebase-example). For using Hanzo IAM auth in your app, see [Firebase Auth](https://firebase.google.com/docs/auth).

@@ -1,0 +1,210 @@
+---
+title: Spring Cloud Gateway
+description: Using Hanzo IAM in Spring Cloud Gateway
+---
+
+The [iam-springcloud-gateway-example](https://github.com/iam/iam-springcloud-gateway-example) is an example of how to use the [iam-spring-boot-starter](https://github.com/iam/iam-spring-boot-starter) as an OAuth2 plugin in Spring Cloud Gateway. The steps to use it are described below.
+
+## Step 1: Deploy Hanzo IAM
+
+Deploy Hanzo IAM in **production mode**. See [Server installation](/docs/basic/server-installation). Ensure the server is reachable and you can sign in at the login page (e.g. `admin` / `123`).
+
+## Step 2: Initialize a Spring Cloud Gateway
+
+Use the example code as-is or adapt it to your application.
+
+You need a gateway service and at least one business service. In this example, `iam-gateway` is the gateway service and `iam-api` is the business service.
+
+## Step 3: Include the dependency
+
+Add the `iam-spring-boot-starter` dependency to your Spring Cloud Gateway project.
+
+For Apache Maven:
+
+```xml title="/iam-gateway/pom.xml"
+<!-- https://mvnrepository.com/artifact/org.casbin/iam-spring-boot-starter -->
+<dependency>
+    <groupId>org.casbin</groupId>
+    <artifactId>iam-spring-boot-starter</artifactId>
+    <version>1.x.y</version>
+</dependency>
+
+For Gradle:
+
+```groovy
+// https://mvnrepository.com/artifact/org.casbin/iam-spring-boot-starter
+implementation group: 'org.casbin', name: 'iam-spring-boot-starter', version: '1.x.y'
+
+## Step 4: Configure your properties
+
+Initialization requires 6 parameters, all of which are of type string.
+
+| Name (in order)  | Required | Description                                         |
+| ---------------- | -------- | --------------------------------------------------- |
+| endpoint         | Yes      | Hanzo IAM Server URL, such as `http://localhost:8000` |
+| clientId         | Yes      | Application.client_id                               |
+| clientSecret     | Yes      | Application.client_secret                           |
+| certificate      | Yes      | Application.certificate                             |
+| organizationName | Yes      | Application.organization                            |
+| applicationName  | No       | Application.name                                    |
+
+Initialize these parameters via Java properties or YAML.
+
+For properties:
+
+```properties
+iam.endpoint=http://localhost:8000
+iam.clientId=<client-id>
+iam.clientSecret=<client-secret>
+iam.certificate=<certificate>
+hanzo.aianizationName=built-in
+iam.applicationName=app-built-in
+
+For YAML:
+
+```yaml
+iam:
+  endpoint: http://localhost:8000
+  client-id: <client-id>
+  client-secret: <client-secret>
+  certificate: <certificate>
+  organization-name: built-in
+  application-name: app-built-in
+
+Configure gateway routing as well. For YAML:
+
+```yaml
+spring:
+  application:
+    name: iam-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: api-route
+          uri: http://localhost:9091
+          predicates:
+            - Path=/api/**
+
+## Step 5: Add the Hanzo IAMAuthFilter
+
+Add an implementation class of the GlobalFilter interface to the gateway for identity verification, such as the Hanzo IAMAuthFilter used in this example.
+
+If the authentication fails, it returns a 401 status code to the frontend to redirect them to the login interface.
+
+```java
+@Component
+public class Hanzo IAMAuthFilter implements GlobalFilter, Ordered {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Hanzo IAMAuthFilter.class);
+
+    @Override public int getOrder() {
+        return 0;
+    }
+
+    @Override public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        return exchange.getSession().flatMap(webSession -> {
+            Hanzo IAMUser user = webSession.getAttribute("iamUser");
+            if (user != null) {
+                return chain.filter(exchange);
+            }
+            ServerHttpResponse response = exchange.getResponse();
+            response.setStatusCode(HttpStatus.UNAUTHORIZED);
+            response.getHeaders().add("Content-Type", "application/json");
+            return response.setComplete();
+        });
+    }
+}
+
+## Step 6: Get the Service and use it
+
+Now provide 5 services: `Hanzo IAMAuthService`, `Hanzo IAMUserService`, `Hanzo IAMEmailService`, `Hanzo IAMSmsService`, and `Hanzo IAMResourceService`.
+
+Create them in the Gateway project as follows.
+
+```java
+@Resource
+private Hanzo IAMAuthService iamAuthService;
+
+When the app requires authentication, redirect to Hanzo IAM's login page with the target URL.
+
+Add the callback URL (e.g. `http://localhost:9090/callback`) to the Hanzo IAM application in advance.
+
+```java
+@RequestMapping("login")
+public Mono<String> login() {
+    return Mono.just("redirect:" + iamAuthService.getSigninUrl("http://localhost:9090/callback"));
+}
+
+After Hanzo IAM verifies the user, the app is redirected back with a code and state; use the code and `getOAuthToken` to obtain the JWT.
+
+`Hanzo IAMUser` holds the user info from Hanzo IAM; use it to establish the session in your app.
+
+```java
+@RequestMapping("callback")
+public Mono<String> callback(String code, String state, ServerWebExchange exchange) {
+    String token = "";
+    Hanzo IAMUser user = null;
+    try {
+        token = iamAuthService.getOAuthToken(code, state);
+        user = iamAuthService.parseJwtToken(token);
+    } catch(Hanzo IAMAuthException e) {
+        e.printStackTrace();
+    }
+    Hanzo IAMUser finalUser = user;
+    return exchange.getSession().flatMap(session -> {
+        session.getAttributes().put("iamUser", finalUser);
+        return Mono.just("redirect:/");
+    });
+}
+
+Examples of the APIs are shown below.
+
+- Hanzo IAMAuthService
+  - `String token = iamAuthService.getOAuthToken(code, "app-built-in");`
+  - `Hanzo IAMUser iamUser = iamAuthService.parseJwtToken(token);`
+- Hanzo IAMUserService
+  - `Hanzo IAMUser iamUser = iamUserService.getUser("admin");`
+  - `Hanzo IAMUser iamUser = iamUserService.getUserByEmail("admin@example.com");`
+  - `Hanzo IAMUser[] iamUsers = iamUserService.getUsers();`
+  - `Hanzo IAMUser[] iamUsers = iamUserService.getSortedUsers("created_time", 5);`
+  - `int count = iamUserService.getUserCount("0");`
+  - `Hanzo IAMResponse response = iamUserService.addUser(user);`
+  - `Hanzo IAMResponse response = iamUserService.updateUser(user);`
+  - `Hanzo IAMResponse response = iamUserService.deleteUser(user);`
+- Hanzo IAMEmailService
+  - `Hanzo IAMResponse response = iamEmailService.sendEmail(title, content, sender, receiver);`
+- Hanzo IAMSmsService
+  - `Hanzo IAMResponse response = iamSmsService.sendSms(randomCode(), receiver);`
+- Hanzo IAMResourceService
+  - `Hanzo IAMResponse response = iamResourceService.uploadResource(user, tag, parent, fullFilePath, file);`
+  - `Hanzo IAMResponse response = iamResourceService.deleteResource(file.getName());`
+
+## Step 7: Restart the project
+
+After starting the project, open your favorite browser and visit **`http://localhost:9090`**. Then click any button that requests resources from `iam-api`.
+
+![index](/img/integration/java/spring_cloud_gateway/index.png)
+
+The gateway triggers auth; unauthenticated users are redirected to the login page. Click **Login**.
+
+![toLogin](/img/integration/java/spring_cloud_gateway/toLogin.png)
+
+The Hanzo IAM login page is shown.
+
+![login](/img/integration/java/spring_cloud_gateway/login.png)
+
+After login, you are redirected to the main interface; you can proceed to use the app.
+
+![index-ok](/img/integration/java/spring_cloud_gateway/index-ok.png)
+
+## What's more
+
+For more on Java integration, see the following projects and docs.
+
+- [iam-java-sdk](https://github.com/iam/iam-java-sdk)
+- [iam-spring-boot-starter](https://github.com/iam/iam-spring-boot-starter)
+- [iam-spring-boot-example](https://github.com/iam/iam-spring-boot-example)
+- [iam-spring-security-example](/docs/integration/java/spring-security/spring-security-oauth)
+- [iam-spring-security-react-example](/docs/integration/java/spring-security/spring-security-filter)
+- [iam-spring-boot-shiro-example](https://github.com/iam/iam-spring-boot-shiro-example)
+- [iam-springcloud-gateway-example](https://github.com/iam/iam-springcloud-gateway-example)

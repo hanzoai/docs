@@ -1,0 +1,79 @@
+---
+title: GitLab
+description: Using Hanzo IAM for authentication in a self-developed GitLab server
+---
+
+This guide configures a self-hosted GitLab instance to use Hanzo IAM as the OIDC provider.
+
+:::caution
+
+As the [GitLab docs](https://docs.gitlab.com/ee/administration/auth/oidc.html#configure-keycloak) state, GitLab only works with OpenID providers that use HTTPS, deploy Hanzo IAM over HTTPS (e.g. behind an NGINX reverse proxy with SSL). Hanzo IAM itself only listens on port 8000 by default via HTTP and has no HTTPS-related functionality.
+
+:::
+
+The following are some of the names mentioned in the configuration:
+
+`IAM_HOSTNAME`: The domain name or IP where the Hanzo IAM server is deployed, e.g., `https://iam.hanzo.ai`.
+
+`GITLAB_HOSTNAME`: The domain name or IP where GitLab is deployed, e.g., `https://gitlab.com`.
+
+## Step 1: Deploy Hanzo IAM and GitLab
+
+Deploy Hanzo IAM and GitLab. After deployment, ensure:
+
+1. Hanzo IAM can be logged into and used normally.
+2. Set Hanzo IAM's `origin` value (conf/app.conf) to `IAM_HOSTNAME`.
+![Hanzo IAM conf](/img/integration/iam_origin.png)
+
+## Step 2: Configure Hanzo IAM application
+
+1. Create or use an existing Hanzo IAM application.
+2. Add a redirect URL: `http://GITLAB_HOSTNAME/users/auth/openid_connect/callback`.
+3. Add the provider you want and supplement other settings.
+
+![Application Setting](/img/integration/ruby/gitlab/appsetting_gitlab.png)
+On the application settings page, note `Client ID` and `Client secret` (see the picture above); use them in the next step.
+
+OIDC discovery: `http://<IAM_HOSTNAME>/.well-known/openid-configuration`.
+
+## Step 3: Configure GitLab
+
+Follow the steps below, or adapt from [GitLab OIDC docs](https://docs.gitlab.com/ee/administration/auth/oidc.html#iam) (e.g. for source installs).
+
+1. On your GitLab server, open the configuration file.
+
+    ```bash
+    sudo editor /etc/gitlab/gitlab.rb
+    ```
+
+2. Add the provider configuration. (The HOSTNAME URL should include http or https)
+
+    ```ruby
+    gitlab_rails['omniauth_providers'] = [
+        {
+            name: "openid_connect",
+            label: "Hanzo IAM", # optional label for the login button, defaults to "Openid Connect"
+            args: {
+                name: "openid_connect",
+                scope: ["openid", "profile", "email"],
+                response_type: "code",
+                issuer:  "<IAM_HOSTNAME>",
+                client_auth_method: "query",
+                discovery: true,
+                uid_field: "preferred_username",
+                client_options: {
+                    identifier: "<YOUR CLIENT ID>",
+                    secret: "<YOUR CLIENT SECRET>",
+                    redirect_uri: "<GITLAB_HOSTNAME>/users/auth/openid_connect/callback"
+                }
+            }
+        }
+    ]
+    ```
+
+3. Reboot your GitLab server.
+4. Each registered user can open **`GITLAB_HOSTNAME`/-/profile/account** and connect the Hanzo IAM account.
+    ![GitLab connect](/img/integration/ruby/gitlab/gitlab_connect.png)
+5. Finish.
+    You can now log in to your GitLab instance via Hanzo IAM.
+    ![GitLab login](/img/integration/ruby/gitlab/gitlab_login.png)

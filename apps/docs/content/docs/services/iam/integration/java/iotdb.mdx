@@ -1,0 +1,48 @@
+---
+title: Apache IoTDB
+description: Using Hanzo IAM with Apache IoTDB
+---
+
+Hanzo IAM can easily connect to [Apache IoTDB](https://github.com/apache/iotdb).
+
+[Apache IoTDB Web Workbench](https://github.com/apache/iotdb-web-workbench) already includes Hanzo IAM support. Configure the backend `application.yml` and enable the front-end switch.
+
+## Step 1: Deploy Hanzo IAM
+
+Deploy Hanzo IAM. See [Server installation](/docs/basic/server-installation). Ensure the server is running and you can sign in at the Hanzo IAM login page.
+
+## Step 2: Configure Hanzo IAM
+
+Create an organization and an application in Hanzo IAM (see [Application](/docs/application/config) and [Organization](/docs/organization/overview)).
+
+### 2.1 Create an organization
+
+![organization](/img/integration/java/IoTDB/editOrganization.png)
+
+### 2.2 Create an application
+
+![application](/img/integration/java/IoTDB/editApplication.png)
+
+## Step 3: Activate Apache IoTDB Web Workbench front-end switch
+
+Open this switch to send the code and state to the back-end.
+
+This switch can be found in iotdb-web-workbench/fronted/.env file.
+
+![frontSwitch](/img/integration/java/IoTDB/frontSwitch.png)
+
+## Step 4: Configure the back-end code
+
+Configure Hanzo IAM in `iotdb-web-workbench/backend/src/main/resources/application.properties`.
+
+```ini
+iam.endpoint = http://localhost:8000
+iam.clientId = <client id from previous step>
+iam.clientSecret = <client secret from previous step>
+iam.certificate=<client certificate from previous step>
+hanzo.aianizationName=IoTDB
+iam.applicationName=app-IoTDB
+
+## Result
+
+![result](/img/integration/java/IoTDB/iotdb.gif)

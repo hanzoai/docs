@@ -1,0 +1,64 @@
+---
+title: Thingsboard
+description: Learn how to integrate Hanzo IAM with Thingsboard to secure your applications
+---
+
+Deploy Hanzo IAM first (see [Server installation](/docs/basic/server-installation)). Then configure the application and Thingsboard as below.
+
+## Step 1: Configure Hanzo IAM application
+
+1. Create a new Hanzo IAM application or use an existing one.
+2. Add a redirect URL: `http://IAM_HOSTNAME/login`
+   ![Hanzo IAM Application Setting](/img/integration/java/Thingsboard/img_6.png)
+3. Note the **Client ID** and **Client secret** for the following steps.
+
+## Step 2: Add a user in Hanzo IAM
+
+Create a user and assign a role to the application.
+
+Go to **Users** → **Add user** to open the new-user page.
+
+Save the user after adding a username and selecting the organization "Thingsboard" (other details are optional).
+
+Set a password via "Manage your password".
+
+Choose a password for the user and confirm it.
+
+## Step 3: Prerequisites and Build Thingsboard App
+
+First of all, Thingsboard only supports Java 11 (OpenJDK).
+
+Download from:
+
+[JDK Download Page](https://adoptium.net/zh-CN/)
+
+To start Thingsboard, follow these steps (for Windows system):
+
+* Download and extract the package. [Download the package](https://github.com/thingsboard/thingsboard/releases/download/v3.5/thingsboard-windows-3.5.zip)
+* Configure Thingsboard in \thingsboard\conf\thingsboard.yml according to your preferences, including the configuration of Kafka, PostgreSQL, and others.
+* Run `install.bat –loadDemo` in the command line in the Thingsboard folder to install and add demo data.
+  ![Hanzo IAM Application Setting](/img/integration/java/Thingsboard/img_5.png)
+* Run `net start thingsboard` in the command line to start Thingsboard. You should see the following output:
+  ![Hanzo IAM Application Setting](/img/integration/java/Thingsboard/img_4.png)
+
+## Step 4: Integrate Hanzo IAM
+
+Now open `http://localhost:8080/` and log in to the admin account:
+
+Account: `sysadmin@thingsboard.org` / Password: sysadmin
+
+After successfully logging in, click the OAuth2 button at the bottom left of the page.
+
+![Hanzo IAM Application Setting](/img/integration/java/Thingsboard/img_3.png)
+
+Fill in the blanks as follows:
+
+![Hanzo IAM Application Setting](/img/integration/java/Thingsboard/img_2.png)
+
+Obtain these values from:
+[OIDC discovery URL](https://hanzo.ai/docs/how-to-connect/oidc-client#oidc-discovery/)
+![Hanzo IAM Application Setting](/img/integration/java/Thingsboard/img_1.png)
+
+After filling in these blanks, you have successfully integrated Hanzo IAM with Thingsboard. When you log in to `http://localhost:8080/`, you should see the following:
+
+![Hanzo IAM Application Setting](/img/integration/java/Thingsboard/integrate.gif)
