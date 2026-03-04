@@ -1,0 +1,202 @@
+---
+title: Self-Hosting
+description: Deploy Hanzo Insights on your own infrastructure with Docker, Kubernetes, or Helm.
+---
+
+# Self-Hosting Insights
+
+Hanzo Insights is fully self-hostable. Deploy on your infrastructure for complete data ownership, compliance requirements, or air-gapped environments.
+
+## Architecture Requirements
+
+| Component | Purpose | Minimum Resources |
+|-----------|---------|-------------------|
+| **Insights Web** | Dashboard and API | 2 CPU, 4GB RAM |
+| **Insights Capture** | Event ingestion | 1 CPU, 2GB RAM |
+| **Insights Plugin** | Event processing | 2 CPU, 4GB RAM |
+| **Insights Worker** | Async jobs | 1 CPU, 2GB RAM |
+| **PostgreSQL** | Metadata storage | 2 CPU, 4GB RAM, 50GB disk |
+| **ClickHouse** | Event analytics | 4 CPU, 8GB RAM, 100GB+ disk |
+| **Redis** | Cache and queues | 1 CPU, 2GB RAM |
+| **Kafka/Stream** | Event streaming | 2 CPU, 4GB RAM |
+
+## Docker Compose
+
+```yaml
+# compose.yml
+services:
+  insights-web:
+    image: ghcr.io/hanzoai/insights:latest
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgres://insights:password@postgres:5432/insights
+      CLICKHOUSE_HOST: clickhouse
+      REDIS_URL: redis://redis:6379
+      KAFKA_HOSTS: stream:9092
+      SECRET_KEY: your-secret-key
+      SITE_URL: https://insights.yourdomain.com
+    depends_on:
+      - postgres
+      - clickhouse
+      - redis
+      - stream
+
+  insights-capture:
+    image: ghcr.io/hanzoai/insights:latest
+    command: ./bin/capture
+    environment:
+      DATABASE_URL: postgres://insights:password@postgres:5432/insights
+      KAFKA_HOSTS: stream:9092
+      REDIS_URL: redis://redis:6379
+
+  insights-plugin:
+    image: ghcr.io/hanzoai/insights:latest
+    command: ./bin/plugin-server
+    environment:
+      DATABASE_URL: postgres://insights:password@postgres:5432/insights
+      CLICKHOUSE_HOST: clickhouse
+      KAFKA_HOSTS: stream:9092
+      REDIS_URL: redis://redis:6379
+
+  insights-worker:
+    image: ghcr.io/hanzoai/insights:latest
+    command: ./bin/worker
+    environment:
+      DATABASE_URL: postgres://insights:password@postgres:5432/insights
+      CLICKHOUSE_HOST: clickhouse
+      REDIS_URL: redis://redis:6379
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: insights
+      POSTGRES_USER: insights
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+
+  stream:
+    image: ghcr.io/hanzoai/stream:latest
+    command: >
+      --pubsub-url nats://pubsub:4222
+      --host stream
+      --port 9092
+
+  pubsub:
+    image: nats:2.10-alpine
+    command: --jetstream
+
+volumes:
+  postgres_data:
+  clickhouse_data:
+  redis_data:
+```
+
+```bash
+docker compose up -d
+# Open http://localhost:8000
+```
+
+## Kubernetes
+
+On Hanzo's production infrastructure, Insights runs in the `hanzo` namespace on hanzo-k8s:
+
+| Deployment | Image | Service |
+|-----------|-------|---------|
+| `insights-web` | `ghcr.io/hanzoai/insights:latest` | `insights-web:8000` |
+| `insights-capture` | `ghcr.io/hanzoai/insights:latest` | `insights-capture:8000` |
+| `insights-plugin` | `ghcr.io/hanzoai/insights:latest` | `insights-plugin:8000` |
+| `insights-worker` | `ghcr.io/hanzoai/insights:latest` | — |
+| `insights-kafka` | `ghcr.io/hanzoai/stream:latest` | `insights-kafka:9092` |
+
+The `insights-kafka` deployment is Hanzo Stream (Kafka wire protocol → NATS JetStream). All Insights services communicate via Kafka protocol; Stream translates to NATS underneath.
+
+### NATS/PubSub
+
+The `pubsub` service in the `hanzo` namespace provides NATS JetStream:
+
+```yaml
+# pubsub service alias
+apiVersion: v1
+kind: Service
+metadata:
+  name: pubsub
+  namespace: hanzo
+spec:
+  type: ExternalName
+  externalName: nats.hanzo.svc.cluster.local
+```
+
+## Configuration
+
+### Required Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `CLICKHOUSE_HOST` | ClickHouse hostname |
+| `REDIS_URL` | Redis connection string |
+| `KAFKA_HOSTS` | Kafka broker addresses (comma-separated) |
+| `SECRET_KEY` | Django secret key for session encryption |
+| `SITE_URL` | Public-facing URL of the Insights instance |
+
+### Optional Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `INSIGHTS_API_KEY` | — | Default project API key |
+| `DISABLE_SECURE_SSL_REDIRECT` | `false` | Disable HTTPS redirect (for local dev) |
+| `IS_BEHIND_PROXY` | `false` | Trust X-Forwarded-For headers |
+| `ALLOWED_IP_BLOCKS` | — | IP allowlist for ingestion |
+| `PERSON_ON_EVENTS_V2_ENABLED` | `false` | Enable person-on-events for faster queries |
+| `RECORDINGS_TTL_WEEKS` | `3` | Session recording retention (weeks) |
+
+### OIDC/SSO (via Hanzo IAM)
+
+Connect Insights to Hanzo IAM for single sign-on:
+
+| Variable | Value |
+|----------|-------|
+| `SOCIAL_AUTH_OIDC_ENABLED` | `true` |
+| `SOCIAL_AUTH_OIDC_OIDC_ENDPOINT` | `https://hanzo.id` |
+| `SOCIAL_AUTH_OIDC_KEY` | IAM client ID |
+| `SOCIAL_AUTH_OIDC_SECRET` | IAM client secret |
+
+## Upgrades
+
+```bash
+# Docker Compose
+docker compose pull
+docker compose up -d
+
+# Kubernetes
+kubectl set image deployment/insights-web insights=ghcr.io/hanzoai/insights:latest -n hanzo
+kubectl set image deployment/insights-capture insights=ghcr.io/hanzoai/insights:latest -n hanzo
+kubectl set image deployment/insights-plugin insights=ghcr.io/hanzoai/insights:latest -n hanzo
+kubectl set image deployment/insights-worker insights=ghcr.io/hanzoai/insights:latest -n hanzo
+```
+
+Database migrations run automatically on startup.
+
+## Proxy Configuration
+
+For production, put Insights behind a reverse proxy or CDN. Configure the SDK to point to your proxy:
+
+```typescript
+insights.init('your-project-api-key', {
+  api_host: 'https://insights.yourdomain.com',
+})
+```
+
+This also helps bypass ad blockers that may block requests to third-party analytics domains.

@@ -83,7 +83,7 @@ const REDIRECT_URI = chrome.identity.getRedirectURL();
 // Generate the authorization URL
 function getAuthUrl() {
   const state = Math.random().toString(36).substring(7);
-  const authUrl = `${IAM_ENDPOINT}/login/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=openid%20profile%20email&state=${state}`;
+  const authUrl = `${IAM_ENDPOINT}/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=openid%20profile%20email&state=${state}`;
   
   chrome.storage.local.set({ oauthState: state });
   
@@ -103,7 +103,7 @@ async function handleOAuthCallback(redirectUrl) {
   }
   
   // Exchange code for token
-  const tokenResponse = await fetch(`${IAM_ENDPOINT}/api/login/oauth/access_token`, {
+  const tokenResponse = await fetch(`${IAM_ENDPOINT}/oauth/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -289,7 +289,7 @@ To maintain user sessions, you should implement token refresh logic:
 
 ```javascript
 async function refreshAccessToken(refreshToken) {
-  const response = await fetch(`${IAM_ENDPOINT}/api/login/oauth/refresh_token`, {
+  const response = await fetch(`${IAM_ENDPOINT}/oauth/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

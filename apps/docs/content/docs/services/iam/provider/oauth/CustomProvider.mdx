@@ -15,10 +15,10 @@ In Hanzo IAM **Providers** → **Add**, set **Type** to one of Custom, Custom2, 
 
 ![image-20220418100744005](/img/providers/OAuth/customprovider.png)
 
-- **Auth URL** — OAuth authorization endpoint. Example: with `https://iam.hanzo.ai/login/oauth/authorize`, the browser is sent to
+- **Auth URL** — OAuth authorization endpoint. Example: with `https://iam.hanzo.ai/oauth/authorize`, the browser is sent to
 
   ```url
-  https://iam.hanzo.ai/login/oauth/authorize?client_id={ClientID}&redirect_uri=https://{your-iam-hostname}/callback&state={State_generated_by_Hanzo IAM}&response_type=code&scope={Scope}` 
+  https://iam.hanzo.ai/oauth/authorize?client_id={ClientID}&redirect_uri=https://{your-iam-hostname}/callback&state={State_generated_by_Hanzo IAM}&response_type=code&scope={Scope}` 
   ```
 
   With **Enable PKCE** on, Hanzo IAM adds:
@@ -42,13 +42,13 @@ In Hanzo IAM **Providers** → **Add**, set **Type** to one of Custom, Custom2, 
 - **Token URL** — Token endpoint. Hanzo IAM calls it with the code to get an access token. Example:
 
   ```bash
-  curl -X POST -u "{ClientID}:{ClientSecret}" --data-binary "code={code}&grant_type=authorization_code&redirect_uri=https://{your-iam-hostname}/callback" https://iam.hanzo.ai/api/login/oauth/access_token
+  curl -X POST -u "{ClientID}:{ClientSecret}" --data-binary "code={code}&grant_type=authorization_code&redirect_uri=https://{your-iam-hostname}/callback" https://iam.hanzo.ai/oauth/token
   ```
 
   When PKCE is enabled, the request includes the code verifier:
 
   ```bash
-  curl -X POST -u "{ClientID}:{ClientSecret}" --data-binary "code={code}&grant_type=authorization_code&redirect_uri=https://{your-iam-hostname}/callback&code_verifier={code_verifier}" https://iam.hanzo.ai/api/login/oauth/access_token
+  curl -X POST -u "{ClientID}:{ClientSecret}" --data-binary "code={code}&grant_type=authorization_code&redirect_uri=https://{your-iam-hostname}/callback&code_verifier={code_verifier}" https://iam.hanzo.ai/oauth/token
   ```
 
   Response must include at least:

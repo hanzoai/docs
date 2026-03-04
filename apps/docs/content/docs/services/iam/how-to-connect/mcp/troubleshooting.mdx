@@ -199,7 +199,7 @@ The consent screen displays requested scopes with their display names and descri
 2. Request a new token with the required scope:
 
    ```bash
-   curl -X POST https://your-iam.com/api/login/oauth/access_token \
+   curl -X POST https://your-iam.com/oauth/token \
      -d "grant_type=client_credentials" \
      -d "client_id=YOUR_CLIENT_ID" \
      -d "client_secret=YOUR_CLIENT_SECRET" \
@@ -275,7 +275,7 @@ See [Authorization and scopes](/docs/how-to-connect/mcp/authorization) for the s
 
    ```http
    WWW-Authenticate: Bearer realm="mcp-server",
-     authorization_uri="https://your-iam.com/login/oauth/authorize",
+     authorization_uri="https://your-iam.com/oauth/authorize",
      scope="read:application write:application"
    ```
 
@@ -284,7 +284,7 @@ See [Authorization and scopes](/docs/how-to-connect/mcp/authorization) for the s
    ```bash
    # 1. Get authorization code (requires browser)
    # 2. Exchange for token
-   curl -X POST https://your-iam.com/api/login/oauth/access_token \
+   curl -X POST https://your-iam.com/oauth/token \
      -d "grant_type=authorization_code" \
      -d "code=AUTH_CODE" \
      -d "redirect_uri=YOUR_REDIRECT_URI" \
@@ -350,7 +350,7 @@ echo "YOUR_JWT_TOKEN" | cut -d. -f2 | base64 -d | jq
 Hanzo IAM provides a token introspection endpoint (RFC 7662) to validate and inspect tokens:
 
 ```bash
-curl -X POST https://your-iam.com/api/login/oauth/introspect \
+curl -X POST https://your-iam.com/oauth/introspect \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -u "CLIENT_ID:CLIENT_SECRET" \
   -d "token=ACCESS_TOKEN"
@@ -375,7 +375,7 @@ Manual OAuth flow testing with curl:
 ```bash
 # 1. Test authorization endpoint (requires browser)
 # Open in browser:
-https://your-iam.com/login/oauth/authorize?
+https://your-iam.com/oauth/authorize?
   client_id=YOUR_CLIENT_ID&
   redirect_uri=http://localhost:8080/callback&
   response_type=code&
@@ -383,7 +383,7 @@ https://your-iam.com/login/oauth/authorize?
   state=random-state
 
 # 2. Exchange authorization code for token
-curl -X POST https://your-iam.com/api/login/oauth/access_token \
+curl -X POST https://your-iam.com/oauth/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=authorization_code" \
   -d "code=AUTHORIZATION_CODE" \

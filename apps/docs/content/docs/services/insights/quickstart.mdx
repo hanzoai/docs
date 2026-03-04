@@ -1,0 +1,207 @@
+---
+title: Quickstart
+description: Install the Hanzo Insights SDK and send your first event in under 2 minutes.
+---
+
+# Quickstart
+
+Get behavioral analytics running in your app in three steps.
+
+## 1. Install
+
+```bash tab="npm"
+npm install @hanzo/insights
+```
+
+```bash tab="pnpm"
+pnpm add @hanzo/insights
+```
+
+```bash tab="yarn"
+yarn add @hanzo/insights
+```
+
+## 2. Initialize
+
+```typescript
+import insights from '@hanzo/insights'
+
+insights.init('your-project-api-key', {
+  api_host: 'https://insights.hanzo.ai',
+  autocapture: true,
+  capture_pageview: true,
+  capture_pageleave: true,
+})
+```
+
+Get your project API key from **insights.hanzo.ai → Project Settings → API Keys**.
+
+## 3. Capture Events
+
+Autocapture handles clicks, form submissions, and pageviews automatically. For custom events:
+
+```typescript
+// Track a custom event
+insights.capture('signup_completed', {
+  plan: 'pro',
+  source: 'pricing_page',
+})
+
+// Identify a user
+insights.identify('user-123', {
+  email: 'user@example.com',
+  plan: 'pro',
+})
+```
+
+Open **insights.hanzo.ai** to see events flowing in real-time.
+
+## Framework-Specific Setup
+
+### React
+
+```bash
+npm install @hanzo/insights @hanzo/insights-react
+```
+
+```tsx
+import { InsightsProvider } from '@hanzo/insights-react'
+
+function App() {
+  return (
+    <InsightsProvider
+      apiKey="your-project-api-key"
+      options={{ api_host: 'https://insights.hanzo.ai' }}
+    >
+      <YourApp />
+    </InsightsProvider>
+  )
+}
+```
+
+### Next.js
+
+```bash
+npm install @hanzo/insights @hanzo/insights-next
+```
+
+```tsx
+// app/providers.tsx
+'use client'
+import { InsightsProvider } from '@hanzo/insights-next'
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <InsightsProvider
+      apiKey="your-project-api-key"
+      options={{ api_host: 'https://insights.hanzo.ai' }}
+    >
+      {children}
+    </InsightsProvider>
+  )
+}
+```
+
+### Node.js (Server-Side)
+
+```bash
+npm install @hanzo/insights-node
+```
+
+```typescript
+import { Insights } from '@hanzo/insights-node'
+
+const insights = new Insights('your-project-api-key', {
+  host: 'https://insights.hanzo.ai',
+})
+
+insights.capture({
+  distinctId: 'user-123',
+  event: 'api_request',
+  properties: {
+    endpoint: '/v1/chat/completions',
+    model: 'zen4-pro',
+    latency_ms: 340,
+  },
+})
+
+// Flush on shutdown
+await insights.shutdown()
+```
+
+### Go
+
+```bash
+go get github.com/hanzoai/insights-go
+```
+
+```go
+package main
+
+import "github.com/hanzoai/insights-go"
+
+func main() {
+    client, _ := insights.NewWithConfig("your-project-api-key", insights.Config{
+        Endpoint: "https://insights.hanzo.ai",
+    })
+    defer client.Close()
+
+    client.Enqueue(insights.Capture{
+        DistinctId: "user-123",
+        Event:      "api_request",
+        Properties: insights.NewProperties().
+            Set("endpoint", "/v1/chat/completions").
+            Set("model", "zen4-pro"),
+    })
+}
+```
+
+### Python
+
+```bash
+pip install hanzo-insights
+```
+
+```python
+from hanzo_insights import Insights
+
+insights = Insights('your-project-api-key', host='https://insights.hanzo.ai')
+
+insights.capture(
+    distinct_id='user-123',
+    event='api_request',
+    properties={
+        'endpoint': '/v1/chat/completions',
+        'model': 'zen4-pro',
+    }
+)
+
+insights.shutdown()
+```
+
+## Verify
+
+After initializing the SDK:
+
+1. Open **insights.hanzo.ai → Activity → Live Events**
+2. Perform actions in your app
+3. Events appear within seconds
+
+If events don't appear, check:
+- API key is correct (project-level, not personal)
+- `api_host` points to `https://insights.hanzo.ai`
+- No ad blockers are blocking the requests (use a proxy for production — see [Self-Hosting](/docs/services/insights/self-hosting))
+
+## Next Steps
+
+<Cards>
+  <Card title="Feature Flags" href="/docs/services/insights/feature-flags">
+    Roll out features gradually with boolean and multivariate flags
+  </Card>
+  <Card title="Session Recording" href="/docs/services/insights/session-recording">
+    Replay user sessions with full privacy controls
+  </Card>
+  <Card title="Event Catalog" href="/docs/services/insights-events">
+    Reference for all standard and custom events
+  </Card>
+</Cards>

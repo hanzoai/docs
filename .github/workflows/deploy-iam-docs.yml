@@ -1,16 +1,11 @@
-name: Deploy Docs (Core)
+name: Deploy Docs (IAM)
 
 on:
   push:
     branches: [main, dev]
     paths:
-      - 'apps/docs/**'
-      - '!apps/docs/content/docs/services/kms/**'
-      - '!apps/docs/content/docs/services/iam/**'
-      - '!apps/docs/content/docs/projects/**'
-      - 'packages/**'
-      - 'pnpm-lock.yaml'
-      - '.github/workflows/deploy-docs.yml'
+      - 'apps/docs/content/docs/services/iam/**'
+      - '.github/workflows/deploy-iam-docs.yml'
   workflow_dispatch:
 
 jobs:
@@ -42,13 +37,13 @@ jobs:
 
       - run: pnpm build --filter=docs
         env:
-          DOCS_SECTION: core
+          DOCS_SECTION: iam
           NODE_OPTIONS: '--max-old-space-size=16384'
         timeout-minutes: 60
 
       - name: Deploy to Cloudflare Pages
         working-directory: apps/docs
-        run: pnpm dlx wrangler pages deploy out --project-name=hanzo-docs --commit-dirty=true
+        run: pnpm dlx wrangler pages deploy out --project-name=iam-docs --commit-dirty=true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
