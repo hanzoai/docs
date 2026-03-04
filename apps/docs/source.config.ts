@@ -15,11 +15,27 @@ const isLint = process.env.LINT === '1';
 
 const isExport = process.env.NEXT_EXPORT === '1';
 
+// Federated docs: DOCS_SECTION controls which MDX pages are built.
+// Each section deploys to its own CF Pages project; meta.json files are
+// always included so every build renders the complete sidebar tree.
+const section = process.env.DOCS_SECTION as 'core' | 'kms' | 'iam' | 'projects' | undefined;
+
+const sectionFilters: Record<string, string[]> = {
+  core:     ['**/*.mdx', '!**/projects/**', '!**/services/kms/**', '!**/services/iam/**'],
+  kms:      ['**/services/kms/**/*.mdx'],
+  iam:      ['**/services/iam/**/*.mdx'],
+  projects: ['**/projects/**/*.mdx'],
+};
+
+function getDocsFiles(): string[] | undefined {
+  if (section && sectionFilters[section]) return sectionFilters[section];
+  if (isExport) return ['**/*.mdx', '!**/projects/**'];
+  return undefined;
+}
+
 export const docs = defineDocs({
   docs: {
-    // During static export, exclude the entire projects directory — thousands
-    // of upstream project docs are too heavy for the standard CI runner.
-    ...(isExport ? { files: ['**/*.mdx', '!**/projects/**'] } : {}),
+    ...(getDocsFiles() ? { files: getDocsFiles() } : {}),
     schema: pageSchema.extend({
       preview: z.string().optional(),
       index: z.boolean().default(false),

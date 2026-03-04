@@ -11,13 +11,16 @@ export async function updateSearchIndexes(): Promise<void> {
   const content = await fs.readFile('.next/server/app/static.json.body');
   const records = JSON.parse(content.toString()) as HanzoDocument[];
 
+  // Section builds append to the index; only the core/full build replaces it.
+  const isSection = !!process.env.DOCS_SECTION && process.env.DOCS_SECTION !== 'core';
+
   await sync({
     endpoint:
       process.env.HANZO_SEARCH_INDEX_ENDPOINT ??
       'https://api.cloud.hanzo.ai/api/index-docs',
     apiKey,
     documents: records,
-    replace: true,
+    replace: !isSection,
   });
 
   console.log(`hanzo search index updated: ${records.length} records`);

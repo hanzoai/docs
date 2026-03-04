@@ -1,10 +1,13 @@
-name: Deploy Docs
+name: Deploy Docs (Core)
 
 on:
   push:
     branches: [main, dev]
     paths:
       - 'apps/docs/**'
+      - '!apps/docs/content/docs/services/kms/**'
+      - '!apps/docs/content/docs/services/iam/**'
+      - '!apps/docs/content/docs/projects/**'
       - 'packages/**'
       - 'pnpm-lock.yaml'
       - '.github/workflows/deploy-docs.yml'
@@ -39,6 +42,7 @@ jobs:
 
       - run: pnpm build --filter=docs
         env:
+          DOCS_SECTION: core
           NODE_OPTIONS: '--max-old-space-size=16384'
         timeout-minutes: 60
 

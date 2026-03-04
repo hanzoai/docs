@@ -1,0 +1,119 @@
+---
+title: Hanzo Insights
+description: Self-hosted behavioral analytics platform with feature flags, session recording, A/B testing, and product analytics.
+---
+
+# Hanzo Insights
+
+Hanzo Insights is a self-hosted behavioral analytics platform running at `insights.hanzo.ai`. Built as a fork of PostHog with full Hanzo branding, it provides product analytics, feature flags, session recording, A/B testing, and cohort analysis — all with complete data ownership.
+
+**Dashboard:** [insights.hanzo.ai](https://insights.hanzo.ai)
+**Core SDK:** `@hanzo/insights` (browser)
+**Server SDK:** `@hanzo/insights-node` (Node.js)
+**Go SDK:** `github.com/hanzoai/insights-go`
+
+## Features
+
+- **Product Analytics** — Funnels, retention, trends, paths, and lifecycle analysis
+- **Feature Flags** — Boolean and multivariate flags with gradual rollouts
+- **Session Recording** — Full session replay with privacy controls via rrweb
+- **A/B Testing** — Experiments with Bayesian and frequentist significance testing
+- **Autocapture** — Automatic click, pageview, and form tracking (zero instrumentation)
+- **Group Analytics** — Organization and workspace-level metrics
+- **Cohort Analysis** — Behavioral segmentation and user grouping
+- **Data Pipelines** — Export to S3, BigQuery, Snowflake, or custom webhooks
+- **Self-Hosted** — Full data ownership, deploy on your infrastructure
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                        insights.hanzo.ai                             │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐  ┌──────────┐ │
+│  │  Capture API  │  │  Web App     │  │  Plugin     │  │  Worker  │ │
+│  │  (ingestion)  │  │  (dashboard) │  │  Server     │  │  (async) │ │
+│  └──────┬───────┘  └──────────────┘  └──────┬──────┘  └────┬─────┘ │
+│         │                                     │              │       │
+│         ▼                                     ▼              ▼       │
+│  ┌──────────────────────────────────────────────────────────────┐   │
+│  │                    Kafka (via Stream)                         │   │
+│  │           insights-kafka:9092 → NATS JetStream               │   │
+│  └──────────────────────────────────────────────────────────────┘   │
+│         │                                     │              │       │
+│         ▼                                     ▼              ▼       │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐  │
+│  │  ClickHouse   │  │  PostgreSQL  │  │  Redis                   │  │
+│  │  (events)     │  │  (metadata)  │  │  (cache, sessions)       │  │
+│  └──────────────┘  └──────────────┘  └──────────────────────────┘  │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+| Component | K8s Deployment | Purpose |
+|-----------|---------------|---------|
+| **Capture** | `insights-capture` | High-throughput event ingestion API |
+| **Web** | `insights-web` | Dashboard and query interface |
+| **Plugin Server** | `insights-plugin` | Event processing pipelines and exports |
+| **Worker** | `insights-worker` | Async jobs (cohort calculation, exports) |
+| **Kafka Adapter** | `insights-kafka` | Kafka wire protocol → NATS JetStream via Hanzo Stream |
+
+## Insights vs Analytics
+
+Hanzo runs two analytics systems for different purposes:
+
+| | Insights | Analytics |
+|---|---------|-----------|
+| **Purpose** | Behavioral product analytics | Privacy-first page view analytics |
+| **Based on** | PostHog | Umami |
+| **Tracking** | Full event stream, autocapture, session recording | Page views, referrers, UTM params |
+| **Feature flags** | Yes | No |
+| **Session replay** | Yes | No |
+| **A/B testing** | Yes | No |
+| **Privacy** | Configurable (can mask PII) | Privacy-first by default (no cookies) |
+| **Dashboard** | `insights.hanzo.ai` | `analytics.hanzo.ai` |
+| **Use case** | Product teams, growth, experimentation | Marketing, compliance, lightweight stats |
+
+## Package Ecosystem
+
+13 packages in the `@hanzo/insights-*` namespace:
+
+| Package | Platform |
+|---------|----------|
+| `@hanzo/insights` | Browser |
+| `@hanzo/insights-node` | Node.js |
+| `@hanzo/insights-react` | React hooks and providers |
+| `@hanzo/insights-react-native` | React Native |
+| `@hanzo/insights-next` | Next.js (App + Pages Router) |
+| `@hanzo/insights-web` | Lightweight web-only |
+| `@hanzo/insights-js-lite` | Minimal/bandwidth-constrained |
+| `@hanzo/insights-android` | Android |
+| `@hanzo/insights-ios` | iOS |
+| `@hanzo/insights-flutter` | Flutter |
+| `@hanzo/insights-python` | Python |
+| `@hanzo/insights-ruby` | Ruby |
+| `github.com/hanzoai/insights-go` | Go |
+
+## Related
+
+<Cards>
+  <Card title="Quickstart" href="/docs/services/insights/quickstart">
+    Install the SDK and send your first event in 2 minutes
+  </Card>
+  <Card title="Feature Flags" href="/docs/services/insights/feature-flags">
+    Boolean and multivariate flags with gradual rollouts
+  </Card>
+  <Card title="Session Recording" href="/docs/services/insights/session-recording">
+    Full session replay with privacy controls
+  </Card>
+  <Card title="Experiments" href="/docs/services/insights/experiments">
+    A/B testing with statistical significance
+  </Card>
+  <Card title="Event Catalog" href="/docs/services/insights-events">
+    Complete reference for standard and custom events
+  </Card>
+  <Card title="Analytics" href="/docs/services/analytics">
+    Privacy-first page view analytics (distinct from Insights)
+  </Card>
+</Cards>

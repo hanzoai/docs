@@ -1,0 +1,350 @@
+---
+title: SDKs
+description: Client libraries for Hanzo Insights across all major platforms.
+---
+
+# Insights SDKs
+
+Hanzo Insights provides 13 official SDKs covering browser, server, and mobile platforms. All SDKs send events to `insights.hanzo.ai` and support feature flag evaluation.
+
+## Browser SDK
+
+The core `@hanzo/insights` package provides autocapture, pageviews, session recording, feature flags, and custom event tracking.
+
+```typescript
+import insights from '@hanzo/insights'
+
+insights.init('your-project-api-key', {
+  api_host: 'https://insights.hanzo.ai',
+  autocapture: true,
+  capture_pageview: true,
+  capture_pageleave: true,
+  session_recording: { maskAllInputs: true },
+})
+
+// Custom event
+insights.capture('purchase_completed', {
+  order_id: 'ord_123',
+  total: 49.99,
+  currency: 'USD',
+})
+
+// Identify user
+insights.identify('user-123', {
+  email: 'user@example.com',
+  plan: 'enterprise',
+})
+
+// Group analytics
+insights.group('organization', 'org-acme', {
+  name: 'Acme Corp',
+  plan: 'enterprise',
+})
+
+// Feature flag
+if (insights.isFeatureEnabled('new-checkout')) {
+  renderNewCheckout()
+}
+
+// Super properties (included with every event)
+insights.register({
+  app_version: '2.4.1',
+  environment: 'production',
+})
+
+// Reset on logout
+insights.reset()
+```
+
+### Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `api_host` | `string` | `https://insights.hanzo.ai` | Server URL |
+| `autocapture` | `boolean` | `true` | Auto-capture clicks, forms, page changes |
+| `capture_pageview` | `boolean` | `true` | Track `$pageview` events |
+| `capture_pageleave` | `boolean` | `true` | Track `$pageleave` events |
+| `session_recording` | `object` | `{}` | Session recording config |
+| `persistence` | `string` | `localStorage+cookie` | Identity storage method |
+| `cross_subdomain_cookie` | `boolean` | `true` | Share identity across subdomains |
+| `bootstrap` | `object` | — | Pre-load feature flags and distinct ID |
+| `loaded` | `function` | — | Callback after initialization |
+
+## React SDK
+
+```bash
+npm install @hanzo/insights @hanzo/insights-react
+```
+
+```tsx
+import {
+  InsightsProvider,
+  useInsights,
+  useFeatureFlag,
+  useFeatureFlagPayload,
+  useActiveFeatureFlags,
+} from '@hanzo/insights-react'
+
+// Provider (wrap your app)
+function App() {
+  return (
+    <InsightsProvider
+      apiKey="your-project-api-key"
+      options={{ api_host: 'https://insights.hanzo.ai' }}
+    >
+      <Dashboard />
+    </InsightsProvider>
+  )
+}
+
+// Hooks
+function Dashboard() {
+  const insights = useInsights()
+  const showNewUI = useFeatureFlag('new-dashboard')
+  const config = useFeatureFlagPayload('dashboard-config')
+  const activeFlags = useActiveFeatureFlags()
+
+  const handleClick = () => {
+    insights.capture('button_clicked', { button: 'upgrade' })
+  }
+
+  return showNewUI ? <NewDashboard config={config} /> : <LegacyDashboard />
+}
+```
+
+## Next.js SDK
+
+```bash
+npm install @hanzo/insights @hanzo/insights-next
+```
+
+Supports both App Router and Pages Router with automatic page view tracking.
+
+```tsx
+// App Router: app/providers.tsx
+'use client'
+import { InsightsProvider } from '@hanzo/insights-next'
+
+export function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <InsightsProvider
+      apiKey={process.env.NEXT_PUBLIC_INSIGHTS_KEY!}
+      options={{ api_host: 'https://insights.hanzo.ai' }}
+    >
+      {children}
+    </InsightsProvider>
+  )
+}
+```
+
+```tsx
+// Pages Router: pages/_app.tsx
+import { insightsNextPageviewTracker } from '@hanzo/insights-next'
+
+function MyApp({ Component, pageProps }) {
+  insightsNextPageviewTracker()
+  return <Component {...pageProps} />
+}
+```
+
+## Node.js SDK
+
+```bash
+npm install @hanzo/insights-node
+```
+
+```typescript
+import { Insights } from '@hanzo/insights-node'
+
+const insights = new Insights('your-project-api-key', {
+  host: 'https://insights.hanzo.ai',
+  flushAt: 20,        // Events per batch
+  flushInterval: 10000, // Flush interval (ms)
+})
+
+// Capture event
+insights.capture({
+  distinctId: 'user-123',
+  event: 'inference_completed',
+  properties: {
+    model: 'zen4-pro',
+    tokens: 1500,
+    latency_ms: 340,
+  },
+})
+
+// Identify user
+insights.identify({
+  distinctId: 'user-123',
+  properties: { email: 'user@example.com', plan: 'pro' },
+})
+
+// Evaluate feature flags server-side
+const enabled = await insights.isFeatureEnabled('new-api', 'user-123')
+
+// Get all flags for a user
+const flags = await insights.getAllFlags('user-123')
+
+// Graceful shutdown
+await insights.shutdown()
+```
+
+## Go SDK
+
+```bash
+go get github.com/hanzoai/insights-go
+```
+
+```go
+package main
+
+import "github.com/hanzoai/insights-go"
+
+func main() {
+    client, _ := insights.NewWithConfig("your-project-api-key", insights.Config{
+        Endpoint: "https://insights.hanzo.ai",
+    })
+    defer client.Close()
+
+    // Capture
+    client.Enqueue(insights.Capture{
+        DistinctId: "user-123",
+        Event:      "api_request",
+        Properties: insights.NewProperties().
+            Set("model", "zen4-pro").
+            Set("tokens", 1500),
+    })
+
+    // Identify
+    client.Enqueue(insights.Identify{
+        DistinctId: "user-123",
+        Properties: insights.NewProperties().
+            Set("email", "user@example.com").
+            Set("plan", "pro"),
+    })
+
+    // Feature flags
+    enabled, _ := client.IsFeatureEnabled(
+        insights.FeatureFlagPayload{
+            Key:        "new-api",
+            DistinctId: "user-123",
+        },
+    )
+}
+```
+
+## Python SDK
+
+```bash
+pip install hanzo-insights
+```
+
+```python
+from hanzo_insights import Insights
+
+insights = Insights('your-project-api-key', host='https://insights.hanzo.ai')
+
+# Capture
+insights.capture('user-123', 'inference_completed', {
+    'model': 'zen4-pro',
+    'tokens': 1500,
+})
+
+# Identify
+insights.identify('user-123', {
+    'email': 'user@example.com',
+    'plan': 'pro',
+})
+
+# Feature flags
+if insights.feature_enabled('new-api', 'user-123'):
+    use_new_api()
+
+# All flags
+flags = insights.get_all_flags('user-123')
+
+insights.shutdown()
+```
+
+## Mobile SDKs
+
+### React Native
+
+```bash
+npm install @hanzo/insights-react-native
+```
+
+```tsx
+import Insights from '@hanzo/insights-react-native'
+
+await Insights.setup('your-project-api-key', {
+  host: 'https://insights.hanzo.ai',
+  captureApplicationLifecycleEvents: true,
+  captureDeepLinks: true,
+})
+
+Insights.capture('screen_viewed', { screen: 'home' })
+```
+
+### iOS (Swift)
+
+```swift
+import InsightsSDK
+
+let config = InsightsConfig(apiKey: "your-project-api-key")
+config.host = "https://insights.hanzo.ai"
+InsightsSDK.shared.setup(config)
+
+InsightsSDK.shared.capture("screen_viewed", properties: ["screen": "home"])
+```
+
+### Android (Kotlin)
+
+```kotlin
+import ai.hanzo.insights.Insights
+
+val insights = Insights.with(context) {
+    apiKey = "your-project-api-key"
+    host = "https://insights.hanzo.ai"
+}
+
+insights.capture("screen_viewed", mapOf("screen" to "home"))
+```
+
+### Flutter
+
+```dart
+import 'package:hanzo_insights/hanzo_insights.dart';
+
+await Insights().setup('your-project-api-key',
+  host: 'https://insights.hanzo.ai',
+);
+
+Insights().capture(eventName: 'screen_viewed', properties: {'screen': 'home'});
+```
+
+## API Reference
+
+All SDKs communicate with the Insights HTTP API:
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/capture` | Ingest events (batch supported) |
+| `POST` | `/decide` | Evaluate feature flags for a user |
+| `POST` | `/batch` | Batch event ingestion |
+| `GET` | `/api/feature_flag` | Get feature flag definitions |
+
+```bash
+# Direct API call
+curl -X POST https://insights.hanzo.ai/capture \
+  -H "Content-Type: application/json" \
+  -d '{
+    "api_key": "your-project-api-key",
+    "event": "api_request",
+    "distinct_id": "user-123",
+    "properties": {
+      "model": "zen4-pro",
+      "tokens": 1500
+    }
+  }'
+```

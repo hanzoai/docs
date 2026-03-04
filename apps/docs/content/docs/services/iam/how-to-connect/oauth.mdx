@@ -16,7 +16,7 @@ Authorization code is enabled by default for security. Enable other grant types 
 Redirect the user to:
 
 ```url
-https://<IAM_HOST>/login/oauth/authorize?
+https://<IAM_HOST>/oauth/authorize?
 client_id=CLIENT_ID&
 redirect_uri=REDIRECT_URI&
 response_type=code&
@@ -37,7 +37,7 @@ state=STATE
 Request scopes in the authorize URL. Separate multiple scopes with `%20`:
 
 ```text
-https://<IAM_HOST>/login/oauth/authorize?
+https://<IAM_HOST>/oauth/authorize?
 client_id=...&
 scope=openid%20email
 
@@ -52,7 +52,7 @@ https://REDIRECT_URI?code=CODE&state=STATE
 Exchange the code for tokens with a POST to:
 
 ```url
-https://<IAM_HOST>/api/login/oauth/access_token
+https://<IAM_HOST>/oauth/token
 
 Request body:
 
@@ -96,7 +96,7 @@ When your application needs to call multiple backend services, you might want to
 Hanzo IAM supports RFC 8707 Resource Indicators, which lets you specify the intended service when requesting authorization. Add the `resource` parameter with an absolute URI identifying your service:
 
 ```url
-https://<IAM_HOST>/login/oauth/authorize?
+https://<IAM_HOST>/oauth/authorize?
 client_id=CLIENT_ID&
 redirect_uri=REDIRECT_URI&
 response_type=code&
@@ -128,7 +128,7 @@ Your application doesn't need any changes to support this. The authorization par
 For apps without a backend, use **Implicit Grant**. Enable it on the application, then redirect users to:
 
 ```url
-https://<IAM_HOST>/login/oauth/authorize?client_id=CLIENT_ID&redirect_uri=REDIRECT_URI&response_type=token&scope=openid&state=STATE
+https://<IAM_HOST>/oauth/authorize?client_id=CLIENT_ID&redirect_uri=REDIRECT_URI&response_type=token&scope=openid&state=STATE
 
 After your user has authenticated with Hanzo IAM, Hanzo IAM will redirect them to:
 
@@ -150,7 +150,7 @@ If your application doesn't have a frontend that redirects users to Hanzo IAM, t
 Enable **Password Credentials Grant** on the application, then send a POST request to:
 
 ```url
-https://<IAM_HOST>/api/login/oauth/access_token
+https://<IAM_HOST>/oauth/token
 
 ```json
 {
@@ -177,7 +177,7 @@ Example response:
 
 Use Client Credentials Grant when the application has no frontend.
 
-Enable **Client Credentials Grant** on the application and send a POST request to `https://<IAM_HOST>/api/login/oauth/access_token`:
+Enable **Client Credentials Grant** on the application and send a POST request to `https://<IAM_HOST>/oauth/token`:
 
 ```json
 {
@@ -204,7 +204,7 @@ It is important to note that the AccessToken obtained in this way differs from t
 
 To refresh the access token, use the `refreshToken` obtained above.
 
-Set the **Refresh Token** expiration in the application (default 0 hours), then send a POST request to `https://<IAM_HOST>/api/login/oauth/refresh_token`
+Set the **Refresh Token** expiration in the application (default 0 hours), then send a POST request to `https://<IAM_HOST>/oauth/token`
 
 ```json
 {
@@ -231,7 +231,7 @@ Example response:
 
 Token Exchange (RFC 8693) lets you swap an existing token for a new one with different characteristics—particularly useful when one service needs to call another on behalf of a user, or to narrow a token's scope for a specific downstream service.
 
-To exchange a token, send a POST request to `https://<IAM_HOST>/api/login/oauth/access_token`:
+To exchange a token, send a POST request to `https://<IAM_HOST>/oauth/token`:
 
 ```json
 {
@@ -270,7 +270,7 @@ For example, an API gateway might exchange a broad-scoped access token for a nar
 Hanzo IAM currently supports the [token introspection](https://datatracker.ietf.org/doc/html/rfc7662) endpoint. This endpoint is protected by Basic Authentication (ClientId:ClientSecret).
 
 ```http
-POST /api/login/oauth/introspect HTTP/1.1
+POST /oauth/introspect HTTP/1.1
 Host: IAM_HOST
 Accept: application/json
 Content-Type: application/x-www-form-urlencoded

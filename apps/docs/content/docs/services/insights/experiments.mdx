@@ -1,0 +1,152 @@
+---
+title: Experiments
+description: A/B testing and experimentation with Hanzo Insights — statistical significance, holdout groups, and automatic winner detection.
+---
+
+# Experiments
+
+Hanzo Insights provides a full experimentation platform built on top of feature flags. Run A/B tests with automatic statistical significance tracking, Bayesian analysis, and winner detection.
+
+## Creating an Experiment
+
+1. Go to **insights.hanzo.ai → Experiments → New Experiment**
+2. Configure:
+
+| Field | Description |
+|-------|-------------|
+| **Name** | Descriptive name (e.g., "Pricing Page CTA Copy") |
+| **Feature Flag** | The flag that controls variants (created automatically or linked) |
+| **Variants** | Control + 1 or more test variants |
+| **Goal Metric** | The event/action you're optimizing for |
+| **Secondary Metrics** | Additional metrics to track |
+| **Minimum Sample Size** | Calculated based on expected effect size |
+| **Significance Level** | Default: 95% (p < 0.05) |
+
+## Implementation
+
+Experiments use feature flags under the hood. The SDK returns the variant for the current user:
+
+```typescript
+// Get the user's variant
+const variant = insights.getFeatureFlag('pricing-cta-experiment')
+
+switch (variant) {
+  case 'control':
+    return <Button>Start Free Trial</Button>
+  case 'test':
+    return <Button>Get Started — It's Free</Button>
+}
+
+// Track the conversion event (goal metric)
+function onSignup() {
+  insights.capture('signup_completed', {
+    experiment: 'pricing-cta-experiment',
+    variant,
+  })
+}
+```
+
+### React
+
+```tsx
+import { useFeatureFlag } from '@hanzo/insights-react'
+
+function PricingCTA() {
+  const variant = useFeatureFlag('pricing-cta-experiment')
+
+  return variant === 'test'
+    ? <Button onClick={onSignup}>Get Started — It's Free</Button>
+    : <Button onClick={onSignup}>Start Free Trial</Button>
+}
+```
+
+### Server-Side
+
+```typescript
+import { Insights } from '@hanzo/insights-node'
+
+const insights = new Insights('your-api-key', {
+  host: 'https://insights.hanzo.ai',
+  personalApiKey: 'your-personal-api-key',
+})
+
+// SSR: get variant and render accordingly
+const variant = await insights.getFeatureFlag('pricing-cta-experiment', userId)
+```
+
+## Statistical Methods
+
+Insights supports two statistical approaches:
+
+### Bayesian (Default)
+
+- Calculates probability that each variant is the best
+- Provides credible intervals for effect size
+- No fixed sample size required
+- Results are interpretable as "Variant A has a 95% probability of being better"
+
+### Frequentist
+
+- Classic hypothesis testing with p-values
+- Requires pre-calculated sample size
+- Sequential testing with adjustable significance boundaries
+- Results are interpretable as "We can reject the null hypothesis at p < 0.05"
+
+## Experiment Lifecycle
+
+```
+Draft → Running → Significant → Complete
+                ↘ Inconclusive ↗
+```
+
+| State | Description |
+|-------|-------------|
+| **Draft** | Experiment configured but not yet launched |
+| **Running** | Collecting data, variants being served |
+| **Significant** | One variant has reached statistical significance |
+| **Inconclusive** | Minimum sample reached but no significant difference |
+| **Complete** | Experiment ended, winner (or no winner) declared |
+
+## Holdout Groups
+
+Reserve a percentage of users who never see any experiment, providing a clean baseline:
+
+```
+Experiment: pricing-cta
+Holdout: 10% (never see any variant — always get default experience)
+Control: 45% (original CTA)
+Test: 45% (new CTA)
+```
+
+## Guardrail Metrics
+
+Track metrics that should not degrade even if the goal metric improves:
+
+```
+Goal: signup_completed (should increase)
+Guardrails:
+  - page_load_time (should not increase > 10%)
+  - error_rate (should not increase > 0.5%)
+  - bounce_rate (should not increase > 5%)
+```
+
+If a guardrail is violated, the experiment dashboard shows a warning.
+
+## Multi-Armed Bandits
+
+For optimization (not just testing), use the bandit mode that automatically shifts traffic toward the winning variant:
+
+1. Start with equal traffic split
+2. As data accumulates, shift traffic toward better-performing variants
+3. Minimize regret while still collecting statistical evidence
+
+Enable in experiment settings: **Optimization mode → Multi-armed bandit**
+
+## Best Practices
+
+1. **Define metrics before launching** — Decide what success looks like upfront
+2. **Run until significant** — Don't peek at results and stop early
+3. **One change per experiment** — Isolate the variable you're testing
+4. **Use holdout groups** — Measure cumulative experiment impact
+5. **Monitor guardrails** — Ensure you don't degrade core metrics
+6. **Document learnings** — Record what you learned regardless of outcome

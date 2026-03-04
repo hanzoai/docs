@@ -1,0 +1,153 @@
+---
+title: Hanzo Studio
+description: Visual AI engine for image, video, 3D, and audio workflows with GPU scaling and node-based editing.
+---
+
+# Hanzo Studio
+
+Hanzo Studio is a visual AI engine for building production image generation, video synthesis, 3D rendering, and audio processing pipelines. It provides a node-based drag-and-drop editor with GPU scaling, distributed workers, multi-tenant isolation, and metered billing.
+
+**Dashboard:** [studio.hanzo.ai](https://studio.hanzo.ai)
+**Based on:** ComfyUI (full node compatibility)
+**Image:** `ghcr.io/hanzoai/studio:latest`
+
+## Features
+
+- **Visual Node Editor** — Graph-based canvas for composable AI workflows
+- **GPU on Demand** — CPU prototyping, scale to T4/A100/H100 with one API call
+- **Distributed Workers** — Route GPU-heavy prompts to dedicated worker machines with automatic queuing
+- **Multi-Tenant Isolation** — Per-org storage, compute profiles, and usage tracking via IAM
+- **Metered Billing** — Per-prompt billing via Hanzo Commerce, per-second pricing
+- **ComfyUI Compatible** — Every custom node, model, and workflow from the ecosystem works out of the box
+- **Workflow Templates** — Pre-built workflows for common use cases
+- **Model Zoo** — Install models directly from the editor
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                       studio.hanzo.ai                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────┐  ┌───────────────┐  ┌──────────────────────┐  │
+│  │  Node Editor  │  │  Coordinator  │  │  Worker Pool         │  │
+│  │  (React)      │  │  (Python)     │  │                      │  │
+│  │  - Canvas     │  │  - Queue      │  │  worker-0 (T4)      │  │
+│  │  - Nodes      │  │  - Route      │  │  worker-1 (A100)    │  │
+│  │  - Preview    │  │  - Aggregate  │  │  worker-2 (H100)    │  │
+│  └──────────────┘  └───────────────┘  └──────────────────────┘  │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │  Model Storage (S3)  │  IAM Auth  │  Commerce Billing    │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Quick Start
+
+### Cloud
+
+1. Go to [studio.hanzo.ai](https://studio.hanzo.ai)
+2. Sign in with your Hanzo account
+3. Select a workflow template or start from scratch
+4. Connect nodes, configure parameters, and execute
+
+### Self-Hosted
+
+```bash
+docker pull ghcr.io/hanzoai/studio:latest
+docker run -p 8188:8188 ghcr.io/hanzoai/studio:latest \
+  python main.py --listen 0.0.0.0 --cpu
+# Open http://localhost:8188
+```
+
+### GPU
+
+```bash
+docker run --gpus all -p 8188:8188 ghcr.io/hanzoai/studio:latest \
+  python main.py --listen 0.0.0.0 --cuda-device 0
+```
+
+## Compute Profiles
+
+| Profile | GPU | VRAM | Best For |
+|---------|-----|------|----------|
+| `cpu` | — | — | Prototyping, lightweight workflows |
+| `gpu-basic` | T4 | 16 GB | Image generation, standard diffusion |
+| `gpu-pro` | A100 | 80 GB | Large models, video generation, 3D |
+| `gpu-max` | H100 | 80 GB | Maximum throughput, batch processing |
+
+```bash
+# Switch compute profile
+curl -X PUT https://studio.hanzo.ai/api/compute/config \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -d '{"active_profile": "gpu-basic"}'
+```
+
+## API
+
+### Execute Workflow
+
+```bash
+curl -X POST https://studio.hanzo.ai/api/prompt \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": { ... },
+    "client_id": "my-client"
+  }'
+```
+
+### Queue Status
+
+```bash
+curl https://studio.hanzo.ai/api/queue \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+```
+
+### Available Models
+
+```bash
+curl https://studio.hanzo.ai/api/models \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+```
+
+## Workflow Types
+
+| Category | Examples |
+|----------|---------|
+| **Image Generation** | Stable Diffusion, FLUX, SDXL, ControlNet |
+| **Video Synthesis** | AnimateDiff, SVD, video-to-video |
+| **3D Rendering** | TripoSR, instant mesh, point-e |
+| **Audio** | AudioCraft, Bark, Whisper |
+| **Upscaling** | ESRGAN, SwinIR, Real-ESRGAN |
+| **Inpainting** | Segment Anything + diffusion |
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `HANZO_API_KEY` | API key for authentication |
+| `HANZO_IAM_URL` | IAM endpoint (default: `https://hanzo.id`) |
+| `STUDIO_STORAGE_PATH` | Local model storage path |
+| `STUDIO_WORKER_MODE` | `coordinator` or `worker` |
+| `STUDIO_GPU_PROFILE` | Default compute profile |
+| `COMMERCE_BILLING_ENABLED` | Enable per-prompt billing |
+
+## Related
+
+<Cards>
+  <Card title="Full Studio Documentation" href="/docs/studio">
+    Complete guide with workflow examples, SDK reference, and advanced configuration
+  </Card>
+  <Card title="Commerce" href="/docs/services/commerce">
+    Billing and payment integration for metered usage
+  </Card>
+  <Card title="S3 Storage" href="/docs/services/s3">
+    Model and asset storage
+  </Card>
+  <Card title="IAM" href="/docs/services/iam">
+    Authentication and multi-tenant isolation
+  </Card>
+</Cards>
