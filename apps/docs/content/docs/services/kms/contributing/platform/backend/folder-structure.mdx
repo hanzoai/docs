@@ -1,0 +1,105 @@
+---
+title: 'Backend folder structure'
+---
+
+```
+├── scripts
+├── e2e-test
+├── bdd
+└── src/
+    ├── @types/
+    │   ├── knex.d.ts
+    │   ├── fastify.d.ts
+    │   ├── ...
+    ├── db/
+    │   ├── migrations
+    │   ├── schemas
+    │   └── seeds
+    ├── keystore/
+    ├── lib/
+    │   ├── api-docs
+    │   ├── aws
+    │   ├── axios
+    │   ├── base64
+    │   ├── casl
+    │   ├── certificates
+    │   ├── config
+    │   ├── crypto
+    │   ├── dates
+    │   ├── delay
+    │   ├── error-codes
+    │   ├── errors
+    │   ├── files
+    │   ├── fn
+    │   ├── ...
+    ├── queue
+    ├── server/
+    │   ├── routes/
+    │   │   ├── v1
+    │   │   ├── v2
+    │   │   ├── v3
+    │   │   └── v4
+    │   ├── plugins
+    │   ├── config
+    │   └── lib
+    ├── services/
+    │   ├── auth
+    │   ├── org
+    │   ├── ...
+    │   └── project/
+    │       ├── project-service.ts
+    │       ├── project-types.ts
+    │       └── project-dal.ts
+    └── ee/
+        ├── routes
+        └── services
+```
+
+### `backend/scripts` 
+Contains reusable scripts for backend automation, like running migrations and generating SQL schemas.
+
+### `backend/e2e-test` 
+Integration tests for the APIs.
+
+### `backend/bdd`
+Behavior-Driven Development (BDD) tests using Python and Gherkin feature files.
+
+### `backend/src`
+The source code of the backend.
+
+- `@types`: Type definitions for libraries like Fastify, Knex, and other third-party dependencies.
+- `db`: Knex.js configuration for the database, including migrations, seed files, and SQL type schemas.
+- `keystore`: Key-value store abstraction layer supporting Redis and PostgreSQL for application caching, distributed locking, and coordination.
+- `lib`: Stateless, reusable functions used across the codebase, organized by functionality (crypto, config, dates, etc.).
+- `queue`: Hanzo KMS's queue system based on BullMQ.
+
+### `src/server`
+
+- Scope anything related to Fastify/service here.
+- Includes routes, Fastify plugins, server configurations, and server-specific utilities.
+- The routes folder contains various versions of routes separated into v1, v2, v3, v4, etc.
+
+### `src/services`
+
+- Handles the core business logic for all operations.
+- Follows the co-location principle: related components should be kept together.
+- Each service component typically contains:
+
+  1. **dal**: Database Access Layer functions for database operations
+  2. **service**: The service layer containing business logic.
+  3. **type**: Type definitions used within the service component.
+  4. **fns**: An optional component for sharing reusable functions related to the service.
+  5. **queue**: An optional component for queue-specific logic, like `secret-queue.ts`.
+
+### `src/ee`
+
+Follows the same pattern as above, with the exception of a license change from MIT to Hanzo KMS Proprietary License.
+
+### Guidelines and Best Practices
+
+- All services are interconnected at `/src/server/routes/index.ts`, following the principle of simple dependency injection.
+- Files should be named in dash-case.
+- Avoid using classes in the codebase; opt for simple functions instead.
+- All committed code must be properly linted using `npm run lint:fix` and type-checked with `npm run type:check`.
+- Minimize shared logic between services as much as possible.
+- Controllers within a router component should ideally call only one service layer, with exceptions for services like `audit-log` that require access to request object data.
