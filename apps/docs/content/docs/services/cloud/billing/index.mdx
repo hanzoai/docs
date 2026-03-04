@@ -1,0 +1,31 @@
+---
+title: Overview
+description: Billing and Usage Tracking
+---
+
+
+Hanzo Cloud tracks AI token usage and costs automatically through its integration with Hanzo IAM. Every conversation with an AI model generates transaction records that capture consumption details for billing and analytics.
+
+## How It Works
+
+When you send a message to an AI model, Hanzo Cloud validates your balance before generating the response. The system estimates the token cost, checks if you have sufficient funds, and only proceeds if validation succeeds. This prevents situations where you receive an AI response but can't pay for it.
+
+**Chat → Balance Check → Message → Transaction**
+
+The validation happens in two steps. First, Hanzo Cloud estimates the cost by asking the model provider how many tokens your question will likely consume. It then validates this estimated cost against your balance using a dry run transaction. If you have insufficient funds, you'll see an error immediately—no AI processing occurs. If validation succeeds, the AI generates your answer and the actual transaction records the real cost.
+
+Each chat session maintains a running total of tokens used and costs incurred. Individual messages record their own token consumption, and transactions are created in Hanzo IAM after the AI completes its response. This ensures accurate billing records and enables usage monitoring across your organization.
+
+## Token Tracking
+
+Token usage is tracked at multiple levels:
+
+- **Chats** display total tokens used and cumulative price for the entire conversation
+- **Messages** show tokens consumed for each AI response
+- **Transactions** record the billing details in Hanzo IAM for centralized accounting
+
+The model provider field identifies which AI service (OpenAI, Claude, etc.) handled each interaction, making it easy to understand usage patterns across different providers.
+
+## Price Calculation
+
+Costs are calculated using proper decimal handling to prevent floating-point precision loss. The system automatically applies the correct pricing model based on the provider and model being used, ensuring accurate billing for all token usage.
