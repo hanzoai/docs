@@ -180,7 +180,7 @@ function transformerEscape() {
 function remarkPassthroughUnknownJsx() {
   return (tree, file) => {
     const filePath = file.path ?? file.history[0] ?? "";
-    if (!filePath.includes("content/docs/projects/") && !filePath.includes("content\\docs\\projects\\")) {
+    if (!filePath.includes("content/docs/projects/") && !filePath.includes("content\\docs\\projects\\") && !filePath.includes("content/docs/services/") && !filePath.includes("content\\docs\\services\\")) {
       return;
     }
     visit(tree, ["mdxJsxFlowElement", "mdxJsxTextElement"], (node) => {
@@ -188,6 +188,15 @@ function remarkPassthroughUnknownJsx() {
       if (!/^[A-Z]/.test(node.name)) return;
       node.name = null;
       node.attributes = [];
+    });
+    visit(tree, ["mdxFlowExpression", "mdxTextExpression"], (node, index, parent) => {
+      if (index == null || !parent) return;
+      const expr = (node.value || "").trim();
+      if (!expr || /[()=><+\-*/!&|?:,;{}[\]`'"]/.test(expr)) return;
+      parent.children.splice(index, 1, {
+        type: "text",
+        value: `{${expr}}`
+      });
     });
   };
 }

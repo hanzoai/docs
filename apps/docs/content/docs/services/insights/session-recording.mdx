@@ -1,0 +1,156 @@
+---
+title: Session Recording
+description: Replay user sessions with full privacy controls using Hanzo Insights session recording.
+---
+
+# Session Recording
+
+Hanzo Insights captures full session replays using rrweb, giving you a video-like playback of every user interaction. Privacy controls let you mask sensitive data while keeping the recordings useful.
+
+## Setup
+
+Enable session recording in the SDK initialization:
+
+```typescript
+insights.init('your-api-key', {
+  api_host: 'https://insights.hanzo.ai',
+  session_recording: {
+    maskAllInputs: true,
+  },
+})
+```
+
+Recordings appear in **insights.hanzo.ai → Session Recordings** within seconds.
+
+## Privacy Controls
+
+### Input Masking
+
+```typescript
+insights.init('your-api-key', {
+  api_host: 'https://insights.hanzo.ai',
+  session_recording: {
+    maskAllInputs: true,           // Mask all input values with ****
+    maskInputOptions: {
+      password: true,              // Always mask passwords
+      email: true,                 // Mask email fields
+      color: false,                // Don't mask color pickers
+    },
+  },
+})
+```
+
+### Text Masking
+
+```typescript
+session_recording: {
+  maskTextSelector: '.sensitive',    // Mask text in elements with this class
+  maskAllText: false,                // Set true to mask ALL text
+}
+```
+
+### Element Blocking
+
+```typescript
+session_recording: {
+  blockSelector: '.no-record',     // Completely hide these elements
+  blockClass: 'insights-no-record', // Block by class name
+}
+```
+
+### Attribute Masking
+
+```typescript
+session_recording: {
+  maskAllElementAttributes: false,   // Mask all HTML attributes
+  maskAttributeFn: (attr, value, element) => {
+    if (attr === 'data-email') return '****'
+    return value
+  },
+}
+```
+
+## What Gets Captured
+
+| Data | Captured | Notes |
+|------|----------|-------|
+| DOM mutations | Yes | Via rrweb snapshots |
+| Mouse movements | Yes | Position tracking |
+| Clicks | Yes | Click targets |
+| Scrolling | Yes | Scroll position |
+| Form inputs | Configurable | Masked by default |
+| Network requests | Optional | URL and status only |
+| Console logs | Optional | Enable with `console_log_recording` |
+| Performance metrics | Optional | Core Web Vitals |
+
+### Enable Optional Captures
+
+```typescript
+session_recording: {
+  recordCrossOriginIframes: false,  // Record cross-origin iframes
+  captureConsoleLogLevel: 'warn',   // Capture console.warn and above
+  recordHeaders: false,             // Record network request headers
+  recordBody: false,                // Record network request/response bodies
+}
+```
+
+## Sampling
+
+Control recording volume to manage storage costs:
+
+```typescript
+insights.init('your-api-key', {
+  api_host: 'https://insights.hanzo.ai',
+  session_recording: {
+    // Record 50% of sessions
+    sampleRate: 0.5,
+  },
+})
+```
+
+## Conditional Recording
+
+Start recordings based on specific conditions:
+
+```typescript
+insights.init('your-api-key', {
+  api_host: 'https://insights.hanzo.ai',
+  disable_session_recording: true, // Disabled by default
+})
+
+// Start recording after a specific event
+function onCheckoutError(error: Error) {
+  insights.startSessionRecording()
+  insights.capture('checkout_error', { error: error.message })
+}
+```
+
+## Playback
+
+Session recordings in the dashboard show:
+
+- **Timeline** — Scrubable timeline with event markers
+- **Events overlay** — Custom events, errors, and page changes marked on timeline
+- **Console logs** — JavaScript console output (if enabled)
+- **Network tab** — HTTP requests and responses (if enabled)
+- **User info** — Identified user properties and session metadata
+
+### Filtering Recordings
+
+Filter recordings by:
+- User properties (plan, country, email domain)
+- Events that occurred during the session
+- Duration (minimum/maximum)
+- Page visited
+- Errors encountered
+- Cohort membership
+
+## Data Retention
+
+Session recordings are stored on your Insights instance (ClickHouse). Configure retention in the Insights admin:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Recording retention | 30 days | How long recordings are kept |
+| Max recording duration | 24 hours | Maximum single recording length |
+| Storage per recording | ~500KB/min | Average storage requirement |

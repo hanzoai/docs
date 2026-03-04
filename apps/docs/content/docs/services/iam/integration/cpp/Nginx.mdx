@@ -107,9 +107,9 @@ To configure NGINX Plus as the OpenID Connect relying party, follow these steps:
     ```bash
     curl http://<iam-server-address>/.well-known/openid-configuration | python -m json.tool
     {
-        "authorization_endpoint": "https://<iam-server-address>/login/oauth/authorize",
+        "authorization_endpoint": "https://<iam-server-address>/oauth/authorize",
         "...":"...",
-        "token_endpoint": "http://<iam-server-address>/api/login/oauth/access_token",
+        "token_endpoint": "http://<iam-server-address>/oauth/token",
         "...":"...",
         "jwks_uri": "http://<iam-server-address>/.well-known/jwks",
         "...":"...",
@@ -117,8 +117,8 @@ To configure NGINX Plus as the OpenID Connect relying party, follow these steps:
     ```
 
 4. Open **/etc/nginx/conf.d/openid_connect_configuration.conf** using your preferred text editor. Modify the "default" parameter value for each of the following [map](https://nginx.org/en/docs/http/ngx_http_map_module.html#map) directives with the specified values:<span id="jump2"></span>
-    - `map $host $oidc_authz_endpoint` – Use the value of the `authorization_endpoint` from [Step 3](#configuring-nginx-plus) (in this guide, `https://<iam-server-address>/login/oauth/authorize`)
-    - `map $host $oidc_token_endpoint` – Use the value of the `token_endpoint` from [Step 3](#configuring-nginx-plus) (in this guide, `http://<iam-server-address>/api/login/oauth/access_token`)
+    - `map $host $oidc_authz_endpoint` – Use the value of the `authorization_endpoint` from [Step 3](#configuring-nginx-plus) (in this guide, `https://<iam-server-address>/oauth/authorize`)
+    - `map $host $oidc_token_endpoint` – Use the value of the `token_endpoint` from [Step 3](#configuring-nginx-plus) (in this guide, `http://<iam-server-address>/oauth/token`)
     - `map $host $oidc_client` – Use the value in the **Client ID** field from [Step 4 of *Configuring Hanzo IAM*](#configuring-iam)
     - `map $host $oidc_client_secret` – Use the value in the **Client Secret** field from [Step 2 of *Configuring Hanzo IAM*](#configuring-iam)
     - `map $host $oidc_hmac_key` – Use a unique, long, and secure phrase

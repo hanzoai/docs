@@ -1,0 +1,233 @@
+---
+title: Feature Flags
+description: Gradual rollouts, multivariate flags, and targeted feature delivery with Hanzo Insights.
+---
+
+# Feature Flags
+
+Hanzo Insights provides feature flags for gradual rollouts, A/B testing, and targeted feature delivery. Flags are evaluated client-side and server-side with consistent behavior across all SDKs.
+
+## Creating Flags
+
+Create flags in the Insights dashboard at **insights.hanzo.ai → Feature Flags → New Flag**.
+
+| Field | Description |
+|-------|-------------|
+| **Key** | Unique identifier (e.g., `new-checkout-flow`) |
+| **Type** | Boolean (on/off) or Multivariate (string variants) |
+| **Rollout** | Percentage of users who see the flag |
+| **Conditions** | Target by user properties, cohorts, or groups |
+| **Payload** | Optional JSON payload attached to the flag |
+
+## Boolean Flags
+
+Simple on/off toggles:
+
+```typescript
+// Browser
+if (insights.isFeatureEnabled('new-checkout')) {
+  renderNewCheckout()
+} else {
+  renderLegacyCheckout()
+}
+```
+
+```python
+# Python
+if insights.feature_enabled('new-checkout', 'user-123'):
+    render_new_checkout()
+```
+
+```go
+// Go
+enabled, _ := client.IsFeatureEnabled(insights.FeatureFlagPayload{
+    Key:        "new-checkout",
+    DistinctId: "user-123",
+})
+```
+
+## Multivariate Flags
+
+Return different string variants:
+
+```typescript
+const variant = insights.getFeatureFlag('pricing-experiment')
+
+switch (variant) {
+  case 'control':
+    showOriginalPricing()
+    break
+  case 'variant-a':
+    showDiscountedPricing()
+    break
+  case 'variant-b':
+    showUsageBasedPricing()
+    break
+}
+```
+
+## Flag Payloads
+
+Attach JSON configuration to flags:
+
+```typescript
+const config = insights.getFeatureFlagPayload('dashboard-layout')
+// { "columns": 3, "showSidebar": true, "theme": "dark" }
+
+return <Dashboard columns={config?.columns ?? 2} />
+```
+
+## React Hooks
+
+```tsx
+import { useFeatureFlag, useFeatureFlagPayload, useActiveFeatureFlags } from '@hanzo/insights-react'
+
+function Dashboard() {
+  const showNewNav = useFeatureFlag('new-navigation')
+  const layoutConfig = useFeatureFlagPayload('dashboard-layout')
+  const allFlags = useActiveFeatureFlags()
+
+  return (
+    <div>
+      {showNewNav ? <NewNav /> : <LegacyNav />}
+      <Grid columns={layoutConfig?.columns ?? 2} />
+      <pre>{JSON.stringify(allFlags, null, 2)}</pre>
+    </div>
+  )
+}
+```
+
+## Server-Side Evaluation
+
+Evaluate flags on the server for consistent rendering (SSR, API authorization):
+
+```typescript
+// Node.js
+import { Insights } from '@hanzo/insights-node'
+
+const insights = new Insights('your-api-key', {
+  host: 'https://insights.hanzo.ai',
+  personalApiKey: 'your-personal-api-key', // Required for server-side flag eval
+})
+
+// Single flag
+const enabled = await insights.isFeatureEnabled('new-api', 'user-123')
+
+// All flags for a user
+const flags = await insights.getAllFlags('user-123')
+// { 'new-api': true, 'pricing-experiment': 'variant-a', ... }
+
+// With groups
+const flags = await insights.getAllFlags('user-123', {
+  groups: { organization: 'org-acme' },
+})
+```
+
+## Rollout Strategies
+
+### Percentage Rollout
+
+Roll out to a percentage of users. The hash is deterministic — the same user always sees the same variant.
+
+```
+Flag: new-checkout
+Rollout: 25%
+→ 25% of users see the flag enabled
+→ Same user always gets the same result
+```
+
+### Property-Based Targeting
+
+Target users by their properties:
+
+```
+Flag: enterprise-features
+Conditions:
+  - plan = "enterprise" → 100% enabled
+  - plan = "pro" AND country = "US" → 50% enabled
+  - Default → 0% (disabled)
+```
+
+### Cohort Targeting
+
+Target specific cohorts defined in the Insights dashboard:
+
+```
+Flag: beta-features
+Conditions:
+  - In cohort "Beta Testers" → 100% enabled
+  - Default → 0%
+```
+
+### Group-Based Targeting
+
+Target organizations or workspaces:
+
+```
+Flag: advanced-analytics
+Conditions:
+  - organization.plan = "enterprise" → 100% enabled
+  - organization.employee_count > 100 → 50% enabled
+  - Default → 0%
+```
+
+## Bootstrapping
+
+Pre-load flags to avoid flickering on page load:
+
+```typescript
+insights.init('your-api-key', {
+  api_host: 'https://insights.hanzo.ai',
+  bootstrap: {
+    distinctID: 'user-123',
+    featureFlags: {
+      'new-checkout': true,
+      'pricing-experiment': 'variant-a',
+    },
+  },
+})
+```
+
+For SSR, evaluate flags server-side and pass them as bootstrap values to the client.
+
+## Local Evaluation
+
+For high-throughput server-side use, enable local evaluation to avoid network calls:
+
+```typescript
+const insights = new Insights('your-api-key', {
+  host: 'https://insights.hanzo.ai',
+  personalApiKey: 'your-personal-api-key',
+  featureFlagsPollingInterval: 30000, // Refresh every 30s
+})
+
+// Evaluated locally — no network call
+const enabled = await insights.isFeatureEnabled('new-api', 'user-123')
+```
+
+Local evaluation downloads flag definitions periodically and evaluates them in-process. This is faster but requires a personal API key.
+
+## Overrides
+
+Override flags for testing:
+
+```typescript
+// Browser: override a flag locally
+insights.featureFlags.override({
+  'new-checkout': true,
+  'pricing-experiment': 'variant-b',
+})
+
+// Clear overrides
+insights.featureFlags.clearOverrides()
+```
+
+## Integration with Hanzo PaaS
+
+The Hanzo PaaS control plane auto-injects `INSIGHTS_FEATURE_BRANCH` and `INSIGHTS_RELEASE` environment variables into deployments. Feature flag rollout percentages can drive canary weights via ingress configuration:
+
+```
+Feature flag "canary-v2" at 10% → Ingress canary-weight: 10%
+```
+
+This enables feature-flag-driven canary deployments where traffic splitting matches experimentation rollout.

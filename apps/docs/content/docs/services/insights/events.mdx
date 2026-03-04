@@ -1,0 +1,164 @@
+---
+title: Custom Events
+description: Track domain-specific events with Hanzo Insights — naming conventions, properties, and best practices.
+---
+
+# Custom Events
+
+Beyond autocapture and standard events, Insights lets you track custom events specific to your application domain.
+
+## Capturing Events
+
+```typescript
+insights.capture('event_name', {
+  property_key: 'value',
+  numeric_property: 42,
+  nested: { key: 'value' },
+})
+```
+
+## Naming Conventions
+
+Use `snake_case` for event names with a verb-noun pattern:
+
+| Pattern | Examples |
+|---------|---------|
+| `{action}_{object}` | `signup_completed`, `model_selected`, `file_uploaded` |
+| `{object}_{action}` | `checkout_started`, `subscription_cancelled` |
+
+Avoid:
+- camelCase (`signUpCompleted`) — harder to read in dashboards
+- Spaces (`Sign Up Completed`) — inconsistent across SDKs
+- Prefixes (`track_signup_completed`) — redundant with the capture call
+
+## Common Event Patterns
+
+### User Lifecycle
+
+```typescript
+insights.capture('signup_started', { source: 'landing_page' })
+insights.capture('signup_completed', { plan: 'pro', method: 'google_oauth' })
+insights.capture('onboarding_step_completed', { step: 2, step_name: 'connect_repo' })
+insights.capture('onboarding_completed', { duration_seconds: 120 })
+insights.capture('subscription_upgraded', { from: 'free', to: 'pro' })
+insights.capture('account_deleted', { reason: 'too_expensive' })
+```
+
+### AI/LLM
+
+```typescript
+insights.capture('model_inference', {
+  model: 'zen4-pro',
+  tokens_in: 150,
+  tokens_out: 500,
+  latency_ms: 1240,
+  stream: true,
+  cost_usd: 0.004,
+})
+
+insights.capture('agent_task_completed', {
+  agent_id: 'agent_xyz',
+  task_type: 'code_review',
+  duration_ms: 45000,
+  tools_used: ['read_file', 'grep', 'edit'],
+  success: true,
+})
+
+insights.capture('feature_flag_served', {
+  flag: 'new-model-routing',
+  variant: 'test',
+  model_override: 'zen4-ultra',
+})
+```
+
+### E-Commerce
+
+```typescript
+insights.capture('product_viewed', {
+  product_id: 'prod_001',
+  name: 'AI API Credits',
+  price: 49.99,
+  currency: 'USD',
+  category: 'credits',
+})
+
+insights.capture('cart_updated', {
+  action: 'add',
+  product_id: 'prod_001',
+  quantity: 2,
+  cart_total: 99.98,
+})
+
+insights.capture('checkout_completed', {
+  order_id: 'ord_abc',
+  total: 149.99,
+  currency: 'USD',
+  payment_method: 'stripe',
+  items_count: 3,
+})
+```
+
+### Infrastructure
+
+```typescript
+insights.capture('deployment_completed', {
+  service: 'api-gateway',
+  environment: 'production',
+  version: '2.4.1',
+  duration_seconds: 45,
+  rollback: false,
+})
+
+insights.capture('error_occurred', {
+  error_type: 'rate_limit_exceeded',
+  service: 'llm-gateway',
+  model: 'zen4-pro',
+  http_status: 429,
+})
+```
+
+## Event Properties
+
+### Reserved Properties
+
+Properties prefixed with `$` are reserved by Insights:
+
+| Property | Set By | Description |
+|----------|--------|-------------|
+| `$current_url` | Auto | Current page URL |
+| `$pathname` | Auto | URL path |
+| `$browser` | Auto | Browser name |
+| `$os` | Auto | Operating system |
+| `$device_type` | Auto | Desktop/Mobile/Tablet |
+| `$referrer` | Auto | Referrer URL |
+| `$set` | `identify()` | Properties to set on person |
+| `$set_once` | `identify()` | Properties to set once |
+
+### Property Types
+
+| Type | Example | Notes |
+|------|---------|-------|
+| String | `"pro"` | Most common |
+| Number | `42`, `3.14` | Enables sum/avg/min/max aggregations |
+| Boolean | `true` | Useful for filters |
+| Array | `["a", "b"]` | Searchable, each element is indexed |
+| Object | `{ "key": "val" }` | Nested access via dot notation |
+| DateTime | `"2026-03-01T00:00:00Z"` | ISO 8601 format |
+
+## Best Practices
+
+1. **Be consistent** — Use the same property names across events (e.g., always `model`, not sometimes `model_name`)
+2. **Include context** — Add properties that enable filtering (plan, environment, version)
+3. **Avoid high cardinality** — Don't use UUIDs as property values (use them as `distinct_id` instead)
+4. **Keep payloads small** — Don't send entire request/response bodies; send summary metrics
+5. **Use timestamps** — Insights adds `timestamp` automatically, but include duration/latency metrics as properties
+
+## Event Volume
+
+Insights processes events through the Kafka adapter (Hanzo Stream). For high-volume ingestion:
+
+- **Browser SDK**: Events are batched automatically (configurable via `flushAt` and `flushInterval`)
+- **Server SDK**: Events are batched with configurable batch size and interval
+- **API**: Use the `/batch` endpoint for bulk ingestion (up to 1000 events per request)
+
+For the full standard event reference, see the [Event Catalog](/docs/services/insights-events).

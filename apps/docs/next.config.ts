@@ -9,6 +9,15 @@ const withAnalyzer = createBundleAnalyzer({
 
 const isGitHubPages = process.env.GITHUB_PAGES === '1';
 
+// Federated docs: each section build uses a unique asset prefix so the
+// CF Worker can route /__kms/_next/... to the correct Pages project.
+const sectionAssetPrefix: Record<string, string> = {
+  kms: '/__kms',
+  iam: '/__iam',
+  projects: '/__projects',
+};
+const assetPrefix = sectionAssetPrefix[process.env.DOCS_SECTION ?? ''];
+
 // Stub module that exports a no-op component for every named/default import.
 // Used as the resolution target for unresolvable upstream doc platform packages.
 const emptyProjectModule = path.resolve(__dirname, 'lib/empty-project-module.js');
@@ -16,6 +25,7 @@ const emptyProjectModule = path.resolve(__dirname, 'lib/empty-project-module.js'
 const config: NextConfig = {
   output: process.env.NEXT_EXPORT === '1' ? 'export' : undefined,
   basePath: isGitHubPages ? '/docs' : undefined,
+  assetPrefix: assetPrefix || undefined,
   reactStrictMode: true,
   experimental: {
     // Reduce peak memory during webpack compilation for large builds.
