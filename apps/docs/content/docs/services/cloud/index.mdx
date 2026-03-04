@@ -9,7 +9,8 @@ Hanzo Cloud is the core AI Cloud OS that powers `api.hanzo.ai`. It provides a un
 
 ## Features
 
-- **Model Gateway**: Route inference requests across 50+ models via ZAP protocol
+- **Three Protocols**: REST API, MCP (Model Context Protocol), ZAP (Zero-overhead API Protocol)
+- **Model Gateway**: Route inference requests across 50+ models and providers
 - **Knowledge Base**: RAG-powered document stores with vector embeddings
 - **Container Cloud**: Kubernetes application templates and management
 - **Multi-Provider**: OpenAI, Anthropic, Fireworks, DO-AI, and custom Zen models
@@ -91,6 +92,54 @@ const response = await client.chat.completions.create({
   model: 'zen4-mini',
   messages: [{ role: 'user', content: 'Hello' }]
 })
+```
+
+## Protocols
+
+Hanzo Cloud exposes three protocols for accessing AI services:
+
+| Protocol | Transport | Use Case |
+|----------|-----------|----------|
+| **REST** | HTTPS (JSON) | Standard OpenAI-compatible API for chat completions, embeddings, models |
+| **MCP** | stdio / SSE | Model Context Protocol — 260+ tools for AI agents (filesystem, search, browser, etc.) |
+| **ZAP** | WebSocket (binary) | Zero-overhead API Protocol — native binary streaming for low-latency inference |
+
+### REST (OpenAI-Compatible)
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer hk-your-key" \
+  -d '{"model": "zen4-mini", "messages": [{"role": "user", "content": "Hello"}]}'
+```
+
+### MCP (Model Context Protocol)
+
+```bash
+npx @hanzo/mcp --api-key hk-your-key
+```
+
+Or configure in your AI client's MCP settings:
+
+```json
+{
+  "mcpServers": {
+    "hanzo": {
+      "command": "npx",
+      "args": ["@hanzo/mcp", "--api-key", "hk-your-key"]
+    }
+  }
+}
+```
+
+### ZAP (WebSocket)
+
+```typescript
+const ws = new WebSocket('wss://api.hanzo.ai/zap')
+ws.send(JSON.stringify({
+  type: 'chat.completions',
+  model: 'zen4-mini',
+  messages: [{ role: 'user', content: 'Hello' }]
+}))
 ```
 
 ## Authentication
