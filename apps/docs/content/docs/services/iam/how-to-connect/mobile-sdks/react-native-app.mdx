@@ -1,0 +1,100 @@
+---
+title: React Native app
+description: Integrate Hanzo IAM in a React Native app with the official SDK.
+---
+
+The [iam-react-native-example](https://github.com/iam/iam-react-native-example) and [iam-react-native-sdk](https://github.com/iam/iam-react-native-sdk) show how to use Hanzo IAM in React Native.
+
+## Run the example
+
+### Quick start
+
+```bash
+git clone git@github.com:iam/iam-react-native-example.git
+cd iam-react-native-example
+yarn install
+cd ios/ && pod install && cd ..
+
+**iOS:** `react-native start` then `react-native run-ios`  
+**Android:** `react-native start` then `react-native run-android`
+
+Start an emulator or connect a device before running.
+
+### Preview
+
+|                                                 **iOS**                                                  |                                                   **Android**                                                    |
+|:--------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------:|
+| <img src="/img/how-to-connect/mobile-sdks/react-native-app/iOS-login.png" alt="iOS-login" width="250" /> | <img src="/img/how-to-connect/mobile-sdks/react-native-app/Android-login.png" alt="Android-login" width="250" /> |
+
+Click **Login with Hanzo IAM** to open the Hanzo IAM login screen.
+
+|                                                         **iOS**                                                          |                                                           **Android**                                                            |
+|:------------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------:|
+| <img src="/img/how-to-connect/mobile-sdks/react-native-app/iOS-iam-login.png" alt="iOS-iam-login" width="250" /> | <img src="/img/how-to-connect/mobile-sdks/react-native-app/Android-iam-login.png" alt="Android-iam-login" width="250" /> |
+
+After sign-in, the user profile is shown.
+
+|                                                       **iOS**                                                       |                                                           **Android**                                                            |
+|:-------------------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------------------------------------------------------------:|
+| <img src="/img/how-to-connect/mobile-sdks/react-native-app/iOS-userInfo.png" alt="iOS-userInfo" width="250" /> | <img src="/img/how-to-connect/mobile-sdks/react-native-app/Android-userInfo.png" alt="Android-userInfo" width="250" /> |
+
+
+|                                                             **iOS**                                                              |                                 **Android**                                                                                              |
+|:--------------------------------------------------------------------------------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------------------------:|
+| <img src="https://github.com/iam/iam-react-native-example/blob/master/iOS-gif.gif?raw=true" alt="iOS-gif" width="250" /> | <img src="https://github.com/iam/iam-react-native-example/blob/master/Android-gif.gif?raw=true" alt="Android-gif" width="250" /> |
+
+## Integration
+
+The example uses [iam-react-native-sdk](https://github.com/iam/iam-react-native-sdk). To use it in your own project:
+
+### 1. Install the SDK
+
+```shell script
+# NPM
+npm i iam-react-native-sdk
+
+# Yarn
+yarn add iam-react-native-sdk
+
+### 2. Initialize
+
+Set these 7 string parameters (all required except `redirectPath` and `signinPath`):
+
+| Name (in order)  | Must | Description                                                                                    |
+|------------------|------|------------------------------------------------------------------------------------------------|
+| serverUrl        | Yes  | your Hanzo IAM server URL                                                                        |
+| clientId         | Yes  | the Client ID of your Hanzo IAM application                                                      |
+| appName          | Yes  | the name of your Hanzo IAM application                                                           |
+| organizationName | Yes  | the name of the Hanzo IAM organization connected with your Hanzo IAM application                   |
+| redirectPath     | No   | the path of the redirect URL for your Hanzo IAM application, will be `/callback` if not provided |
+| signinPath       | No   | the path of the signin URL for your Hanzo IAM application                                        |
+
+```javascript
+import SDK from 'iam-react-native-sdk'
+
+const sdkConfig = {
+  serverUrl: 'https://iam.hanzo.ai',
+  clientId: 'b800a86702dd4d29ec4d',
+  appName: 'app-example',
+  organizationName: 'casbin',
+  redirectPath: 'http://localhost:5000/callback',
+  signinPath: '/api/signin',
+};
+const sdk = new SDK(sdkConfig)
+
+### 3. Use the SDK
+
+Typical flow:
+
+```javascript
+
+// get the signin url
+getSigninUrl()
+
+// get Access Token
+getAccessToken(redirectUrl); // http://localhost:5000/callback?code=b75bc5c5ac65ffa516e5&state=gjmfdgqf498
+
+// decode jwt token to get user info
+JwtDecode(jwtToken) 
+
+See [iam-react-native-sdk](https://github.com/iam/iam-react-native-sdk) for the full API.
