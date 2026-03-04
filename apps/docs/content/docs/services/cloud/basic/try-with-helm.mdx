@@ -40,7 +40,7 @@ dataSourceName = your-username:your-password@tcp(your-db-host:3306)/
 dbName = your-database
 
 # Hanzo IAM Authentication - REQUIRED
-iamEndpoint = https://door.iam.com
+iamEndpoint = https://hanzo.id
 clientId = your-client-id
 clientSecret = your-client-secret
 iamOrganization = "your-organization"
@@ -101,15 +101,17 @@ Ensure you have created both:
 
 ### Step 2: Install with Configuration File
 
-:::info
-Visit the [Casbin Helm Chart](https://hub.docker.com/r/casbin/cloud-helm-chart/tags) to find the latest version.
-:::
+
+> **Info**
+
+Visit the [Casbin Helm Chart](https://hub.docker.com/r/hanzoai/cloud-helm-chart/tags) to find the latest version.
+
 
 Install Hanzo Cloud by passing the app.conf file directly:
 
 ```bash
 # Method 1: Pass app.conf content as appConfig parameter
-helm install cloud oci://registry-1.docker.io/casbin/cloud-helm-chart \
+helm install cloud oci://registry-1.docker.io/hanzoai/cloud-helm-chart \
   --version v1.549.0 \
   --set-file appConfig=./app.conf
 
@@ -122,7 +124,7 @@ If using secrets for sensitive data:
 kubectl create secret generic cloud-config --from-file=app.conf=./app.conf
 
 # Install with secret reference (no additional values file needed)
-helm install cloud oci://registry-1.docker.io/casbin/cloud-helm-chart \
+helm install cloud oci://registry-1.docker.io/hanzoai/cloud-helm-chart \
   --version v1.549.0 \
   --set appConfig="" \
   --set appConfigFromSecret=cloud-config
@@ -147,7 +149,7 @@ The following table shows the main configuration parameters available in the Hel
 | Parameter | Description | Default Value |
 |-----------|-------------|---------------|
 | `replicaCount` | Number of Hanzo Cloud replicas to run | `1` |
-| `image.repository` | Docker image repository | `casbin` |
+| `image.repository` | Docker image repository | `hanzoai` |
 | `image.name` | Docker image name | `cloud` |
 | `image.pullPolicy` | Image pull policy | `IfNotPresent` |
 | `image.tag` | Image tag (defaults to chart appVersion) | `""` |
@@ -185,12 +187,12 @@ autoscaling:
 To upgrade your Hanzo Cloud deployment to a new version:
 
 ```shell
-helm upgrade cloud oci://registry-1.docker.io/casbin/cloud-helm-chart --version <new-version>
+helm upgrade cloud oci://registry-1.docker.io/hanzoai/cloud-helm-chart --version <new-version>
 
 To upgrade with custom values:
 
 ```shell
-helm upgrade cloud oci://registry-1.docker.io/casbin/cloud-helm-chart --version <new-version> \
+helm upgrade cloud oci://registry-1.docker.io/hanzoai/cloud-helm-chart --version <new-version> \
   -f custom-values.yaml
 
 ### Checking Deployment Status
@@ -240,7 +242,7 @@ helm uninstall cloud
 
 ```bash
 # Validate YAML syntax before deployment
-helm template cloud oci://registry-1.docker.io/casbin/cloud-helm-chart -f custom-values.yaml --dry-run
+helm template cloud oci://registry-1.docker.io/hanzoai/cloud-helm-chart -f custom-values.yaml --dry-run
 
 ### Getting Help
 
