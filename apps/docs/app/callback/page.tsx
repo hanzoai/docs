@@ -1,13 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 
 const IAM_SERVER = process.env.NEXT_PUBLIC_IAM_SERVER_URL || 'https://hanzo.id'
 const CLIENT_ID = process.env.NEXT_PUBLIC_IAM_CLIENT_ID || 'hanzo-docs-client-id'
 
 export default function CallbackPage() {
-  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -21,9 +19,11 @@ export default function CallbackPage() {
         .then(() => {
           window.location.href = '/docs'
         })
-        .catch((err) => {
-          setError(err.message || 'Authentication failed.')
+        .catch(() => {
+          setError('Authentication failed. Please try again.')
         })
+    }).catch(() => {
+      setError('Failed to load authentication. Please try again.')
     })
   }, [])
 
@@ -33,12 +33,12 @@ export default function CallbackPage() {
         <div className="text-center">
           <h2 className="mb-2 text-lg font-semibold text-white">Sign In Failed</h2>
           <p className="mb-4 text-sm text-neutral-400">{error}</p>
-          <button
-            onClick={() => router.replace('/login')}
-            className="rounded-full bg-white px-4 py-1.5 text-sm font-medium text-black hover:bg-neutral-200 transition-colors"
+          <a
+            href="/login"
+            className="inline-block rounded-full bg-white px-4 py-1.5 text-sm font-medium text-black hover:bg-neutral-200 transition-colors"
           >
             Try Again
-          </button>
+          </a>
         </div>
       </div>
     )
