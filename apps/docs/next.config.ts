@@ -50,6 +50,9 @@ const config: NextConfig = {
 
       // (b) Other doc-platform packages -> no-op stub
       '@docusaurus': emptyProjectModule,
+      '@theme/Tabs': emptyProjectModule,
+      '@theme/TabItem': emptyProjectModule,
+      '@theme': emptyProjectModule,
       'nextra': emptyProjectModule,
       '@mintlify': emptyProjectModule,
 
@@ -72,7 +75,7 @@ const config: NextConfig = {
     // ------------------------------------------------------------------ //
     const aliasedPrefixes = [
       // Already handled by aliases above – skip to avoid double-processing
-      'fumadocs-', '@hanzo/', '@docusaurus', 'nextra', '@mintlify',
+      'fumadocs-', '@hanzo/', '@docusaurus', '@theme', 'nextra', '@mintlify',
       '/snippets', '/src/components', '@site',
       // Core dependencies that must always resolve normally
       'react', 'next', 'node:', 'webpack',
@@ -93,7 +96,7 @@ const config: NextConfig = {
                 if (!resolveData) return;
 
                 const issuer: string = resolveData.contextInfo?.issuer || '';
-                if (!issuer.includes('content/docs/projects/')) return;
+                if (!issuer.includes('content/docs/projects/') && !issuer.includes('content/docs/services/')) return;
 
                 const request: string = resolveData.request;
                 if (!request) return;
