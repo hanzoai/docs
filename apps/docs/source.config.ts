@@ -19,7 +19,7 @@ export const docs = defineDocs({
   docs: {
     // During static export, exclude the entire projects directory — thousands
     // of upstream project docs are too heavy for the standard CI runner.
-    ...(isExport ? { files: ['**/*.mdx', '!**/projects/**'] } : {}),
+    ...(isExport ? { files: ['**/*.mdx', '!**/projects/**', '!**/services/iam/**', '!**/services/kms/**'] } : {}),
     schema: pageSchema.extend({
       preview: z.string().optional(),
       index: z.boolean().default(false),
@@ -199,7 +199,9 @@ function remarkPassthroughUnknownJsx(): Transformer<Root, Root> {
     // so unknown components still surface as errors during development.
     const filePath = file.path ?? file.history[0] ?? '';
     if (!filePath.includes('content/docs/projects/') &&
-        !filePath.includes('content\\docs\\projects\\')) {
+        !filePath.includes('content\\docs\\projects\\') &&
+        !filePath.includes('content/docs/services/') &&
+        !filePath.includes('content\\docs\\services\\')) {
       return;
     }
 
