@@ -19,7 +19,7 @@ export const docs = defineDocs({
   docs: {
     // During static export, exclude the entire projects directory — thousands
     // of upstream project docs are too heavy for the standard CI runner.
-    ...(isExport ? { files: ['**/*.mdx', '!**/projects/**', '!**/services/iam/**', '!**/services/kms/**'] } : {}),
+    ...(isExport ? { files: ['**/*.mdx', '!**/projects/**'] } : {}),
     schema: pageSchema.extend({
       preview: z.string().optional(),
       index: z.boolean().default(false),
@@ -219,6 +219,20 @@ function remarkPassthroughUnknownJsx(): Transformer<Root, Root> {
       // Convert to JSX fragment: strips the unknown tag but keeps children
       node.name = null;
       node.attributes = [];
+    });
+
+    // Convert stray {expression} nodes to literal text. Upstream docs use
+    // template-style placeholders like {region} which MDX evaluates as JS.
+    visit(tree, ['mdxFlowExpression', 'mdxTextExpression'], (node: any, index, parent) => {
+      if (index == null || !parent) return;
+      // Skip expressions that look like actual JS (contain operators, calls, etc.)
+      const expr = (node.value || '').trim();
+      if (!expr || /[()=><+\-*/!&|?:,;{}[\]`'"]/.test(expr)) return;
+      // Simple identifier like {region} — convert to literal text
+      parent.children.splice(index, 1, {
+        type: 'text',
+        value: `{${expr}}`,
+      });
     });
   };
 }
