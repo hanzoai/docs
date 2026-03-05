@@ -1,22 +1,20 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 const IAM_SERVER = process.env.NEXT_PUBLIC_IAM_SERVER_URL || 'https://hanzo.id'
 const CLIENT_ID = process.env.NEXT_PUBLIC_IAM_CLIENT_ID || 'hanzo-docs-client-id'
 
 export default function LoginPage() {
-  const router = useRouter()
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const token = sessionStorage.getItem('hanzo_iam_access_token')
     if (token) {
-      router.replace('/docs')
+      window.location.href = '/docs'
       return
     }
 
-    // Auto-redirect to IAM login
     import('@hanzo/iam/browser').then(({ BrowserIamSdk }) => {
       const sdk = new BrowserIamSdk({
         serverUrl: IAM_SERVER,
@@ -24,8 +22,27 @@ export default function LoginPage() {
         redirectUri: `${window.location.origin}/callback`,
       })
       sdk.signinRedirect()
+    }).catch(() => {
+      setError('Failed to load authentication. Please try again.')
     })
-  }, [router])
+  }, [])
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-neutral-950">
+        <div className="text-center">
+          <h2 className="mb-2 text-lg font-semibold text-white">Sign In Error</h2>
+          <p className="mb-4 text-sm text-neutral-400">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="rounded-full bg-white px-4 py-1.5 text-sm font-medium text-black hover:bg-neutral-200 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-neutral-950">
