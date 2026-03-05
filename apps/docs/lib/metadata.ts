@@ -7,7 +7,7 @@ export function createMetadata(override: Metadata): Metadata {
     openGraph: {
       title: override.title ?? undefined,
       description: override.description ?? undefined,
-      url: 'https://hanzoai.github.io/docs',
+      url: 'https://docs.hanzo.ai',
       images: '/banner.png',
       siteName: 'Hanzo Docs',
       ...override.openGraph,
@@ -25,7 +25,7 @@ export function createMetadata(override: Metadata): Metadata {
         'application/rss+xml': [
           {
             title: 'Hanzo Docs Blog',
-            url: 'https://hanzoai.github.io/docs/blog/rss.xml',
+            url: 'https://docs.hanzo.ai/blog/rss.xml',
           },
         ],
       },
@@ -46,4 +46,4 @@ export function getPageImage(page: Page) {
 export const baseUrl =
   process.env.NODE_ENV === 'development'
     ? new URL('http://localhost:3000')
-    : new URL('https://hanzoai.github.io/docs');
+    : new URL('https://docs.hanzo.ai');
