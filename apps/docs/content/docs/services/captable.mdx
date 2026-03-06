@@ -1,0 +1,275 @@
+---
+title: Hanzo Cap Table
+description: Equity management and cap table platform
+---
+
+# Hanzo Cap Table
+
+Hanzo Cap Table is an equity management platform for startups and growth-stage companies. Manage share classes, stock options, SAFEs, convertible notes, and equity plans with full audit trails and built-in e-signing.
+
+## Features
+
+- **Share Classes**: Common, preferred, and custom share classes
+- **Stock Options**: ISO and NSO option grants with vesting schedules
+- **SAFEs**: Y Combinator SAFE management with conversion modeling
+- **Convertible Notes**: Track notes with interest, caps, and discounts
+- **Equity Plans**: Option pools and equity incentive plans
+- **Vesting Schedules**: Cliff, linear, and custom vesting
+- **409A Valuations**: Track fair market value history
+- **E-Signing**: Built-in document signing for equity grants
+- **Data Rooms**: Integrated document management
+- **Hanzo IAM SSO**: Single sign-on via Hanzo identity
+
+## Endpoints
+
+| Environment | URL |
+|-------------|-----|
+| Production | `https://captable.hanzo.ai` |
+
+## Architecture
+
+```
++---------------------------------------------------------------+
+|                     HANZO CAP TABLE                             |
++---------------------------------------------------------------+
+|                                                                |
+|  +-----------------------+  +-------------------------------+  |
+|  |    Securities         |  |       Stakeholders            |  |
+|  |  +------+  +-------+  |  |  +--------+  +-------------+  |  |
+|  |  |Shares|  |Options|  |  |  |Founders|  | Investors   |  |  |
+|  |  +------+  +-------+  |  |  +--------+  +-------------+  |  |
+|  +-----------------------+  +-------------------------------+  |
+|                                                                |
+|  +-----------------------+  +-------------------------------+  |
+|  |    Instruments        |  |       Compliance              |  |
+|  |  +------+  +-------+  |  |  +--------+  +-------------+  |  |
+|  |  | SAFE |  | Notes |  |  |  | 409A   |  | Audit Log   |  |  |
+|  |  +------+  +-------+  |  |  +--------+  +-------------+  |  |
+|  +-----------------------+  +-------------------------------+  |
+|                                                                |
++---------------------------------------------------------------+
+```
+
+## Quick Start
+
+### 1. Create a Company
+
+Set up your company profile with incorporation details:
+
+```typescript
+const company = await fetch('https://captable.hanzo.ai/api/company', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${apiToken}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    name: 'Acme Corp',
+    incorporationDate: '2024-01-15',
+    incorporationState: 'DE',
+    incorporationCountry: 'US'
+  })
+})
+```
+
+### 2. Create Share Classes
+
+```typescript
+// Common stock
+await fetch('https://captable.hanzo.ai/api/share-classes', {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${apiToken}` },
+  body: JSON.stringify({
+    name: 'Common Stock',
+    classType: 'COMMON',
+    authorizedShares: 10000000,
+    parValue: 0.0001,
+    votesPerShare: 1
+  })
+})
+
+// Preferred stock
+await fetch('https://captable.hanzo.ai/api/share-classes', {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${apiToken}` },
+  body: JSON.stringify({
+    name: 'Series Seed Preferred',
+    classType: 'PREFERRED',
+    authorizedShares: 2000000,
+    parValue: 0.0001,
+    liquidationPreference: 1.0,
+    conversionRatio: 1.0
+  })
+})
+```
+
+### 3. Issue Shares
+
+```typescript
+await fetch('https://captable.hanzo.ai/api/shares/issue', {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${apiToken}` },
+  body: JSON.stringify({
+    stakeholderId: 'founder-1',
+    shareClassId: 'common-stock-id',
+    quantity: 5000000,
+    pricePerShare: 0.0001,
+    vestingSchedule: {
+      type: 'CLIFF_LINEAR',
+      cliffMonths: 12,
+      totalMonths: 48,
+      startDate: '2024-01-15'
+    }
+  })
+})
+```
+
+### 4. Create a SAFE
+
+```typescript
+await fetch('https://captable.hanzo.ai/api/safes', {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${apiToken}` },
+  body: JSON.stringify({
+    investorId: 'investor-1',
+    investmentAmount: 500000,
+    valuationCap: 10000000,
+    discount: 0.20,
+    proRata: true,
+    mfn: true,
+    safeType: 'POST_MONEY'
+  })
+})
+```
+
+## Securities Types
+
+| Type | Description |
+|------|-------------|
+| Common Stock | Standard voting shares |
+| Preferred Stock | Senior shares with preferences |
+| Stock Options (ISO) | Incentive stock options (tax-advantaged) |
+| Stock Options (NSO) | Non-qualified stock options |
+| RSUs | Restricted stock units |
+| SAFEs | Simple Agreement for Future Equity |
+| Convertible Notes | Debt instruments convertible to equity |
+| Warrants | Right to purchase shares at a set price |
+
+## Vesting Schedules
+
+| Schedule | Description |
+|----------|-------------|
+| `CLIFF_LINEAR` | Cliff period then monthly vesting |
+| `LINEAR` | Equal monthly vesting from start |
+| `BACK_WEIGHTED` | Accelerating vesting over time |
+| `CUSTOM` | Custom milestone-based vesting |
+| `IMMEDIATE` | Fully vested on grant |
+
+### Standard 4-Year with 1-Year Cliff
+
+```
+Year 1: 0% → 25% (cliff)
+Year 2: 25% → 50% (monthly)
+Year 3: 50% → 75% (monthly)
+Year 4: 75% → 100% (monthly)
+```
+
+## Cap Table Reports
+
+### Ownership Summary
+
+View current ownership percentages across all stakeholders, including fully-diluted calculations.
+
+### Waterfall Analysis
+
+Model liquidation scenarios to understand payout distributions at various exit valuations.
+
+### Round Modeling
+
+Project dilution and ownership changes for future financing rounds.
+
+## Authentication
+
+Hanzo Cap Table supports multiple authentication methods:
+
+- **Hanzo IAM**: SSO via `https://hanzo.id` (recommended)
+- **Google OAuth**: Sign in with Google
+- **Passkeys**: WebAuthn/FIDO2 authentication
+
+### IAM Integration
+
+```bash
+# Environment variables
+HANZO_IAM_URL=https://hanzo.id
+HANZO_IAM_CLIENT_ID=app-captable
+HANZO_IAM_CLIENT_SECRET=<from-kms>
+```
+
+## Self-Hosting
+
+### Docker
+
+```bash
+docker run -d \
+  --name hanzo-captable \
+  -p 3000:3000 \
+  -e DATABASE_URL=postgres://... \
+  -e NEXTAUTH_URL=https://captable.yourdomain.com \
+  -e HANZO_IAM_URL=https://hanzo.id \
+  -e HANZO_IAM_CLIENT_ID=app-captable \
+  ghcr.io/hanzoai/captable:latest
+```
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `NEXTAUTH_URL` | Public URL of the application |
+| `NEXTAUTH_SECRET` | NextAuth encryption secret |
+| `HANZO_IAM_URL` | Hanzo IAM server URL |
+| `HANZO_IAM_CLIENT_ID` | IAM application client ID |
+| `HANZO_IAM_CLIENT_SECRET` | IAM application client secret |
+| `SMTP_HOST` | Email server host |
+| `STRIPE_SECRET_KEY` | Stripe billing key |
+
+## API Reference
+
+### Share Classes
+
+- `POST /api/share-classes` - Create share class
+- `GET /api/share-classes` - List share classes
+- `PATCH /api/share-classes/:id` - Update share class
+
+### Stakeholders
+
+- `POST /api/stakeholders` - Add stakeholder
+- `GET /api/stakeholders` - List stakeholders
+- `GET /api/stakeholders/:id` - Get stakeholder details
+
+### Securities
+
+- `POST /api/shares/issue` - Issue shares
+- `POST /api/options/grant` - Grant options
+- `POST /api/safes` - Create SAFE
+- `POST /api/convertible-notes` - Create convertible note
+
+### Reports
+
+- `GET /api/reports/captable` - Current cap table
+- `GET /api/reports/waterfall` - Waterfall analysis
+- `GET /api/reports/409a` - 409A valuation history
+
+## Next Steps
+
+<Cards>
+  <Card title="Sign" href="/docs/services/sign">
+    Document signing platform
+  </Card>
+  <Card title="Dataroom" href="/docs/services/dataroom">
+    Secure document sharing and analytics
+  </Card>
+  <Card title="IAM" href="/docs/services/iam">
+    Identity and access management
+  </Card>
+</Cards>

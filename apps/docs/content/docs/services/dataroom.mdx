@@ -1,0 +1,266 @@
+---
+title: Hanzo Dataroom
+description: Secure document sharing with analytics and access controls
+---
+
+# Hanzo Dataroom
+
+Hanzo Dataroom is a secure document sharing platform with real-time analytics, granular access controls, and custom branding. Share pitch decks, fundraising materials, legal documents, and more with full visibility into how recipients engage.
+
+## Features
+
+- **Secure Sharing**: Password protection, email verification, NDA agreements
+- **Real-Time Analytics**: Page-by-page view tracking, time spent, completion rates
+- **Custom Branding**: Per-team logos, colors, and custom domains
+- **Data Rooms**: Organized folder structures for due diligence and fundraising
+- **Access Controls**: Expiration dates, download restrictions, watermarking
+- **SAML SSO**: Enterprise single sign-on via BoxyHQ Jackson
+- **Hanzo IAM SSO**: Single sign-on via Hanzo identity
+
+## Endpoints
+
+| Environment | URL |
+|-------------|-----|
+| Production | `https://dataroom.hanzo.ai` |
+| API | `https://dataroom.hanzo.ai/api` |
+
+## Architecture
+
+```
++---------------------------------------------------------------+
+|                     HANZO DATAROOM                              |
++---------------------------------------------------------------+
+|                                                                |
+|  +-----------------------+  +-------------------------------+  |
+|  |    Documents          |  |       Data Rooms              |  |
+|  |  +------+  +-------+  |  |  +--------+  +-------------+  |  |
+|  |  | Links|  |Version|  |  |  |Folders |  | Permissions |  |  |
+|  |  +------+  +-------+  |  |  +--------+  +-------------+  |  |
+|  +-----------------------+  +-------------------------------+  |
+|                                                                |
+|  +-----------------------+  +-------------------------------+  |
+|  |    Analytics          |  |       Access Control          |  |
+|  |  +------+  +-------+  |  |  +--------+  +-------------+  |  |
+|  |  | Views|  | Time  |  |  |  |Password|  | NDA/Email   |  |  |
+|  |  +------+  +-------+  |  |  +--------+  +-------------+  |  |
+|  +-----------------------+  +-------------------------------+  |
+|                                                                |
++---------------------------------------------------------------+
+```
+
+## Quick Start
+
+### 1. Upload a Document
+
+```typescript
+const formData = new FormData()
+formData.append('file', pdfFile)
+
+const response = await fetch('https://dataroom.hanzo.ai/api/documents', {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${apiToken}` },
+  body: formData
+})
+
+const { id: documentId } = await response.json()
+```
+
+### 2. Create a Sharing Link
+
+```typescript
+const link = await fetch('https://dataroom.hanzo.ai/api/links', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${apiToken}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    documentId,
+    name: 'Investor Deck - Series A',
+    password: 'optional-password',
+    expiresAt: '2026-04-01T00:00:00Z',
+    emailProtected: true,
+    allowDownload: false,
+    enableWatermark: true
+  })
+})
+
+// Share this URL with recipients
+console.log(link.url) // https://dataroom.hanzo.ai/view/abc123
+```
+
+### 3. View Analytics
+
+```typescript
+const analytics = await fetch(
+  `https://dataroom.hanzo.ai/api/links/${linkId}/analytics`,
+  { headers: { 'Authorization': `Bearer ${apiToken}` } }
+).then(r => r.json())
+
+// Per-viewer engagement data
+analytics.views.forEach(view => {
+  console.log(`${view.email}: ${view.totalDuration}s, ${view.completionRate}%`)
+  view.pages.forEach(page => {
+    console.log(`  Page ${page.number}: ${page.duration}s`)
+  })
+})
+```
+
+## Data Rooms
+
+Organize documents into structured data rooms for due diligence, fundraising, or any multi-document workflow.
+
+### Create a Data Room
+
+```typescript
+const dataroom = await fetch('https://dataroom.hanzo.ai/api/datarooms', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${apiToken}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    name: 'Series A Due Diligence',
+    folders: [
+      { name: 'Financials' },
+      { name: 'Legal' },
+      { name: 'Product' },
+      { name: 'Team' }
+    ]
+  })
+})
+```
+
+### Add Documents to Folders
+
+```typescript
+await fetch(`https://dataroom.hanzo.ai/api/datarooms/${dataroomId}/documents`, {
+  method: 'POST',
+  headers: { 'Authorization': `Bearer ${apiToken}` },
+  body: JSON.stringify({
+    documentId,
+    folderId: 'financials-folder-id'
+  })
+})
+```
+
+## Access Controls
+
+| Feature | Description |
+|---------|-------------|
+| Password Protection | Require password to view |
+| Email Verification | Require verified email |
+| NDA Agreement | Accept NDA before viewing |
+| Expiration Date | Auto-expire links |
+| Download Restriction | Prevent PDF downloads |
+| Watermarking | Dynamic watermarks with viewer info |
+| Allow List | Restrict to specific email domains |
+
+## Analytics
+
+### View Metrics
+
+| Metric | Description |
+|--------|-------------|
+| `totalViews` | Total number of views |
+| `uniqueViewers` | Unique email addresses |
+| `avgDuration` | Average time spent |
+| `completionRate` | % of pages viewed |
+| `lastViewedAt` | Most recent view |
+
+### Per-Page Analytics
+
+Track engagement at the page level to understand which sections resonate:
+
+- Time spent per page
+- Page revisits
+- Scroll depth
+- Download attempts
+
+## Authentication
+
+Hanzo Dataroom supports multiple authentication methods:
+
+- **Hanzo IAM**: SSO via `https://hanzo.id` (recommended)
+- **Google OAuth**: Sign in with Google
+- **LinkedIn OAuth**: Sign in with LinkedIn
+- **Email Magic Link**: Passwordless email login
+- **Passkeys**: WebAuthn/FIDO2 authentication
+- **SAML SSO**: Enterprise SSO via BoxyHQ Jackson
+
+### IAM Integration
+
+```bash
+# Environment variables
+HANZO_IAM_URL=https://hanzo.id
+HANZO_IAM_CLIENT_ID=app-dataroom
+HANZO_IAM_CLIENT_SECRET=<from-kms>
+```
+
+## Self-Hosting
+
+### Docker
+
+```bash
+docker run -d \
+  --name hanzo-dataroom \
+  -p 3000:3000 \
+  -e DATABASE_URL=postgres://... \
+  -e NEXTAUTH_URL=https://dataroom.yourdomain.com \
+  -e HANZO_IAM_URL=https://hanzo.id \
+  -e HANZO_IAM_CLIENT_ID=app-dataroom \
+  ghcr.io/hanzoai/dataroom:latest
+```
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `NEXTAUTH_URL` | Public URL of the application |
+| `NEXTAUTH_SECRET` | NextAuth encryption secret |
+| `HANZO_IAM_URL` | Hanzo IAM server URL |
+| `HANZO_IAM_CLIENT_ID` | IAM application client ID |
+| `HANZO_IAM_CLIENT_SECRET` | IAM application client secret |
+| `NEXT_PUBLIC_BASE_URL` | Public base URL |
+| `SMTP_HOST` | Email server host |
+| `STRIPE_SECRET_KEY` | Stripe billing key |
+
+## API Reference
+
+### Documents
+
+- `POST /api/documents` - Upload document
+- `GET /api/documents` - List documents
+- `GET /api/documents/:id` - Get document
+- `DELETE /api/documents/:id` - Delete document
+
+### Links
+
+- `POST /api/links` - Create sharing link
+- `GET /api/links` - List links
+- `GET /api/links/:id` - Get link details
+- `GET /api/links/:id/analytics` - Get link analytics
+- `PATCH /api/links/:id` - Update link settings
+- `DELETE /api/links/:id` - Delete link
+
+### Data Rooms
+
+- `POST /api/datarooms` - Create data room
+- `GET /api/datarooms` - List data rooms
+- `POST /api/datarooms/:id/documents` - Add document
+- `DELETE /api/datarooms/:id` - Delete data room
+
+## Next Steps
+
+<Cards>
+  <Card title="Sign" href="/docs/services/sign">
+    Document signing platform
+  </Card>
+  <Card title="Cap Table" href="/docs/services/captable">
+    Equity management platform
+  </Card>
+  <Card title="IAM" href="/docs/services/iam">
+    Identity and access management
+  </Card>
+</Cards>
