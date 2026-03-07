@@ -1,0 +1,92 @@
+---
+title: DEX
+description: On-chain decentralized exchange with gRPC, JSON-RPC, ZAP protocol, and FPGA-accelerated matching.
+---
+
+# DEX — Decentralized Exchange
+
+The Lux DEX is an on-chain matching engine with multiple transport layers (gRPC, JSON-RPC, ZAP, WebSocket) and optional FPGA acceleration. It provides the decentralized venue for the smart order router.
+
+## Features
+
+- **CLOB matching**: Central limit order book with price-time priority
+- **Multi-transport**: gRPC, JSON-RPC, WebSocket, ZAP (zero-copy binary)
+- **FPGA acceleration**: Optional AMD Versal / AWS F2 FPGA matching
+- **DAG consensus**: Custom DAG-based consensus for order finality
+- **On-chain settlement**: Atomic settlement on Lux C-Chain
+- **Cross-chain bridge**: Bridge assets via MPC threshold signatures
+- **Oracle integration**: Pyth, Chainlink, Alpaca price feeds
+- **Risk engine**: Real-time margin and liquidation management
+
+## Architecture
+
+```
+Clients -> [gRPC / JSON-RPC / ZAP / WebSocket]
+                          |
+                    Order Router
+                          |
+                  +-------+-------+
+                  |               |
+           [CPU Matcher]   [FPGA Matcher]
+                  |               |
+                  +-------+-------+
+                          |
+                   Clearing House
+                          |
+                  +-------+-------+
+                  |       |       |
+              Funding  Margin  Liquidation
+                          |
+                   On-chain Settlement
+                          |
+                    Lux C-Chain
+```
+
+## JSON-RPC API
+
+```bash
+POST /rpc
+{
+  "jsonrpc": "2.0",
+  "method": "dex.submitOrder",
+  "params": {
+    "symbol": "LUX-USDC",
+    "side": "buy",
+    "type": "limit",
+    "quantity": 100,
+    "price": 12.50,
+    "account_id": "acct-123"
+  },
+  "id": 1
+}
+```
+
+### Available Methods
+
+| Method | Description |
+|--------|-------------|
+| `dex.submitOrder` | Submit a new order |
+| `dex.cancelOrder` | Cancel an existing order |
+| `dex.getOrderBook` | Get order book snapshot |
+| `dex.getMarkets` | List available markets |
+| `dex.getTrades` | Get recent trades |
+| `dex.getPositions` | Get account positions |
+
+## Products
+
+| Product | Description |
+|---------|-------------|
+| Spot | Immediate settlement spot trading |
+| Perpetuals | Perpetual futures with funding rates |
+| Margin | Isolated and cross margin trading |
+| Options | European-style options (planned) |
+| Vaults | Automated yield strategies |
+| Lending | Peer-to-pool lending markets |
+| Staking | LUX and LP token staking |
+
+## Source
+
+- Repository: `luxfi/dex`
+- Language: Go
+- Key packages: `pkg/lx` (core engine), `pkg/grpc`, `pkg/fpga`, `pkg/consensus`, `pkg/price`
+- SDK: `sdk/go/client.go` (gRPC client)
