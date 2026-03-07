@@ -1,0 +1,155 @@
+---
+title: Lux Financial
+description: Regulated multi-jurisdiction trading platform with MPC-powered non-custodial wallets, CEX/DEX smart routing, and full compliance automation.
+---
+
+import { Cards, Card } from '@hanzo/docs-ui/components/card'
+import { Shield, Key, ArrowLeftRight, Building2, Eye, FileCheck, Wallet, Network, Zap, Lock, Globe, Scale } from 'lucide-react'
+
+# Lux Financial Platform
+
+Lux Financial is a regulated, multi-jurisdiction trading platform for digital and traditional assets. It combines an internal ATS (Alternative Trading System) with decentralized exchange connectivity, MPC-powered non-custodial wallets, and comprehensive compliance automation across 30+ regulatory regimes.
+
+**Live at**: [app.lux.financial](https://app.lux.financial)
+
+## Architecture
+
+```
+                           app.lux.financial
+                                 |
+                     +-----------+-----------+
+                     |                       |
+                 [Gateway]              [WebSocket]
+                     |                       |
+        +------------+------------+          |
+        |            |            |          |
+     [CEX ATS]  [DEX Router]  [Broker]      |
+        |            |            |          |
+   [Compliance]  [Match Engine]  [SOR]      |
+        |            |            |          |
+   [Surveillance] [Order Book] [10 LPs]     |
+        |                                    |
+   [Reporting]                               |
+        |                                    |
+   +----+----+                               |
+   |         |                               |
+ [KMS]    [MPC]  <------ Non-custodial ------+
+   |         |            wallet signing
+   +---------+
+        |
+     [Bank]
+   NestJS API
+        |
+   +----+----+
+   |         |
+[CurrencyCloud] [IFX]
+```
+
+## Core Services
+
+<Cards>
+  <Card icon={<ArrowLeftRight />} title="CEX (cexd)" href="/docs/services/lux/cex" description="Internal ATS with CLOB matching engine, compliance gating, and FINRA/SEC reporting" />
+  <Card icon={<Network />} title="DEX" href="/docs/services/lux/dex" description="On-chain matching engine with gRPC, JSON-RPC, and ZAP protocol support" />
+  <Card icon={<Building2 />} title="Broker (brokerd)" href="/docs/services/lux/broker" description="Smart order router across 10 liquidity providers with best-execution" />
+  <Card icon={<Wallet />} title="MPC Wallets" href="/docs/services/lux/wallets" description="Non-custodial MPC wallets with CGGMP21/FROST threshold signatures" />
+</Cards>
+
+## Compliance and Security
+
+<Cards>
+  <Card icon={<Shield />} title="Compliance Engine" href="/docs/services/lux/compliance" description="30+ jurisdiction support, PEP/EDD screening, offering-type gating" />
+  <Card icon={<Eye />} title="Surveillance (KYT)" href="/docs/services/lux/surveillance" description="Wash trading, structuring, velocity, and parabolic price spike detection" />
+  <Card icon={<Key />} title="KMS" href="/docs/services/kms" description="AES-256-GCM encrypted key storage with HSM support" />
+  <Card icon={<Lock />} title="MPC Signer" href="/docs/services/mpc" description="Enterprise threshold signatures -- self-hosted Fireblocks alternative" />
+</Cards>
+
+## Infrastructure
+
+<Cards>
+  <Card icon={<FileCheck />} title="Regulatory Reporting" href="/docs/services/lux/reporting" description="FINRA OATS, ATS-N, CAT, MiFID II transaction reporting" />
+  <Card icon={<Scale />} title="Bank Integration" href="/docs/services/lux/bank" description="NestJS API with Currency Cloud, IFX, compliance sync to CEX" />
+  <Card icon={<Globe />} title="Federated Entities" href="/docs/services/lux/federation" description="Multi-entity network with EU passporting, IOM crown dependency equivalence" />
+  <Card icon={<Zap />} title="ZAP Protocol" href="/docs/zap" description="Zero-copy binary protocol with microsecond latency for inter-service communication" />
+</Cards>
+
+## Jurisdictions
+
+Lux operates across a federated network of regulated entities:
+
+| Region | Jurisdictions | Regulator | License Type |
+|--------|--------------|-----------|-------------|
+| **Home** | Isle of Man (IM) | FSA | Digital Asset Business |
+| **Americas** | US, CA, MX, BR | SEC/FINRA, OSC, CNBV, CVM | ATS, MTF equivalents |
+| **Europe** | EU (27 states), UK, CH, GI, LI | MiFID II/MiCA, FCA, FINMA, GFSC | Passported MTF |
+| **Asia-Pacific** | SG, HK, JP, AU, KR, IN | MAS, SFC, JFSA, ASIC, FSC, SEBI | CMS, Type 7, Class 1 |
+| **MENA** | AE, SA, BH, QA, KW, OM, JO | DFSA/VARA, CMA, CBB, QFC | Dealing/Arranging |
+| **Africa** | ZA, NG, KE, MU | FSCA, SEC, CMA, FSC | FAIS, ATS |
+| **Caribbean** | KY, BM, BS | CIMA, BMA, SCB | Securities License |
+
+## Quick Start
+
+### Submit an Order via CEX
+
+```bash
+curl -X POST https://cex.lux.network/api/v1/accounts/{accountId}/orders \
+  -H "Authorization: Bearer $LUX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "symbol": "BTC-USD",
+    "side": "buy",
+    "type": "limit",
+    "quantity": 1.5,
+    "price": 45000,
+    "time_in_force": "GTC"
+  }'
+```
+
+### Register an Account with Compliance
+
+```bash
+curl -X POST https://cex.lux.network/api/v1/accounts/{accountId}/register \
+  -H "Authorization: Bearer $LUX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jurisdiction": "IM",
+    "country": "IM",
+    "client_type": "individual",
+    "kyc_level": 2,
+    "aml_cleared": true,
+    "accredited": false,
+    "pep_status": "",
+    "source_of_funds": "employment",
+    "sof_verified": true
+  }'
+```
+
+### Create an MPC Wallet
+
+```bash
+curl -X POST https://mpc.lux.network/api/v1/vaults/{vaultId}/wallets \
+  -H "Authorization: Bearer $LUX_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "protocol": "cggmp21",
+    "curve": "secp256k1",
+    "threshold": 2,
+    "parties": 3,
+    "label": "trading-hot-wallet"
+  }'
+```
+
+## Source Repositories
+
+| Component | Repository | Language |
+|-----------|-----------|----------|
+| CEX (cexd) | `luxfi/cex` | Go |
+| DEX | `luxfi/dex` | Go |
+| Broker (brokerd) | `luxfi/broker` | Go |
+| Bank API | `luxfi/bank` | TypeScript/NestJS |
+| KMS | `luxfi/kms` | TypeScript/Go |
+| MPC Signer | `luxfi/mpc` | Go |
+| Exchange UI | `luxfi/exchange` | TypeScript/React |
+| Web Apps | `luxfi/web` | TypeScript/Next.js |
+| Wallet | `luxfi/wallet` | TypeScript |
+| Safe (Smart Wallet) | `luxfi/safe` | Solidity/TypeScript |
+| ZAP Protocol | `luxfi/zap` | Go |

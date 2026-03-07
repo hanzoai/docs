@@ -1,0 +1,109 @@
+---
+title: Federated Entities
+description: Multi-entity network with EU passporting, IOM crown dependency equivalence, and cross-entity order routing.
+---
+
+# Federated Entity Network
+
+Lux operates as a federated network of regulated entities across jurisdictions. Each entity holds local licenses and can passport services to other entities within the same regulatory regime.
+
+## Entity Registry
+
+```go
+type FederatedEntity struct {
+    EntityID        string
+    Name            string
+    Jurisdiction    Jurisdiction
+    LicenseType     string
+    LicenseID       string
+    LEI             string       // Legal Entity Identifier
+    Status          string       // active, suspended, revoked
+    Capabilities    []string     // trading, custody, clearing
+    AssetClasses    []string     // crypto, equities, derivatives
+    ParentEntityID  string       // parent company relationship
+    PassportedFrom  []string     // passporting source entities
+    AllowedCounterparties []string
+}
+```
+
+## Passporting Rules
+
+The federation supports three passporting mechanisms:
+
+### 1. EU Passporting
+
+Any EU-licensed entity can passport to all 27 EU member states:
+
+```
+Lux EU (Malta MiFID license)
+  -> Passported to: AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR,
+     DE, GR, HU, IE, IT, LV, LT, LU, MT, NL, PL, PT, RO,
+     SK, SI, ES, SE
+```
+
+### 2. IOM / UK Crown Dependency Equivalence
+
+Isle of Man entities have recognition with UK-licensed entities and vice versa:
+
+```
+Lux IOM (FSA license) <-> Lux UK (FCA license)
+```
+
+Jersey (JE) and Guernsey (GG) entities also route through UK FCA oversight.
+
+### 3. Parent Company Routing
+
+Entities sharing a parent company can route orders between each other:
+
+```
+Lux Holdings (parent)
+  ├── Lux US (SEC/FINRA ATS)
+  ├── Lux IM (FSA Digital Asset)
+  ├── Lux EU (MiFID MTF)
+  ├── Lux SG (MAS CMS)
+  └── Lux HK (SFC Type 7)
+```
+
+## Route Resolution
+
+When a client from jurisdiction X wants to trade an asset requiring capability Y:
+
+```go
+entity, ok := registry.FindRouteEntity(jurisdiction, capability)
+```
+
+The registry:
+1. Checks for a direct entity in the client's jurisdiction
+2. Checks for passported entities
+3. Checks for parent-company related entities
+4. Returns the best-fit entity or `false` if no route exists
+
+## API
+
+### Register Entity
+
+```go
+registry.RegisterEntity(&FederatedEntity{
+    EntityID:     "lux-im-001",
+    Name:         "Lux Digital (Isle of Man) Ltd",
+    Jurisdiction:  JurisdictionIM,
+    LicenseType:  "Digital Asset Business",
+    LicenseID:    "FSA-2026-001",
+    Status:       "active",
+    Capabilities: []string{"trading", "custody"},
+    AssetClasses: []string{"crypto"},
+})
+```
+
+### Query Entities
+
+```go
+entities := registry.ListByJurisdiction(JurisdictionEU)
+canRoute := registry.CanPassport("lux-eu-001", "lux-de-001")
+entity, ok := registry.FindRouteEntity(JurisdictionSG, "trading")
+```
+
+## Source
+
+- `luxfi/cex/pkg/compliance/compliance.go` — `FederatedRegistry`
+- Tests: Passporting, routing, CRUD, parent-company relationships
