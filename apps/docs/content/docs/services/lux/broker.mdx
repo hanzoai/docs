@@ -1,0 +1,68 @@
+---
+title: Broker (brokerd)
+description: Multi-liquidity-provider smart order router with best execution across 10+ venues.
+---
+
+# Broker — Smart Order Router
+
+`brokerd` is a multi-liquidity-provider smart order router that aggregates quotes from 10+ liquidity providers and routes orders for best execution. It sits between the client-facing API and the execution venues (CEX, DEX, and external LPs).
+
+## Liquidity Providers
+
+The broker aggregates liquidity from:
+
+1. **Lux CEX** (internal ATS)
+2. **Lux DEX** (on-chain matching)
+3. **External CEX connectors** (via FIX/REST)
+4. **OTC desks** (RFQ-based)
+5. **Market makers** (streaming quotes)
+
+## Smart Routing Logic
+
+```
+1. Client submits order
+2. Broker queries all connected venues in parallel
+3. Compare: effective price, available depth, fees, latency
+4. Route to best venue (or split across venues for large orders)
+5. Execute and report fill back to client
+```
+
+### Split Orders
+
+For orders larger than single-venue depth, the broker splits across venues:
+
+```
+Order: Buy 100 BTC
+  - CEX depth: 40 BTC at $45,000
+  - DEX depth: 30 BTC at $45,010
+  - LP1 quote: 50 BTC at $45,020
+  -> Split: 40 CEX + 30 DEX + 30 LP1
+  -> VWAP: $45,008.57
+```
+
+## Best Execution Policy
+
+The broker implements regulatory best-execution requirements:
+
+- **Price**: Primary factor, lowest effective cost
+- **Speed**: Latency-adjusted pricing
+- **Likelihood of fill**: Venue reliability and depth
+- **Cost**: Trading fees and spread
+- **Size**: Available depth at quoted price
+
+All routing decisions are logged for regulatory audit (MiFID II best-execution reports, FINRA Rule 5310).
+
+## Configuration
+
+| Env Var | Description |
+|---------|-------------|
+| `BROKER_CEX_URL` | CEX API endpoint |
+| `BROKER_DEX_URL` | DEX RPC endpoint |
+| `BROKER_LP_CONFIG` | JSON config for external LPs |
+| `BROKER_MAX_SPLIT` | Maximum number of venue splits |
+| `BROKER_TIMEOUT_MS` | Quote timeout per venue |
+
+## Source
+
+- Repository: `luxfi/broker`
+- Language: Go
