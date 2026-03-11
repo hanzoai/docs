@@ -1,15 +1,5 @@
 // Pre-build script for Hanzo Dev docs
-// Generates MDX collection files
+// MDX collection generation is handled by createMDX() in next.config.ts
+// This script is reserved for any additional pre-build tasks
 
-import { execSync } from 'child_process';
-
-console.log('Running pre-build...');
-
-try {
-  // Generate MDX collections
-  execSync('npx @hanzo/docs-mdx', { stdio: 'inherit' });
-  console.log('Pre-build complete');
-} catch (error) {
-  console.error('Pre-build failed:', error);
-  process.exit(1);
-}
+console.log('Pre-build: no additional steps needed');
