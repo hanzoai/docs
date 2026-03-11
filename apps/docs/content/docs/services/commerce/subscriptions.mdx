@@ -1,0 +1,71 @@
+---
+title: Subscriptions
+description: Recurring billing and usage-based pricing
+---
+
+# Subscriptions
+
+Manage recurring billing with fixed-price plans, usage-based metering, or hybrid pricing.
+
+## Create Subscription
+
+```typescript
+const subscription = await commerce.subscriptions.create({
+  customerId: 'cus_123',
+  priceId: 'price_pro_monthly',
+  paymentMethod: 'pm_xxx'
+})
+```
+
+## Usage-Based Billing
+
+### Record Usage
+
+```typescript
+await commerce.usage.record({
+  subscriptionId: 'sub_123',
+  metric: 'api_calls',
+  quantity: 1000,
+  timestamp: new Date()
+})
+```
+
+### Get Usage Summary
+
+```typescript
+const usage = await commerce.usage.get({
+  subscriptionId: 'sub_123',
+  startDate: '2026-01-01',
+  endDate: '2026-01-31'
+})
+```
+
+## Lifecycle Events
+
+| Event | Description |
+|-------|-------------|
+| `subscription.created` | New subscription started |
+| `subscription.updated` | Plan or billing changed |
+| `subscription.cancelled` | Subscription cancelled |
+| `subscription.paused` | Subscription paused |
+| `subscription.resumed` | Subscription resumed |
+| `invoice.paid` | Invoice payment received |
+| `invoice.failed` | Invoice payment failed |
+
+## Cancel Subscription
+
+```typescript
+await commerce.subscriptions.cancel('sub_123', {
+  reason: 'customer_request',
+  cancelAtPeriodEnd: true  // finish current billing period
+})
+```
+
+## Update Subscription
+
+```typescript
+await commerce.subscriptions.update('sub_123', {
+  priceId: 'price_enterprise_monthly',  // upgrade plan
+  prorationBehavior: 'create_prorations'
+})
+```

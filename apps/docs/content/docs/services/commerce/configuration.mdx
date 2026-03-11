@@ -1,0 +1,76 @@
+---
+title: Configuration
+description: Environment variables and deployment options
+---
+
+# Configuration
+
+## Environment Variables
+
+```bash
+# API
+COMMERCE_API_URL=https://commerce.hanzo.ai
+HANZO_COMMERCE_KEY=hk_xxx
+
+# Stripe
+STRIPE_SECRET_KEY=sk_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+
+# Crypto
+CRYPTO_WALLET_ADDRESS=0x...
+CRYPTO_NETWORK=ethereum
+
+# Tax
+TAX_PROVIDER=taxjar
+TAXJAR_API_KEY=xxx
+
+# Database
+DATABASE_URL=postgres://user:pass@localhost:5432/commerce
+REDIS_URL=redis://localhost:6379
+```
+
+## Docker Deployment
+
+```bash
+docker run -d \
+  --name hanzo-commerce \
+  -p 8080:8080 \
+  -e STRIPE_SECRET_KEY=sk_xxx \
+  -e DATABASE_URL=postgres://... \
+  -e REDIS_URL=redis://... \
+  hanzoai/commerce:latest
+```
+
+## Kubernetes
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: commerce
+  namespace: hanzo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: commerce
+  template:
+    spec:
+      containers:
+        - name: commerce
+          image: hanzoai/commerce:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: commerce-secrets
+```
+
+## Rate Limits
+
+| Tier | Requests/min | Burst |
+|------|-------------|-------|
+| Free | 60 | 10 |
+| Starter | 300 | 50 |
+| Pro | 1000 | 200 |
+| Enterprise | Custom | Custom |

@@ -1,0 +1,69 @@
+---
+title: Quick Start
+description: Get started with Hanzo Commerce in minutes
+---
+
+# Quick Start
+
+## 1. Install SDK
+
+```typescript
+import { HanzoCommerce } from '@hanzo/commerce'
+
+const commerce = new HanzoCommerce({
+  apiKey: process.env.HANZO_COMMERCE_KEY
+})
+```
+
+## 2. Create a Product
+
+```typescript
+const product = await commerce.products.create({
+  name: 'AI API Credits',
+  description: 'Credits for AI inference',
+  price: 10.00,
+  currency: 'USD',
+  type: 'digital'
+})
+```
+
+## 3. Create a Checkout
+
+```typescript
+const checkout = await commerce.checkouts.create({
+  items: [
+    { productId: product.id, quantity: 10 }
+  ],
+  successUrl: 'https://myapp.com/success',
+  cancelUrl: 'https://myapp.com/cancel'
+})
+
+// Redirect to checkout
+window.location.href = checkout.url
+```
+
+## 4. Handle Webhook
+
+```typescript
+app.post('/webhooks/commerce', async (req, res) => {
+  const event = commerce.webhooks.verify(req.body, req.headers)
+
+  switch (event.type) {
+    case 'checkout.completed':
+      await fulfillOrder(event.data)
+      break
+    case 'payment.succeeded':
+      await recordPayment(event.data)
+      break
+  }
+
+  res.status(200).send('ok')
+})
+```
+
+## Next Steps
+
+- [Products](/docs/services/commerce/products) -- Create and manage product catalog
+- [Subscriptions](/docs/services/commerce/subscriptions) -- Set up recurring billing
+- [Payments](/docs/services/commerce/payments) -- Payment processing options
+- [Webhooks](/docs/services/commerce/webhooks) -- Real-time event notifications
