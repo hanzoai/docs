@@ -1,0 +1,72 @@
+---
+title: Products
+description: Product catalog management
+---
+
+# Products
+
+Hanzo Commerce supports flexible product types with variants, metadata, and pricing tiers.
+
+## Product Types
+
+| Type | Description | Use Case |
+|------|-------------|----------|
+| `physical` | Shippable goods | Hardware, merchandise |
+| `digital` | Digital downloads | Software, assets |
+| `subscription` | Recurring billing | SaaS plans |
+| `credits` | Usage-based credits | API tokens, compute |
+
+## Create Product
+
+```typescript
+const product = await commerce.products.create({
+  name: 'API Plan',
+  type: 'subscription',
+  description: 'AI inference API access',
+  metadata: {
+    tier: 'pro',
+    features: ['priority-support', 'higher-limits']
+  }
+})
+```
+
+## Product Variants
+
+Variants represent different configurations of a product (pricing tiers, sizes, etc.).
+
+```typescript
+const product = await commerce.products.create({
+  name: 'API Plan',
+  type: 'subscription',
+  variants: [
+    { name: 'Starter', price: 29, interval: 'month', metadata: { calls: 10000 } },
+    { name: 'Pro', price: 99, interval: 'month', metadata: { calls: 100000 } },
+    { name: 'Enterprise', price: 299, interval: 'month', metadata: { calls: 'unlimited' } }
+  ]
+})
+```
+
+## List Products
+
+```typescript
+const products = await commerce.products.list({
+  type: 'subscription',
+  active: true,
+  limit: 20
+})
+```
+
+## Update Product
+
+```typescript
+await commerce.products.update(product.id, {
+  price: 39.99,
+  metadata: { featured: true }
+})
+```
+
+## Delete Product
+
+```typescript
+await commerce.products.delete(product.id)
+```
