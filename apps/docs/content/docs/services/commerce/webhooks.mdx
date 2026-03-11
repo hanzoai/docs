@@ -1,0 +1,84 @@
+---
+title: Webhooks
+description: Real-time event notifications
+---
+
+# Webhooks
+
+Receive real-time notifications when events occur in your commerce account.
+
+## Configure Webhook
+
+```typescript
+await commerce.webhooks.create({
+  url: 'https://myapp.com/webhooks/commerce',
+  events: [
+    'checkout.completed',
+    'subscription.created',
+    'payment.succeeded',
+    'payment.failed'
+  ],
+  secret: 'whsec_...'  // optional, auto-generated if omitted
+})
+```
+
+## Events
+
+| Event | Description |
+|-------|-------------|
+| `checkout.completed` | Checkout finished successfully |
+| `order.created` | New order placed |
+| `payment.succeeded` | Payment processed |
+| `payment.failed` | Payment declined or failed |
+| `subscription.created` | New subscription started |
+| `subscription.cancelled` | Subscription cancelled |
+| `subscription.updated` | Subscription plan changed |
+| `invoice.paid` | Invoice payment received |
+| `invoice.failed` | Invoice payment failed |
+| `refund.created` | Refund issued |
+
+## Verify Signature
+
+Always verify webhook signatures in production:
+
+```typescript
+app.post('/webhooks/commerce', (req, res) => {
+  const signature = req.headers['x-hanzo-signature']
+
+  try {
+    const event = commerce.webhooks.verify(
+      req.rawBody,
+      signature,
+      process.env.WEBHOOK_SECRET
+    )
+
+    // Handle event
+    switch (event.type) {
+      case 'checkout.completed':
+        await fulfillOrder(event.data)
+        break
+      case 'payment.failed':
+        await notifyCustomer(event.data)
+        break
+    }
+
+    res.status(200).json({ received: true })
+  } catch (err) {
+    res.status(400).json({ error: 'Invalid signature' })
+  }
+})
+```
+
+## Retry Policy
+
+Failed webhook deliveries are retried with exponential backoff:
+
+| Attempt | Delay |
+|---------|-------|
+| 1 | Immediate |
+| 2 | 5 minutes |
+| 3 | 30 minutes |
+| 4 | 2 hours |
+| 5 | 24 hours |
+
+After 5 failed attempts, the webhook endpoint is disabled and an alert is sent.

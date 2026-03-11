@@ -1,0 +1,70 @@
+---
+title: Payments
+description: Payment processing and providers
+---
+
+# Payments
+
+Hanzo Commerce supports multiple payment providers for cards, crypto, and mobile wallets.
+
+## Supported Providers
+
+| Provider | Types | Currencies |
+|----------|-------|------------|
+| Stripe | Cards, ACH, SEPA, iDEAL | 135+ currencies |
+| Crypto | BTC, ETH, USDC, SOL | Native tokens |
+| Apple Pay | iOS, Safari | USD, EUR, GBP, + |
+| Google Pay | Android, Chrome | USD, EUR, GBP, + |
+
+## Process Payment
+
+```typescript
+const payment = await commerce.payments.create({
+  amount: 100.00,
+  currency: 'USD',
+  paymentMethod: 'pm_xxx',
+  customerId: 'cus_123',
+  description: 'API Credits - 1000 units'
+})
+```
+
+## Crypto Payments
+
+```typescript
+const payment = await commerce.crypto.createPayment({
+  amount: 100.00,
+  currency: 'USDC',
+  network: 'ethereum'
+})
+
+// Returns payment address for on-chain transfer
+console.log(payment.address)  // 0x...
+console.log(payment.qrCode)   // QR code data URL
+```
+
+## Refunds
+
+```typescript
+const refund = await commerce.payments.refund(payment.id, {
+  amount: 50.00,  // partial refund
+  reason: 'customer_request'
+})
+```
+
+## Payment Intents
+
+For complex checkout flows, use payment intents:
+
+```typescript
+const intent = await commerce.paymentIntents.create({
+  amount: 250.00,
+  currency: 'USD',
+  paymentMethods: ['card', 'crypto'],
+  metadata: { orderId: 'ord_123' }
+})
+
+// Client-side confirmation
+const result = await commerce.paymentIntents.confirm(intent.id, {
+  paymentMethod: 'pm_xxx'
+})
+```
