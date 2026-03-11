@@ -7,7 +7,7 @@ interface Route {
 const ROUTES: Route[] = [
   { prefix: '/docs/services/kms',      origin: 'kms-docs.pages.dev',         assetPrefix: '/__kms' },
   { prefix: '/docs/services/iam',      origin: 'iam-docs-s4h.pages.dev',     assetPrefix: '/__iam' },
-  { prefix: '/docs/services/platform', origin: 'platform-docs.pages.dev',    assetPrefix: '/__platform' },
+  { prefix: '/docs/services/platform', origin: 'platform-docs-djx.pages.dev', assetPrefix: '/__platform' },
   { prefix: '/docs/projects',          origin: 'project-docs-5r8.pages.dev', assetPrefix: '/__projects' },
 ];
 
