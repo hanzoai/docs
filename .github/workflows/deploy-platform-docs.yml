@@ -1,0 +1,49 @@
+name: Deploy Docs (Platform)
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - 'apps/docs/content/docs/services/platform/**'
+      - '.github/workflows/deploy-platform-docs.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Extend swap for large build
+        run: |
+          sudo swapoff /swapfile 2>/dev/null || true
+          sudo rm -f /swapfile
+          sudo fallocate -l 12G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+
+      - run: pnpm build --filter=docs
+        env:
+          DOCS_SECTION: platform
+          NODE_OPTIONS: '--max-old-space-size=16384'
+        timeout-minutes: 60
+
+      - name: Deploy to Cloudflare Pages
+        working-directory: apps/docs
+        run: pnpm dlx wrangler pages deploy out --project-name=platform-docs --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
