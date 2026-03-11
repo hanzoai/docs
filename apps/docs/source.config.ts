@@ -18,12 +18,13 @@ const isExport = process.env.NEXT_EXPORT === '1';
 // Federated docs: DOCS_SECTION controls which MDX pages are built.
 // Each section deploys to its own CF Pages project; meta.json files are
 // always included so every build renders the complete sidebar tree.
-const section = process.env.DOCS_SECTION as 'core' | 'kms' | 'iam' | 'projects' | undefined;
+const section = process.env.DOCS_SECTION as 'core' | 'kms' | 'iam' | 'platform' | 'projects' | undefined;
 
 const sectionFilters: Record<string, string[]> = {
-  core:     ['**/*.mdx', '!**/projects/**', '!**/services/kms/**', '!**/services/iam/**'],
+  core:     ['**/*.mdx', '!**/projects/**', '!**/services/kms/**', '!**/services/iam/**', '!**/services/platform/**'],
   kms:      ['**/services/kms/**/*.mdx'],
   iam:      ['**/services/iam/**/*.mdx'],
+  platform: ['**/services/platform/**/*.mdx'],
   projects: ['**/projects/**/*.mdx'],
 };
 
