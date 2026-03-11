@@ -36,27 +36,14 @@ jobs:
           sudo swapon /swapfile
 
       - name: Build dev-docs
-        run: pnpm build --filter=dev-docs --output-logs=full 2>&1 | tee /tmp/build.log
+        run: pnpm build --filter=dev-docs
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
         timeout-minutes: 30
 
-      - name: Upload build log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: /tmp/build.log
-
-      - name: Create Cloudflare Pages project (if needed)
-        continue-on-error: true
-        run: npx wrangler pages project create dev-docs --production-branch=main
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy apps/dev-docs/out --project-name=dev-docs --commit-dirty=true
+        working-directory: apps/dev-docs
+        run: pnpm dlx wrangler pages deploy out --project-name=dev-docs --commit-dirty=true
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
