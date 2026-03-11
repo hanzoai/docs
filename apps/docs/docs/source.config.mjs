@@ -21,11 +21,22 @@ import { metaSchema, pageSchema } from "@hanzo/docs-core/source/schema";
 import { visit } from "unist-util-visit";
 var isLint = process.env.LINT === "1";
 var isExport = process.env.NEXT_EXPORT === "1";
+var section = process.env.DOCS_SECTION;
+var sectionFilters = {
+  core: ["**/*.mdx", "!**/projects/**", "!**/services/kms/**", "!**/services/iam/**", "!**/services/platform/**"],
+  kms: ["**/services/kms/**/*.mdx"],
+  iam: ["**/services/iam/**/*.mdx"],
+  platform: ["**/services/platform/**/*.mdx"],
+  projects: ["**/projects/**/*.mdx"]
+};
+function getDocsFiles() {
+  if (section && sectionFilters[section]) return sectionFilters[section];
+  if (isExport) return ["**/*.mdx", "!**/projects/**"];
+  return void 0;
+}
 var docs = defineDocs({
   docs: {
-    // During static export, exclude the entire projects directory — thousands
-    // of upstream project docs are too heavy for the standard CI runner.
-    ...isExport ? { files: ["**/*.mdx", "!**/projects/**"] } : {},
+    ...getDocsFiles() ? { files: getDocsFiles() } : {},
     schema: pageSchema.extend({
       preview: z.string().optional(),
       index: z.boolean().default(false),
