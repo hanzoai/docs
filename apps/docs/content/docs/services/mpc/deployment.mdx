@@ -5,7 +5,7 @@ description: Deploy Hanzo MPC with Helm, Docker, or Kubernetes
 
 # Deployment
 
-Hanzo MPC runs as a Kubernetes StatefulSet with NATS JetStream for inter-node messaging and Consul for peer discovery. This guide covers all deployment methods from local development to production clusters.
+Hanzo MPC runs as a Kubernetes StatefulSet with NATS JetStream for messaging and a private BFT blockchain (ConsensusKV) for cluster state. Consul is supported as a legacy backend for parity testing. This guide covers all deployment methods from local development to production clusters.
 
 ## Prerequisites
 
@@ -23,15 +23,15 @@ docker run -d \
   --name mpc-node-0 \
   -p 8080:8080 \
   -e MPC_NODE_INDEX=0 \
-  -e MPC_PARTIES=3 \
-  -e MPC_THRESHOLD=2 \
+  -e MPC_PARTIES=5 \
+  -e MPC_THRESHOLD=3 \
   -e NATS_URL=nats://nats:4222 \
-  -e CONSUL_ADDR=consul:8500 \
+  -e KV_BACKEND=consensus \
   -e IAM_ENDPOINT=https://hanzo.id \
   ghcr.io/hanzoai/mpc:latest
 ```
 
-### Docker Compose (3-node cluster)
+### Docker Compose (5-node cluster)
 
 ```yaml
 # compose.yml
@@ -43,70 +43,107 @@ services:
       - "4222:4222"
       - "8222:8222"
 
-  consul:
-    image: hashicorp/consul:1.18
-    command: ["agent", "-dev", "-client", "0.0.0.0"]
-    ports:
-      - "8500:8500"
-
   mpc-node-0:
     image: ghcr.io/hanzoai/mpc:latest
     environment:
       MPC_NODE_INDEX: "0"
-      MPC_PARTIES: "3"
-      MPC_THRESHOLD: "2"
+      MPC_PARTIES: "5"
+      MPC_THRESHOLD: "3"
       NATS_URL: "nats://nats:4222"
-      CONSUL_ADDR: "consul:8500"
+      KV_BACKEND: "consensus"
+      CONSENSUS_CHAIN_ID: "m-chain"
       IAM_ENDPOINT: "https://hanzo.id"
       STORAGE_ENCRYPTION_KEY: "${ENCRYPTION_KEY_0}"
     ports:
       - "8080:8080"
     volumes:
       - mpc-data-0:/data
+      - ./identity:/app/identity:ro
     depends_on:
       - nats
-      - consul
 
   mpc-node-1:
     image: ghcr.io/hanzoai/mpc:latest
     environment:
       MPC_NODE_INDEX: "1"
-      MPC_PARTIES: "3"
-      MPC_THRESHOLD: "2"
+      MPC_PARTIES: "5"
+      MPC_THRESHOLD: "3"
       NATS_URL: "nats://nats:4222"
-      CONSUL_ADDR: "consul:8500"
+      KV_BACKEND: "consensus"
+      CONSENSUS_CHAIN_ID: "m-chain"
       IAM_ENDPOINT: "https://hanzo.id"
       STORAGE_ENCRYPTION_KEY: "${ENCRYPTION_KEY_1}"
     ports:
       - "8081:8080"
     volumes:
       - mpc-data-1:/data
+      - ./identity:/app/identity:ro
     depends_on:
       - nats
-      - consul
 
   mpc-node-2:
     image: ghcr.io/hanzoai/mpc:latest
     environment:
       MPC_NODE_INDEX: "2"
-      MPC_PARTIES: "3"
-      MPC_THRESHOLD: "2"
+      MPC_PARTIES: "5"
+      MPC_THRESHOLD: "3"
       NATS_URL: "nats://nats:4222"
-      CONSUL_ADDR: "consul:8500"
+      KV_BACKEND: "consensus"
+      CONSENSUS_CHAIN_ID: "m-chain"
       IAM_ENDPOINT: "https://hanzo.id"
       STORAGE_ENCRYPTION_KEY: "${ENCRYPTION_KEY_2}"
     ports:
       - "8082:8080"
     volumes:
       - mpc-data-2:/data
+      - ./identity:/app/identity:ro
     depends_on:
       - nats
-      - consul
+
+  mpc-node-3:
+    image: ghcr.io/hanzoai/mpc:latest
+    environment:
+      MPC_NODE_INDEX: "3"
+      MPC_PARTIES: "5"
+      MPC_THRESHOLD: "3"
+      NATS_URL: "nats://nats:4222"
+      KV_BACKEND: "consensus"
+      CONSENSUS_CHAIN_ID: "m-chain"
+      IAM_ENDPOINT: "https://hanzo.id"
+      STORAGE_ENCRYPTION_KEY: "${ENCRYPTION_KEY_3}"
+    ports:
+      - "8083:8080"
+    volumes:
+      - mpc-data-3:/data
+      - ./identity:/app/identity:ro
+    depends_on:
+      - nats
+
+  mpc-node-4:
+    image: ghcr.io/hanzoai/mpc:latest
+    environment:
+      MPC_NODE_INDEX: "4"
+      MPC_PARTIES: "5"
+      MPC_THRESHOLD: "3"
+      NATS_URL: "nats://nats:4222"
+      KV_BACKEND: "consensus"
+      CONSENSUS_CHAIN_ID: "m-chain"
+      IAM_ENDPOINT: "https://hanzo.id"
+      STORAGE_ENCRYPTION_KEY: "${ENCRYPTION_KEY_4}"
+    ports:
+      - "8084:8080"
+    volumes:
+      - mpc-data-4:/data
+      - ./identity:/app/identity:ro
+    depends_on:
+      - nats
 
 volumes:
   mpc-data-0:
   mpc-data-1:
   mpc-data-2:
+  mpc-data-3:
+  mpc-data-4:
 ```
 
 Start the cluster:
@@ -116,6 +153,16 @@ Start the cluster:
 export ENCRYPTION_KEY_0=$(openssl rand -hex 32)
 export ENCRYPTION_KEY_1=$(openssl rand -hex 32)
 export ENCRYPTION_KEY_2=$(openssl rand -hex 32)
+export ENCRYPTION_KEY_3=$(openssl rand -hex 32)
+export ENCRYPTION_KEY_4=$(openssl rand -hex 32)
+
+# Generate identity keys (Ed25519 + ML-DSA-65)
+hanzo-mpc-cli generate-peers -n 5
+hanzo-mpc-cli generate-identity --node hanzo-mpc-0
+hanzo-mpc-cli generate-identity --node hanzo-mpc-1
+hanzo-mpc-cli generate-identity --node hanzo-mpc-2
+hanzo-mpc-cli generate-identity --node hanzo-mpc-3
+hanzo-mpc-cli generate-identity --node hanzo-mpc-4
 
 docker compose up -d
 ```
@@ -149,16 +196,22 @@ helm install hanzo-mpc hanzo/mpc \
 ```yaml
 # Cluster configuration
 cluster:
-  parties: 3
-  threshold: 2
+  parties: 5
+  threshold: 3
   protocol: cggmp21  # Default protocol for new wallets
 
+# State management backend
+kvBackend: consensus  # "consensus" (default), "nats", or "consul"
+
+consensus:
+  chainId: m-chain   # Private chain identifier
+
 # Node configuration
-replicaCount: 3
+replicaCount: 5
 
 image:
   repository: ghcr.io/hanzoai/mpc
-  tag: latest
+  tag: v0.5.0
   pullPolicy: IfNotPresent
 
 # Resource limits per node
@@ -176,7 +229,7 @@ persistence:
   storageClass: do-block-storage  # Adjust for your cloud
   size: 10Gi
 
-# NATS JetStream
+# NATS JetStream (required for consensus transport + protocol messaging)
 nats:
   enabled: true  # Deploy NATS as subchart
   # Or use external NATS:
@@ -189,12 +242,13 @@ nats:
     fileStore:
       maxSize: 1Gi
 
-# Consul
-consul:
-  enabled: true  # Deploy Consul as subchart
-  # Or use external Consul:
-  # enabled: false
-  # externalAddr: consul.infrastructure.svc:8500
+# Identity keys (Ed25519 + ML-DSA-65 for dual-cert consensus)
+identity:
+  # Store in KMS for production:
+  hsmProvider: hanzo-kms  # "file", "aws-cloudhsm", "azure-hsm", "hanzo-kms"
+  # Or load from local files:
+  # hsmProvider: file
+  # secretName: hanzo-mpc-identity
 
 # Authentication
 auth:
@@ -207,17 +261,18 @@ tls:
   enabled: true
   certManager: true
   issuer: letsencrypt-prod
-  # Or provide certs directly:
-  # certManager: false
-  # secretName: mpc-tls
 
-# Ingress
+# Ingress (dual endpoints)
 ingress:
   enabled: true
   className: nginx
-  host: mpc.hanzo.ai
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: mpc.hanzo.ai
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+    - host: mpc.lux.network
+      annotations:
+        cert-manager.io/cluster-issuer: letsencrypt-prod
 
 # Monitoring
 metrics:
@@ -225,10 +280,6 @@ metrics:
   serviceMonitor:
     enabled: true
     namespace: monitoring
-
-# Node-to-node mTLS via Consul Connect
-connectInject:
-  enabled: true
 ```
 
 ### Upgrade
@@ -276,7 +327,7 @@ metadata:
   namespace: mpc
 spec:
   serviceName: mpc
-  replicas: 3
+  replicas: 5
   podManagementPolicy: Parallel
   selector:
     matchLabels:
@@ -300,13 +351,15 @@ spec:
                 fieldRef:
                   fieldPath: metadata.annotations['mpc-index']
             - name: MPC_PARTIES
-              value: "3"
+              value: "5"
             - name: MPC_THRESHOLD
-              value: "2"
+              value: "3"
             - name: NATS_URL
               value: "nats://nats.mpc.svc:4222"
-            - name: CONSUL_ADDR
-              value: "consul.mpc.svc:8500"
+            - name: KV_BACKEND
+              value: "consensus"
+            - name: CONSENSUS_CHAIN_ID
+              value: "m-chain"
             - name: IAM_ENDPOINT
               value: "https://hanzo.id"
             - name: STORAGE_ENCRYPTION_KEY
@@ -407,13 +460,21 @@ spec:
 | `MPC_PARTIES` | Yes | - | Total number of parties |
 | `MPC_THRESHOLD` | Yes | - | Signing threshold |
 | `NATS_URL` | Yes | - | NATS JetStream connection URL |
-| `CONSUL_ADDR` | Yes | - | Consul agent address |
+| `KV_BACKEND` | No | `consensus` | State backend: `consensus`, `nats`, or `consul` |
+| `CONSENSUS_CHAIN_ID` | No | `m-chain` | Chain ID for ConsensusKV private blockchain |
+| `HSM_PROVIDER` | No | `file` | Identity key source: `file`, `aws-cloudhsm`, `azure-hsm`, `hanzo-kms` |
 | `IAM_ENDPOINT` | Yes | `https://hanzo.id` | Hanzo IAM endpoint for token validation |
 | `STORAGE_ENCRYPTION_KEY` | Yes | - | Hex-encoded AES-256 key for BadgerDB encryption |
 | `LOG_LEVEL` | No | `info` | Log level: `debug`, `info`, `warn`, `error` |
 | `METRICS_PORT` | No | `9090` | Prometheus metrics port |
 | `API_PORT` | No | `8080` | REST API port |
 | `BADGER_PATH` | No | `/data/badger` | BadgerDB storage path |
+
+Legacy variables (when `KV_BACKEND=consul`):
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `CONSUL_ADDR` | Only for consul backend | - | Consul agent address |
 
 ---
 
@@ -483,7 +544,8 @@ Before going to production, verify the following:
 ### Security
 
 - [ ] Each node has a unique `STORAGE_ENCRYPTION_KEY` stored in Hanzo KMS
-- [ ] mTLS enabled between nodes via Consul Connect
+- [ ] Ed25519 + ML-DSA-65 identity keys generated and stored in KMS/HSM
+- [ ] ConsensusKV dual-certificate finality verified (both Ed25519 and ML-DSA votes)
 - [ ] Ingress TLS terminated with valid certificates
 - [ ] IAM endpoint configured for Bearer token validation
 - [ ] Network policies restrict inter-pod traffic to MPC namespace
@@ -531,7 +593,7 @@ metadata:
   name: mpc
   namespace: mpc
 spec:
-  maxUnavailable: 1  # For 2-of-3: max 1 unavailable
+  maxUnavailable: 2  # For 3-of-5: max 2 unavailable
   selector:
     matchLabels:
       app: mpc

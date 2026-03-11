@@ -1,0 +1,231 @@
+---
+title: Consensus
+description: Private BFT blockchain with dual-certificate Ed25519 + ML-DSA-65 finality for MPC cluster state management
+---
+
+# Consensus (ConsensusKV)
+
+MPC nodes form their own **private BFT blockchain** to manage cluster state. Every state mutation -- peer registration, key info, API keys, wallet ownership -- is proposed as a block, voted on with dual signatures, and finalized when the threshold is met.
+
+This replaces external service discovery (Consul) with a blockchain-native approach: the MPC nodes themselves are the validators.
+
+## Dual-Certificate Finality
+
+Every block and vote carries two signatures:
+
+| Certificate | Algorithm | Size | Standard | Purpose |
+|-------------|-----------|------|----------|---------|
+| **Classical** | Ed25519 | 64 bytes | FIPS 186-5 | Fast, battle-tested |
+| **Post-quantum** | ML-DSA-65 | 3,309 bytes | FIPS 204, NIST Level 3 | Quantum-resistant |
+
+A block is finalized **only** when both signature types reach the t-of-n threshold. This provides defense-in-depth:
+
+- If quantum computers break Ed25519, ML-DSA certificates still hold
+- If ML-DSA has a flaw, Ed25519 certificates still protect the chain
+- Both must be compromised simultaneously to forge a finalized block
+
+### ML-DSA-65 Key Sizes (FIPS 204)
+
+| Component | Size |
+|-----------|------|
+| Public key | 1,952 bytes |
+| Private key | 4,032 bytes |
+| Signature | 3,309 bytes |
+| Security level | NIST Level 3 (192-bit classical equivalent) |
+| Package | `github.com/luxfi/crypto/mldsa` |
+
+The same ML-DSA implementation is used by the [Lux Network](/docs/services/lux) mainnet precompiles for on-chain post-quantum signature verification.
+
+## Consensus Protocol
+
+```
+ Proposer           Validators (all nodes)          Finalized State
+    │                       │                              │
+    │  1. Batch pending     │                              │
+    │     KV mutations      │                              │
+    │                       │                              │
+    │  2. Create block      │                              │
+    │     (height, parent,  │                              │
+    │      mutations, time) │                              │
+    │                       │                              │
+    │  3. Dual-sign block   │                              │
+    │     (Ed25519+ML-DSA)  │                              │
+    │                       │                              │
+    ├──4. Broadcast proposal──▶                            │
+    │                       │                              │
+    │  5. Verify block hash │                              │
+    │     + proposer sigs   │                              │
+    │                       │                              │
+    │  ◀──6. Dual-signed vote──┤                           │
+    │                       │                              │
+    │  7. Collect votes     │                              │
+    │     until threshold   │                              │
+    │     met for BOTH      │                              │
+    │     Ed25519 + ML-DSA  │                              │
+    │                       │                              │
+    ├──8. Broadcast finalized──▶                           │
+    │                       │                              │
+    │                       │  9. Verify dual-cert         │
+    │                       │     threshold                │
+    │                       │                              │
+    │                       ├──10. Apply mutations──────────▶
+    │                       │     (deterministic)          │
+```
+
+### Block Structure
+
+```go
+type ConsensusBlock struct {
+    Height     uint64        // Sequential block number
+    ParentHash [32]byte      // SHA-256 of parent block
+    Timestamp  time.Time     // UTC proposal time
+    Mutations  []KVMutation  // Ordered state changes
+    ProposerID string        // Proposing validator
+    EdSig      []byte        // Ed25519 signature (64 bytes)
+    PQSig      []byte        // ML-DSA-65 signature (3,309 bytes)
+}
+
+type KVMutation struct {
+    Op    OpType  // OpPut or OpDelete
+    Key   string  // e.g. "ready/node0", "threshold_keyinfo/wallet1"
+    Value []byte  // Payload (nil for delete)
+}
+```
+
+The block hash is computed over `Height + ParentHash + Timestamp + Mutations + ProposerID`, excluding signatures. This ensures deterministic hashing regardless of signature order.
+
+### Vote Structure
+
+```go
+type Vote struct {
+    VoterID   string    // Validator identity
+    BlockHash [32]byte  // Hash of the proposed block
+    Height    uint64    // Must match block height
+    EdSig     []byte    // Ed25519 vote signature
+    PQSig     []byte    // ML-DSA-65 vote signature
+}
+```
+
+A vote is valid only when **both** Ed25519 and ML-DSA signatures verify against the voter's registered public keys.
+
+### Finality Condition
+
+```
+finalized = (valid_ed25519_votes >= threshold) AND (valid_mldsa_votes >= threshold)
+```
+
+For a 3-of-5 cluster, a block needs at least 3 validators to cast valid dual-signed votes.
+
+## NATS Transport
+
+Consensus communication uses three NATS topics per chain:
+
+| Topic | Direction | Content |
+|-------|-----------|---------|
+| `mpc.consensus.<chainID>.proposals` | Proposer → All | Serialized `ConsensusBlock` |
+| `mpc.consensus.<chainID>.votes` | Voter → Proposer | Serialized `Vote` |
+| `mpc.consensus.<chainID>.finalized` | Proposer → All | Serialized `FinalizedBlock` |
+
+NATS JetStream provides reliable delivery. Consensus does not depend on NATS for ordering -- block height and parent hash enforce the canonical chain.
+
+## Bootstrap
+
+Consensus requires validators to know each other before the first block. This creates a chicken-and-egg problem: peer state is stored in the consensus chain, but the chain needs peers to start.
+
+The solution: **NATS JetStream KV for bootstrap only**.
+
+```
+1. Each node registers in NATS KV bucket "mpc-bootstrap"
+   key: peer/<node-name>
+   value: { ed_pubkey, pq_pubkey, endpoint }
+
+2. Nodes read all peers from the bootstrap bucket
+
+3. Build validator set with dual public keys
+
+4. Start consensus chain with genesis block
+
+5. All subsequent state goes through ConsensusKV
+```
+
+After genesis, the bootstrap bucket is only used for new node joins (state sync via snapshot).
+
+## State Sync
+
+When a new node joins an existing cluster:
+
+1. The new node registers in the bootstrap NATS KV bucket
+2. An existing validator sends a state **snapshot** (full KV map + block height)
+3. The new node loads the snapshot and begins processing blocks from that height
+4. The new node participates in voting for subsequent blocks
+
+```go
+// Snapshot is a point-in-time copy of the full KV state
+snap := consensusKV.Snapshot()  // map[string][]byte
+
+// New node loads snapshot at the height it was taken
+newNode.LoadSnapshot(snap, height)
+```
+
+## KMS/HSM Key Storage
+
+In production, consensus signing keys should never exist as plaintext on disk. The `Signer` interface enables delegation to KMS or HSM:
+
+```go
+type Signer interface {
+    Sign(keyID string, message []byte) ([]byte, error)
+}
+```
+
+When `hsm.provider` is configured (e.g., AWS CloudHSM, Azure HSM, Hanzo KMS), consensus uses the HSM signer adapter instead of loading local key files:
+
+| Config | Behavior |
+|--------|----------|
+| `hsm.provider: file` | Load Ed25519 + ML-DSA keys from local identity files |
+| `hsm.provider: aws-cloudhsm` | Sign via AWS CloudHSM PKCS#11 |
+| `hsm.provider: azure-hsm` | Sign via Azure Managed HSM |
+| `hsm.provider: hanzo-kms` | Sign via Hanzo KMS API |
+
+## Configuration
+
+```yaml
+# config.yaml
+kv_backend: consensus      # "consensus" (default), "nats", or "consul"
+
+consensus:
+  chain_id: m-chain         # Chain identifier
+
+nats:
+  url: nats://nats:4222
+  kv_bucket: mpc-state      # Only used when kv_backend: nats
+
+# Post-quantum identity keys (auto-generated if not provided)
+# In production, store in KMS and reference by key ID
+identity:
+  ed_private_key: /app/identity/node_private.key
+  pq_private_key: /app/identity/node_pq_private.key
+```
+
+## Comparison with Alternatives
+
+| Property | ConsensusKV | Consul Raft | NATS KV |
+|----------|------------|-------------|---------|
+| **Validators** | MPC nodes themselves | Consul server cluster | NATS cluster |
+| **External dependency** | None (self-sovereign) | Consul servers | NATS servers |
+| **Post-quantum** | ML-DSA-65 dual-cert | No | No |
+| **Finality model** | Dual-cert threshold | Raft leader commit | JetStream ack |
+| **Latency** | <100ms (typical) | ~50ms | ~10ms |
+| **Trust model** | Same as MPC threshold | Trust Consul cluster | Trust NATS cluster |
+| **State integrity** | Blockchain (hash chain) | Raft log | Stream sequence |
+
+The key advantage: ConsensusKV uses the **same trust model** as MPC signing. If you trust 3-of-5 nodes to sign transactions, you can trust 3-of-5 nodes to finalize state -- no additional infrastructure needed.
+
+## Lux Network Integration
+
+ConsensusKV uses the same post-quantum crypto library as the Lux Network:
+
+- **ML-DSA precompile**: `lux/precompile/mldsa/` -- on-chain PQ signature verification
+- **Quasar consensus**: `lux/consensus/protocol/quasar/` -- dual BLS+Corona threshold finality
+- **Shared crypto**: `github.com/luxfi/crypto/mldsa` -- ML-DSA-44/65/87 implementation
+
+The MPC private chain can optionally register as a **Lux subnet** (M-Chain or T-Chain) for network-level integration and cross-chain state anchoring.

@@ -46,11 +46,14 @@ Hanzo KMS is an open-source Key Management Service for managing secrets, API key
 │                       │                                                  │
 │                       ▼                                                  │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                    Hanzo MPC Cluster                             │    │
-│  │   ┌─────────┐    ┌─────────┐    ┌─────────┐                     │    │
-│  │   │  Node1  │    │  Node2  │    │  Node3  │                     │    │
-│  │   │ (Share) │    │ (Share) │    │ (Share) │                     │    │
-│  │   └─────────┘    └─────────┘    └─────────┘                     │    │
+│  │              Hanzo MPC Cluster (Private BFT Chain)               │    │
+│  │   ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐       │    │
+│  │   │ Node 0 │ │ Node 1 │ │ Node 2 │ │ Node 3 │ │ Node 4 │       │    │
+│  │   │ share₀ │ │ share₁ │ │ share₂ │ │ share₃ │ │ share₄ │       │    │
+│  │   │Ed25519 │ │Ed25519 │ │Ed25519 │ │Ed25519 │ │Ed25519 │       │    │
+│  │   │ML-DSA  │ │ML-DSA  │ │ML-DSA  │ │ML-DSA  │ │ML-DSA  │       │    │
+│  │   └────────┘ └────────┘ └────────┘ └────────┘ └────────┘       │    │
+│  │         Dual-cert finality: Ed25519 + ML-DSA-65 (3-of-5)        │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
@@ -280,24 +283,55 @@ for (const log of logs) {
 
 ## MPC Signer Integration
 
-Hanzo KMS integrates with Hanzo MPC for threshold signatures:
+Hanzo KMS integrates with Hanzo MPC for threshold signatures. MPC nodes run their own private BFT blockchain (ConsensusKV) with dual-certificate finality -- Ed25519 (classical) and ML-DSA-65 (post-quantum, FIPS 204).
 
 ```typescript
 // Configure MPC backend
 await kms.config.update({
   mpc: {
     endpoint: 'https://mpc.hanzo.ai',
-    threshold: '2-of-3',
+    threshold: '3-of-5',
+    kvBackend: 'consensus',     // Private BFT blockchain (default)
+    consensusChainId: 'm-chain',
     nodeEndpoints: [
+      'https://mpc-node0.hanzo.ai',
       'https://mpc-node1.hanzo.ai',
       'https://mpc-node2.hanzo.ai',
-      'https://mpc-node3.hanzo.ai'
+      'https://mpc-node3.hanzo.ai',
+      'https://mpc-node4.hanzo.ai'
     ]
   }
 })
 ```
 
-See [MPC Authentication](/docs/services/iam/mpc) for more details.
+### TFHE-KMS Bridge
+
+KMS includes a TFHE bridge for fully homomorphic encryption operations backed by MPC threshold decryption:
+
+```typescript
+// Create TFHE key via MPC DKG
+const tfheKey = await kms.keys.create({
+  name: 'encrypted-policy-key',
+  keyType: 'tfhe-uint64',
+  signer: 'mpc-tfhe',
+  scheme: '3-of-5'
+})
+
+// Encrypt data with public key (KMS-side, no MPC needed)
+const encrypted = await kms.tfhe.encrypt(tfheKey.id, { value: 1000000 })
+
+// Threshold decrypt (requires t-of-n MPC shares)
+const decrypted = await kms.tfhe.decrypt(tfheKey.id, encrypted.ciphertext)
+```
+
+### Endpoints
+
+| Endpoint | Backend | Description |
+|----------|---------|-------------|
+| `mpc.hanzo.ai` | Consensus | Managed MPC (3-of-5, dual-cert PQ finality) |
+| `mpc.lux.network` | Consensus | Decentralized MPC (same cluster, Lux subnet integration) |
+
+See [MPC Consensus](/docs/services/mpc/consensus) for details on the private blockchain and [MPC Authentication](/docs/services/iam/mpc) for auth integration.
 
 ## API Reference
 
