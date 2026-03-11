@@ -1,61 +1,271 @@
 ---
 title: Example Configuration
-description: Sample config.toml for Hanzo Dev.
+description: Annotated sample config.toml for Hanzo Dev.
 ---
 
-## Sample Configuration
+Use this example configuration as a starting point. For an explanation of each field, see [Configuration](./). Copy the snippet below to `~/.hanzo/config.toml` and adjust values as needed.
 
 ```toml
-# ~/.hanzo/config.toml
+# Hanzo Dev example configuration (config.toml)
+#
+# This file lists all keys read from config.toml, their default values,
+# and concise explanations. Values here mirror the effective defaults
+# compiled into the CLI. Adjust as needed.
+#
+# Notes
+# - Root keys must appear before tables in TOML.
+# - Optional keys that default to "unset" are shown commented out with notes.
+# - MCP servers, profiles, and model providers are examples; remove or edit.
 
-# Default model
-model = "gpt-5.1"
+################################################################################
+# Core Model Selection
+################################################################################
+
+# Primary model used by Hanzo Dev. Default: "gpt-5.1-codex-max" on all platforms.
+model = "gpt-5.1-codex-max"
+
+# Model used by the /review feature (code reviews). Default: "gpt-5.1-codex-max".
+review_model = "gpt-5.1-codex-max"
+
+# Provider id selected from [model_providers]. Default: "openai".
+model_provider = "openai"
+
+# Optional manual model metadata. When unset, auto-detected from model.
+# model_context_window = 128000
+# model_auto_compact_token_limit = 0
+# tool_output_token_limit = 10000
+
+################################################################################
+# Reasoning & Verbosity (Responses API capable models)
+################################################################################
+
+# Reasoning effort: minimal | low | medium | high | xhigh
 model_reasoning_effort = "medium"
 
-# Sandbox policy
-sandbox = "workspace-write"
-approval_policy = "on-failure"
+# Reasoning summary: auto | concise | detailed | none
+model_reasoning_summary = "auto"
 
-# Auto Drive settings
-auto_drive_use_chat_model = false
-auto_drive_observer_cadence = 5
+# Text verbosity for GPT-5 family: low | medium | high
+model_verbosity = "medium"
 
-[auto_drive]
-review_enabled = true
-agents_enabled = true
-qa_automation_enabled = true
-cross_check_enabled = true
-observer_enabled = true
-coordinator_routing = true
-continue_mode = "ten-seconds"
-model = "gpt-5.1"
-model_reasoning_effort = "high"
-auto_resolve_review_attempts = 5
+# Force-enable reasoning summaries for current model
+model_supports_reasoning_summaries = false
 
-# MCP servers
-[mcp_servers.my-tool]
-command = "npx"
-args = ["-y", "@my/mcp-server"]
-env = { "API_KEY" = "sk-..." }
+################################################################################
+# Instruction Overrides
+################################################################################
 
-# Agent configuration
-[[agents]]
-name = "claude-opus-4.5"
-command = "claude"
-enabled = true
-description = "Claude Opus agent"
+# Additional user instructions injected before AGENTS.md
+# developer_instructions = ""
 
-[[agents]]
-name = "custom-coder"
-command = "/usr/local/bin/coder"
-args_write = ["-s", "workspace-write", "--dangerously-bypass-approvals-and-sandbox", "exec", "--skip-git-repo-check"]
-enabled = true
+# Legacy base instructions override (prefer AGENTS.md)
+# instructions = ""
 
-# Subagent orchestration
-[[subagents.commands]]
-name = "plan"
-read_only = true
-agents = ["code-gpt-5.2-codex", "claude-opus-4.5"]
-orchestrator_instructions = "Have each agent analyze the problem from different angles."
-agent_instructions = "Be thorough and consider edge cases."
+# Inline override for the history compaction prompt
+# compact_prompt = ""
+
+# Override built-in base instructions with a file path
+# experimental_instructions_file = "/path/to/instructions.txt"
+
+# Load the compact prompt override from a file
+# experimental_compact_prompt_file = "/path/to/compact_prompt.txt"
+
+################################################################################
+# Approval & Sandbox
+################################################################################
+
+# When to ask for command approval:
+# - untrusted: only known-safe read-only commands auto-run
+# - on-failure: auto-run in sandbox; prompt only on failure
+# - on-request: model decides when to ask (default)
+# - never: never prompt (risky)
+approval_policy = "on-request"
+
+# Filesystem/network sandbox policy for tool calls:
+# - read-only (default)
+# - workspace-write
+# - danger-full-access (no sandbox; extremely risky)
+sandbox_mode = "read-only"
+
+# Extra settings for sandbox_mode = "workspace-write"
+[sandbox_workspace_write]
+writable_roots = []
+network_access = false
+exclude_tmpdir_env_var = false
+exclude_slash_tmp = false
+
+################################################################################
+# Shell Environment Policy for spawned processes
+################################################################################
+
+[shell_environment_policy]
+inherit = "all"                    # all | core | none
+ignore_default_excludes = true     # Skip default excludes for KEY/SECRET/TOKEN
+exclude = []                       # Glob patterns to remove
+set = {}                           # Explicit key/value overrides
+include_only = []                  # Whitelist; if non-empty, keep only these
+experimental_use_profile = false   # Run via user shell profile
+
+################################################################################
+# History & File Opener
+################################################################################
+
+[history]
+persistence = "save-all"           # save-all | none
+# max_bytes = 5242880
+
+# URI scheme for clickable citations
+file_opener = "vscode"             # vscode | vscode-insiders | windsurf | cursor | none
+
+################################################################################
+# UI, Notifications, and Misc
+################################################################################
+
+[tui]
+notifications = false
+animations = true
+hide_agent_reasoning = false
+show_raw_agent_reasoning = false
+disable_paste_burst = false
+windows_wsl_setup_acknowledged = false
+
+# External notifier program (argv array)
+# notify = ["notify-send", "Hanzo Dev"]
+
+[notice]
+# hide_full_access_warning = true
+# hide_rate_limit_model_nudge = true
+
+################################################################################
+# Authentication & Login
+################################################################################
+
+cli_auth_credentials_store = "file"    # file | keyring | auto
+chatgpt_base_url = "https://chatgpt.com/backend-api/"
+# forced_chatgpt_workspace_id = ""
+# forced_login_method = "chatgpt"      # chatgpt | api
+mcp_oauth_credentials_store = "auto"   # auto | file | keyring
+
+################################################################################
+# Project Documentation Controls
+################################################################################
+
+project_doc_max_bytes = 32768
+project_doc_fallback_filenames = []
+
+################################################################################
+# Tools (legacy toggles)
+################################################################################
+
+[tools]
+web_search = false
+view_image = true
+
+################################################################################
+# Centralized Feature Flags (preferred)
+################################################################################
+
+[features]
+unified_exec = false
+apply_patch_freeform = false
+view_image_tool = true
+web_search_request = false
+enable_experimental_windows_sandbox = false
+skills = true
+
+################################################################################
+# Experimental toggles (legacy; prefer [features])
+################################################################################
+
+experimental_use_freeform_apply_patch = false
+
+################################################################################
+# MCP Servers
+################################################################################
+
+[mcp_servers]
+
+# --- Example: STDIO transport ---
+# [mcp_servers.docs]
+# command = "docs-server"
+# args = ["--port", "4000"]
+# env = { "API_KEY" = "value" }
+# env_vars = ["ANOTHER_SECRET"]
+# cwd = "/path/to/server"
+# startup_timeout_sec = 10.0
+# tool_timeout_sec = 60.0
+# enabled_tools = ["search", "summarize"]
+# disabled_tools = ["slow-tool"]
+
+# --- Example: Streamable HTTP transport ---
+# [mcp_servers.github]
+# url = "https://github-mcp.example.com/mcp"
+# bearer_token_env_var = "GITHUB_TOKEN"
+# http_headers = { "X-Example" = "value" }
+# env_http_headers = { "X-Auth" = "AUTH_ENV" }
+
+################################################################################
+# Model Providers (extend/override built-ins)
+################################################################################
+
+[model_providers]
+
+# --- Example: override OpenAI ---
+# [model_providers.openai]
+# name = "OpenAI"
+# base_url = "https://api.openai.com/v1"
+# wire_api = "responses"
+# env_http_headers = { "OpenAI-Organization" = "OPENAI_ORGANIZATION" }
+
+# --- Example: Azure ---
+# [model_providers.azure]
+# name = "Azure"
+# base_url = "https://YOUR_PROJECT.openai.azure.com/openai"
+# wire_api = "responses"
+# query_params = { api-version = "2025-04-01-preview" }
+# env_key = "AZURE_OPENAI_API_KEY"
+
+# --- Example: Local OSS (Ollama) ---
+# [model_providers.ollama]
+# name = "Ollama"
+# base_url = "http://localhost:11434/v1"
+# wire_api = "chat"
+
+################################################################################
+# Profiles (named presets)
+################################################################################
+
+# profile = "default"
+
+[profiles]
+
+# [profiles.default]
+# model = "gpt-5.1-codex-max"
+# model_provider = "openai"
+# approval_policy = "on-request"
+# sandbox_mode = "read-only"
+# model_reasoning_effort = "medium"
+
+################################################################################
+# Projects (trust levels)
+################################################################################
+
+[projects]
+# [projects."/absolute/path/to/project"]
+# trust_level = "trusted"
+
+################################################################################
+# OpenTelemetry (disabled by default)
+################################################################################
+
+[otel]
+log_user_prompt = false
+environment = "dev"
+exporter = "none"                  # none | otlp-http | otlp-grpc
+
+# [otel.exporter."otlp-http"]
+# endpoint = "https://otel.example.com/v1/logs"
+# protocol = "binary"
+# [otel.exporter."otlp-http".headers]
+# "x-otlp-api-key" = "${OTLP_TOKEN}"
 ```
