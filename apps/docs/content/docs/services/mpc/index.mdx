@@ -1,17 +1,19 @@
 ---
 title: Hanzo MPC
-description: Enterprise-grade multi-party computation for digital asset custody with 8 cryptographic protocols, configurable t-of-n thresholds, and multi-chain support.
+description: Enterprise-grade multi-party computation for digital asset custody with blockchain-native consensus, dual-certificate post-quantum finality, 8 cryptographic protocols, and configurable t-of-n thresholds.
 ---
 
 # Hanzo MPC
 
 Hanzo MPC is a self-sovereign wallet infrastructure for enterprise digital asset custody. It eliminates single points of failure by splitting private keys into shares distributed across independent nodes, requiring a configurable threshold of cooperating parties to produce valid signatures.
 
-Think of it as a self-hosted alternative to Fireblocks -- you own the infrastructure, control the key shares, and operate under your own security policies.
+MPC nodes form their own **private BFT blockchain** for cluster state management, with **dual-certificate finality** combining Ed25519 (classical) and ML-DSA-65 (post-quantum, FIPS 204) signatures. Think of it as a self-hosted alternative to Fireblocks -- you own the infrastructure, control the key shares, and operate under your own security policies.
 
 ## Key Properties
 
 - **No single point of failure**: No individual node ever holds a complete private key
+- **Blockchain-native consensus**: MPC nodes are validators on their own private BFT chain
+- **Dual-certificate finality**: Ed25519 + ML-DSA-65 (NIST Level 3) -- quantum-safe state management
 - **Configurable thresholds**: Any t-of-n scheme (2-of-3, 3-of-5, 5-of-9, etc.)
 - **Identifiable aborts**: Malicious participants are detected and attributed
 - **Proactive share refresh**: Rotate key shares without changing the public key or address
@@ -19,6 +21,7 @@ Think of it as a self-hosted alternative to Fireblocks -- you own the infrastruc
 - **8 cryptographic protocols**: From production ECDSA to post-quantum lattice signatures
 - **17 zero-knowledge proof systems**: Comprehensive verification at every protocol stage
 - **Encrypted at rest**: AES-256-GCM for all stored key shares
+- **KMS-first key management**: Identity and consensus keys stored in KMS/HSM when configured
 
 ## Quick Start
 
@@ -185,26 +188,27 @@ Signing is **O(t)** -- it depends only on the threshold, not the total number of
                     │  - Audit logging                   │
                     └──────────────┬───────────────────┘
                                    │ NATS JetStream
-                    ┌──────────────▼───────────────────┐
-                    │         MPC Nodes (StatefulSet)    │
-                    │                                    │
-                    │  ┌────────┐ ┌────────┐ ┌────────┐ │
-                    │  │ Node 0 │ │ Node 1 │ │ Node 2 │ │
-                    │  │ share₀ │ │ share₁ │ │ share₂ │ │
-                    │  └────┬───┘ └────┬───┘ └────┬───┘ │
-                    │       │          │          │      │
-                    │  ┌────▼──────────▼──────────▼───┐ │
-                    │  │    BadgerDB (encrypted)       │ │
-                    │  │    AES-256-GCM per node       │ │
-                    │  └──────────────────────────────┘ │
-                    └──────────────────────────────────┘
-                                   │
-                    ┌──────────────▼───────────────────┐
-                    │       Consul Service Mesh          │
-                    │  - Peer discovery                  │
-                    │  - Health checks                   │
-                    │  - mTLS between nodes              │
-                    └──────────────────────────────────┘
+                    ┌──────────────▼─────────────────────────┐
+                    │     MPC Nodes (StatefulSet / Validators) │
+                    │                                          │
+                    │  ┌────────┐ ┌────────┐  ...  ┌────────┐ │
+                    │  │ Node 0 │ │ Node 1 │       │ Node N │ │
+                    │  │ share₀ │ │ share₁ │       │ shareₙ │ │
+                    │  │ Ed25519│ │ Ed25519│       │ Ed25519│ │
+                    │  │ ML-DSA │ │ ML-DSA │       │ ML-DSA │ │
+                    │  └────┬───┘ └────┬───┘       └────┬───┘ │
+                    │       │          │                │      │
+                    │  ┌────▼──────────▼────────────────▼───┐ │
+                    │  │  Private BFT Blockchain (ConsensusKV)│ │
+                    │  │  Dual-cert: Ed25519 + ML-DSA-65      │ │
+                    │  │  t-of-n threshold finality            │ │
+                    │  └────────────────────────────────────┘ │
+                    │       │                                   │
+                    │  ┌────▼──────────────────────────────┐   │
+                    │  │    BadgerDB (encrypted)             │   │
+                    │  │    AES-256-GCM per node             │   │
+                    │  └────────────────────────────────────┘   │
+                    └──────────────────────────────────────────┘
 ```
 
 ### Components
@@ -212,11 +216,24 @@ Signing is **O(t)** -- it depends only on the threshold, not the total number of
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
 | Coordinator | Go | Protocol orchestration, API gateway |
-| MPC Nodes | Go + Rust (crypto) | Key share storage, protocol execution |
-| Message Bus | NATS JetStream | Reliable inter-node messaging |
-| Discovery | Consul | Peer discovery, health, mTLS |
+| MPC Nodes | Go + Rust (crypto) | Key share storage, protocol execution, consensus validators |
+| ConsensusKV | Private BFT chain | Cluster state (peers, keys, wallets) with dual-cert finality |
+| Message Bus | NATS JetStream | Inter-node messaging + consensus transport |
 | Storage | BadgerDB | Encrypted key share persistence |
 | Auth | Hanzo IAM (hanzo.id) | Bearer token validation, RBAC |
+| Identity | Ed25519 + ML-DSA-65 | Dual post-quantum node identity, stored in KMS/HSM |
+
+### State Management Backends
+
+All cluster state flows through an abstract KV interface. Three backends are available:
+
+| Backend | Config | Transport | Finality | Use Case |
+|---------|--------|-----------|----------|----------|
+| `consensus` | `kv_backend: consensus` | NATS + Private BFT | Dual-cert threshold (<100ms) | **Production** (default) |
+| `nats` | `kv_backend: nats` | NATS JetStream KV | JetStream replication | Development/staging |
+| `consul` | `kv_backend: consul` | Consul HTTP | Raft | Legacy/parity testing |
+
+See the [Consensus deep dive](/docs/services/mpc/consensus) for how the private blockchain works.
 
 ## Authentication
 
@@ -271,9 +288,20 @@ Key shares can be refreshed on a schedule or on-demand without changing the unde
 - Compromised shares from a past epoch cannot be combined with current shares
 - The public key and all derived addresses remain unchanged
 
+## Endpoints
+
+| Environment | URL | Backend | Threshold |
+|-------------|-----|---------|-----------|
+| Production (managed) | `https://mpc.hanzo.ai` | consensus | 3-of-5 |
+| Production (decentralized) | `https://mpc.lux.network` | consensus | 3-of-5 |
+| Staging | `https://stg.mpc.hanzo.ai` | nats | 2-of-3 |
+
 ## Next Steps
 
 <Cards>
+  <Card title="Consensus" href="/docs/services/mpc/consensus">
+    How the private BFT blockchain and dual-certificate finality work
+  </Card>
   <Card title="Protocols" href="/docs/services/mpc/protocols">
     Deep dive into all 8 cryptographic protocols
   </Card>
