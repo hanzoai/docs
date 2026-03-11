@@ -35,6 +35,7 @@ const SECTIONS: SectionGroup[] = [
       { name: 'Bot',         route: '/docs/services/bot' },
       { name: 'Studio',      route: '/docs/services/studio' },
       { name: 'Vector',      route: '/docs/services/vector' },
+      { name: 'Embeddings',  route: '/docs/services/embeddings' },
       { name: 'ML',          route: '/docs/services/ml' },
     ],
   },
@@ -74,6 +75,7 @@ const SECTIONS: SectionGroup[] = [
     items: [
       { name: 'Ingress',     route: '/docs/services/ingress' },
       { name: 'PaaS',        route: '/docs/services/paas' },
+      { name: 'Storage',     route: '/docs/services/storage' },
       { name: 'S3',          route: '/docs/services/s3' },
       { name: 'DB',          route: '/docs/services/db' },
       { name: 'ORM',         route: '/docs/services/orm',       deep: true },
@@ -98,10 +100,12 @@ const SECTIONS: SectionGroup[] = [
   {
     label: 'Products',
     items: [
+      { name: 'Agent',       route: '/docs/agent' },
       { name: 'Hanzo Chat',  route: '/docs/chat' },
       { name: 'Hanzo Dev',   route: '/docs/dev' },
       { name: 'Hanzo Studio',route: '/docs/studio' },
       { name: 'Hanzo Inference', route: '/docs/llm' },
+      { name: 'Extension',   route: '/docs/extension' },
       { name: 'MCP',         route: '/docs/mcp' },
       { name: 'ZAP',         route: '/docs/zap' },
     ],
