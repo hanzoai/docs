@@ -6,7 +6,6 @@ import {
   metaSchema,
 } from '@hanzo/docs-mdx/config';
 import { z } from 'zod';
-import jsonSchema from '@hanzo/docs-mdx/plugins/json-schema';
 import lastModified from '@hanzo/docs-mdx/plugins/last-modified';
 
 export const docs = defineDocs({
@@ -30,7 +29,7 @@ export const docs = defineDocs({
           types: [...remarkStructureDefaultOptions.types, 'code'],
         },
         rehypeCodeOptions: {
-          langs: ['ts', 'js', 'rust', 'python', 'go', 'bash', 'json', 'yaml', 'toml', 'jsonc', 'shell', 'powershell', 'vim', 'dockerfile'],
+          langs: ['ts', 'js', 'rust', 'python', 'go', 'bash', 'json', 'yaml', 'toml', 'shell', 'typescript', 'javascript', 'markdown'],
           inline: 'tailing-curly-colon',
           themes: {
             light: 'github-light',
@@ -61,9 +60,6 @@ export const docs = defineDocs({
 
 export default defineConfig({
   plugins: [
-    jsonSchema({
-      insert: true,
-    }),
     lastModified(),
   ],
 });
