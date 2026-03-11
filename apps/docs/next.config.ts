@@ -14,6 +14,7 @@ const isGitHubPages = process.env.GITHUB_PAGES === '1';
 const sectionAssetPrefix: Record<string, string> = {
   kms: '/__kms',
   iam: '/__iam',
+  platform: '/__platform',
   projects: '/__projects',
 };
 const assetPrefix = sectionAssetPrefix[process.env.DOCS_SECTION ?? ''];
