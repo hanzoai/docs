@@ -1,21 +1,77 @@
 ---
 title: Skills
-description: Extend Hanzo Dev capabilities with skills.
+description: Extend Hanzo Dev with reusable skill bundles.
 ---
 
-## Skills
+> This is an experimental feature and may change.
 
-Skills extend Hanzo Dev's capabilities with specialized behaviors and tool integrations.
+Hanzo Dev can discover reusable "skills" on disk. A skill is a small bundle with a name, short description, and optional body instructions.
 
-### Managing Skills
+## Enable Skills
 
-- Open the skills manager with `/skills` in the TUI
-- Enable or disable available skills
-- Configure skill-specific settings
+Skills are behind the `skills` feature flag and **enabled by default**.
 
-### Usage
+Disable in config:
 
-Skills are loaded into the agent context and provide additional tools and instructions for specific tasks. Manage them through:
+```toml
+[features]
+skills = false
+```
 
-- The `/skills` slash command
-- The Settings overlay (Skills section)
+Override for a single run:
+
+```bash
+dev -c features.skills=true
+```
+
+## Where Skills Live
+
+Discovery roots (highest precedence first):
+
+1. **Repo**: nearest `.hanzo/skills/**/SKILL.md` from current directory up to repo root.
+2. **User**: `$HANZO_HOME/skills/**/SKILL.md` (default: `~/.hanzo/skills/**/SKILL.md`).
+3. **System**: bundled skills under `$HANZO_HOME/skills/.system/**/SKILL.md`.
+
+Behavior:
+
+- Recursive scan; only files named exactly `SKILL.md` are loaded.
+- Hidden entries and symlinks are skipped.
+- Duplicate skill names are deduped by precedence (first match wins).
+- Render order is by name, then path.
+
+## File Format
+
+YAML frontmatter + body. Required frontmatter fields:
+
+- `name` — non-empty, max 64 chars, single-line
+- `description` — non-empty, max 1024 chars, single-line
+
+Extra keys are ignored.
+
+## Loading and Rendering
+
+- Skills load once at startup.
+- When valid skills exist, Hanzo Dev appends a runtime-only `## Skills` section after `AGENTS.md`.
+- Invalid skills are ignored and surfaced as startup errors in the TUI.
+
+## Create a Skill
+
+1. Create `~/.hanzo/skills/<skill-name>/`.
+2. Add `SKILL.md`:
+
+   ```markdown
+   ---
+   name: your-skill-name
+   description: what it does and when to use it
+   ---
+
+   # Optional body
+   Add instructions, references, examples, or scripts (kept on disk).
+   ```
+
+3. Restart Hanzo Dev.
+
+## Managing Skills
+
+- Use `/skills` in the TUI to browse and toggle skills.
+- Use the Settings overlay (Skills section) for configuration.

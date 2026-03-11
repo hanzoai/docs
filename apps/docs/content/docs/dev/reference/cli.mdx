@@ -21,21 +21,68 @@ Hanzo Dev is an AI-powered coding assistant that runs in your terminal. When inv
 | `--sandbox <MODE>` | `-s` | Sandbox policy for shell commands |
 | `--ask-for-approval <POLICY>` | `-a` | When to require human approval |
 | `--cd <DIR>` | `-C` | Working directory for the agent |
-| `--image <FILE>` | `-i` | Attach image(s) to initial prompt |
+| `--image <FILE>` | `-i` | Attach image(s) to initial prompt (comma-separated) |
 | `--oss` | | Use local open source model provider (Ollama) |
 | `--full-auto` | | Enable low-friction sandboxed automatic execution |
 | `--dangerously-bypass-approvals-and-sandbox` | | Skip all safety checks (DANGEROUS) |
 | `--auto` | | Run Auto Drive for non-interactive sessions |
+| `--demo <TEXT>` | | Developer message to prepend for demos |
 | `--debug` | `-d` | Enable debug logging of LLM requests |
 | `-c <KEY=VALUE>` | | Override configuration values |
 | `--version` | | Print version information |
 | `--help` | `-h` | Print help information |
 
+### Sandbox Modes
+
+- `off` — No sandboxing (commands run directly)
+- `workspace-read` — Read-only access to workspace
+- `workspace-write` — Read/write access to workspace (default for full-auto)
+- `network-off` — Disable network access
+
+### Approval Policies
+
+- `always` — Always ask before executing commands
+- `on-failure` — Ask only when a command fails (default for full-auto)
+- `on-request` — Ask when the model explicitly requests approval
+- `never` — Never ask for approval
+
+---
+
 ## Subcommands
+
+### Interactive Mode (default)
+
+```bash
+dev [OPTIONS] [PROMPT]
+```
+
+Launch the interactive TUI. If PROMPT is provided, it starts the conversation.
+
+**TUI-Specific Options:**
+
+| Option | Description |
+| --- | --- |
+| `--search` | Enable web search (default: enabled) |
+| `--no-search` | Disable web search |
+| `--compact-prompt <TEXT>` | Override compaction prompt text |
+| `--compact-prompt-file <FILE>` | Read compaction prompt from file |
+| `--order` | Show ordering debug overlays |
+| `--timing` | Enable timing diagnostics |
+
+**Examples:**
+
+```bash
+dev
+dev "Help me refactor this function"
+dev -m gpt-4.1 "Explain this code"
+dev -i screenshot.png "What's in this image?"
+```
+
+---
 
 ### exec
 
-Run non-interactively for a single task. Alias: `e`
+Run non-interactively for a single task. **Alias:** `e`
 
 ```bash
 dev exec [OPTIONS] [PROMPT]
@@ -44,12 +91,27 @@ dev exec [OPTIONS] [PROMPT]
 | Option | Description |
 | --- | --- |
 | `--auto` | Run Auto Drive instead of single turn |
+| `--auto-review` | Use Auto Review models and limits |
 | `--json` | Print events to stdout as JSONL |
+| `--color <MODE>` | Color output: `always`, `never`, `auto` |
 | `--max-seconds <N>` | Maximum wall-clock time budget |
 | `--turn-cap <N>` | Maximum Auto Drive coordinator turns |
+| `--include-plan-tool` | Include planning tool in conversation |
 | `--output-last-message <FILE>` | Write final message to file |
 | `--output-schema <FILE>` | JSON Schema for structured output |
+| `--review-output-json <FILE>` | Write review output JSON |
 | `--skip-git-repo-check` | Allow running outside Git repos |
+
+**Examples:**
+
+```bash
+dev exec "Add error handling to main.py"
+dev exec --auto --max-seconds 300 "Implement the TODO items"
+dev exec --full-auto "Fix all linting errors"
+dev exec --json "List all functions in src/"
+```
+
+---
 
 ### auto
 
@@ -58,6 +120,13 @@ Run Auto Drive headless. Alias for `exec --auto --full-auto`.
 ```bash
 dev auto [OPTIONS] [PROMPT]
 ```
+
+```bash
+dev auto "Refactor the database module"
+dev auto --turn-cap 10 "Complete the migration"
+```
+
+---
 
 ### resume
 
@@ -71,6 +140,15 @@ dev resume [SESSION_ID] [OPTIONS]
 | --- | --- |
 | `--last` | Continue the most recent session |
 
+```bash
+dev resume
+dev resume --last
+dev resume abc123-def456-...
+dev resume --last -m gpt-4.1
+```
+
+---
+
 ### login / logout
 
 Manage authentication credentials.
@@ -81,63 +159,175 @@ dev login status
 dev logout
 ```
 
+```bash
+dev login                                    # Interactive (opens browser)
+printenv OPENAI_API_KEY | dev login --with-api-key  # API key from stdin
+dev login status                             # Check status
+```
+
+---
+
 ### apply
 
-Apply the latest diff produced by the agent. Alias: `a`
+Apply the latest diff produced by the agent. **Alias:** `a`
 
 ```bash
 dev apply
 ```
 
+---
+
 ### mcp
 
-Manage MCP servers. Alias: `acp`
+Manage MCP (Model Context Protocol) servers. **Alias:** `acp`
+
+#### mcp list
 
 ```bash
 dev mcp list [--json]
+```
+
+#### mcp get
+
+```bash
 dev mcp get <NAME> [--json]
+```
+
+#### mcp add
+
+```bash
 dev mcp add <NAME> [OPTIONS] [-- COMMAND...]
+```
+
+| Option | Description |
+| --- | --- |
+| `--url <URL>` | URL of remote MCP server |
+| `--bearer-token <TOKEN>` | Bearer token for authentication |
+| `--env <KEY=VALUE>` | Environment variables (repeatable) |
+
+```bash
+dev mcp add my-tool -- /path/to/mcp-server
+dev mcp add remote-tool --url https://mcp.example.com/api
+dev mcp add api-tool --url https://api.example.com --bearer-token $TOKEN
+dev mcp add secure-tool --env API_KEY=secret -- my-mcp-server
+```
+
+#### mcp remove
+
+```bash
 dev mcp remove <NAME>
 ```
+
+---
 
 ### bridge
 
 Manage browser integration.
 
+#### bridge subscription
+
 ```bash
 dev bridge subscription [OPTIONS]
-dev bridge list
-dev bridge tail [OPTIONS]
-dev bridge screenshot [OPTIONS]
-dev bridge javascript <CODE> [OPTIONS]
 ```
+
+| Option | Description |
+| --- | --- |
+| `--show` | Display current subscription |
+| `--levels <CSV>` | Set log levels: errors,warn,info,trace |
+| `--capabilities <CSV>` | Set capabilities: screenshot,pageview,control,console,error |
+| `--filter <MODE>` | LLM filter: off, minimal, aggressive |
+| `--clear` | Remove override and revert to defaults |
+
+#### bridge list
+
+```bash
+dev bridge list
+```
+
+#### bridge tail
+
+```bash
+dev bridge tail [OPTIONS]
+```
+
+| Option | Description |
+| --- | --- |
+| `--level <LEVEL>` | Minimum level: errors, warn, info, trace |
+| `--bridge <PATH or INDEX>` | Select specific bridge target |
+| `--raw` | Print raw JSON frames |
+
+#### bridge screenshot
+
+```bash
+dev bridge screenshot [--timeout <SECONDS>] [--bridge <PATH or INDEX>]
+```
+
+#### bridge javascript
+
+Execute JavaScript via the bridge control channel. **Alias:** `js`
+
+```bash
+dev bridge javascript <CODE> [--timeout <SECONDS>] [--bridge <PATH or INDEX>]
+```
+
+---
 
 ### cloud
 
-Browse and manage Cloud tasks. Alias: `cloud-tasks`
+Browse and manage Cloud tasks. **Alias:** `cloud-tasks`
+
+#### cloud submit
 
 ```bash
 dev cloud submit <PROMPT> [OPTIONS]
 ```
 
+| Option | Description |
+| --- | --- |
+| `--env <ENV_ID>` | Environment ID |
+| `--best-of <N>` | Best-of-N attempts (default: 1) |
+| `--qa` | Enable QA/review mode |
+| `--git-ref <REF>` | Git ref (default: main) |
+| `--wait` | Wait for completion |
+
+---
+
 ### llm
 
-Side-channel LLM utilities.
+Side-channel LLM utilities (no TUI events).
+
+#### llm request
 
 ```bash
 dev llm request [OPTIONS]
 ```
+
+| Option | Description |
+| --- | --- |
+| `--developer <TEXT>` | Developer message |
+| `--message <TEXT>` | User message |
+| `--model <MODEL>` | Model override |
+| `--format-type <TYPE>` | Output format type (default: json_schema) |
+| `--format-name <NAME>` | Output format name |
+| `--format-strict` | Enable strict format (default: true) |
+| `--schema-json <JSON>` | Inline JSON schema |
+| `--schema-file <FILE>` | Path to JSON schema file |
+
+---
 
 ### completion
 
 Generate shell completion scripts.
 
 ```bash
-dev completion bash
-dev completion zsh
-dev completion fish
-dev completion powershell
+dev completion bash > ~/.local/share/bash-completion/completions/dev
+dev completion zsh > ~/.zfunc/_dev
+dev completion fish > ~/.config/fish/completions/dev.fish
 ```
+
+Shells: `bash`, `zsh`, `fish`, `powershell`, `elvish`
+
+---
 
 ### doctor
 
@@ -147,23 +337,93 @@ Diagnose PATH, binary collisions, and version conflicts.
 dev doctor
 ```
 
-### debug
+Output includes: current executable path and version, PATH, all `dev` and `coder` binaries found, version information, and package manager conflict detection.
 
-Internal debugging commands (macOS: seatbelt, Linux: landlock).
+---
+
+### preview
+
+Download and run a preview build by slug.
 
 ```bash
-dev debug seatbelt [COMMAND...]
-dev debug landlock [COMMAND...]
+dev preview <SLUG> [OPTIONS] [-- EXTRA_ARGS...]
 ```
+
+| Option | Description |
+| --- | --- |
+| `--repo <OWNER/REPO>` | Override repository |
+| `--out <DIR>` | Output directory |
+
+---
+
+### debug
+
+Internal debugging commands.
+
+- `dev debug seatbelt [COMMAND...]` — Run under Seatbelt (macOS only)
+- `dev debug landlock [COMMAND...]` — Run under Landlock+seccomp (Linux only)
+
+---
+
+## Configuration
+
+Configuration is loaded from `~/.hanzo/config.toml` (or legacy `~/.code/config.toml` / `~/.codex/config.toml`).
+
+Use `-c key=value` to override:
+
+```bash
+dev -c model=gpt-4.1
+dev -c model=gpt-4.1 -c model_provider=openai
+dev exec -c model=gpt-4.1 "Your prompt"
+```
+
+---
 
 ## Environment Variables
 
 | Variable | Description |
 | --- | --- |
 | `OPENAI_API_KEY` | OpenAI API key |
+| `HANZO_API_KEY` | Hanzo API key |
 | `CODE_HOME` | Override config directory (default: `~/.hanzo`) |
 | `CODEX_HOME` | Legacy config directory (fallback) |
 | `CODEX_SECURE_MODE` | Enable security hardening when set to `"1"` |
+
+---
+
+## Common Workflows
+
+### Quick Task Execution
+
+```bash
+dev exec --full-auto "Fix the null pointer exception in user.py"
+dev exec --auto-review "Review the changes in this PR"
+```
+
+### Interactive Development
+
+```bash
+dev -C /path/to/project "Let's implement the new feature"
+dev resume --last
+dev -m gpt-4.1 "Architect the new microservice"
+```
+
+### CI/CD Integration
+
+```bash
+dev exec --json --max-seconds 120 "Review this diff" | jq .
+dev exec --output-last-message docs.md "Document the API"
+```
+
+### MCP Server Setup
+
+```bash
+dev mcp add my-search -- /path/to/search-mcp
+dev mcp list --json
+dev mcp remove my-search
+```
+
+---
 
 ## Exit Codes
 
