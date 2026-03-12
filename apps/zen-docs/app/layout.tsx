@@ -23,6 +23,10 @@ export const viewport: Viewport = {
 export default function Layout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
+      <head>
+        {/* Hanzo Analytics */}
+        <script defer src="https://analytics.hanzo.ai/script.js" data-website-id="14444591-8be2-4a23-84a3-04a2124e539b" data-do-not-track="true" data-exclude-search="true" />
+      </head>
       <body className="antialiased">
         <RootProvider>{children}</RootProvider>
       </body>
