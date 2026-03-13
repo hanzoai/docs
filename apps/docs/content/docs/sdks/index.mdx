@@ -3,27 +3,32 @@ title: SDKs
 description: Official Hanzo SDKs for Python, TypeScript, Go, Rust, and C/C++.
 ---
 
+import { Cards, Card } from '@hanzo/docs-ui/components/card'
+
 # Hanzo SDKs
 
-Hanzo provides official SDKs in five languages, all fully compatible with the OpenAI SDK interface. Use the Hanzo LLM Gateway with your preferred language.
+Official client libraries for every major language. All SDKs are OpenAI-compatible — switch from OpenAI to Hanzo by changing one line.
 
 ## Available SDKs
 
 <Cards>
   <Card title="Python" href="/docs/sdks/python">
-    The `hanzoai` package — drop-in replacement for the OpenAI Python SDK.
+    `hanzoai` — Drop-in OpenAI replacement. Sync + async. PyPI.
   </Card>
   <Card title="TypeScript" href="/docs/sdks/typescript">
-    The `@hanzo/ai` package for Node.js, Deno, and browser environments.
+    `hanzoai` — Node.js, Deno, Bun, browsers. npm.
   </Card>
   <Card title="Go" href="/docs/sdks/go">
-    The `hanzoai-go` module for Go applications.
+    `go-sdk` — Functional options, minimal deps. Go modules.
   </Card>
   <Card title="Rust" href="/docs/sdks/rust">
-    The `hanzo-ai` crate with async support and crypto/DID features.
+    `hanzo-ai` — Async Tokio, post-quantum crypto, DID. crates.io.
   </Card>
   <Card title="C/C++" href="/docs/sdks/c">
-    Native `hanzo-ai` library for embedded, game engines, and high-performance apps.
+    `c-sdk` — Native library for embedded and game engines. CMake.
+  </Card>
+  <Card title="IAM SDK" href="/docs/sdks/iam">
+    `@hanzo/iam` — TypeScript IAM client with React bindings.
   </Card>
 </Cards>
 
@@ -34,11 +39,11 @@ pip install hanzoai
 ```
 
 ```bash tab="TypeScript"
-npm install @hanzo/ai
+npm install hanzoai
 ```
 
 ```bash tab="Go"
-go get github.com/hanzoai/hanzoai-go
+go get github.com/hanzoai/go-sdk
 ```
 
 ```bash tab="Rust"
@@ -49,13 +54,72 @@ cargo add hanzo-ai
 FetchContent_Declare(hanzo-ai GIT_REPOSITORY https://github.com/hanzoai/c-sdk)
 ```
 
-## Key Features
+## Quick Start
 
-All SDKs share common capabilities:
+All SDKs follow the same pattern — create a client with your API key and call endpoints:
 
-- **OpenAI-compatible** — Use the same interface you already know
-- **Models** — Access models from OpenAI, Anthropic, Google, Meta, and more through the Hanzo LLM Gateway
-- **Streaming** — Real-time token streaming for all supported models
-- **Function calling** — Tool use and function calling across providers
-- **Type-safe** — Full type definitions in every language
-- **Async-first** — Native async/await support (Python, Rust, TypeScript, Go)
+```python tab="Python"
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-key")
+response = client.chat.completions.create(
+    model="claude-sonnet-4-6",
+    messages=[{"role": "user", "content": "Hello"}]
+)
+```
+
+```typescript tab="TypeScript"
+import Hanzo from 'hanzoai';
+
+const client = new Hanzo({ apiKey: 'hk-your-key' });
+const response = await client.chat.completions.create({
+  model: 'claude-sonnet-4-6',
+  messages: [{ role: 'user', content: 'Hello' }],
+});
+```
+
+```go tab="Go"
+client := hanzoai.NewClient(
+    option.WithAPIKey("hk-your-key"),
+)
+response, _ := client.Chat.Completions.New(ctx, hanzoai.ChatCompletionNewParams{
+    Model:    hanzoai.F("claude-sonnet-4-6"),
+    Messages: hanzoai.F([]hanzoai.ChatCompletionMessageParamUnion{
+        hanzoai.UserMessage("Hello"),
+    }),
+})
+```
+
+## SDK Feature Matrix
+
+| Feature | Python | TypeScript | Go | Rust | C/C++ |
+|---------|--------|------------|-----|------|-------|
+| Chat completions | Y | Y | Y | Y | Y |
+| Streaming | Y | Y | Y | Y | Y |
+| Function calling | Y | Y | Y | Y | Y |
+| Embeddings | Y | Y | Y | Y | Y |
+| Image generation | Y | Y | Y | Y | Y |
+| Audio | Y | Y | Y | Y | Y |
+| File uploads | Y | Y | Y | Y | Y |
+| Fine-tuning | Y | Y | Y | -- | -- |
+| Batches | Y | Y | Y | -- | -- |
+| Assistants/Threads | Y | Y | Y | -- | -- |
+| Async/await | Y | Y | Y | Y | -- |
+| Retries | Y | Y | Y | Y | Y |
+| Typed responses | Y | Y | Y | Y | -- |
+| MCP server | Y | Y | -- | Y | -- |
+| Post-quantum crypto | -- | -- | -- | Y | -- |
+
+## API Coverage
+
+All SDKs cover the same 187 API endpoints generated from a single OpenAPI specification. See the [full API Reference](/docs/openapi) for endpoint documentation.
+
+## Source Code
+
+| SDK | Repository | Package |
+|-----|-----------|---------|
+| Python | [hanzoai/python-sdk](https://github.com/hanzoai/python-sdk) | [PyPI](https://pypi.org/project/hanzoai/) |
+| TypeScript | [hanzoai/js-sdk](https://github.com/hanzoai/js-sdk) | [npm](https://www.npmjs.com/package/hanzoai) |
+| Go | [hanzoai/go-sdk](https://github.com/hanzoai/go-sdk) | [pkg.go.dev](https://pkg.go.dev/github.com/hanzoai/go-sdk) |
+| Rust | [hanzoai/rust-sdk](https://github.com/hanzoai/rust-sdk) | [crates.io](https://crates.io/crates/hanzo-pqc) |
+| C/C++ | [hanzoai/c-sdk](https://github.com/hanzoai/c-sdk) | CMake |
