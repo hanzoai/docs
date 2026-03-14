@@ -1,6 +1,6 @@
 ---
 title: "Hanzo Extract"
-description: "Hanzo Extract is a Rust crate for extracting clean text from web pages, PDFs, and Claude Code conversation logs. Designed to produce LLM-ready content with optional PII sanitization via `hanzo-guar..."
+description: "Content Extraction & Sanitization"
 ---
 
 ## Overview
@@ -144,20 +144,6 @@ let config = config
     .with_detect_injection(true);
 ```
 
-## Extractor Trait
-
-All extractors implement the same async trait:
-
-```rust
-#[async_trait]
-pub trait Extractor: Send + Sync {
-    async fn extract(&self, source: &str) -> Result<ExtractResult>;
-
-    #[cfg(feature = "sanitize")]
-    async fn extract_sanitized(&self, source: &str) -> Result<ExtractResult>;
-}
-```
-
 ## Feature Flags
 
 | Feature | Default | Description |
@@ -194,4 +180,3 @@ Conversations are scored 0.0-1.0 based on:
 
 - `hanzo/hanzo-aci.md` - Agent Computer Interface (uses extraction for document conversion)
 - `hanzo/hanzo-guard.md` - LLM I/O sanitization (powers the `sanitize` feature)
-
