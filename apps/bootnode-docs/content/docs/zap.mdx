@@ -1,0 +1,121 @@
+---
+title: ZAP Protocol
+description: Zero-Copy App Proto — Cap'n Proto binary RPC for high-performance infrastructure control. 18 tools across 4 categories.
+---
+
+ZAP (Zero-Copy App Proto) is Bootnode's native binary RPC protocol built on Cap'n Proto. It provides zero-copy serialization, multiplexed streaming, and schema-driven tool definitions.
+
+## Connection
+
+```
+zap://api.bootno.de:9999
+```
+
+```python title="Python"
+from hanzo_zap import Client
+
+async with Client.connect("zap://api.bootno.de:9999") as client:
+    tools = await client.list_tools()
+    result = await client.call_tool("rpc_call", {
+        "chain": "ethereum",
+        "method": "eth_blockNumber"
+    })
+```
+
+```rust title="Rust"
+let client = zap::Client::connect("zap://api.bootno.de:9999").await?;
+let tools = client.list_tools().await?;
+let result = client.call_tool("rpc_call", json!({
+    "chain": "ethereum",
+    "method": "eth_blockNumber"
+})).await?;
+```
+
+```go title="Go"
+client, err := zap.Connect("zap://api.bootno.de:9999")
+tools, _ := client.ListTools()
+result, _ := client.CallTool("rpc_call", map[string]any{
+    "chain": "ethereum",
+    "method": "eth_blockNumber",
+})
+```
+
+## Tools
+
+### RPC and Blockchain (5 tools)
+
+| Tool | Description |
+|------|-------------|
+| `rpc_call` | Execute JSON-RPC on any supported chain |
+| `get_token_balances` | Get ERC-20 balances for an address |
+| `get_nfts_owned` | Get NFTs owned by an address |
+| `create_smart_wallet` | Create ERC-4337 smart wallet |
+| `estimate_gas` | Get gas prices for a chain |
+
+### Fleet Management (4 tools)
+
+| Tool | Description |
+|------|-------------|
+| `fleet_list` | List validator fleets across clusters |
+| `fleet_get` | Get fleet status with nodes and endpoints |
+| `fleet_scale` | Scale fleet to target replica count |
+| `fleet_restart` | Rolling restart all fleet pods |
+
+### Service Management (4 tools)
+
+| Tool | Description |
+|------|-------------|
+| `service_list` | List all deployed infrastructure services |
+| `service_deploy` | Deploy or update a service |
+| `service_scale` | Scale a service |
+| `service_logs` | Get logs from a service |
+
+### Observability (4 tools)
+
+| Tool | Description |
+|------|-------------|
+| `o11y_health` | Aggregate health across all services |
+| `o11y_metrics` | Platform metrics (rps, latency, error rate) |
+| `o11y_logs` | Search aggregated logs via Loki |
+| `o11y_alerts` | Active alerts and incidents |
+
+## Resources
+
+| URI | Description |
+|-----|-------------|
+| `bootnode://chains` | List of all supported blockchain networks |
+| `bootnode://usage` | API usage for current billing period |
+| `bootnode://config` | Current API configuration and limits |
+
+## Schema
+
+The ZAP schema defines the full RPC interface:
+
+```
+GET /v1/zap/schema
+```
+
+Returns the `.zap` schema file. Compile to Cap'n Proto with:
+
+```bash
+zapc compile bootnode.zap --out=bootnode.capnp
+```
+
+## AI Agent Integration
+
+ZAP is designed for AI agents to control blockchain infrastructure. The tool definitions follow the MCP (Model Context Protocol) pattern:
+
+```python
+# AI agent managing infrastructure via ZAP
+async with Client.connect("zap://api.bootno.de:9999") as client:
+    # Check health
+    health = await client.call_tool("o11y_health", {})
+
+    # Scale if needed
+    if health["unhealthy"] > 0:
+        await client.call_tool("fleet_restart", {
+            "chain": "lux",
+            "cluster_id": "do-sfo3-lux-k8s",
+            "network": "mainnet"
+        })
+```

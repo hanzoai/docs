@@ -1,0 +1,133 @@
+---
+title: Multi-chain RPC
+description: JSON-RPC and WebSocket endpoints for 30+ blockchains. Standard Ethereum JSON-RPC, chain-specific methods, and real-time subscriptions.
+---
+
+Bootnode provides unified JSON-RPC access to all supported blockchains through a single API endpoint. Standard Ethereum JSON-RPC methods work across all EVM chains.
+
+## Endpoint Format
+
+```
+POST https://api.bootno.de/v1/rpc/{chain}/{network}
+```
+
+| Parameter | Description | Examples |
+|-----------|-------------|----------|
+| `chain` | Blockchain name | `ethereum`, `polygon`, `lux`, `arbitrum`, `base` |
+| `network` | Network type | `mainnet`, `testnet`, `devnet` |
+
+## Making RPC Calls
+
+```bash title="Get latest block number"
+curl -X POST https://api.bootno.de/v1/rpc/ethereum/mainnet \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "eth_blockNumber",
+    "params": [],
+    "id": 1
+  }'
+```
+
+```python title="Python SDK"
+from bootnode import Client
+
+client = Client(api_key="YOUR_API_KEY")
+
+# Get block number
+block = await client.rpc.call(
+    chain="ethereum",
+    method="eth_blockNumber"
+)
+
+# Get balance
+balance = await client.rpc.call(
+    chain="ethereum",
+    method="eth_getBalance",
+    params=["0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18", "latest"]
+)
+```
+
+```typescript title="TypeScript SDK"
+import { Bootnode } from '@bootnode/sdk'
+
+const client = new Bootnode({ apiKey: 'YOUR_API_KEY' })
+
+const block = await client.rpc.call({
+  chain: 'ethereum',
+  method: 'eth_blockNumber',
+})
+
+const balance = await client.rpc.call({
+  chain: 'polygon',
+  method: 'eth_getBalance',
+  params: ['0x742d35Cc...', 'latest'],
+})
+```
+
+## WebSocket Subscriptions
+
+Connect via WebSocket for real-time block and transaction updates:
+
+```
+wss://ws.bootno.de/v1/rpc/{chain}/{network}
+```
+
+```typescript title="Subscribe to new blocks"
+const ws = new WebSocket('wss://ws.bootno.de/v1/rpc/ethereum/mainnet')
+
+ws.send(JSON.stringify({
+  jsonrpc: '2.0',
+  method: 'eth_subscribe',
+  params: ['newHeads'],
+  id: 1,
+}))
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data)
+  console.log('New block:', data.params.result.number)
+}
+```
+
+## Supported Chains
+
+| Chain | Mainnet | Testnet | Methods |
+|-------|---------|---------|---------|
+| Ethereum | Yes | Sepolia, Holesky | Full EVM |
+| Polygon | Yes | Amoy | Full EVM |
+| Arbitrum | Yes | Sepolia | Full EVM |
+| Base | Yes | Sepolia | Full EVM |
+| Optimism | Yes | Sepolia | Full EVM |
+| Lux | Yes | Testnet, Devnet | EVM + Platform + X-Chain |
+| Solana | Yes | Devnet | Solana JSON-RPC |
+| Bitcoin | Yes | Testnet | Bitcoin Core RPC |
+
+## Compute Units
+
+Each RPC method costs a different number of compute units (CU):
+
+| Method | CU Cost |
+|--------|---------|
+| `eth_blockNumber` | 1 |
+| `eth_getBalance` | 2 |
+| `eth_call` | 5 |
+| `eth_getTransactionReceipt` | 3 |
+| `eth_getLogs` | 10-100 |
+| `debug_traceTransaction` | 50 |
+| `trace_block` | 100 |
+
+## Batch Requests
+
+Send multiple RPC calls in a single HTTP request:
+
+```bash title="Batch request"
+curl -X POST https://api.bootno.de/v1/rpc/ethereum/mainnet \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1},
+    {"jsonrpc":"2.0","method":"eth_gasPrice","params":[],"id":2},
+    {"jsonrpc":"2.0","method":"net_version","params":[],"id":3}
+  ]'
+```

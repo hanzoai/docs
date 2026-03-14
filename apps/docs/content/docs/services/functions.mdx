@@ -1,0 +1,224 @@
+---
+title: Hanzo Functions
+description: Serverless compute platform for event-driven functions with auto-scaling, scale-to-zero, and deep platform integration.
+---
+
+# Hanzo Functions
+
+Hanzo Functions is a serverless compute platform for deploying event-driven functions. Write in any language, deploy as an OCI container, and let the platform handle scaling, secrets, networking, and observability. Functions integrate natively with PubSub (event triggers), Tasks (activity execution), KMS (secrets injection), and IAM (scoped execution identity).
+
+**Endpoint:** `functions.hanzo.ai`
+**Gateway:** `api.hanzo.ai/v1/functions/*`
+**Console:** `console.hanzo.ai` > Functions
+**Source:** [github.com/hanzoai/functions](https://github.com/hanzoai/functions)
+
+## Features
+
+| Feature | Description |
+|---------|-------------|
+| **Any Language** | Deploy Go, Python, TypeScript, Rust, Java, or any language via OCI containers |
+| **Auto-Scaling** | Scale from zero to thousands of instances based on concurrency and queue depth |
+| **Scale-to-Zero** | No idle cost -- cold starts under 100ms for compiled languages, under 500ms for interpreted |
+| **Event Triggers** | Fire from PubSub subjects, HTTP requests, cron schedules, Task activities, or S3 events |
+| **Secrets Injection** | KMS secrets mounted as environment variables at invocation time |
+| **IAM Scoping** | Each function runs with an IAM identity -- RBAC controls which services it can call |
+| **Versioning** | Blue/green deployments with traffic splitting and automatic rollback |
+| **Concurrency Control** | Per-function concurrency limits with queuing and backpressure |
+| **OTEL Observability** | Automatic tracing, metrics, and structured logs flow into Hanzo O11y |
+| **VPC Integration** | Functions can dial services through Hanzo Zero Trust overlay |
+
+## Architecture
+
+```
+                        HTTP / PubSub / Cron / S3
+                                  |
+                          +-------v--------+
+                          |    Gateway     |
+                          | (api.hanzo.ai) |
+                          +-------+--------+
+                                  |
+                    +-------------v--------------+
+                    |     Function Controller     |
+                    |  scheduling, scaling, routing|
+                    +------+--------+--------+----+
+                           |        |        |
+                    +------v-+ +---v----+ +-v------+
+                    | Worker | | Worker | | Worker |
+                    | Pod 1  | | Pod 2  | | Pod N  |
+                    +--------+ +--------+ +--------+
+                         |          |          |
+                    +----v----------v----------v----+
+                    |        Hanzo Platform          |
+                    |  KMS  IAM  PubSub  O11y  SQL  |
+                    +-------------------------------+
+```
+
+## Quick Start
+
+### Python
+
+```python
+from hanzo.functions import function, Context
+
+@function(trigger="pubsub", subject="orders.created")
+async def on_order(ctx: Context, event: dict) -> dict:
+    order_id = event["id"]
+
+    # Access KMS secrets via context
+    api_key = ctx.secret("PAYMENT_API_KEY")
+
+    # Call other services with scoped IAM identity
+    result = await ctx.call("payment.charge", {
+        "order_id": order_id,
+        "amount": event["total"],
+    })
+
+    return {"status": "processed", "charge_id": result["id"]}
+```
+
+### Go
+
+```go
+package main
+
+import (
+    "context"
+    "github.com/hanzoai/functions-go"
+)
+
+func HandleOrder(ctx context.Context, event functions.Event) (*functions.Response, error) {
+    var order Order
+    if err := event.Decode(&order); err != nil {
+        return nil, err
+    }
+
+    apiKey, err := functions.Secret(ctx, "PAYMENT_API_KEY")
+    if err != nil {
+        return nil, err
+    }
+
+    // Process order...
+    return &functions.Response{Status: "processed"}, nil
+}
+
+func main() {
+    functions.Register("on-order", HandleOrder,
+        functions.WithTrigger("pubsub", "orders.created"),
+        functions.WithConcurrency(10),
+    )
+    functions.Start()
+}
+```
+
+### TypeScript
+
+```typescript
+import { defineFunction } from '@hanzo/functions';
+
+export default defineFunction({
+  trigger: { type: 'http', method: 'POST', path: '/process' },
+  concurrency: 50,
+
+  async handler(ctx, req) {
+    const apiKey = await ctx.secret('PAYMENT_API_KEY');
+
+    const result = await fetch('https://api.payment.com/charge', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify(req.body),
+    });
+
+    return { status: 'ok', data: await result.json() };
+  },
+});
+```
+
+## Deployment
+
+### CLI
+
+```bash
+# Deploy a function from source
+hanzo fn deploy --name on-order \
+  --trigger pubsub:orders.created \
+  --runtime python3.12 \
+  --source ./handler.py \
+  --secrets PAYMENT_API_KEY
+
+# Deploy from a container image
+hanzo fn deploy --name processor \
+  --trigger http:POST:/process \
+  --image ghcr.io/myorg/processor:v1.2.0 \
+  --concurrency 50 \
+  --min-scale 1
+
+# List deployed functions
+hanzo fn list
+
+# View logs
+hanzo fn logs on-order --follow
+
+# Invoke directly
+hanzo fn invoke on-order --data '{"id":"order-123","total":59.99}'
+```
+
+### Configuration
+
+```yaml
+# hanzo-functions.yaml
+functions:
+  - name: on-order
+    runtime: python3.12
+    handler: handler.on_order
+    trigger:
+      type: pubsub
+      subject: orders.created
+    environment:
+      ORDER_SERVICE_URL: https://api.hanzo.ai/v1/orders
+    secrets:
+      - PAYMENT_API_KEY
+    resources:
+      memory: 256Mi
+      cpu: 100m
+    scaling:
+      min: 0
+      max: 100
+      concurrency: 10
+      cooldown: 300s
+```
+
+## Triggers
+
+| Trigger | Configuration | Description |
+|---------|---------------|-------------|
+| **HTTP** | `http:METHOD:/path` | Invoke on HTTP request |
+| **PubSub** | `pubsub:subject.pattern` | Invoke on PubSub message (supports wildcards) |
+| **Cron** | `cron:0 9 * * MON-FRI` | Invoke on schedule |
+| **S3** | `s3:bucket:put` | Invoke on object storage events |
+| **Tasks** | `tasks:queue-name` | Execute as a Tasks activity |
+
+## Pricing
+
+| Tier | Invocations/mo | Price | Includes |
+|------|---------------|-------|----------|
+| **Free** | 100,000 | $0 | 400,000 GB-seconds |
+| **Pro** | 10,000,000 | $0.20/1M invocations | 1,000,000 GB-seconds |
+| **Team** | 100,000,000 | $0.15/1M invocations | Unlimited GB-seconds |
+| **Enterprise** | Unlimited | Custom | Dedicated resources, SLA |
+
+## Related Services
+
+<Cards>
+  <Card title="Tasks" href="/docs/services/tasks">
+    Durable workflow execution -- use Functions as Task activities
+  </Card>
+  <Card title="PubSub" href="/docs/services/pubsub">
+    Event streaming backbone -- trigger Functions from PubSub subjects
+  </Card>
+  <Card title="KMS" href="/docs/services/kms">
+    Secrets management -- inject secrets into Function execution
+  </Card>
+  <Card title="O11y" href="/docs/services/o11y">
+    Observability -- automatic tracing, metrics, and logs for all Functions
+  </Card>
+</Cards>

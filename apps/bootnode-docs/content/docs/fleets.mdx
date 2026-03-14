@@ -1,0 +1,107 @@
+---
+title: Fleet Management
+description: Deploy, scale, and manage validator node fleets across blockchain networks. Per-cluster, per-network orchestration.
+---
+
+Fleet Management provides full control over validator node deployments. Scale fleets, monitor health, and manage node configurations across all supported networks.
+
+## List Fleets
+
+```
+GET /v1/fleets
+```
+
+```bash
+curl https://api.bootno.de/v1/fleets?chain=lux \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+```json title="Response"
+{
+  "fleets": [
+    {
+      "chain": "lux",
+      "cluster_id": "do-sfo3-lux-k8s",
+      "network": "mainnet",
+      "replicas": 5,
+      "ready_replicas": 5,
+      "healthy": true,
+      "endpoints": {
+        "rpc": "https://api.lux.network/ext/bc/C/rpc",
+        "ws": "wss://api.lux.network/ext/bc/C/ws",
+        "platform": "https://api.lux.network/ext/bc/P"
+      },
+      "node_ids": ["NodeID-abc123...", "NodeID-def456..."]
+    }
+  ]
+}
+```
+
+## Get Fleet Status
+
+```
+GET /v1/fleets/{chain}/{cluster_id}/{network}
+```
+
+Returns detailed fleet status including per-node health, sync progress, and resource usage.
+
+```python
+fleet = await client.fleets.get(
+    chain="lux",
+    cluster_id="do-sfo3-lux-k8s",
+    network="mainnet"
+)
+
+for node in fleet['nodes']:
+    print(f"  {node['name']}: {node['status']} "
+          f"(sync: {node['sync_progress']}%)")
+```
+
+## Scale Fleet
+
+```
+POST /v1/fleets/{chain}/{cluster_id}/{network}/scale
+```
+
+```bash
+curl -X POST https://api.bootno.de/v1/fleets/lux/do-sfo3-lux-k8s/mainnet/scale \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"replicas": 10}'
+```
+
+Scaling is a rolling operation — new nodes bootstrap from existing peers before old nodes are drained.
+
+## Rolling Restart
+
+```
+POST /v1/fleets/{chain}/{cluster_id}/{network}/restart
+```
+
+Performs a zero-downtime rolling restart of all nodes in the fleet. Nodes are restarted one at a time, waiting for each to become healthy before proceeding.
+
+## Networks
+
+| Chain | Networks | Default Replicas |
+|-------|----------|------------------|
+| Lux | mainnet, testnet, devnet | 5 |
+| Ethereum | mainnet, holesky | 2 |
+| Polygon | mainnet, amoy | 2 |
+
+## Fleet Health via ZAP
+
+AI agents can manage fleets via the ZAP protocol:
+
+```python
+async with Client.connect("zap://api.bootno.de:9999") as client:
+    # List all fleets
+    fleets = await client.call_tool("fleet_list", {"chain": "lux"})
+
+    # Scale up for traffic
+    await client.call_tool("fleet_scale", {
+        "chain": "lux",
+        "cluster_id": "do-sfo3-lux-k8s",
+        "network": "mainnet",
+        "replicas": 10
+    })
+```

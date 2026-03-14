@@ -1,0 +1,139 @@
+---
+title: SDKs
+description: Client libraries for Python, TypeScript, Rust, Go, and CLI. Unified API access across all Bootnode services.
+---
+
+Bootnode provides official SDKs for all major languages. Each SDK wraps the REST API and optionally connects via ZAP for high-performance binary RPC.
+
+## Python
+
+```bash
+pip install bootnode
+```
+
+```python
+from bootnode import Client
+
+client = Client(api_key="YOUR_API_KEY")
+
+# RPC
+block = await client.rpc.call(chain="ethereum", method="eth_blockNumber")
+
+# Tokens
+balances = await client.tokens.balances(chain="ethereum", address="0x...")
+
+# Webhooks
+hook = await client.webhooks.create(
+    name="USDC transfers",
+    url="https://myapp.com/hook",
+    chain="ethereum",
+    event_type="token_transfer"
+)
+
+# Smart Wallets
+wallet = await client.wallets.create(
+    owner_address="0x...",
+    chain="polygon"
+)
+```
+
+## TypeScript / JavaScript
+
+```bash
+npm install @bootnode/sdk
+```
+
+```typescript
+import { Bootnode } from '@bootnode/sdk'
+
+const client = new Bootnode({ apiKey: 'YOUR_API_KEY' })
+
+// RPC
+const block = await client.rpc.call({
+  chain: 'ethereum',
+  method: 'eth_blockNumber',
+})
+
+// Token balances
+const balances = await client.tokens.balances({
+  chain: 'ethereum',
+  address: '0x...',
+})
+
+// Fleet management
+const fleets = await client.fleets.list({ chain: 'lux' })
+```
+
+## Rust
+
+```bash
+cargo add bootnode
+```
+
+```rust
+use bootnode::Client;
+
+let client = Client::new("YOUR_API_KEY");
+
+// RPC call
+let block = client.rpc()
+    .call("ethereum", "eth_blockNumber", vec![])
+    .await?;
+
+// Token balances
+let balances = client.tokens()
+    .balances("ethereum", "0x...")
+    .await?;
+```
+
+## Go
+
+```bash
+go get github.com/hanzoai/bootnode-go
+```
+
+```go
+client := bootnode.NewClient("YOUR_API_KEY")
+
+// RPC
+block, err := client.RPC.Call("ethereum", "eth_blockNumber", nil)
+
+// Tokens
+balances, err := client.Tokens.Balances("ethereum", "0x...")
+```
+
+## CLI
+
+```bash
+npm install -g @bootnode/cli
+```
+
+```bash
+# Set API key
+bootnode auth login
+
+# RPC calls
+bootnode rpc ethereum eth_blockNumber
+bootnode rpc polygon eth_getBalance 0x... latest
+
+# Fleet management
+bootnode fleet list --chain lux
+bootnode fleet scale lux mainnet --replicas 10
+
+# Service management
+bootnode service list
+bootnode service logs explorer --tail 100
+```
+
+## ZAP Connection (All SDKs)
+
+For high-performance binary RPC, all SDKs support ZAP transport:
+
+```python title="Python ZAP"
+from bootnode import Client
+client = Client(api_key="YOUR_API_KEY", transport="zap")
+```
+
+```typescript title="TypeScript ZAP"
+const client = new Bootnode({ apiKey: 'YOUR_API_KEY', transport: 'zap' })
+```
