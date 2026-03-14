@@ -1,0 +1,142 @@
+---
+title: Architecture
+description: System design, data flow, and component interactions in Hanzo DNS.
+---
+
+Hanzo DNS is a multi-tenant DNS management system with PostgreSQL as the source of truth, CoreDNS as the authoritative resolver, and Cloudflare at the edge.
+
+## System Overview
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Hanzo Console                         │
+│  features/dns/  (tRPC + @hanzo/ui components)           │
+│  Zone list → Record table → Audit log → DIG tool        │
+└──────────────┬──────────────────────────────────────────┘
+               │ tRPC (org-scoped)
+┌──────────────▼──────────────────────────────────────────┐
+│  PostgreSQL (Prisma)                                     │
+│  DnsZone, DnsRecord, DnsAuditLog — scoped by orgId      │
+└──────┬─────────────────────────────┬────────────────────┘
+       │                             │
+┌──────▼──────────┐    ┌─────────────▼───────────────────┐
+│  DNS Operator    │    │  Cloudflare Sync Controller     │
+│  (Go, K8s)       │    │  CF API reconciliation          │
+│  CRDs → CoreDNS  │    │  for public zones               │
+└──────┬──────────┘    └─────────────────────────────────┘
+       │ POST /api/v1/sync
+┌──────▼──────────────────────────────────────────────────┐
+│  CoreDNS (hanzodns plugin)                               │
+│  In-memory zone store → :53 resolution                   │
+│  :8443 REST API (OIDC-protected)                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Components
+
+### Hanzo Console (UI + API)
+
+The Console provides the user-facing interface for DNS management. It's implemented as a feature module within the existing Hanzo Console application.
+
+**Stack**: Next.js, React, tRPC, Prisma, @hanzo/ui
+
+**Key files**:
+- `features/dns/types.ts` — Zod schemas for validation
+- `features/dns/server/dnsRouter.ts` — tRPC router with org-scoped CRUD
+- `features/dns/hooks.ts` — React Query hooks with cache invalidation
+- `features/dns/components/` — Dashboard, zone list, record table, forms
+
+### PostgreSQL (Source of Truth)
+
+All DNS state lives in PostgreSQL, managed by Prisma:
+
+- **DnsZone** — Zone metadata, org scoping, CF zone linkage
+- **DnsRecord** — DNS records with CF sync flag and tracking
+- **DnsAuditLog** — Change history with user attribution
+
+PostgreSQL is the **single source of truth**. CoreDNS and Cloudflare are derived views that are reconciled by the operator.
+
+### DNS Operator (Reconciliation)
+
+A Kubernetes operator written in Go with controller-runtime. It has four controllers:
+
+1. **DnsZone Controller** — Syncs zone records to CoreDNS via `/api/v1/sync`
+2. **DnsRecord Controller** — Validates records and triggers zone re-sync
+3. **Cloudflare Controller** — Pushes records with `syncToCloudflare` to CF API
+4. **PostgreSQL Watcher** — Polls PG for changes and creates/updates CRDs
+
+### CoreDNS (Authoritative DNS)
+
+A CoreDNS fork with the `hanzodns` plugin that provides:
+
+- **In-memory zone store** — Thread-safe record storage
+- **REST API** (`:8443`) — CRUD operations + bulk sync
+- **DNS handler** (`:53`) — Serves DNS queries from the in-memory store
+- **OIDC middleware** — JWT validation for API access
+
+### Cloudflare (Edge DNS)
+
+Cloudflare provides edge DNS resolution for public zones. Records are pushed via the CF API by the DNS Operator when `syncToCloudflare` is set.
+
+## Data Flow
+
+### Record Creation
+
+```
+User → Console UI → tRPC createRecord → PostgreSQL INSERT
+                                              ↓
+                              Audit log entry created
+                                              ↓
+                         DNS Operator detects change
+                              ↓                    ↓
+                     CoreDNS /api/v1/sync    CF API (if sync=true)
+                              ↓                    ↓
+                     DNS resolution (:53)    Edge resolution
+```
+
+### DNS Query Resolution
+
+```
+Client → :53 query → CoreDNS hanzodns plugin
+                          ↓
+                   In-memory store lookup
+                          ↓
+              Match found → DNS response
+              No match → NXDOMAIN or fallback
+```
+
+## Design Decisions
+
+### Why PostgreSQL as Source of Truth?
+
+- Console already uses Prisma/PostgreSQL — no new infrastructure
+- Relational model fits zone/record hierarchy naturally
+- ACID transactions for consistent audit logging
+- Prisma migrations for schema evolution
+
+### Why Not K8s ConfigMaps?
+
+- ConfigMaps have size limits (1MB)
+- No built-in multi-tenancy or access control
+- CRDs are used as an intermediate representation, not as source of truth
+
+### Why Cloudflare at Edge?
+
+- Global anycast network for low-latency DNS resolution
+- Built-in DDoS protection
+- Existing infrastructure (6 zones already managed)
+- Automatic SSL certificate management
+
+### Why CoreDNS as Engine?
+
+- Existing fork (`hanzo/dns`) with custom `hanzodns` plugin
+- Plugin architecture allows custom behavior
+- Production-grade DNS server used by Kubernetes
+- In-memory store for fast resolution
+
+## Security
+
+- **OIDC**: CoreDNS API protected by JWT validation (Hanzo IAM tokens)
+- **Org Scoping**: All tRPC procedures enforce org membership
+- **Audit Logging**: Every change tracked with user, action, details
+- **RBAC**: Org owners manage zones, members view-only (Phase 5)

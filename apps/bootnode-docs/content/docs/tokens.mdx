@@ -1,0 +1,70 @@
+---
+title: Token API
+description: Indexed ERC-20 token balances, metadata, prices, and transfer history across all supported chains.
+---
+
+The Token API provides indexed access to ERC-20 token data without direct RPC calls. Balances, metadata, and transfer history are pre-indexed for instant queries.
+
+## Get Token Balances
+
+```
+GET /v1/tokens/{chain}/balances/{address}
+```
+
+```bash
+curl https://api.bootno.de/v1/tokens/ethereum/balances/0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18 \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+```json title="Response"
+{
+  "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
+  "chain": "ethereum",
+  "tokens": [
+    {
+      "contract": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "symbol": "USDC",
+      "name": "USD Coin",
+      "decimals": 6,
+      "balance": "1500000000",
+      "balance_formatted": "1500.00",
+      "price_usd": 1.0,
+      "value_usd": 1500.0
+    }
+  ],
+  "total_value_usd": 1500.0
+}
+```
+
+## Get Token Metadata
+
+```
+GET /v1/tokens/{chain}/metadata/{contract_address}
+```
+
+Returns token name, symbol, decimals, total supply, and logo URI.
+
+```python
+metadata = await client.tokens.metadata(
+    chain="ethereum",
+    contract="0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+)
+print(f"{metadata['symbol']}: {metadata['name']}")
+```
+
+## Transfer History
+
+```
+GET /v1/transfers/{chain}/address/{address}
+```
+
+Query parameters: `from_block`, `to_block`, `contract`, `limit`, `offset`.
+
+```typescript
+const transfers = await client.transfers.byAddress({
+  chain: 'ethereum',
+  address: '0x742d35Cc...',
+  fromBlock: 19000000,
+  limit: 50,
+})
+```

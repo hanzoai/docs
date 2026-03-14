@@ -1,0 +1,29 @@
+---
+title: Observability
+description: Health checks, metrics, alerts, logs, and service maps via ClickHouse, Loki, and Grafana.
+---
+
+Native observability for all blockchain infrastructure using the same stack as Hanzo console.
+
+## Stack
+
+| Component | Backend | Purpose |
+|-----------|---------|---------|
+| Traces | OTEL Collector → ClickHouse | Distributed tracing |
+| Metrics | ClickHouse `api_usage` table | RPS, latency percentiles, error rate |
+| Logs | Loki + Promtail | Container log aggregation with LogQL |
+| Dashboards | Grafana + ClickHouse plugin | Visual monitoring |
+| Alerts | PrometheusRule CRDs | Threshold-based alerting |
+
+## Endpoints
+
+| Path | Description |
+|------|-------------|
+| `GET /v1/o11y/health` | Aggregate service health |
+| `GET /v1/o11y/metrics` | Platform metrics snapshot |
+| `GET /v1/o11y/logs` | Search logs via Loki |
+| `GET /v1/o11y/alerts` | Active alerts |
+| `GET /v1/o11y/service-map` | Service dependency graph |
+| `GET /v1/o11y/events` | Platform events |
+
+See [docs.bootno.de/docs/observability](https://docs.bootno.de/docs/observability) for full reference.

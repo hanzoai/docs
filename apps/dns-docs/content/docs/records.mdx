@@ -1,0 +1,111 @@
+---
+title: Records
+description: DNS record types, creation, and management in Hanzo DNS.
+---
+
+DNS records map domain names to IP addresses, mail servers, and other services. Hanzo DNS supports all standard record types.
+
+## Supported Record Types
+
+| Type | Description | Example |
+|------|-------------|---------|
+| **A** | IPv4 address | `192.168.1.1` |
+| **AAAA** | IPv6 address | `2001:db8::1` |
+| **CNAME** | Canonical name (alias) | `www.example.com` |
+| **MX** | Mail exchange | `mail.example.com` (priority: 10) |
+| **TXT** | Text record | `v=spf1 include:_spf.google.com ~all` |
+| **SRV** | Service locator | `_sip._tcp.example.com` |
+| **NS** | Name server | `ns1.example.com` |
+| **CAA** | Certificate Authority Authorization | `0 issue "letsencrypt.org"` |
+
+## Creating Records
+
+### Console
+
+1. Select a zone from the DNS Dashboard
+2. Click **Add Record**
+3. Fill in the record details:
+   - **Name**: Subdomain (e.g., `www`, `@` for root)
+   - **Type**: Select from dropdown
+   - **Content**: Record value
+   - **TTL**: Time-to-live in seconds (default: 300)
+   - **Priority**: For MX and SRV records
+   - **Proxied**: Enable Cloudflare proxy (orange cloud)
+   - **Sync to Cloudflare**: Push this record to Cloudflare edge
+4. Click **Save**
+
+### API
+
+```bash
+curl -X POST https://dns.hanzo.ai/api/v1/zones/example.com./records \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "www",
+    "type": "A",
+    "content": "192.168.1.1",
+    "ttl": 300
+  }'
+```
+
+## Record Properties
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `name` | string | required | Subdomain or `@` for root |
+| `type` | enum | required | A, AAAA, CNAME, MX, TXT, SRV, NS, CAA |
+| `content` | string | required | Record value |
+| `ttl` | number | `300` | Time-to-live in seconds |
+| `priority` | number | `null` | Priority (MX, SRV only) |
+| `proxied` | boolean | `false` | Cloudflare proxy enabled |
+| `syncToCloudflare` | boolean | `false` | Sync to Cloudflare edge |
+
+## Updating Records
+
+Records can be edited inline from the record table in the Console, or via the tRPC API:
+
+```typescript
+const updateRecord = api.dns.updateRecord.useMutation();
+
+updateRecord.mutate({
+  orgId: currentOrg.id,
+  id: record.id,
+  content: '10.0.0.1',
+  ttl: 600,
+});
+```
+
+## Deleting Records
+
+Deleting a record removes it from PostgreSQL. If the record was synced to Cloudflare, the operator will also remove it from Cloudflare on the next reconciliation cycle.
+
+## Bulk Sync
+
+The `/api/v1/sync` endpoint allows atomic replacement of all records in a zone:
+
+```bash
+curl -X POST https://dns.hanzo.ai/api/v1/sync \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "zones": [{
+      "zone": "example.com.",
+      "records": [
+        {"name": "www", "type": "A", "content": "192.168.1.1", "ttl": 300},
+        {"name": "@", "type": "MX", "content": "mail.example.com.", "ttl": 3600, "priority": 10}
+      ]
+    }]
+  }'
+```
+
+This atomically replaces all existing records with the provided set — useful for infrastructure-as-code workflows.
+
+## Audit Trail
+
+Every record create, update, and delete is logged in the audit log with:
+- User who made the change
+- Action performed
+- Previous and new values (in `details` JSON)
+- Timestamp
+
+View the audit log from the zone detail page in the Console.

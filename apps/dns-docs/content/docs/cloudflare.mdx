@@ -1,0 +1,100 @@
+---
+title: Cloudflare Integration
+description: Edge DNS resolution and CDN through Cloudflare sync.
+---
+
+Hanzo DNS integrates with Cloudflare to provide edge DNS resolution, DDoS protection, and CDN capabilities. The integration is opt-in per record — you control exactly what gets pushed to Cloudflare.
+
+## How It Works
+
+```
+PostgreSQL (source of truth)
+    ↓ DNS Operator watches for changes
+    ↓
+    ├── CoreDNS (authoritative, internal)
+    │   POST /api/v1/sync → in-memory store → :53
+    │
+    └── Cloudflare (edge, public)
+        CF API → global anycast network
+```
+
+1. Records are created in PostgreSQL via the Console or tRPC API
+2. The DNS Operator watches for records with `syncToCloudflare: true`
+3. Operator pushes those records to the Cloudflare API
+4. Cloudflare serves them from its global edge network
+
+## Enabling Cloudflare Sync
+
+### Per Zone
+
+Link a Cloudflare Zone ID when creating a zone:
+
+```typescript
+createZone.mutate({
+  orgId: currentOrg.id,
+  name: 'example.com',
+  cloudflareZoneId: 'cf-zone-id-here',
+});
+```
+
+### Per Record
+
+Set `syncToCloudflare: true` on individual records:
+
+```typescript
+createRecord.mutate({
+  orgId: currentOrg.id,
+  zoneId: zone.id,
+  name: 'www',
+  type: 'A',
+  content: '192.168.1.1',
+  syncToCloudflare: true,
+  proxied: true, // orange cloud in CF
+});
+```
+
+## Proxied vs DNS-Only
+
+| Mode | `proxied` | Behavior |
+|------|-----------|----------|
+| **Proxied** | `true` | Traffic routed through Cloudflare (CDN, WAF, DDoS protection) |
+| **DNS-Only** | `false` | Cloudflare only serves DNS, traffic goes directly to origin |
+
+> Use DNS-Only mode (`proxied: false`) for records that need direct IP access (e.g., MX, SRV) or when you need to avoid Cloudflare's TLS termination.
+
+## Managed Zones
+
+Hanzo manages the following zones through Cloudflare:
+
+| Zone | Purpose |
+|------|---------|
+| `lux.network` | Lux blockchain infrastructure |
+| `hanzo.ai` | Hanzo AI platform |
+| `zoo.ngo` | Zoo Labs Foundation |
+| `pars.network` | Pars blockchain |
+| `hanzo.cloud` | Hanzo cloud services |
+| `hanzo.org` | Hanzo organization |
+
+## Reconciliation
+
+The DNS Operator runs a continuous reconciliation loop:
+
+1. **Poll**: Check PostgreSQL for records with `syncToCloudflare: true`
+2. **Diff**: Compare against current Cloudflare state
+3. **Apply**: Create, update, or delete CF records to match source of truth
+4. **Track**: Store `cloudflareRecordId` back in PostgreSQL for future updates
+
+The operator handles:
+- Creating new CF records
+- Updating changed records (content, TTL, proxied status)
+- Deleting removed records
+- Retry with backoff on CF API errors
+
+## Migration from dns-sync.sh
+
+The legacy `dns-sync.sh` script is replaced by the operator-driven reconciliation. Existing zone YAML files in `hanzo/dns/zones/` serve as the migration source:
+
+1. Import zone YAML data into PostgreSQL
+2. Verify records match current Cloudflare state
+3. Enable operator reconciliation
+4. Deprecate zone YAMLs and dns-sync.sh

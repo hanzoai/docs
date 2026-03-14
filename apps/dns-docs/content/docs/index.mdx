@@ -1,0 +1,52 @@
+---
+title: Hanzo DNS
+description: Multi-tenant DNS management with Cloudflare at edge, CoreDNS as engine, and full Hanzo Console integration.
+index: true
+---
+
+Hanzo DNS is a Route 53-like DNS management product. It provides multi-tenant, IAM-powered, self-service DNS management with Cloudflare at edge and CoreDNS as the authoritative engine.
+
+## Start Here
+
+- [Zones](/docs/zones) — Create and manage DNS zones
+- [Records](/docs/records) — DNS record types and management
+- [Cloudflare Integration](/docs/cloudflare) — Edge DNS with Cloudflare sync
+- [API Reference](/docs/api-reference) — CoreDNS REST API and tRPC endpoints
+- [Operator](/docs/operator) — Kubernetes operator for DNS reconciliation
+- [Architecture](/docs/architecture) — System design and data flow
+
+## Quick Start
+
+### Console UI
+
+DNS zones and records are managed through the Hanzo Console. Navigate to **DNS** in the sidebar to access the dashboard.
+
+```
+Console → DNS → Create Zone → Add Records
+```
+
+### API
+
+The CoreDNS `hanzodns` plugin exposes a REST API for programmatic DNS management:
+
+```bash
+# Create a zone
+curl -X POST https://dns.hanzo.ai/api/v1/zones \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"zone": "example.com."}'
+
+# Bulk sync records
+curl -X POST https://dns.hanzo.ai/api/v1/sync \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"zones": [{"zone": "example.com.", "records": [...]}]}'
+```
+
+## Key Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Zone** | A DNS domain (e.g., `example.com`) scoped to an organization |
+| **Record** | A DNS entry (A, AAAA, CNAME, MX, TXT, SRV, NS, CAA) within a zone |
+| **Org Scoping** | All zones belong to an organization — full multi-tenant isolation |
+| **CF Sync** | Per-record flag to sync to Cloudflare for edge resolution |
+| **Audit Log** | Every DNS change is logged with user, action, and timestamp |

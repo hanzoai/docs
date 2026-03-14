@@ -14,7 +14,7 @@ const columns = [
       { label: 'Bot', href: 'https://hanzo.bot' },
       { label: 'Flow', href: 'https://flow.hanzo.ai' },
       { label: 'Platform', href: 'https://platform.hanzo.ai' },
-      { label: 'Space', href: 'https://hanzo.space' },
+      { label: 'Storage', href: 'https://s3.hanzo.ai' },
     ],
   },
   {

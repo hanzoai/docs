@@ -1,0 +1,77 @@
+---
+title: Zones
+description: Create, manage, and configure DNS zones in Hanzo DNS.
+---
+
+A **zone** represents a DNS domain (e.g., `example.com`) managed by your organization. Zones are the top-level container for all DNS records.
+
+## Creating a Zone
+
+### Console
+
+1. Navigate to **DNS** in the Hanzo Console sidebar
+2. Click **Create Zone**
+3. Enter the domain name (e.g., `example.com`)
+4. Optionally link a Cloudflare Zone ID for edge sync
+5. Click **Create**
+
+### API
+
+```bash
+curl -X POST https://dns.hanzo.ai/api/v1/zones \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"zone": "example.com."}'
+```
+
+> Note: Zone names in the CoreDNS API use trailing dots (FQDN format). The Console handles this automatically.
+
+## Zone Properties
+
+| Property | Description |
+|----------|-------------|
+| `name` | The domain name (e.g., `example.com`) |
+| `orgId` | Organization that owns this zone |
+| `status` | Zone status: `active`, `pending`, `disabled` |
+| `cloudflareZoneId` | Optional Cloudflare zone ID for edge sync |
+
+## Multi-Tenancy
+
+Zones are scoped to organizations. Each organization can only see and manage its own zones. The `orgId` is automatically set from the authenticated user's organization context.
+
+Zone names must be unique within an organization — two different organizations can manage the same domain independently.
+
+## Zone Lifecycle
+
+```
+Created → Active → (optional) Disabled → Deleted
+```
+
+- **Created**: Zone exists in PostgreSQL, no records yet
+- **Active**: Zone has records and is being served by CoreDNS
+- **Disabled**: Zone exists but is not served (records preserved)
+- **Deleted**: Zone and all records are permanently removed (cascade delete)
+
+## Cloudflare-Linked Zones
+
+When a `cloudflareZoneId` is set, records marked with `syncToCloudflare: true` are automatically pushed to Cloudflare via the DNS Operator. This enables:
+
+- Edge DNS resolution through Cloudflare's global network
+- DDoS protection and CDN capabilities
+- Automatic SSL certificate management
+
+See [Cloudflare Integration](/docs/cloudflare) for details.
+
+## Listing Zones
+
+### Console
+
+The DNS Dashboard shows all zones for the current organization with record counts and status.
+
+### tRPC
+
+```typescript
+const zones = api.dns.listZones.useQuery({
+  orgId: currentOrg.id,
+});
+```

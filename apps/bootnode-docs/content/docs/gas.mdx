@@ -1,0 +1,93 @@
+---
+title: Gas Manager
+description: Gas price estimation, Paymaster sponsorship, and gas policies for ERC-4337 smart wallets.
+---
+
+The Gas Manager handles gas estimation, Paymaster sponsorship, and policy-based gas management for smart wallets.
+
+## Gas Prices
+
+```
+GET /v1/gas/{chain}/prices
+```
+
+```bash
+curl https://api.bootno.de/v1/gas/ethereum/prices \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+```json title="Response"
+{
+  "chain": "ethereum",
+  "slow": {"gwei": 12.5, "usd": 2.10, "time_seconds": 120},
+  "standard": {"gwei": 15.0, "usd": 2.52, "time_seconds": 30},
+  "fast": {"gwei": 20.0, "usd": 3.36, "time_seconds": 12},
+  "base_fee": 11.2,
+  "priority_fee": 1.5,
+  "updated_at": "2025-03-01T12:00:00Z"
+}
+```
+
+## Gas Policies
+
+Policies control which transactions your project sponsors:
+
+```
+POST /v1/gas/policies
+```
+
+```typescript
+const policy = await client.gas.createPolicy({
+  name: 'game-sponsorship',
+  chain: 'polygon',
+  network: 'mainnet',
+  max_gas_per_op: 500000,
+  max_spend_per_day_usd: 50.0,
+  allowed_contracts: ['0xMyGameContract...'],
+  allowed_methods: ['play', 'claimReward'],
+})
+```
+
+## Gas Estimation
+
+Estimate gas for a UserOperation before submission:
+
+```
+POST /v1/gas/estimate
+```
+
+```python
+estimate = await client.gas.estimate({
+    "sender": "0xSmartWallet...",
+    "callData": "0x...",
+    "chain": "ethereum",
+    "network": "mainnet"
+})
+
+print(f"Pre-verification gas: {estimate['preVerificationGas']}")
+print(f"Verification gas: {estimate['verificationGasLimit']}")
+print(f"Call gas: {estimate['callGasLimit']}")
+print(f"Estimated cost: ${estimate['estimated_cost_usd']:.4f}")
+```
+
+## Paymaster Sponsorship
+
+When a gas policy matches, the Paymaster automatically sponsors the transaction:
+
+```
+POST /v1/gas/sponsor
+```
+
+```json title="Request"
+{
+  "user_op": {
+    "sender": "0xSmartWallet...",
+    "callData": "0x...",
+    "nonce": "0x1"
+  },
+  "chain": "polygon",
+  "policy_id": "pol_abc123"
+}
+```
+
+The response includes `paymasterAndData` to include in the signed UserOp.
