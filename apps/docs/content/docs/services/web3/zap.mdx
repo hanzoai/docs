@@ -1,0 +1,38 @@
+---
+title: ZAP Protocol
+description: Cap'n Proto binary RPC for AI agents to control blockchain infrastructure.
+---
+
+ZAP (Zero-Copy App Proto) provides 18 tools across 4 categories for high-performance infrastructure control.
+
+## Connection
+
+```
+zap://api.bootno.de:9999
+```
+
+## Tool Categories
+
+| Category | Tools | Purpose |
+|----------|-------|---------|
+| **RPC** | rpc_call, get_token_balances, get_nfts_owned, create_smart_wallet, estimate_gas | Blockchain data |
+| **Fleet** | fleet_list, fleet_get, fleet_scale, fleet_restart | Validator management |
+| **Service** | service_list, service_deploy, service_scale, service_logs | Infra services |
+| **O11y** | o11y_health, o11y_metrics, o11y_logs, o11y_alerts | Observability |
+
+## AI Agent Example
+
+```python
+from hanzo_zap import Client
+
+async with Client.connect("zap://api.bootno.de:9999") as client:
+    health = await client.call_tool("o11y_health", {})
+    if health["unhealthy"] > 0:
+        await client.call_tool("fleet_restart", {
+            "chain": "lux", "cluster_id": "do-sfo3-lux-k8s", "network": "mainnet"
+        })
+```
+
+ZAP tools follow the MCP (Model Context Protocol) pattern for seamless AI agent integration.
+
+See [docs.bootno.de/docs/zap](https://docs.bootno.de/docs/zap) for full reference.

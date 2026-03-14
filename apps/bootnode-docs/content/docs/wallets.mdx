@@ -1,0 +1,89 @@
+---
+title: Smart Wallets
+description: ERC-4337 account abstraction. Create smart wallets, sponsor gas, batch transactions, and manage user operations.
+---
+
+Bootnode Smart Wallets implement ERC-4337 account abstraction. Create wallets for your users, sponsor their gas fees, and batch multiple operations into single transactions.
+
+## Create a Smart Wallet
+
+```
+POST /v1/wallets/create
+```
+
+```bash
+curl -X POST https://api.bootno.de/v1/wallets/create \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "owner_address": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
+    "chain": "ethereum",
+    "network": "mainnet",
+    "salt": "my-app-user-123"
+  }'
+```
+
+```json title="Response"
+{
+  "address": "0x1234567890abcdef...",
+  "owner": "0x742d35Cc...",
+  "chain": "ethereum",
+  "network": "mainnet",
+  "factory": "0xEntryPointFactory...",
+  "deployed": false
+}
+```
+
+The wallet address is deterministic based on owner + salt. It can receive funds before deployment.
+
+## Gas Sponsorship
+
+Create gas policies to sponsor user transactions:
+
+```
+POST /v1/gas/policies
+```
+
+```python
+policy = await client.gas.create_policy(
+    name="my-app-sponsor",
+    chain="ethereum",
+    max_gas_per_op=500000,
+    max_spend_per_day_usd=100.0,
+    allowed_contracts=["0xMyContract..."],
+    allowed_methods=["transfer", "approve"]
+)
+```
+
+## UserOperation Flow
+
+1. Build the UserOp with `calldata` for target contract
+2. Estimate gas via `/v1/gas/estimate`
+3. Sign with owner key
+4. Submit via `/v1/bundler/send`
+5. Track via `/v1/bundler/status/{hash}`
+
+```typescript
+// Estimate gas for a UserOp
+const estimate = await client.gas.estimate({
+  sender: walletAddress,
+  callData: encodedCallData,
+  chain: 'ethereum',
+})
+
+// Submit signed UserOp
+const result = await client.bundler.send({
+  chain: 'ethereum',
+  userOp: signedUserOp,
+})
+
+console.log('UserOp hash:', result.hash)
+```
+
+## List Wallets
+
+```
+GET /v1/wallets
+```
+
+Returns all smart wallets associated with your project.

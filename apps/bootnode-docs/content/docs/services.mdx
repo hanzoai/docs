@@ -1,0 +1,107 @@
+---
+title: Infrastructure Services
+description: Deploy and manage blockchain infrastructure services — block explorers, bridges, DEXs, multisig wallets, faucets, and more.
+---
+
+Bootnode manages the full suite of blockchain infrastructure services. Deploy, scale, and monitor everything from block explorers to multisig wallets per-network.
+
+## Service Types
+
+### Core Platform
+| Service | Description |
+|---------|-------------|
+| `api` | Bootnode API server |
+| `web` | Dashboard frontend |
+| `indexer` | Blockchain data indexer |
+| `bundler` | ERC-4337 bundler |
+| `webhook-worker` | Webhook delivery worker |
+
+### Blockchain Infrastructure
+| Service | Description |
+|---------|-------------|
+| `explorer` | Block explorer (Blockscout) |
+| `graph-node` | The Graph indexing node |
+| `bridge` | Cross-chain asset bridge |
+| `exchange` | Decentralized exchange |
+| `rpc-proxy` | RPC load balancer |
+| `validator` | Blockchain validator nodes |
+| `staking` | Staking contracts UI |
+| `market` | NFT marketplace |
+| `faucet` | Testnet token faucet |
+
+### Security
+| Service | Description |
+|---------|-------------|
+| `safe` | Multisig wallet (FROST) |
+| `safe-transaction` | Safe transaction service |
+| `safe-config` | Safe configuration service |
+| `mpc` | MPC key management |
+| `gateway` | API gateway / ingress |
+
+## List Services
+
+```
+GET /v1/infra/services
+```
+
+```bash
+curl https://api.bootno.de/v1/infra/services \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+## Deploy a Service
+
+```
+POST /v1/infra/services/{service}/deploy
+```
+
+```python
+result = await client.infra.deploy(
+    service="explorer",
+    image="blockscout/blockscout:latest",
+    replicas=2,
+    env={
+        "ETHEREUM_JSONRPC_HTTP_URL": "http://rpc-proxy:8545",
+        "DATABASE_URL": "postgres://...",
+        "CHAIN_ID": "96369"
+    }
+)
+```
+
+## Scale a Service
+
+```
+POST /v1/infra/services/{service}/scale
+```
+
+```bash
+curl -X POST https://api.bootno.de/v1/infra/services/explorer/scale \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"replicas": 3}'
+```
+
+## Service Logs
+
+```
+GET /v1/infra/services/{service}/logs?tail=100
+```
+
+Returns the most recent log entries from a service. Logs are also available in the Observability dashboard via Loki.
+
+## Dependency Map
+
+Services have interconnected dependencies:
+
+```
+api → [web, indexer, bundler, webhook-worker, rpc-proxy]
+explorer → [rpc-proxy, graph-node]
+graph-node → [graph-postgres, graph-ipfs, rpc-proxy]
+bridge → [rpc-proxy]
+safe → [safe-transaction, safe-config]
+safe-transaction → [rpc-proxy]
+faucet → [rpc-proxy]
+market → [rpc-proxy, graph-node]
+```
+
+The service map is visualized at **Dashboard > Infrastructure > Observability > Service Map**.

@@ -1,0 +1,66 @@
+---
+title: NFT API
+description: NFT metadata, collection info, ownership queries, and media refresh across ERC-721 and ERC-1155 tokens.
+---
+
+The NFT API indexes all ERC-721 and ERC-1155 tokens across supported chains. Query metadata, ownership, collections, and trigger media refreshes.
+
+## Get NFT Metadata
+
+```
+GET /v1/nfts/{chain}/metadata/{contract}/{token_id}
+```
+
+```bash
+curl https://api.bootno.de/v1/nfts/ethereum/metadata/0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D/1234 \
+  -H "X-API-Key: YOUR_API_KEY"
+```
+
+```json title="Response"
+{
+  "contract": "0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D",
+  "token_id": "1234",
+  "name": "Bored Ape #1234",
+  "description": "Bored Ape Yacht Club",
+  "image": "ipfs://QmRRPWG...",
+  "attributes": [
+    {"trait_type": "Background", "value": "Aquamarine"},
+    {"trait_type": "Fur", "value": "Brown"}
+  ],
+  "owner": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18"
+}
+```
+
+## Get NFTs Owned
+
+```
+GET /v1/nfts/{chain}/owned/{address}?contracts=0xBC4CA0...,0xb47e3c...
+```
+
+```python
+nfts = await client.nfts.owned(
+    chain="ethereum",
+    address="0x742d35Cc...",
+    contracts=["0xBC4CA0EdA7647A8aB7C2061c2E118A18a936f13D"]
+)
+for nft in nfts:
+    print(f"{nft['name']} (#{nft['token_id']})")
+```
+
+## Collection Info
+
+```
+GET /v1/nfts/{chain}/collection/{contract}
+```
+
+Returns collection name, total supply, floor price, volume, and royalty info.
+
+## Refresh Metadata
+
+Trigger a metadata refresh for a specific token:
+
+```
+POST /v1/nfts/{chain}/refresh/{contract}/{token_id}
+```
+
+This re-fetches metadata from the token URI and updates cached images.

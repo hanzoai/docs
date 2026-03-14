@@ -1,0 +1,128 @@
+---
+title: Observability
+description: Platform health, metrics, alerts, logs, and service maps. Powered by ClickHouse, Loki, OTEL Collector, and Grafana.
+---
+
+Bootnode provides native observability for all blockchain infrastructure. Health checks, metrics, alerts, log aggregation, and service dependency maps.
+
+## Architecture
+
+```
+Bootnode API → OTEL Collector → ClickHouse (traces + metrics)
+                    ↓
+             Loki (container logs via Promtail)
+                    ↓
+             Grafana (dashboards)
+```
+
+- **Traces**: OpenTelemetry SDK with OTLP gRPC export
+- **Metrics**: ClickHouse `api_usage` table (rps, latency percentiles, error rate)
+- **Logs**: Loki with LogQL queries across all `bootnode` namespace containers
+- **Dashboards**: Grafana with ClickHouse plugin
+
+## Health Overview
+
+```
+GET /v1/o11y/health
+```
+
+```json title="Response"
+{
+  "total_services": 22,
+  "healthy": 18,
+  "unhealthy": 2,
+  "degraded": 2,
+  "uptime_percent": 81.82,
+  "services": [
+    {"name": "api", "healthy": true, "replicas": 3, "ready_replicas": 3, "latency_ms": 2.5},
+    {"name": "explorer", "healthy": true, "replicas": 2, "ready_replicas": 2, "latency_ms": 15.3},
+    {"name": "validator", "healthy": true, "replicas": 5, "ready_replicas": 5, "latency_ms": 1.2}
+  ],
+  "checked_at": "2025-03-01T12:00:00Z"
+}
+```
+
+## Platform Metrics
+
+```
+GET /v1/o11y/metrics
+```
+
+Queries ClickHouse for real-time platform metrics:
+
+```json title="Response"
+{
+  "requests_per_sec": 245.3,
+  "latency_p50_ms": 12.5,
+  "latency_p95_ms": 45.2,
+  "latency_p99_ms": 120.8,
+  "error_rate": 0.0012,
+  "active_connections": 89,
+  "total_requests_24h": 21203456
+}
+```
+
+## Log Search
+
+```
+GET /v1/o11y/logs?q=error&service=explorer&level=error&limit=50
+```
+
+Queries Loki for aggregated logs across all services:
+
+```python
+logs = await client.o11y.logs(
+    q="timeout",
+    service="rpc-proxy",
+    level="error",
+    limit=100
+)
+
+for entry in logs:
+    print(f"[{entry['timestamp']}] {entry['service']}: {entry['message']}")
+```
+
+## Alerts
+
+```
+GET /v1/o11y/alerts
+```
+
+Returns active alerts. Create alert rules to monitor specific thresholds:
+
+```
+POST /v1/o11y/alerts
+```
+
+```json title="Create alert rule"
+{
+  "service": "rpc-proxy",
+  "metric": "latency_p95",
+  "threshold": 500.0,
+  "severity": "warning",
+  "message": "RPC latency p95 exceeds 500ms"
+}
+```
+
+## Service Map
+
+```
+GET /v1/o11y/service-map
+```
+
+Returns the service dependency graph for visualization:
+
+```json
+[
+  {"name": "api", "type": "core", "healthy": true, "connections": ["web", "indexer", "bundler"]},
+  {"name": "explorer", "type": "infra", "healthy": true, "connections": ["rpc-proxy", "graph-node"]}
+]
+```
+
+## Events
+
+```
+GET /v1/o11y/events?type=deploy&limit=50
+```
+
+Platform events: deploys, scales, restarts, errors, health changes.

@@ -1,0 +1,216 @@
+---
+title: API Reference
+description: CoreDNS REST API and Console tRPC endpoints for DNS management.
+---
+
+Hanzo DNS exposes two API surfaces: the CoreDNS `hanzodns` REST API for direct DNS operations, and tRPC endpoints in the Hanzo Console for org-scoped management.
+
+## CoreDNS REST API
+
+The `hanzodns` plugin serves a REST API on port `:8443` (configurable).
+
+### Authentication
+
+When OIDC is configured, all requests require a valid JWT bearer token:
+
+```
+Authorization: Bearer <token>
+```
+
+### Endpoints
+
+#### List Zones
+
+```
+GET /api/v1/zones
+```
+
+Returns all zones in the store.
+
+**Response:**
+```json
+{
+  "zones": ["example.com.", "internal.corp."]
+}
+```
+
+#### Get Zone Records
+
+```
+GET /api/v1/zones/{zone}/records
+```
+
+**Response:**
+```json
+{
+  "records": [
+    {
+      "name": "www",
+      "type": "A",
+      "content": "192.168.1.1",
+      "ttl": 300
+    }
+  ]
+}
+```
+
+#### Create Record
+
+```
+POST /api/v1/zones/{zone}/records
+```
+
+**Request:**
+```json
+{
+  "name": "www",
+  "type": "A",
+  "content": "192.168.1.1",
+  "ttl": 300,
+  "priority": 0
+}
+```
+
+#### Update Record
+
+```
+PUT /api/v1/zones/{zone}/records/{id}
+```
+
+#### Delete Record
+
+```
+DELETE /api/v1/zones/{zone}/records/{id}
+```
+
+#### Bulk Sync
+
+```
+POST /api/v1/sync
+```
+
+Atomically replaces all records in one or more zones.
+
+**Request:**
+```json
+{
+  "zones": [
+    {
+      "zone": "example.com.",
+      "records": [
+        {"name": "www", "type": "A", "content": "192.168.1.1", "ttl": 300},
+        {"name": "@", "type": "MX", "content": "mail.example.com.", "ttl": 3600, "priority": 10},
+        {"name": "@", "type": "TXT", "content": "v=spf1 include:_spf.google.com ~all", "ttl": 3600}
+      ]
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "results": [
+    {
+      "zone": "example.com.",
+      "created": 3,
+      "deleted": 1,
+      "error": ""
+    }
+  ]
+}
+```
+
+## Console tRPC API
+
+The Console exposes org-scoped DNS management through tRPC procedures. All procedures use `protectedOrganizationProcedure` — the caller must be authenticated and have access to the organization.
+
+### Zone Procedures
+
+#### `dns.listZones`
+
+List all zones for an organization.
+
+```typescript
+const zones = api.dns.listZones.useQuery({ orgId });
+```
+
+#### `dns.getZone`
+
+Get a zone with its records.
+
+```typescript
+const zone = api.dns.getZone.useQuery({ orgId, id: zoneId });
+```
+
+#### `dns.createZone`
+
+```typescript
+api.dns.createZone.useMutation().mutate({
+  orgId,
+  name: 'example.com',
+  cloudflareZoneId: 'optional-cf-zone-id',
+});
+```
+
+#### `dns.deleteZone`
+
+Cascade-deletes all records and audit logs.
+
+```typescript
+api.dns.deleteZone.useMutation().mutate({ orgId, id: zoneId });
+```
+
+### Record Procedures
+
+#### `dns.listRecords`
+
+```typescript
+const records = api.dns.listRecords.useQuery({ orgId, zoneId });
+```
+
+#### `dns.createRecord`
+
+```typescript
+api.dns.createRecord.useMutation().mutate({
+  orgId,
+  zoneId,
+  name: 'www',
+  type: 'A',
+  content: '192.168.1.1',
+  ttl: 300,
+  syncToCloudflare: false,
+});
+```
+
+#### `dns.updateRecord`
+
+```typescript
+api.dns.updateRecord.useMutation().mutate({
+  orgId,
+  id: recordId,
+  content: '10.0.0.1',
+  ttl: 600,
+});
+```
+
+#### `dns.deleteRecord`
+
+```typescript
+api.dns.deleteRecord.useMutation().mutate({ orgId, id: recordId });
+```
+
+### Audit Log Procedures
+
+#### `dns.listAuditLogs`
+
+Cursor-based pagination.
+
+```typescript
+const logs = api.dns.listAuditLogs.useQuery({
+  orgId,
+  zoneId,
+  cursor: undefined, // for first page
+  limit: 50,
+});
+```

@@ -1,0 +1,183 @@
+---
+title: DNS Operator
+description: Kubernetes operator for DNS reconciliation between PostgreSQL, CoreDNS, and Cloudflare.
+---
+
+The DNS Operator is a Kubernetes controller that bridges PostgreSQL (source of truth), CoreDNS (authoritative DNS), and Cloudflare (edge DNS). It watches for changes and reconciles state across all three systems.
+
+## Custom Resource Definitions
+
+The operator defines three CRDs in the `dns.hanzo.ai/v1alpha1` API group:
+
+### DnsZone
+
+Represents a DNS zone to be served by CoreDNS.
+
+```yaml
+apiVersion: dns.hanzo.ai/v1alpha1
+kind: DnsZone
+metadata:
+  name: example-com
+spec:
+  zone: example.com.
+  orgId: org_abc123
+  cloudflareZoneId: cf-zone-id  # optional
+  syncToCoreDNS: true
+  coreDNSEndpoint: http://coredns.dns.svc:8443
+status:
+  phase: Active
+  recordCount: 12
+  lastSyncTime: "2026-03-12T10:00:00Z"
+```
+
+### DnsRecord
+
+Represents a DNS record within a zone.
+
+```yaml
+apiVersion: dns.hanzo.ai/v1alpha1
+kind: DnsRecord
+metadata:
+  name: www-example-com
+spec:
+  zoneRef: example-com
+  name: www
+  type: A
+  content: 192.168.1.1
+  ttl: 300
+  syncToCloudflare: false
+status:
+  phase: Active
+  lastSyncTime: "2026-03-12T10:00:00Z"
+```
+
+### DnsConnector
+
+Configures the connection between the operator and external systems.
+
+```yaml
+apiVersion: dns.hanzo.ai/v1alpha1
+kind: DnsConnector
+metadata:
+  name: main-connector
+spec:
+  endpoint: http://coredns.dns.svc:8443
+  apiKeySecretRef:
+    name: coredns-api-key
+    key: api-key
+  syncIntervalSeconds: 60
+  postgresConnectionRef:
+    name: postgres-connection
+    key: database-url
+status:
+  phase: Connected
+  lastSyncTime: "2026-03-12T10:00:00Z"
+```
+
+## Controllers
+
+### DnsZone Controller
+
+Watches `DnsZone` resources and syncs zone records to CoreDNS:
+
+1. Collects all `DnsRecord` resources referencing this zone
+2. Builds a bulk sync payload
+3. POSTs to CoreDNS `/api/v1/sync` endpoint
+4. Updates zone status with record count and last sync time
+
+### DnsRecord Controller
+
+Validates `DnsRecord` resources:
+
+1. Verifies the referenced `DnsZone` exists
+2. Validates record type and content format
+3. Triggers zone re-sync on record changes
+
+### Cloudflare Controller
+
+Syncs records marked with `syncToCloudflare: true` to Cloudflare:
+
+1. Watches for `DnsRecord` changes where `syncToCloudflare` is set
+2. Resolves the parent zone's `cloudflareZoneId`
+3. Creates/updates/deletes corresponding Cloudflare records via CF API
+4. Stores `cloudflareRecordId` in record status for tracking
+
+### PostgreSQL Watcher
+
+Polls PostgreSQL for changes and creates/updates CRDs:
+
+1. Connects to PostgreSQL using the `DnsConnector` configuration
+2. Polls for new/updated/deleted zones and records
+3. Creates or updates corresponding `DnsZone` and `DnsRecord` CRDs
+4. Ensures CRD state matches PostgreSQL state
+
+## Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dns-operator
+  namespace: dns-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dns-operator
+  template:
+    spec:
+      serviceAccountName: dns-operator
+      containers:
+        - name: operator
+          image: ghcr.io/hanzoai/dns-operator:latest
+          args:
+            - --leader-election
+          ports:
+            - containerPort: 8081
+              name: health
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8081
+```
+
+## RBAC
+
+The operator requires permissions to manage its CRDs:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dns-operator
+rules:
+  - apiGroups: ["dns.hanzo.ai"]
+    resources: ["dnszones", "dnsrecords", "dnsconnectors"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["dns.hanzo.ai"]
+    resources: ["dnszones/status", "dnsrecords/status", "dnsconnectors/status"]
+    verbs: ["get", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "watch"]
+```
+
+## Building
+
+```bash
+cd hanzo/dns/operator
+go build -o bin/dns-operator ./cmd/operator/
+```
+
+Docker:
+
+```bash
+docker build -t ghcr.io/hanzoai/dns-operator:latest -f Dockerfile .
+```

@@ -11,7 +11,7 @@ Hanzo DNS manages domain routing and DNS infrastructure for the entire Hanzo eco
 
 - **Cloudflare-Managed Zones**: All production domains proxied through Cloudflare for DDoS protection, caching, and edge routing
 - **Automatic TLS**: cert-manager with Let's Encrypt issues and renews certificates for all K8s ingresses
-- **Multi-Domain Management**: Unified control over hanzo.ai, hanzo.id, hanzo.bot, hanzo.space, hanzo.chat, hanzo.app, hanzo.team, lux.network, and zoo.ngo
+- **Multi-Domain Management**: Unified control over hanzo.ai, hanzo.id, hanzo.bot, s3.hanzo.ai, hanzo.chat, hanzo.app, hanzo.team, lux.network, and zoo.ngo
 - **DNSSEC**: Cryptographic signing for all authoritative zones to prevent cache poisoning and spoofing
 - **GeoDNS Routing**: Latency-based and geographic routing for global traffic distribution
 - **Wildcard Subdomains**: `*.hanzo.ai` and `*.lux.network` wildcards for dynamic service provisioning
@@ -67,7 +67,7 @@ Hanzo DNS manages domain routing and DNS infrastructure for the entire Hanzo eco
 | `hanzo.ai` | hanzo-k8s | Core platform, API, IAM, console |
 | `hanzo.id` | hanzo-k8s | Identity provider (Hanzo IAM) |
 | `hanzo.bot` | hanzo-k8s | Bot platform, skills, automations |
-| `hanzo.space` | hanzo-k8s | Object storage (Hanzo S3 console + API) |
+| `s3.hanzo.ai` | hanzo-k8s | Object storage (Hanzo S3 console + API) |
 | `hanzo.chat` | hanzo-k8s | AI chat interface |
 | `hanzo.app` | hanzo-k8s | Main application |
 | `hanzo.team` | hanzo-k8s | Team collaboration |
@@ -78,7 +78,7 @@ Hanzo DNS manages domain routing and DNS infrastructure for the entire Hanzo eco
 
 | Cluster | IP | Domains |
 |---------|-----|---------|
-| **hanzo-k8s** | `24.199.76.156` | hanzo.ai, hanzo.id, hanzo.bot, hanzo.space, hanzo.chat, hanzo.app, hanzo.team, zoo.ngo |
+| **hanzo-k8s** | `24.199.76.156` | hanzo.ai, hanzo.id, hanzo.bot, s3.hanzo.ai, hanzo.chat, hanzo.app, hanzo.team, zoo.ngo |
 | **lux-k8s** | `24.144.69.101` | lux.network |
 
 ## Quick Start
@@ -215,8 +215,8 @@ Wildcard TLS certificates are issued via DNS-01 challenge (Cloudflare solver).
 | `platform.hanzo.ai` | Hanzo Platform (PaaS) |
 | `kms.hanzo.ai` | Hanzo KMS |
 | `iam.hanzo.ai` | Hanzo IAM |
-| `s3.hanzo.space` | Hanzo S3 API |
-| `hanzo.space` | Hanzo S3 console |
+| `s3-api.hanzo.ai` | Hanzo S3 API |
+| `s3.hanzo.ai` | Hanzo S3 console |
 | `api.lux.network` | Lux blockchain RPC |
 | `markets.lux.network` | DEX and markets |
 
@@ -240,7 +240,7 @@ LETSENCRYPT_EMAIL=ops@hanzo.ai
     Identity provider at hanzo.id
   </Card>
   <Card title="S3 Storage" href="/docs/services/s3">
-    Object storage at hanzo.space
+    Object storage at s3.hanzo.ai
   </Card>
   <Card title="Zero Trust" href="/docs/services/zt">
     Zero-trust mesh networking at zt.hanzo.ai

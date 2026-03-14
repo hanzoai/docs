@@ -1,0 +1,81 @@
+---
+title: Webhooks
+description: Real-time event streaming for on-chain activity. Subscribe to transfers, contract events, block confirmations, and more.
+---
+
+Webhooks deliver real-time notifications when on-chain events occur. Subscribe to token transfers, NFT mints, contract events, and more.
+
+## Create a Webhook
+
+```
+POST /v1/webhooks
+```
+
+```bash
+curl -X POST https://api.bootno.de/v1/webhooks \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "USDC Transfers",
+    "url": "https://myapp.com/webhooks/transfers",
+    "chain": "ethereum",
+    "event_type": "token_transfer",
+    "filters": {
+      "contract": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+      "min_value": "1000000000"
+    }
+  }'
+```
+
+## Event Types
+
+| Event | Description |
+|-------|-------------|
+| `token_transfer` | ERC-20 token transfers |
+| `nft_transfer` | ERC-721/1155 transfers |
+| `native_transfer` | ETH/native coin transfers |
+| `contract_event` | Any contract log event |
+| `new_block` | New block mined |
+| `address_activity` | Any tx involving an address |
+
+## Webhook Payload
+
+```json title="Delivered payload"
+{
+  "id": "evt_abc123",
+  "type": "token_transfer",
+  "chain": "ethereum",
+  "network": "mainnet",
+  "block_number": 19500000,
+  "tx_hash": "0xabc...",
+  "data": {
+    "from": "0x111...",
+    "to": "0x222...",
+    "contract": "0xA0b86991...",
+    "symbol": "USDC",
+    "value": "1500000000",
+    "value_formatted": "1500.00"
+  },
+  "timestamp": "2025-03-01T12:00:00Z"
+}
+```
+
+## Management
+
+```python
+# List webhooks
+hooks = await client.webhooks.list()
+
+# Test a webhook
+await client.webhooks.test(webhook_id)
+
+# View delivery history
+deliveries = await client.webhooks.deliveries(webhook_id)
+
+# Pause/resume
+await client.webhooks.update(webhook_id, is_active=False)
+```
+
+## Retry Policy
+
+Failed deliveries are retried with exponential backoff: 1min, 5min, 30min, 2h, 12h. After 5 failures, the webhook is paused and you are notified.
