@@ -14,7 +14,7 @@ import {
   AISearchPanelList,
   useAISearchContext,
   useHotKey,
-} from '@/components/inkeep/search';
+} from '@/components/ai/search';
 import { MessageCircleIcon } from 'lucide-react';
 import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
 import { cn } from '@/lib/cn';

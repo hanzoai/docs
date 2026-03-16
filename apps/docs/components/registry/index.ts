@@ -120,24 +120,19 @@ export const registry: Registry = {
       ],
     },
     {
-      name: 'ai/inkeep',
-      title: 'AI Chat (Next.js + Inkeep AI)',
-      description: 'Ask AI dialog for your docs, requires Inkeep AI',
+      name: 'ai/hanzo',
+      title: 'AI Chat (Next.js + Hanzo AI)',
+      description: 'Ask AI dialog for your docs, powered by Hanzo Cloud',
       files: [
         {
           type: 'components',
-          path: 'components/inkeep/search.tsx',
+          path: 'components/ai/search.tsx',
           target: '<dir>/ai/search.tsx',
         },
         {
           type: 'route',
-          path: 'lib/inkeep/server.ts',
+          path: 'app/api/chat/route.ts',
           target: 'app/api/chat/route.ts',
-        },
-        {
-          type: 'lib',
-          path: 'lib/inkeep/inkeep-qa-schema.ts',
-          target: '<dir>/ai/inkeep-qa-schema.ts',
         },
       ],
     },
