@@ -130,6 +130,11 @@ export const registry: Registry = {
           target: '<dir>/ai/search.tsx',
         },
         {
+          type: 'components',
+          path: 'components/ai/markdown.tsx',
+          target: '<dir>/ai/markdown.tsx',
+        },
+        {
           type: 'route',
           path: 'app/api/chat/route.ts',
           target: 'app/api/chat/route.ts',
