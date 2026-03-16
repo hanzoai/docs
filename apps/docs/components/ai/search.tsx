@@ -16,8 +16,7 @@ import { cn } from '@/lib/cn';
 import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
 import Link from '@hanzo/docs-core/link';
 import { type UIMessage, useChat, type UseChatHelpers } from '@ai-sdk/react';
-import type { ProvideLinksToolSchema } from '@/lib/chat/inkeep-qa-schema';
-import type { z } from 'zod';
+type ChatLink = { title?: string; url: string };
 import { DefaultChatTransport } from 'ai';
 import { Markdown } from './markdown';
 import { Presence } from '@radix-ui/react-presence';
@@ -244,7 +243,7 @@ const roleName: Record<string, string> = {
 
 function Message({ message, ...props }: { message: UIMessage } & ComponentProps<'div'>) {
   let markdown = '';
-  let links: z.infer<typeof ProvideLinksToolSchema>['links'] = [];
+  let links: ChatLink[] = [];
 
   for (const part of message.parts ?? []) {
     if (part.type === 'text') {
@@ -253,7 +252,7 @@ function Message({ message, ...props }: { message: UIMessage } & ComponentProps<
     }
 
     if (part.type === 'tool-provideLinks' && part.input) {
-      links = (part.input as z.infer<typeof ProvideLinksToolSchema>).links;
+      links = (part.input as { links: ChatLink[] }).links;
     }
   }
 
