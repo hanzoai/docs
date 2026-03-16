@@ -1,13 +1,13 @@
 import { mergeConfig, type Plugin, type UserConfig } from 'vite';
-import { buildConfig } from '@/config/build';
-import { ValidationError } from '@/utils/validation';
-import { createMdxLoader } from '@/loaders/mdx';
-import { toVite } from '@/loaders/adapter';
+import { buildConfig } from '../config/build';
+import { ValidationError } from '../utils/validation';
+import { createMdxLoader } from '../loaders/mdx';
+import { toVite } from '../loaders/adapter';
 import type { FSWatcher } from 'chokidar';
-import { _Defaults, createCore } from '@/core';
-import { createIntegratedConfigLoader } from '@/loaders/config';
-import { createMetaLoader } from '@/loaders/meta';
-import indexFile, { IndexFilePluginOptions } from '@/plugins/index-file';
+import { _Defaults, createCore } from '../core';
+import { createIntegratedConfigLoader } from '../loaders/config';
+import { createMetaLoader } from '../loaders/meta';
+import indexFile, { IndexFilePluginOptions } from '../plugins/index-file';
 
 export interface PluginOptions {
   /**
@@ -100,7 +100,7 @@ export default async function mdx(
 }
 
 export async function postInstall(pluginOptions: PluginOptions = {}) {
-  const { loadConfig } = await import('@/config/load-from-file');
+  const { loadConfig } = await import('../config/load-from-file');
   const core = createViteCore(applyDefaults(pluginOptions));
   await core.init({
     config: loadConfig(core, true),
