@@ -1,12 +1,12 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
-import { DocsLayout } from '@hanzo/docs-base-ui/layouts/docs';
+import { DocsLayout } from '@hanzo/docs-ui/layouts/docs';
 import { createServerFn } from '@tanstack/react-start';
 import { source } from '@/lib/source';
-import browserCollections from '@hanzo/docs-mdx:collections/browser';
-import { DocsBody, DocsDescription, DocsPage, DocsTitle } from '@hanzo/docs-base-ui/layouts/docs/page';
-import defaultMdxComponents from '@hanzo/docs-base-ui/mdx';
+import browserCollections from 'collections/browser';
+import { DocsBody, DocsDescription, DocsPage, DocsTitle } from '@hanzo/docs-ui/layouts/docs/page';
+import defaultMdxComponents from '@hanzo/docs-ui/mdx';
 import { baseOptions } from '@/lib/layout.shared';
-import { useHanzoDocsLoader } from '@hanzo/docs-core/source/client';
+import { useFumadocsLoader } from '@hanzo/docs-core/source/client';
 import { Suspense } from 'react';
 
 export const Route = createFileRoute('/$lang/docs/$')({
@@ -58,7 +58,7 @@ const clientLoader = browserCollections.docs.createClientLoader({
 
 function Page() {
   const { lang } = Route.useParams();
-  const data = useHanzoDocsLoader(Route.useLoaderData());
+  const data = useFumadocsLoader(Route.useLoaderData());
 
   return (
     <DocsLayout {...baseOptions(lang)} tree={data.pageTree}>

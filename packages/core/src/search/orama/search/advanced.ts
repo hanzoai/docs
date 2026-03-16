@@ -15,8 +15,9 @@ export async function searchAdvanced(
   if (typeof tag === 'string') tag = [tag];
 
   const params = {
-    ...override,
+    limit: 60,
     mode,
+    ...override,
     where: removeUndefined({
       tags:
         tag.length > 0
@@ -26,19 +27,16 @@ export async function searchAdvanced(
           : undefined,
       ...override.where,
     }),
-    limit: 10,
     groupBy: {
       properties: ['page_id'],
       maxResult: 8,
       ...override.groupBy,
     },
+    properties: mode === 'fulltext' ? ['content'] : ['content', 'embeddings'],
   } as SearchParams<typeof db, AdvancedDocument>;
 
   if (query.length > 0) {
-    Object.assign(params, {
-      term: query,
-      properties: mode === 'fulltext' ? ['content'] : ['content', 'embeddings'],
-    } as SearchParams<typeof db, AdvancedDocument>);
+    params.term = query;
   }
 
   const highlighter = createContentHighlighter(query);
@@ -70,5 +68,10 @@ export async function searchAdvanced(
       });
     }
   }
-  return list.length > 80 ? list.slice(0, 80) : list;
+
+  if (typeof params.limit === 'number' && list.length > params.limit) {
+    return list.slice(0, params.limit);
+  }
+
+  return list;
 }

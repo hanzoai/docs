@@ -1,5 +1,5 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@hanzo/docs-base-ui/components/ui/tabs';
-import { CodeBlock } from '@/components/code-block';
+import { ServerCodeBlock } from '@hanzo/docs-ui/components/codeblock.rsc';
 
 export function Installation({ name }: { name: string }) {
   const tabs = [{ name: 'Hanzo Docs CLI', value: 'hanzo-docs-cli' }];
@@ -23,7 +23,7 @@ export function Installation({ name }: { name: string }) {
       </TabsList>
 
       <TabsContent value="hanzo-docs-cli">
-        <CodeBlock code={`npx @hanzo-docs/cli@latest add ${name}`} lang="bash" />
+        <ServerCodeBlock code={`npx @hanzo/docs-cli@latest add ${name}`} lang="bash" />
       </TabsContent>
     </Tabs>
   );
