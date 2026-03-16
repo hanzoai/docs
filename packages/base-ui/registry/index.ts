@@ -35,6 +35,11 @@ export const registry: Registry = {
         },
         {
           type: 'components',
+          path: 'layouts/shared/page-actions.tsx',
+          target: '<dir>/layout/page-actions.tsx',
+        },
+        {
+          type: 'components',
           path: 'layouts/shared/search-toggle.tsx',
           target: '<dir>/layout/search-toggle.tsx',
         },
@@ -351,6 +356,18 @@ export const registry: Registry = {
         {
           type: 'ui',
           path: 'components/ui/collapsible.tsx',
+        },
+      ],
+    },
+    {
+      name: 'ai/page-actions',
+      title: 'Page Actions',
+      description: 'Common page actions',
+      files: [
+        {
+          type: 'components',
+          path: 'layouts/shared/page-actions.tsx',
+          target: '<dir>/ai/page-actions.tsx',
         },
       ],
     },

@@ -7,5 +7,7 @@ export default defineConfig({
   format: 'esm',
   dts: true,
   entry: ['src/index.ts', 'src/ui/index.tsx', 'src/mdx/index.ts'],
-  inlineOnly: [],
+  deps: {
+    onlyBundle: [],
+  },
 });

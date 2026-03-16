@@ -1,28 +1,40 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- rehype-react without types */
 import Slugger from 'github-slugger';
-import type { Awaitable, DistributiveOmit, MethodInformation, RenderContext } from '@/types';
+import type { Awaitable, MethodInformation, RenderContext } from '@/types';
 import type { NoReference } from '@/utils/schema';
 import type { ProcessedDocument } from '@/utils/process-document';
 import { defaultAdapters, MediaAdapter } from '@/requests/media/adapter';
-import type { FC, ReactNode } from 'react';
-import { highlight, type CoreHighlightOptions } from '@hanzo/docs-core/highlight/core';
+import type { FC, HTMLAttributes, ReactNode } from 'react';
 import type { OpenAPIServer } from '@/server';
 import type { APIPageClientOptions } from './client';
-import type { CodeUsageGenerator } from './operation/usage-tabs';
-import { Heading } from '@hanzo/docs-base-ui/components/heading';
+import { Heading } from '@hanzo/docs-ui/components/heading';
 import { createRehypeCode } from '@hanzo/docs-core/mdx-plugins/rehype-code.core';
 import { remarkGfm } from '@hanzo/docs-core/mdx-plugins/remark-gfm';
-import defaultMdxComponents from '@hanzo/docs-base-ui/mdx';
+import defaultMdxComponents from '@hanzo/docs-ui/mdx';
 import { remark } from 'remark';
 import remarkRehype from 'remark-rehype';
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime';
 import * as JsxRuntime from 'react/jsx-runtime';
-import { CodeBlock, Pre } from '@hanzo/docs-base-ui/components/codeblock';
+import { CodeBlock, Pre } from '@hanzo/docs-ui/components/codeblock';
 import type { SchemaUIOptions } from './schema';
 import type { ResponseTab } from './operation/response-tabs';
 import type { ExampleRequestItem } from './operation/request-tabs';
-import type { ResolvedShikiConfig } from '@hanzo/docs-core/highlight/config';
 import { APIPage, type ApiPageProps, type OperationItem, type WebhookItem } from './api-page';
+import type { CodeUsageGeneratorRegistry, InlineCodeUsageGenerator } from '@/requests/generators';
+import type { JSONSchema } from 'json-schema-typed';
+import type { BundledTheme, CodeOptionsThemes, CodeToHastOptionsCommon } from 'shiki';
+import { highlightHast, type ShikiFactory } from '@hanzo/docs-core/highlight/shiki';
+
+export interface GenerateTypeScriptDefinitionsContext extends RenderContext {
+  operation: NoReference<MethodInformation>;
+  readOnly: boolean;
+  writeOnly: boolean;
+  /** @deprecated */
+  _internal_legacy?: {
+    statusCode: string;
+    contentType: string;
+  };
+}
 
 export interface CreateAPIPageOptions {
   /**
@@ -32,6 +44,7 @@ export interface CreateAPIPageOptions {
    *
    * @param method - the operation object
    * @param statusCode - status code
+   * @deprecated use `generateTypeScriptDefinitions` instead.
    */
   generateTypeScriptSchema?:
     | ((
@@ -43,13 +56,28 @@ export interface CreateAPIPageOptions {
     | false;
 
   /**
-   * Generate example code usage for endpoints.
+   * Generate TypeScript definitions from JSON schema.
+   *
+   * Pass `false` to disable it.
    */
-  generateCodeSamples?: (method: MethodInformation) => Awaitable<CodeUsageGenerator[]>;
+  generateTypeScriptDefinitions?: (
+    schema: JSONSchema,
+    ctx: GenerateTypeScriptDefinitionsContext,
+  ) => Awaitable<string | undefined>;
 
-  shiki: ResolvedShikiConfig;
-  renderMarkdown?: (md: string) => Awaitable<ReactNode>;
-  shikiOptions?: DistributiveOmit<CoreHighlightOptions, 'config' | 'lang' | 'components'>;
+  /**
+   * Generate example code usage for all endpoints.
+   */
+  codeUsages?: CodeUsageGeneratorRegistry;
+
+  /**
+   * Generate example code usage for each endpoint.
+   */
+  generateCodeSamples?: (method: MethodInformation) => Awaitable<InlineCodeUsageGenerator[]>;
+
+  shiki: ShikiFactory;
+  renderMarkdown?: (md: string) => ReactNode;
+  shikiOptions: Omit<CodeToHastOptionsCommon, 'lang'> & CodeOptionsThemes<BundledTheme>;
 
   /**
    * Show full response schema instead of only example response & Typescript definitions.
@@ -90,7 +118,7 @@ export interface CreateAPIPageOptions {
      * @param generators - codegens for API example usages
      */
     renderAPIExampleUsageTabs?: (
-      generators: CodeUsageGenerator[],
+      generators: CodeUsageGeneratorRegistry,
       ctx: RenderContext,
     ) => Awaitable<ReactNode>;
 
@@ -172,6 +200,12 @@ export interface CreateAPIPageOptions {
     }) => Awaitable<ReactNode>;
   };
 
+  renderHeading?: (
+    props: HTMLAttributes<HTMLHeadingElement>,
+    depth: number,
+  ) => Awaitable<ReactNode>;
+  renderCodeBlock?: (props: { lang: string; code: string }) => Awaitable<ReactNode>;
+
   client?: APIPageClientOptions;
 }
 
@@ -199,6 +233,8 @@ export function createAPIPage(
       .use(createRehypeCode(options.shiki), {
         langs: [],
         lazy: true,
+        defaultColor: false,
+        ...options.shikiOptions,
       })
       .use(rehypeReact);
   }
@@ -222,14 +258,28 @@ export function createAPIPage(
         ...options.mediaAdapters,
       },
       slugger,
-      renderHeading(depth, text, props) {
-        const id = slugger.slug(text);
+      async renderHeading(depth, text, props) {
+        const id = typeof text === 'string' ? slugger.slug(text) : props?.id;
+        if (!id) throw new Error("missing 'id' for non-string children");
+
+        if (options.renderHeading) {
+          return options.renderHeading({ id, children: text, ...props }, depth);
+        }
 
         return (
           <Heading id={id} key={id} as={`h${depth}` as `h1`} {...props}>
             {text}
           </Heading>
         );
+      },
+      generateTypeScriptDefinitions(schema, ctx) {
+        const { generateTypeScriptSchema, generateTypeScriptDefinitions } = options;
+        if (generateTypeScriptSchema && ctx._internal_legacy) {
+          const { statusCode, contentType } = ctx._internal_legacy;
+          return generateTypeScriptSchema(ctx.operation, statusCode, contentType, ctx);
+        }
+
+        return generateTypeScriptDefinitions?.(schema, ctx);
       },
       async renderMarkdown(text) {
         if (options.renderMarkdown) return options.renderMarkdown(text);
@@ -242,12 +292,19 @@ export function createAPIPage(
         return out.result as ReactNode;
       },
       async renderCodeBlock(lang, code) {
-        const rendered = await highlight(code, {
+        if (options.renderCodeBlock) {
+          return options.renderCodeBlock({ lang, code });
+        }
+
+        const hast = await highlightHast(await options.shiki.getOrInit(), code, {
           lang,
+          defaultColor: false,
           ...options.shikiOptions,
-          config: options.shiki,
+        });
+        const rendered = toJsxRuntime(hast, {
+          ...JsxRuntime,
           components: {
-            pre: (props) => <Pre {...props} />,
+            pre: Pre,
           },
         });
 
@@ -258,3 +315,5 @@ export function createAPIPage(
     return <APIPage {...props} ctx={ctx} />;
   };
 }
+
+export { ClientCodeBlockProvider } from './components/codeblock';

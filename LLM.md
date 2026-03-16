@@ -2,6 +2,12 @@
 
 Fork of [fumadocs](https://github.com/fuma-nama/fumadocs) with all packages renamed to `@hanzo/docs-*` namespace.
 
+## Branch Convention
+
+- **`main`** — Production branch. CF Pages deploys docs.hanzo.ai from here. All Hanzo work lands here.
+- **`dev`** — Tracks upstream `fumadocs/dev`. Used for upstream sync merges only.
+- **`upstream`** remote — points to `fuma-nama/fumadocs`
+
 ## Architecture
 
 pnpm workspace monorepo with turbo. Two apps, 24 packages, 24 examples.
@@ -60,13 +66,16 @@ All upstream `fumadocs-*` and `@fumadocs/*` packages are renamed:
 
 ## Upstream Sync
 
-Remote `upstream` points to `fuma-nama/fumadocs`. To merge upstream changes:
+Remote `upstream` points to `fuma-nama/fumadocs`. Local `dev` tracks `upstream/dev`.
+
+To merge upstream changes:
 
 ```bash
-git fetch upstream
-git checkout -b merge-upstream
-git merge upstream/dev
+git checkout dev && git pull upstream dev
+git checkout -b merge-upstream-YYYY-MM-DD main
+git merge dev
 # Resolve conflicts, then rename fumadocs-* → @hanzo/docs-*
+# Merge into main when ready
 ```
 
 After merge, do bulk rename:

@@ -1,10 +1,24 @@
 # fumadocs
 
+<<<<<<< HEAD
+=======
+## 1.2.6
+
+### Patch Changes
+
+- 42e17a4: Support `cwd` in installer
+- b2191f5: Expose installer
+
+>>>>>>> upstream/dev
 ## 1.2.5
 
 ### Patch Changes
 
+<<<<<<< HEAD
 - 9fe9f7c: Rebrand from Fuma Nama to Hanzo AI, update canonical URL to hanzoai.github.io/docs, fix DTS generation OOM in unified wrapper package, and update all package metadata.
+=======
+- 5453502: use Shiki.js v4
+>>>>>>> upstream/dev
 
 ## 1.2.4
 

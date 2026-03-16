@@ -1,5 +1,54 @@
 # create-next-docs-app
 
+## 16.0.73
+
+## 16.0.72
+
+### Patch Changes
+
+- a52d30f: fix default template
+
+## 16.0.71
+
+### Patch Changes
+
+- e7ab329: Add AI chat option for Next.js
+- Updated dependencies [42e17a4]
+- Updated dependencies [b2191f5]
+  - @fumadocs/cli@1.2.6
+
+## 16.0.70
+
+## 16.0.69
+
+### Patch Changes
+
+- 2065a32: update templates
+
+## 16.0.68
+
+## 16.0.67
+
+## 16.0.66
+
+## 16.0.65
+
+## 16.0.64
+
+## 16.0.63
+
+### Patch Changes
+
+- 3140798: fix Takumi plugin
+
+## 16.0.62
+
+### Patch Changes
+
+- 5453502: use Shiki.js v4
+
+## 16.0.61
+
 ## 16.0.60
 
 ## 16.0.59

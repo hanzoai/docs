@@ -8,11 +8,11 @@ import {
   SelectContent,
   SelectItem,
 } from '@/ui/components/select';
-import { DynamicCodeBlock } from '@hanzo/docs-base-ui/components/dynamic-codeblock.core';
 import { useState, useEffect, useMemo, createContext, ReactNode, useRef, use } from 'react';
-import type { CodeUsageGenerator } from '.';
 import type { ExampleRequestItem } from '../request-tabs';
 import type { RawRequestData, RequestData } from '@/requests/types';
+import type { CodeUsageGenerator } from '@/requests/generators';
+import { ClientCodeBlock } from '@/ui/components/codeblock';
 
 export type ExampleUpdateListener = (data: RawRequestData, encoded: RequestData) => void;
 
@@ -130,8 +130,12 @@ export function UsageTabsSelector() {
   );
 }
 
-export function UsageTab(sample: CodeUsageGenerator) {
-  const { shikiOptions, mediaAdapters } = useApiContext();
+export function UsageTab({
+  id,
+  lang,
+  _client,
+}: Pick<CodeUsageGenerator, 'lang' | '_client'> & { id: string }) {
+  const { mediaAdapters, codeUsages } = useApiContext();
   const {
     examples,
     example: selectedExampleId,
@@ -140,6 +144,7 @@ export function UsageTab(sample: CodeUsageGenerator) {
     removeListener,
   } = useExampleRequests();
   const { server } = useServerSelectContext();
+  const codegen = codeUsages.get(id);
   const [data, setData] = useState(
     () => examples.find((example) => example.id === selectedExampleId)?.encoded,
   );
@@ -154,26 +159,32 @@ export function UsageTab(sample: CodeUsageGenerator) {
   }, [addListener, removeListener]);
 
   const code = useMemo(() => {
-    if (!sample.source || !data) return;
-    if (typeof sample.source === 'string') return sample.source;
-
-    return sample.source(
-      joinURL(
-        withBase(
-          server ? resolveServerUrl(server.url, server.variables) : '/',
-          typeof window !== 'undefined' ? window.location.origin : 'https://loading',
-        ),
-        resolveRequestData(route, data),
+    if (!data) return;
+    const url = joinURL(
+      withBase(
+        server ? resolveServerUrl(server.url, server.variables) : '/',
+        typeof window !== 'undefined' ? window.location.origin : 'https://loading',
       ),
-      data,
-      {
-        server: sample.serverContext,
-        mediaAdapters,
-      },
+      resolveRequestData(route, data),
     );
-  }, [mediaAdapters, sample, server, route, data]);
 
-  if (!code || !sample) return null;
+    if (_client) {
+      const { generate, serverContext } = _client;
+      if (typeof generate === 'string') return generate;
+      return generate(url, data, {
+        mediaAdapters,
+        server: serverContext,
+      });
+    }
 
-  return <DynamicCodeBlock lang={sample.lang} code={code} options={shikiOptions} />;
+    if (!codegen) return;
+    return codegen.generate(url, data, {
+      mediaAdapters,
+      server: null,
+    });
+  }, [data, server, route, _client, codegen, mediaAdapters]);
+
+  if (!code) return null;
+
+  return <ClientCodeBlock lang={lang} code={code} />;
 }

@@ -14,12 +14,17 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import Link from '@hanzo/docs-core/link';
 import { findSiblings } from '@hanzo/docs-core/page-tree';
 import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
-import { getMDXComponents } from '@/mdx-components';
-import { LLMCopyButton, ViewOptions } from '@/components/ai/page-actions';
+import { getMDXComponents } from '@/components/mdx';
 import { Banner } from '@hanzo/docs-base-ui/components/banner';
 import { Installation } from '@/components/preview/installation';
 import { Customisation } from '@/components/preview/customisation';
-import { DocsBody, DocsPage, PageLastUpdate } from '@hanzo/docs-base-ui/layouts/docs/page';
+import {
+  DocsBody,
+  DocsPage,
+  PageLastUpdate,
+  MarkdownCopyButton,
+  ViewOptionsPopover,
+} from '@hanzo/docs-base-ui/layouts/docs/page';
 import { NotFound } from '@/components/layouts/not-found';
 import { MdxErrorBoundary } from '@/components/mdx-error-boundary';
 import { getSuggestions } from './suggestions';
@@ -75,15 +80,15 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   return (
     <DocsPage
       toc={toc}
-      tableOfContent={{
+      TOC={{
         style: 'clerk',
       }}
     >
       <h1 className="text-[1.75em] font-semibold">{page.data.title}</h1>
       <p className="text-lg text-fd-muted-foreground mb-2">{page.data.description}</p>
       <div className="flex flex-row flex-wrap gap-2 items-center border-b pb-6">
-        <LLMCopyButton markdownUrl={`${page.url}.mdx`} />
-        <ViewOptions
+        <MarkdownCopyButton markdownUrl={`${page.url}.mdx`} />
+        <ViewOptionsPopover
           markdownUrl={`${page.url}.mdx`}
           githubUrl={`https://github.com/${owner}/${repo}/blob/dev/apps/docs/content/docs/${page.path}`}
         />
@@ -94,7 +99,7 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
           <Mdx
             components={getMDXComponents({
               ...Twoslash,
-              a: ({ href, ...props }) => {
+              a({ href, ...props }) {
                 const found = source.getPageByHref(href ?? '', {
                   dir: PathUtils.dirname(page.path),
                 });

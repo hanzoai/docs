@@ -1,5 +1,6 @@
 # fumapress
 
+<<<<<<< HEAD
 ## 0.0.9
 
 ### Patch Changes
@@ -28,99 +29,114 @@
   - @hanzo/docs-mdx@14.1.1
 
 ## 0.0.8
+=======
+## 0.1.11
+>>>>>>> upstream/dev
 
 ### Patch Changes
 
-- Updated dependencies [ee4ad3d]
-  - fumadocs-mdx@13.0.2
+- Updated dependencies [c2678c0]
+- Updated dependencies [417f07a]
+- Updated dependencies [bb07706]
+- Updated dependencies [c3a723e]
+- Updated dependencies [f065406]
+  - fumadocs-core@16.6.17
+  - fumadocs-ui@16.6.17
 
-## 0.0.7
-
-### Patch Changes
-
-- Updated dependencies [56332df]
-- Updated dependencies [91add4f]
-- Updated dependencies [cffd4c2]
-  - fumadocs-mdx@13.0.1
-  - fumadocs-core@16.0.3
-  - fumadocs-ui@16.0.3
-
-## 0.0.6
+## 0.1.10
 
 ### Patch Changes
 
-- Updated dependencies [d511232]
-  - fumadocs-core@16.0.2
-  - fumadocs-ui@16.0.2
+- Updated dependencies [054da73]
+  - fumadocs-core@16.6.16
+  - fumadocs-ui@16.6.16
 
-## 0.0.5
-
-### Patch Changes
-
-- Updated dependencies [45f0c1f]
-  - fumadocs-core@16.0.1
-  - fumadocs-ui@16.0.1
-
-## 0.0.4
+## 0.1.9
 
 ### Patch Changes
 
-- 5210f18: Support Fumadocs 16 in `peerDependencies`.
-- Updated dependencies [8d0c164]
-- Updated dependencies [3caa5cd]
-- Updated dependencies [1494340]
-- Updated dependencies [230c6bf]
-- Updated dependencies [851897c]
-- Updated dependencies [29ce826]
-- Updated dependencies [3caa5cd]
-- Updated dependencies [81fa875]
-- Updated dependencies [de0ce6d]
-- Updated dependencies [4049ccc]
-- Updated dependencies [575cfb8]
-- Updated dependencies [0ed0ca6]
-- Updated dependencies [1f1c787]
-- Updated dependencies [429c41a]
-- Updated dependencies [5210f18]
-- Updated dependencies [9051574]
-- Updated dependencies [cbc93e9]
-- Updated dependencies [42f09c3]
-- Updated dependencies [a5df956]
-- Updated dependencies [55afd8a]
-- Updated dependencies [5210f18]
-- Updated dependencies [5966e23]
-  - fumadocs-mdx@13.0.0
-  - fumadocs-ui@16.0.0
-  - fumadocs-core@16.0.0
+- Updated dependencies [86d3abb]
+  - fumadocs-ui@16.6.15
+  - fumadocs-core@16.6.15
 
-## 0.0.3
+## 0.1.8
 
 ### Patch Changes
 
-- Updated dependencies [a55177c]
-- Updated dependencies [ce2be59]
-- Updated dependencies [31b9494]
-  - fumadocs-mdx@12.0.3
-  - fumadocs-core@15.8.4
-  - fumadocs-ui@15.8.4
+- Updated dependencies [a02048c]
+- Updated dependencies [02201df]
+- Updated dependencies [8382363]
+  - fumadocs-ui@16.6.14
+  - fumadocs-core@16.6.14
 
-## 0.0.2
-
-### Patch Changes
-
-- Updated dependencies [a3a14e7]
-- Updated dependencies [7b0d839]
-  - fumadocs-core@15.8.3
-  - fumadocs-mdx@12.0.2
-  - fumadocs-ui@15.8.3
-
-## 0.0.1
+## 0.1.7
 
 ### Patch Changes
 
-- Updated dependencies [90cf1fe]
-- Updated dependencies [ad9a004]
-- Updated dependencies [90cf1fe]
-- Updated dependencies [6c3bde5]
-- Updated dependencies [747bdbc]
-  - fumadocs-ui@15.8.2
-  - fumadocs-core@15.8.2
+- 282320c: batch file reads for perf
+- Updated dependencies [2702b28]
+  - fumadocs-ui@16.6.13
+  - fumadocs-core@16.6.13
+
+## 0.1.6
+
+### Patch Changes
+
+- Updated dependencies [ddb0f81]
+  - fumadocs-core@16.6.12
+  - fumadocs-ui@16.6.12
+
+## 0.1.5
+
+### Patch Changes
+
+- Updated dependencies [d35f30c]
+- Updated dependencies [ae3e742]
+- Updated dependencies [269dfb3]
+  - fumadocs-core@16.6.11
+  - fumadocs-ui@16.6.11
+
+## 0.1.4
+
+### Patch Changes
+
+- 9a5d79f: support passing projects in CLI
+
+## 0.1.3
+
+### Patch Changes
+
+- 5cc497e: fix image path
+- Updated dependencies [9b5c2dd]
+  - fumadocs-core@16.6.10
+  - fumadocs-ui@16.6.10
+
+## 0.1.2
+
+### Patch Changes
+
+- 8ba351d: simplify watcher logic
+- f58fa57: implement asset resolution
+- b1ce779: Support Mermaid
+
+## 0.1.1
+
+### Patch Changes
+
+- 0379c74: Implement hot-reload & caching layer
+
+## 0.1.0
+
+### Minor Changes
+
+- 0d92619: Redesign & ready for use
+
+### Patch Changes
+
+- Updated dependencies [0aad574]
+- Updated dependencies [6a7725b]
+- Updated dependencies [4d05c4e]
+- Updated dependencies [5f687b6]
+- Updated dependencies [7a61fa5]
+  - fumadocs-ui@16.6.9
+  - fumadocs-core@16.6.9

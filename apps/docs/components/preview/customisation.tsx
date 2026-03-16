@@ -1,4 +1,4 @@
-import { CodeBlock } from '@/components/code-block';
+import { ServerCodeBlock } from '@hanzo/docs-ui/components/codeblock.rsc';
 
 export function Customisation() {
   return (
@@ -7,13 +7,7 @@ export function Customisation() {
       <p className="text-fd-muted-foreground text-sm">
         For advanced customisation that supported options cannot suffice.
       </p>
-      <CodeBlock
-        code="npx @hanzo-docs/cli@latest customise"
-        lang="bash"
-        wrapper={{
-          className: 'my-0',
-        }}
-      />
+      <ServerCodeBlock code="npx @hanzo/docs-cli@latest customise" lang="bash" />
     </div>
   );
 }

@@ -9,6 +9,7 @@ export default defineConfig({
     './src/*.{ts,tsx}',
     './src/{components,contexts,layouts,provider,tailwind,og}/**/*.{ts,tsx}',
     './src/utils/use-*.{ts,tsx}',
+    './src/utils/renderer.ts',
   ],
   fixedExtension: false,
   unbundle: true,
@@ -17,11 +18,15 @@ export default defineConfig({
   },
   async onSuccess() {
     await compileInline();
-    // wait until https://github.com/rolldown/tsdown/issues/472
+
     let content = (await fs.readFile('dist/components/image-zoom.js')).toString();
-    content = content.replaceAll(`import "./image-zoom2.js";`, `import "./image-zoom.css";`);
+    const lines = content.split('\n');
+    lines.splice(1, 0, `import "./image-zoom.css";`);
+    content = lines.join('\n');
     await fs.writeFile('dist/components/image-zoom.js', content);
     console.log('CSS import updated');
   },
-  inlineOnly: [],
+  deps: {
+    onlyBundle: [],
+  },
 });

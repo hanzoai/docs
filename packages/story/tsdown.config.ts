@@ -10,8 +10,10 @@ export default defineConfig({
   ],
   unbundle: true,
   fixedExtension: false,
-  inlineOnly: ['@fastify/deepmerge', '@ungap/structured-clone'],
   dts: {
     sourcemap: false,
+  },
+  deps: {
+    onlyBundle: ['@fastify/deepmerge', '@ungap/structured-clone'],
   },
 });
