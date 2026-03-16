@@ -3,12 +3,12 @@ import { visit } from 'unist-util-visit';
 import type { Code, Node, Root, RootContent } from 'mdast';
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
-import { parseFrontmatter } from '@/utils/frontmatter';
+import { parseFrontmatter } from '../../utils/frontmatter';
 import type { MdxJsxFlowElement, MdxJsxTextElement } from 'mdast-util-mdx';
 import { remarkHeading } from '@hanzo/docs-core/mdx-plugins';
 import { VFile } from 'vfile';
 import type { Directives } from 'mdast-util-directive';
-import { remarkMarkAndUnravel } from '@/loaders/mdx/remark-unravel';
+import { remarkMarkAndUnravel } from './remark-unravel';
 import { flattenNode } from './mdast-utils';
 
 /**
