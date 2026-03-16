@@ -36,6 +36,12 @@ const command = program
     new Option('--og-image <name>', 'configure OG image generation').choices(['next-og', 'takumi']),
   )
   .addOption(
+    new Option('--ai-chat <name>', 'configure AI chat (Next.js only)').choices([
+      'openrouter',
+      'inkeep',
+    ]),
+  )
+  .addOption(
     new Option('--template <name>', 'choose a template').choices(
       templates.map((item) => item.value),
     ),
@@ -138,24 +144,48 @@ async function main(): Promise<void> {
       },
       ogImage: async ({ results }: { results: { template?: Template } }) => {
         if (config.ogImage !== undefined) return config.ogImage;
-        if (isCI) return 'takumi';
+        if (!results.template?.startsWith('+next')) return 'takumi';
+        if (isCI) return 'next/og';
 
         return select({
           message: 'Configure Open Graph Image generation?',
           options: [
             {
+              value: 'next-og',
+              label: 'next/og',
+              hint: 'Next.js built-in solution',
+            },
+            {
               value: 'takumi',
               label: 'Takumi',
               hint: 'Output WebP format, framework-agnostic',
             },
+          ],
+        });
+      },
+      aiChat: async ({ results }: { results: { template?: Template } }) => {
+        if (config.aiChat !== undefined) return config.aiChat;
+        if (results.template !== '+next+fuma-docs-mdx') return false;
+        if (isCI) return false;
+
+        return select<false | 'openrouter' | 'inkeep'>({
+          message: 'Configure AI Chat?',
+          options: [
             {
-              value: 'next-og',
-              label: 'next/og',
-              hint: 'Next.js built-in solution',
-              disabled: !results.template?.startsWith('+next'),
+              value: false,
+              label: 'No',
+            },
+            {
+              value: 'openrouter',
+              label: 'OpenRouter',
+              hint: 'API key required',
+            },
+            {
+              value: 'inkeep',
+              label: 'Inkeep AI',
+              hint: 'API key required',
             },
           ],
-          initialValue: 'takumi' as const,
         });
       },
       installDeps: async () => {
@@ -203,8 +233,14 @@ async function main(): Promise<void> {
   }
 
   if (options.ogImage) {
-    const { ogImage } = await import('./plugins/og-image');
-    plugins.push(ogImage(options.ogImage));
+    const { nextUseTakumi } = await import('./plugins/next-use-takumi');
+    plugins.push(nextUseTakumi());
+  }
+
+  if (options.aiChat) {
+    const { nextUseAi } = await import('./plugins/next-use-ai');
+
+    plugins.push(nextUseAi(options.aiChat));
   }
 
   await create({

@@ -3,8 +3,8 @@ import * as path from 'node:path';
 import { expect, test } from 'vitest';
 import { z } from 'zod';
 import { ValidationError } from '@/utils/validation';
-import { defineCollections, defineConfig } from '@/config';
-import { parseFrontmatter } from '@/utils/frontmatter';
+import { defineCollections, defineConfig, defineDocs } from '@/config';
+import { fumaMatter } from '@/utils/fuma-matter';
 import { buildConfig } from '@/config/build';
 import { createCore } from '@/core';
 import indexFile from '@/plugins/index-file';
@@ -115,6 +115,17 @@ const cases: {
     },
   },
   {
+    name: 'dynamic-docs',
+    config: {
+      docs: defineDocs({
+        dir: path.join(baseDir, './fixtures/generate-index-docs'),
+        docs: {
+          dynamic: true,
+        },
+      }),
+    },
+  },
+  {
     name: 'workspace',
     config: {
       docs: defineCollections({
@@ -163,47 +174,64 @@ for (const { name, config } of cases) {
       .map((entry) => `\`\`\`ts title="${entry.path}"\n${entry.content}\n\`\`\``)
       .join('\n\n');
 
+    if (name === 'dynamic') {
+      expect(markdown).toContain(`import path from 'node:path';`);
+      expect(markdown).toContain(
+        'create.doc("docs", "packages/mdx/test/fixtures/generate-index", [',
+      );
+      expect(markdown).toContain(
+        'create.doc("blogs", "packages/mdx/test/fixtures/generate-index", [',
+      );
+    }
+
+    if (name === 'dynamic-docs') {
+      expect(markdown).toContain(`import path from 'node:path';`);
+      expect(markdown).toMatch(
+        /create\.docs\("docs", "packages\/mdx\/test\/fixtures\/generate-index-docs", [\s\S]+, \[/,
+      );
+    }
+
     await expect(markdown).toMatchFileSnapshot(`./fixtures/index-${name}.output.md`);
   });
 }
 
 test('parse frontmatter', () => {
-  expect(parseFrontmatter('---\ntitle: hello world\ndescription: I love Hanzo Docs\n---\nwow looks cool.'))
+  expect(fumaMatter('---\ntitle: hello world\ndescription: I love Fumadocs\n---\nwow looks cool.'))
     .toMatchInlineSnapshot(`
     {
       "content": "wow looks cool.",
       "data": {
-        "description": "I love Hanzo Docs",
+        "description": "I love Fumadocs",
         "title": "hello world",
       },
       "matter": "---
     title: hello world
-    description: I love Hanzo Docs
+    description: I love Fumadocs
     ---
     ",
     }
   `);
 
   expect(
-    parseFrontmatter(
-      '---\r\ntitle: hello world\r\ndescription: I love Hanzo Docs\r\n---\r\nwow looks cool.',
+    fumaMatter(
+      '---\r\ntitle: hello world\r\ndescription: I love Fumadocs\r\n---\r\nwow looks cool.',
     ),
   ).toMatchInlineSnapshot(`
     {
       "content": "wow looks cool.",
       "data": {
-        "description": "I love Hanzo Docs",
+        "description": "I love Fumadocs",
         "title": "hello world",
       },
       "matter": "---
     title: hello world
-    description: I love Hanzo Docs
+    description: I love Fumadocs
     ---
     ",
     }
   `);
 
-  expect(parseFrontmatter('--- \ntitle: hello world\r\n---\r\nwow looks cool.')).toMatchInlineSnapshot(`
+  expect(fumaMatter('--- \ntitle: hello world\r\n---\r\nwow looks cool.')).toMatchInlineSnapshot(`
     {
       "content": "--- 
     title: hello world

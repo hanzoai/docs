@@ -5,6 +5,8 @@ const external = ['next', 'typescript', 'webpack', 'bun', 'mdx/types'];
 const noExternal = [
   // TODO: remove this when the min `@hanzo/docs-core` version is above 16.2.3
   '@hanzo/docs-core/source/schema',
+  // TODO: remove this when the min `@hanzo/docs-core` version is above 16.6.17
+  '@hanzo/docs-core/mdx-plugins/remark-llms',
 ];
 
 export default defineConfig([
@@ -18,12 +20,14 @@ export default defineConfig([
       './src/plugins/*.ts',
     ],
     format: 'esm',
-    noExternal,
-    external,
     dts: true,
     fixedExtension: false,
     target: 'node22',
-    inlineOnly: [],
+    deps: {
+      onlyBundle: [],
+      alwaysBundle: noExternal,
+      neverBundle: external,
+    },
   },
   {
     outDir: 'dist/next',
@@ -31,11 +35,13 @@ export default defineConfig([
     // because next.config.ts by default uses CJS
     entry: ['./src/next/index.ts'],
     format: 'cjs',
-    noExternal,
-    external,
     dts: false,
     fixedExtension: false,
     target: 'node22',
-    inlineOnly: [],
+    deps: {
+      onlyBundle: [],
+      alwaysBundle: noExternal,
+      neverBundle: external,
+    },
   },
 ]);

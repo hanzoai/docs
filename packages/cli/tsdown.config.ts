@@ -4,12 +4,23 @@ import { createConfigSchema } from './src/config';
 import { z } from 'zod';
 
 export default defineConfig({
-  entry: ['./src/index.ts', './src/build/index.ts'],
+  entry: [
+    './src/{index,config}.ts',
+    './src/registry/{client,schema}.ts',
+    './src/registry/installer/index.ts',
+    './src/build/index.ts',
+  ],
   format: 'esm',
   dts: true,
   fixedExtension: false,
   target: 'node22',
-  inlineOnly: [],
+  deps: {
+    onlyBundle: [],
+  },
+  exports: {
+    enabled: true,
+    exclude: ['./index'],
+  },
   async onSuccess() {
     console.log('JSON schema generated');
     await fs.mkdir('dist/schema', { recursive: true });

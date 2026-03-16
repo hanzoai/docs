@@ -1,22 +1,18 @@
 import type {
+  MediaTypeObject,
   MethodInformation,
   ParameterObject,
   RenderContext,
   SecuritySchemeObject,
 } from '@/types';
-import { getPreferredType, type NoReference, type ParsedSchema } from '@/utils/schema';
+import { getPreferredType, NoReference, type ParsedSchema } from '@/utils/schema';
 import { type PlaygroundClientProps } from './client';
 import { ClientLazy } from './lazy';
-
-export type ParameterField = NoReference<ParameterObject> & {
-  schema: ParsedSchema;
-  in: 'cookie' | 'header' | 'query' | 'path';
-};
 
 interface Context {
   references: Record<string, ParsedSchema>;
   registered: WeakMap<Exclude<ParsedSchema, boolean>, string>;
-  nextId: () => string;
+  id: (schema?: object) => string;
 }
 
 export interface APIPlaygroundProps {
@@ -35,14 +31,22 @@ export async function APIPlayground({ path, method, ctx }: APIPlaygroundProps) {
     return ctx.playground.render({ path, method, ctx });
   }
 
-  let currentId = 0;
   const bodyContent = method.requestBody?.content;
   const mediaType = bodyContent ? getPreferredType(bodyContent) : undefined;
+  const takenIds = new Map<string, number>();
 
   const context: Context = {
     references: {},
-    nextId() {
-      return String(currentId++);
+    id(schema) {
+      let name = 'r';
+      if (schema) {
+        const ref = ctx.schema.getRawRef(schema)?.split('/');
+        if (ref && ref.length > 0) name = ref[ref.length - 1];
+      }
+
+      const count = takenIds.get(name) ?? 0;
+      takenIds.set(name, count + 1);
+      return count === 0 ? name : `${name}${count}`;
     },
     registered: new WeakMap(),
   };
@@ -51,7 +55,35 @@ export async function APIPlayground({ path, method, ctx }: APIPlaygroundProps) {
     securities: parseSecurities(method, ctx),
     method: method.method,
     route: path,
-    parameters: method.parameters as ParameterField[],
+    parameters: method.parameters?.map((param: NoReference<ParameterObject>): ParameterObject => {
+      if (param.schema !== undefined) {
+        return {
+          ...param,
+          schema: writeReferences(param.schema, context),
+        } as ParameterObject;
+      }
+
+      if (param.content !== undefined) {
+        const content: Record<string, MediaTypeObject> = {};
+
+        for (const k in param.content) {
+          const original = param.content[k] as NoReference<MediaTypeObject>;
+          if (!original || original.schema === undefined) continue;
+
+          content[k] = {
+            ...original,
+            schema: writeReferences(original.schema, context),
+          } as MediaTypeObject;
+        }
+
+        return {
+          ...param,
+          content,
+        } as ParameterObject;
+      }
+
+      return param;
+    }),
     body:
       bodyContent && mediaType
         ? ({
@@ -76,7 +108,7 @@ function writeReferences(
   if (typeof schema !== 'object' || !schema) return schema;
   if (stack.has(schema)) {
     const out = stack.get(schema)!;
-    const id = ctx.nextId();
+    const id = ctx.id(schema);
     ctx.references[id] = out;
 
     return {

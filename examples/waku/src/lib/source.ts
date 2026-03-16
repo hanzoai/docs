@@ -1,9 +1,9 @@
-import { loader } from '@hanzo/docs-core/source';
+import { type InferPageType, loader } from '@hanzo/docs-core/source';
 import { lucideIconsPlugin } from '@hanzo/docs-core/source/lucide-icons';
-import { docs } from '@hanzo/docs-mdx:collections/server';
+import { docs } from 'collections/server';
 
 export const source = loader({
-  source: docs.toHanzoDocsSource(),
+  source: docs.toFumadocsSource(),
   baseUrl: '/docs',
   plugins: [lucideIconsPlugin()],
 });
@@ -15,4 +15,10 @@ export function getPageImage(slugs: string[]) {
     segments,
     url: `/og/docs/${segments.join('/')}`,
   };
+}
+
+export async function getLLMText(page: InferPageType<typeof source>) {
+  const processed = await page.data.getText('processed');
+  return `# ${page.data.title} (${page.url})
+${processed}`;
 }

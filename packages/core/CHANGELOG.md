@@ -1,5 +1,68 @@
 # next-docs-zeta
 
+## 16.6.17
+
+### Patch Changes
+
+- c2678c0: Improve `llms.txt` generation via `remark-llms` plugin
+- 417f07a: Expose Markdown stringifier
+- bb07706: Include root items only once in Breadcrumb.
+
+  Previously, when `includeRoot` was set to `true`, the root item was added twice to breadcrumbs.
+
+- f065406: Support fuma-content integration
+
+## 16.6.16
+
+### Patch Changes
+
+- 054da73: Implement `limit` option on search servers
+
+## 16.6.15
+
+## 16.6.14
+
+### Patch Changes
+
+- 8382363: [Remark Image] set `placeholder` to `none` by default
+
+## 16.6.13
+
+## 16.6.12
+
+### Patch Changes
+
+- ddb0f81: require explicit import for new search clients
+
+## 16.6.11
+
+### Patch Changes
+
+- d35f30c: deprecate `highlight` on content highlighter
+- ae3e742: Support flexsearch server & client
+- 269dfb3: Redesign search client adapter interface
+
+## 16.6.10
+
+### Patch Changes
+
+- 9b5c2dd: Support `llms` API in Loader API
+
+## 16.6.9
+
+### Patch Changes
+
+- 4d05c4e: [Search API] Generate breadcrumbs for custom `buildIndex` option.
+- 5f687b6: [rehype-toc] Support `data` export mode
+
+## 16.6.8
+
+### Patch Changes
+
+- 5453502: use Shiki.js v4
+
+## 16.6.7
+
 ## 16.6.6
 
 ## 16.6.5
@@ -183,7 +246,7 @@
 
   ```ts
   import { loader } from "fumadocs-core/source";
-  import { docs } from "fumadocs-mdx:collections/server";
+  import { docs } from "collections/
   import { lucideIconsPlugin } from "fumadocs-core/source/lucide-icons";
 
   export const source = loader(docs.toFumadocsSource(), {

@@ -12,7 +12,7 @@ export function resolveExternal(
   if (ref.type !== 'file') return;
 
   const file = path.relative(toRegistryDir, ref.file);
-  if (file.startsWith('contexts/') || /^utils\/use-/.test(file)) {
+  if (file.startsWith('contexts/') || /^utils\/use-/.test(file) || file === 'utils/renderer.ts') {
     return {
       dep: toPackageName,
       type: 'dependency',

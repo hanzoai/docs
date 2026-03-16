@@ -1,7 +1,7 @@
-import { loader } from '@hanzo/docs/core/source';
-import { docs } from '@hanzo/docs/mdx:collections/server';
+import { loader } from '@hanzo/docs-core/source';
+import { docs } from 'collections/server';
 
 export const source = loader({
-  source: docs.toHanzo DocsSource(),
+  source: docs.toFumadocsSource(),
   baseUrl: '/docs',
 });

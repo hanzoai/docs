@@ -1,8 +1,8 @@
 import { source } from '@/lib/source';
-import { DocsPage, DocsBody, DocsDescription, DocsTitle } from '@hanzo/docs-base-ui/layouts/docs/page';
+import { DocsPage, DocsBody, DocsDescription, DocsTitle } from '@hanzo/docs-ui/layouts/docs/page';
 import { notFound } from 'next/navigation';
-import { createRelativeLink } from '@hanzo/docs/ui/mdx';
-import { getMDXComponents } from '@/mdx-components';
+import { createRelativeLink } from '@hanzo/docs-ui/mdx';
+import { getMDXComponents } from '@/components/mdx';
 
 export default async function Page(props: { params: Promise<{ slug?: string[] }> }) {
   const params = await props.params;

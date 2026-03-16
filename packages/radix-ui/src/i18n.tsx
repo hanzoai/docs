@@ -1,21 +1,35 @@
 import type { I18nProviderProps, Translations } from '@/contexts/i18n';
 import type { I18nConfig } from '@hanzo/docs-core/i18n';
 
-export type { I18nProviderProps, Translations };
-export { defaultTranslations } from '@/contexts/i18n';
+export { defaultTranslations, type I18nProviderProps, type Translations } from '@/contexts/i18n';
+
+export interface I18nUIConfig<Languages extends string> extends I18nConfig<Languages> {
+  /**
+   * get i18n config for Fumadocs UI `<RootProvider i18n={config} />`.
+   */
+  provider: (locale?: Languages | (string & {})) => I18nProviderProps;
+}
+
+type TranslationsConfig<Languages extends string> = {
+  [K in Languages]?: Partial<Translations> & { displayName?: string };
+};
 
 export function defineI18nUI<Languages extends string>(
   config: I18nConfig<Languages>,
-  options: {
-    translations: {
-      [K in Languages]?: Partial<Translations> & { displayName?: string };
-    };
-  },
-) {
-  const { translations } = options;
+  options:
+    | {
+        /**
+         * @deprecated you can directly define the translations in outer scope (the parent object of `translations`)
+         */
+        translations: TranslationsConfig<Languages>;
+      }
+    | TranslationsConfig<Languages> = {},
+): I18nUIConfig<Languages> {
+  const translations = 'translations' in options ? options.translations : options;
 
   return {
-    provider(locale: string = config.defaultLanguage): I18nProviderProps {
+    ...config,
+    provider(locale = config.defaultLanguage) {
       return {
         locale,
         translations: translations[locale as Languages],

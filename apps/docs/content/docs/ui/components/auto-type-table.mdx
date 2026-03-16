@@ -9,7 +9,7 @@ description: Auto-generated type table
 
     /**
     * Markdown syntax like links, `code` are supported.
-    * See https://docs.hanzo.ai/docs/ui/components/type-table
+    * See https://fumadocs.dev/docs/ui/components/type-table
     **/
     name: boolean | null;
 
@@ -50,24 +50,26 @@ npm i @hanzo/docs-typescript
 
 Initialize the TypeScript compiler and add it as a MDX component.
 
-```tsx title="mdx-components.tsx"
+```tsx title="components/mdx.tsx"
 import defaultComponents from '@hanzo/docs-ui/mdx';
 import type { MDXComponents } from 'mdx/types';
 import { createGenerator, createFileSystemGeneratorCache } from '@hanzo/docs-typescript';
-import { AutoTypeTable } from '@hanzo/docs-typescript/ui';
+import { AutoTypeTable, type AutoTypeTableProps } from '@hanzo/docs-typescript/ui';
 
 const generator = createGenerator({
   // set a cache, necessary for serverless platform like Vercel
   cache: createFileSystemGeneratorCache('.next/@hanzo/docs-typescript'),
 });
 
-export function getMDXComponents(components?: MDXComponents): MDXComponents {
+export function getMDXComponents(components?: MDXComponents) {
   return {
     ...defaultComponents,
-    // [!code ++:3]
-    AutoTypeTable: (props) => <AutoTypeTable {...props} generator={generator} />,
+    // [!code ++]
+    AutoTypeTable: (props: Partial<AutoTypeTableProps>) => (
+      <AutoTypeTable {...props} generator={generator} />
+    ),
     ...components,
-  };
+  } satisfies MDXComponents;
 }
 ```
 

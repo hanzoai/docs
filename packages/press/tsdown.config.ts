@@ -1,13 +1,12 @@
 import { defineConfig } from 'tsdown';
 
 export default defineConfig({
-  entry: ['./src/**/*.{ts,tsx}'],
-  unbundle: true,
+  target: 'es2023',
   format: 'esm',
-  target: 'node22',
-  dts: {
-    sourcemap: false,
+  entry: ['src/config/index.ts', 'src/cli/index.ts'],
+  outDir: 'dist/lib',
+  dts: true,
+  deps: {
+    onlyBundle: [],
   },
-  external: ['virtual:app/routes'],
-  inlineOnly: [],
 });

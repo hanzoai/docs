@@ -1,8 +1,10 @@
 'use client';
 import {
+  type ComponentProps,
   createContext,
   Fragment,
   type ReactNode,
+  type RefObject,
   Suspense,
   use,
   useCallback,
@@ -13,17 +15,23 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@hanzo/docs-base-ui/components/tabs';
-import type { InfoTag, SchemaDataObjectProperty, SchemaUIGeneratedData } from '@/ui/schema';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@hanzo/docs-ui/components/tabs';
+import { useTranslations } from '@/ui/client/i18n';
+import type {
+  InfoTag,
+  SchemaData,
+  SchemaDataObjectProperty,
+  SchemaUIGeneratedData,
+} from '@/ui/schema';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '@hanzo/docs-base-ui/components/ui/collapsible';
-import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
+} from '@hanzo/docs-ui/components/ui/collapsible';
+import { buttonVariants } from '@hanzo/docs-ui/components/ui/button';
 import { ChevronDown, FilterIcon } from 'lucide-react';
 import { Badge } from '@/ui/components/method-label';
-import { Popover, PopoverContent, PopoverTrigger } from '@hanzo/docs-base-ui/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@hanzo/docs-ui/components/ui/popover';
 import { cn } from '@/utils/cn';
 import { cva } from 'class-variance-authority';
 
@@ -88,11 +96,13 @@ function SchemaUIProperty({
   $type,
   variant = 'default',
   overrides,
+  objectSearchOverrides,
 }: {
   name: ReactNode;
   $type: string;
   variant?: 'default' | 'expand';
   overrides?: Partial<PropertyProps>;
+  objectSearchOverrides?: Partial<ObjectSearchProps>;
 }) {
   const { refs } = useData();
   const schema = refs[$type];
@@ -115,7 +125,7 @@ function SchemaUIProperty({
               key={item.$type}
               value={item.$type}
               forceMount={undefined}
-              className="py-0"
+              className="pt-2 pb-0"
             >
               <SchemaUIProperty {...item} variant="expand" />
             </TabsContent>
@@ -127,30 +137,15 @@ function SchemaUIProperty({
       $ref: $type,
     });
   } else if (schema.type === 'object' && schema.props.length > 0) {
-    if (variant === 'expand') return <SearchProps props={schema.props} />;
+    if (variant === 'expand')
+      return <ObjectSearch properties={schema.props} {...objectSearchOverrides} />;
 
     type = renderRef({
       pathName: name,
       $ref: $type,
     });
   } else if (schema.type === 'array') {
-    if (variant === 'expand')
-      return (
-        <Collapsible className="my-2">
-          <CollapsibleTrigger
-            className={cn(
-              buttonVariants({ color: 'secondary', size: 'sm' }),
-              'group px-3 py-2 data-[state=open]:rounded-b-none',
-            )}
-          >
-            Array Item
-            <ChevronDown className="size-4 text-fd-muted-foreground group-data-[state=open]:rotate-180" />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="-mt-px bg-fd-card px-3 rounded-lg rounded-tl-none border shadow-sm">
-            <SchemaUIProperty name="" $type={schema.item.$type} variant="expand" />
-          </CollapsibleContent>
-        </Collapsible>
-      );
+    if (variant === 'expand') return <ArrayItemCollapsible schema={schema} />;
 
     type = renderRef({
       pathName: name,
@@ -163,8 +158,8 @@ function SchemaUIProperty({
       {schema.description}
       {schema.infoTags && schema.infoTags.length > 0 && (
         <div className="flex flex-row gap-2 flex-wrap my-2 not-prose empty:hidden">
-          {schema.infoTags.map((tag) => (
-            <InfoTag key={tag.label} tag={tag} />
+          {schema.infoTags.map((tag, i) => (
+            <InfoTag key={i} tag={tag} />
           ))}
         </div>
       )}
@@ -178,38 +173,107 @@ function SchemaUIProperty({
   );
 }
 
-function SearchProps({ props }: { props: SchemaDataObjectProperty[] }) {
+function ArrayItemCollapsible({ schema }: { schema: Extract<SchemaData, { type: 'array' }> }) {
+  const [open, setOpen] = useState(false);
+  const t = useTranslations();
+
+  return (
+    <Collapsible className="my-2" open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger
+        className={cn(
+          buttonVariants({ color: 'secondary', size: 'sm' }),
+          'group px-3 py-2 data-[state=open]:rounded-b-none',
+        )}
+      >
+        {open ? t.schemaHideArray : t.schemaShowArray}
+        <ChevronDown className="size-4 text-fd-muted-foreground group-data-[state=open]:rotate-180" />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="-mt-px bg-fd-card px-3 rounded-lg rounded-tl-none border shadow-sm">
+        <SchemaUIProperty name="" $type={schema.item.$type} variant="expand" />
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+interface ObjectSearchProps {
+  properties: SchemaDataObjectProperty[];
+  container?: ComponentProps<'div'>;
+  open?: (item: SchemaDataObjectProperty) => void;
+}
+
+function ObjectSearch({ properties, container, open }: ObjectSearchProps) {
   const [search, setSearch] = useState('');
   const deferredValue = useDeferredValue(search);
+  const firstItemRef = useRef<SchemaDataObjectProperty>(null);
+  const prevProperties = useRef(properties);
+  const t = useTranslations();
+
+  if (prevProperties.current !== properties) {
+    prevProperties.current = properties;
+    setSearch('');
+  }
 
   return (
     <>
-      <div className="flex items-center border my-2 rounded-md bg-fd-secondary text-fd-secondary-foreground transition-colors shadow-sm focus-within:ring-2 focus-within:ring-fd-ring">
+      <div
+        {...container}
+        className={cn(
+          'flex items-center border my-2 rounded-md bg-fd-secondary text-fd-secondary-foreground transition-colors shadow-sm focus-within:ring-2 focus-within:ring-fd-ring',
+          container?.className,
+        )}
+      >
         <FilterIcon className="text-fd-muted-foreground ms-2 size-3.5" />
         <input
           value={search}
+          data-object-search-input=""
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Filter Properties"
+          placeholder={t.schemaFilterPropertiesPlaceholder}
           className="text-sm ps-2 py-2 flex-1 outline-none placeholder:text-fd-muted-foreground"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && open) {
+              if (firstItemRef.current) open(firstItemRef.current);
+              e.preventDefault();
+            }
+          }}
         />
       </div>
       <Suspense>
-        <SearchPropsContent search={deferredValue} props={props} />
+        <ObjectSearchContent
+          search={deferredValue}
+          properties={properties}
+          firstItemRef={firstItemRef}
+        />
       </Suspense>
     </>
   );
 }
 
-function SearchPropsContent({
-  search,
-  props,
+function ObjectSearchContent({
+  search: rawSearch,
+  firstItemRef,
+  properties,
 }: {
   search: string;
-  props: SchemaDataObjectProperty[];
+  firstItemRef: RefObject<SchemaDataObjectProperty | null>;
+  properties: SchemaDataObjectProperty[];
 }) {
-  search = search.trim().toLowerCase();
-  const filtered =
-    search.length > 0 ? props.filter((prop) => prop.name.toLowerCase().includes(search)) : props;
+  const t = useTranslations();
+  const filtered = useMemo(() => {
+    const search = rawSearch.trim().toLowerCase();
+    return search.length > 0
+      ? properties.filter((prop) => prop.name.toLowerCase().includes(search))
+      : properties;
+  }, [properties, rawSearch]);
+
+  firstItemRef.current = filtered.length > 0 ? filtered[0] : null;
+
+  if (filtered.length === 0)
+    return (
+      <p className="text-fd-muted-foreground text-sm px-2">
+        {t.schemaFilterPropertiesEmpty}{' '}
+        <span className="text-fd-foreground font-medium">{`"${rawSearch}"`}</span>
+      </p>
+    );
 
   return filtered.map((prop) => (
     <SchemaUIProperty
@@ -262,21 +326,26 @@ interface PathItemType {
   scrollTop?: number;
 }
 
-function SchemaUIPopover({ initialPath }: { initialPath: PathItemType[] }) {
+function SchemaUIPopover({
+  containerRef,
+  initialPath,
+}: {
+  containerRef: RefObject<HTMLDivElement | null>;
+  initialPath: PathItemType[];
+}) {
   const [path, setPath] = useState(initialPath);
-  const ref = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
     const last = path[0];
-    const element = ref.current;
+    const element = containerRef.current;
     if (!element || !last || !element.parentElement) return;
 
     // recover scroll
-    element.parentElement.scrollTop = last?.scrollTop ?? 0;
+    element.parentElement.scrollTop = last.scrollTop ?? 0;
     return () => {
-      last.scrollTop = element.parentElement!.scrollTop;
+      if (element.parentElement) last.scrollTop = element.parentElement.scrollTop;
     };
-  }, [path]);
+  }, [containerRef, path]);
 
   const context: PopoverContextType = useMemo(
     () => ({
@@ -296,7 +365,7 @@ function SchemaUIPopover({ initialPath }: { initialPath: PathItemType[] }) {
 
   return (
     <>
-      <div className="sticky top-0 flex flex-row flex-wrap items-center text-sm font-medium font-mono bg-fd-popover px-2 py-1.5 border-b">
+      <div className="sticky top-0 -mx-2 flex flex-row flex-wrap items-center text-sm font-medium font-mono bg-fd-popover px-2 h-8 border-b">
         {path.map((item, i) => {
           const isDuplicated = path.some((other, j) => j < i && other.$ref === item.$ref);
           const className = cn(
@@ -321,9 +390,19 @@ function SchemaUIPopover({ initialPath }: { initialPath: PathItemType[] }) {
       </div>
       <PopoverContext value={context}>
         {currentRef?.$ref && (
-          <div ref={ref} className="px-2">
-            <SchemaUIProperty name="" $type={currentRef.$ref} variant="expand" />
-          </div>
+          <SchemaUIProperty
+            name=""
+            $type={currentRef.$ref}
+            variant="expand"
+            objectSearchOverrides={{
+              container: {
+                className: 'sticky top-10',
+              },
+              open(item) {
+                setPath((path) => [...path, { name: item.name, $ref: item.$type }]);
+              },
+            }}
+          />
         )}
       </PopoverContext>
     </>
@@ -381,7 +460,9 @@ function RootPopoverTrigger({
   $ref: string;
   children: ReactNode;
 }) {
-  const ref = useCallback((element: HTMLDivElement | null) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const refCallback = useCallback((element: HTMLDivElement | null) => {
+    ref.current = element;
     if (!element || element.style.getPropertyValue('--initial-height')) return;
 
     element.style.setProperty('--initial-height', `${element.clientHeight + 2}px`);
@@ -392,8 +473,19 @@ function RootPopoverTrigger({
       <PopoverTrigger className={cn(typeVariants({ variant: 'trigger' }))}>
         {children}
       </PopoverTrigger>
-      <PopoverContent ref={ref} className="w-[600px] min-h-(--initial-height,0) max-h-[460px] p-0">
+      <PopoverContent
+        ref={refCallback}
+        onOpenAutoFocus={(e) => {
+          if (!ref.current) return;
+          const input = ref.current.querySelector('input[data-object-search-input]');
+          if (!(input instanceof HTMLInputElement)) return;
+          input.focus({ preventScroll: true });
+          e.preventDefault();
+        }}
+        className="w-[600px] min-h-(--initial-height,0) max-h-[460px] px-2 py-0"
+      >
         <SchemaUIPopover
+          containerRef={ref}
           initialPath={[
             {
               name: pathName,
@@ -426,6 +518,7 @@ function Property({
   className,
   ...props
 }: PropertyProps) {
+  const t = useTranslations();
   return (
     <div
       className={cn(
@@ -452,7 +545,7 @@ function Property({
         )}
         {deprecated && (
           <Badge color="yellow" className="ms-auto text-xs">
-            Deprecated
+            {t.deprecated}
           </Badge>
         )}
       </div>

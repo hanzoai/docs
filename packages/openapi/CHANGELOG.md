@@ -1,5 +1,62 @@
 # @fuma-docs/openapi
 
+## 10.3.18
+
+### Patch Changes
+
+- c1c954d: fix schema intersection
+- Updated dependencies [86d3abb]
+  - fumadocs-ui@16.6.15
+  - fumadocs-core@16.6.15
+
+## 10.3.17
+
+### Patch Changes
+
+- e2e0782: Fix broken `dereference-json-schema` import in built output caused by `unbundle + inlineOnly` producing hardcoded `.pnpm/` paths
+- Updated dependencies [d35f30c]
+- Updated dependencies [ae3e742]
+- Updated dependencies [269dfb3]
+  - fumadocs-core@16.6.11
+  - fumadocs-ui@16.6.11
+
+## 10.3.16
+
+### Patch Changes
+
+- 1f4ccb4: expose heading & codeblock renderer
+- Updated dependencies [9b5c2dd]
+  - fumadocs-core@16.6.10
+  - fumadocs-ui@16.6.10
+
+## 10.3.15
+
+### Patch Changes
+
+- 440a7ef: Fix intersection resolution
+- e68700e: fix parameter encoding
+
+## 10.3.14
+
+### Patch Changes
+
+- 53856d2: Improve dereference & TypeScript generation
+- 5453502: use Shiki.js v4
+- Updated dependencies [5453502]
+  - fumadocs-ui@16.6.8
+  - fumadocs-core@16.6.8
+  - @fumari/stf@1.0.3
+
+## 10.3.13
+
+### Patch Changes
+
+- 825f401: enable Typescript definition generation for request body
+- 146bb4b: Support code usage generator registry
+- Updated dependencies [8faa2e4]
+  - fumadocs-ui@16.6.7
+  - fumadocs-core@16.6.7
+
 ## 10.3.12
 
 ### Patch Changes

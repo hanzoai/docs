@@ -1,19 +1,17 @@
 'use client';
-import { useShikiConfigOptional } from '@hanzo/docs-core/highlight/core/client';
-import * as base from './dynamic-codeblock.core';
-import { configDefault } from '@hanzo/docs-core/highlight';
+import { defaultShikiFactory } from '@hanzo/docs-core/highlight/shiki/full';
+import * as Base from './dynamic-codeblock.core';
 
-export function DynamicCodeBlock(props: base.DynamicCodeblockProps) {
-  const config = useShikiConfigOptional() ?? configDefault;
+export type DynamicCodeblockProps = Omit<Base.DynamicCodeblockProps, 'highlighter' | 'options'> & {
+  options?: Base.DynamicCodeblockProps['options'];
+};
+
+export function DynamicCodeBlock(props: DynamicCodeblockProps) {
   return (
-    <base.DynamicCodeBlock
+    <Base.DynamicCodeBlock
+      highlighter={() => defaultShikiFactory.getOrInit()}
+      options={{ themes: { light: 'github-light', dark: 'github-dark' } }}
       {...props}
-      options={{
-        config,
-        ...props.options,
-      }}
     />
   );
 }
-
-export type { DynamicCodeblockProps } from './dynamic-codeblock.core';

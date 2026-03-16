@@ -1,34 +1,43 @@
 import { source } from '@/lib/source';
 import { PageProps } from 'waku/router';
-import defaultMdxComponents from '@hanzo/docs-ui/mdx';
-import { DocsBody, DocsDescription, DocsPage, DocsTitle } from '@hanzo/docs-ui/layouts/docs/page';
+import { createRelativeLink } from '@hanzo/docs-ui/mdx';
+import {
+  DocsBody,
+  DocsDescription,
+  DocsPage,
+  DocsTitle,
+  MarkdownCopyButton,
+  ViewOptionsPopover,
+} from '@hanzo/docs-ui/layouts/docs/page';
 import { getPageImage } from '@/lib/source';
+import { unstable_notFound } from 'waku/router/server';
+import { gitConfig } from '@/lib/layout.shared';
+import { getMDXComponents } from '@/components/mdx';
 
-export default function DocPage({ slugs }: PageProps<'/docs/[...slugs]'>) {
+export default function Page({ slugs }: PageProps<'/docs/[...slugs]'>) {
   const page = source.getPage(slugs);
-
-  if (!page) {
-    return (
-      <div className="text-center py-12">
-        <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">Page Not Found</h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          The page you are looking for does not exist.
-        </p>
-      </div>
-    );
-  }
+  if (!page) unstable_notFound();
 
   const MDX = page.data.body;
+  const markdownUrl = `/llms.mdx/docs/${[...page.slugs, 'index.mdx'].join('/')}`;
   return (
     <DocsPage toc={page.data.toc}>
       <meta property="og:image" content={getPageImage(slugs).url} />
       <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription>{page.data.description}</DocsDescription>
+      <DocsDescription className="mb-0">{page.data.description}</DocsDescription>
+      <div className="flex flex-row gap-2 items-center border-b pt-2 pb-6">
+        <MarkdownCopyButton markdownUrl={markdownUrl} />
+        <ViewOptionsPopover
+          markdownUrl={markdownUrl}
+          githubUrl={`https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/content/docs/${page.path}`}
+        />
+      </div>
       <DocsBody>
         <MDX
-          components={{
-            ...defaultMdxComponents,
-          }}
+          components={getMDXComponents({
+            // this allows you to link to other pages with relative file paths
+            a: createRelativeLink(source, page),
+          })}
         />
       </DocsBody>
     </DocsPage>

@@ -1,5 +1,5 @@
 import { loader } from '@hanzo/docs-core/source';
-import { docs } from '@hanzo/docs-mdx:collections/server';
+import { docs } from 'collections/server';
 import { lucideIconsPlugin } from '@hanzo/docs-core/source/lucide-icons';
 
 export const source = loader({

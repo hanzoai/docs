@@ -6,7 +6,6 @@ import type { TypeTable } from '@hanzo/docs-ui/components/type-table';
 import type { Card } from '@hanzo/docs-ui/components/card';
 import type { DocsLayoutProps } from '@hanzo/docs-ui/layouts/docs';
 import type { ComponentProps, ComponentPropsWithoutRef } from 'react';
-import type { DocsPageProps } from '@hanzo/docs-ui/layouts/docs/page';
 import type { AutoTypeTable } from '@hanzo/docs-typescript/ui';
 import type { RootProviderProps } from '@hanzo/docs-ui/provider/base';
 
@@ -60,18 +59,6 @@ export type SidebarProps = Omit<
   NonNullable<DocsLayoutProps['sidebar']>,
   keyof ComponentProps<'aside'>
 >;
-
-export type PageProps = DocsPageProps;
-
-export type TOCProps = NonNullable<DocsPageProps['tableOfContent']>;
-export type TOCPopoverProps = NonNullable<DocsPageProps['tableOfContentPopover']>;
-
-export type BreadcrumbProps = Omit<
-  NonNullable<DocsPageProps['breadcrumb']>,
-  keyof ComponentProps<'div'>
->;
-
-export type FooterProps = Omit<NonNullable<DocsPageProps['footer']>, keyof ComponentProps<'div'>>;
 
 export type AutoTypeTableProps = Omit<
   ComponentPropsWithoutRef<typeof AutoTypeTable>,

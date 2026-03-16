@@ -1,5 +1,4 @@
-import type { BaseLayoutProps } from '@hanzo/docs/ui/layouts/shared';
-import { i18n } from '@/lib/i18n';
+import type { BaseLayoutProps } from '@hanzo/docs-ui/layouts/shared';
 
 export function baseOptions(locale: string): BaseLayoutProps {
   return {
@@ -7,6 +6,6 @@ export function baseOptions(locale: string): BaseLayoutProps {
       title: 'Waku',
       url: `/${locale}`,
     },
-    i18n,
+    LanguageSwitch: true,
   };
 }

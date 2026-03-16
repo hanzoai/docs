@@ -1,11 +1,11 @@
 import { loader, multiple } from '@hanzo/docs-core/source';
 import { openapiPlugin, openapiSource } from '@hanzo/docs-openapi/server';
-import { docs } from '@hanzo/docs-mdx:collections/server';
+import { docs } from 'collections/server';
 import { openapi } from './openapi';
 
 export const source = loader(
   multiple({
-    docs: docs.toHanzoDocsSource(),
+    docs: docs.toFumadocsSource(),
     openapi: await openapiSource(openapi, {
       groupBy: 'tag',
     }),

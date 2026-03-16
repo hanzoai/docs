@@ -29,7 +29,7 @@ export interface RemarkImageOptions {
   /**
    * Preferred placeholder type, only available with `useImport` + local images.
    *
-   * @defaultValue 'blur'
+   * @defaultValue 'none'
    */
   placeholder?: 'blur' | 'none';
 
@@ -81,7 +81,7 @@ type Source =
  * Turn images into Next.js Image compatible usage.
  */
 export function remarkImage({
-  placeholder = 'blur',
+  placeholder = 'none',
   external = true,
   useImport = true,
   onError = 'error',

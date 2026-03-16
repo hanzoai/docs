@@ -2,13 +2,19 @@ import { createFileRoute, notFound } from '@tanstack/react-router';
 import { DocsLayout } from '@hanzo/docs-ui/layouts/docs';
 import { createServerFn } from '@tanstack/react-start';
 import { source } from '@/lib/source';
-import browserCollections from '@hanzo/docs-mdx:collections/browser';
-import { DocsBody, DocsDescription, DocsPage, DocsTitle } from '@hanzo/docs-ui/layouts/docs/page';
-import defaultMdxComponents from '@hanzo/docs-ui/mdx';
+import browserCollections from 'collections/browser';
+import {
+  DocsBody,
+  DocsDescription,
+  DocsPage,
+  DocsTitle,
+  MarkdownCopyButton,
+  ViewOptionsPopover,
+} from '@hanzo/docs-ui/layouts/docs/page';
 import { baseOptions, gitConfig } from '@/lib/layout.shared';
 import { useFumadocsLoader } from '@hanzo/docs-core/source/client';
 import { Suspense } from 'react';
-import { LLMCopyButton, ViewOptions } from '@/components/ai/page-actions';
+import { useMDXComponents } from '@/components/mdx';
 
 export const Route = createFileRoute('/docs/$')({
   component: Page,
@@ -29,7 +35,7 @@ const serverLoader = createServerFn({
     if (!page) throw notFound();
 
     return {
-      url: page.url,
+      slugs: page.slugs,
       path: page.path,
       pageTree: await source.serializePageTree(source.getPageTree()),
     };
@@ -40,10 +46,10 @@ const clientLoader = browserCollections.docs.createClientLoader({
     { toc, frontmatter, default: MDX },
     // you can define props for the component
     {
-      url,
+      markdownUrl,
       path,
     }: {
-      url: string;
+      markdownUrl: string;
       path: string;
     },
   ) {
@@ -52,18 +58,14 @@ const clientLoader = browserCollections.docs.createClientLoader({
         <DocsTitle>{frontmatter.title}</DocsTitle>
         <DocsDescription>{frontmatter.description}</DocsDescription>
         <div className="flex flex-row gap-2 items-center border-b -mt-4 pb-6">
-          <LLMCopyButton markdownUrl={`${url}.mdx`} />
-          <ViewOptions
-            markdownUrl={`${url}.mdx`}
+          <MarkdownCopyButton markdownUrl={markdownUrl} />
+          <ViewOptionsPopover
+            markdownUrl={markdownUrl}
             githubUrl={`https://github.com/${gitConfig.user}/${gitConfig.repo}/blob/${gitConfig.branch}/content/docs/${path}`}
           />
         </div>
         <DocsBody>
-          <MDX
-            components={{
-              ...defaultMdxComponents,
-            }}
-          />
+          <MDX components={useMDXComponents()} />
         </DocsBody>
       </DocsPage>
     );
@@ -71,11 +73,12 @@ const clientLoader = browserCollections.docs.createClientLoader({
 });
 
 function Page() {
-  const data = useFumadocsLoader(Route.useLoaderData());
+  const { path, pageTree, slugs } = useFumadocsLoader(Route.useLoaderData());
+  const markdownUrl = `/llms.mdx/docs/${slugs.join('/')}`;
 
   return (
-    <DocsLayout {...baseOptions()} tree={data.pageTree}>
-      <Suspense>{clientLoader.useContent(data.path, data)}</Suspense>
+    <DocsLayout {...baseOptions()} tree={pageTree}>
+      <Suspense>{clientLoader.useContent(path, { markdownUrl, path })}</Suspense>
     </DocsLayout>
   );
 }

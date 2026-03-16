@@ -1,6 +1,5 @@
 import type { MediaAdapter } from '@/requests/media/adapter';
 import { resolveMediaAdapter } from '@/requests/media/adapter';
-import type { NoReference } from '@/utils/schema';
 import type { ParameterObject } from '@/types';
 import type { RawRequestData, RequestData } from '@/requests/types';
 
@@ -18,7 +17,7 @@ export interface EncodedParameterMultiple {
 export function encodeRequestData(
   from: RawRequestData,
   adapters: Record<string, MediaAdapter>,
-  parameters: NoReference<ParameterObject>[] = [],
+  parameters: ParameterObject[] = [],
 ): RequestData {
   const result: RequestData = {
     method: from.method,
@@ -35,16 +34,15 @@ export function encodeRequestData(
       const value = from[type][key];
       if (value == null) continue;
 
-      const field: NoReference<ParameterObject> = parameters.find(
-        (p) => p.name === key && p.in === type,
-      ) ?? {
+      const field: ParameterObject = parameters.find((p) => p.name === key && p.in === type) ?? {
         name: key,
         in: type,
       };
 
       const encoder = getMediaEncoder(field, adapters);
       if (encoder) {
-        result[type][key] = { value: encoder(value) };
+        if (type === 'query') result[type][key] = { values: [encoder(value)] };
+        else result[type][key] = { value: encoder(value) };
         continue;
       }
 
@@ -71,10 +69,7 @@ export function encodeRequestData(
   return result;
 }
 
-function getMediaEncoder(
-  field: NoReference<ParameterObject>,
-  adapters: Record<string, MediaAdapter>,
-) {
+function getMediaEncoder(field: ParameterObject, adapters: Record<string, MediaAdapter>) {
   if (!field.content) return;
 
   for (const k in field.content) {
@@ -100,7 +95,7 @@ function serializeSimple(value: NonNullable<unknown>, explode: boolean): string 
 }
 
 function serializePathParameter(
-  field: NoReference<ParameterObject>,
+  field: ParameterObject,
   value: NonNullable<unknown>,
   // write output
   output: Record<string, EncodedParameter>,
@@ -167,7 +162,7 @@ function serializePathParameter(
 }
 
 function serializeQueryParameter(
-  field: NoReference<ParameterObject>,
+  field: ParameterObject,
   value: NonNullable<unknown>,
   // write output
   output: Record<string, EncodedParameterMultiple>,
@@ -227,7 +222,7 @@ function serializeQueryParameter(
 }
 
 function serializeCookieParameter(
-  field: NoReference<ParameterObject>,
+  field: ParameterObject,
   value: NonNullable<unknown>,
   // write output
   output: Record<string, EncodedParameter>,

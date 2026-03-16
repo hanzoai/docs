@@ -1,5 +1,112 @@
 # create-fumadocs-versions
 
+## 16.0.73
+
+### Patch Changes
+
+- Updated dependencies [c2678c0]
+- Updated dependencies [417f07a]
+- Updated dependencies [bb07706]
+- Updated dependencies [c3a723e]
+- Updated dependencies [f065406]
+  - fumadocs-core@16.6.17
+  - fumadocs-mdx@14.2.10
+  - fumadocs-ui@16.6.17
+
+## 16.0.72
+
+## 16.0.71
+
+### Patch Changes
+
+- Updated dependencies [054da73]
+  - fumadocs-core@16.6.16
+  - fumadocs-ui@16.6.16
+
+## 16.0.70
+
+### Patch Changes
+
+- Updated dependencies [86d3abb]
+  - fumadocs-ui@16.6.15
+  - fumadocs-core@16.6.15
+
+## 16.0.69
+
+### Patch Changes
+
+- Updated dependencies [a02048c]
+- Updated dependencies [02201df]
+- Updated dependencies [8382363]
+  - fumadocs-ui@16.6.14
+  - fumadocs-core@16.6.14
+
+## 16.0.68
+
+### Patch Changes
+
+- Updated dependencies [2702b28]
+  - fumadocs-ui@16.6.13
+  - fumadocs-core@16.6.13
+
+## 16.0.67
+
+### Patch Changes
+
+- Updated dependencies [ddb0f81]
+  - fumadocs-core@16.6.12
+  - fumadocs-ui@16.6.12
+
+## 16.0.66
+
+### Patch Changes
+
+- Updated dependencies [d35f30c]
+- Updated dependencies [ae3e742]
+- Updated dependencies [269dfb3]
+  - fumadocs-core@16.6.11
+  - fumadocs-ui@16.6.11
+
+## 16.0.65
+
+### Patch Changes
+
+- Updated dependencies [9b5c2dd]
+  - fumadocs-core@16.6.10
+  - fumadocs-ui@16.6.10
+
+## 16.0.64
+
+### Patch Changes
+
+- Updated dependencies [0aad574]
+- Updated dependencies [6a7725b]
+- Updated dependencies [4d05c4e]
+- Updated dependencies [5f687b6]
+- Updated dependencies [7a61fa5]
+  - fumadocs-ui@16.6.9
+  - fumadocs-core@16.6.9
+
+## 16.0.63
+
+## 16.0.62
+
+### Patch Changes
+
+- 5453502: use Shiki.js v4
+- Updated dependencies [5453502]
+  - fumadocs-ui@16.6.8
+  - fumadocs-core@16.6.8
+  - fumadocs-mdx@14.2.9
+
+## 16.0.61
+
+### Patch Changes
+
+- Updated dependencies [8faa2e4]
+  - fumadocs-ui@16.6.7
+  - fumadocs-core@16.6.7
+
 ## 16.0.60
 
 ### Patch Changes

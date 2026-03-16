@@ -1,14 +1,14 @@
-import type { Core, CoreOptions, Plugin, PluginContext } from '../core';
-import type { CollectionItem, DocCollectionItem, MetaCollectionItem } from '../config/build';
+import type { Core, CoreOptions, Plugin, PluginContext } from '@/core';
+import type { CollectionItem, DocCollectionItem, MetaCollectionItem } from '@/config/build';
 import path from 'path';
-import { type CodeGen, createCodegen, ident, slash } from '../utils/codegen';
+import { type CodeGen, createCodegen, ident, slash } from '@/utils/codegen';
 import { glob } from 'tinyglobby';
-import { createFSCache } from '../utils/fs-cache';
+import { createFSCache } from '@/utils/fs-cache';
 import { createHash } from 'crypto';
-import type { LazyEntry } from '../runtime/dynamic';
-import type { EmitEntry } from '../core';
-import { parseFrontmatter } from '../utils/frontmatter';
-import type { ServerOptions } from '../runtime/server';
+import type { LazyEntry } from '@/runtime/dynamic';
+import type { EmitEntry } from '@/core';
+import { fumaMatter } from '@/utils/fuma-matter';
+import type { ServerOptions } from '@/runtime/server';
 
 export interface IndexFilePluginOptions {
   target?: 'default' | 'vite';
@@ -234,20 +234,13 @@ async function generateDynamicIndexFile(ctx: FileGenContext) {
     environment,
     outDir,
   };
-  codegen.lines.push(
-    `import { dynamic } from '@hanzo/docs-mdx/runtime/dynamic';`,
-    `import * as Config from '${codegen.formatImportPath(configPath)}';`,
-    '',
-    `const create = await dynamic<typeof Config, ${tc}>(Config, ${JSON.stringify(partialOptions)}, ${JSON.stringify(serverOptions)});`,
-  );
-
   async function generateCollectionObjectEntry(
     collection: DocCollectionItem,
     absolutePath: string,
   ) {
     const fullPath = path.relative(process.cwd(), absolutePath);
     const content = await indexFileCache.read(fullPath).catch(() => '');
-    const parsed = parseFrontmatter(content);
+    const parsed = fumaMatter(content);
     const data = await core.transformFrontmatter(
       {
         collection,
@@ -295,14 +288,14 @@ async function generateDynamicIndexFile(ctx: FileGenContext) {
       case 'docs': {
         const metaGlob = await generateMetaCollectionGlob(ctx, parent.meta, true);
 
-        return `await create.docs("${parent.name}", "${getBase(parent)}", ${metaGlob}, ${entries.join(', ')})`;
+        return `await create.docs("${parent.name}", "${getBase(parent)}", ${metaGlob}, [${entries.join(', ')}])`;
       }
       case 'doc':
-        return `await create.doc("${collection.name}", "${getBase(collection)}", ${entries.join(', ')})`;
+        return `await create.doc("${collection.name}", "${getBase(collection)}", [${entries.join(', ')}])`;
     }
   }
 
-  await codegen.pushAsync(
+  const objects = await Promise.all(
     core.getCollections().map(async (collection) => {
       const obj = await generateCollectionObject(collection);
       if (!obj) return;
@@ -310,6 +303,17 @@ async function generateDynamicIndexFile(ctx: FileGenContext) {
       return `\nexport const ${collection.name} = ${obj};`;
     }),
   );
+  const hasDynamicCollection = objects.some(Boolean);
+
+  codegen.lines.push(
+    `import { dynamic } from '@hanzo/docs-mdx/runtime/dynamic';`,
+    ...(hasDynamicCollection ? [`import path from 'node:path';`] : []),
+    `import * as Config from '${codegen.formatImportPath(configPath)}';`,
+    '',
+    `const create = await dynamic<typeof Config, ${tc}>(Config, ${JSON.stringify(partialOptions)}, ${JSON.stringify(serverOptions)});`,
+  );
+
+  codegen.lines.push(...objects.filter((obj): obj is string => obj !== undefined));
 }
 
 async function generateBrowserIndexFile(ctx: FileGenContext) {
