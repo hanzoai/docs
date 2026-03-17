@@ -1,4 +1,4 @@
-import { createContentHighlighter, type SortedResult } from '@/search';
+import { createContentHighlighter, type SortedResult } from '../index';
 
 export interface HanzoSearchOptions {
   /**

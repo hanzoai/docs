@@ -7,6 +7,7 @@ import type { AlgoliaOptions } from '@/search/client/algolia';
 import type { OramaCloudOptions } from '@/search/client/orama-cloud';
 import type { OramaCloudLegacyOptions } from '@/search/client/orama-cloud-legacy';
 import type { MixedbreadOptions } from '@/search/client/mixedbread';
+import type { HanzoSearchOptions } from '@/search/client/hanzo';
 import type { SortedResult } from '@/search';
 import type { Awaitable } from '@/types';
 import type { FlexsearchStaticOptions } from './client/flexsearch-static';
@@ -48,6 +49,9 @@ export type ClientPreset =
        */
       type: 'mixedbread';
     } & MixedbreadOptions)
+  | ({
+      type: 'hanzo';
+    } & HanzoSearchOptions)
   | {
       client: SearchClient;
     };
@@ -141,6 +145,18 @@ export function useDocsSearch(
         >;
         const { oramaStaticClient } = use(res);
         client = oramaStaticClient(clientRest);
+        break;
+      }
+      case 'hanzo': {
+        const res = (promiseMap[clientRest.type] ??= import('./client/hanzo')) as Promise<
+          typeof import('./client/hanzo')
+        >;
+        const { searchDocs } = use(res);
+        const opts = clientRest;
+        client = {
+          search: (query) => searchDocs(query, opts),
+          deps: [opts.endpoint, opts.apiKey, opts.tag],
+        };
         break;
       }
       default:
