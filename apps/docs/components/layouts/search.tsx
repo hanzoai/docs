@@ -22,7 +22,7 @@ import { cn } from '@/lib/cn';
 import { useTreeContext } from '@hanzo/docs/ui/contexts/tree';
 import type { Item, Node } from '@hanzo/docs/core/page-tree';
 import { useRouter } from 'next/navigation';
-import { publishableKey, searchEndpoint } from '@/lib/hanzo/client';
+import { publishableKey, searchEndpoint, searchBackend, searchIndex } from '@/lib/hanzo/client';
 
 const items = [
   {
@@ -58,6 +58,8 @@ export default function CustomSearchDialog(props: SharedProps) {
     type: 'hanzo',
     apiKey: publishableKey,
     endpoint: searchEndpoint,
+    backend: searchBackend,
+    index: searchIndex,
     tag,
   });
   const { full } = useTreeContext();

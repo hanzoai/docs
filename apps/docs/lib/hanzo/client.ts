@@ -1,6 +1,15 @@
+export const searchBackend =
+  (process.env.NEXT_PUBLIC_HANZO_SEARCH_BACKEND as 'cloud' | 'meilisearch' | undefined) ??
+  'meilisearch';
+
 export const searchEndpoint =
   process.env.NEXT_PUBLIC_HANZO_SEARCH_ENDPOINT ??
-  'https://cloud-api.hanzo.ai/api/search-docs';
+  (searchBackend === 'meilisearch'
+    ? 'https://search.hanzo.ai'
+    : 'https://cloud-api.hanzo.ai/api/search-docs');
+
+export const searchIndex =
+  process.env.NEXT_PUBLIC_HANZO_SEARCH_INDEX ?? 'app-docs-hanzo-ai-docs';
 
 export const indexEndpoint =
   process.env.HANZO_SEARCH_INDEX_ENDPOINT ??
@@ -11,7 +20,10 @@ export const chatEndpoint =
   'https://cloud-api.hanzo.ai/api/chat-docs';
 
 export const publishableKey =
-  process.env.NEXT_PUBLIC_HANZO_SEARCH_KEY ?? 'pk-hanzo-docs-search-2026';
+  process.env.NEXT_PUBLIC_HANZO_SEARCH_KEY ??
+  (searchBackend === 'meilisearch'
+    ? '2d99c3ab7551b807c9b8c132f663eba7e27e765a511907d9a566799497c7fd42'
+    : 'pk-hanzo-docs-search-2026');
 
 export const adminKey =
   process.env.HANZO_SEARCH_ADMIN_KEY ?? '';

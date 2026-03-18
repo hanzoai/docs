@@ -4,12 +4,35 @@ export interface HanzoSearchOptions {
   /**
    * The Hanzo Search API endpoint.
    *
+   * For `backend: 'cloud'` (default): the cloud-api search-docs URL.
+   * For `backend: 'meilisearch'`: the Meilisearch base URL (e.g. 'https://search.hanzo.ai').
+   *
    * @defaultValue 'https://cloud-api.hanzo.ai/api/search-docs'
    */
   endpoint?: string;
 
   /**
-   * Publishable API key (pk-*).
+   * Search backend to use.
+   *
+   * - `'cloud'`: Hanzo cloud-api `/api/search-docs` endpoint.
+   * - `'meilisearch'`: Direct Meilisearch instance (requires `index`).
+   *
+   * @defaultValue 'cloud'
+   */
+  backend?: 'cloud' | 'meilisearch';
+
+  /**
+   * Meilisearch index name. Required when `backend` is `'meilisearch'`.
+   *
+   * @defaultValue 'app-docs-hanzo-ai-docs'
+   */
+  index?: string;
+
+  /**
+   * API key for the search backend.
+   *
+   * For cloud: publishable API key (pk-*).
+   * For meilisearch: search API key.
    */
   apiKey: string;
 
@@ -19,7 +42,7 @@ export interface HanzoSearchOptions {
   tag?: string;
 
   /**
-   * Search mode.
+   * Search mode (cloud backend only).
    *
    * @defaultValue 'hybrid'
    */
@@ -49,12 +72,65 @@ interface HanzoSearchResponse {
 
 const cache = new Map<string, SortedResult[]>();
 
+async function fetchCloud(
+  query: string,
+  endpoint: string,
+  apiKey: string,
+  tag: string | undefined,
+  mode: string,
+  locale: string | undefined,
+): Promise<HanzoSearchResponse> {
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ query, tag, mode, locale, limit: 20 }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Hanzo Search error: ${res.status} ${await res.text()}`);
+  }
+
+  return (await res.json()) as HanzoSearchResponse;
+}
+
+async function fetchMeilisearch(
+  query: string,
+  endpoint: string,
+  apiKey: string,
+  index: string,
+  tag: string | undefined,
+): Promise<HanzoSearchResponse> {
+  const url = `${endpoint.replace(/\/$/, '')}/indexes/${index}/search`;
+
+  const filter = tag ? `tag = "${tag}"` : undefined;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({ q: query, filter, limit: 20 }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Hanzo Search error: ${res.status} ${await res.text()}`);
+  }
+
+  return (await res.json()) as HanzoSearchResponse;
+}
+
 export async function searchDocs(
   query: string,
   options: HanzoSearchOptions,
 ): Promise<SortedResult[]> {
   const {
     endpoint = 'https://cloud-api.hanzo.ai/api/search-docs',
+    backend = 'cloud',
+    index = 'app-docs-hanzo-ai-docs',
     apiKey,
     tag,
     mode = 'hybrid',
@@ -63,25 +139,14 @@ export async function searchDocs(
 
   if (!query.trim()) return [];
 
-  const body = JSON.stringify({ query, tag, mode, locale, limit: 20 });
-  const cacheKey = `${endpoint}:${body}`;
+  const cacheKey = `${backend}:${endpoint}:${query}:${tag ?? ''}:${mode}`;
   const cached = cache.get(cacheKey);
   if (cached) return cached;
 
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body,
-  });
-
-  if (!res.ok) {
-    throw new Error(`Hanzo Search error: ${res.status} ${await res.text()}`);
-  }
-
-  const data = (await res.json()) as HanzoSearchResponse;
+  const data =
+    backend === 'meilisearch'
+      ? await fetchMeilisearch(query, endpoint, apiKey, index, tag)
+      : await fetchCloud(query, endpoint, apiKey, tag, mode, locale);
   const highlighter = createContentHighlighter(query);
   const list: SortedResult[] = [];
 

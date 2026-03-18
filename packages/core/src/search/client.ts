@@ -155,7 +155,7 @@ export function useDocsSearch(
         const opts = clientRest;
         client = {
           search: (query) => searchDocs(query, opts),
-          deps: [opts.endpoint, opts.apiKey, opts.tag],
+          deps: [opts.endpoint, opts.apiKey, opts.tag, opts.backend, opts.index],
         };
         break;
       }
