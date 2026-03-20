@@ -392,7 +392,7 @@ export class PageTreeBuilder {
     const page = this.storage.read(path);
     if (!page || page.format !== 'page') return;
 
-    const { title, description, icon } = page.data;
+    const { title, description, icon, access, accessOrgs } = page.data;
     let item: PageTree.Item = {
       $id: this.generateId(path),
       type: 'page',
@@ -400,6 +400,8 @@ export class PageTreeBuilder {
       description,
       icon,
       url: this.ctx.getUrl(page.slugs, this.ctx.locale),
+      access: access && access !== 'public' ? access : undefined,
+      accessOrgs: accessOrgs && accessOrgs.length > 0 ? accessOrgs : undefined,
       $ref: !this.ctx.noRef
         ? {
             file: path,
