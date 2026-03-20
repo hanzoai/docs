@@ -22,6 +22,16 @@ export interface PageData {
   icon?: string | undefined;
   title?: string;
   description?: string | undefined;
+
+  /**
+   * Access control level for auth-gated docs.
+   */
+  access?: 'public' | 'authenticated' | 'team' | 'admin' | undefined;
+
+  /**
+   * Org-specific access restriction. Users must belong to at least one org.
+   */
+  accessOrgs?: string[] | undefined;
 }
 
 export type VirtualFile<Config extends SourceConfig = SourceConfig> =

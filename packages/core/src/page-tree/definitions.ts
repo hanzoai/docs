@@ -38,6 +38,17 @@ export interface Item extends ID {
 
   description?: ReactNode;
   icon?: ReactNode;
+
+  /**
+   * Access control level for auth-gated docs.
+   * When set, the sidebar renderer can filter this item based on auth state.
+   */
+  access?: 'public' | 'authenticated' | 'team' | 'admin';
+
+  /**
+   * Org-specific access restriction.
+   */
+  accessOrgs?: string[];
 }
 
 export interface Separator extends ID {
