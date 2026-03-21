@@ -1,0 +1,77 @@
+---
+title: Playground Integration
+description: How Hanzo Tasks powers AI agents in Playground
+---
+
+# Playground Integration
+
+[Hanzo Playground](https://app.hanzo.bot) uses Hanzo Tasks as its workflow execution backend. Every agent action in a Playground space is a durable workflow.
+
+## How It Maps
+
+| Playground Concept | Tasks Concept |
+|-------------------|---------------|
+| Space | Namespace |
+| Agent | Worker |
+| Task | Workflow Execution |
+| Tool Call | Activity |
+| Task Queue | Task Queue (per agent type) |
+| Task History | Event History |
+
+## Agent as Worker
+
+Each agent in Playground registers as a worker on a task queue named after its type:
+
+```
+agent-type:analyst   -> task queue: "analyst"
+agent-type:coder     -> task queue: "coder"
+agent-type:reviewer  -> task queue: "reviewer"
+```
+
+When you assign a task to an agent in the Playground canvas, a workflow is started on that agent's task queue.
+
+## Task Orchestration
+
+Complex tasks that require multiple agents use **fan-out/fan-in** workflows:
+
+1. User creates a task in the canvas
+2. Playground starts an orchestrator workflow
+3. The orchestrator fans out sub-tasks to specialized agents
+4. Each agent executes its activity on its own task queue
+5. Results are aggregated back in the orchestrator
+6. Final result appears in the canvas
+
+```
+User Task
+    │
+    ▼
+Orchestrator Workflow
+    │
+    ├──▷ Analyst Agent (analysis queue)
+    ├──▷ Coder Agent (coding queue)
+    └──▷ Reviewer Agent (review queue)
+         │
+         ▼
+    Aggregated Result
+```
+
+## Task UI in Canvas
+
+The Playground canvas shows real-time workflow state:
+
+- **Pending** -- Workflow submitted, waiting for worker
+- **Running** -- Worker is executing the workflow
+- **Completed** -- Workflow finished successfully
+- **Failed** -- Workflow failed (with error details)
+- **Retrying** -- Activity failed, automatic retry in progress
+
+Each task card in the canvas links to the full event history in the Tasks dashboard, providing complete observability into what happened and why.
+
+## Signals in Playground
+
+Playground uses signals for:
+
+- **User feedback** -- Human-in-the-loop approval before proceeding
+- **Priority changes** -- Escalating or de-escalating running tasks
+- **Cancellation** -- User cancels a task from the canvas
+- **Data injection** -- Providing additional context to a running workflow

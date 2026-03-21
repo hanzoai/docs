@@ -1,0 +1,344 @@
+---
+title: Getting Started
+description: Set up Hanzo Tasks in 5 minutes
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs';
+import { Steps, Step } from '@hanzo/docs-base-ui/components/steps';
+import { Callout } from '@hanzo/docs-base-ui/components/callout';
+
+# Getting Started
+
+This guide walks you through installing the Hanzo Tasks server and connecting your first client.
+
+## Install the Server
+
+<Tabs items={['Docker (recommended)', 'From Source']}>
+<Tab value="Docker (recommended)">
+```bash
+docker run -p 7233:7233 -p 8233:8233 ghcr.io/hanzoai/tasks:latest
+```
+
+This starts both the gRPC frontend (port 7233) and the web UI (port 8233).
+</Tab>
+
+<Tab value="From Source">
+```bash
+git clone https://github.com/hanzoai/tasks
+cd tasks
+go build -o tasksd ./cmd/tasksd/
+./tasksd start
+```
+</Tab>
+</Tabs>
+
+### Access the Web UI
+
+Open [http://localhost:8233](http://localhost:8233) for the Tasks dashboard. You can browse workflows, view execution history, and inspect running tasks.
+
+## Connect a Client
+
+<Steps>
+<Step>
+### Install the SDK
+
+<Tabs items={['Go', 'Python']}>
+<Tab value="Go">
+```bash
+go get go.temporal.io/sdk
+```
+</Tab>
+
+<Tab value="Python">
+```bash
+pip install hanzo-tasks
+```
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Create a Workflow
+
+A workflow is a function that orchestrates activities. It must be deterministic -- no random numbers, no wall-clock time, no direct I/O.
+
+<Tabs items={['Go', 'Python']}>
+<Tab value="Go">
+```go
+package workflows
+
+import (
+    "time"
+
+    "go.temporal.io/sdk/workflow"
+)
+
+func AgentTaskWorkflow(ctx workflow.Context, input AgentInput) (AgentResult, error) {
+    opts := workflow.ActivityOptions{
+        StartToCloseTimeout: 5 * time.Minute,
+        RetryPolicy: &temporal.RetryPolicy{
+            InitialInterval:    time.Second,
+            BackoffCoefficient: 2.0,
+            MaximumAttempts:    3,
+        },
+    }
+    ctx = workflow.WithActivityOptions(ctx, opts)
+
+    // Step 1: Analyze the input
+    var analysis AnalysisResult
+    err := workflow.ExecuteActivity(ctx, AnalyzeData, input.Data).Get(ctx, &analysis)
+    if err != nil {
+        return AgentResult{}, err
+    }
+
+    // Step 2: Run the agent
+    var result AgentResult
+    err = workflow.ExecuteActivity(ctx, RunAgent, input.AgentID, analysis).Get(ctx, &result)
+    if err != nil {
+        return AgentResult{}, err
+    }
+
+    return result, nil
+}
+```
+</Tab>
+
+<Tab value="Python">
+```python
+from datetime import timedelta
+from hanzo_tasks import workflow, activity
+
+@workflow.defn
+class AgentTaskWorkflow:
+    @workflow.run
+    async def run(self, input: AgentInput) -> AgentResult:
+        # Step 1: Analyze the input
+        analysis = await workflow.execute_activity(
+            analyze_data,
+            input.data,
+            start_to_close_timeout=timedelta(minutes=5),
+            retry_policy=RetryPolicy(
+                initial_interval=timedelta(seconds=1),
+                backoff_coefficient=2.0,
+                maximum_attempts=3,
+            ),
+        )
+
+        # Step 2: Run the agent
+        result = await workflow.execute_activity(
+            run_agent,
+            RunAgentInput(agent_id=input.agent_id, analysis=analysis),
+            start_to_close_timeout=timedelta(minutes=5),
+        )
+
+        return result
+```
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Define Activities
+
+Activities are the actual work units. They can do I/O, call APIs, and access databases. They are automatically retried on failure.
+
+<Tabs items={['Go', 'Python']}>
+<Tab value="Go">
+```go
+package activities
+
+import (
+    "context"
+)
+
+func AnalyzeData(ctx context.Context, data string) (AnalysisResult, error) {
+    // This can make HTTP calls, query databases, etc.
+    // If it fails, the retry policy kicks in automatically.
+    result, err := callLLM(ctx, data)
+    if err != nil {
+        return AnalysisResult{}, err
+    }
+    return AnalysisResult{Summary: result}, nil
+}
+
+func RunAgent(ctx context.Context, agentID string, analysis AnalysisResult) (AgentResult, error) {
+    // Run the agent with the analysis results
+    output, err := executeAgent(ctx, agentID, analysis.Summary)
+    if err != nil {
+        return AgentResult{}, err
+    }
+    return AgentResult{Output: output}, nil
+}
+```
+</Tab>
+
+<Tab value="Python">
+```python
+from hanzo_tasks import activity
+
+@activity.defn
+async def analyze_data(data: str) -> AnalysisResult:
+    # This can make HTTP calls, query databases, etc.
+    # If it fails, the retry policy kicks in automatically.
+    result = await call_llm(data)
+    return AnalysisResult(summary=result)
+
+@activity.defn
+async def run_agent(input: RunAgentInput) -> AgentResult:
+    # Run the agent with the analysis results
+    output = await execute_agent(input.agent_id, input.analysis.summary)
+    return AgentResult(output=output)
+```
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Start a Worker
+
+Workers poll task queues and execute workflows and activities. Run them alongside your application.
+
+<Tabs items={['Go', 'Python']}>
+<Tab value="Go">
+```go
+package main
+
+import (
+    "log"
+
+    "go.temporal.io/sdk/client"
+    "go.temporal.io/sdk/worker"
+)
+
+func main() {
+    c, err := client.Dial(client.Options{
+        HostPort: "localhost:7233",
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer c.Close()
+
+    w := worker.New(c, "agents", worker.Options{})
+
+    // Register workflows and activities
+    w.RegisterWorkflow(AgentTaskWorkflow)
+    w.RegisterActivity(AnalyzeData)
+    w.RegisterActivity(RunAgent)
+
+    // Start listening for tasks
+    if err := w.Run(worker.InterruptCh()); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+</Tab>
+
+<Tab value="Python">
+```python
+import asyncio
+from hanzo_tasks import Client, Worker, TasksConfig
+
+async def main():
+    client = await Client.connect(TasksConfig(address="localhost:7233"))
+
+    worker = Worker(
+        client,
+        task_queue="agents",
+        workflows=[AgentTaskWorkflow],
+        activities=[analyze_data, run_agent],
+    )
+
+    await worker.run()
+
+asyncio.run(main())
+```
+</Tab>
+</Tabs>
+</Step>
+
+<Step>
+### Submit a Workflow
+
+<Tabs items={['Go', 'Python']}>
+<Tab value="Go">
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "go.temporal.io/sdk/client"
+)
+
+func main() {
+    c, err := client.Dial(client.Options{
+        HostPort: "localhost:7233",
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer c.Close()
+
+    // Submit the workflow
+    we, err := c.ExecuteWorkflow(context.Background(),
+        client.StartWorkflowOptions{
+            ID:        "agent-task-1",
+            TaskQueue: "agents",
+        },
+        AgentTaskWorkflow,
+        AgentInput{
+            AgentID: "analyst-001",
+            Data:    "Analyze Q4 revenue trends",
+        },
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Wait for result
+    var result AgentResult
+    if err := we.Get(context.Background(), &result); err != nil {
+        log.Fatal(err)
+    }
+
+    fmt.Printf("Result: %s\n", result.Output)
+}
+```
+</Tab>
+
+<Tab value="Python">
+```python
+import asyncio
+from hanzo_tasks import Client, TasksConfig
+
+async def main():
+    client = await Client.connect(TasksConfig(address="localhost:7233"))
+
+    # Submit the workflow
+    handle = await client.start_workflow(
+        AgentTaskWorkflow.run,
+        AgentInput(agent_id="analyst-001", data="Analyze Q4 revenue trends"),
+        id="agent-task-1",
+        task_queue="agents",
+    )
+
+    # Wait for result
+    result = await handle.result()
+    print(f"Result: {result.output}")
+
+asyncio.run(main())
+```
+</Tab>
+</Tabs>
+</Step>
+</Steps>
+
+## Next Steps
+
+- [Core Concepts](/docs/concepts) -- Understand workflows, activities, and workers in depth
+- [Python SDK](/docs/sdk/python) -- Full Python SDK reference
+- [REST API](/docs/sdk/api) -- HTTP API for language-agnostic integrations
+- [Self-Hosting](/docs/deployment/self-hosting) -- Production deployment guide

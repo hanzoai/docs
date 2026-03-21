@@ -1,0 +1,54 @@
+---
+title: Namespaces
+description: Isolation boundaries for workflows and data
+---
+
+# Namespaces
+
+Namespaces provide **multi-tenant isolation** in Hanzo Tasks. Each namespace is a completely independent environment with its own workflows, task queues, and history.
+
+## How Namespaces Map to Hanzo
+
+In the Hanzo ecosystem, namespaces map directly to **organizations**:
+
+| Hanzo Concept | Tasks Concept |
+|---------------|---------------|
+| Organization | Namespace |
+| Org API Key | Namespace credentials |
+| Playground Space | Workflow execution |
+
+When you connect to Hanzo Tasks through the Hanzo Gateway, your org is automatically resolved from your JWT and mapped to a namespace. You only see your own workflows.
+
+## Using Namespaces
+
+```go
+// Connect to a specific namespace
+c, err := client.Dial(client.Options{
+    HostPort:  "tasks.hanzo.ai:7233",
+    Namespace: "your-org",
+})
+```
+
+```python
+client = await Client.connect(TasksConfig(
+    address="tasks.hanzo.ai:7233",
+    namespace="your-org",
+))
+```
+
+## Default Namespace
+
+The `default` namespace is used when no namespace is specified. For local development, this is usually sufficient.
+
+For production, always specify a namespace that matches your organization.
+
+## Namespace Configuration
+
+Each namespace can be configured independently:
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| Retention Period | How long to keep completed workflow history | 7 days |
+| Archival | Whether to archive old histories to cold storage | Disabled |
+| Search Attributes | Custom fields for filtering workflows | None |
+| Visibility | Which search backend to use | Standard |

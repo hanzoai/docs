@@ -1,0 +1,176 @@
+---
+title: Workflows
+description: Durable functions that orchestrate activities and survive failures
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout';
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs';
+
+# Workflows
+
+A workflow is a **durable function** that orchestrates activities. It defines the overall logic of your task -- what steps to run, in what order, how to handle failures.
+
+## Key Properties
+
+- **Deterministic** -- Workflows must produce the same result given the same inputs. No random numbers, no wall-clock time, no direct I/O.
+- **Durable** -- If the server crashes, the workflow resumes from the last recorded event.
+- **Long-running** -- Workflows can run for seconds, hours, days, or months.
+- **Event sourced** -- Every state transition is recorded. The full history is replayable.
+
+> Workflows are replayed from event history on recovery. Any non-deterministic operation (random, time, I/O) must go through an activity or a side effect API.
+
+## Defining a Workflow
+
+<Tabs items={['Go', 'Python']}>
+<Tab value="Go">
+```go
+func ProcessOrderWorkflow(ctx workflow.Context, order Order) (OrderResult, error) {
+    opts := workflow.ActivityOptions{
+        StartToCloseTimeout: 5 * time.Minute,
+    }
+    ctx = workflow.WithActivityOptions(ctx, opts)
+
+    // Validate the order
+    var validation ValidationResult
+    err := workflow.ExecuteActivity(ctx, ValidateOrder, order).Get(ctx, &validation)
+    if err != nil {
+        return OrderResult{}, err
+    }
+
+    // Process payment
+    var payment PaymentResult
+    err = workflow.ExecuteActivity(ctx, ProcessPayment, order.PaymentInfo).Get(ctx, &payment)
+    if err != nil {
+        return OrderResult{}, err
+    }
+
+    // Fulfill the order
+    var fulfillment FulfillmentResult
+    err = workflow.ExecuteActivity(ctx, FulfillOrder, order.Items).Get(ctx, &fulfillment)
+    if err != nil {
+        // Payment succeeded but fulfillment failed -- compensate
+        _ = workflow.ExecuteActivity(ctx, RefundPayment, payment.TransactionID).Get(ctx, nil)
+        return OrderResult{}, err
+    }
+
+    return OrderResult{
+        OrderID:       order.ID,
+        TransactionID: payment.TransactionID,
+        TrackingID:    fulfillment.TrackingID,
+    }, nil
+}
+```
+</Tab>
+
+<Tab value="Python">
+```python
+@workflow.defn
+class ProcessOrderWorkflow:
+    @workflow.run
+    async def run(self, order: Order) -> OrderResult:
+        # Validate the order
+        validation = await workflow.execute_activity(
+            validate_order, order,
+            start_to_close_timeout=timedelta(minutes=5),
+        )
+
+        # Process payment
+        payment = await workflow.execute_activity(
+            process_payment, order.payment_info,
+            start_to_close_timeout=timedelta(minutes=5),
+        )
+
+        try:
+            # Fulfill the order
+            fulfillment = await workflow.execute_activity(
+                fulfill_order, order.items,
+                start_to_close_timeout=timedelta(minutes=5),
+            )
+        except Exception:
+            # Payment succeeded but fulfillment failed -- compensate
+            await workflow.execute_activity(
+                refund_payment, payment.transaction_id,
+                start_to_close_timeout=timedelta(minutes=5),
+            )
+            raise
+
+        return OrderResult(
+            order_id=order.id,
+            transaction_id=payment.transaction_id,
+            tracking_id=fulfillment.tracking_id,
+        )
+```
+</Tab>
+</Tabs>
+
+## Parallel Execution (Fan-Out/Fan-In)
+
+Run multiple activities in parallel and collect their results.
+
+<Tabs items={['Go', 'Python']}>
+<Tab value="Go">
+```go
+func ParallelAgentWorkflow(ctx workflow.Context, agents []AgentConfig) ([]AgentResult, error) {
+    opts := workflow.ActivityOptions{
+        StartToCloseTimeout: 10 * time.Minute,
+    }
+    ctx = workflow.WithActivityOptions(ctx, opts)
+
+    // Fan out: start all agents in parallel
+    futures := make([]workflow.Future, len(agents))
+    for i, agent := range agents {
+        futures[i] = workflow.ExecuteActivity(ctx, RunAgent, agent)
+    }
+
+    // Fan in: collect all results
+    results := make([]AgentResult, len(agents))
+    for i, future := range futures {
+        if err := future.Get(ctx, &results[i]); err != nil {
+            return nil, fmt.Errorf("agent %d failed: %w", i, err)
+        }
+    }
+
+    return results, nil
+}
+```
+</Tab>
+
+<Tab value="Python">
+```python
+@workflow.defn
+class ParallelAgentWorkflow:
+    @workflow.run
+    async def run(self, agents: list[AgentConfig]) -> list[AgentResult]:
+        # Fan out: start all agents in parallel
+        tasks = [
+            workflow.execute_activity(
+                run_agent, agent,
+                start_to_close_timeout=timedelta(minutes=10),
+            )
+            for agent in agents
+        ]
+
+        # Fan in: collect all results
+        results = await asyncio.gather(*tasks)
+        return list(results)
+```
+</Tab>
+</Tabs>
+
+## Workflow IDs
+
+Every workflow execution has a unique ID. If you submit a workflow with an ID that already exists:
+
+- **Default**: The submission is rejected
+- **AllowDuplicate**: A new run starts even if a previous one exists
+- **RejectDuplicate**: Explicitly reject if a run is already active
+- **TerminateIfRunning**: Terminate the existing run and start a new one
+
+Use deterministic IDs to prevent duplicate work:
+
+```go
+opts := client.StartWorkflowOptions{
+    ID:        fmt.Sprintf("process-order-%s", order.ID),
+    TaskQueue: "orders",
+}
+```

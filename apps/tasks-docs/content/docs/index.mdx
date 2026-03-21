@@ -1,0 +1,128 @@
+---
+title: Hanzo Tasks
+description: Durable workflow execution engine for AI agent orchestration
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+import { RocketIcon, BookOpenIcon, CodeIcon, ServerIcon, BrainCircuitIcon, ContainerIcon } from 'lucide-react';
+
+# Hanzo Tasks
+
+**Hanzo Tasks** is a durable workflow execution engine for AI agents. Fork of [Temporal.io](https://temporal.io), rebranded and integrated into the Hanzo ecosystem.
+
+## What is Durable Execution?
+
+Durable execution means your workflows **survive crashes, retries on failure, and maintain full event history**. When a server restarts, workflows pick up exactly where they left off. When an activity fails, it retries automatically with configurable backoff. Every step is recorded for full observability.
+
+## Key Features
+
+- **Durable Workflows** -- survive server crashes and restarts
+- **Automatic Retries** -- configurable retry policies with exponential backoff
+- **Timeouts** -- enforce deadlines on long-running tasks
+- **Event Sourcing** -- full replay history for every execution
+- **Priority Queues** -- urgent tasks execute first
+- **Fan-Out/Fan-In** -- parallel execution with result aggregation
+- **Signals and Queries** -- interact with running workflows
+- **Multi-Language** -- Go SDK, Python SDK, REST API
+
+<Cards>
+  <Card
+    icon={<RocketIcon />}
+    title="Getting Started"
+    description="Install the server and connect your first client"
+    href="/docs/getting-started"
+  />
+  <Card
+    icon={<BookOpenIcon />}
+    title="Core Concepts"
+    description="Workflows, activities, workers, task queues"
+    href="/docs/concepts"
+  />
+  <Card
+    icon={<CodeIcon />}
+    title="Python SDK"
+    description="Python client library documentation"
+    href="/docs/sdk/python"
+  />
+  <Card
+    icon={<BrainCircuitIcon />}
+    title="Playground Integration"
+    description="How Tasks powers AI agents in Playground"
+    href="/docs/concepts/playground"
+  />
+  <Card
+    icon={<ServerIcon />}
+    title="REST API"
+    description="HTTP API reference for all endpoints"
+    href="/docs/sdk/api"
+  />
+  <Card
+    icon={<ContainerIcon />}
+    title="Self-Hosting"
+    description="Docker, Kubernetes, and production deployment"
+    href="/docs/deployment/self-hosting"
+  />
+</Cards>
+
+## Quick Start
+
+### Go
+
+```go
+import "go.temporal.io/sdk/client"
+
+c, _ := client.Dial(client.Options{
+    HostPort: "tasks.hanzo.ai:7233",
+    Namespace: "your-org",
+})
+
+run, _ := c.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
+    ID:        "agent-task-1",
+    TaskQueue: "agents",
+}, AgentTaskWorkflow, input)
+
+var result AgentResult
+run.Get(ctx, &result)
+```
+
+### Python
+
+```python
+from hanzo_tasks import Client, TasksConfig
+
+client = await Client.connect(TasksConfig(
+    address="tasks.hanzo.ai:7233",
+    namespace="your-org",
+))
+
+handle = await client.submit(agent_task_workflow, input, queue="agents")
+result = await handle.result()
+```
+
+## Architecture
+
+```
+┌───────────────────────────────────────────┐
+│          Hanzo Tasks Server                │
+│    (github.com/hanzoai/tasks)              │
+│                                            │
+│  ┌────────────┐  ┌───────────────────────┐ │
+│  │ Frontend   │  │ Matching Engine       │ │
+│  │ (gRPC)     │  │ (routes tasks to      │ │
+│  │            │  │  available workers)   │ │
+│  └────────────┘  └───────────────────────┘ │
+│  ┌────────────┐  ┌───────────────────────┐ │
+│  │ History    │  │ Visibility            │ │
+│  │ Service    │  │ (search + list)       │ │
+│  └────────────┘  └───────────────────────┘ │
+│  ┌───────────────────────────────────────┐ │
+│  │ Persistence (SQLite / PostgreSQL)     │ │
+│  └───────────────────────────────────────┘ │
+└───────────────────────────────────────────┘
+```
+
+## Getting Help
+
+- [GitHub Issues](https://github.com/hanzoai/tasks/issues) -- Bug reports and feature requests
+- [Temporal Documentation](https://docs.temporal.io) -- Upstream protocol documentation
+- [Hanzo Discord](https://discord.gg/hanzo) -- Community discussions
