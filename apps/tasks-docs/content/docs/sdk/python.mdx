@@ -1,0 +1,211 @@
+---
+title: Python SDK
+description: Python client library for Hanzo Tasks
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs';
+import { Steps, Step } from '@hanzo/docs-base-ui/components/steps';
+
+# Python SDK
+
+The `hanzo-tasks` Python package provides a high-level client for Hanzo Tasks.
+
+## Installation
+
+```bash
+pip install hanzo-tasks
+```
+
+Or with uv:
+
+```bash
+uv add hanzo-tasks
+```
+
+## Quick Reference
+
+### Client
+
+```python
+from hanzo_tasks import Client, TasksConfig
+
+# Connect to local server
+client = await Client.connect(TasksConfig(address="localhost:7233"))
+
+# Connect to Hanzo Cloud
+client = await Client.connect(TasksConfig(
+    address="tasks.hanzo.ai:7233",
+    namespace="your-org",
+    api_key="your-api-key",
+))
+```
+
+### Defining Workflows
+
+```python
+from hanzo_tasks import workflow
+from datetime import timedelta
+from dataclasses import dataclass
+
+@dataclass
+class OrderInput:
+    order_id: str
+    items: list[str]
+    customer_id: str
+
+@dataclass
+class OrderResult:
+    order_id: str
+    status: str
+    tracking_id: str | None = None
+
+@workflow.defn
+class ProcessOrderWorkflow:
+    @workflow.run
+    async def run(self, input: OrderInput) -> OrderResult:
+        # Validate
+        await workflow.execute_activity(
+            validate_order, input,
+            start_to_close_timeout=timedelta(seconds=30),
+        )
+
+        # Process payment
+        payment = await workflow.execute_activity(
+            process_payment, input.order_id,
+            start_to_close_timeout=timedelta(minutes=2),
+        )
+
+        # Ship
+        tracking = await workflow.execute_activity(
+            ship_order, input,
+            start_to_close_timeout=timedelta(minutes=5),
+        )
+
+        return OrderResult(
+            order_id=input.order_id,
+            status="shipped",
+            tracking_id=tracking.tracking_id,
+        )
+```
+
+### Defining Activities
+
+```python
+from hanzo_tasks import activity
+
+@activity.defn
+async def validate_order(input: OrderInput) -> None:
+    if not input.items:
+        raise ApplicationError("order has no items", type="ValidationError", non_retryable=True)
+    if not input.customer_id:
+        raise ApplicationError("missing customer ID", type="ValidationError", non_retryable=True)
+
+@activity.defn
+async def process_payment(order_id: str) -> PaymentResult:
+    # Call payment API
+    async with httpx.AsyncClient() as http:
+        resp = await http.post(f"https://api.hanzo.ai/v1/payments", json={
+            "order_id": order_id,
+        })
+        resp.raise_for_status()
+        return PaymentResult(**resp.json())
+
+@activity.defn
+async def ship_order(input: OrderInput) -> ShippingResult:
+    # Call fulfillment API
+    result = await fulfillment_client.create_shipment(
+        items=input.items,
+        customer_id=input.customer_id,
+    )
+    return ShippingResult(tracking_id=result.tracking_id)
+```
+
+### Running a Worker
+
+```python
+from hanzo_tasks import Client, Worker, TasksConfig
+
+async def main():
+    client = await Client.connect(TasksConfig(address="localhost:7233"))
+
+    worker = Worker(
+        client,
+        task_queue="orders",
+        workflows=[ProcessOrderWorkflow],
+        activities=[validate_order, process_payment, ship_order],
+    )
+
+    await worker.run()
+```
+
+### Starting a Workflow
+
+```python
+async def submit_order(order: OrderInput):
+    client = await Client.connect(TasksConfig(address="localhost:7233"))
+
+    handle = await client.start_workflow(
+        ProcessOrderWorkflow.run,
+        order,
+        id=f"order-{order.order_id}",
+        task_queue="orders",
+    )
+
+    # Wait for result (blocking)
+    result = await handle.result()
+    return result
+```
+
+### Signals and Queries
+
+```python
+# Send a signal
+handle = client.get_workflow_handle("order-123")
+await handle.signal(ProcessOrderWorkflow.cancel_order, "customer requested")
+
+# Query workflow state
+status = await handle.query(ProcessOrderWorkflow.get_status)
+```
+
+## Data Classes
+
+Use Python dataclasses for workflow inputs and outputs. They are automatically serialized to JSON for transport.
+
+```python
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass
+class AgentInput:
+    agent_id: str
+    prompt: str
+    model: str = "zen-70b"
+    temperature: float = 0.7
+
+@dataclass
+class AgentResult:
+    output: str
+    tokens_used: int
+    duration_ms: int
+    model: str
+    error: Optional[str] = None
+```
+
+## Error Handling
+
+```python
+from hanzo_tasks import ApplicationError
+
+# Non-retryable error (bad input, auth failure)
+raise ApplicationError(
+    "invalid order ID",
+    type="ValidationError",
+    non_retryable=True,
+)
+
+# Retryable error (transient failure -- will be retried)
+raise ApplicationError(
+    "upstream service unavailable",
+    type="ServiceError",
+)
+```

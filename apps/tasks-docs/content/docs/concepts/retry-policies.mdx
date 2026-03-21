@@ -1,0 +1,109 @@
+---
+title: Retry Policies
+description: Configure automatic retry behavior for failed activities
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs';
+
+# Retry Policies
+
+Retry policies define how Hanzo Tasks automatically retries failed activities. Every activity has a default retry policy, and you can customize it per activity.
+
+## Default Behavior
+
+By default, activities retry **infinitely** with exponential backoff:
+
+- Initial interval: 1 second
+- Backoff coefficient: 2.0
+- Maximum interval: 100 seconds
+- Maximum attempts: unlimited
+
+## Customizing Retry Policies
+
+<Tabs items={['Go', 'Python']}>
+<Tab value="Go">
+```go
+retryPolicy := &temporal.RetryPolicy{
+    // First retry after 1 second
+    InitialInterval: time.Second,
+
+    // Double the interval each retry
+    BackoffCoefficient: 2.0,
+
+    // Cap the interval at 1 minute
+    MaximumInterval: time.Minute,
+
+    // Give up after 5 attempts
+    MaximumAttempts: 5,
+
+    // Don't retry these error types
+    NonRetryableErrorTypes: []string{
+        "InvalidInputError",
+        "AuthenticationError",
+    },
+}
+
+opts := workflow.ActivityOptions{
+    StartToCloseTimeout: 5 * time.Minute,
+    RetryPolicy:         retryPolicy,
+}
+```
+</Tab>
+
+<Tab value="Python">
+```python
+from hanzo_tasks import RetryPolicy
+from datetime import timedelta
+
+retry_policy = RetryPolicy(
+    # First retry after 1 second
+    initial_interval=timedelta(seconds=1),
+
+    # Double the interval each retry
+    backoff_coefficient=2.0,
+
+    # Cap the interval at 1 minute
+    maximum_interval=timedelta(minutes=1),
+
+    # Give up after 5 attempts
+    maximum_attempts=5,
+
+    # Don't retry these error types
+    non_retryable_error_types=["InvalidInputError", "AuthenticationError"],
+)
+
+result = await workflow.execute_activity(
+    my_activity, input,
+    start_to_close_timeout=timedelta(minutes=5),
+    retry_policy=retry_policy,
+)
+```
+</Tab>
+</Tabs>
+
+## Retry Timeline Example
+
+With `InitialInterval=1s`, `BackoffCoefficient=2.0`, `MaximumInterval=60s`, `MaximumAttempts=5`:
+
+| Attempt | Delay Before | Cumulative Time |
+|---------|-------------|-----------------|
+| 1 | 0s (immediate) | 0s |
+| 2 | 1s | 1s |
+| 3 | 2s | 3s |
+| 4 | 4s | 7s |
+| 5 | 8s | 15s |
+| (fail) | -- | Activity marked as failed |
+
+## Non-Retryable Errors
+
+Some errors should not be retried (invalid input, authentication failures, business logic errors). Mark them as non-retryable:
+
+```go
+// In your activity, return an application error with non-retryable flag
+return temporal.NewNonRetryableApplicationError("invalid input", "InvalidInputError", nil)
+```
+
+```python
+# In your activity, raise a non-retryable error
+raise ApplicationError("invalid input", type="InvalidInputError", non_retryable=True)
+```

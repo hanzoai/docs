@@ -1,0 +1,42 @@
+---
+title: Core Concepts
+description: Understanding the building blocks of Hanzo Tasks
+index: true
+---
+
+# Core Concepts
+
+Hanzo Tasks is built on a small set of powerful abstractions. Understanding these concepts is essential for building reliable workflows.
+
+## Overview
+
+| Concept | Description |
+|---------|-------------|
+| **Workflow** | A durable function that orchestrates activities. Survives crashes. |
+| **Activity** | A unit of work that performs I/O (API calls, database queries, etc.) |
+| **Worker** | A process that polls a task queue and executes workflows/activities |
+| **Task Queue** | A named queue that routes work to the right workers |
+| **Namespace** | An isolation boundary for workflows (maps to orgs in Hanzo) |
+| **Retry Policy** | Configurable rules for retrying failed activities |
+| **Signal** | An asynchronous message sent to a running workflow |
+| **Query** | A synchronous read of workflow state |
+
+## How It Works
+
+1. A **client** submits a workflow execution to the Tasks server
+2. The server places the workflow task on a **task queue**
+3. A **worker** polling that queue picks up the task and begins executing the **workflow**
+4. The workflow calls **activities** which are dispatched to workers via task queues
+5. Every state transition is persisted as an **event** in the history
+6. If the worker crashes, another worker picks up the workflow from the last event
+7. **Signals** can send data to running workflows; **queries** can read their state
+
+```
+Client ──submit──▷ Tasks Server ──dispatch──▷ Worker
+                       │                        │
+                       │  ◁──heartbeat──        │
+                       │  ──activity────▷       │
+                       │  ◁──result─────        │
+                       │                        │
+                   Event History            Workflow Code
+```

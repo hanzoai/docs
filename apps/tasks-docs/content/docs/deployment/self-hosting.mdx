@@ -1,0 +1,251 @@
+---
+title: Self-Hosting
+description: Deploy Hanzo Tasks in your own infrastructure
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs';
+import { Steps, Step } from '@hanzo/docs-base-ui/components/steps';
+import { Callout } from '@hanzo/docs-base-ui/components/callout';
+
+# Self-Hosting
+
+This guide covers deploying Hanzo Tasks in your own infrastructure.
+
+## Prerequisites
+
+- Docker (for containerized deployment)
+- PostgreSQL 13+ (for production persistence)
+- 2 CPU cores, 4GB RAM minimum
+
+## Docker
+
+### Quick Start (SQLite)
+
+For development and testing, use the all-in-one image with embedded SQLite:
+
+```bash
+docker run -d \
+  --name tasks \
+  -p 7233:7233 \
+  -p 8233:8233 \
+  -v tasks-data:/var/lib/tasks \
+  ghcr.io/hanzoai/tasks:latest
+```
+
+### Production (PostgreSQL)
+
+For production, use PostgreSQL as the persistence backend:
+
+```yaml
+# compose.yml
+services:
+  tasks:
+    image: ghcr.io/hanzoai/tasks:latest
+    platform: linux/amd64
+    ports:
+      - "7233:7233"
+      - "8233:8233"
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=tasks
+      - POSTGRES_PWD=changeme
+      - POSTGRES_SEEDS=postgres
+      - DYNAMIC_CONFIG_FILE_PATH=/etc/tasks/dynamic-config.yaml
+    depends_on:
+      - postgres
+    volumes:
+      - ./dynamic-config.yaml:/etc/tasks/dynamic-config.yaml
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tasks
+      POSTGRES_PASSWORD: changeme
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  pgdata:
+```
+
+```bash
+docker compose up -d
+```
+
+## Kubernetes
+
+### Kustomize
+
+Create a Kustomize overlay for your Tasks deployment:
+
+```yaml
+# k8s/base/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tasks
+  namespace: hanzo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tasks
+  template:
+    metadata:
+      labels:
+        app: tasks
+    spec:
+      containers:
+        - name: tasks
+          image: ghcr.io/hanzoai/tasks:latest
+          ports:
+            - containerPort: 7233
+              name: grpc
+            - containerPort: 8233
+              name: http
+          env:
+            - name: DB
+              value: postgres12
+            - name: POSTGRES_SEEDS
+              value: postgres.hanzo.svc
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: tasks-db
+                  key: username
+            - name: POSTGRES_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: tasks-db
+                  key: password
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+          livenessProbe:
+            tcpSocket:
+              port: 7233
+            initialDelaySeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: 7233
+            initialDelaySeconds: 15
+```
+
+```yaml
+# k8s/base/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: tasks
+  namespace: hanzo
+spec:
+  selector:
+    app: tasks
+  ports:
+    - name: grpc
+      port: 7233
+      targetPort: 7233
+    - name: http
+      port: 8233
+      targetPort: 8233
+```
+
+Deploy:
+
+```bash
+kubectl kustomize k8s/base | kubectl apply -f -
+```
+
+## Configuration
+
+### Dynamic Config
+
+Create `dynamic-config.yaml` for runtime configuration:
+
+```yaml
+# dynamic-config.yaml
+system.forceSearchAttributesCacheRefreshOnRead:
+  - value: true
+    constraints: {}
+limit.maxIDLength:
+  - value: 255
+    constraints: {}
+history.defaultActivityRetryPolicy.maximumAttempts:
+  - value: 0
+    constraints: {}
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DB` | Database type (`sqlite`, `postgres12`) | `sqlite` |
+| `POSTGRES_SEEDS` | PostgreSQL host(s) | `localhost` |
+| `POSTGRES_USER` | Database username | `temporal` |
+| `POSTGRES_PWD` | Database password | `temporal` |
+| `DB_PORT` | Database port | `5432` |
+| `NUM_HISTORY_SHARDS` | Number of history shards | `4` |
+| `TEMPORAL_BROADCAST_ADDRESS` | Address to advertise to clients | auto-detected |
+
+## IAM Integration
+
+To integrate with Hanzo IAM for authentication:
+
+1. Configure the Tasks server with OIDC:
+
+```yaml
+# In your Tasks server config
+auth:
+  enabled: true
+  oidc:
+    issuer: https://hanzo.id
+    audience: tasks.hanzo.ai
+```
+
+2. Clients include their JWT in the connection:
+
+```go
+c, _ := client.Dial(client.Options{
+    HostPort:  "tasks.your-domain.com:7233",
+    Namespace: "your-org",
+    Credentials: client.NewAPIKeyStaticCredentials("your-api-key"),
+})
+```
+
+## SQLite vs PostgreSQL
+
+| Feature | SQLite | PostgreSQL |
+|---------|--------|------------|
+| Setup | Zero-config | Requires separate database |
+| Performance | Good for dev/small workloads | Production-grade |
+| Replication | No | Yes (streaming replication) |
+| Concurrent Writers | Single writer | Multiple writers |
+| Recommended For | Development, testing | Production |
+
+> For production workloads, always use PostgreSQL. SQLite is suitable only for development and single-node deployments with low throughput.
+
+## Monitoring
+
+The Tasks server exposes Prometheus metrics on port 9090:
+
+```yaml
+# Prometheus scrape config
+scrape_configs:
+  - job_name: tasks
+    static_configs:
+      - targets: ['tasks:9090']
+```
+
+Key metrics to monitor:
+
+- `temporal_workflow_completed` -- Workflow completion rate
+- `temporal_workflow_failed` -- Workflow failure rate
+- `temporal_activity_execution_latency` -- Activity execution time
+- `temporal_task_queue_backlog` -- Task queue depth (scale signal)

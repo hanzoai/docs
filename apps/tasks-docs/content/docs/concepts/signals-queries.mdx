@@ -1,0 +1,143 @@
+---
+title: Signals and Queries
+description: Interact with running workflows
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs';
+
+# Signals and Queries
+
+Signals and queries let you interact with running workflows from the outside.
+
+## Signals
+
+A signal is an **asynchronous message** sent to a running workflow. The workflow receives the signal and can react to it. Signals are durable -- they are persisted in the event history.
+
+Use signals to:
+- Send new data to a running workflow
+- Notify a workflow of an external event
+- Request a workflow to change its behavior
+
+<Tabs items={['Go', 'Python']}>
+<Tab value="Go">
+```go
+// Define a signal channel in the workflow
+func ApprovalWorkflow(ctx workflow.Context, request Request) (Result, error) {
+    ch := workflow.GetSignalChannel(ctx, "approval")
+
+    // Wait for approval signal
+    var approved bool
+    ch.Receive(ctx, &approved)
+
+    if !approved {
+        return Result{}, fmt.Errorf("request denied")
+    }
+
+    // Continue with approved work
+    return executeApprovedWork(ctx, request)
+}
+
+// Send a signal from a client
+err := c.SignalWorkflow(ctx, "workflow-id", "", "approval", true)
+```
+</Tab>
+
+<Tab value="Python">
+```python
+@workflow.defn
+class ApprovalWorkflow:
+    def __init__(self):
+        self.approved = None
+
+    @workflow.signal
+    async def approval(self, approved: bool):
+        self.approved = approved
+
+    @workflow.run
+    async def run(self, request: Request) -> Result:
+        # Wait for approval signal
+        await workflow.wait_condition(lambda: self.approved is not None)
+
+        if not self.approved:
+            raise ApplicationError("request denied")
+
+        # Continue with approved work
+        return await execute_approved_work(request)
+
+# Send a signal from a client
+handle = client.get_workflow_handle("workflow-id")
+await handle.signal(ApprovalWorkflow.approval, True)
+```
+</Tab>
+</Tabs>
+
+## Queries
+
+A query is a **synchronous read** of workflow state. Queries do not modify the workflow -- they return information about its current state.
+
+Use queries to:
+- Check workflow progress
+- Read accumulated results
+- Get current configuration
+
+<Tabs items={['Go', 'Python']}>
+<Tab value="Go">
+```go
+// Define a query handler in the workflow
+func ProgressWorkflow(ctx workflow.Context, items []Item) (Result, error) {
+    var progress int
+
+    // Register query handler
+    err := workflow.SetQueryHandler(ctx, "progress", func() (int, error) {
+        return progress, nil
+    })
+    if err != nil {
+        return Result{}, err
+    }
+
+    // Process items
+    for _, item := range items {
+        err := workflow.ExecuteActivity(ctx, ProcessItem, item).Get(ctx, nil)
+        if err != nil {
+            return Result{}, err
+        }
+        progress++
+    }
+
+    return Result{Total: progress}, nil
+}
+
+// Query from a client
+val, err := c.QueryWorkflow(ctx, "workflow-id", "", "progress")
+var progress int
+err = val.Get(&progress)
+```
+</Tab>
+
+<Tab value="Python">
+```python
+@workflow.defn
+class ProgressWorkflow:
+    def __init__(self):
+        self.progress = 0
+
+    @workflow.query
+    def get_progress(self) -> int:
+        return self.progress
+
+    @workflow.run
+    async def run(self, items: list[Item]) -> Result:
+        for item in items:
+            await workflow.execute_activity(
+                process_item, item,
+                start_to_close_timeout=timedelta(minutes=5),
+            )
+            self.progress += 1
+        return Result(total=self.progress)
+
+# Query from a client
+handle = client.get_workflow_handle("workflow-id")
+progress = await handle.query(ProgressWorkflow.get_progress)
+```
+</Tab>
+</Tabs>

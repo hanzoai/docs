@@ -1,0 +1,112 @@
+---
+title: Workers
+description: Processes that execute workflows and activities
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs';
+
+# Workers
+
+A worker is a **long-running process** that polls a task queue for work items (workflow tasks and activity tasks) and executes them. Workers are the compute backbone of Hanzo Tasks.
+
+## How Workers Work
+
+1. Worker connects to the Tasks server
+2. Worker registers the workflows and activities it can handle
+3. Worker polls its task queue for new work
+4. When a task arrives, the worker executes it
+5. Worker reports the result back to the server
+6. Worker polls again
+
+## Running a Worker
+
+<Tabs items={['Go', 'Python']}>
+<Tab value="Go">
+```go
+package main
+
+import (
+    "log"
+
+    "go.temporal.io/sdk/client"
+    "go.temporal.io/sdk/worker"
+)
+
+func main() {
+    // Connect to Tasks server
+    c, err := client.Dial(client.Options{
+        HostPort: "localhost:7233",
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer c.Close()
+
+    // Create worker on the "agents" task queue
+    w := worker.New(c, "agents", worker.Options{
+        MaxConcurrentActivityExecutionSize:     10,
+        MaxConcurrentWorkflowTaskExecutionSize: 5,
+    })
+
+    // Register what this worker can execute
+    w.RegisterWorkflow(AgentTaskWorkflow)
+    w.RegisterWorkflow(ParallelAgentWorkflow)
+    w.RegisterActivity(AnalyzeData)
+    w.RegisterActivity(RunAgent)
+    w.RegisterActivity(CallLLM)
+
+    // Block and process tasks until interrupted
+    if err := w.Run(worker.InterruptCh()); err != nil {
+        log.Fatal(err)
+    }
+}
+```
+</Tab>
+
+<Tab value="Python">
+```python
+import asyncio
+from hanzo_tasks import Client, Worker, TasksConfig
+
+async def main():
+    client = await Client.connect(TasksConfig(address="localhost:7233"))
+
+    worker = Worker(
+        client,
+        task_queue="agents",
+        workflows=[AgentTaskWorkflow, ParallelAgentWorkflow],
+        activities=[analyze_data, run_agent, call_llm],
+        max_concurrent_activities=10,
+        max_concurrent_workflow_tasks=5,
+    )
+
+    # Block and process tasks until interrupted
+    await worker.run()
+
+asyncio.run(main())
+```
+</Tab>
+</Tabs>
+
+## Scaling Workers
+
+Workers are stateless. Scale horizontally by running multiple worker processes on the same task queue.
+
+```bash
+# Run 3 workers in parallel (each process polls the same queue)
+for i in 1 2 3; do
+  ./worker &
+done
+```
+
+The Tasks server distributes work across all connected workers automatically. If one worker dies, its in-progress tasks are reassigned to other workers.
+
+## Worker Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `MaxConcurrentActivityExecutionSize` | Max activities running in parallel | 1000 |
+| `MaxConcurrentWorkflowTaskExecutionSize` | Max workflow tasks in parallel | 1000 |
+| `MaxConcurrentActivityTaskPollers` | Number of concurrent activity poll goroutines | 2 |
+| `MaxConcurrentWorkflowTaskPollers` | Number of concurrent workflow poll goroutines | 2 |
+| `WorkerStopTimeout` | Graceful shutdown timeout | 0 (wait forever) |

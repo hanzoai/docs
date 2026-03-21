@@ -1,0 +1,76 @@
+---
+title: Task Queues
+description: Route work to the right workers
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs';
+
+# Task Queues
+
+Task queues are **named routing channels** that connect workflow/activity dispatches to workers. When a workflow is started or an activity is scheduled, it is placed on a task queue. Workers polling that queue pick it up.
+
+## Why Task Queues?
+
+- **Routing** -- Send different types of work to different workers
+- **Isolation** -- Separate critical and non-critical work
+- **Scaling** -- Scale worker pools independently per queue
+- **Capability-based** -- Workers register only what they can handle
+
+## Using Task Queues
+
+<Tabs items={['Go', 'Python']}>
+<Tab value="Go">
+```go
+// Submit workflow to the "agents" queue
+we, err := c.ExecuteWorkflow(ctx, client.StartWorkflowOptions{
+    ID:        "task-1",
+    TaskQueue: "agents",
+}, AgentTaskWorkflow, input)
+
+// In a workflow, route an activity to a specific queue
+ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
+    TaskQueue:           "gpu-workers",
+    StartToCloseTimeout: 30 * time.Minute,
+})
+err := workflow.ExecuteActivity(ctx, RunInference, model, prompt).Get(ctx, &result)
+```
+</Tab>
+
+<Tab value="Python">
+```python
+# Submit workflow to the "agents" queue
+handle = await client.start_workflow(
+    AgentTaskWorkflow.run,
+    input,
+    id="task-1",
+    task_queue="agents",
+)
+
+# In a workflow, route an activity to a specific queue
+result = await workflow.execute_activity(
+    run_inference,
+    RunInferenceInput(model=model, prompt=prompt),
+    task_queue="gpu-workers",
+    start_to_close_timeout=timedelta(minutes=30),
+)
+```
+</Tab>
+</Tabs>
+
+## Common Queue Patterns
+
+| Queue Name | Purpose | Workers |
+|------------|---------|---------|
+| `agents` | General agent orchestration | CPU-bound workers |
+| `gpu-workers` | LLM inference and ML tasks | GPU-equipped machines |
+| `io-workers` | File processing, API calls | I/O optimized workers |
+| `priority` | Urgent tasks that need immediate attention | Dedicated fast pool |
+
+## Queue Properties
+
+Task queues are created on demand -- no configuration needed. The Tasks server creates them when a workflow or worker first references a queue name.
+
+- Queues are **per-namespace** -- the same queue name in different namespaces is completely isolated
+- Queues maintain **FIFO ordering** for workflow tasks
+- Activity tasks support **rate limiting** via worker options
+- Empty queues have zero overhead -- they exist only as routing metadata

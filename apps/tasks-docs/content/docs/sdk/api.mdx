@@ -1,0 +1,196 @@
+---
+title: REST API
+description: HTTP API reference for Hanzo Tasks
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs';
+
+# REST API
+
+The Tasks server exposes a REST API on port 8233 for language-agnostic integrations.
+
+## Base URL
+
+```
+http://localhost:8233/api/v1
+```
+
+For production:
+```
+https://tasks.hanzo.ai/api/v1
+```
+
+## Authentication
+
+All requests require a Bearer token in the `Authorization` header:
+
+```bash
+curl -H "Authorization: Bearer $HANZO_API_KEY" https://tasks.hanzo.ai/api/v1/...
+```
+
+## Endpoints
+
+### List Namespaces
+
+```bash
+GET /api/v1/namespaces
+```
+
+```bash
+curl -s https://tasks.hanzo.ai/api/v1/namespaces | jq
+```
+
+```json
+{
+  "namespaces": [
+    {
+      "name": "your-org",
+      "state": "REGISTERED",
+      "retention": "7d"
+    }
+  ]
+}
+```
+
+### Start Workflow
+
+```bash
+POST /api/v1/namespaces/{namespace}/workflows/{workflowId}
+```
+
+```bash
+curl -X POST https://tasks.hanzo.ai/api/v1/namespaces/your-org/workflows/agent-task-1 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "workflowType": "AgentTaskWorkflow",
+    "taskQueue": "agents",
+    "input": [{"agentId": "analyst-001", "data": "analyze revenue"}]
+  }'
+```
+
+```json
+{
+  "workflowId": "agent-task-1",
+  "runId": "abc123-def456"
+}
+```
+
+### Get Workflow Execution
+
+```bash
+GET /api/v1/namespaces/{namespace}/workflows/{workflowId}
+```
+
+```bash
+curl -s https://tasks.hanzo.ai/api/v1/namespaces/your-org/workflows/agent-task-1 | jq
+```
+
+```json
+{
+  "workflowId": "agent-task-1",
+  "runId": "abc123-def456",
+  "status": "RUNNING",
+  "type": "AgentTaskWorkflow",
+  "taskQueue": "agents",
+  "startTime": "2026-03-19T10:00:00Z",
+  "historyLength": 12
+}
+```
+
+### List Workflows
+
+```bash
+GET /api/v1/namespaces/{namespace}/workflows
+```
+
+Query parameters:
+- `query` -- Visibility query (e.g., `WorkflowType='AgentTaskWorkflow'`)
+- `pageSize` -- Number of results per page (default: 20)
+- `nextPageToken` -- Pagination token
+
+```bash
+curl -s "https://tasks.hanzo.ai/api/v1/namespaces/your-org/workflows?pageSize=10" | jq
+```
+
+### Get Workflow History
+
+```bash
+GET /api/v1/namespaces/{namespace}/workflows/{workflowId}/history
+```
+
+```bash
+curl -s https://tasks.hanzo.ai/api/v1/namespaces/your-org/workflows/agent-task-1/history | jq
+```
+
+Returns the full event history of the workflow execution.
+
+### Signal Workflow
+
+```bash
+POST /api/v1/namespaces/{namespace}/workflows/{workflowId}/signal/{signalName}
+```
+
+```bash
+curl -X POST https://tasks.hanzo.ai/api/v1/namespaces/your-org/workflows/agent-task-1/signal/approval \
+  -H "Content-Type: application/json" \
+  -d '{"approved": true}'
+```
+
+### Query Workflow
+
+```bash
+POST /api/v1/namespaces/{namespace}/workflows/{workflowId}/query/{queryType}
+```
+
+```bash
+curl -X POST https://tasks.hanzo.ai/api/v1/namespaces/your-org/workflows/agent-task-1/query/progress
+```
+
+```json
+{
+  "result": 42
+}
+```
+
+### Terminate Workflow
+
+```bash
+POST /api/v1/namespaces/{namespace}/workflows/{workflowId}/terminate
+```
+
+```bash
+curl -X POST https://tasks.hanzo.ai/api/v1/namespaces/your-org/workflows/agent-task-1/terminate \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "user requested cancellation"}'
+```
+
+### List Task Queues
+
+```bash
+GET /api/v1/namespaces/{namespace}/task-queues/{taskQueue}
+```
+
+Returns information about pollers and backlog for a task queue.
+
+## Error Responses
+
+All errors follow a consistent format:
+
+```json
+{
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "workflow not found: agent-task-999"
+  }
+}
+```
+
+| HTTP Status | Error Code | Description |
+|-------------|-----------|-------------|
+| 400 | `INVALID_ARGUMENT` | Bad request parameters |
+| 401 | `UNAUTHENTICATED` | Missing or invalid auth token |
+| 403 | `PERMISSION_DENIED` | Insufficient permissions |
+| 404 | `NOT_FOUND` | Resource not found |
+| 409 | `ALREADY_EXISTS` | Workflow ID already in use |
+| 429 | `RESOURCE_EXHAUSTED` | Rate limited |
+| 500 | `INTERNAL` | Server error |

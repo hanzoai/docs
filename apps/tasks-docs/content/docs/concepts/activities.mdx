@@ -1,0 +1,166 @@
+---
+title: Activities
+description: Units of work that perform I/O and side effects
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs';
+
+# Activities
+
+Activities are the **building blocks of work** in Hanzo Tasks. They perform the actual I/O operations: calling APIs, querying databases, reading files, running inference.
+
+## Key Properties
+
+- **Non-deterministic** -- Unlike workflows, activities can do I/O, use random numbers, read the clock
+- **Retryable** -- Failed activities are automatically retried based on the retry policy
+- **Heartbeatable** -- Long-running activities can send heartbeats to report progress
+- **Timeout-aware** -- Activities have configurable start-to-close, schedule-to-start, and heartbeat timeouts
+
+## Defining Activities
+
+<Tabs items={['Go', 'Python']}>
+<Tab value="Go">
+```go
+func CallLLM(ctx context.Context, prompt string) (LLMResponse, error) {
+    resp, err := http.Post("https://llm.hanzo.ai/v1/chat/completions",
+        "application/json",
+        strings.NewReader(fmt.Sprintf(`{"model":"zen-70b","messages":[{"role":"user","content":"%s"}]}`, prompt)),
+    )
+    if err != nil {
+        return LLMResponse{}, fmt.Errorf("llm request failed: %w", err)
+    }
+    defer resp.Body.Close()
+
+    var result LLMResponse
+    if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+        return LLMResponse{}, fmt.Errorf("failed to decode response: %w", err)
+    }
+    return result, nil
+}
+```
+</Tab>
+
+<Tab value="Python">
+```python
+@activity.defn
+async def call_llm(prompt: str) -> LLMResponse:
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            "https://llm.hanzo.ai/v1/chat/completions",
+            json={
+                "model": "zen-70b",
+                "messages": [{"role": "user", "content": prompt}],
+            },
+        )
+        resp.raise_for_status()
+        return LLMResponse(**resp.json())
+```
+</Tab>
+</Tabs>
+
+## Activity Options
+
+Control how activities behave with options set in the workflow.
+
+<Tabs items={['Go', 'Python']}>
+<Tab value="Go">
+```go
+opts := workflow.ActivityOptions{
+    // Maximum time from activity start to completion
+    StartToCloseTimeout: 5 * time.Minute,
+
+    // Maximum time waiting in the task queue
+    ScheduleToStartTimeout: 30 * time.Second,
+
+    // If no heartbeat received within this duration, activity is considered failed
+    HeartbeatTimeout: 10 * time.Second,
+
+    // Retry configuration
+    RetryPolicy: &temporal.RetryPolicy{
+        InitialInterval:    time.Second,
+        BackoffCoefficient: 2.0,
+        MaximumInterval:    time.Minute,
+        MaximumAttempts:    5,
+        NonRetryableErrorTypes: []string{"InvalidInputError"},
+    },
+}
+ctx = workflow.WithActivityOptions(ctx, opts)
+```
+</Tab>
+
+<Tab value="Python">
+```python
+result = await workflow.execute_activity(
+    my_activity,
+    input_data,
+    start_to_close_timeout=timedelta(minutes=5),
+    schedule_to_start_timeout=timedelta(seconds=30),
+    heartbeat_timeout=timedelta(seconds=10),
+    retry_policy=RetryPolicy(
+        initial_interval=timedelta(seconds=1),
+        backoff_coefficient=2.0,
+        maximum_interval=timedelta(minutes=1),
+        maximum_attempts=5,
+        non_retryable_error_types=["InvalidInputError"],
+    ),
+)
+```
+</Tab>
+</Tabs>
+
+## Heartbeating
+
+Long-running activities should send heartbeats to indicate they are still alive. If the heartbeat timeout elapses without a heartbeat, the activity is marked as failed and retried.
+
+<Tabs items={['Go', 'Python']}>
+<Tab value="Go">
+```go
+func ProcessLargeDataset(ctx context.Context, datasetURL string) (ProcessResult, error) {
+    records, err := fetchRecords(datasetURL)
+    if err != nil {
+        return ProcessResult{}, err
+    }
+
+    var processed int
+    for i, record := range records {
+        if err := processRecord(record); err != nil {
+            return ProcessResult{}, err
+        }
+        processed++
+
+        // Heartbeat every 100 records with progress
+        if i%100 == 0 {
+            activity.RecordHeartbeat(ctx, ProcessProgress{
+                Total:     len(records),
+                Processed: processed,
+            })
+        }
+    }
+
+    return ProcessResult{RecordsProcessed: processed}, nil
+}
+```
+</Tab>
+
+<Tab value="Python">
+```python
+@activity.defn
+async def process_large_dataset(dataset_url: str) -> ProcessResult:
+    records = await fetch_records(dataset_url)
+    processed = 0
+
+    for i, record in enumerate(records):
+        await process_record(record)
+        processed += 1
+
+        # Heartbeat every 100 records with progress
+        if i % 100 == 0:
+            activity.heartbeat(ProcessProgress(
+                total=len(records),
+                processed=processed,
+            ))
+
+    return ProcessResult(records_processed=processed)
+```
+</Tab>
+</Tabs>
