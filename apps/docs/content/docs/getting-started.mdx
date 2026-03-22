@@ -1,0 +1,142 @@
+---
+title: Getting Started
+description: Create an account, get an API key, and make your first Hanzo API call in under five minutes.
+---
+
+# Getting Started
+
+This guide takes you from zero to your first API call. Total time: under five minutes.
+
+## 1. Create Your Account
+
+Go to [hanzo.id](https://hanzo.id) and sign up with:
+
+- **Email + password** -- the simplest path
+- **GitHub** -- one-click OAuth, great for developers
+- **Google** -- connect your workspace account
+- **Wallet** -- sign in with an Ethereum-compatible wallet
+
+Your Hanzo identity works everywhere: console, chat, platform, cloud, and all API services. One account, one login.
+
+## 2. Open the Console
+
+After signing up you will be redirected to [console.hanzo.ai](https://console.hanzo.ai). This is your dashboard for managing projects, API keys, usage, and billing.
+
+If you already have an account, go directly to [console.hanzo.ai](https://console.hanzo.ai) -- it will redirect through hanzo.id for authentication if you are not already logged in.
+
+## 3. Create a Project
+
+Projects are the top-level container for your work. Each project has its own API keys, usage limits, and billing scope.
+
+1. In the console sidebar, click **Projects**
+2. Click **New Project**
+3. Enter a name (e.g. `my-first-project`)
+4. Select your organization (if you belong to more than one)
+5. Click **Create**
+
+All resources -- API keys, models, usage logs -- are scoped to the active project.
+
+## 4. Generate an API Key
+
+1. Navigate to your project in the console
+2. Click **API Keys** in the sidebar
+3. Click **Create Key**
+4. Give the key a descriptive name (e.g. `dev-testing`)
+5. Copy the key immediately -- it will not be shown again
+
+Your key will look like this:
+
+```
+hk-proj-abc123def456...
+```
+
+The `hk-` prefix identifies it as a Hanzo API key. See [API Keys](/docs/api-keys) for a full breakdown of key types and prefixes.
+
+## 5. Make Your First API Call
+
+All Hanzo services are available through `api.hanzo.ai`. The LLM gateway is at `llm.hanzo.ai`. Both accept the same `hk-*` API key.
+
+### curl
+
+```bash
+curl https://llm.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer hk-your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4-5-20250929",
+    "messages": [{"role": "user", "content": "Hello from Hanzo!"}]
+  }'
+```
+
+### Python
+
+Install the SDK:
+
+```bash
+pip install hanzoai
+# or with the OpenAI-compatible client:
+pip install openai
+```
+
+Using the OpenAI-compatible interface (works with any OpenAI SDK):
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="hk-your-api-key",
+    base_url="https://llm.hanzo.ai/v1",
+)
+
+response = client.chat.completions.create(
+    model="claude-sonnet-4-5-20250929",
+    messages=[{"role": "user", "content": "Hello from Hanzo!"}],
+)
+print(response.choices[0].message.content)
+```
+
+### TypeScript
+
+Install the SDK:
+
+```bash
+npm install hanzoai
+# or with the OpenAI-compatible client:
+npm install openai
+```
+
+Using the OpenAI-compatible interface:
+
+```typescript
+import OpenAI from 'openai'
+
+const client = new OpenAI({
+  apiKey: 'hk-your-api-key',
+  baseURL: 'https://llm.hanzo.ai/v1',
+})
+
+const completion = await client.chat.completions.create({
+  model: 'claude-sonnet-4-5-20250929',
+  messages: [{ role: 'user', content: 'Hello from Hanzo!' }],
+})
+console.log(completion.choices[0].message.content)
+```
+
+## Key Types at a Glance
+
+| Prefix | Type | Purpose |
+|--------|------|---------|
+| `hk-*` | API Key | Server-side API access. Scoped to a project. |
+| `sk-*` | Secret Key | Provider-level keys (e.g. upstream model providers). Never expose client-side. |
+| `hz-*` | Widget Key | Client-side keys for browser widgets. Restricted scopes, safe to embed. |
+
+See [API Keys](/docs/api-keys) for details on scopes, rotation, and production best practices.
+
+## What Next?
+
+- **[Authentication](/docs/authentication)** -- How SSO, OIDC, and sessions work across Hanzo services
+- **[Organizations](/docs/organizations)** -- Multi-org setup, team management, and resource scoping
+- **[LLM Gateway](/docs/llm)** -- Use 200+ models through one API
+- **[API Reference](/docs/openapi)** -- OpenAPI docs for every endpoint
+- **[SDKs](/docs/sdks)** -- Python, TypeScript, Go, Rust, and C client libraries
+- **[MCP](/docs/mcp)** -- 260+ tools for AI models via the Model Context Protocol

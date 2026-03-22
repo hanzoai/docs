@@ -1,0 +1,204 @@
+---
+title: Organizations
+description: Multi-org setup, resource scoping, team management, and white-label login for Hanzo organizations.
+---
+
+# Organizations
+
+Organizations are the top-level entity in Hanzo. Everything -- projects, API keys, usage, billing, team members -- is scoped to an organization. Most users have one org. Agencies, enterprises, and platform builders often have several.
+
+## Creating an Organization
+
+When you sign up at [hanzo.id](https://hanzo.id), a personal organization is created automatically. To create additional organizations:
+
+1. Go to [console.hanzo.ai](https://console.hanzo.ai)
+2. Click the org switcher in the top-left corner
+3. Click **Create Organization**
+4. Enter a name and optional slug (used in URLs and API scoping)
+5. Click **Create**
+
+You become the `OWNER` of the new organization. You can then invite team members and assign roles.
+
+## Resource Scoping
+
+Every resource in Hanzo is scoped to exactly one organization:
+
+| Resource | Scoped To |
+|----------|-----------|
+| **Projects** | Organization |
+| **API Keys** (`hk-*`, `hz-*`) | Project (within an org) |
+| **Secret Keys** (`sk-*`) | Organization |
+| **Usage & Billing** | Organization |
+| **Team Members** | Organization |
+| **KMS Secrets** | Organization + project |
+| **Task Namespaces** | Organization (1:1 mapping) |
+| **Audit Logs** | Organization |
+
+This means an API key created in Org A cannot access resources in Org B. Data isolation is enforced at every layer: the API gateway, the database, and the task execution engine.
+
+## Switching Organizations
+
+If you belong to multiple organizations, you can switch between them in any Hanzo service:
+
+1. Click the org name or avatar in the top-left corner
+2. Select the target organization
+3. The page reloads with the new org's context
+
+The switch updates your session context. API keys, projects, billing, and usage all reflect the selected organization. Your next token refresh will carry the new org's ID in the `owner` JWT claim.
+
+## Team Management
+
+### Roles
+
+| Role | Permissions |
+|------|-------------|
+| **Owner** | Full control. Can delete the org, manage billing, and transfer ownership. |
+| **Admin** | Manage projects, keys, and members. Cannot delete the org or change billing. |
+| **Member** | Use existing projects and keys. Cannot create or delete projects. |
+| **Viewer** | Read-only access to dashboards and logs. No key access. |
+
+### Inviting Members
+
+1. Go to **Settings > Team** in the console
+2. Click **Invite Member**
+3. Enter their email address
+4. Select a role
+5. Click **Send Invite**
+
+The invited user receives an email with a link to accept. If they do not have a Hanzo account, they will be prompted to create one at hanzo.id first.
+
+## IAM Org = Temporal Namespace
+
+Hanzo Tasks (the durable workflow execution engine) maps each organization to an isolated Temporal namespace. This means:
+
+- Workflows in Org A cannot see or interact with workflows in Org B
+- Task workers authenticate with the org's credentials
+- Workflow history, schedules, and search attributes are fully isolated
+- The namespace name matches the org ID
+
+This mapping is automatic. When you create an organization, a corresponding task namespace is provisioned. No manual configuration is required.
+
+```
+Org: acme-corp  -->  Temporal Namespace: acme-corp
+Org: hanzo      -->  Temporal Namespace: hanzo
+```
+
+For more on tasks, see [Hanzo Tasks](/docs/tasks).
+
+## Org-Scoped API Access
+
+When using OIDC tokens (from OAuth login), the organization is embedded in the JWT `owner` claim. The API gateway reads this claim and scopes all requests to that organization.
+
+When using API keys (`hk-*`), the organization is determined by the project the key belongs to. No additional header is needed.
+
+For administrative operations that span an organization (e.g. listing all projects), use an org-level secret key (`sk-*`):
+
+```bash
+curl -H "Authorization: Bearer sk-org-abc123..." \
+  https://api.hanzo.ai/v1/projects
+```
+
+## Billing
+
+Billing is per-organization. Each org has its own:
+
+- **Payment method** -- credit card or invoice
+- **Usage meters** -- LLM tokens, API calls, storage, compute
+- **Budget limits** -- per-key and org-wide spending caps
+- **Invoices** -- monthly statements
+
+To manage billing, go to **Settings > Billing** in the console. Only users with the `Owner` role can modify payment methods and budget limits.
+
+## White-Label Login
+
+Organizations can configure custom login domains using the [hanzo.id](https://hanzo.id) white-label system. This means your users see your brand -- your domain, your logo, your colors -- during authentication, while Hanzo IAM handles all the OIDC machinery underneath.
+
+### Setup
+
+1. Register a custom domain (e.g. `auth.yourcompany.com`)
+2. Add a CNAME record pointing to `hanzo.id`
+3. In the console, go to **Settings > Custom Domain**
+4. Enter your domain and upload your brand assets (logo, colors)
+5. Hanzo provisions a TLS certificate automatically
+
+Once configured, your OAuth flows use your custom domain:
+
+```
+https://auth.yourcompany.com/oauth/authorize?
+  client_id=YOUR_CLIENT_ID&
+  redirect_uri=https://app.yourcompany.com/callback&
+  response_type=code&
+  scope=openid profile email&
+  code_challenge=...&
+  code_challenge_method=S256
+```
+
+The underlying OIDC endpoints, JWT signing keys, and session management are all handled by Hanzo IAM. Your users never see `hanzo.id` unless you want them to.
+
+The white-label login UI is built on `hanzo/id` (a forkable Next.js app). Organizations can customize it further or deploy their own fork for full control over the login experience.
+
+## Multi-Org Patterns
+
+### Agency Pattern
+
+An agency manages multiple client organizations. The agency owner has `OWNER` membership across all client orgs:
+
+```
+Agency Owner (z@agency.com)
+  ├── org: agency-internal    (Owner)
+  ├── org: client-alpha       (Owner)
+  ├── org: client-beta        (Owner)
+  └── org: client-gamma       (Owner)
+```
+
+Each client org has its own projects, keys, billing, and team members. The agency can switch between them in the console.
+
+### Enterprise Pattern
+
+A large company uses organizations to separate departments or environments:
+
+```
+Platform Team
+  ├── org: acme-production    (prod workloads)
+  ├── org: acme-staging       (staging environment)
+  └── org: acme-sandbox       (developer experimentation)
+```
+
+### SaaS Platform Pattern
+
+A SaaS builder provisions one Hanzo org per customer tenant:
+
+```
+SaaS Platform
+  ├── org: tenant-001    (Customer A)
+  ├── org: tenant-002    (Customer B)
+  └── org: tenant-003    (Customer C)
+```
+
+Each tenant's data, API keys, and workflows are fully isolated. The platform's control plane uses org-level secret keys to manage all tenants.
+
+## Programmatic Org Management
+
+Use the Console API to create and manage organizations programmatically:
+
+```bash
+# Create a new organization
+curl -X POST https://api.hanzo.ai/v1/organizations \
+  -H "Authorization: Bearer sk-your-admin-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "New Client Org",
+    "slug": "new-client"
+  }'
+
+# List organizations you belong to
+curl https://api.hanzo.ai/v1/organizations \
+  -H "Authorization: Bearer sk-your-admin-key"
+```
+
+## Related
+
+- [Getting Started](/docs/getting-started) -- Create your account and first project
+- [API Keys](/docs/api-keys) -- Key types, scopes, and management
+- [Authentication](/docs/authentication) -- SSO, OIDC, and session details
+- [Hanzo Tasks](/docs/tasks) -- Durable workflow execution with org-isolated namespaces
