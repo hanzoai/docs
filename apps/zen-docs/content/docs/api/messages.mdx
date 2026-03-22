@@ -1,0 +1,144 @@
+---
+title: Messages (Anthropic-compatible)
+description: Use the Anthropic Messages API format with Zen models via api.hanzo.ai
+---
+
+# Messages API (Anthropic-compatible)
+
+Zen LM supports the **Anthropic Messages API format** at the same base URL. Drop-in compatible with the Anthropic SDK — just change the base URL and API key.
+
+## Endpoint
+
+```
+POST https://api.hanzo.ai/v1/messages
+```
+
+## Authentication
+
+```bash
+x-api-key: $HANZO_API_KEY
+# or
+Authorization: Bearer $HANZO_API_KEY
+```
+
+Include the `anthropic-version` header:
+
+```bash
+anthropic-version: 2023-06-01
+```
+
+## Quickstart
+
+### curl
+
+```bash
+curl https://api.hanzo.ai/v1/messages \
+  -H "x-api-key: $HANZO_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen4",
+    "max_tokens": 1024,
+    "messages": [{"role": "user", "content": "Hello, Zen."}]
+  }'
+```
+
+### Python (Anthropic SDK)
+
+```python
+from anthropic import Anthropic
+
+client = Anthropic(
+    api_key="hk-your-api-key",
+    base_url="https://api.hanzo.ai/v1",
+)
+
+message = client.messages.create(
+    model="zen4",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "Hello, Zen."}],
+)
+print(message.content[0].text)
+```
+
+### TypeScript (Anthropic SDK)
+
+```typescript
+import Anthropic from "@anthropic-ai/sdk";
+
+const client = new Anthropic({
+  apiKey: "hk-your-api-key",
+  baseURL: "https://api.hanzo.ai/v1",
+});
+
+const message = await client.messages.create({
+  model: "zen4",
+  max_tokens: 1024,
+  messages: [{ role: "user", content: "Hello, Zen." }],
+});
+console.log(message.content[0].text);
+```
+
+## Streaming
+
+```bash
+curl https://api.hanzo.ai/v1/messages \
+  -H "x-api-key: $HANZO_API_KEY" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen4",
+    "max_tokens": 1024,
+    "stream": true,
+    "messages": [{"role": "user", "content": "Hello, Zen."}]
+  }'
+```
+
+Streaming uses Server-Sent Events (SSE), identical to the Anthropic streaming format.
+
+## Supported Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `model` | string | Yes | Zen model ID (e.g., `zen4`, `zen4-mini`, `zen4-thinking`) |
+| `messages` | array | Yes | Array of message objects with `role` and `content` |
+| `max_tokens` | integer | Yes | Maximum tokens to generate |
+| `stream` | boolean | No | Enable SSE streaming (default: false) |
+| `temperature` | float | No | Sampling temperature (0.0 - 1.0) |
+| `top_p` | float | No | Nucleus sampling parameter |
+| `system` | string | No | System prompt |
+| `stop_sequences` | array | No | Stop generation at these sequences |
+
+## Response Format
+
+```json
+{
+  "id": "msg_abc123",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "Hello! How can I help you today?"
+    }
+  ],
+  "model": "zen4",
+  "stop_reason": "end_turn",
+  "usage": {
+    "input_tokens": 12,
+    "output_tokens": 15
+  }
+}
+```
+
+## Using Both Formats
+
+The same `api.hanzo.ai/v1` endpoint supports both OpenAI and Anthropic formats:
+
+| Format | Endpoint | SDK |
+|--------|----------|-----|
+| OpenAI | `POST /v1/chat/completions` | `openai`, `hanzoai` |
+| Anthropic | `POST /v1/messages` | `anthropic` |
+| Models | `GET /v1/models` | Any HTTP client |
+
+All Zen models work with both formats. Use whichever your application already integrates with.
