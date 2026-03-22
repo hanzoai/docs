@@ -1,0 +1,194 @@
+---
+title: API Keys
+description: Key types, scopes, creation, rotation, and production best practices for Hanzo API keys.
+---
+
+# API Keys
+
+Every request to the Hanzo platform is authenticated with a bearer token. This page covers the three key types, how to create and use them, and how to keep them safe.
+
+## Key Types and Prefixes
+
+Hanzo uses key prefixes so you can identify a credential at a glance and catch accidental misuse.
+
+| Prefix | Type | Where to Use | Scope |
+|--------|------|--------------|-------|
+| `hk-*` | **API Key** | Server-side code, CI/CD, scripts | Project-level. Full access to APIs within the project's permissions. |
+| `sk-*` | **Secret Key** | Backend services, provider configuration | Org-level. Used for upstream provider credentials and internal service auth. Never expose to clients. |
+| `hz-*` | **Widget Key** | Browser JavaScript, mobile apps | Project-level with restricted scopes. Safe to embed in client-side code. |
+
+### API Keys (`hk-*`)
+
+These are your primary credentials. One `hk-*` key gives access to all Hanzo services for the project it belongs to: LLM gateway, search, storage, tasks, and everything else.
+
+```bash
+# All Hanzo API calls use the same header format
+curl -H "Authorization: Bearer hk-proj-abc123..." https://api.hanzo.ai/v1/models
+```
+
+### Secret Keys (`sk-*`)
+
+Secret keys are org-scoped credentials used for provider-level operations: configuring upstream LLM providers, managing billing integrations, and inter-service communication. They carry elevated privileges and must never leave your backend.
+
+### Widget Keys (`hz-*`)
+
+Widget keys are designed for client-side use. They have restricted scopes -- typically limited to chat completions and embeddings -- so that exposing them in browser code does not compromise your account.
+
+```html
+<!-- Safe to embed in frontend code -->
+<script>
+  const HANZO_KEY = 'hz-widget-abc123...'
+</script>
+```
+
+## Creating Keys
+
+### In the Console
+
+1. Go to [console.hanzo.ai](https://console.hanzo.ai)
+2. Select your **project**
+3. Click **API Keys** in the sidebar
+4. Click **Create Key**
+5. Choose the key type (`hk-*` API key or `hz-*` widget key)
+6. Optionally set:
+   - **Name** -- descriptive label (e.g. `prod-backend`, `staging-widget`)
+   - **Expiration** -- auto-expire after a set duration
+   - **Budget** -- monthly spend limit for LLM usage
+   - **Rate limit** -- requests per minute cap
+7. Copy the key immediately -- it will not be shown again
+
+### Via the API
+
+```bash
+curl -X POST https://llm.hanzo.ai/key/generate \
+  -H "Authorization: Bearer hk-your-admin-key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "key_alias": "ci-pipeline",
+    "max_budget": 100.0,
+    "budget_duration": "monthly",
+    "tpm_limit": 100000,
+    "rpm_limit": 600
+  }'
+```
+
+## Using Keys
+
+All Hanzo APIs accept keys via the `Authorization` header with the `Bearer` scheme:
+
+```
+Authorization: Bearer hk-proj-abc123...
+```
+
+This works uniformly across every endpoint:
+
+| Service | Base URL | Example |
+|---------|----------|---------|
+| API Gateway | `api.hanzo.ai` | `api.hanzo.ai/v1/models` |
+| LLM Gateway | `llm.hanzo.ai` | `llm.hanzo.ai/v1/chat/completions` |
+| Tasks | `tasks-api.hanzo.ai` | gRPC with metadata header |
+| Search | `search.hanzo.ai` | `search.hanzo.ai/v1/search` |
+
+### SDK Configuration
+
+All official SDKs accept the API key as a constructor parameter:
+
+```python
+# Python
+from openai import OpenAI
+client = OpenAI(api_key="hk-your-key", base_url="https://llm.hanzo.ai/v1")
+```
+
+```typescript
+// TypeScript
+import OpenAI from 'openai'
+const client = new OpenAI({ apiKey: 'hk-your-key', baseURL: 'https://llm.hanzo.ai/v1' })
+```
+
+```go
+// Go
+import "github.com/hanzoai/go-sdk"
+client := hanzo.NewClient(hanzo.WithAPIKey("hk-your-key"))
+```
+
+## Scopes
+
+### Project-Level Keys (`hk-*`, `hz-*`)
+
+These keys are bound to a single project. They can only access resources within that project. Switching projects requires a different key.
+
+### Org-Level Keys (`sk-*`)
+
+These keys operate across all projects within an organization. They are used for administrative operations: managing projects, configuring providers, and accessing org-wide analytics.
+
+## Key Information and Usage
+
+Check a key's budget and usage:
+
+```bash
+curl https://llm.hanzo.ai/key/info \
+  -H "Authorization: Bearer hk-your-key"
+```
+
+Response:
+
+```json
+{
+  "key_alias": "prod-backend",
+  "max_budget": 500.0,
+  "spend": 127.43,
+  "budget_duration": "monthly",
+  "tpm_limit": 500000,
+  "rpm_limit": 3000,
+  "expires": "2026-12-31T00:00:00Z"
+}
+```
+
+## Rotation Best Practices
+
+1. **Rotate regularly** -- Set key expiration at creation time. 90 days is a reasonable default for production keys.
+2. **Use KMS for production** -- Store keys in [Hanzo KMS](https://kms.hanzo.ai) and sync them to your runtime environment via KMSSecret CRDs. Never hardcode keys in source or commit them to git.
+3. **Create before you revoke** -- Generate the replacement key, deploy it, verify it works, then revoke the old one. Zero-downtime rotation.
+4. **One key per service** -- Give each service or environment its own key. This limits blast radius and makes audit logs useful.
+5. **Set budgets** -- Every production key should have a monthly budget. This prevents runaway costs from bugs or abuse.
+6. **Monitor usage** -- Check `key/info` or the console dashboard regularly. Unusual spend patterns may indicate a leak.
+
+### KMS Integration
+
+For production deployments, use Hanzo KMS to manage API keys as secrets:
+
+```yaml
+# KMSSecret CRD -- syncs secret from kms.hanzo.ai to K8s
+apiVersion: secrets.hanzo.ai/v1alpha1
+kind: KMSSecret
+metadata:
+  name: hanzo-api-key
+spec:
+  secretStoreRef:
+    name: kms-hanzo
+  data:
+    - secretKey: HANZO_API_KEY
+      remoteRef:
+        secretPath: /prod/api-keys
+        secretKey: primary
+```
+
+## Revoking Keys
+
+Revoke a key immediately from the console or via the API:
+
+```bash
+curl -X POST https://llm.hanzo.ai/key/delete \
+  -H "Authorization: Bearer hk-your-admin-key" \
+  -H "Content-Type: application/json" \
+  -d '{"keys": ["hk-proj-abc123..."]}'
+```
+
+Revocation is immediate. Any in-flight request using the key will fail with `401 Unauthorized`.
+
+## Security Rules
+
+- **Never commit keys to git.** Use environment variables or KMS.
+- **Never expose `hk-*` or `sk-*` keys client-side.** Use `hz-*` widget keys for browser code.
+- **Always use HTTPS.** All Hanzo endpoints enforce TLS. Plain HTTP connections are rejected.
+- **Set the minimum scope needed.** If a service only needs LLM access, do not give it an org-level secret key.
