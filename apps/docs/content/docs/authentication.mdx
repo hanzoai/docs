@@ -1,0 +1,213 @@
+---
+title: Authentication
+description: Single sign-on, OAuth 2.0 + OIDC flows, session management, and account linking across all Hanzo services.
+---
+
+# Authentication
+
+Hanzo uses a single identity provider -- [hanzo.id](https://hanzo.id) -- for all services. One account, one login, one session across console, chat, platform, cloud, and every API.
+
+## How It Works
+
+All Hanzo web applications redirect to `hanzo.id` for authentication using standard OAuth 2.0 + OpenID Connect (OIDC). The flow is the same whether you are logging into the console, chat, or any other service:
+
+1. You visit a Hanzo service (e.g. `console.hanzo.ai`)
+2. The service redirects you to `hanzo.id/oauth/authorize`
+3. You authenticate (password, GitHub, Google, or wallet)
+4. hanzo.id redirects back with an authorization code
+5. The service exchanges the code for access and refresh tokens
+6. You are logged in
+
+This is the standard **Authorization Code + PKCE** flow defined in RFC 7636. PKCE (Proof Key for Code Exchange) is used for all browser-based flows, including single-page applications.
+
+## OIDC Endpoints
+
+All endpoints follow RFC 6749 and OpenID Connect Discovery:
+
+| Endpoint | URL |
+|----------|-----|
+| **Discovery** | `https://hanzo.id/.well-known/openid-configuration` |
+| **Authorize** | `https://hanzo.id/oauth/authorize` |
+| **Token** | `https://hanzo.id/oauth/token` |
+| **UserInfo** | `https://hanzo.id/oauth/userinfo` |
+| **Introspect** | `https://hanzo.id/oauth/introspect` |
+| **Revoke** | `https://hanzo.id/oauth/revoke` |
+| **Logout** | `https://hanzo.id/oauth/logout` |
+| **Device** | `https://hanzo.id/oauth/device` |
+
+These are the canonical paths. Legacy Casdoor-style paths are still served for backward compatibility but must not be used in new integrations.
+
+## Session Duration
+
+- **Web sessions** last 30 days from last activity
+- **Access tokens** expire after 1 hour
+- **Refresh tokens** are long-lived and rotate silently
+
+When an access token expires, the SDK or browser client uses the refresh token to obtain a new one without requiring re-authentication. The 30-day session window resets on every authenticated request.
+
+## Cross-Service Single Sign-On
+
+Once you are logged in to one Hanzo service, you are logged in to all of them. The session is maintained at `hanzo.id` -- when another service redirects you there, it recognizes your existing session and issues tokens immediately without showing a login screen.
+
+Services sharing the SSO session:
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| Console | `console.hanzo.ai` | Dashboard, API keys, usage |
+| Chat | `chat.hanzo.ai` | AI chat with Zen models and MCP tools |
+| Cloud | `cloud.hanzo.ai` | LLM gateway management |
+| Platform | `platform.hanzo.ai` | PaaS deployment and hosting |
+| KMS | `kms.hanzo.ai` | Secrets management |
+| Tasks | `tasks.hanzo.ai` | Durable workflow engine |
+
+## OAuth 2.0 + PKCE Flow
+
+For applications integrating with Hanzo IAM, here is the complete PKCE flow:
+
+### 1. Generate a Code Verifier and Challenge
+
+```typescript
+import crypto from 'crypto'
+
+const codeVerifier = crypto.randomBytes(32).toString('base64url')
+const codeChallenge = crypto
+  .createHash('sha256')
+  .update(codeVerifier)
+  .digest('base64url')
+```
+
+### 2. Redirect to Authorize
+
+```
+https://hanzo.id/oauth/authorize?
+  response_type=code&
+  client_id=YOUR_CLIENT_ID&
+  redirect_uri=https://yourapp.com/callback&
+  scope=openid profile email&
+  code_challenge=CODE_CHALLENGE&
+  code_challenge_method=S256&
+  state=RANDOM_STATE
+```
+
+### 3. Exchange the Code for Tokens
+
+```bash
+curl -X POST https://hanzo.id/oauth/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "grant_type=authorization_code" \
+  -d "code=AUTHORIZATION_CODE" \
+  -d "redirect_uri=https://yourapp.com/callback" \
+  -d "client_id=YOUR_CLIENT_ID" \
+  -d "code_verifier=CODE_VERIFIER"
+```
+
+Response:
+
+```json
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIs...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "rt-abc123...",
+  "id_token": "eyJhbGciOiJSUzI1NiIs...",
+  "scope": "openid profile email"
+}
+```
+
+### 4. Extract Identity from the JWT
+
+The `access_token` and `id_token` are JWTs. The key claims:
+
+| Claim | Description |
+|-------|-------------|
+| `sub` | User ID |
+| `email` | User email |
+| `name` | Display name |
+| `owner` | Organization ID (used for data scoping) |
+| `iss` | Issuer (`https://hanzo.id`) |
+| `aud` | Client ID |
+| `exp` | Expiration timestamp |
+
+The `owner` claim is critical for multi-tenant applications. All data queries must be scoped to this organization ID.
+
+## Account Linking
+
+You can link multiple identity providers to a single Hanzo account:
+
+- **GitHub** -- OAuth via GitHub
+- **Google** -- OAuth via Google Workspace or personal accounts
+- **Wallet** -- Ethereum-compatible wallet signature (MetaMask, WalletConnect, etc.)
+- **Email + Password** -- Traditional credentials
+
+Link accounts in the console at **Settings > Account > Connected Accounts**. All linked providers authenticate to the same identity, same organizations, same API keys.
+
+## Org Switching
+
+If you belong to multiple organizations, you can switch between them in any Hanzo service:
+
+1. Click your avatar or org name in the top-right corner
+2. Select the target organization from the dropdown
+3. The UI reloads with the new org context
+
+When you switch orgs:
+- API keys shown are scoped to the new org's projects
+- Usage and billing reflect the new org
+- The JWT `owner` claim updates on next token refresh
+
+See [Organizations](/docs/organizations) for full details on multi-org setup.
+
+## Backend Token Validation
+
+For services that validate Hanzo tokens server-side:
+
+```python
+import jwt
+import requests
+
+# Fetch JWKS from IAM
+jwks_url = "https://hanzo.id/.well-known/jwks.json"
+jwks = requests.get(jwks_url).json()
+
+# Validate the token
+decoded = jwt.decode(
+    token,
+    jwks,
+    algorithms=["RS256"],
+    audience="your-client-id",
+    issuer="https://hanzo.id",
+)
+org_id = decoded["owner"]
+user_id = decoded["sub"]
+```
+
+Or use the IAM SDK:
+
+```typescript
+import { validateToken } from '@hanzo/iam/auth'
+
+const identity = await validateToken(token, {
+  issuer: 'https://hanzo.id',
+  audience: 'your-client-id',
+})
+// identity.sub, identity.owner, identity.email
+```
+
+## API Key vs. Token Authentication
+
+Hanzo supports two authentication methods depending on the use case:
+
+| Method | Header | When to Use |
+|--------|--------|-------------|
+| **API Key** | `Authorization: Bearer hk-*` | Server-to-server, scripts, CI/CD |
+| **OIDC Token** | `Authorization: Bearer eyJ...` | User-facing apps after OAuth login |
+
+Both methods are accepted by the API gateway (`api.hanzo.ai`). API keys are simpler for machine-to-machine communication. OIDC tokens carry user identity and org context, which is required for user-facing applications.
+
+## Security Notes
+
+- All auth endpoints enforce TLS. Plain HTTP is rejected.
+- Tokens are signed with RS256. Validate the signature against the JWKS endpoint.
+- Always validate `iss`, `aud`, and `exp` claims.
+- The `owner` claim must be used to scope all database queries in multi-tenant services.
+- Never store access tokens in localStorage. Use httpOnly cookies or in-memory storage.
+- PKCE is mandatory for all browser-based flows. Implicit grant is not supported.
