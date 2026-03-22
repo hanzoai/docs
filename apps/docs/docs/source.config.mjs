@@ -5,16 +5,13 @@ import jsonSchema from "@hanzo/docs-mdx/plugins/json-schema";
 import lastModified from "@hanzo/docs-mdx/plugins/last-modified";
 
 // lib/shiki.ts
-import { configDefault } from "@hanzo/docs-core/highlight";
-var shikiConfig = {
-  ...configDefault,
-  defaultThemes: {
-    themes: {
-      light: "github-light",
-      dark: "vesper"
-    }
+var defaultShikiOptions = {
+  themes: {
+    light: "github-light",
+    dark: "vesper"
   }
 };
+var shikiConfig = defaultShikiOptions;
 
 // source.config.ts
 import { metaSchema, pageSchema } from "@hanzo/docs-core/source/schema";
