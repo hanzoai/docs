@@ -5,9 +5,9 @@
 ### Patch Changes
 
 - 55479b3: Improve TOC detection logic
-- Updated dependencies [8b32533]
+- f9e6367: auto-close TOC popover
 - Updated dependencies [55479b3]
-  - @hanzo/docs-core@16.7.5
+  - fumadocs-core@16.7.5
 
 ## 16.7.4
 

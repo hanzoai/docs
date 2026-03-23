@@ -9,6 +9,15 @@
   - @hanzo/docs-core@16.7.5
   - @hanzo/docs-ui@16.7.5
 
+## 16.0.80
+
+### Patch Changes
+
+- Updated dependencies [55479b3]
+- Updated dependencies [f9e6367]
+  - fumadocs-ui@16.7.5
+  - fumadocs-core@16.7.5
+
 ## 16.0.79
 
 ### Patch Changes
