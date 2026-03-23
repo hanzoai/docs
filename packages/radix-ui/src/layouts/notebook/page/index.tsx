@@ -1,20 +1,5 @@
 'use client';
 import {
-<<<<<<< HEAD
-  type BreadcrumbProps,
-  type FooterProps,
-  PageBreadcrumb,
-  PageFooter,
-  PageTOCPopover,
-  PageTOCPopoverContent,
-  PageTOCPopoverTrigger,
-} from './client';
-import type { AnchorProviderProps, TOCItemType } from '@hanzo/docs-core/toc';
-import * as TocDefault from '@/components/toc/default';
-import * as TocClerk from '@/components/toc/clerk';
-import { TOCProvider, TOCScrollArea } from '@/components/toc';
-import { ChildrenRenderer, renderer, type Renderer } from '@/utils/renderer';
-=======
   type ComponentProps,
   createContext,
   type FC,
@@ -39,7 +24,6 @@ import { Container } from './slots/container';
 import type { TOCItemType } from '@hanzo/docs-core/toc';
 import { buttonVariants } from '@/components/ui/button';
 import { Edit } from 'lucide-react';
->>>>>>> dev
 
 export interface DocsPageProps extends ComponentProps<'article'> {
   toc?: TOCItemType[];

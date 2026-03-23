@@ -2,16 +2,8 @@
 
 import { type ComponentProps, createContext, type FC, use, useMemo } from 'react';
 import { cn } from '@/utils/cn';
-<<<<<<< HEAD
-import { useSidebar } from '@/components/sidebar/base';
 import { usePathname } from '@hanzo/docs-core/framework';
 import Link from '@hanzo/docs-core/link';
-import type { SidebarTab } from '@/components/sidebar/tabs';
-import { isTabActive } from '@/components/sidebar/tabs/dropdown';
-=======
-import { usePathname } from '@hanzo/docs-core/framework';
-import Link from '@hanzo/docs-core/link';
->>>>>>> dev
 import { useIsScrollTop } from '@/utils/use-is-scroll-top';
 import type { LinkItemType } from '@/layouts/shared';
 import {

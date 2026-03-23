@@ -1,36 +1,5 @@
 # fumapress
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-## 0.0.9
-
-### Patch Changes
-
-- 9fe9f7c: Rebrand from Fuma Nama to Hanzo AI, update canonical URL to hanzoai.github.io/docs, fix DTS generation OOM in unified wrapper package, and update all package metadata.
-- Updated dependencies [9fe9f7c]
-  - @hanzo/docs-core@16.5.3
-  - @hanzo/docs-base-ui@16.5.3
-  - @hanzo/docs-mdx@14.2.8
-
-## 0.0.10
-
-### Patch Changes
-
-- Updated dependencies
-  - @hanzo/docs-core@16.4.2
-  - @hanzo/docs-ui@16.4.2
-
-## 0.0.9
-
-### Patch Changes
-
-- Updated dependencies [a8456cc]
-  - @hanzo/docs-core@16.2.6
-  - @hanzo/docs-ui@16.2.6
-  - @hanzo/docs-mdx@14.1.1
-
-## 0.0.8
-=======
 =======
 ## 0.1.16
 
@@ -77,7 +46,6 @@
   - fumadocs-ui@16.7.0
   - fumadocs-core@16.7.0
 
->>>>>>> dev
 ## 0.1.11
 >>>>>>> upstream/dev
 

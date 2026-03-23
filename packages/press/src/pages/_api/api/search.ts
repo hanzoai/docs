@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import { createFromSource } from '@hanzo/docs-core/search/server';
-=======
 import { flexsearchFromSource } from '@hanzo/docs-core/search/flexsearch';
->>>>>>> dev
 import { getSource, Source } from '@/lib/source';
 import { revalidable } from '@/lib/revalidable';
 import { structure } from '@hanzo/docs-core/mdx-plugins/remark-structure';

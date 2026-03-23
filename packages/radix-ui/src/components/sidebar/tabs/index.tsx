@@ -1,10 +1,5 @@
-<<<<<<< HEAD
-import type * as PageTree from '@hanzo/docs-core/page-tree';
-import { type ReactNode, useEffectEvent } from 'react';
-=======
 import type { LayoutTab, GetLayoutTabsOptions } from '@/layouts/shared';
 import type * as PageTree from '@hanzo/docs-core/page-tree';
->>>>>>> dev
 
 export type SidebarTab = LayoutTab;
 export type GetSidebarTabsOptions = GetLayoutTabsOptions;
