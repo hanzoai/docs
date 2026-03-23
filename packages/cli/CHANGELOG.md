@@ -1,7 +1,28 @@
 # fumadocs
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+## 1.3.2
+
+### Patch Changes
+
+- 823d880: Support slot in customise command
+
+## 1.3.1
+
+### Patch Changes
+
+- e201942: support layout type
+
+## 1.3.0
+
+### Minor Changes
+
+- 0ddaa8a: Preserve layout imports for slots
+
+>>>>>>> dev
 ## 1.2.6
 
 ### Patch Changes

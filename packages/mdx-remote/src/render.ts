@@ -1,5 +1,9 @@
 import type { MDXComponents } from 'mdx/types';
+<<<<<<< HEAD
 import type { TableOfContents } from '@hanzo/docs-core/toc';
+=======
+import type { TOCItemType } from '@hanzo/docs-core/toc';
+>>>>>>> dev
 import type { FC } from 'react';
 import jsxRuntimeDefault from 'react/jsx-runtime';
 
@@ -28,7 +32,7 @@ export async function executeMdx(compiled: string, options: Options = {}) {
   const hydrateFn = new AsyncFunction(...Object.keys(fullScope), compiled);
   return (await hydrateFn.apply(hydrateFn, Object.values(fullScope))) as {
     default: MdxContent;
-    toc?: TableOfContents;
+    toc?: TOCItemType[];
   };
 }
 
@@ -47,6 +51,6 @@ export function executeMdxSync(compiled: string, options: Options = {}) {
 
   return hydrateFn.apply(hydrateFn, Object.values(fullScope)) as {
     default: MdxContent;
-    toc?: TableOfContents;
+    toc?: TOCItemType[];
   };
 }
