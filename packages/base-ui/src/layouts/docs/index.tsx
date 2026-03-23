@@ -1,24 +1,6 @@
-<<<<<<< HEAD
-import type * as PageTree from '@hanzo/docs-core/page-tree';
-import { type ComponentProps, type HTMLAttributes, type ReactNode, useMemo } from 'react';
-import { Languages, Sidebar as SidebarIcon } from 'lucide-react';
-import { cn } from '@/utils/cn';
-import { buttonVariants } from '@/components/ui/button';
-import {
-  Sidebar,
-  SidebarCollapseTrigger,
-  SidebarContent,
-  SidebarDrawer,
-  SidebarLinkItem,
-  SidebarPageTree,
-  SidebarTrigger,
-  SidebarViewport,
-} from './sidebar';
-=======
 import type * as PageTree from '@hanzo/docs-core/page-tree';
 import { type HTMLAttributes, type ReactNode, useMemo } from 'react';
 import type { SidebarProps, SidebarProviderProps } from './slots/sidebar';
->>>>>>> dev
 import {
   getLayoutTabs,
   type BaseLayoutProps,

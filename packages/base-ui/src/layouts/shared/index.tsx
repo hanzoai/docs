@@ -1,12 +1,3 @@
-<<<<<<< HEAD
-import { type HTMLAttributes, useMemo, type ComponentProps, type ReactNode } from 'react';
-import type { I18nConfig } from '@hanzo/docs-core/i18n';
-import type { LinkItemType } from '@/utils/link-item';
-import Link from '@hanzo/docs-core/link';
-import type { LargeSearchToggleProps, SearchToggleProps } from './search-toggle';
-import type { ThemeToggleProps } from './theme-toggle';
-import { ChildrenRenderer, type Renderer } from '@/utils/renderer';
-=======
 import { type FC, useMemo, type ComponentProps, type ReactNode } from 'react';
 import type { I18nConfig } from '@hanzo/docs-core/i18n';
 import * as PageTree from '@hanzo/docs-core/page-tree';
@@ -14,7 +5,6 @@ import { isActive, normalize } from '@/utils/urls';
 import type { BaseSlots } from './client';
 import type { ThemeSwitchProps } from './slots/theme-switch';
 import type { FullSearchTriggerProps, SearchTriggerProps } from './slots/search-trigger';
->>>>>>> dev
 
 export interface NavOptions {
   enabled?: boolean;
