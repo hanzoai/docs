@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import type { TableOfContents } from '@hanzo/docs-core/toc';
-=======
 import type { TOCItemType } from '@hanzo/docs-core/toc';
->>>>>>> dev
 import type { MdxContent } from '@/render';
 
 export * from './compile';

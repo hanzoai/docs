@@ -1,26 +1,6 @@
 'use client';
-<<<<<<< HEAD
-import { cn } from '@/utils/cn';
-import {
-  type ComponentProps,
-  createContext,
-  Fragment,
-  type HTMLAttributes,
-  type PointerEvent,
-  type ReactNode,
-  use,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { useSidebar } from '@/components/sidebar/base';
-import { ChevronDown } from 'lucide-react';
-import Link from '@hanzo/docs-core/link';
-import { usePathname } from '@hanzo/docs-core/framework';
-=======
 import { type ComponentProps, createContext, type FC, use } from 'react';
 import { type DocsLayoutProps } from '.';
->>>>>>> dev
 import { useIsScrollTop } from '@/utils/use-is-scroll-top';
 import { type LinkItemType } from '@/layouts/shared';
 import {

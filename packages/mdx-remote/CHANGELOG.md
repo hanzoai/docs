@@ -4,15 +4,12 @@
 
 ### Patch Changes
 
-<<<<<<< HEAD
 - 9fe9f7c: Rebrand from Fuma Nama to Hanzo AI, update canonical URL to hanzoai.github.io/docs, fix DTS generation OOM in unified wrapper package, and update all package metadata.
 - Updated dependencies [9fe9f7c]
   - @hanzo/docs-core@16.5.3
-=======
 - 5453502: use Shiki.js v4
 - Updated dependencies [5453502]
   - fumadocs-core@16.6.8
->>>>>>> upstream/dev
 
 ## 1.4.5
 

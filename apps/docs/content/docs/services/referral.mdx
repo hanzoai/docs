@@ -1,0 +1,329 @@
+---
+title: Hanzo Referral
+description: Earn credits and revenue share by referring developers to the Hanzo platform.
+---
+
+# Hanzo Referral
+
+Hanzo Referral is a tiered referral program that rewards developers for bringing new users to the platform. Every referral earns credits for both parties, and high-volume referrers unlock perpetual revenue share on referred usage. The program is backed by Commerce for credit ledger operations, IAM for identity resolution, and Insights for attribution analytics.
+
+**Console:** `console.hanzo.ai` > Referral
+**Signup link:** `hanzo.ai/signup?ref=YOUR_CODE`
+**API base:** `api.hanzo.ai/v1`
+**Source:** [github.com/hanzoai/commerce](https://github.com/hanzoai/commerce)
+
+## How It Works
+
+1. **Get your referral code.** Navigate to [console.hanzo.ai](https://console.hanzo.ai) and open the Referral tab. Your unique code is generated automatically when you create an account.
+
+2. **Share your link.** Send `https://hanzo.ai/signup?ref=YOUR_CODE` to anyone who would benefit from the platform -- colleagues, open source collaborators, conference attendees, newsletter subscribers.
+
+3. **Friend signs up.** When someone creates an account using your referral link, both you and your referral receive credits. Credits are applied to the referred user's account immediately and to yours within 24 hours.
+
+4. **Revenue share accumulates.** At Growth tier and above, you earn a percentage of the referred user's monthly spend. Revenue share is calculated at the end of each billing cycle and credited to your account on the first of the following month.
+
+5. **Tier up.** As your successful referral count grows, you automatically advance to higher tiers with larger per-referral credits and higher revenue share percentages.
+
+## Tiers
+
+| Tier | Referrals | Credit per Referral | Revenue Share | Max Credit Balance | Credit Expiry |
+|------|-----------|--------------------:|:-------------:|-------------------:|--------------:|
+| **Starter** | 0 -- 9 | $20 | -- | $20,000 | 90 days |
+| **Growth** | 10 -- 49 | $30 | 2.5% | $20,000 | 180 days |
+| **Pro** | 50 -- 199 | $50 | 5.0% | $20,000 | 1 year |
+| **Partner** | 200+ | $100 | 7.5% | $150,000 | Never |
+
+**Notes:**
+
+- **Referral count** is the total number of unique users who signed up with your code and completed at least one billable API call within 30 days of signup.
+- **Credit per referral** is awarded to both the referrer and the referred user. The referred user always receives $20 regardless of the referrer's tier.
+- **Revenue share** is calculated on the referred user's net spend (after credits and discounts) and paid out monthly.
+- **Max credit balance** is the ceiling on unredeemed referral credits in your account at any point in time. Earned credits beyond this cap are forfeited.
+- **Credit expiry** is measured from the date each credit is awarded. Partner-tier credits never expire.
+- Tier advancement is one-way. Once you reach a tier, you keep it even if future referral volume drops.
+
+## API Reference
+
+All endpoints require a valid Hanzo API key or IAM bearer token. Requests are scoped to the authenticated user's organization.
+
+### Create Referral Link
+
+```
+POST /api/v1/referrer
+```
+
+Creates a referral link for the authenticated user. Returns the referral code and shareable URL. If the user already has a referral code, returns the existing one.
+
+**Request:**
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/referrer \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "channel": "twitter",
+    "campaign": "launch-week-2026"
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "id": "ref_01HX9K3V2M7NQRST4BCDE5FG6H",
+  "code": "zach42",
+  "url": "https://hanzo.ai/signup?ref=zach42",
+  "channel": "twitter",
+  "campaign": "launch-week-2026",
+  "created_at": "2026-03-22T00:00:00Z"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `channel` | `string` | Optional. Attribution channel (e.g., `twitter`, `blog`, `conference`). |
+| `campaign` | `string` | Optional. Campaign identifier for grouping referrals. |
+
+### Get Referrer Profile
+
+```
+GET /api/v1/referrer/me
+```
+
+Returns the authenticated user's referral profile, including tier, referral count, credit balance, and revenue share summary.
+
+**Request:**
+
+```bash
+curl https://api.hanzo.ai/v1/referrer/me \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+**Response:**
+
+```json
+{
+  "id": "ref_01HX9K3V2M7NQRST4BCDE5FG6H",
+  "code": "zach42",
+  "tier": "pro",
+  "referral_count": 87,
+  "credit_balance_cents": 435000,
+  "credit_max_cents": 2000000,
+  "credit_expiry_days": 365,
+  "revenue_share_pct": 5.0,
+  "revenue_share_total_cents": 128400,
+  "revenue_share_pending_cents": 3200,
+  "referrals": {
+    "total": 87,
+    "qualified": 82,
+    "pending": 5
+  },
+  "created_at": "2025-06-15T00:00:00Z"
+}
+```
+
+### Validate Referral Code
+
+```
+GET /api/v1/referrer/code/:code
+```
+
+Validates a referral code and returns the referrer's public profile. This endpoint is unauthenticated and used by the signup page to verify codes before account creation.
+
+**Request:**
+
+```bash
+curl https://api.hanzo.ai/v1/referrer/code/zach42
+```
+
+**Response:**
+
+```json
+{
+  "valid": true,
+  "code": "zach42",
+  "referrer_name": "Zach",
+  "credit_amount_cents": 2000,
+  "tier": "pro"
+}
+```
+
+Returns `404` if the code does not exist. Returns `{ "valid": false }` if the code is suspended.
+
+### Claim Referral
+
+```
+POST /api/v1/referral/claim
+```
+
+Claims a referral credit for the authenticated user. Called during or after signup when a referral code was provided. The referred user's account is credited immediately. The referrer's account is credited asynchronously.
+
+**Request:**
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/referral/claim \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "zach42"
+  }'
+```
+
+**Response:**
+
+```json
+{
+  "id": "claim_01HX9M4W3N8OPQRS5TUVW6XY7Z",
+  "code": "zach42",
+  "referrer_id": "ref_01HX9K3V2M7NQRST4BCDE5FG6H",
+  "referred_user_id": "usr_01HX9M4W3N8OPQRS5TUVW6XY7Z",
+  "credit_cents": 2000,
+  "status": "credited",
+  "created_at": "2026-03-22T12:00:00Z"
+}
+```
+
+| Status | Description |
+|--------|-------------|
+| `credited` | Credit applied to the referred user's account. |
+| `pending` | Waiting for the referred user to complete a qualifying action. |
+| `denied` | Claim rejected (duplicate account, fraud, or self-referral). |
+
+## SDK Usage
+
+### Python
+
+```python
+from hanzo import Client
+
+client = Client(api_key="your-hanzo-api-key")
+
+# Create referral link
+referrer = client.referral.create(channel="blog")
+print(f"Share this: {referrer.url}")
+
+# Check your stats
+me = client.referral.me()
+print(f"Tier: {me.tier}, Referrals: {me.referral_count}")
+print(f"Credits: ${me.credit_balance_cents / 100:.2f}")
+print(f"Revenue share earned: ${me.revenue_share_total_cents / 100:.2f}")
+```
+
+### TypeScript
+
+```typescript
+import Hanzo from '@hanzo/node';
+
+const hanzo = new Hanzo({ apiKey: process.env.HANZO_API_KEY });
+
+// Create referral link
+const referrer = await hanzo.referral.create({ channel: 'newsletter' });
+console.log(`Share this: ${referrer.url}`);
+
+// Check your stats
+const me = await hanzo.referral.me();
+console.log(`Tier: ${me.tier}, Referrals: ${me.referral_count}`);
+```
+
+### Go
+
+```go
+package main
+
+import (
+    "context"
+    "fmt"
+    "log"
+
+    "github.com/hanzoai/hanzo-go"
+)
+
+func main() {
+    client := hanzo.NewClient(hanzo.WithAPIKey("your-hanzo-api-key"))
+
+    // Create referral link
+    ref, err := client.Referral.Create(context.Background(), &hanzo.ReferralCreateParams{
+        Channel: hanzo.String("meetup"),
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("Share this: %s\n", ref.URL)
+
+    // Check your stats
+    me, err := client.Referral.Me(context.Background())
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf("Tier: %s, Referrals: %d\n", me.Tier, me.ReferralCount)
+}
+```
+
+## Open Source Fund
+
+Hanzo allocates **25% of referral program revenue** to the Open Source Fund, which pays contributors whose code is used in the platform. This is not a donation -- it is compensation for shipped code running in production.
+
+### How Attribution Works
+
+1. **SBOM generation.** Every Hanzo release produces a Software Bill of Materials listing all dependencies and their versions.
+
+2. **Git blame mapping.** For first-party and forked repositories, line-level authorship is extracted from git history. Each contributor's share is proportional to the lines of code they authored that remain in the current release.
+
+3. **Component weighting.** Not all code is equal. Components are weighted by criticality:
+
+| Component | Weight | Examples |
+|-----------|-------:|---------|
+| Core infrastructure | 2.0x | Gateway, IAM, KMS, Tasks, Commerce |
+| MCP tools & integrations | 1.5x | MCP servers, SDK integrations, connectors |
+| UI & documentation | 1.0x | Console, docs site, examples |
+
+4. **Monthly payouts.** On the first of each month, the fund is distributed proportionally across all eligible contributors. Minimum payout threshold is $50 -- amounts below this roll over to the next month.
+
+### Eligibility
+
+- You must have a merged pull request in a Hanzo open source repository ([github.com/hanzoai](https://github.com/hanzoai)).
+- You must register your payment details at [console.hanzo.ai/contributor](https://console.hanzo.ai/contributor).
+- Your contributions must be in the current SBOM (code that has been removed is no longer eligible).
+- Automated commits (bots, CI, bulk renames) are excluded from attribution.
+
+### Register as a Contributor
+
+```bash
+# Via CLI
+hanzo contributor register --github-username your-username
+
+# Or visit the console
+open https://console.hanzo.ai/contributor
+```
+
+Once registered, your contributions are automatically tracked. No action is required per commit or PR.
+
+## Fraud Prevention
+
+The referral program uses automated fraud detection. The following behaviors will result in immediate suspension of your referral code and forfeiture of pending credits and revenue share:
+
+- **Self-referral.** Creating multiple accounts to refer yourself. Accounts are linked by email domain, IP address, browser fingerprint, and payment method.
+- **Fake accounts.** Referring accounts that never make a billable API call. Referrals only qualify after the referred user completes at least one billable action within 30 days.
+- **Incentive abuse.** Offering cash, gift cards, or other direct compensation in exchange for signups, beyond sharing the platform credit that Hanzo provides.
+- **Trademark misuse.** Misrepresenting yourself as a Hanzo employee, partner, or official representative.
+- **Click fraud.** Using bots, scripts, or paid click farms to generate signups.
+- **Credit cycling.** Referred accounts that exist only to consume credits and never convert to paid usage.
+
+Suspended referrers receive email notification with a link to appeal. Appeals are reviewed within 5 business days.
+
+## Related Services
+
+<Cards>
+  <Card title="Commerce" href="/docs/services/commerce">
+    Billing, credit ledger, and subscription management powering referral payouts
+  </Card>
+  <Card title="IAM" href="/docs/services/iam">
+    Identity resolution and OIDC authentication for referrer and referred users
+  </Card>
+  <Card title="Insights" href="/docs/services/insights">
+    Attribution analytics, conversion funnels, and referral campaign tracking
+  </Card>
+  <Card title="Console" href="/docs/services/console">
+    Dashboard for managing referral codes, viewing stats, and tracking payouts
+  </Card>
+</Cards>

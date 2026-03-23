@@ -25,12 +25,8 @@ import {
 import { useMediaQuery } from '@hanzo/docs-core/utils/use-media-query';
 import { Presence } from '@radix-ui/react-presence';
 import scrollIntoView from 'scroll-into-view-if-needed';
-<<<<<<< HEAD
-import { usePathname } from '@hanzo/docs-core/framework';
-=======
 import { usePathname } from '@hanzo/docs-core/framework';
 import { ScrollArea, ScrollViewport } from '../ui/scroll-area';
->>>>>>> dev
 
 interface SidebarContext {
   open: boolean;
