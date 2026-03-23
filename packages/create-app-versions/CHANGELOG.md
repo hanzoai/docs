@@ -1,4 +1,4 @@
-# create-fumadocs-versions
+# @hanzo/docs-create-app-versions
 
 ## 16.0.79
 
