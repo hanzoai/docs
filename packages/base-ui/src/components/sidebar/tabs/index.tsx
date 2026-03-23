@@ -1,10 +1,5 @@
-<<<<<<< HEAD
-import type * as PageTree from '@hanzo/docs-core/page-tree';
-import type { ReactNode } from 'react';
-=======
 import type { LayoutTab } from '@/layouts/shared';
 import type * as PageTree from '@hanzo/docs-core/page-tree';
->>>>>>> dev
 
 export type SidebarTab = LayoutTab;
 

@@ -1,8 +1,4 @@
 'use client';
-<<<<<<< HEAD
-import type * as PageTree from '@hanzo/docs-core/page-tree';
-import type { BaseLayoutProps } from '@/layouts/shared';
-=======
 import type * as PageTree from '@hanzo/docs-core/page-tree';
 import {
   type BaseLayoutProps,
@@ -14,7 +10,6 @@ import {
   type LayoutTab,
   useLinkItems,
 } from '@/layouts/shared';
->>>>>>> dev
 import { TreeContextProvider } from '@/contexts/tree';
 import { type ComponentProps, createContext, type FC, type ReactNode, use, useMemo } from 'react';
 import { cn } from '@/utils/cn';

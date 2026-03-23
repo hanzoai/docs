@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-import type { Component, Reference, SourceReference } from '@hanzo/docs-cli/build';
-=======
 import type { Component, Reference, SourceReference } from '@hanzo/docs-cli/build';
 import { glob } from 'node:fs/promises';
->>>>>>> dev
 import path from 'node:path';
 
 /**

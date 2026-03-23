@@ -1,11 +1,6 @@
 'use client';
-<<<<<<< HEAD
-import * as Primitive from '@hanzo/docs-core/toc';
-import { type ComponentProps, useEffect, useRef, useState } from 'react';
-=======
 import * as Primitive from '@hanzo/docs-core/toc';
 import { type ComponentProps, useEffect, useEffectEvent, useRef, useState } from 'react';
->>>>>>> dev
 import { cn } from '@/utils/cn';
 import { TocThumb, useTOCItems } from '.';
 import { mergeRefs } from '@/utils/merge-refs';
