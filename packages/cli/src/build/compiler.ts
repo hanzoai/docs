@@ -104,6 +104,7 @@ export class RegistryCompiler {
       name: registry.name,
       info: {
         indexes: [],
+        unlistedIndexes: [],
         env: registry.env,
         variables: registry.variables,
       },
@@ -119,14 +120,13 @@ export class RegistryCompiler {
     );
 
     for (const [input, comp] of builtComps) {
-      if (!input.unlisted) {
-        output.info.indexes.push({
-          name: input.name,
-          title: input.title,
-          description: input.description,
-        });
-      }
+      const arr = input.unlisted ? output.info.unlistedIndexes : output.info.indexes;
 
+      arr.push({
+        name: input.name,
+        title: input.title,
+        description: input.description,
+      });
       output.components.push(comp);
     }
 
@@ -276,8 +276,6 @@ export class ComponentCompiler {
     this.registry = compiler.raw;
   }
 
-  // see https://github.com/shadcn-ui/ui/blob/396275e46a58333caa1fa0a991bd9bc5237d2ee3/packages/shadcn/src/utils/updaters/update-files.ts#L585
-  // to hit the fast-path step, we need to import `target` path first because it's detected from `fileSet`, a set of output file paths
   private toImportPath(file: ComponentFile): string {
     let filePath = file.target ?? file.path;
 

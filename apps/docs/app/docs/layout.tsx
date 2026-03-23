@@ -16,6 +16,7 @@ export default function Layout({ children }: LayoutProps<'/docs'>) {
   const base = baseOptions();
 
   return (
+<<<<<<< HEAD
     <>
       <DocsLayout
         {...base}
@@ -50,6 +51,47 @@ export default function Layout({ children }: LayoutProps<'/docs'>) {
               const meta = source.getNodeMeta(node);
               if (!meta || !node.icon) return option;
               const color = `var(--${getSection(meta.path)}-color, var(--color-fd-foreground))`;
+=======
+    <DocsLayout
+      {...base}
+      tree={source.getPageTree()}
+      // just icon items
+      links={linkItems.filter((item) => item.type === 'icon')}
+      nav={{
+        ...base.nav,
+        title: (
+          <>
+            {logo}
+            <span className="font-medium in-[.uwu]:hidden max-md:hidden">Fumadocs</span>
+          </>
+        ),
+      }}
+      tabs={{
+        transform(option, node) {
+          const meta = source.getNodeMeta(node);
+          if (!meta || !node.icon) return option;
+          const color = `var(--${getSection(meta.path)}-color, var(--color-fd-foreground))`;
+
+          return {
+            ...option,
+            icon: (
+              <div
+                className="[&_svg]:size-full rounded-lg size-full text-(--tab-color) max-md:bg-(--tab-color)/10 max-md:border max-md:p-1.5"
+                style={
+                  {
+                    '--tab-color': color,
+                  } as object
+                }
+              >
+                {node.icon}
+              </div>
+            ),
+          };
+        },
+      }}
+    >
+      {children}
+>>>>>>> dev
 
               return {
                 ...option,

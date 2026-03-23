@@ -1,5 +1,50 @@
 # @fumadocs/base-ui
 
+## 16.7.4
+
+### Patch Changes
+
+- 57c83a5: fix toc
+  - fumadocs-core@16.7.4
+
+## 16.7.3
+
+### Patch Changes
+
+- 9580621: fix sidebar scroll area
+- 7aa66f2: Redesign home layout navigation menu
+  - fumadocs-core@16.7.3
+
+## 16.7.2
+
+### Patch Changes
+
+- 652c725: Simplify internal types
+  - fumadocs-core@16.7.2
+
+## 16.7.1
+
+### Patch Changes
+
+- 11b8691: hotfix
+- 75b0b94: Refactor TOC slot
+  - fumadocs-core@16.7.1
+
+## 16.7.0
+
+### Minor Changes
+
+- 8bdee70: Implement renderer API for replacing layout components, deprecate old options
+- bdffeba: Improved `defineI18nUI()` usage: allow language translations to be defined at root config.
+- f45d703: stabilize Shiki factory API
+
+### Patch Changes
+
+- 3d17757: Improve `<GithubInfo />` component
+- Updated dependencies [f45d703]
+- Updated dependencies [45aa454]
+  - fumadocs-core@16.7.0
+
 ## 16.6.17
 
 ### Patch Changes

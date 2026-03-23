@@ -1,9 +1,13 @@
 import { baseOptions, linkItems, logo } from '@/components/layouts/shared';
 import { source } from '@/lib/source';
 import { getSection } from '@/lib/source/navigation';
+<<<<<<< HEAD
 import { getSidebarTabs } from '@hanzo/docs-base-ui/components/sidebar/tabs/index';
+=======
+>>>>>>> dev
 import type { ReactNode } from 'react';
 import { LayoutClient } from './client';
+import { getLayoutTabs } from '@hanzo/docs-ui/layouts/shared';
 
 export function FluxLayout({ children }: { children: ReactNode }) {
   const base = baseOptions();
@@ -24,7 +28,7 @@ export function FluxLayout({ children }: { children: ReactNode }) {
         ),
       }}
       sidebar={{
-        tabs: getSidebarTabs(source.getPageTree(), {
+        tabs: getLayoutTabs(source.getPageTree(), {
           transform(option, node) {
             const meta = source.getNodeMeta(node);
             if (!meta || !node.icon) return option;

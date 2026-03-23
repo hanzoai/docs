@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 import type { Component, Reference, SourceReference } from '@hanzo/docs-cli/build';
+=======
+import type { Component, Reference, SourceReference } from '@hanzo/docs-cli/build';
+import { glob } from 'node:fs/promises';
+>>>>>>> dev
 import path from 'node:path';
 
 /**
@@ -9,16 +14,44 @@ export function resolveExternal(
   toPackageName: string,
   toRegistryDir: string,
 ): Reference | undefined {
-  if (ref.type !== 'file') return;
+  if (ref.type === 'file') {
+    const file = path.relative(toRegistryDir, ref.file).replaceAll(path.sep, '/');
 
-  const file = path.relative(toRegistryDir, ref.file);
-  if (file.startsWith('contexts/') || /^utils\/use-/.test(file) || file === 'utils/renderer.ts') {
-    return {
-      dep: toPackageName,
-      type: 'dependency',
-      specifier: `${toPackageName}/${removeExtname(file)}`,
-    };
+    if (/^contexts\//.test(file) || /^utils\/use-/.test(file)) {
+      return {
+        dep: toPackageName,
+        type: 'dependency',
+        specifier: `${toPackageName}/${removeExtname(file)}`,
+      };
+    }
   }
+}
+
+export async function findSlotComponents(dir: string): Promise<Component[]> {
+  const slots: Component[] = [];
+
+  for await (const file of glob('layouts/**/slots/*', { cwd: dir })) {
+    const relativePath = path.relative('layouts', file);
+    const name = relativePath
+      .split(path.sep)
+      .filter((v) => v !== 'slots')
+      .join('/')
+      .slice(0, -path.extname(relativePath).length);
+
+    slots.push({
+      name: `slots/${name}`,
+      unlisted: true,
+      files: [
+        {
+          path: file,
+          type: 'layout',
+          target: path.join('<dir>', relativePath),
+        },
+      ],
+    });
+  }
+
+  return slots;
 }
 
 export const commonComponents: Component[] = [
@@ -49,17 +82,6 @@ export const commonComponents: Component[] = [
       {
         type: 'lib',
         path: 'utils/merge-refs.ts',
-      },
-    ],
-  },
-  {
-    name: 'link-item',
-    unlisted: true,
-    files: [
-      {
-        type: 'components',
-        path: 'utils/link-item.tsx',
-        target: '<dir>/layout/link-item.tsx',
       },
     ],
   },

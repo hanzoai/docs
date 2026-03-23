@@ -1,7 +1,23 @@
-import type { ComponentProps, ReactNode } from 'react';
+'use client';
+import {
+  type ComponentProps,
+  createContext,
+  type FC,
+  type ReactNode,
+  use,
+  useEffect,
+  useState,
+} from 'react';
 import { cn } from '@/utils/cn';
+import { I18nLabel, useI18n } from '@/contexts/i18n';
+import { TOC, TOCProvider, type TOCProviderProps, type TOCProps } from './slots/toc';
+import { Footer, type FooterProps } from './slots/footer';
+import { Breadcrumb, type BreadcrumbProps } from './slots/breadcrumb';
+import { Container } from './slots/container';
+import type { TOCItemType } from '@hanzo/docs-core/toc';
 import { buttonVariants } from '@/components/ui/button';
 import { Edit } from 'lucide-react';
+<<<<<<< HEAD
 import { I18nLabel } from '@/contexts/i18n';
 import {
   type BreadcrumbProps,
@@ -17,19 +33,11 @@ import * as TocDefault from '@/components/toc/default';
 import * as TocClerk from '@/components/toc/clerk';
 import { TOCProvider, TOCScrollArea } from '@/components/toc';
 import { ChildrenRenderer, renderer, type Renderer } from '@/utils/renderer';
+=======
+>>>>>>> dev
 
-export interface DocsPageProps {
+export interface DocsPageProps extends ComponentProps<'article'> {
   toc?: TOCItemType[];
-  /**
-   * - `multiple` (default): Accept multiple active items
-   * - `single`: Only accept one active item at most
-   * */
-  tocMode?: 'single' | 'multiple';
-  TOC?: Renderer<TOCProps>;
-  /** Footer navigation, located under the page body. */
-  Footer?: Renderer<FooterProps>;
-  Container?: Renderer<ComponentProps<'div'>>;
-  Breadcrumb?: Renderer<BreadcrumbProps>;
 
   /**
    * Extend the page to fill all available space
@@ -38,107 +46,101 @@ export interface DocsPageProps {
    */
   full?: boolean;
   children?: ReactNode;
+  slots?: Partial<DocsPageSlots>;
 
-  /** @deprecated use `Footer` instead. */
   footer?: FooterOptions;
-  /** @deprecated use `Container` instead. */
-  className?: string;
-  /** @deprecated use `Breadcrumb` instead. */
   breadcrumb?: BreadcrumbOptions;
-  /** @deprecated use `TOC` instead, or `tocMode` for enabling `single`. */
   tableOfContent?: TableOfContentOptions;
 }
 
-interface TableOfContentOptions extends Pick<AnchorProviderProps, 'single'>, TOCProps {
+interface TableOfContentOptions extends Pick<TOCProviderProps, 'single'>, TOCProps {
   enabled?: boolean;
+  /**
+   * @deprecated use `slots.toc` instead.
+   */
   component?: ReactNode;
 }
 
 interface BreadcrumbOptions extends BreadcrumbProps {
   enabled?: boolean;
+  /**
+   * @deprecated use `slots.breadcrumb` instead.
+   */
   component?: ReactNode;
 }
 
 interface FooterOptions extends FooterProps {
   enabled?: boolean;
+  /**
+   * @deprecated use `slots.footer` instead.
+   */
   component?: ReactNode;
 }
 
-export interface TOCProps {
-  container?: ComponentProps<typeof PageTOCPopover>;
-  trigger?: ComponentProps<typeof PageTOCPopoverTrigger>;
-  content?: ComponentProps<typeof PageTOCPopoverContent>;
+interface DocsPageSlots {
+  toc: {
+    provider: FC<TOCProviderProps>;
+    main: FC<TOCProps>;
+  };
+  container: FC<ComponentProps<'article'>>;
+  footer: FC<FooterProps>;
+  breadcrumb: FC<BreadcrumbProps>;
+}
 
-  /**
-   * Custom content in TOC container, before the main TOC
-   */
-  header?: ReactNode;
+type PageSlotsProps = Pick<DocsPageProps, 'full'>;
 
-  /**
-   * Custom content in TOC container, after the main TOC
-   */
-  footer?: ReactNode;
+const PageContext = createContext<{
+  props: PageSlotsProps;
+  slots: DocsPageSlots;
+} | null>(null);
 
-  /**
-   * @defaultValue 'normal'
-   */
-  style?: 'normal' | 'clerk';
+export function useDocsPage() {
+  const context = use(PageContext);
+  if (!context)
+    throw new Error(
+      'Please use page components under <DocsPage /> (`@hanzo/docs-ui/layouts/flux/page`).',
+    );
+  return context;
 }
 
 export function DocsPage({
-  tableOfContent: tocProps = {},
-  TOC: TOCRenderer,
-  footer = {},
-  Footer = footer.enabled === false
-    ? false
-    : footer.component
-      ? new ChildrenRenderer(footer.component)
-      : footer,
-  className,
-  Container = { className },
-  breadcrumb = {},
-  Breadcrumb = breadcrumb.enabled === false
-    ? false
-    : breadcrumb.component
-      ? new ChildrenRenderer(breadcrumb.component)
-      : breadcrumb,
+  tableOfContent: { enabled: tocEnabled, single, ...tocProps } = {},
+  breadcrumb: { enabled: breadcrumbEnabled = true, ...breadcrumb } = {},
+  footer: { enabled: footerEnabled = true, ...footer } = {},
   full = false,
   toc = [],
-  tocMode = tocProps.single ? 'single' : 'multiple',
+  slots: defaultSlots = {},
   children,
+  ...containerProps
 }: DocsPageProps) {
-  if (tocProps.enabled ?? (toc.length > 0 || tocProps.header || tocProps.footer)) {
-    TOCRenderer ??= tocProps.component ? new ChildrenRenderer(tocProps.component) : tocProps;
-  } else {
-    TOCRenderer = false;
-  }
+  tocEnabled ??= Boolean(toc.length > 0 || tocProps.header || tocProps.footer);
 
-  const renderBreadcrumb = renderer(Breadcrumb, PageBreadcrumb);
-  const renderFooter = renderer(Footer, PageFooter);
-  const renderContainer = renderer(Container, 'article');
-  const renderToc = renderer(TOCRenderer, TOC);
+  const slots: DocsPageSlots = {
+    breadcrumb: defaultSlots.breadcrumb ?? Breadcrumb,
+    footer: defaultSlots.footer ?? Footer,
+    container: defaultSlots.container ?? Container,
+    toc: defaultSlots.toc ?? {
+      provider: TOCProvider,
+      main: TOC,
+    },
+  };
 
   return (
-    <TOCProvider single={tocMode === 'single'} toc={renderToc ? toc : []}>
-      {renderToc?.((t) => t ?? {})}
-      {renderContainer?.((t) => ({
-        id: 'nd-page',
-        'data-full': full,
-        children: (
-          <>
-            {renderBreadcrumb?.((t) => t ?? {})}
-            {children}
-            {renderFooter?.((t) => t ?? {})}
-          </>
-        ),
-        ...t,
-        className: cn(
-          'flex flex-col w-full max-w-[900px] mx-auto [grid-area:main] px-4 py-6 gap-4 md:px-6 md:pt-8 xl:px-8 xl:pt-14',
-          full ? 'max-w-[1200px]' : 'xl:layout:[--fd-toc-width:268px]',
-          t?.className,
-        ),
-      }))}
-    </TOCProvider>
+    <PageContext
+      value={{
+        props: { full },
+        slots,
+      }}
+    >
+      <slots.toc.provider single={single} toc={tocEnabled ? toc : []}>
+        {tocEnabled && (tocProps.component ?? <slots.toc.main {...tocProps} />)}
+        <slots.container {...containerProps}>
+          {breadcrumbEnabled && (breadcrumb.component ?? <slots.breadcrumb {...breadcrumb} />)}
+          {children}
+          {footerEnabled && (footer.component ?? <slots.footer {...footer} />)}
+        </slots.container>
+      </slots.toc.provider>
+    </PageContext>
   );
 }
 
@@ -152,8 +154,8 @@ export function EditOnGitHub(props: ComponentProps<'a'>) {
         buttonVariants({
           color: 'secondary',
           size: 'sm',
-          className: 'gap-1.5 not-prose',
         }),
+        'gap-1.5 not-prose',
         props.className,
       )}
     >
@@ -197,21 +199,25 @@ export function DocsTitle({ children, className, ...props }: ComponentProps<'h1'
   );
 }
 
-export function TOC({ container, trigger, content, header, footer, style }: TOCProps) {
+export function PageLastUpdate({
+  date: value,
+  ...props
+}: Omit<ComponentProps<'p'>, 'children'> & { date: Date }) {
+  const { text } = useI18n();
+  const [date, setDate] = useState('');
+
+  useEffect(() => {
+    // to the timezone of client
+    setDate(value.toLocaleDateString());
+  }, [value]);
+
   return (
-    <PageTOCPopover {...container}>
-      <PageTOCPopoverContent {...content}>
-        {header}
-        <TOCScrollArea>
-          {style === 'clerk' ? <TocClerk.TOCItems /> : <TocDefault.TOCItems />}
-        </TOCScrollArea>
-        {footer}
-      </PageTOCPopoverContent>
-      <PageTOCPopoverTrigger {...trigger} />
-    </PageTOCPopover>
+    <p {...props} className={cn('text-sm text-fd-muted-foreground', props.className)}>
+      {text.lastUpdate} {date}
+    </p>
   );
 }
 
-export { PageLastUpdate, PageBreadcrumb, PageFooter } from './client';
-export type { FooterProps, BreadcrumbProps } from './client';
+export { type FooterProps, Footer as PageFooter } from './slots/footer';
+export { type BreadcrumbProps, Breadcrumb as PageBreadcrumb } from './slots/breadcrumb';
 export { MarkdownCopyButton, ViewOptionsPopover } from '@/layouts/shared/page-actions';

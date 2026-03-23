@@ -1,5 +1,57 @@
 # create-fumadocs-versions
 
+## 16.0.79
+
+### Patch Changes
+
+- fumadocs-ui@16.7.4
+
+## 16.0.78
+
+### Patch Changes
+
+- Updated dependencies [57c83a5]
+  - fumadocs-ui@16.7.4
+  - fumadocs-core@16.7.4
+
+## 16.0.77
+
+### Patch Changes
+
+- fumadocs-core@16.7.3
+- fumadocs-ui@16.7.3
+
+## 16.0.76
+
+### Patch Changes
+
+- Updated dependencies [652c725]
+  - fumadocs-ui@16.7.2
+  - fumadocs-core@16.7.2
+
+## 16.0.75
+
+### Patch Changes
+
+- Updated dependencies [11b8691]
+- Updated dependencies [75b0b94]
+  - fumadocs-ui@16.7.1
+  - fumadocs-core@16.7.1
+
+## 16.0.74
+
+### Patch Changes
+
+- Updated dependencies [8bdee70]
+- Updated dependencies [3144149]
+- Updated dependencies [bdffeba]
+- Updated dependencies [3d17757]
+- Updated dependencies [f45d703]
+- Updated dependencies [45aa454]
+  - fumadocs-ui@16.7.0
+  - fumadocs-mdx@14.2.11
+  - fumadocs-core@16.7.0
+
 ## 16.0.73
 
 ### Patch Changes
