@@ -4,7 +4,6 @@
 
 ### Patch Changes
 
-- 8b32533: use `mdast-util-to-markdown` for accurate stringification
 - 55479b3: Improve TOC detection logic
 
 ## 16.7.4
