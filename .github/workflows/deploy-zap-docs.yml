@@ -2,7 +2,7 @@ name: Deploy ZAP Docs
 
 on:
   push:
-    branches: [dev]
+    branches: [main, dev]
     paths:
       - 'apps/zap-docs/**'
       - 'packages/**'
@@ -16,8 +16,6 @@ jobs:
     permissions:
       contents: read
       deployments: write
-      pages: write
-      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -65,12 +63,14 @@ jobs:
 
       - name: Create Cloudflare Pages project (if needed)
         continue-on-error: true
-        run: pnpm dlx wrangler pages project create zap-docs --production-branch=dev
+        run: pnpm dlx wrangler pages project create hanzo-zap-docs --production-branch=main
         env:
           CLOUDFLARE_API_TOKEN: ${{ steps.kms.outputs.cf_token }}
           CLOUDFLARE_ACCOUNT_ID: ${{ steps.kms.outputs.cf_account }}
 
-      - run: pnpm dlx wrangler pages deploy apps/zap-docs/out --project-name=zap-docs --commit-dirty=true
+      - name: Deploy to Cloudflare Pages
+        working-directory: apps/zap-docs
+        run: pnpm dlx wrangler pages deploy out --project-name=hanzo-zap-docs --commit-dirty=true
         env:
           CLOUDFLARE_API_TOKEN: ${{ steps.kms.outputs.cf_token }}
           CLOUDFLARE_ACCOUNT_ID: ${{ steps.kms.outputs.cf_account }}
