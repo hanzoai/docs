@@ -60,7 +60,6 @@ export function MarkdownCopyButton({
     </button>
   );
 }
-
 /**
  * see https://fumadocs.dev/docs/integrations/llms#page-actions to customise.
  */
@@ -72,12 +71,12 @@ export function ViewOptionsPopover({
   /**
    * A URL to the raw Markdown/MDX content of page
    */
-  markdownUrl: string;
+  markdownUrl?: string;
 
   /**
    * Source file URL on GitHub
    */
-  githubUrl: string;
+  githubUrl?: string;
 }) {
   const pathname = usePathname();
   const items = useMemo(() => {
@@ -86,7 +85,7 @@ export function ViewOptionsPopover({
     const q = `Read ${pageUrl}, I want to ask questions about it.`;
 
     return [
-      {
+      githubUrl && {
         title: 'Open in GitHub',
         href: githubUrl,
         icon: (
@@ -96,7 +95,7 @@ export function ViewOptionsPopover({
           </svg>
         ),
       },
-      {
+      markdownUrl && {
         title: 'View as Markdown',
         href: markdownUrl,
         icon: <TextIcon />,
@@ -217,22 +216,21 @@ export function ViewOptionsPopover({
           text: q,
         })}`,
       },
-    ];
+    ].filter((v) => !!v);
   }, [githubUrl, markdownUrl, pathname]);
 
   return (
     <Popover>
       <PopoverTrigger
         {...props}
-        className={(s) =>
+        className={(state) =>
           cn(
             buttonVariants({
               color: 'secondary',
               size: 'sm',
             }),
-            'gap-2',
-            s.open && 'bg-fd-accent text-fd-accent-foreground',
-            typeof props.className === 'function' ? props.className(s) : props.className,
+            'gap-2 data-[state=open]:bg-fd-accent data-[state=open]:text-fd-accent-foreground',
+            typeof props.className === 'function' ? props.className(state) : props.className,
           )
         }
       >

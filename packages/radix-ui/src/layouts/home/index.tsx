@@ -1,62 +1,81 @@
-import type { ComponentProps } from 'react';
-import { cn } from '@/utils/cn';
-import { type BaseLayoutProps, type NavOptions } from '@/layouts/shared';
-import { Header } from '@/layouts/home/client';
-import { renderer, type Renderer } from '@/utils/renderer';
+'use client';
 
-export interface HomeLayoutProps extends BaseLayoutProps {
-  Container?: Renderer<ComponentProps<'main'>>;
-  nav?: Partial<
-    NavOptions & {
-      /**
-       * Open mobile menu when hovering the trigger
-       */
-      enableHoverToOpen?: boolean;
-    }
-  >;
+import type { BaseLayoutProps, NavOptions } from '@/layouts/shared';
+import { type ComponentProps, createContext, type FC, use } from 'react';
+import { baseSlots, useLinkItems, type BaseSlots, type BaseSlotsProps } from '@/layouts/shared';
+import type { LinkItemType } from '@/layouts/shared';
+import { Container } from './slots/container';
+import { Header } from './slots/header';
+
+export interface HomeLayoutProps extends BaseLayoutProps, ComponentProps<'main'> {
+  nav?: Nav;
+  slots?: Partial<HomeSlots>;
 }
 
-export function HomeLayout({
-  nav = {},
-  links,
-  githubUrl,
-  i18n,
-  LanguageSwitch,
-  ThemeSwitch,
-  SearchToggle,
-  LargeSearchToggle,
-  themeSwitch = {},
-  searchToggle,
-  Container,
-  children,
-  ...rest
-}: HomeLayoutProps & ComponentProps<'main'>) {
-  const renderMain = renderer(Container ?? rest, 'main');
+interface Nav extends NavOptions {
+  /**
+   * Open mobile menu when hovering the trigger
+   */
+  enableHoverToOpen?: boolean;
+}
 
-  return renderMain?.((t) => ({
-    id: 'nd-home-layout',
-    ...t,
-    ...rest,
-    className: cn('flex flex-1 flex-col [--fd-layout-width:1400px]', t?.className, rest.className),
-    children: (
-      <>
-        {nav.enabled !== false &&
-          (nav.component ?? (
-            <Header
-              links={links}
-              nav={nav}
-              themeSwitch={themeSwitch}
-              searchToggle={searchToggle}
-              i18n={i18n}
-              LanguageSwitch={LanguageSwitch}
-              ThemeSwitch={ThemeSwitch}
-              SearchToggle={SearchToggle}
-              LargeSearchToggle={LargeSearchToggle}
-              githubUrl={githubUrl}
-            />
-          ))}
+export interface HomeSlots extends BaseSlots {
+  header: FC<ComponentProps<'header'>>;
+  container: FC<ComponentProps<'main'>>;
+}
+
+const LayoutContext = createContext<{
+  props: BaseSlotsProps<HomeLayoutProps>;
+  navItems: LinkItemType[];
+  menuItems: LinkItemType[];
+  slots: HomeSlots;
+} | null>(null);
+
+export function useHomeLayout() {
+  const context = use(LayoutContext);
+  if (!context)
+    throw new Error('Please use this component under <HomeLayout /> (`@hanzo/docs-ui/layouts/home`).');
+  return context;
+}
+
+const { useProvider } = baseSlots({
+  useProps() {
+    return useHomeLayout().props;
+  },
+});
+
+export function HomeLayout(props: HomeLayoutProps) {
+  const {
+    nav: { enabled: navEnabled = true } = {},
+    slots: defaultSlots,
+    children,
+    i18n: _i18n,
+    githubUrl: _githubUrl,
+    links: _links,
+    themeSwitch: _themeSwitch,
+    searchToggle: _searchToggle,
+    ...rest
+  } = props;
+  const { baseSlots, baseProps } = useProvider(props);
+  const linkItems = useLinkItems(props);
+  const slots: HomeSlots = {
+    ...baseSlots,
+    header: defaultSlots?.header ?? Header,
+    container: defaultSlots?.container ?? Container,
+  };
+
+  return (
+    <LayoutContext
+      value={{
+        props: baseProps,
+        slots,
+        ...linkItems,
+      }}
+    >
+      <slots.container {...rest}>
+        {navEnabled && <slots.header />}
         {children}
-      </>
-    ),
-  }));
+      </slots.container>
+    </LayoutContext>
+  );
 }
