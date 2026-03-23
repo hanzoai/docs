@@ -90,16 +90,8 @@ export async function customise(client: RegistryClient) {
           ],
         }),
       target: (v): Promise<TargetInfo | symbol> => {
-<<<<<<< HEAD
-        if (v.results.layout !== 'docs')
-          return Promise.resolve({
-            target: [`${registry}/layouts/home`],
-            replace: [['@hanzo/docs-ui/layouts/home', `@/components/layout/home`]],
-          });
-=======
         const selected = v.results.layout!;
         if (selected.id === 'home') return Promise.resolve(selected);
->>>>>>> dev
 
         return select<TargetInfo>({
           message: 'Which part do you want to customise?',
@@ -115,47 +107,6 @@ export async function customise(client: RegistryClient) {
               value: {
                 id: 'docs-min',
                 target: ['layouts/docs-min'],
-<<<<<<< HEAD
-                replace: [
-                  ['@hanzo/docs-ui/layouts/docs', '@/components/layout/docs'],
-                  ['@hanzo/docs-ui/layouts/docs/page', '@/components/layout/docs/page'],
-                ],
-              },
-            },
-            {
-              label: 'Start from default layout',
-              value: {
-                target: [`${registry}/layouts/docs`],
-                replace: [
-                  ['@hanzo/docs-ui/layouts/docs', '@/components/layout/docs'],
-                  ['@hanzo/docs-ui/layouts/docs/page', '@/components/layout/docs/page'],
-                ],
-              },
-              hint: 'useful for adjusting small details.',
-            },
-            {
-              label: 'Start from Notebook layout',
-              value: {
-                target: [`${registry}/layouts/notebook`],
-                replace: [
-                  ['@hanzo/docs-ui/layouts/notebook', '@/components/layout/notebook'],
-                  ['@hanzo/docs-ui/layouts/notebook/page', '@/components/layout/notebook/page'],
-                ],
-              },
-              hint: 'useful for adjusting small details.',
-            },
-            {
-              label: 'Start from Flux layout',
-              value: {
-                target: [`${registry}/layouts/flux`],
-                replace: [
-                  ['@hanzo/docs-ui/layouts/flux', '@/components/layout/flux'],
-                  ['@hanzo/docs-ui/layouts/flux/page', '@/components/layout/flux/page'],
-                ],
-              },
-              hint: 'useful for adjusting small details.',
-            },
-=======
                 print() {
                   printLayout(
                     ['@hanzo/docs-ui/layouts/docs', '@/layouts/docs'],
@@ -207,7 +158,6 @@ export async function customise(client: RegistryClient) {
                 } as TargetInfo,
               };
             }),
->>>>>>> dev
           ],
         });
       },

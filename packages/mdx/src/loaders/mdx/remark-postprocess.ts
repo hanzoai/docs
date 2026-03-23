@@ -4,12 +4,8 @@ import { visit } from 'unist-util-visit';
 import { valueToEstree } from 'estree-util-value-to-estree';
 import { removePosition } from 'unist-util-remove-position';
 import { flattenNode } from './mdast-utils';
-<<<<<<< HEAD
-import { remarkLLMs, type LLMsOptions } from '@hanzo/docs-core/mdx-plugins/remark-llms';
-=======
 import type { LLMsOptions } from '@hanzo/docs-core/mdx-plugins';
 import { remarkLLMs } from '@hanzo/docs-core/mdx-plugins/remark-llms';
->>>>>>> dev
 
 export interface ExtractedReference {
   href: string;

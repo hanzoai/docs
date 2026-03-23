@@ -3,11 +3,7 @@ import { type CompileOptions, createProcessor } from '@mdx-js/mdx';
 import type { MDXComponents } from 'mdx/types';
 import { parseFrontmatter, pluginOption, type ResolvePlugins } from './utils';
 import type { Compatible, VFile } from 'vfile';
-<<<<<<< HEAD
-import type { TableOfContents } from '@hanzo/docs-core/toc';
-=======
 import type { TOCItemType } from '@hanzo/docs-core/toc';
->>>>>>> dev
 import { executeMdx, type MdxContent } from '@/render';
 import { pathToFileURL } from 'node:url';
 

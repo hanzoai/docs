@@ -1,40 +1,6 @@
-<<<<<<< HEAD
-import {
-  type ComponentProps,
-  createElement,
-  type FC,
-  type HTMLAttributes,
-  type ReactNode,
-  useMemo,
-} from 'react';
-import {
-  type BaseLayoutProps,
-  parseLayoutProps,
-  renderTitleNav,
-  useLinkItems,
-} from '@/layouts/shared';
-import {
-  Sidebar,
-  SidebarCollapseTrigger,
-  SidebarContent,
-  SidebarDrawer,
-  SidebarLinkItem,
-  SidebarPageTree,
-  SidebarTrigger,
-  SidebarViewport,
-} from './sidebar';
-import { TreeContextProvider } from '@/contexts/tree';
-import { cn } from '@/utils/cn';
-import { buttonVariants } from '@/components/ui/button';
-import { Languages, Sidebar as SidebarIcon, X } from 'lucide-react';
-import { LanguageToggle } from '@/layouts/shared/language-toggle';
-import { ThemeToggle } from '@/layouts/shared/theme-toggle';
-import type * as PageTree from '@hanzo/docs-core/page-tree';
-=======
 import type * as PageTree from '@hanzo/docs-core/page-tree';
 import { type HTMLAttributes, useMemo } from 'react';
 import type { SidebarProps, SidebarProviderProps } from './slots/sidebar';
->>>>>>> dev
 import {
   type GetLayoutTabsOptions,
   type LayoutTab,
