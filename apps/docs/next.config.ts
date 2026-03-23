@@ -53,9 +53,9 @@ const config: NextConfig = {
 
       // (a) fumadocs -> @hanzo/docs equivalents (real components/APIs)
 
-      'fumadocs-ui': '@hanzo/docs-base-ui',
-      'fumadocs-core': '@hanzo/docs-core',
-      'fumadocs-mdx': '@hanzo/docs-mdx',
+      '@hanzo/docs-ui': '@hanzo/docs-base-ui',
+      '@hanzo/docs-core': '@hanzo/docs-core',
+      '@hanzo/docs-mdx': '@hanzo/docs-mdx',
       '@hanzo/docs-core': '@hanzo/docs-core',
       '@hanzo/docs-mdx': '@hanzo/docs-mdx',
 
@@ -164,7 +164,7 @@ const config: NextConfig = {
   ],
   typescript: {
 
-    // Upstream project docs import fumadocs-ui which is aliased to @hanzo/docs-base-ui
+    // Upstream project docs import @hanzo/docs-ui which is aliased to @hanzo/docs-base-ui
     // at webpack level, but TS type-checker doesn't see webpack aliases.
     ignoreBuildErrors: true,
   },
