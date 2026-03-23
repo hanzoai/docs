@@ -20,6 +20,11 @@ import { remarkMdxMermaid } from '@hanzo/docs-core/mdx-plugins/remark-mdx-mermai
 import { Mermaid } from '@/components/mermaid';
 import type { ComponentProps, ReactNode } from 'react';
 import { Image } from '@/components/image';
+import { AISearch, AISearchPanel, AISearchTrigger } from '@/components/ai/search';
+import { cn } from '@/lib/cn';
+import { buttonVariants } from '@hanzo/docs-ui/components/ui/button';
+import { MessageCircleIcon } from 'lucide-react';
+import { isAISupported } from '@/lib/ai';
 
 const compiler = createMarkdownCompiler({
   remarkPlugins: [
@@ -106,7 +111,30 @@ async function MdContent({
   const { DocsBody, DocsTitle, DocsPage, DocsDescription } = components.page;
 
   async function renderContainer(children: ReactNode) {
-    return <DocsLayout {...await layout.docs()}>{children}</DocsLayout>;
+    const hasAI = await isAISupported();
+    return (
+      <DocsLayout {...await layout.docs()}>
+        {hasAI && (
+          <AISearch>
+            <AISearchPanel />
+            <AISearchTrigger
+              position="float"
+              className={cn(
+                buttonVariants({
+                  variant: 'secondary',
+                  className: 'text-fd-muted-foreground rounded-2xl',
+                }),
+              )}
+            >
+              <MessageCircleIcon className="size-4.5" />
+              Ask AI
+            </AISearchTrigger>
+          </AISearch>
+        )}
+
+        {children}
+      </DocsLayout>
+    );
   }
 
   if (!page) {
@@ -115,7 +143,7 @@ async function MdContent({
         <DocsPage>
           <DocsTitle>Home</DocsTitle>
           <DocsDescription>
-            You can see all Mardkwon files under the project directory.
+            You can see all Markdown files under the project directory.
           </DocsDescription>
           <Cards>
             {source.getPages().map((page) => {

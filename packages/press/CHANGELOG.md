@@ -1,6 +1,7 @@
 # fumapress
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 ## 0.0.9
 
 ### Patch Changes
@@ -30,6 +31,53 @@
 
 ## 0.0.8
 =======
+=======
+## 0.1.16
+
+### Patch Changes
+
+- Updated dependencies [57c83a5]
+  - fumadocs-ui@16.7.4
+  - fumadocs-core@16.7.4
+
+## 0.1.15
+
+### Patch Changes
+
+- fumadocs-core@16.7.3
+- fumadocs-ui@16.7.3
+
+## 0.1.14
+
+### Patch Changes
+
+- Updated dependencies [652c725]
+  - fumadocs-ui@16.7.2
+  - fumadocs-core@16.7.2
+
+## 0.1.13
+
+### Patch Changes
+
+- Updated dependencies [11b8691]
+- Updated dependencies [75b0b94]
+  - fumadocs-ui@16.7.1
+  - fumadocs-core@16.7.1
+
+## 0.1.12
+
+### Patch Changes
+
+- aa7e96a: Support AI Chat via `OPENROUTER_API_KEY` or custom `ai.createModel` config
+- Updated dependencies [8bdee70]
+- Updated dependencies [bdffeba]
+- Updated dependencies [3d17757]
+- Updated dependencies [f45d703]
+- Updated dependencies [45aa454]
+  - fumadocs-ui@16.7.0
+  - fumadocs-core@16.7.0
+
+>>>>>>> dev
 ## 0.1.11
 >>>>>>> upstream/dev
 

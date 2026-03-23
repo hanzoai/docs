@@ -1,5 +1,32 @@
 # create-next-docs-app
 
+## 16.0.79
+
+### Patch Changes
+
+- Updated dependencies [823d880]
+  - @fumadocs/cli@1.3.2
+
+## 16.0.78
+
+## 16.0.77
+
+## 16.0.76
+
+## 16.0.75
+
+### Patch Changes
+
+- Updated dependencies [e201942]
+  - @fumadocs/cli@1.3.1
+
+## 16.0.74
+
+### Patch Changes
+
+- Updated dependencies [0ddaa8a]
+  - @fumadocs/cli@1.3.0
+
 ## 16.0.73
 
 ## 16.0.72

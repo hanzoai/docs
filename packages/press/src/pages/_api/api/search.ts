@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { createFromSource } from '@hanzo/docs-core/search/server';
+=======
+import { flexsearchFromSource } from '@hanzo/docs-core/search/flexsearch';
+>>>>>>> dev
 import { getSource, Source } from '@/lib/source';
 import { revalidable } from '@/lib/revalidable';
 import { structure } from '@hanzo/docs-core/mdx-plugins/remark-structure';
@@ -6,8 +10,7 @@ import { getConfigRuntime } from '@/config/load-runtime';
 
 const getServer = revalidable({
   async create(source: Source) {
-    return createFromSource(source, {
-      language: 'english',
+    return flexsearchFromSource(source, {
       buildIndex(page) {
         return {
           id: page.absolutePath!,
