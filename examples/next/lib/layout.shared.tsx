@@ -1,16 +1,11 @@
-import type { BaseLayoutProps } from '@hanzo/docs-base-ui/layouts/shared';
-
-// fill this with your actual GitHub info, for example:
-export const gitConfig = {
-  user: 'hanzoai',
-  repo: 'docs',
-  branch: 'main',
-};
+import type { BaseLayoutProps } from '@hanzo/docs-ui/layouts/shared';
+import { appName, gitConfig } from './shared';
 
 export function baseOptions(): BaseLayoutProps {
   return {
     nav: {
-      title: 'My App',
+      // JSX supported
+      title: appName,
     },
     githubUrl: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,
   };
