@@ -28,6 +28,14 @@ const config: NextConfig = {
   basePath: isGitHubPages ? '/docs' : undefined,
   assetPrefix: assetPrefix || undefined,
   reactStrictMode: true,
+  async redirects() {
+    return [
+      { source: '/api', destination: '/docs/openapi', permanent: true },
+      { source: '/api/:path*', destination: '/docs/openapi/:path*', permanent: true },
+      { source: '/tutorials', destination: '/docs/services', permanent: true },
+      { source: '/tutorials/:path*', destination: '/docs/services/:path*', permanent: true },
+    ];
+  },
   experimental: {
     // Reduce peak memory during webpack compilation for large builds.
     webpackMemoryOptimizations: true,
