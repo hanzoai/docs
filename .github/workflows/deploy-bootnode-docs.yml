@@ -1,0 +1,55 @@
+name: Deploy Bootnode Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/bootnode-docs/**'
+      - 'packages/**'
+      - '.github/workflows/deploy-bootnode-docs.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: hanzo-deploy-linux-amd64
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build --filter bootnode-docs
+
+      - name: Load deploy secrets from KMS
+        id: kms
+        env:
+          KMS_CLIENT_ID: ${{ secrets.KMS_CLIENT_ID }}
+          KMS_CLIENT_SECRET: ${{ secrets.KMS_CLIENT_SECRET }}
+          KMS_ENDPOINT: ${{ vars.KMS_ENDPOINT || 'https://kms.hanzo.ai' }}
+        run: |
+          if [ -n "${KMS_CLIENT_ID}" ] && [ -n "${KMS_CLIENT_SECRET}" ]; then
+            HANZO_API_KEY=$(curl -sf "${KMS_ENDPOINT}/api/v1/auth/universal-auth/login" \
+              -H "Content-Type: application/json" \
+              -d "{\"clientId\":\"${KMS_CLIENT_ID}\",\"clientSecret\":\"${KMS_CLIENT_SECRET}\"}" | jq -r '.accessToken')
+          fi
+          response=$(curl -sf "${KMS_ENDPOINT}/api/v3/secrets/raw?workspaceId=e1359bf4-31b4-4dfa-bb90-323e2c298ad8&secretPath=/deploy&environment=prod" \
+            -H "Authorization: Bearer ${HANZO_API_KEY}" 2>/dev/null || echo "")
+          if [ -n "$response" ]; then
+            cf_token=$(echo "$response" | jq -r '.secrets[] | select(.secretKey=="CLOUDFLARE_API_TOKEN") | .secretValue // empty')
+            cf_account=$(echo "$response" | jq -r '.secrets[] | select(.secretKey=="CLOUDFLARE_ACCOUNT_ID") | .secretValue // empty')
+          fi
+          echo "::add-mask::${cf_token}"
+          echo "::add-mask::${cf_account}"
+          echo "cf_token=${cf_token}" >> "$GITHUB_OUTPUT"
+          echo "cf_account=${cf_account}" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to Cloudflare Pages
+        run: npx wrangler pages deploy apps/bootnode-docs/out --project-name=bootnode-docs --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ steps.kms.outputs.cf_token }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ steps.kms.outputs.cf_account }}
