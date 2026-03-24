@@ -19,6 +19,10 @@ const sources: Record<string, any> = {
 if (hasSpecs) {
   sources.openapi = await openapiSource(openapi, {
     baseDir: 'openapi/(generated)',
+    meta: {
+      folderStyle: 'separator',
+    },
+    groupBy: 'tag',
   });
 }
 
@@ -30,6 +34,7 @@ export const source = loader(multiple(sources), {
     ...(hasSpecs ? [openapiPlugin()] : []),
   ],
 });
+>>>>>>> 5325290cd (Docs: enable separators for OpenAPI demo)
 
 function pageTreeCodeTitles(): LoaderPlugin {
   return {
