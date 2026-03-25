@@ -1,5 +1,14 @@
 # fumadocs-ui
 
+## 16.7.5
+
+### Patch Changes
+
+- 55479b3: Improve TOC detection logic
+- Updated dependencies [8b32533]
+- Updated dependencies [55479b3]
+  - @hanzo/docs-core@16.7.5
+
 ## 16.7.4
 
 ### Patch Changes
