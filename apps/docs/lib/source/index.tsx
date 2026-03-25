@@ -34,7 +34,6 @@ export const source = loader(multiple(sources), {
     ...(hasSpecs ? [openapiPlugin()] : []),
   ],
 });
->>>>>>> 5325290cd (Docs: enable separators for OpenAPI demo)
 
 function pageTreeCodeTitles(): LoaderPlugin {
   return {
