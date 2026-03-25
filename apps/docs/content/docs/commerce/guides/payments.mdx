@@ -301,7 +301,7 @@ import "github.com/hanzoai/commerce/util/webhook"
 
 func handleWebhook(c *gin.Context) {
     payload, err := io.ReadAll(c.Request.Body)
-    signature := c.GetHeader("X-Hanzo-Signature")
+    signature := c.GetHeader("X-Webhook-Signature")
 
     if err := webhook.Verify(payload, signature, webhookSecret); err != nil {
         c.JSON(401, gin.H{"error": "invalid signature"})
