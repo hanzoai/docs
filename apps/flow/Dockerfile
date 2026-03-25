@@ -12,8 +12,5 @@ COPY apps/flow/ ./apps/flow/
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @hanzo/flow-site build
 
-FROM nginx:alpine
-COPY --from=builder /app/apps/flow/out /usr/share/nginx/html
-COPY apps/flow/nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+FROM ghcr.io/hanzoai/static:latest
+COPY --from=builder /app/apps/flow/out /srv

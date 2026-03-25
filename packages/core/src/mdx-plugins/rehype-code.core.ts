@@ -101,7 +101,6 @@ export function createRehypeCode<
       highlighter = out.highlighter;
       options = out.options;
     } else {
-      // TODO: When newer Shiki supported it, register lang alias dynamically instead of creating new instance
       highlighter = _options?.langAlias
         ? await highlighterFactory.init(_options)
         : await highlighterFactory.getOrInit();
