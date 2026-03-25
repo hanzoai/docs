@@ -1,6 +1,16 @@
 # fumapress
 
+## 0.1.17
+
+### Patch Changes
+
+- Updated dependencies [8b32533]
+- Updated dependencies [55479b3]
+  - @hanzo/docs-core@16.7.5
+  - @hanzo/docs-ui@16.7.5
+
 =======
+
 ## 0.1.16
 
 ### Patch Changes
@@ -47,7 +57,8 @@
   - fumadocs-core@16.7.0
 
 ## 0.1.11
->>>>>>> upstream/dev
+
+> > > > > > > upstream/dev
 
 ### Patch Changes
 
