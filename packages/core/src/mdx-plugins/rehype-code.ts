@@ -24,7 +24,6 @@ export const rehypeCode = base.createRehypeCode<Partial<RehypeCodeOptions>>(asyn
   const factory = options.engine === 'oniguruma' ? wasmShikiFactory : defaultShikiFactory;
   let highlighter: HighlighterCore;
   if (options.langAlias) {
-    // TODO: When newer Shiki supported it, register lang alias dynamically instead of creating new instance
     highlighter = await factory.init({ langAlias: options.langAlias });
   } else {
     highlighter = await factory.getOrInit();

@@ -3,9 +3,7 @@ import { defineConfig } from 'tsdown';
 const external = ['next', 'typescript', 'webpack', 'bun', 'mdx/types'];
 
 const noExternal = [
-  // TODO: remove this when the min `@hanzo/docs-core` version is above 16.2.3
   '@hanzo/docs-core/source/schema',
-  // TODO: remove this when the min `@hanzo/docs-core` version is above 16.6.17
   '@hanzo/docs-core/mdx-plugins/remark-llms',
 ];
 
