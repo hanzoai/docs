@@ -201,5 +201,4 @@ export function useDocsSearch(
   return { search, setSearch, query: { isLoading, data: results, error } };
 }
 
-// TODO: remove this on next major
 export type { OramaCloudOptions, FetchOptions, StaticOptions, AlgoliaOptions };

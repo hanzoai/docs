@@ -5,7 +5,6 @@ import * as Docs from './layouts/docs/page';
 import * as Notebook from './layouts/notebook/page';
 import { useIsDocsLayout } from './layouts/docs/client';
 
-// TODO: remove this compat layer on v17
 
 export {
   DocsDescription,
