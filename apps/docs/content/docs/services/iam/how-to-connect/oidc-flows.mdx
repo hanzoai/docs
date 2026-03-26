@@ -1,0 +1,346 @@
+---
+title: OIDC Flows
+description: Step-by-step guide to OpenID Connect authorization flows with Hanzo IAM — authorization code, PKCE, client credentials, device code, and token refresh.
+---
+
+# OIDC Flows
+
+Hanzo IAM implements the full OpenID Connect specification. This page walks through each authentication flow with concrete examples against `hanzo.id`.
+
+## Endpoints
+
+| Endpoint | URL |
+|----------|-----|
+| Discovery | `https://hanzo.id/.well-known/openid-configuration` |
+| Authorization | `https://hanzo.id/oauth/authorize` |
+| Token | `https://hanzo.id/oauth/token` |
+| UserInfo | `https://hanzo.id/api/userinfo` |
+| JWKS | `https://hanzo.id/.well-known/jwks` |
+| Introspection | `https://hanzo.id/oauth/introspect` |
+| Revocation | `https://hanzo.id/oauth/revoke` |
+
+## Authorization Code Flow
+
+The standard flow for web applications with a backend server.
+
+```
+┌──────┐     ┌────────┐     ┌──────────┐
+│ User │     │  App   │     │ hanzo.id │
+└──┬───┘     └───┬────┘     └────┬─────┘
+   │  Click      │               │
+   │  Login      │               │
+   │────────────>│               │
+   │             │  /authorize   │
+   │             │──────────────>│
+   │             │               │
+   │  Login page │               │
+   │<────────────────────────────│
+   │             │               │
+   │  Credentials│               │
+   │────────────────────────────>│
+   │             │               │
+   │             │  ?code=xxx    │
+   │             │<──────────────│
+   │             │               │
+   │             │  POST /token  │
+   │             │  code + secret│
+   │             │──────────────>│
+   │             │               │
+   │             │  access_token │
+   │             │  id_token     │
+   │             │<──────────────│
+   │             │               │
+   │  Logged in  │               │
+   │<────────────│               │
+```
+
+### Step 1: Redirect to Authorization
+
+```
+GET https://hanzo.id/oauth/authorize
+  ?client_id=app-myapp
+  &redirect_uri=https://myapp.com/callback
+  &response_type=code
+  &scope=openid profile email
+  &state=random-csrf-token
+```
+
+### Step 2: Exchange Code for Tokens
+
+```bash
+curl -X POST https://hanzo.id/oauth/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "authorization_code",
+    "client_id": "app-myapp",
+    "client_secret": "YOUR_CLIENT_SECRET",
+    "code": "AUTHORIZATION_CODE",
+    "redirect_uri": "https://myapp.com/callback"
+  }'
+```
+
+Response:
+
+```json
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIs...",
+  "token_type": "Bearer",
+  "expires_in": 7200,
+  "refresh_token": "eyJhbGciOiJSUzI1NiIs...",
+  "id_token": "eyJhbGciOiJSUzI1NiIs...",
+  "scope": "openid profile email"
+}
+```
+
+### Step 3: Get User Info
+
+```bash
+curl https://hanzo.id/api/userinfo \
+  -H "Authorization: Bearer ACCESS_TOKEN"
+```
+
+## Authorization Code + PKCE
+
+For single-page apps (SPAs) and mobile apps that cannot securely store a client secret. Hanzo IAM supports S256 PKCE.
+
+### Step 1: Generate Code Verifier and Challenge
+
+```typescript
+// Generate a random code verifier
+const codeVerifier = crypto.randomUUID() + crypto.randomUUID()
+
+// Create S256 challenge
+const encoder = new TextEncoder()
+const digest = await crypto.subtle.digest('SHA-256', encoder.encode(codeVerifier))
+const codeChallenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
+  .replace(/\+/g, '-')
+  .replace(/\//g, '_')
+  .replace(/=+$/, '')
+```
+
+### Step 2: Redirect with Challenge
+
+```
+GET https://hanzo.id/oauth/authorize
+  ?client_id=app-myapp
+  &redirect_uri=https://myapp.com/callback
+  &response_type=code
+  &scope=openid profile email
+  &state=random-csrf-token
+  &code_challenge=CODE_CHALLENGE
+  &code_challenge_method=S256
+```
+
+### Step 3: Exchange Code with Verifier
+
+```bash
+curl -X POST https://hanzo.id/oauth/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "authorization_code",
+    "client_id": "app-myapp",
+    "code": "AUTHORIZATION_CODE",
+    "redirect_uri": "https://myapp.com/callback",
+    "code_verifier": "ORIGINAL_CODE_VERIFIER"
+  }'
+```
+
+No client secret is required when using PKCE.
+
+## Client Credentials Flow
+
+For service-to-service authentication. No user interaction -- the application authenticates directly with its client ID and secret.
+
+```bash
+curl -X POST https://hanzo.id/oauth/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "client_credentials",
+    "client_id": "app-myservice",
+    "client_secret": "YOUR_CLIENT_SECRET",
+    "scope": "openid"
+  }'
+```
+
+Response:
+
+```json
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIs...",
+  "token_type": "Bearer",
+  "expires_in": 7200,
+  "scope": "openid"
+}
+```
+
+### Use Case: Service-to-Service
+
+Every Hanzo service authenticates to other services via client credentials:
+
+```go
+// Go service authenticating to another Hanzo service
+token, err := iamClient.ClientCredentials(ctx, &oauth2.Config{
+    ClientID:     "app-platform",
+    ClientSecret: os.Getenv("IAM_CLIENT_SECRET"),
+    TokenURL:     "https://hanzo.id/oauth/token",
+    Scopes:       []string{"openid"},
+})
+
+// Use token to call another service
+req.Header.Set("Authorization", "Bearer "+token.AccessToken)
+```
+
+## Device Code Flow
+
+For devices with limited input (CLI tools, smart TVs, IoT). The user authorizes on a separate device.
+
+### Step 1: Request Device Code
+
+```bash
+curl -X POST https://hanzo.id/oauth/device/code \
+  -H "Content-Type: application/json" \
+  -d '{
+    "client_id": "app-cli",
+    "scope": "openid profile email"
+  }'
+```
+
+Response:
+
+```json
+{
+  "device_code": "GmRhmhcxhwEzkoEqiMEg_DnyEysNkuNhszIySk9eS",
+  "user_code": "WDJB-MJHT",
+  "verification_uri": "https://hanzo.id/device",
+  "verification_uri_complete": "https://hanzo.id/device?user_code=WDJB-MJHT",
+  "expires_in": 1800,
+  "interval": 5
+}
+```
+
+### Step 2: Display Code to User
+
+Show the user:
+- Go to `https://hanzo.id/device`
+- Enter code: `WDJB-MJHT`
+
+### Step 3: Poll for Token
+
+```bash
+# Poll every 5 seconds until user authorizes
+curl -X POST https://hanzo.id/oauth/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+    "client_id": "app-cli",
+    "device_code": "GmRhmhcxhwEzkoEqiMEg_DnyEysNkuNhszIySk9eS"
+  }'
+```
+
+Returns `authorization_pending` until the user approves, then returns the token.
+
+## Token Refresh
+
+Exchange a refresh token for a new access token:
+
+```bash
+curl -X POST https://hanzo.id/oauth/token \
+  -H "Content-Type: application/json" \
+  -d '{
+    "grant_type": "refresh_token",
+    "client_id": "app-myapp",
+    "client_secret": "YOUR_CLIENT_SECRET",
+    "refresh_token": "REFRESH_TOKEN"
+  }'
+```
+
+## JWT Token Structure
+
+Hanzo IAM tokens are RS256-signed JWTs. The `access_token` and `id_token` contain the same payload:
+
+```json
+{
+  "iss": "https://hanzo.id",
+  "sub": "user-id",
+  "aud": "app-myapp",
+  "exp": 1740007200,
+  "iat": 1740000000,
+  "owner": "hanzo",
+  "name": "john",
+  "displayName": "John Doe",
+  "email": "john@example.com",
+  "avatar": "https://...",
+  "isAdmin": false,
+  "type": "normal-user"
+}
+```
+
+### Key Claims
+
+| Claim | Description |
+|-------|-------------|
+| `owner` | Organization name -- scope all data queries to this value |
+| `name` | Username within the organization |
+| `sub` | Globally unique user ID |
+| `aud` | Application that issued the token |
+| `isAdmin` | Whether user has admin privileges |
+| `type` | User type: `normal-user`, `machine`, etc. |
+
+### Token Verification
+
+Verify tokens using the JWKS endpoint:
+
+```typescript
+import { createRemoteJWKSet, jwtVerify } from 'jose'
+
+const jwks = createRemoteJWKSet(
+  new URL('https://hanzo.id/.well-known/jwks')
+)
+
+const { payload } = await jwtVerify(token, jwks, {
+  issuer: 'https://hanzo.id',
+  audience: 'app-myapp'
+})
+
+// Scope queries to the user's organization
+const org = payload.owner // e.g., 'hanzo'
+```
+
+## Scopes
+
+| Scope | Description |
+|-------|-------------|
+| `openid` | Required. Returns `sub` claim |
+| `profile` | User profile (name, displayName, avatar) |
+| `email` | Email address and verification status |
+| `phone` | Phone number |
+| `address` | User location |
+| `offline_access` | Include refresh token in response |
+
+## Which Flow Should I Use?
+
+| Application Type | Flow | PKCE |
+|-----------------|------|------|
+| Web app (server-side) | Authorization Code | Optional |
+| SPA (React, Vue, Next.js) | Authorization Code + PKCE | Required |
+| Mobile app (iOS, Android) | Authorization Code + PKCE | Required |
+| CLI tool | Device Code | N/A |
+| Service / API / Bot | Client Credentials | N/A |
+| Machine identity | Client Credentials | N/A |
+
+## Related
+
+<Cards>
+  <Card title="OIDC Discovery" href="/docs/services/iam/how-to-connect/oidc-client">
+    Discovery endpoints and metadata
+  </Card>
+  <Card title="OAuth2" href="/docs/services/iam/how-to-connect/oauth">
+    OAuth2-specific configuration
+  </Card>
+  <Card title="WebAuthn" href="/docs/services/iam/how-to-connect/webauthn">
+    Passwordless authentication with FIDO2
+  </Card>
+  <Card title="Token Reference" href="/docs/services/iam/token/overview">
+    Token format and lifecycle details
+  </Card>
+</Cards>
