@@ -1,0 +1,85 @@
+---
+title: Webpack Guide
+description: How to set up Hanzo GUI with Webpack
+---
+
+First, install [Webpack and webpack-cli](https://webpack.js.org/guides/installation/):
+
+```bash
+yarn add -D webpack webpack-cli
+```
+
+Then install the Hanzo GUI plugin:
+
+```bash
+yarn add -D gui-loader
+```
+
+### Configuration
+
+Add the plugin to your `webpack.config.js`. If you have a `gui.build.ts`
+(recommended — see
+[compiler install docs](/docs/intro/compiler-install#configuration-with-guibuildts)),
+no options are needed:
+
+```tsx fileName="webpack.config.js"
+const { GuiPlugin } = require('gui-loader')
+
+// reads from gui.build.ts automatically
+config.plugins.push(new GuiPlugin())
+```
+
+Or pass options inline:
+
+```tsx fileName="webpack.config.js"
+const { GuiPlugin } = require('gui-loader')
+
+config.plugins.push(
+  new GuiPlugin({
+    config: './src/gui.config.ts',
+    components: ['@hanzo/gui'],
+  })
+)
+```
+
+Or use a minimal manual setup:
+
+```tsx showMore fileName="webpack.config.js"
+// some stuff for react-native
+config.plugins.push(
+  new webpack.DefinePlugin({
+    process: {
+      env: {
+        __DEV__: process.env.NODE_ENV === 'development' ? 'true' : 'false',
+        NODE_ENV: JSON.stringify(process.env.NODE_ENV),
+      },
+    },
+  })
+)
+
+config.resolve.alias['react-native$'] = 'react-native-web'
+
+// set up web extensions
+compiler.options.resolve.extensions = [
+  '.web.tsx',
+  '.web.ts',
+  '.web.js',
+  '.ts',
+  '.tsx',
+  '.js',
+]
+```
+
+## Usage
+
+To run the server locally, install [webpack-dev-server](https://github.com/webpack/webpack-dev-server):
+
+```bash
+yarn add -D webpack-dev-server
+```
+
+Start the server with:
+
+```bash
+yarn run webpack serve
+```

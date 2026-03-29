@@ -1,0 +1,316 @@
+---
+title: Animation Drivers
+description: Choose and configure animation drivers for your platform
+---
+
+Hanzo GUI supports four animation drivers, each with different strengths for different use cases:
+
+<SimpleTable
+  headers={['Driver', 'Platform', 'Bundle Impact', 'Performance', 'Spring Physics']}
+  rows={[
+    ['**CSS**', 'Web only', 'Lightest', 'Fast (CSS transitions)', 'No (easing only)'],
+    [
+      '**React Native**',
+      'Web + Native',
+      'Web: heavy (RNW), Native: none',
+      'On-thread',
+      'Yes (basic)',
+    ],
+    [
+      '**Reanimated**',
+      'Web + Native',
+      'Larger',
+      'Off-thread (native), medium (web)',
+      'Yes',
+    ],
+    ['**Motion**', 'Web only', 'Medium', 'Off-thread (WAAPI)', 'Yes'],
+  ]}
+/>
+
+You can swap drivers per-platform, or even dynamically load heavier drivers later in your app — for example, starting with the lightweight CSS driver on initial load and upgrading to Motion once the user is authenticated.
+
+---
+
+## Using Config v5
+
+The easiest way to get started is with [`@hanzogui/config/v5`](/docs/core/config-v5), which provides pre-configured animations for all four drivers with matching keys:
+
+```tsx fileName="gui.config.ts"
+import { defaultConfig } from '@hanzogui/config/v5'
+import { animations } from '@hanzogui/config/v5-css' // or v5-motion, v5-rn, v5-reanimated
+import { createGui } from '@hanzo/gui'
+
+export const config = createGui({
+  ...defaultConfig,
+  animations,
+})
+```
+
+The v5 presets include timing animations (`100ms`, `200ms`, etc.) and spring animations (`bouncy`, `quick`, `lazy`, etc.) that work identically across all drivers. See [Config v5](/docs/core/config-v5#choosing-an-animation-driver) for the full list.
+
+---
+
+## CSS Driver
+
+The lightest bundle size, but lacks spring physics (easing curves only). Best for simple web-only apps.
+
+### Installation
+
+```bash
+yarn add @hanzogui/animations-css
+```
+
+### Configuration
+
+```tsx
+import { createAnimations } from '@hanzogui/animations-css'
+import { createGui } from '@hanzo/gui'
+
+export default createGui({
+  animations: createAnimations({
+    fast: 'ease-in 150ms',
+    medium: 'ease-in 300ms',
+    slow: 'ease-in 450ms',
+    bouncy: 'cubic-bezier(0.68, -0.55, 0.265, 1.55) 300ms',
+  }),
+  // ...
+})
+```
+
+The format is: `<easing-function> <duration>`
+
+**Supported easing functions:** `ease`, `linear`, `ease-in`, `ease-out`, `ease-in-out`, `cubic-bezier(x1, y1, x2, y2)`
+
+---
+
+## React Native Driver
+
+Uses React Native's built-in Animated API. No extra bundle on native, but requires React Native Web on the web side. Runs on-thread. Good for basic cross-platform animations.
+
+### Installation
+
+```bash
+yarn add @hanzogui/animations-react-native
+```
+
+### Configuration
+
+```tsx
+import { createAnimations } from '@hanzogui/animations-react-native'
+import { createGui } from '@hanzo/gui'
+
+export default createGui({
+  animations: createAnimations({
+    fast: {
+      damping: 20,
+      mass: 1.2,
+      stiffness: 250,
+    },
+    medium: {
+      damping: 10,
+      mass: 0.9,
+      stiffness: 100,
+    },
+    slow: {
+      damping: 20,
+      stiffness: 60,
+    },
+  }),
+  // ...
+})
+```
+
+**Spring parameters:**
+
+- `damping` - How quickly the spring settles (higher = less bouncy)
+- `mass` - Mass of the object (higher = more inertia)
+- `stiffness` - Spring stiffness coefficient (higher = faster)
+
+---
+
+## Reanimated Driver
+
+Supports both native and web with advanced features, but has a larger bundle size. Best performance on native platforms with off-thread animations.
+
+### Installation
+
+```bash
+yarn add @hanzogui/animations-reanimated react-native-reanimated
+```
+
+Follow the [Reanimated installation guide](https://docs.swmansion.com/react-native-reanimated/docs/fundamentals/getting-started/) to complete setup.
+
+### Configuration
+
+```tsx
+import { createAnimations } from '@hanzogui/animations-reanimated'
+import { createGui } from '@hanzo/gui'
+
+export default createGui({
+  animations: createAnimations({
+    fast: {
+      type: 'spring',
+      damping: 20,
+      mass: 1.2,
+      stiffness: 250,
+    },
+    medium: {
+      type: 'spring',
+      damping: 10,
+      mass: 0.9,
+      stiffness: 100,
+    },
+    // timing animations also supported
+    quick: {
+      type: 'timing',
+      duration: 300,
+    },
+  }),
+  // ...
+})
+```
+
+---
+
+## Motion Driver
+
+Off-thread performance via WAAPI with excellent spring physics and a medium bundle size. Best for web-only apps that need smooth, physics-based animations.
+
+### Installation
+
+```bash
+yarn add @hanzogui/animations-motion motion
+```
+
+### Configuration
+
+```tsx
+import { createAnimations } from '@hanzogui/animations-motion'
+import { createGui } from '@hanzo/gui'
+
+export default createGui({
+  animations: createAnimations({
+    '100ms': { duration: 100 },
+    '200ms': { duration: 200 },
+    bouncy: {
+      type: 'spring',
+      damping: 9,
+      mass: 0.9,
+      stiffness: 150,
+    },
+    quick: {
+      type: 'spring',
+      damping: 20,
+      mass: 1.2,
+      stiffness: 250,
+    },
+  }),
+  // ...
+})
+```
+
+Motion uses the Web Animations API (WAAPI) which runs animations on the compositor thread when possible.
+
+---
+
+## Swapping Drivers
+
+Hanzo GUI provides several ways to use different drivers — at build time per platform, at runtime in specific parts of your app, or dynamically loaded after initial render.
+
+### Per-Platform with File Extensions
+
+Use `.native.ts` and `.ts` file extensions to bundle different drivers per platform:
+
+```tsx fileName="animations.ts"
+// web
+import { createAnimations } from '@hanzogui/animations-motion'
+
+export const animations = createAnimations({
+  bouncy: { type: 'spring', damping: 10, stiffness: 100 },
+})
+```
+
+```tsx fileName="animations.native.ts"
+// native
+import { createAnimations } from '@hanzogui/animations-reanimated'
+
+export const animations = createAnimations({
+  bouncy: { type: 'spring', damping: 10, stiffness: 100 },
+})
+```
+
+```tsx fileName="gui.config.ts"
+import { animations } from './animations'
+
+export default createGui({
+  animations,
+  // ...
+})
+```
+
+### Dynamic with Configuration
+
+Use the `<Configuration>` component to swap the animation driver for a subtree. This is useful for lazy loading heavier drivers only when needed — for example, keeping initial page load fast with CSS animations, then upgrading to Motion for authenticated users:
+
+```tsx fileName="app/_layout.tsx"
+import { Configuration, Slot } from '@hanzo/gui'
+import { createAnimations } from '@hanzogui/animations-motion'
+
+const motionDriver = createAnimations({
+  bouncy: { type: 'spring', damping: 10, stiffness: 100 },
+})
+
+export function AuthenticatedLayout() {
+  return (
+    <Configuration animationDriver={motionDriver}>
+      <Slot />
+    </Configuration>
+  )
+}
+```
+
+This pattern works well with route-based code splitting — the Motion driver is only loaded when the user navigates to an authenticated route.
+
+### Multiple Drivers with animatedBy
+
+Configure multiple drivers at the root and select per-component:
+
+```tsx fileName="gui.config.ts"
+import { createAnimations as createCSS } from '@hanzogui/animations-css'
+import { createAnimations as createSpring } from '@hanzogui/animations-motion'
+
+export default createGui({
+  animations: {
+    default: createCSS({ bouncy: 'ease-in 200ms' }),
+    spring: createSpring({ bouncy: { type: 'spring', damping: 10 } }),
+  },
+})
+```
+
+```tsx
+<Square transition="bouncy" />                    {/* uses default (CSS) */}
+<Square animatedBy="spring" transition="bouncy" /> {/* uses spring (Motion) */}
+```
+
+### Runtime Loading with loadAnimationDriver
+
+Add drivers at runtime after app initialization:
+
+```tsx
+import { loadAnimationDriver } from '@hanzo/gui'
+import { createAnimations } from '@hanzogui/animations-motion'
+
+// call this after some condition (user auth, route change, etc.)
+const driver = createAnimations({ bouncy: { type: 'spring', damping: 10 } })
+loadAnimationDriver('spring', driver)
+
+// now components can use animatedBy="spring"
+```
+
+---
+
+## See Also
+
+- [Animations Overview](/docs/core/animations)
+- [AnimatePresence](/docs/core/animate-presence)
+- [Config v5](/docs/core/config-v5#choosing-an-animation-driver)

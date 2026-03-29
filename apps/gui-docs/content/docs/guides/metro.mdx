@@ -1,0 +1,95 @@
+---
+title: Metro Guide
+description: How to set up Hanzo GUI with Metro
+---
+
+## Basic Setup
+
+The default Expo Metro configuration works out of the box:
+
+```ts fileName="metro.config.js"
+const { getDefaultConfig } = require('expo/metro-config')
+
+module.exports = getDefaultConfig(__dirname)
+```
+
+## With Metro Plugin (Recommended)
+
+For better dev experience, use `@hanzogui/metro-plugin` which loads your Hanzo GUI
+config and watches for changes:
+
+```bash
+yarn add @hanzogui/metro-plugin
+```
+
+If you have a `gui.build.ts` (recommended — see
+[compiler install docs](/docs/intro/compiler-install#configuration-with-guibuildts)),
+no options are needed:
+
+```tsx fileName="metro.config.js"
+const { getDefaultConfig } = require('expo/metro-config')
+const { withGui } = require('@hanzogui/metro-plugin')
+
+const config = getDefaultConfig(__dirname)
+
+// reads from gui.build.ts automatically
+module.exports = withGui(config)
+```
+
+Or pass options inline:
+
+```tsx fileName="metro.config.js"
+const { getDefaultConfig } = require('expo/metro-config')
+const { withGui } = require('@hanzogui/metro-plugin')
+
+const config = getDefaultConfig(__dirname)
+
+module.exports = withGui(config, {
+  components: ['@hanzo/gui'],
+  config: './gui.config.ts',
+})
+```
+
+## Optimized Production Builds
+
+For maximum optimization, use the `gui build` command which pre-compiles
+your components:
+
+```bash
+# Optimize and build, then restore source files
+gui build --target web ./app -- expo export --platform web
+```
+
+The `--` syntax runs the command after optimization, then automatically restores
+your source files. Add this to your `package.json`:
+
+```json
+{
+  "scripts": {
+    "build:web": "expo export --platform web",
+    "build:web:optimized": "gui build --target web ./app -- expo export --platform web"
+  }
+}
+```
+
+## Debugging
+
+To debug the compiler output, add `// debug` at the top of a file:
+
+```tsx
+// debug
+import { YStack } from '@hanzo/gui'
+
+export function MyComponent() {
+  return <YStack flex={1} bg="$background" />
+}
+```
+
+This will print detailed compiler output showing what optimizations are
+happening:
+
+```
+[✅] flattened YStack div
+```
+
+Use `// debug-verbose` for even more detailed output.
