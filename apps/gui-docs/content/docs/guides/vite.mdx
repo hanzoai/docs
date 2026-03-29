@@ -1,0 +1,123 @@
+---
+title: Vite Guide
+description: How to set up Hanzo GUI with Vite
+---
+
+Hanzo GUI now has two plugins for Vite: one that sets up everything you need to get going, and a second that adds CSS compilation. Both are included in the `@hanzogui/vite-plugin` package.
+
+## Install
+
+<Notice theme="yellow">
+  `@hanzogui/vite-plugin` is ESM-only. Your project must have `"type": "module"` in its
+  `package.json` (or use `.mjs`/`.mts` config files). CJS (`require()`) is not supported.
+</Notice>
+
+<Notice theme="green">
+  For a full-featured example, you can create a new app using `npm create hanzo-gui@latest`
+  and select the 'Simple Web' option which includes a Vite setup.
+</Notice>
+
+Create a new [Vite](https://vitejs.dev/guide/#scaffolding-your-first-vite-project) project:
+
+```bash
+npm create vite@latest
+```
+
+Add `@hanzogui/vite-plugin`:
+
+```bash
+yarn add @hanzogui/vite-plugin
+```
+
+### Configuration
+
+Update your `vite.config.ts`. If you have a `gui.build.ts` (recommended —
+see [compiler install docs](/docs/intro/compiler-install#configuration-with-guibuildts)),
+no options are needed:
+
+```tsx fileName="vite.config.ts"
+import { guiPlugin } from '@hanzogui/vite-plugin'
+
+export default {
+  plugins: [
+    // reads from gui.build.ts automatically
+    guiPlugin(),
+  ].filter(Boolean),
+}
+```
+
+Or pass options inline:
+
+```tsx fileName="vite.config.ts"
+import { guiPlugin } from '@hanzogui/vite-plugin'
+
+export default {
+  plugins: [
+    guiPlugin({
+      config: 'src/gui.config.ts',
+      components: ['@hanzo/gui'],
+      disableExtraction: true,
+    }),
+  ].filter(Boolean),
+}
+```
+
+Or use a minimal manual setup for Vite that just adds compatibility for react-native-web and React Native extensions:
+
+```tsx showMore
+config.define = {
+  __DEV__: `${process.env.NODE_ENV === 'development' ? true : false}`,
+  'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV),
+}
+
+config.resolve.alias['react-native'] = 'react-native-web'
+
+// set up web extensions
+config.optimizeDeps.esbuildOptions = {
+  ...config.optimizeDeps.esbuildOptions,
+  resolveExtensions: [
+    '.web.js',
+    '.web.jsx',
+    '.web.ts',
+    '.web.tsx',
+    '.mjs',
+    '.js',
+    '.mts',
+    '.ts',
+    '.jsx',
+    '.tsx',
+    '.json',
+  ],
+  loader: {
+    '.js': 'jsx',
+  },
+}
+```
+
+### Custom Aliases with guiAliases
+
+For advanced use cases where you need more control over alias ordering in your Vite config, you can use the `guiAliases` helper function:
+
+```tsx fileName="vite.config.ts"
+import { guiAliases } from '@hanzogui/vite-plugin'
+
+export default {
+  resolve: {
+    alias: [
+      // your custom aliases first
+      { find: '@app', replacement: '/src' },
+      // then gui aliases
+      ...guiAliases({
+        // use @hanzogui/react-native-web-lite for smaller bundle
+        rnwLite: true,
+        // or 'without-animated' for even smaller bundle (no Animated API)
+        // rnwLite: 'without-animated',
+        // alias react-native-svg to @hanzogui/react-native-svg
+        svg: true,
+      }),
+    ],
+  },
+}
+```
+
+This is useful when you need to ensure specific alias resolution order or when using a custom Vite setup without the full `guiPlugin`.

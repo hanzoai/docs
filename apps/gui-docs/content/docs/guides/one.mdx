@@ -1,0 +1,156 @@
+---
+title: One Guide
+description: How to set up Hanzo GUI with One
+---
+
+[One](https://onestack.dev) is a React framework for web, iOS, and Android built on Vite. It offers seamless cross-platform development and integrates well with Hanzo GUI.
+
+## Install
+
+First, create a new One project:
+
+```bash
+npx one
+```
+
+Add Hanzo GUI and its dependencies:
+
+```bash
+yarn add @hanzo/gui @hanzogui/config
+```
+
+## Configuration
+
+Create a `gui.config.ts` file in your project root:
+
+```tsx fileName="gui.config.ts"
+import { defaultConfig } from '@hanzogui/config/v5'
+import { createGui } from '@hanzo/gui'
+
+const guiConfig = createGui(defaultConfig)
+
+export default guiConfig
+
+// this is important!
+export type Conf = typeof guiConfig
+
+declare module '@hanzo/gui' {
+  interface GuiCustomConfig extends Conf {}
+}
+```
+
+Update your `vite.config.ts`:
+
+```tsx fileName="vite.config.ts"
+import { one } from 'one/vite'
+import { guiPlugin } from '@hanzogui/vite-plugin'
+import type { UserConfig } from 'vite'
+
+export default {
+  plugins: [
+    one({
+      web: {
+        defaultRenderMode: 'ssg',
+      },
+    }),
+    guiPlugin({
+      config: './gui.config.ts',
+      components: ['@hanzo/gui'],
+    }),
+  ],
+
+  // Vite 6 style configuration
+  ssr: {
+    noExternal: true,
+  },
+
+  optimizeDeps: {
+    include: ['@hanzogui/core', '@hanzogui/config'],
+  },
+
+  build: {
+    cssTarget: 'safari15',
+  },
+} satisfies UserConfig
+```
+
+## Setup Hanzo GUI Provider
+
+Update your root layout file (typically `app/_layout.tsx`):
+
+```tsx fileName="app/_layout.tsx"
+import { GuiProvider } from '@hanzo/gui'
+import { Slot } from 'one'
+import config from '../gui.config'
+
+export default function Layout() {
+  return (
+    <GuiProvider config={config}>
+      <Slot />
+    </GuiProvider>
+  )
+}
+```
+
+## Usage
+
+Now you can use Hanzo GUI components in your One app:
+
+```tsx fileName="app/index.tsx"
+import { Button, Text, YStack } from '@hanzo/gui'
+
+export default function Home() {
+  return (
+    <YStack f={1} jc="center" ai="center" p="$4" gap="$4">
+      <Text fontSize="$6">Welcome to Hanzo GUI with One!</Text>
+      <Button>Click me</Button>
+    </YStack>
+  )
+}
+```
+
+## Themes
+
+To support light and dark modes, use One's built-in color scheme support along with Hanzo GUI's theming system. Update your root layout:
+
+```tsx fileName="app/_layout.tsx"
+import { GuiProvider, Theme } from '@hanzo/gui'
+import { Slot } from 'one'
+import { useColorScheme } from 'react-native'
+import config from '../gui.config'
+
+export default function Layout() {
+  const colorScheme = useColorScheme()
+
+  return (
+    <GuiProvider config={config} defaultTheme={colorScheme}>
+      <Theme name={colorScheme}>
+        <Slot />
+      </Theme>
+    </GuiProvider>
+  )
+}
+```
+
+## Performance
+
+For better performance, use the `outputCSS` option in the Hanzo GUI Vite plugin:
+
+```tsx fileName="vite.config.ts"
+guiPlugin({
+  config: './gui.config.ts',
+  components: ['@hanzo/gui'],
+  outputCSS: process.env.NODE_ENV === 'production' ? './public/gui.generated.css' : null,
+})
+```
+
+Then import the CSS in your root layout:
+
+```tsx fileName="app/_layout.tsx"
+import '../public/gui.generated.css'
+// ... rest of your imports and component
+```
+
+## Next Steps
+
+You now have Hanzo GUI set up with [One](https://onestack.dev). Start building your cross-platform app using Hanzo GUI's styling system and One's seamless development experience.
