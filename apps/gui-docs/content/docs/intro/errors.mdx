@@ -1,0 +1,50 @@
+---
+title: Errors
+description: Common error messages and how to resolve them
+---
+
+### Error 001
+
+Haven't called createGui yet.
+
+This often happens due to having duplicate Hanzo GUI sub-dependencies.
+
+Hanzo GUI needs every `@hanzogui/*` dependency to be on the exact same version, we
+include an upgrade script with the starter kits that you can call with "yarn
+upgrade:gui" to help with this.
+
+You may want to clear your node_modules as well and run a fresh install after
+upgrading.
+
+### Error 002
+
+Using global config fallback. This may indicate duplicate gui instances
+(e.g., from Vite SSR bundling). This is handled automatically, but may cause
+issues due to duplicate gui modules if ignored.
+
+### Warning 001
+
+#### Ignorable modules
+
+This error means the compiler can't bundle some dependencies into what it reads
+at compile-time in order to optimize. It's not necessarily an error and usually
+won't de-opt.
+
+To see a full stack trace set:
+
+```bash
+DEBUG=gui
+```
+
+To disable the warning you can set:
+
+```bash
+HANZO_GUI_IGNORE_BUNDLE_ERRORS=some_module_name,some_other_module_name
+# Or to disable them all (not recommended):
+HANZO_GUI_IGNORE_BUNDLE_ERRORS=true
+```
+
+### Warning 002
+
+You're rendering a Hanzo GUI <Adapt /> component without nesting it inside a
+parent that is able to adapt.
