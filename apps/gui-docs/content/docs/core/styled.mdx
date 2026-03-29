@@ -1,0 +1,288 @@
+---
+title: styled()
+description: Extend and build custom and optimizable components
+---
+
+<Notice theme="green">
+  If you're looking for a full list of style properties accepted by Hanzo GUI, see the
+  [Styles page](/docs/intro/styles).
+</Notice>
+
+Create a new component by extending an existing one:
+
+```tsx
+import { GetProps, View, styled } from '@hanzogui/core'
+
+export const RoundedSquare = styled(View, {
+  borderRadius: 20,
+})
+
+// helper to get props for any Hanzo GUIComponent
+export type RoundedSquareProps = GetProps<typeof RoundedSquare>
+```
+
+Usage:
+
+```tsx
+<RoundedSquare x={10} y={10} backgroundColor="red" />
+```
+
+You can pass any prop that is supported by the component you are wrapping in styled.
+
+One really important and useful thing to note about Hanzo GUI style properties: the order is important! [Read more here](/docs/intro/styles#order-is-important)
+
+## Variants
+
+Let's add some variants:
+
+```tsx
+import { View, styled } from '@hanzogui/core'
+
+export const RoundedSquare = styled(View, {
+  borderRadius: 20,
+
+  variants: {
+    pin: {
+      top: {
+        position: 'absolute',
+        top: 0,
+      },
+    },
+
+    centered: {
+      true: {
+        alignItems: 'center',
+        justifyContent: 'center',
+      },
+    },
+
+    size: {
+      '...size': (size, { tokens }) => {
+        return {
+          width: tokens.size[size] ?? size,
+          height: tokens.size[size] ?? size,
+        }
+      },
+    },
+  } as const,
+})
+```
+
+<Notice theme="blue">
+  Please use `as const` for the variants definition until Typescript gains the ability to
+  infer generics as const.
+</Notice>
+
+We can use these like so:
+
+```tsx
+<RoundedSquare pin="top" centered size="$lg" />
+```
+
+To learn more about how to use them and all the special types, [see the docs on variants](/docs/core/variants).
+
+### Non-working React Native views
+
+You can assume all "utility" views in React Native are not supported: Pressable, TouchableOpacity, and others. They have specific logic for handling events that conflicts with Hanzo GUI. We could support these in the future, but we don't plan on it - you can get all of Pressable functionality for the most part within Hanzo GUI itself, and if you need something outside of it, you can use Pressable directly.
+
+## Using on the web
+
+The `styled()` function supports Hanzo GUI views, React Native views, and any other React component that accepts a `style` prop. If you wrap an external component that Hanzo GUI doesn't recognize, Hanzo GUI will assume it only supports the `style` prop and not optimize it.
+
+If it does accept `className`, you can opt-in to className, CSS media queries, and compile-time optimization by adding `acceptsClassName`:
+
+```tsx
+import { SomeCustomComponent } from 'some-library'
+import { styled } from '@hanzo/gui' // or '@hanzogui/core'
+
+export const Hanzo GUICustomComponent = styled(SomeCustomComponent, {
+  acceptsClassName: true,
+})
+```
+
+## render
+
+The `render` prop lets you control which element or component is rendered. It accepts three forms:
+
+### String (HTML element)
+
+Render as a specific HTML element on web while maintaining native View on mobile:
+
+```tsx
+const Button = styled(View, {
+  render: 'button',
+  padding: '$4',
+  backgroundColor: '$background',
+})
+
+const Anchor = styled(Text, {
+  render: 'a',
+  color: '$blue10',
+})
+
+const Nav = styled(View, {
+  render: 'nav',
+})
+```
+
+This is the recommended approach for semantic HTML and accessibility. String render props are optimized by the Hanzo GUI compiler.
+
+### JSX Element
+
+Pass a JSX element to clone with Hanzo GUI's computed props:
+
+```tsx
+<Stack
+  render={<a href="/about" target="_blank" />}
+  padding="$4"
+  backgroundColor="$background"
+>
+  About Page
+</Stack>
+```
+
+The JSX element's props are merged with Hanzo GUI's computed styles, classNames, and event handlers. This is useful when you need to pass element-specific props like `href` or `target`.
+
+<Notice theme="yellow">
+  JSX element render props are not optimized by the compiler - they will cause a deopt.
+</Notice>
+
+### Function
+
+For full control, pass a render function that receives props and component state:
+
+```tsx
+import { GuiComponentState } from '@hanzogui/core'
+;<Stack
+  render={(props, state: GuiComponentState) => (
+    <CustomButton {...props} isHovered={state.hover} isPressed={state.press} />
+  )}
+  padding="$4"
+  hoverStyle={{ backgroundColor: '$blue5' }}
+>
+  Custom Button
+</Stack>
+```
+
+The state object includes:
+
+- `hover` - true when hovered (web)
+- `press` - true when pressed
+- `focus` - true when focused
+- `disabled` - true when disabled
+
+<Notice theme="yellow">
+  Function render props are not optimized by the compiler - they will cause a deopt.
+</Notice>
+
+### Runtime override
+
+You can also override the render prop at runtime:
+
+```tsx
+const Box = styled(View, {
+  padding: '$4',
+})
+
+// Use as a button
+<Box render="button">Click me</Box>
+
+// Use as a link
+<Box render="a" href="/about">About</Box>
+```
+
+## styleable
+
+Any component created with `styled()` has a new static property on it called `.styleable()`.
+
+If you want a functional component that renders a Hanzo GUI-styled component inside of it to _also_ be able to be `styled()`, you need to wrap it with `styleable`. This is a mouthful, let's see an example:
+
+```tsx
+// 1. you create a `styled` component as usual:
+const StyledText = styled(Text)
+
+// 2. you create a wrapper component that adds some logic
+//    but still returns a styled component that receives the props:
+const HigherOrderStyledText = (props) => <StyledText {...props} />
+
+// 3. you want that wrapper component itself to be able to use with `styled`:
+const StyledHigherOrderStyledText = styled(HigherOrderStyledText, {
+  variants: {
+    // oops, variants will merge incorrectly
+  },
+})
+```
+
+The above code will generally cause weird issues, because Hanzo GUI can't know that it needs to just forward some props down. Instead, Hanzo GUI tries to "resolve" all the style props from `StyledHigherOrderStyledText` before passing them down to `HigherOrderStyledText`. But that causes problems, because now `HigherOrderStyledText` will merge things differently than you'd expect.
+
+The way to fix this is to add `.styleable()` around your `HigherOrderStyledText`. You'll also want to forward the ref, which is forwarded for you:
+
+```tsx
+const StyledText = styled(Text)
+
+// note the styleable wrapper here:
+const HigherOrderStyledText = StyledText.styleable((props, ref) => (
+  <StyledText ref={ref} {...props} />
+))
+
+const StyledHigherOrderStyledText = styled(HigherOrderStyledText, {
+  variants: {
+    // variants now merge correctly
+  },
+})
+```
+
+Now your component will handle everything properly, even if a theme is changed on `HigherOrderStyledText`, it will be applied.
+
+A final note: you must pass all Hanzo GUI style props given to `HigherOrderStyledText` down to a single `StyledText`, at least if you want everything to work fully correctly.
+
+And if you'd like to add new props on top of the existing props, you can pass them in for the first generic type argument of styleable:
+
+```tsx
+import { View, ViewProps } from '@hanzogui/core'
+
+type ExtraProps = {
+  someCustomProp: boolean
+}
+
+export type CustomProps = ViewProps & ExtraProps
+
+const Custom = View.styleable<ExtraProps>((props) => {
+  // ...
+  return null
+})
+```
+
+---
+
+## accept
+
+If you are wrapping something like an SVG, you may want it to accept theme and token values on certain props, for example `fill`. You can do so using `accept`:
+
+```tsx
+const StyledSVG = styled(
+  SVG,
+  {},
+  {
+    accept: {
+      fill: 'color',
+    } as const,
+  }
+)
+```
+
+Now your StyledSVG will properly type the `fill` property to accept token and theme values and will pass the resolved colors to the SVG component.
+
+You can also use `accept` to take in Hanzo GUI style objects and output React Native style objects. This is useful for things like the `contentContainerStyle` prop on `ScrollView`, which expects a style object:
+
+```tsx
+const MyScrollView = styled(
+  ScrollView,
+  {},
+  {
+    accept: {
+      contentContainerStyle: 'style', // or 'textStyle'
+    } as const,
+  }
+)
+```

@@ -1,0 +1,111 @@
+---
+title: Theme
+description: Change themes contextually
+---
+
+Changing themes in Hanzo GUI is as easy as passing their name to the Theme
+component.
+
+## Usage
+
+Change themes anywhere in your app like so:
+
+```tsx
+import { Square, Theme } from '@hanzo/gui' // or '@hanzogui/core'
+
+export default () => (
+  <Theme name="dark">
+    <Button>I'm a dark button</Button>
+    <Button theme="subtle">I'm using dark_subtle theme</Button>
+  </Theme>
+)
+```
+
+## Defining Themes
+
+Themes live one level below tokens. Tokens are your static variables, where
+themes are more dynamic like CSS variables.
+
+You can define themes however you want, but for the `@hanzo/gui` UI kit, the
+components default styling will use a set of pre-defined keys. Those keys are:
+
+- `background`, `backgroundHover`,`backgroundPress`, `backgroundFocus`
+- `borderColor`, `borderColorHover`,`borderColorPress`, `borderColorFocus`
+- `shadowColor`
+
+These are optional, as you can always set `unstyled` on any Hanzo GUI component to
+use your own styles.
+
+Here's a simplified theme definition:
+
+```tsx
+import { createGui, createTokens } from '@hanzo/gui'
+
+const tokens = createTokens({
+  color: {
+    pinkDark: '#610c62',
+    pinkLight: '#f17efc',
+  },
+  // ... see configuration docs for required tokens
+})
+
+export default createGui({
+  tokens,
+  themes: {
+    dark: {
+      background: '#000',
+      color: '#fff',
+    },
+    light: {
+      color: '#000',
+      background: '#fff',
+    },
+    dark_pink: {
+      background: tokens.color.pinkDark,
+      color: tokens.color.pinkLight,
+    },
+    light_pink: {
+      background: tokens.color.pinkLight,
+      color: tokens.color.pinkDark,
+    },
+  },
+})
+```
+
+Passing tokens to themes will reduce CSS, but is not required.
+
+You can then access theme values for any style value, either through styled() or
+through a Styled Component like View or Text:
+
+```tsx
+const P = styled(Text, {
+  color: '$color12'
+})
+
+// or directly
+<Text color="$color11" />
+```
+
+Because we defined sub-themes `light_pink` and `dark_pink`, the `Theme`
+component will now let us do this:
+
+```tsx
+import { Button, Theme } from '@hanzo/gui'
+
+export default () => {
+  return (
+    <Theme name="dark">
+      <Button>I have the theme dark</Button>
+      <Theme name="pink">
+        <Button>I have the theme dark_pink</Button>
+      </Theme>
+    </Theme>
+  )
+}
+```
+
+Notice we just use the name `pink`, easy!
+
+For more on themes see our [advanced theme guide](/docs/guides/theme-builder)
+which also introduces the `createThemes` and `createThemeBuilder`, both of which
+help generate larger and richer, typed themes more easily.

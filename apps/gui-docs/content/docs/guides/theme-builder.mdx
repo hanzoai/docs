@@ -1,0 +1,377 @@
+---
+title: Creating Themes with Hanzo GUI
+description: Learn how to create a suite of themes for a Hanzo GUI app
+demoName: ThemeBuilder
+---
+
+<IntroParagraph>
+  Hanzo GUI themes start simple, but can do some pretty powerful things. To make them easier
+  to generate, we've built a few helpers. You can always just skip themes, or add a single
+  basic theme if you prefer. This guide is for users wanting to generate a more complex
+  suite of themes.
+</IntroParagraph>
+
+We have three ways to generate themes, from simplest to most powerful:
+
+| Helper                   | Best for                                                 |
+| ------------------------ | -------------------------------------------------------- |
+| **`createV5Theme`**      | Quick start with sensible defaults. Minimal config.      |
+| **`createThemes`**       | Custom palettes and structure while keeping conventions. |
+| **`createThemeBuilder`** | Full control over every aspect of theme generation.      |
+
+We've also released [Theme](/theme), a free visual tool to create themes.
+
+---
+
+## createV5Theme
+
+The simplest way to get a complete theme suite. Call it with no arguments for production-ready defaults, or pass options to customize.
+
+```tsx
+import { createV5Theme } from '@hanzogui/themes/v5'
+
+// zero-config - includes light, dark, accent, and color themes
+export const themes = createV5Theme()
+```
+
+### Customizing
+
+```tsx
+import { createV5Theme, defaultChildrenThemes } from '@hanzogui/themes/v5'
+import { orange, orangeDark } from '@hanzogui/colors'
+
+export const themes = createV5Theme({
+  // override base palettes
+  lightPalette: ['#fff', '#f8f8f8', ...],
+  darkPalette: ['#000', '#111', ...],
+
+  // add/override color themes
+  childrenThemes: {
+    ...defaultChildrenThemes,
+    orange: { light: orange, dark: orangeDark },
+  },
+
+  // disable component themes
+  componentThemes: false,
+})
+```
+
+### Options
+
+- `lightPalette` / `darkPalette` - Override base 12-color palettes
+- `childrenThemes` - Color themes (blue, red, etc). Accepts Radix color objects directly
+- `grandChildrenThemes` - Third-level themes (defaults to `{ accent: { template: 'inverse' } }`)
+- `componentThemes` - Component theme mappings, or `false` to disable
+
+---
+
+## createThemes
+
+More control over structure while still getting automatic palette interpolation and component themes.
+
+### Quick Start
+
+```tsx
+import { createThemes } from '@hanzogui/theme-builder'
+
+export const themes = createThemes({
+  base: {
+    palette: {
+      light: ['#fff', '#000'],
+      dark: ['#000', '#fff'],
+    },
+  },
+})
+```
+
+### Full Example
+
+```tsx
+import { createThemes, defaultComponentThemes } from '@hanzogui/theme-builder'
+import * as Colors from '@hanzogui/colors'
+
+export const themes = createThemes({
+  componentThemes: defaultComponentThemes,
+
+  base: {
+    palette: {
+      light: ['#fff', '#f2f2f2', '#e0e0e0', '#999', '#666', '#333', '#000'],
+      dark: ['#000', '#111', '#222', '#666', '#999', '#ccc', '#fff'],
+    },
+    extra: {
+      light: { ...Colors.blue, shadowColor: 'rgba(0,0,0,0.1)' },
+      dark: { ...Colors.blueDark, shadowColor: 'rgba(0,0,0,0.4)' },
+    },
+  },
+
+  accent: {
+    palette: {
+      light: ['#000', '#333', '#666', '#999', '#ccc', '#eee', '#fff'],
+      dark: ['#fff', '#eee', '#ccc', '#999', '#666', '#333', '#000'],
+    },
+  },
+
+  childrenThemes: {
+    blue: {
+      palette: {
+        light: Object.values(Colors.blue),
+        dark: Object.values(Colors.blueDark),
+      },
+    },
+    red: {
+      palette: { light: Object.values(Colors.red), dark: Object.values(Colors.redDark) },
+    },
+  },
+
+  grandChildrenThemes: {
+    accent: { template: 'inverse' },
+  },
+})
+```
+
+### Structure
+
+`createThemes` generates this hierarchy:
+
+```
+light / dark                    # base themes
+├── light_accent / dark_accent  # accent themes
+├── light_blue / dark_blue      # child themes
+│   └── light_blue_accent       # grandchild themes
+└── light_Button / dark_Button  # component themes
+```
+
+### Configuration
+
+#### `base` (required)
+
+```tsx
+base: {
+  palette: { light: string[], dark: string[] },
+  // or single array (auto-reversed for dark):
+  palette: string[],
+  template: 'base' | 'surface1' | 'surface2' | 'surface3' | 'inverse',
+  extra: { light: {...}, dark: {...} }, // non-inherited values
+}
+```
+
+#### `accent`, `childrenThemes`, `grandChildrenThemes`
+
+```tsx
+accent: { palette: { light: [...], dark: [...] } }
+
+childrenThemes: {
+  blue: { palette: { light: [...], dark: [...] }, template: 'base' },
+}
+
+grandChildrenThemes: {
+  accent: { template: 'inverse' }, // template-only inherits parent palette
+}
+```
+
+#### `templates`
+
+Override default templates. Maps property names to palette indices:
+
+```tsx
+templates: {
+  base: { background: 6, color: -1, borderColor: 9 },
+  surface1: { background: 7, color: -1, borderColor: 10 },
+}
+```
+
+Defaults: `base`, `surface1`, `surface2`, `surface3`, `alt1`, `alt2`, `inverse`
+
+#### `componentThemes`
+
+```tsx
+componentThemes: {
+  Button: { template: 'surface3' },
+  Card: { template: 'surface1' },
+}
+// or disable:
+componentThemes: false
+```
+
+#### `getTheme`
+
+Customize any generated theme:
+
+```tsx
+getTheme: ({ name, theme, scheme, level, palette }) => ({
+  ...theme,
+  shadowColor: scheme === 'dark' ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.1)',
+})
+```
+
+Parameters: `name`, `theme`, `scheme` ('light'|'dark'), `level` (1=base, 2=children, 3=grandchildren), `parentName`, `parentNames`, `palette`, `template`
+
+### Generated Theme Shape
+
+```tsx
+{
+  background, backgroundHover, backgroundPress, backgroundFocus,
+  color, colorHover, colorPress, colorFocus,
+  borderColor, borderColorHover, borderColorPress, borderColorFocus,
+  placeholderColor, outlineColor,
+  color1...color12,           // full palette scale
+  background0...background08, // transparent variants
+  accent1...accent12,         // if accent defined
+}
+```
+
+---
+
+## createThemeBuilder
+
+The low-level API that powers `createThemes`. Use this when you need complete control over palette structure, template definitions, and theme hierarchy.
+
+```tsx
+import { createThemeBuilder } from '@hanzogui/theme-builder'
+
+const themesBuilder = createThemeBuilder()
+  .addPalettes({
+    dark: ['#000', '#111', '#222', '#999', '#ccc', '#eee', '#fff'],
+    light: ['#fff', '#eee', '#ccc', '#999', '#222', '#111', '#000'],
+  })
+  .addTemplates({
+    base: { background: 0, color: -0 },
+    subtle: { background: 1, color: -1 },
+  })
+  .addThemes({
+    light: { template: 'base', palette: 'light' },
+    dark: { template: 'base', palette: 'dark' },
+  })
+  .addChildThemes({
+    subtle: { template: 'subtle' },
+  })
+
+export const themes = themesBuilder.build()
+```
+
+### Build-time Generation
+
+Optionally generate themes at build time to reduce bundle size:
+
+```tsx
+// next.config.js
+withGui({
+  themeBuilder: {
+    input: './themes-input.tsx',
+    output: './themes.tsx',
+  },
+})
+```
+
+Or use the CLI: `npx @hanzogui/cli generate-themes ./src/themes-in.ts ./src/themes-out.ts`
+
+---
+
+## Concepts
+
+### Palettes
+
+A palette is a gradient of colors from background to foreground:
+
+<Blog.ThemeBuilder.ExamplePalette showLabels />
+
+```tsx
+const dark_blue = [
+  'hsl(212, 35.0%, 9.2%)', // background
+  'hsl(216, 50.0%, 11.8%)',
+  // ...
+  'hsl(206, 98.0%, 95.8%)', // foreground
+]
+```
+
+### Templates
+
+Templates map property names to palette indices:
+
+```tsx
+const template = { background: 0, color: 12 }
+// Negative indices count from end: -1 = last, -2 = second-to-last
+```
+
+### Sub-themes
+
+Underscore in theme names defines nesting: `dark_subtle` is a sub-theme of `dark`.
+
+```tsx
+<Theme name="dark">
+  <Box /> {/* uses dark theme */}
+  <Theme name="subtle">
+    <Box /> {/* uses dark_subtle theme */}
+  </Theme>
+</Theme>
+```
+
+### Component Themes
+
+Named components automatically pick up matching sub-themes:
+
+```tsx
+const Button = styled(View, { name: 'Button', ... })
+
+// If dark_Button theme exists, <Button /> uses it automatically
+```
+
+### getTheme Callback
+
+Both `createThemes` and `createThemeBuilder` support `getTheme` for customization:
+
+```tsx
+.getTheme(({ theme, scheme, level }) => ({
+  ...theme,
+  customBorder: scheme === 'dark' ? '#333' : '#ddd',
+}))
+```
+
+### nonInheritedValues
+
+Add values that don't cascade to child themes:
+
+```tsx
+.addThemes({
+  light: {
+    template: 'base',
+    palette: 'light',
+    nonInheritedValues: {
+      blue1: '#e0f2fe',
+      shadowColor: 'rgba(0,0,0,0.1)',
+    },
+  },
+})
+```
+
+### Inverse Themes
+
+In v2, the `<Theme inverse />` prop and `themeInverse` prop were removed. To
+create inverse-like themes, follow the pattern used by the v5 config's `accent`
+theme: swap your light and dark palettes.
+
+```tsx
+// with createThemes - swap palettes for inverse effect
+accent: {
+  palette: {
+    light: darkPalette,  // use dark colors in light mode
+    dark: lightPalette,  // use light colors in dark mode
+  },
+},
+```
+
+This gives you an "inverted" theme where light mode shows dark colors and vice
+versa - commonly used for accent buttons or cards that should stand out. This
+approach is also SSR-safe.
+
+Use it in your components:
+
+```tsx
+<Theme name="accent">
+  <Button>Inverted colors</Button>
+</Theme>
+
+// or use activeTheme on supported components
+<Switch activeTheme="accent" />
+<Checkbox activeTheme="accent" />
+```
