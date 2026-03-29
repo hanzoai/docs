@@ -1,0 +1,120 @@
+---
+title: Developing with Hanzo GUI
+description: Tips and tricks
+---
+
+Hanzo GUI includes many helpful tools for debugging UI.
+
+### Debugging
+
+Hanzo GUI has several ways of giving you more insight into what's happening at
+compile-time.
+
+#### Visualizer
+
+You can set up a simple visualizer that shows a heads-up display when you
+hold "Option" (or any key you define) after a short delay, revealing
+the styled component names and even the file numbers and components they are in
+(if you have the compiler plugin installed) as an overlay over your app in
+development mode.
+
+```tsx
+import { setupDev } from '@hanzogui/core'
+
+setupDev({
+  // can just be true as well for defaulting to key: Alt + delay: 800
+  visualizer: {
+    key: 'Alt',
+    delay: 800,
+  },
+})
+```
+
+#### Debug Pragma
+
+To see what's being extracted, why, and every step along the optimization
+pipeline, add `// debug` to the top of any file. Adding `// debug-verbose` will
+show even more information, including more granular timings.
+
+If you're developing in your design system package that is built with
+@hanzogui/build, esbuild will strip this banner. You can try using `//! debug`
+(esbuild only preserves comments at the top that start with `//!`), but still
+occasionally esbuild will insert a helper above the comment, breaking it, so be
+sure to check the built file in `dist/jsx`.
+
+#### Debug Prop
+
+Adding `debug` to any Hanzo GUI component outputs detailed information about
+what's happening at runtime. Use it like so:
+
+```tsx
+import { Button } from '@hanzo/gui'
+
+export default () => <Button debug>Hello world</Button>
+```
+
+You'll see props, styles, and a variety of variables relevant to processing
+them.
+
+You can do `<Button debug="break" />` to have it break at the beginning of
+rendering, or `<Button debug="verbose" />` to have it output more detailed debug
+information.
+
+#### DEBUG Environment Variable
+
+If you set `DEBUG=gui` before your build command, you get the full
+debug output of every file built. This is useful for seeing everything that's
+happening across every file and is especially helpful for diagnosing production
+issues.
+
+### Runtime introspection
+
+In development mode, Hanzo GUI sets the variable `Gui` onto `globalThis` with
+a lot of helpful internals, including your entire parsed config from
+`gui.config.ts`.
+
+Beyond your config, you have:
+
+- **allSelectors**: All the selectors inserted by Hanzo GUI (before runtime).
+
+#### Inspecting Components
+
+Any `styled()` component will have a `staticConfig` property attached to it:
+
+```tsx
+const Circle = styled(View, {
+  borderRadius: 1000,
+})
+
+console.log(Circle.staticConfig) // lots of helpful information
+```
+
+- `componentName` is taken from the `name` key
+- `variants` contains the merged variants including parents.
+- `defaultProps` is the extracted props left to use as defaults on the
+  component.
+
+### Classes generated
+
+Hanzo GUI generates helpful CSS classes. For components created with `styled()`
+where a `name` is set like this:
+
+```tsx
+const MyButton = styled(View, {
+  name: 'MyButton',
+  backgroundColor: 'red',
+})
+```
+
+Hanzo GUI adds the classname `is_MyButton`. This is a useful escape hatch for
+attaching CSS to any extra component. All the default Hanzo GUI components have
+their name set.
+
+For components that extend a Text-based component, a further classname is set of
+the format `font_[fontFamily]`. So if you do:
+
+```tsx
+<Paragraph fontFamily="$body" />
+```
+
+The classnames `is_Paragraph` and `font_body` will be output to DOM.

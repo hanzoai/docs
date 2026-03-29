@@ -1,0 +1,242 @@
+---
+title: Expo Guide
+description: How to set up Hanzo GUI with Expo
+---
+
+We've created a new template repo for starting an Expo Router app based on
+the Expo starter repo.
+
+<Notice theme="blue">
+  This template requires Yarn 4.4.0 or greater. You can set yarn to the latest version by
+  running `yarn set version stable`.
+</Notice>
+
+```bash
+yarn create gui@latest --template expo-router
+```
+
+There are also [pre-made community Expo starters](/community).
+
+## Install
+
+Use this guide to set up Hanzo GUI with Expo Native and Web.
+
+<Notice theme="blue">
+  To support dark mode, update your `app.json` to `app.config.ts` and set
+  `userInterfaceStyle` to `"automatic"`.
+</Notice>
+
+### Native
+
+Create a new [Expo](https://docs.expo.dev/get-started/create-a-project/#initialize-a-new-project) project:
+
+```bash
+yarn dlx create-expo-app -t expo-template-blank-typescript
+```
+
+<Notice theme="blue">
+  This guide assumes Expo is configured with TypeScript support.
+</Notice>
+
+The following steps are optional but useful for many apps. They enable the optimizing compiler, Reanimated, and support for `process.env.XYZ` environment variables.
+
+Add `@hanzogui/babel-plugin`:
+
+```bash
+yarn add @hanzogui/babel-plugin
+```
+
+If you have a `gui.build.ts` (recommended — see
+[compiler install docs](/docs/intro/compiler-install#configuration-with-guibuildts)),
+no options are needed:
+
+Update your `babel.config.js` to include the optional `@hanzogui/babel-plugin`:
+
+```js fileName="babel.config.js"
+module.exports = function (api) {
+  api.cache(true)
+  return {
+    presets: ['babel-preset-expo'],
+    plugins: [
+      '@hanzogui/babel-plugin',
+    ],
+  }
+}
+```
+
+<Notice>
+  If you're using a monorepo you probably want to use [this Metro
+  configuration](/docs/guides/metro#native).
+</Notice>
+
+### Expo Router / Web
+
+- First, follow the [Metro configuration guide](/docs/guides/metro#web-support) to enable web support.
+
+Add `@hanzogui/config` and `@hanzo/gui` to your `package.json` and install them. Then create a `gui.config.ts`:
+
+```tsx fileName="gui.config.ts"
+import { defaultConfig } from '@hanzogui/config/v5'
+import { createGui } from '@hanzo/gui'
+
+export const guiConfig = createGui(defaultConfig)
+
+export default guiConfig
+
+export type Conf = typeof guiConfig
+
+declare module '@hanzo/gui' {
+  interface GuiCustomConfig extends Conf {}
+}
+```
+
+Then update `app/_layout.tsx`:
+
+```tsx showMore fileName="app/_layout.tsx"
+import '../gui.generated.css'
+
+import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native'
+import { Stack } from 'expo-router'
+import { useColorScheme } from 'react-native'
+import { GuiProvider } from '@hanzo/gui'
+
+import { guiConfig } from '../gui.config'
+
+export default function RootLayout() {
+  const colorScheme = useColorScheme()
+
+  return (
+    // add this
+    <GuiProvider config={guiConfig} defaultTheme={colorScheme!}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+        </Stack>
+      </ThemeProvider>
+    </GuiProvider>
+  )
+}
+```
+
+### Setup Hanzo GUI
+
+From here on out you can follow the [Installation](/docs/intro/installation) and [Configuration](/docs/core/configuration) docs.
+
+## Loading fonts
+
+Install the `expo-font` package:
+
+```bash
+npx expo install expo-font
+```
+
+Load your fonts so React Native can recognize them. There are several ways to do this:
+
+<Spacer size="$6" />
+
+<InlineTabs id="font" defaultValue="@hanzo/gui">
+<InlineTabs.List>
+    <InlineTabs.Tab value="@hanzo/gui">Gui</InlineTabs.Tab>
+    <InlineTabs.Tab value="expo">Expo Google Fonts</InlineTabs.Tab>
+</InlineTabs.List>
+
+<InlineTabs.Content value="@hanzo/gui">
+Use the `@hanzogui/font-inter` package, a pre-configured version of the Inter font that works with Hanzo GUI:
+
+Import the `useFonts` hook and load the fonts:
+
+```tsx fileName="App.tsx"
+import { useFonts } from 'expo-font'
+
+function App() {
+  const [loaded] = useFonts({
+    Inter: require('@hanzogui/font-inter/otf/Inter-Medium.otf'),
+    InterBold: require('@hanzogui/font-inter/otf/Inter-Bold.otf'),
+  })
+
+  useEffect(() => {
+    if (loaded) {
+      // can hide splash screen here
+    }
+  }, [loaded])
+
+  if (!loaded) {
+    return null
+  }
+
+  return <MyApp />
+}
+```
+
+</InlineTabs.Content>
+
+<InlineTabs.Content value="expo">
+Use the `@expo-google-fonts` package, a collection of Google Fonts that work with Expo:
+
+<Notice theme="green">
+  You can find the [full list of
+  fonts](https://github.com/expo/google-fonts/tree/master/font-packages) and usage
+  instructions in the [Expo documentation](https://github.com/expo/google-fonts).
+</Notice>
+
+Install the font package:
+
+```bash
+npx expo install @expo-google-fonts/inter
+```
+
+Import the `useFonts` hook and load the fonts:
+
+```tsx fileName="App.tsx"
+import { useFonts, Inter_400Regular, Inter_900Black } from '@expo-google-fonts/inter'
+
+function App() {
+  const [loaded] = useFonts({
+    Inter_400Regular,
+    Inter_900Black,
+  })
+
+  useEffect(() => {
+    if (loaded) {
+      // can hide splash screen here
+    }
+  }, [loaded])
+
+  if (!loaded) {
+    return null
+  }
+
+  return <MyApp />
+}
+```
+
+</InlineTabs.Content>
+</InlineTabs>
+
+<Notice>
+  For more information on loading fonts in Expo, see the [Expo
+  documentation](https://docs.expo.dev/develop/user-interface/fonts/).
+</Notice>
+
+## First time starting Expo
+
+The first time running your project with Hanzo GUI, be sure to clear the cache:
+
+```bash
+npx expo start -c
+```
+
+Your `package.json` scripts should look something like this:
+
+```json fileName="package.json"
+{
+  "scripts": {
+    "start-native": "expo start -c",
+    "start-web": "expo start -c",
+    "android": "yarn expo run:android",
+    "ios": "yarn expo run:ios",
+    "web": "expo start --web"
+  }
+}
+```
