@@ -171,8 +171,9 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Blog: Object.assign(Passthrough, {
       ThemeBuilder: Object.assign(Passthrough, { ExamplePalette: Passthrough }),
     }),
-    TableCell: Passthrough,
-    TableCol: Passthrough,
+    TableCell: ({ children, head }: { children?: ReactNode; head?: boolean }) =>
+      head ? <th className="pb-2 pr-4 font-medium text-left">{children}</th> : <td className="py-2 pr-4 text-sm">{children}</td>,
+    TableCol: ({ children }: { children?: ReactNode }) => <tr className="border-b border-fd-border">{children}</tr>,
     // Demo/chart components used in docs prose (render as passthrough)
     IntroParagraph: Passthrough,
     LogoCard: Passthrough,
@@ -183,7 +184,12 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     TokensDemo: Passthrough,
     ColorsDemo: Passthrough,
     SimpleTable: Passthrough,
-    Table: Passthrough,
+    Table: ({ children, heading }: { children?: ReactNode; heading?: string }) => (
+      <div className="my-6 overflow-x-auto">
+        {heading && <h4 className="mb-2 text-sm font-medium text-fd-muted-foreground">{heading}</h4>}
+        <table className="w-full text-sm"><tbody>{children}</tbody></table>
+      </div>
+    ),
     Code: (props: any) => <code {...props} />,
     ...components,
   };
