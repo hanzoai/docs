@@ -1,0 +1,89 @@
+name: Setup gui.hanzo.ai Domain
+
+on:
+  workflow_dispatch:
+
+jobs:
+  setup-domain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch CF credentials from KMS
+        id: kms
+        env:
+          KMS_CLIENT_ID: ${{ secrets.KMS_CLIENT_ID }}
+          KMS_CLIENT_SECRET: ${{ secrets.KMS_CLIENT_SECRET }}
+          HANZO_API_KEY: ${{ secrets.HANZO_API_KEY }}
+          KMS_ENDPOINT: ${{ vars.KMS_ENDPOINT || 'https://kms.hanzo.ai' }}
+        run: |
+          if [ -n "${KMS_CLIENT_ID}" ] && [ -n "${KMS_CLIENT_SECRET}" ]; then
+            HANZO_API_KEY=$(curl -sf "${KMS_ENDPOINT}/api/v1/auth/universal-auth/login" \
+              -H "Content-Type: application/json" \
+              -d "{\"clientId\":\"${KMS_CLIENT_ID}\",\"clientSecret\":\"${KMS_CLIENT_SECRET}\"}" | jq -r '.accessToken')
+          fi
+          response=$(curl -sf "${KMS_ENDPOINT}/api/v3/secrets/raw?workspaceId=e1359bf4-31b4-4dfa-bb90-323e2c298ad8&secretPath=/deploy&environment=prod" \
+            -H "Authorization: Bearer ${HANZO_API_KEY}" 2>/dev/null || echo "")
+          if [ -n "$response" ]; then
+            cf_token=$(echo "$response" | jq -r '.secrets[] | select(.secretKey=="CLOUDFLARE_API_TOKEN") | .secretValue // empty')
+            cf_account=$(echo "$response" | jq -r '.secrets[] | select(.secretKey=="CLOUDFLARE_ACCOUNT_ID") | .secretValue // empty')
+          fi
+          if [ -z "${cf_token:-}" ]; then
+            echo "::error::CF credentials not found in KMS."
+            exit 1
+          fi
+          echo "::add-mask::${cf_token}"
+          echo "::add-mask::${cf_account}"
+          echo "cf_token=${cf_token}" >> "$GITHUB_OUTPUT"
+          echo "cf_account=${cf_account}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup gui.hanzo.ai custom domain
+        run: |
+          set +e
+
+          echo "=== Add gui.hanzo.ai to gui-docs Pages project ==="
+          curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects/gui-docs/domains" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"name": "gui.hanzo.ai"}' | jq '.'
+
+          echo ""
+          echo "=== Get hanzo.ai zone ID ==="
+          ZONE_ID=$(curl -s "https://api.cloudflare.com/client/v4/zones?name=hanzo.ai" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" | jq -r '.result[0].id // empty')
+
+          if [ -z "$ZONE_ID" ]; then
+            echo "No DNS zone access. Manually set CNAME: gui -> gui-docs.pages.dev"
+            exit 0
+          fi
+
+          echo "Zone ID: $ZONE_ID"
+
+          echo ""
+          echo "=== Check existing DNS for gui.hanzo.ai ==="
+          DNS=$(curl -s "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?name=gui.hanzo.ai" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}")
+          echo "$DNS" | jq '.result[]'
+
+          RECORD_ID=$(echo "$DNS" | jq -r '.result[0].id // empty')
+          if [ -n "$RECORD_ID" ]; then
+            echo ""
+            echo "=== Updating existing record to CNAME gui-docs.pages.dev ==="
+            curl -s -X PATCH "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${RECORD_ID}" \
+              -H "Authorization: Bearer ${CF_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d '{"type":"CNAME","name":"gui","content":"gui-docs.pages.dev","proxied":true}' | jq '{success: .success, result: {type: .result.type, name: .result.name, content: .result.content}}'
+          else
+            echo ""
+            echo "=== Creating CNAME gui -> gui-docs.pages.dev ==="
+            curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records" \
+              -H "Authorization: Bearer ${CF_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d '{"type":"CNAME","name":"gui","content":"gui-docs.pages.dev","proxied":true}' | jq '{success: .success, result: {type: .result.type, name: .result.name, content: .result.content}}'
+          fi
+
+          echo ""
+          echo "=== Final domain state ==="
+          curl -s "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/pages/projects/gui-docs/domains" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" | jq '.result[]'
+        env:
+          CF_API_TOKEN: ${{ steps.kms.outputs.cf_token }}
+          CF_ACCOUNT_ID: ${{ steps.kms.outputs.cf_account }}
