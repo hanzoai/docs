@@ -1,4 +1,4 @@
-import { BookOpenIcon, ComponentIcon, LayoutIcon } from 'lucide-react';
+import { BookOpenIcon, ComponentIcon } from 'lucide-react';
 import type { BaseLayoutProps, LinkItemType } from '@hanzo/docs/ui/layouts/shared';
 
 export const linkItems: LinkItemType[] = [
@@ -28,8 +28,18 @@ export const linkItems: LinkItemType[] = [
   },
 ];
 
+// Hanzo "H" wordmark mark
 export const logo = (
-  <LayoutIcon className="size-5" />
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 20 20"
+    fill="currentColor"
+    xmlns="http://www.w3.org/2000/svg"
+    aria-label="Hanzo"
+  >
+    <path d="M2.5 2.5h3v6.25h9V2.5h3v15h-3V11.25h-9V17.5h-3z" />
+  </svg>
 );
 
 export function baseOptions(): BaseLayoutProps {
@@ -38,7 +48,7 @@ export function baseOptions(): BaseLayoutProps {
       title: (
         <>
           {logo}
-          <span className="font-medium">Hanzo GUI</span>
+          <span className="font-semibold">Hanzo GUI</span>
         </>
       ),
     },
