@@ -1,0 +1,69 @@
+---
+title: "Original Lattice Cryptography: Our FHE From Scratch"
+description: "Building original lattice-based FHE in Go — not Zama's tfhe-rs, not Microsoft SEAL. NTT SIMD optimization, encrypted database storage via ZapDB, C FFI + Rust bindings."
+author: Zach Kelling
+date: 2019-08-01
+---
+
+# Original Lattice Cryptography: Our FHE From Scratch
+
+Microsoft has SEAL. Zama has tfhe-rs. IBM has HElib. We didn't use any of them. We built our own fully homomorphic encryption library from lattice primitives in Go, with C FFI bindings and a Rust interface.
+
+This sounds like NIH syndrome. It wasn't.
+
+## Why Roll Your Own FHE
+
+Fully homomorphic encryption lets you compute on encrypted data without decrypting it. The server never sees plaintext. The operations happen on ciphertexts, and the results, when decrypted, are correct. This is the holy grail of encrypted computation.
+
+The existing libraries solve this problem in specific ways, for specific use cases, with specific performance tradeoffs. SEAL is optimized for Microsoft's cloud computing model. tfhe-rs is optimized for boolean circuit evaluation. HElib targets batch arithmetic.
+
+None of them were designed for what we needed: encrypted database operations on a blockchain. We needed homomorphic operations that worked within the constraints of on-chain storage, gas costs, and the specific query patterns of a blockchain state database.
+
+## The Implementation
+
+The foundation is RLWE (Ring Learning With Errors) over polynomial rings. The ring structure gives us the algebraic properties needed for homomorphic operations, and the error terms provide the security guarantee.
+
+**Polynomial arithmetic**: NTT (Number Theoretic Transform) for fast polynomial multiplication. This is the equivalent of FFT for finite fields. Multiplying two degree-N polynomials naively is O(N^2). NTT brings it to O(N log N). For our parameters (N = 4096 or 8192), this is the difference between usable and unusable.
+
+**SIMD optimization**: The polynomial coefficients map to SIMD lanes. A single ciphertext can encode thousands of plaintext values in parallel slots. Homomorphic operations on the ciphertext operate on all slots simultaneously. This is not GPU parallelism — it's data parallelism baked into the algebraic structure of the scheme.
+
+**Bootstrapping**: The fundamental challenge of FHE. Every homomorphic operation adds noise to the ciphertext. After enough operations, the noise overwhelms the signal and decryption fails. Bootstrapping refreshes the ciphertext by homomorphically evaluating the decryption function — encrypting the decryption. Our bootstrapping implementation targets the minimum circuit depth needed for database operations, not general-purpose computation.
+
+## ZapDB: Encrypted Database Storage
+
+ZapDB is the application layer on top of the FHE library. It's an encrypted key-value store where:
+
+- Values are stored as FHE ciphertexts
+- Queries execute on encrypted data
+- The database server never sees plaintext values
+- Results are returned as ciphertexts that only the key holder can decrypt
+
+For a blockchain database, this means node operators can store and query state without ever seeing the actual state values. Privacy is not a policy — it's a mathematical guarantee.
+
+The query model is limited compared to a general-purpose database. You can do equality checks, range queries, and arithmetic aggregations. You cannot do arbitrary SQL. This is a fundamental limitation of the FHE scheme's supported operations, not a missing feature.
+
+## C FFI + Rust Bindings
+
+The core library is Go. The performance-critical inner loops — NTT, polynomial reduction, noise sampling — have C implementations that Go calls via CGO. The C code is where the SIMD intrinsics live.
+
+The Rust bindings wrap the C interface with safe Rust types. This gives us the Go library for Lux node integration, the C library for raw performance, and the Rust bindings for everything else in our stack that's written in Rust.
+
+```go
+// Go interface
+ct := fhe.Encrypt(pk, plaintext)
+result := fhe.Add(ct1, ct2)
+decrypted := fhe.Decrypt(sk, result)
+// decrypted == plaintext1 + plaintext2
+```
+
+## Why Building Your Own Matters
+
+When you use someone else's FHE library, you trust their parameter selection, their noise budget management, their RNG, their side-channel mitigations. For an application where the encrypted data is financial state on a public blockchain — visible to every node operator in the world — the attack surface is not theoretical.
+
+Building from scratch means understanding every parameter choice. We know why N is 4096 and not 2048 (security margin). We know why the coefficient modulus is structured as a chain of primes (RNS representation for efficient modular arithmetic). We know where the noise budget goes and how many operations we can chain before bootstrapping.
+
+This understanding is not available from a library's documentation. It comes from implementing the field arithmetic, debugging the bootstrapping circuit, and measuring the noise growth empirically. The code is the understanding.
+
+---
+
+*zeekay — our own lattice crypto, our own FHE, our own encrypted database. every bit understood.*
