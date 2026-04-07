@@ -1,0 +1,51 @@
+---
+title: "First Tokenized US Treasuries: What We Built at Arca"
+description: "Before BlackRock, before Franklin Templeton, before the acronym RWA existed — we built the first tokenized US treasury product at Arca Labs. This is the architecture."
+author: Zach Kelling
+date: 2018-09-01
+---
+
+# First Tokenized US Treasuries: What We Built at Arca
+
+Tokenized treasuries are a $2 billion category now. BlackRock's BUIDL fund launched in 2024. Franklin Templeton's OnChain US Government Money Fund. Ondo Finance. Maple. Everyone has one.
+
+We built the first one at Arca Labs in 2018.
+
+## The Premise
+
+US Treasuries are the most liquid, lowest-risk instruments in global finance. They are also among the most operationally rigid. Settlement takes days. Distribution goes through primary dealers and broker-dealers. Small investors get the worst yields because the minimum lot sizes are designed for institutions.
+
+The thesis: put the ownership ledger on Ethereum. Keep the actual Treasury securities in a qualified custodian. Issue ERC-1404 compliance tokens that represent shares in the fund. On-chain interest distribution. Transfer restrictions enforced programmatically. An SEC-registered digital security backed by the full faith and credit of the US government.
+
+## The Technical Architecture
+
+The smart contract layer was ERC-1404 — a restricted transfer standard. Every `transfer` and `transferFrom` call hits a `detectTransferRestriction` check before executing. The restriction codes map to real compliance requirements: is the recipient KYC'd? Are they in an approved jurisdiction? Is the token in a lockup period? Has the sender been flagged?
+
+```solidity
+function detectTransferRestriction(address from, address to, uint256 value)
+    external view returns (uint8 restrictionCode);
+```
+
+Restriction code 0 means clear. Anything else halts the transfer and returns a human-readable reason via `messageForTransferRestriction`. This was the enforcement layer — securities law compiled into bytecode.
+
+Interest distribution was a daily NAV rebase. The fund administrator calculated net asset value from the underlying Treasury positions. The contract adjusted token balances proportionally. Holders saw their balances increase daily without claiming, without staking, without any DeFi yield farming mechanics. Just the coupon from government bonds, passed through programmatically.
+
+The compliance oracle sat off-chain — a KYC/AML service that maintained the whitelist of approved addresses. The contract checked the oracle on every transfer. This was the bridge between on-chain mechanics and off-chain regulatory requirements.
+
+## Why ERC-1404 and Not ERC-1400
+
+ERC-1400 was the kitchen-sink standard — partitions, forced transfers, operator permissions, document management. It was thorough and it was complex. For a treasury product where the primary requirement was "restrict who can hold this and distribute interest," ERC-1404 was the right level of abstraction. Simpler contract, smaller attack surface, easier to audit.
+
+I architected the smart contract infrastructure. The design choice was deliberate: the contract should enforce the minimum necessary compliance restrictions and do nothing else. Everything beyond transfer restriction and interest distribution belonged in the fund's operational layer, not in immutable bytecode.
+
+## Why It Mattered
+
+Before this, "tokenized securities" meant whitepapers and conference talks. We had a registered product, on-chain, with real US Treasuries backing it, distributed to real investors. The SEC had reviewed and approved the structure. The compliance was not aspirational — it was live.
+
+The architecture we built became the template. When BlackRock launched BUIDL six years later, the structural pattern was the same: qualified custodian holds the assets, tokens represent shares, transfer restrictions enforce compliance, yield accrues to holders. The specific contracts and custodians differ. The architecture is the one we proved out in 2018.
+
+Being first doesn't matter unless the thing you built was correct. The ar.ca treasury product was correct — technically, legally, and operationally. That's why the architecture survived and became the industry standard.
+
+---
+
+*zeekay — we built the first tokenized treasury. the industry caught up six years later.*

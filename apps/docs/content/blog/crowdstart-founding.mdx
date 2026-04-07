@@ -1,0 +1,56 @@
+---
+title: "Crowdstart: The Commerce Infrastructure We Needed"
+description: "2014: building stateless commerce infrastructure on Go and AppEngine because existing options were either too heavy or too broken. Sub-100ms p99, 500 merchants, a technical paper nobody asked for."
+author: Zach Kelling
+date: 2014-06-01
+---
+
+# Crowdstart: The Commerce Infrastructure We Needed
+
+In 2014 I was watching independent merchants get crushed. Not by competition — by their own tools.
+
+The commerce stack available to a small merchant was either Shopify (closed, rent-seeking, margin extraction at every step) or roll-your-own (weeks of engineering before your first sale). There was nothing in between that was composable, fast, and developer-native. So we built it.
+
+## The Problem With Existing Commerce
+
+Shopify's model is to make the first dollar easy and extract margin on every subsequent dollar. Their payment processing, their apps, their themes — each one is a toll booth. For a merchant doing real volume, Shopify's total cost is substantial and non-obvious at the start.
+
+The alternative — building your own commerce stack — required assembling a dozen pieces that were designed independently and integrated poorly. Payment gateways with obtuse APIs. Session-based cart state that fell apart under load. Checkout flows that lost carts when servers restarted.
+
+The fundamental problem was stateful session management. Every cart was stored server-side, tied to a session, tied to a particular server instance. Scale horizontally and you needed sticky sessions or shared session storage. Either was complexity you paid for forever.
+
+## The Crowdstart Architecture
+
+We made a different bet: stateless everything.
+
+The cart state lived client-side, cryptographically signed. The server validated and processed but never stored intermediate state. Any server in the cluster could handle any request. Horizontal scaling was trivial because there was nothing to share.
+
+We built on Go and Google App Engine. Go because it was fast, correct, and compiled to a single binary. App Engine because the autoscaling model matched our load pattern — commerce traffic spikes sharply during campaigns and goes quiet between them. Paying for idle capacity was waste we couldn't justify for merchants who were already margin-constrained.
+
+The performance result: sub-100ms p99 response times across all commerce operations. That number matters. Cart latency correlates with abandonment — every 100ms of latency costs conversion. We measured it directly.
+
+## Writing the Paper
+
+We wrote a technical paper about the architecture in 2014. This was unusual for a startup — most companies don't publish the engineering decisions that underpin their product. The calculus was straightforward: our architecture was the differentiator, but it wasn't patentable in any meaningful sense, and the paper would attract the kind of engineers and merchants who understood why these decisions mattered.
+
+The paper documented the stateless approach, the performance characteristics, the tradeoffs we made. We were explicit about what the architecture cost us — certain query patterns were harder without server-side session state — and why we thought the tradeoffs were correct.
+
+If you're building infrastructure, writing down the design forces you to understand it. The paper is where I found the gaps in my own reasoning. A decision that seemed obvious at the whiteboard gets stress-tested when you write it out for a skeptical reader.
+
+## 500 Merchants
+
+By the time I'm writing this, Crowdstart is running commerce for 500 independent merchants. The architecture held. The p99 numbers held. The merchants are paying for processing, not for idle EC2 capacity, not for Shopify's margin extraction, not for the engineering overhead of building from scratch.
+
+That's the outcome we were optimizing for. Independent merchants running efficient commerce without being extracted.
+
+## What Came Next
+
+The hanzo npm package published in August 2015 — a JavaScript SDK for the platform. shop.js followed in December 2015. The pattern: build the infrastructure in Go, expose it through a clean API, ship a JavaScript client that makes the browser integration trivial.
+
+The commerce layer was never the point in itself. It was infrastructure for a larger thesis: AI-native commerce, where every transaction is a training signal, where behavioral data compounds into predictive models that independent merchants could never build alone. The stateless architecture was the foundation because you can't build a data layer on top of a system that loses state under load.
+
+Architecture decisions compound. The 2014 bet on stateless Go paid off through 2018, through 2022, through now. Start with the right foundation.
+
+---
+
+*zeekay — commerce infrastructure that doesn't extract you.*

@@ -1,0 +1,46 @@
+---
+title: "Building the First Crypto Hedge Fund Infrastructure"
+description: "The technical architecture behind Arca's crypto hedge fund — NAV calculations on-chain, compliance hooks, institutional custody before MPC was mainstream."
+author: Zach Kelling
+date: 2018-03-01
+---
+
+# Building the First Crypto Hedge Fund Infrastructure
+
+Crypto hedge funds in 2018 were mostly guys with Coinbase accounts and a pitch deck. The infrastructure to run one properly — with real NAV calculations, compliance enforcement, and institutional custody — didn't exist. So we built it.
+
+## The Problem
+
+Traditional hedge fund infrastructure assumes a brokerage account at Goldman or Morgan Stanley. Your positions are held by a prime broker. NAV is calculated by a fund administrator using statements from that broker. Auditors verify against the same statements. Everyone trusts the same intermediary chain.
+
+Crypto breaks this model. There's no prime broker for Bitcoin. Your positions sit in wallets you control, on blockchains that don't send monthly statements in PDF format. Custody means private keys, not an account number. NAV calculation means aggregating positions across multiple chains, multiple exchanges, and multiple wallet types in real time.
+
+In 2018, institutional custody solutions were hardware security modules in data centers — expensive, rigid, and designed for a pre-crypto world. MPC custody (where the key is split across multiple parties and never exists in one place) was academic. It wasn't productized yet.
+
+## What We Built
+
+The fund infrastructure had three layers.
+
+**Custody layer**: Multi-signature wallets with hardware-backed signing. This was before threshold signatures were production-ready. We used multi-sig schemes where M-of-N hardware devices needed to sign a transaction. Not elegant by today's standards, but it worked and it was auditable. Every signature had a hardware attestation.
+
+**NAV engine**: On-chain position aggregation across every chain and exchange the fund held assets on. The engine pulled balances from wallet addresses, pulled prices from exchange APIs and on-chain oracles, calculated NAV, and published the result. This ran daily but was designed to run in real time. The challenge was not the math — it was the data aggregation across dozens of incompatible data sources.
+
+**Compliance hooks**: Every fund operation — subscription, redemption, rebalance, distribution — went through a compliance check. Investor accreditation status, AML screening, concentration limits, lockup enforcement. These weren't aspirational policies in a PPM. They were code that ran before every state change.
+
+## Why the Fund Structure Mattered
+
+The crypto industry in 2018 was allergic to regulation. ICOs were raising billions with no compliance framework. The prevailing wisdom was that regulation was something to be disrupted, not something to build into your infrastructure.
+
+Arca took the opposite view: if crypto is going to attract institutional capital, it needs institutional infrastructure. A properly structured fund — with a real administrator, real auditor, real compliance, and real custody — gives institutional investors something they can actually put into their portfolio. Not because they love compliance, but because their own regulators and LPs require it.
+
+The bet was that legitimacy would win over time. It did. The crypto funds that survived 2022 were the ones with real infrastructure. The ones that were "disrupting regulation" are mostly in SEC enforcement actions now.
+
+## The Legacy
+
+The NAV engine architecture from 2018 directly influenced how Hanzo Vault calculates portfolio values. The compliance hook pattern — every state change goes through a policy check — is now standard in every serious DeFi protocol. The custody architecture evolved into the MPC and threshold signature systems we built later.
+
+None of this was revolutionary in traditional finance. All of it was new in crypto. The work was translation: taking patterns that worked in institutional finance and implementing them for a world where the assets live on blockchains.
+
+---
+
+*zeekay — institutional crypto infrastructure, built before institutions showed up.*
