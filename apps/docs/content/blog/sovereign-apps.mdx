@@ -1,144 +1,39 @@
 ---
 title: "The Operating System for Sovereign Apps"
-description: "Base owns state. Lux owns trust. Providers own service quality. Users own keys and exit rights. This is the whole game."
+description: "Base owns state. Lux owns trust. Seven years of commits, every piece traceable to a first hash."
 author: Zach Kelling
 date: 2026-03-03
 ---
 
-Every app you use today works the same way: your data lives on someone else's computer, encrypted with someone else's keys, governed by someone else's terms. You rent access to your own information.
+Every app you use today rents you access to your own data. We built the replacement. It took seven years.
 
-We built the replacement.
+**Base is the personal computer of Web5. Lux is the trust kernel.**
 
-## The Thesis
+## Provenance
 
-**Base Vault SDK is the personal computer of Web5. Lux is the trust kernel.**
+Every piece traces to a first commit:
 
-Four sentences define the architecture:
+- **2015** — [`hanzoai/ingress@3680c8d`](https://github.com/hanzoai/ingress/commit/3680c8d) — HTTP routing layer
+- **2019** — [`luxfi/lattice@4421f32`](https://github.com/luxfi/lattice/commit/4421f32) — original FHE from scratch
+- **2020** — [`luxfi/node@b9e34e3`](https://github.com/luxfi/node/commit/b9e34e3) — Lux blockchain
+- **2020** — [`hanzoai/iam@84d8b2d`](https://github.com/hanzoai/iam/commit/84d8b2d) — identity and access management
+- **2021** — [`luxfi/threshold@c44efac`](https://github.com/luxfi/threshold/commit/c44efac) — FROST + CGGMP21 threshold signatures
+- **2021** — [`luxfi/evm@a59f55e`](https://github.com/luxfi/evm/commit/a59f55e) — EVM with PQ crypto precompiles
+- **2022** — [`hanzoai/base@3d07f02`](https://github.com/hanzoai/base/commit/3d07f02) — single-binary runtime, encrypted SQLite, CRDT
+- **2022** — [`hanzoai/kms@8d00c5c`](https://github.com/hanzoai/kms/commit/8d00c5c) — key management service
+- **2023** — [`luxfi/mpc@63f3517`](https://github.com/luxfi/mpc/commit/63f3517) — MPC daemon
+- **2025** — [`luxfi/consensus@882bab8`](https://github.com/luxfi/consensus/commit/882bab8) — Quasar hybrid consensus
+- **2026** — [`luxfi/zap@22a2a4c`](https://github.com/luxfi/zap/commit/22a2a4c) — zero-copy binary protocol
+- **2026** — [`hanzoai/sqlite@d9c1d43`](https://github.com/hanzoai/sqlite/commit/d9c1d43) — distributed encrypted SQLite
 
-- **Base** owns state — encrypted SQLite vault, local-first, offline-capable
-- **Lux** owns trust — identity, key policy, threshold governance, receipts
-- **Providers** own service quality — relay, storage, compute, bandwidth
-- **Users** own keys and exit rights — switch providers without losing data
+## Architecture
 
-That last point is the one that matters. Exit rights are the entire game.
+Base (2022) — encrypted vault, CRDT sync, realtime APIs, Base Functions. The data plane.
 
-## Why Old Crypto Failed
+Lux (2020) — 15 chains on every validator. Identity, keys, threshold FHE, MPC signing, EVM, DEX, bridge, ZK, quantum consensus, AI inference. The trust kernel.
 
-The first generation of crypto apps tried to put everything on-chain: the database, the app server, the compute, the UX. Users got 30-second confirmation times, $50 gas fees, and public state that anyone could read.
+Three tiers: AES-256-GCM + ML-KEM (default), TFHE threshold reveal (high-value), CKKS confidential compute (new products).
 
-That was the wrong abstraction.
+86 Lean 4 proofs. Zero sorry. 80+ papers. Red-teamed. Shipped.
 
-Chain is not a database. Chain is not a server. Chain is **trust infrastructure** — the place you go when you need global agreement that two parties cannot provide alone.
-
-## The Right Abstraction
-
-Every user, organization, and AI agent gets a **capsule**:
-
-- An encrypted SQLite vault (AES-256-CBC page encryption via sqlcipher)
-- A CRDT sync log for offline-first collaboration
-- A DID identity bound to their keys, not to an email/password
-- Threshold controls for high-value actions (2-of-3 approval, recovery, reveal)
-- An audit chain for receipts that neither party can deny
-- A compute policy (local, provider, or confidential via FHE)
-
-Cloud is optional replication. Chain is optional trust anchoring. Both are services you choose, not landlords you depend on.
-
-## Three Classes of Apps
-
-### 1. Local-First Private Apps
-
-The default. A user installs an app and gets a personal vault instantly. Notes, files, messages, credentials, AI memory, preferences — all encrypted, all local, all theirs. No account creation beyond key creation. Cloud is just sync.
-
-This kills the assumption that the server owns truth.
-
-### 2. Threshold Apps
-
-Important actions require quorum: treasury approval, admin recovery, secrets reveal, regulated access, multi-party workflow signoff. This is where threshold cryptography stops being a crypto curiosity and becomes a product primitive.
-
-Your company's admin account isn't a single password. It's 2-of-3 executives attesting. Recovery isn't "email a link." It's 3-of-5 guardians.
-
-### 3. Confidential Compute Apps
-
-The moonshots: private AI inference where the provider never sees your prompt. Sealed-bid auctions where nobody sees the bids until matching. Encrypted analytics where the data owner shares insights without sharing data. Private DeFi where trades execute without front-running.
-
-This is where Fully Homomorphic Encryption (TFHE, CKKS) creates qualitatively new products — not just better versions of existing ones.
-
-## The Stack
-
-We don't pretend one primitive does everything. The stack is layered:
-
-**Default (every app):** AES-256-GCM data encryption + ML-KEM key wrapping. Fast, post-quantum safe, no threshold required. Every secret at rest uses this.
-
-**Threshold control (high-value actions):** TFHE gates threshold key reveal. K-Chain stores key shares; T-Chain decrypts only when the required number of validators attest. For treasury, recovery, admin, regulated access.
-
-**Confidential compute (new product categories):** CKKS scheme for encrypted arithmetic on ML model inputs. Submit encrypted inference requests; evaluate under encryption; decrypt results only for the requester. GPU-accelerated: 40x speedup over CPU for FHE operations.
-
-## The Trust Kernel
-
-Lux Network runs 15 specialized chains on every validator — one binary, one node, every chain:
-
-| Chain | What It Does |
-|-------|-------------|
-| **I-Chain** | Decentralized identifiers, verifiable credentials |
-| **K-Chain** | Key registry, ML-KEM wrapping, rotation policy |
-| **T-Chain** | Threshold FHE reveal, CKKS confidential compute |
-| **M-Chain** | MPC signing (FROST, CGGMP21) |
-| **B-Chain** | Cross-chain bridge with MPC attestation |
-| **EVM** | Smart contracts, DeFi, tokens (GPU-accelerated) |
-| **DEX** | Native orderbook + AMM with ZAP binary protocol |
-| **FHE** | Encrypted computation chain |
-| **ZK** | Zero-knowledge proofs, confidential transfers |
-| **Q-Chain** | Post-quantum Corona consensus |
-| **A-Chain** | On-chain AI/ML inference |
-| **G-Chain** | GraphQL data layer |
-| **O-Chain** | Oracle data feeds |
-| **R-Chain** | Cross-chain relay (Lux warp) |
-
-No separate IAM, KMS, or MPC deployments. Validators stake and simultaneously do consensus, key management, threshold signing, and identity verification.
-
-## AI Agents as Sovereign Processes
-
-This is where it gets interesting.
-
-An AI agent today is an API script — stateless, identity-less, running on someone else's infrastructure with someone else's keys. It has no memory persistence, no privacy from its host, no economic autonomy.
-
-In our architecture, every agent gets its own capsule:
-- Encrypted vault for persistent memory
-- DID identity for authentication
-- Scoped capabilities (read/write/sign/spend)
-- Threshold spend controls (T-Chain approval for high-value actions)
-- Auditable action history anchored on-chain
-- Private inference path via CKKS (provider never sees inputs)
-
-Agents stop being chatbot wrappers and start being sovereign processes.
-
-## What We Ship Today
-
-This isn't a whitepaper. The code is live:
-
-- [**Hanzo Base**](https://github.com/hanzoai/base) — Single-binary runtime, encrypted SQLite, CRDT sync, Base Functions
-- [**Hanzo SQLite**](https://github.com/hanzoai/sqlite) — sqlcipher encryption + multi-party threshold write attestation
-- [**Lux Node**](https://github.com/luxfi/node) — 15-chain validator with GPU acceleration
-- [**Lux KMS**](https://github.com/luxfi/kms) — K-Chain key management, Base store, ZAP transport
-- [**Lux MPC**](https://github.com/luxfi/mpc) — FROST/CGGMP21 threshold signing
-- [**Zoo Network**](https://github.com/zoo-labs/universe) — Full 15-chain L2 running every capability
-
-86 Lean 4 formal proofs. Zero sorry. 80+ research papers. Red-teamed. Shipped.
-
-## The Category
-
-This is not:
-- "Blockchain database"
-- "Decentralized Firebase"
-- "TFHE everything"
-- "Fully on-chain apps"
-
-This is: **the operating system for sovereign apps.**
-
-Local vault is the database. Providers are the cloud. Chain is trust and receipts. Confidential compute is opt-in where it creates new products.
-
-Base owns state. Lux owns trust. Users own everything that matters.
-
----
-
-*Read the research: [App Architecture](/papers/lux-app-architecture.pdf) · [Trust Kernel](/papers/lux-trust-kernel.pdf) · [Agent Sovereignty](/papers/lux-agent-sovereignty.pdf) · [Threshold UX](/papers/lux-threshold-ux.pdf) · [Firebase Exit](/papers/lux-firebase-exit.pdf) · [Decentralized Cloud](/papers/lux-decentralized-cloud.pdf)*
+**The operating system for sovereign apps.** Base owns state. Lux owns trust. Users own everything that matters.
