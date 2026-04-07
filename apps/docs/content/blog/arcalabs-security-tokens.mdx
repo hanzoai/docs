@@ -1,0 +1,56 @@
+---
+title: "arcalabs: Assembly-Level Securities Engineering"
+description: "st-contracts committed February 2019. ERC-1400 security tokens, upgradeable proxy patterns, and what it means to build financial infrastructure at the EVM assembly level."
+author: Zach Kelling
+date: 2019-02-21
+---
+
+# arcalabs: Assembly-Level Securities Engineering
+
+The st-contracts repository went up under arcalabs on February 21st, 2019. Security token contracts implementing ERC-1400, with upgradeable proxy patterns built for regulatory compliance. This is the post about what that work actually involved and why it required going down to the assembly level.
+
+## What Security Tokens Are
+
+An ERC-20 token is permissionless by design. Anyone can hold one, transfer one, burn one. That's the point — censorship resistance is a feature, not a bug.
+
+A security token is different. It represents an ownership stake in a real asset — equity, debt, real estate, fund shares. Securities law imposes transfer restrictions: accredited investor requirements, jurisdiction limits, lockup periods, disclosure obligations. The token contract has to enforce these restrictions programmatically, or it's just ERC-20 with a different name.
+
+ERC-1400 was the standard that emerged to handle this. It introduced transfer restrictions via a `canTransfer` check — before any transfer executes, the contract validates the recipient is allowed to hold the token. It added forced transfers for regulatory compliance actions (courts can compel asset transfer; your contract needs to handle this). It added partition management — different tranches of the same security with different characteristics.
+
+This is financial infrastructure at the smart contract layer. The stakes are different from a DeFi protocol — if the token contract has a bug, real securities are at risk. The bar for correctness is higher.
+
+## Why Upgradeable Proxies
+
+Securities are long-lived instruments. A security token issued in 2019 might need to enforce 2024 transfer restriction rules. The EVM doesn't let you change deployed contract code. If your contract logic is frozen at deployment, you're either redeploying (which means migrating all holders, all balances, all state) or you're stuck with whatever behavior you shipped.
+
+The proxy pattern solves this: deploy a proxy contract whose address never changes, and a logic contract that holds the actual implementation. Holders interact with the proxy. The proxy delegates calls to the logic contract. When you need to upgrade the logic, you deploy a new implementation and update the proxy's pointer.
+
+The catch: proxy patterns are subtle. Delegate calls run the logic contract's code in the proxy's storage context. Storage layout in the logic contract must be compatible with the proxy's storage layout, or you corrupt state. The upgrade mechanism itself must be protected — an unauthorized upgrade is catastrophic.
+
+Getting this right required going through the code at the Solidity level and then at the EVM bytecode level. You can't trust the compiler to make the decisions you need here. Assembly inserts let you verify exactly what's happening with storage slots, with call data, with return values.
+
+## Assembly-Level EVM Work
+
+The EVM is a stack machine. The Solidity compiler generates EVM bytecode. Most of the time, the compiler's output is fine and you don't need to inspect it. For proxy patterns and for gas-critical paths, you do.
+
+Inline assembly in Solidity (using `assembly { }` blocks with Yul) gives you direct access to the EVM's operations: `sload` and `sstore` for storage, `calldataload` for reading call data, `delegatecall` for the proxy forwarding, `returndatacopy` for handling return values. The proxy's forwarding function, written in assembly, is about 30 lines that handle any call correctly with minimal gas overhead.
+
+The HPC (high-performance compute) framing that arcalabs used was deliberate. Ethereum computation is expensive. Every instruction costs gas. Assembly-optimized hot paths — transfer validation, proxy forwarding, event emission — are meaningfully cheaper than their Solidity equivalents. At any real transaction volume, the gas savings matter.
+
+## The DEVxDAO Connection
+
+DEVxDAO was an on-chain DAO funding blockchain infrastructure work. arcalabs received a grant for the security token work — the formal recognition that ERC-1400 infrastructure was a public good worth funding, not just commercial work.
+
+The DAO model was imperfect (every early DAO is imperfect) but the thesis was right: some infrastructure work doesn't have an obvious commercial model and needs grant funding. Open-source security token contracts that any project can use are that kind of work. The DEVxDAO connection was the institutional form of the cypherpunk intuition — financial infrastructure should be public.
+
+## What Building at This Level Teaches You
+
+Writing EVM assembly teaches you that the computer doesn't know what you mean. It executes what you wrote, precisely, without interpretation. If you wrote the wrong thing, it executes the wrong thing, and your security token contract has a bug that may only manifest under specific conditions years after deployment.
+
+This is clarifying. The discipline of writing assembly — where every instruction is explicit, where nothing is implicit, where you can trace exactly what happens to every bit — is the discipline you want for all financial infrastructure, even when you're writing at a higher level of abstraction. The question isn't "does this look right?" It's "what exactly does this execute, and is that what I want?"
+
+That discipline is what makes arcalabs work distinct from typical smart contract development. We were building for correctness under adversarial conditions, for longevity, for regulatory adaptation. The assembly level is where you prove correctness, not assert it.
+
+---
+
+*zeekay — security tokens need security engineering. arcalabs.*

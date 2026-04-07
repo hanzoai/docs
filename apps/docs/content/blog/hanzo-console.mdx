@@ -1,0 +1,63 @@
+---
+title: "Introducing Hanzo Console: Unified LLM Observability"
+description: "Hanzo Console launches — a unified development environment for observing, debugging, and optimizing LLM applications across all providers."
+author: Zach Kelling
+date: 2025-03-10
+---
+
+# Introducing Hanzo Console: Unified LLM Observability
+
+Building LLM applications at scale means flying blind. You're sending requests to models, getting responses, and hoping things work. When they don't — when outputs are wrong, latency spikes, costs explode — you have no visibility into why.
+
+Today we're launching Hanzo Console: a unified observability platform for LLM applications.
+
+## What Console Does
+
+Console gives you a complete picture of your LLM usage across all providers:
+
+**Tracing**: Every LLM call logged with full request/response, latency, token counts, and cost. View exact prompts, exact completions, token-level timing.
+
+**Cost tracking**: Real-time cost by model, project, user, and API key. See where your budget goes and optimize accordingly.
+
+**Quality monitoring**: Track output quality over time. Catch regressions before they reach users. A/B test prompts with statistical significance.
+
+**Multi-provider**: One dashboard for OpenAI, Anthropic, Together AI, and every other provider you use. Stop piecing together reports from five different billing portals.
+
+## The Integration Tax
+
+Every LLM provider offers some form of usage dashboard. But if you're using multiple providers — which most production applications do — you're reconciling reports from five different systems with five different schemas.
+
+Console is provider-agnostic. Instrument once, see everything.
+
+```python
+from hanzo import Console
+
+console = Console(api_key="your-key")
+
+# Automatic tracing with context manager
+with console.trace("user_query"):
+    response = openai.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": user_input}]
+    )
+```
+
+## Prompt Management
+
+Console includes a prompt registry. Version your prompts, track which versions are deployed, compare performance across versions.
+
+The problem with prompts in code: they get stale, they get forked, nobody knows which version is running in production. Console makes prompts first-class managed artifacts.
+
+## Dataset Curation
+
+Turn production traces into evaluation datasets. Mark good outputs, flag bad ones, build a ground truth dataset directly from real usage.
+
+When you're ready to fine-tune or change providers, you have a dataset that reflects actual production traffic — not synthetic examples.
+
+## Available Now
+
+Console is available at [console.hanzo.ai](https://console.hanzo.ai). Free tier includes 50K traces/month. Self-hosted deployment supported for enterprise.
+
+---
+
+*Zach Kelling is the founder of Hanzo AI (Techstars '17).*
