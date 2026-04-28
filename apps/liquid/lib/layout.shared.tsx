@@ -1,4 +1,4 @@
-import { BookOpenIcon, DropletIcon } from 'lucide-react';
+import { BookOpenIcon } from 'lucide-react';
 import type { BaseLayoutProps, LinkItemType } from '@hanzo/docs/ui/layouts/shared';
 
 export const linkItems: LinkItemType[] = [
@@ -22,8 +22,18 @@ export const linkItems: LinkItemType[] = [
   },
 ];
 
+// Brand mark: inverted square (Lux mono aesthetic). Uses currentColor so it
+// adapts to dark/light. The fill rendering as the surrounding text colour
+// is the whole point — Liquid is part of Lux, no decorative icon.
 export const logo = (
-  <DropletIcon className="size-5" />
+  <svg
+    aria-label="Liquid"
+    viewBox="0 0 16 16"
+    className="size-4"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <rect x="2" y="2" width="12" height="12" rx="1.5" fill="currentColor" />
+  </svg>
 );
 
 export function baseOptions(): BaseLayoutProps {
