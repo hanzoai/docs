@@ -70,8 +70,8 @@ jobs:
           platforms: linux/${{ matrix.arch }}
           push: true
           tags: |
-            ghcr.io/luxfi/liquid-docs:${{ github.sha }}-${{ matrix.arch }}
-            ghcr.io/luxfi/liquid-docs:latest-${{ matrix.arch }}
+            ghcr.io/hanzoai/liquid-docs:${{ github.sha }}-${{ matrix.arch }}
+            ghcr.io/hanzoai/liquid-docs:latest-${{ matrix.arch }}
           cache-from: type=gha,scope=liquid-docs-${{ matrix.arch }}
           cache-to: type=gha,scope=liquid-docs-${{ matrix.arch }},mode=max
 
@@ -88,14 +88,17 @@ jobs:
       - run: |
           for tag in "${{ github.sha }}" latest; do
             docker buildx imagetools create \
-              -t ghcr.io/luxfi/liquid-docs:$tag \
-              ghcr.io/luxfi/liquid-docs:$tag-amd64 \
-              ghcr.io/luxfi/liquid-docs:$tag-arm64
+              -t ghcr.io/hanzoai/liquid-docs:$tag \
+              ghcr.io/hanzoai/liquid-docs:$tag-amd64 \
+              ghcr.io/hanzoai/liquid-docs:$tag-arm64
           done
 
+  # Cloudflare Pages deploy: requires CLOUDFLARE_API_TOKEN/ACCOUNT_ID at
+  # KMS workspaceId=e1359bf4-31b4-4dfa-bb90-323e2c298ad8 secretPath=/deploy
+  # Re-enable with `if: github.ref == 'refs/heads/main'` once KMS is populated.
   cloudflare:
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: false  # disabled until KMS has CF creds (also blocks bot-docs/zen-docs)
     runs-on: hanzo-deploy-linux-amd64
     steps:
       - uses: actions/checkout@v4
