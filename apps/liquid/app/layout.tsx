@@ -11,11 +11,16 @@ import { NextProvider } from '@hanzo/docs/core/framework/next';
 
 export const metadata = createMetadata({
   title: {
-    template: '%s | Liquid Protocol',
-    default: 'Liquid Protocol — Self-repaying loans on Lux',
+    template: '%s — Liquid',
+    default: 'Liquid — Self-repaying loans on Lux',
   },
   description: 'Deposit yield-bearing collateral, borrow synthetic LETH, let yield retire the debt. Liquid is a self-repaying lending protocol on Lux.',
   metadataBase: baseUrl,
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+  },
 });
 
 const geist = Geist({
