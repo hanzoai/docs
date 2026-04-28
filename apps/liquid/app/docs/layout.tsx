@@ -16,7 +16,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         title: (
           <>
             {logo}
-            <span className="font-medium max-md:hidden">Hanzo DNS</span>
+            <span className="font-medium max-md:hidden">Liquid</span>
           </>
         ),
       }}
