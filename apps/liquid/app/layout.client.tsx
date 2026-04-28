@@ -8,8 +8,8 @@ export function Body({ children }: { children: ReactNode }) {
     <body className="antialiased">
       <ThemeProvider
         attribute="class"
-        defaultTheme="system"
-        enableSystem
+        defaultTheme="dark"
+        enableSystem={false}
         disableTransitionOnChange
       >
         {children}
