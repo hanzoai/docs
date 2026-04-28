@@ -80,7 +80,7 @@ export async function generateMetadata(props: DocsPageProps): Promise<Metadata> 
       title: 'Not Found',
     });
 
-  const description = page.data.description ?? 'Hanzo DNS Documentation';
+  const description = page.data.description ?? 'Liquid Protocol Documentation';
 
   return createMetadata({
     title: page.data.title,
