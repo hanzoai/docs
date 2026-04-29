@@ -6,14 +6,14 @@ description: How Liquid is audited, hardened, and disclosed against — backed b
 # Security & Audits
 
 Liquid sits inside the [Lux security stack](https://github.com/luxfi/security) —
-a shared set of audit cadence, formal-verification harnesses, post-quantum
-cryptography, MPC-backed key management, and disclosure paths used across
-every Lux protocol. Liquid-specific surfaces are layered on top.
+shared audit cadence, formal-verification harnesses, post-quantum
+cryptography, MPC-backed key management, **Quasar** post-quantum consensus,
+and disclosure paths used across every Lux protocol.
 
 ## Audit coverage
 
 External audit reports live in [`luxfi/audits`](https://github.com/luxfi/audits)
-(LaTeX, peer-reviewed). Per-component reports are tracked there with the
+(LaTeX, peer-reviewed). Per-component reports tracked there with the
 mainnet-deployment tag they cleared.
 
 | Component | Audit | Source |
@@ -21,10 +21,10 @@ mainnet-deployment tag they cleared.
 | Smart contracts | 2025-12-30 contracts audit | `luxfi/audits` |
 | Cryptography | 2025-12-30 crypto audit | `luxfi/audits` |
 | Architecture | 2025-12-30 architecture review | `luxfi/audits` |
-| DEX VM | 2025-12-30 dexvm audit | `luxfi/audits` |
+| Consensus | 2025-12-30 consensus audit | `luxfi/audits` |
 
 For Liquid-specific deltas (transmuter, position decay, strategy classifier),
-re-audit scope is run before each major version bump.
+re-audit scope runs before each major version bump.
 
 ## Internal security practices
 
@@ -44,14 +44,11 @@ make test-fuzz   # fuzz suite
 ## Upgradeability & governance
 
 - **Core vault logic** (`Liquid.sol`, `LiquidPosition.sol`,
-  `LiquidTransmuter.sol`) — immutable. No upgrade path.
+  `LiquidTransmuter.sol`) — **immutable**. No upgrade path.
 - **Adjustable parameters** (caps, fees, classes, transmuter cadence) —
   Lux DAO governance.
 - **Strategy adapters + curator/allocator/classifier/gauge** — admin role
-  held by the Safe owned by `ModuleGovernorV1` (see
-  [Governance](/docs/governance)).
-
-Execution flow:
+  held by the Safe owned by `ModuleGovernorV1` (see [Governance](/docs/governance)).
 
 ```
 Proposal on lux.vote
@@ -60,48 +57,86 @@ Proposal on lux.vote
   → Safe calls Liquid contract
 ```
 
-## Post-quantum cryptography
+## Post-quantum cryptography — `luxfi/crypto`
 
-Liquid inherits the Lux PQ stack from [`luxfi/crypto`](https://github.com/luxfi/crypto).
-**NIST-PQC algorithms run in production today** with full crypto-agility — every
-signing surface accepts both classical and PQ keys; verifiers dispatch on the
-algorithm tag.
+NIST-PQC algorithms run in production today. Every signing surface is
+**crypto-agile** — verifiers dispatch on the algorithm tag, accepting both
+classical and PQ keys.
 
-| Primitive | Spec | Use |
-|-----------|------|-----|
-| **ML-KEM-768** | FIPS 203 | KEM (X-Wing hybrid, KMS v2 wrapping) |
-| **ML-DSA-65** | FIPS 204 | Validator **RT key** (Corona threshold) |
-| **SLH-DSA** | FIPS 205 | Hash-based stateless signature |
-| **X-Wing** | IETF draft | Hybrid PQ KEM (ML-KEM-768 + X25519) |
-| **BLS12-381** | — | Aggregate sigs, validator-set threshold |
-| **Ed25519, secp256k1** | — | Classical signing, EVM compat |
+| Primitive | Spec | Class | Use |
+|-----------|------|-------|-----|
+| **ML-KEM-768** | FIPS 203 | PQ KEM (Module-LWE) | X-Wing hybrid, KMS replication |
+| **X-Wing** | IETF draft | Hybrid KEM | ML-KEM-768 + X25519 |
+| **ML-DSA-65** | FIPS 204 | PQ sig (Module-LWE+SIS) | PQ identity proofs |
+| **SLH-DSA** | FIPS 205 | PQ sig (hash-based) | Stateless backup signature |
+| **BLS12-381** | — | Classical pairing | Aggregate sigs, validator threshold |
+| **Ed25519, secp256k1** | — | Classical | Service signing, EVM |
 
-GPU-accelerated batch verification for ML-DSA, BLS, and ML-KEM.
+GPU-accelerated batch verification for ML-DSA, ML-KEM, and BLS.
 
-## Threshold signing & MPC
+## Threshold + MPC — `luxfi/mpc`, `luxfi/threshold`
 
-Operational signing uses MPC — no single-party key exists in the clear:
+Three distinct threshold paths, used for different purposes:
 
-| Scheme | Purpose | Repo |
-|--------|---------|------|
-| **CGGMP21** | Threshold ECDSA (BLS keygen + signing) | [`luxfi/mpc`](https://github.com/luxfi/mpc) |
-| **FROST** | Threshold EdDSA (ML-DSA RT keygen + signing) | [`luxfi/mpc`](https://github.com/luxfi/mpc) |
-| **Corona** | Threshold ML-DSA-65 framework | [`luxfi/threshold`](https://github.com/luxfi/threshold) |
+| Scheme | Type | Rounds | Repo |
+|--------|------|--------|------|
+| **CGGMP21** | Threshold ECDSA | Multi-round | [`luxfi/mpc`](https://github.com/luxfi/mpc) |
+| **FROST** | Threshold EdDSA | 2-round | [`luxfi/mpc`](https://github.com/luxfi/mpc) |
+| **Corona** | Threshold lattice (Ring-LWE / Module-LWE) | **2-round** | [`luxfi/corona`](https://github.com/luxfi/corona) via [`luxfi/threshold`](https://github.com/luxfi/threshold) |
 
-Q-Chain validators require a **HybridProofOfPossession** binding both BLS and
-RT (ML-DSA-65) keys atomically — the MPC daemon generates both in one DKG
-session.
+> **Corona is its own Ring-LWE / Module-LWE 2-round threshold scheme — it
+> is *not* "threshold ML-DSA". They are separate cryptographic constructions
+> that both happen to be lattice-based.**
+>
+> ML-DSA-65 is used in Quasar **alongside** Corona as a separate
+> single-signer PQ identity signature.
 
-## Key management
+## Consensus — Quasar (`luxfi/consensus`)
 
-Operational keys (allocator operator, gauge keeper, governance Safe co-signers)
-live in [`luxfi/kms`](https://github.com/luxfi/kms) — the MPC-backed Lux KMS
-service. **Never plaintext, never env files, never plaintext in databases.**
-Authentication via Universal Auth (client-id/secret → short-lived bearer);
-deploy CI fetches per-environment secrets through documented KMS endpoints.
+Liquid runs on Lux chains protected by **Quasar**, the post-quantum
+consensus overlay. Quasar offers three independent signing paths, each
+toggleable per-deployment:
 
-Replicated state encrypted with **age** (X25519 → X-Wing PQ-upgrade path).
-Storage backed by `luxfi/zapdb`; hourly snapshots + 1s incrementals to S3.
+| Path | Layer | Scheme |
+|------|-------|--------|
+| 1 | BLS | BLS12-381 threshold (classical) |
+| 2 | Corona | Ring-LWE 2-round threshold (PQ) |
+| 3 | ML-DSA-65 | FIPS 204 identity signatures (PQ) |
+
+| Mode | Composition | Use case |
+|------|-------------|----------|
+| BLS-only | path 1 | Fastest classical, PoA-style |
+| BLS + ML-DSA | paths 1+3 | Dual with PQ identity |
+| BLS + Corona | paths 1+2 | Dual with PQ threshold |
+| **Triple (full Quasar)** | paths 1+2+3 | Full PQ — `IsTripleMode()` |
+
+In triple mode, all three signing paths run in parallel goroutines.
+Liquid mainnet runs on the Lux C-Chain under triple-mode Quasar.
+
+## Z-Chain — PQ identity via ML-DSA + Groth16
+
+Lux **Z-Chain** (`luxfi/chains/zkvm`) provides PQ identity by verifying
+ML-DSA-65 signatures **inside Groth16 zk proofs**. This composes PQ identity
+attestations into existing zk circuits without revealing identity material.
+Z-Chain also provides FHE compute (TFHE/LuxFHE) and zk verification
+precompiles for cross-chain proofs.
+
+## Cross-chain — Warp V2
+
+[`luxfi/warp`](https://github.com/luxfi/warp) — cross-chain messaging with PQ
+safety via **random Corona validation** plus private messaging via Z-Chain
+FHE. Liquid uses Warp for cross-chain settlement notifications when
+strategies bridge yield back to Lux.
+
+## Key management — `luxfi/kms`
+
+Operational keys (allocator operator, gauge keeper, governance Safe
+co-signers) live in [`luxfi/kms`](https://github.com/luxfi/kms) — the
+MPC-backed Lux KMS. **Never plaintext, never env files, never plaintext in
+databases.** Universal Auth (client-id/secret → short-lived bearer); deploy
+CI fetches per-environment secrets via documented KMS endpoints. Replicated
+state encrypted with **age** (X25519 → X-Wing PQ-upgrade path), backed by
+`luxfi/zapdb`.
 
 ## Compliance
 
@@ -139,21 +174,18 @@ In-scope: Liquid contracts, Transmuter, strategy adapters, position NFT,
 governance gates. Out-of-scope: third-party DeFi protocols (file with the
 upstream), social engineering, physical attacks.
 
-## Ongoing
-
-- Quarterly re-audit cadence on mainline contracts
-- Per-strategy review for new adapters before classifier registration
-- Public post-mortems within 14 days of any incident resolution
-- Standing playbooks for contract pause, key rotation, service rollback
-
 ## Resources
 
 - [Lux security stack](https://github.com/luxfi/security)
 - [Audit reports (`luxfi/audits`)](https://github.com/luxfi/audits)
-- [Liquid contracts (`luxfi/liquid`)](https://github.com/luxfi/liquid)
 - [Crypto primitives (`luxfi/crypto`)](https://github.com/luxfi/crypto)
 - [MPC (`luxfi/mpc`)](https://github.com/luxfi/mpc)
-- [Threshold sigs (`luxfi/threshold`)](https://github.com/luxfi/threshold)
+- [Threshold framework (`luxfi/threshold`)](https://github.com/luxfi/threshold)
+- [Corona (`luxfi/corona`)](https://github.com/luxfi/corona)
+- [Quasar consensus (`luxfi/consensus`)](https://github.com/luxfi/consensus)
+- [Warp V2 (`luxfi/warp`)](https://github.com/luxfi/warp)
+- [Z-Chain / Q-Chain (`luxfi/chains`)](https://github.com/luxfi/chains)
 - [KMS (`luxfi/kms`)](https://github.com/luxfi/kms)
 - [Compliance (`luxfi/compliance`)](https://github.com/luxfi/compliance)
 - [DAO + governance (`luxfi/dao`)](https://github.com/luxfi/dao)
+- [Liquid contracts (`luxfi/liquid`)](https://github.com/luxfi/liquid)
