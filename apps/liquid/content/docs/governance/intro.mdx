@@ -1,44 +1,73 @@
 ---
-sidebar_position: 1
-hide_title: true
-sidebar_label: On-chain Governance
+title: On-chain Governance
+description: How Liquid is governed via Lux DAO — Safe + DLUX votes.
 ---
 
+# On-chain Governance
 
+Liquid is governed on-chain through the **[Lux DAO](https://lux.vote)** stack.
+There is no transitional multisig — execution runs through a Safe (formerly
+Gnosis Safe) controlled by DAO proposals; voting weight comes from staked
+**LUX**, the Lux ecosystem token, plus **DLUX**, the Lux governance token
+issued by the DAO contracts.
 
+- **Frontend / proposals**: [lux.vote](https://lux.vote)
+- **Source**: [`luxfi/dao`](https://github.com/luxfi/dao)
+- **Execution**: Safe multisig owned by `ModuleGovernorV1`
+- **Voting power**: `VotesERC20StakedV1` (LUX → DLUX) + delegations
+- **Strategies**: [`StrategyV1`](https://github.com/luxfi/dao/tree/main/contracts/contracts/deployables/strategies) with pluggable voting-weight, vote-tracker, and proposer-adapter modules
 
-### NOTE: Transition Phase
+Liquid&apos;s curator, allocator, strategy classifier, and gauge all hold the Safe
+as `admin`. Parameter changes flow:
 
-On-chain governance for Liquid v3 is currently expected shortly after launch. Until that upgrade is complete, all mentions of the DAO will be handled by the Liquid multisig as existing in the current v2 deployment.
+```
+Proposal on lux.vote
+  → DLUX-weighted vote (StrategyV1 + voting-weight module)
+  → ModuleGovernorV1 queues + executes through Safe
+  → Safe calls Liquid contract (e.g. setCap, setRiskLevel, addStrategy)
+```
 
-The material below describes the future fully on-chain framework so that contributors, token-holders, and auditors know what is coming. When governance goes live, this notice will be removed and the specification will be updated with final contract addresses, quorum context and voting timelines.
+## Why on-chain?
 
-## Why On-chain?
+Liquid is built around three principles:
 
-Liquid v3 is built around three principles that define open finance:
+- **Transparency** — every contract interaction is public and verifiable.
+- **Decentralization** — no single party controls user funds or protocol parameters.
+- **Immutability** — code that custodies value should, where possible, be fixed.
 
-- **Transparency** – every contract interaction is public and verifiable.
+A protocol where a small multisig can upgrade arbitrary state grants that
+multisig functional custody of user assets and exposes signers to obligations
+typically reserved for professional money managers. The opposite extreme —
+locking every parameter forever — can&apos;t patch security issues or adapt to
+upstream changes.
 
-- **Decentralization** – no single party should control user funds or protocol parameters.
-
-- **Immutability** – code that holds value should, wherever possible, be fixed and tamper-proof.
-
-A large portion of DeFi still relies on multisignature wallets that can upgrade contracts at will. While a multisig is visible on-chain, it still grants a small group full custody of user assets and exposes the signers to regulatory obligations normally reserved for professional money managers. At the other extreme, a protocol that locks every variable forever can struggle to patch security issues or adapt to upstream changes.
-
-Liquid designed v3 with onchain governance specifically in mind, under the fundamental philosophy that anything that can be immutable, should be immutable. If it can’t be immutable, it should be done via onchain governance to maximize decentralization. If it can’t be done via onchain governance, then onchain governance can elect an entity to take on the responsibility in a centralized (but transparent onchain) manner.
-
-However, if any of these activities would cause this centralized entity to be classified as a money manager (ie, in an oversimplified definition: is able to make biased decisions around user funds or fully control user access to their funds at any point in the process), then the designation is invalid.
+Liquid&apos;s rule: anything that can be immutable, is. Anything that can&apos;t be
+immutable goes through on-chain DAO governance. Anything that can&apos;t go through
+on-chain governance can be delegated by the DAO to a narrowly scoped on-chain
+executor — never to a designation that would make it a money manager (i.e. an
+entity able to make biased decisions around user funds or fully control user
+access to them).
 
 ## Layers of Governance
 
-| Layer                                                                    | Control Model                              | Rationale                                                          |
-| ------------------------------------------------------------------------ | ------------------------------------------ | ------------------------------------------------------------------ |
-| Core vault logic                                                         | Immutable contracts                        | Saftey first. Code that directly custodies deposits never changes. |
-| Adjustable parameters (redemption periods, fee rates, collateral limits) | On-chain DAO vote                          | Keeps policy decisions in the hands of token holders.              |
-| External Integrations                                                    | DAO-elected executor with a narrow mandate | Allows fast responses while remaining accountable to the DAO.      |
+| Layer | Control | Rationale |
+|-------|---------|-----------|
+| Core vault logic (`Liquid.sol`, `LiquidPosition.sol`, `LiquidTransmuter.sol`) | Immutable | Safety first. Code that directly custodies deposits never changes. |
+| Adjustable parameters (collateralization, fees, transmuter cadence, deposit caps) | DLUX-weighted DAO vote → Safe execute | Policy stays in token-holder hands. |
+| Strategy adapters (allocator, curator, classifier, gauge) | DAO-elected executor with narrow mandate | Fast response on yield routing, accountable to DAO. |
+| Operational keys (allocator operator, gauge keeper) | Safe co-signers with proposal-gated rotation | Day-to-day execution without per-action votes. |
 
-Our guiding rule is straightforward:
+## Voting & quorum
 
-If a task can be trustlessly automated, it should be immutable. If it can’t be immutable, it should pass through on-chain governance to maximize decentralization. If it can’t be done through on-chain governance, then that governance can elect an entity to take responsibility in a transparent on-chain manner.
+| Parameter | Value |
+|-----------|-------|
+| Token | DLUX (`VotesERC20StakedV1`, ERC-20Votes) |
+| Backing | Staked LUX |
+| Module | `ModuleGovernorV1` |
+| Voting period | Set per-proposal by `StrategyV1` |
+| Quorum | Configurable via `voting-weight` strategy |
+| Executor | Safe multisig owned by the module |
 
-This framework ensures that Liquid evolves without compromising user control or the protocols alignment with DeFi ideals.
+Final addresses, deployed quorum and voting timelines are published with each
+release at [lux.vote](https://lux.vote) and tracked in
+[`luxfi/dao` deployments](https://github.com/luxfi/dao).
