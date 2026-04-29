@@ -5,10 +5,10 @@ description: How Liquid is audited, hardened, and disclosed against — backed b
 
 # Security & Audits
 
-Liquid sits inside the [Lux security stack](https://github.com/luxfi/security)
-— a shared set of audit cadence, formal-verification harnesses, key
-management, and disclosure paths used across every protocol in the Lux
-ecosystem. Liquid-specific surfaces are layered on top.
+Liquid sits inside the [Lux security stack](https://github.com/luxfi/security) —
+a shared set of audit cadence, formal-verification harnesses, post-quantum
+cryptography, MPC-backed key management, and disclosure paths used across
+every Lux protocol. Liquid-specific surfaces are layered on top.
 
 ## Audit coverage
 
@@ -45,8 +45,8 @@ make test-fuzz   # fuzz suite
 
 - **Core vault logic** (`Liquid.sol`, `LiquidPosition.sol`,
   `LiquidTransmuter.sol`) — immutable. No upgrade path.
-- **Adjustable parameters** (caps, fees, classes, transmuter cadence) — Lux
-  DAO governance.
+- **Adjustable parameters** (caps, fees, classes, transmuter cadence) —
+  Lux DAO governance.
 - **Strategy adapters + curator/allocator/classifier/gauge** — admin role
   held by the Safe owned by `ModuleGovernorV1` (see
   [Governance](/docs/governance)).
@@ -60,39 +60,66 @@ Proposal on lux.vote
   → Safe calls Liquid contract
 ```
 
-## Cryptography
+## Post-quantum cryptography
 
-Liquid inherits the [Lux cryptography stack](https://github.com/luxfi/security#cryptography):
+Liquid inherits the Lux PQ stack from [`luxfi/crypto`](https://github.com/luxfi/crypto).
+**NIST-PQC algorithms run in production today** with full crypto-agility — every
+signing surface accepts both classical and PQ keys; verifiers dispatch on the
+algorithm tag.
 
-- ML-KEM-768 / ML-DSA-65 (NIST PQC) for forward-secure key exchange + signing
-- BLS12-381 aggregate sigs for validator-set threshold
-- secp256k1 for EVM compatibility
-- Ed25519 for service signing
-- Crypto-agility: every signing surface accepts both classical and PQ keys
+| Primitive | Spec | Use |
+|-----------|------|-----|
+| **ML-KEM-768** | FIPS 203 | KEM (X-Wing hybrid, KMS v2 wrapping) |
+| **ML-DSA-65** | FIPS 204 | Validator **RT key** (Corona threshold) |
+| **SLH-DSA** | FIPS 205 | Hash-based stateless signature |
+| **X-Wing** | IETF draft | Hybrid PQ KEM (ML-KEM-768 + X25519) |
+| **BLS12-381** | — | Aggregate sigs, validator-set threshold |
+| **Ed25519, secp256k1** | — | Classical signing, EVM compat |
+
+GPU-accelerated batch verification for ML-DSA, BLS, and ML-KEM.
+
+## Threshold signing & MPC
+
+Operational signing uses MPC — no single-party key exists in the clear:
+
+| Scheme | Purpose | Repo |
+|--------|---------|------|
+| **CGGMP21** | Threshold ECDSA (BLS keygen + signing) | [`luxfi/mpc`](https://github.com/luxfi/mpc) |
+| **FROST** | Threshold EdDSA (ML-DSA RT keygen + signing) | [`luxfi/mpc`](https://github.com/luxfi/mpc) |
+| **Corona** | Threshold ML-DSA-65 framework | [`luxfi/threshold`](https://github.com/luxfi/threshold) |
+
+Q-Chain validators require a **HybridProofOfPossession** binding both BLS and
+RT (ML-DSA-65) keys atomically — the MPC daemon generates both in one DKG
+session.
+
+## Key management
+
+Operational keys (allocator operator, gauge keeper, governance Safe co-signers)
+live in [`luxfi/kms`](https://github.com/luxfi/kms) — the MPC-backed Lux KMS
+service. **Never plaintext, never env files, never plaintext in databases.**
+Authentication via Universal Auth (client-id/secret → short-lived bearer);
+deploy CI fetches per-environment secrets through documented KMS endpoints.
+
+Replicated state encrypted with **age** (X25519 → X-Wing PQ-upgrade path).
+Storage backed by `luxfi/zapdb`; hourly snapshots + 1s incrementals to S3.
 
 ## Compliance
 
 For deployments using regulated collateral (security tokens, regulated
-yield), Liquid pairs with the [Lux compliance stack](https://github.com/luxfi/compliance):
+yield), Liquid pairs with [`luxfi/compliance`](https://github.com/luxfi/compliance):
 
 - Per-vault KYC level via `LiquidComplianceGate`
-- IDV provider integration via [hanzoai/idv](https://github.com/hanzoai/idv) (Jumio, Onfido, Plaid)
-- AML screening against OFAC SDN, EU consolidated, UK HM Treasury, PEP
+- IDV providers via [`hanzoai/idv`](https://github.com/hanzoai/idv) (Jumio, Onfido, Plaid)
+- AML screening: OFAC SDN, EU consolidated, UK HM Treasury, PEP — plus
+  optional [Jube](https://github.com/jube-suite/jube) sidecar for real-time scoring
 - Travel Rule (FATF Rec. 16), CTR detection, stablecoin policies
-- 20 jurisdictions, 14 regulatory frameworks (US SEC+FINRA, UK FCA, IOMFSA,
-  EU MiCA, MAS, ASIC, FINMA, …)
-
-## Key management
-
-All operational keys (allocator operator, gauge keeper, multisig signers) live
-in [`hanzoai/kms`](https://github.com/hanzoai/kms) — never plaintext, never
-in env files. Universal Auth client-id/secret pairs in CI fetch short-lived
-bearers from the KMS workspace.
+- 20 jurisdictions, 14 frameworks (US SEC+FINRA, UK FCA, IOMFSA, EU MiCA,
+  MAS, ASIC, FINMA, …)
 
 ## Container signing
 
-Liquid container images (when produced) are signed with Sigstore Cosign and
-attested via in-toto:
+Liquid container images are signed with Sigstore Cosign and attested via
+in-toto:
 
 ```bash
 cosign verify --certificate-identity-regexp '^https://github.com/luxfi/' \
@@ -124,6 +151,9 @@ upstream), social engineering, physical attacks.
 - [Lux security stack](https://github.com/luxfi/security)
 - [Audit reports (`luxfi/audits`)](https://github.com/luxfi/audits)
 - [Liquid contracts (`luxfi/liquid`)](https://github.com/luxfi/liquid)
-- [Compliance stack (`luxfi/compliance`)](https://github.com/luxfi/compliance)
+- [Crypto primitives (`luxfi/crypto`)](https://github.com/luxfi/crypto)
+- [MPC (`luxfi/mpc`)](https://github.com/luxfi/mpc)
+- [Threshold sigs (`luxfi/threshold`)](https://github.com/luxfi/threshold)
+- [KMS (`luxfi/kms`)](https://github.com/luxfi/kms)
+- [Compliance (`luxfi/compliance`)](https://github.com/luxfi/compliance)
 - [DAO + governance (`luxfi/dao`)](https://github.com/luxfi/dao)
-- [KMS (`hanzoai/kms`)](https://github.com/hanzoai/kms)
