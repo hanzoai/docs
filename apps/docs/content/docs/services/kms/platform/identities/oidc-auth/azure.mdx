@@ -133,14 +133,14 @@ In the following steps, we explore how to create and use identities to access th
           [ -z "$OIDC_TOKEN" ] && { echo "Failed to get access token"; exit 1; }
           
           # Exchange for Hanzo KMS access token
-          ACCESS_TOKEN=$(curl -s -X POST "<YOUR-INFISICAL-INSTANCE-URL>/api/v1/auth/oidc-auth/login" \
+          ACCESS_TOKEN=$(curl -s -X POST "<YOUR-HANZO_KMS-INSTANCE-URL>/api/v1/auth/oidc-auth/login" \
             -H "Content-Type: application/json" \
             -d "{\"identityId\":\"{your-identity-id}\",\"jwt\":\"$OIDC_TOKEN\"}" \
             | jq -r '.accessToken')
           
           # Fetch secrets
           curl -s -H "Authorization: Bearer $ACCESS_TOKEN" \
-            "<YOUR-INFISICAL-INSTANCE-URL>/api/v3/secrets/raw?environment={your-environment-slug}&workspaceSlug={your-workspace-slug}"
+            "<YOUR-HANZO_KMS-INSTANCE-URL>/api/v3/secrets/raw?environment={your-environment-slug}&workspaceSlug={your-workspace-slug}"
     ```
 
     Make sure the service connection is properly configured for workload identity federation and linked to your Azure AD app registration with appropriate claims.
