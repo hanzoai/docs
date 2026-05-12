@@ -41,7 +41,7 @@ CMD ["kms", "run", "--projectId", "<your-project-id>", "--command", "npm run sta
   <Step title="Obtain an access token for the machine identity">
     Obtain an access token for the machine identity by running the following command:
     ```bash
-    export INFISICAL_TOKEN=$(kms login --method=universal-auth --client-id=<your-client-id> --client-secret=<your-client-secret> --plain --silent)
+    export HANZO_$&=$(kms login --method=universal-auth --client-id=<your-client-id> --client-secret=<your-client-secret> --plain --silent)
     ```
 
     <Info>
@@ -51,17 +51,17 @@ CMD ["kms", "run", "--projectId", "<your-project-id>", "--command", "npm run sta
   <Step title="Feed the access token to the docker container">
     The last step is to give the KMS CLI installed in your Docker container access to the access token. This will allow the CLI to fetch and inject the secrets into your application.
 
-    To feed the access token to the container, use the INFISICAL_TOKEN environment variable as shown below.
+    To feed the access token to the container, use the HANZO_$& environment variable as shown below.
 
     ```bash
-    docker run --env INFISICAL_TOKEN=$INFISICAL_TOKEN [DOCKER-IMAGE]...
+    docker run --env HANZO_$&=$HANZO_$& [DOCKER-IMAGE]...
     ```
   </Step>
 </Steps>
 
 ### Using a Starting Script
 
-The drawback of the previous method is that you would have to generate the `INFISICAL_TOKEN` manually. To automate this process, you can use a shell script as your starting command.
+The drawback of the previous method is that you would have to generate the `HANZO_$&` manually. To automate this process, you can use a shell script as your starting command.
 
 <Steps>
   <Step title="Generate a Machine Identity">
@@ -73,8 +73,8 @@ The drawback of the previous method is that you would have to generate the `INFI
 
     ```bash script.sh
     #!/bin/sh
-    export INFISICAL_TOKEN=$(kms login --method=universal-auth --client-id=$INFISICAL_MACHINE_CLIENT_ID --client-secret=$INFISICAL_MACHINE_CLIENT_SECRET --plain --silent)
-    exec kms run --token $INFISICAL_TOKEN --projectId $PROJECT_ID --env $INFISICAL_SECRET_ENV --domain $INFISICAL_API_URL -- <starting script>
+    export HANZO_$&=$(kms login --method=universal-auth --client-id=$HANZO_$& --client-secret=$HANZO_$& --plain --silent)
+    exec kms run --token $HANZO_$& --projectId $PROJECT_ID --env $HANZO_$& --domain $HANZO_$& -- <starting script>
     ```
 
     > **Note:** The access token has a limited lifespan. Use the [kms token renew](/cli/commands/token) CLI command to renew it when necessary.
@@ -118,10 +118,10 @@ CMD ["kms", "run", "--command", "npm run start && ..."]
     <Step title="Feed service token to docker container">
       The last step is to give the KMS CLI installed in your Docker container access to the service token. This will allow the CLI to fetch and inject the secrets into your application.
 
-      To feed the service token to the container, use the INFISICAL_TOKEN environment variable as shown below.
+      To feed the service token to the container, use the HANZO_$& environment variable as shown below.
 
       ```bash
-      docker run --env INFISICAL_TOKEN=[token] [DOCKER-IMAGE]...
+      docker run --env HANZO_$&=[token] [DOCKER-IMAGE]...
       ```
     </Step>
 
