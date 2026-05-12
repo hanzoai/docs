@@ -1,0 +1,263 @@
+---
+title: Hanzo Agents
+description: Multi-agent orchestration platform — 88 specialized agents, 15 workflow orchestrators, 42 development tools, native hanzo-mcp integration, and SDKs for Go, Python, and TypeScript.
+---
+
+# Hanzo Agents
+
+Hanzo Agents is the multi-agent orchestration platform that ships with the Hanzo stack. It bundles specialist agents, workflow orchestrators, dev tools, and a control plane that coordinates them — all wired into [Hanzo MCP](/docs/mcp), [Hanzo Brain](/docs/services/brain), and [Hanzo LLM Gateway](/docs/llm).
+
+**Source:** [github.com/hanzoai/agents](https://github.com/hanzoai/agents)
+**Control plane:** Go binary (`hanzo-agents`)
+**SDKs:** Go, Python (`hanzo-agents`), TypeScript (`@hanzo/agents`)
+**Plugin format:** Claude Code marketplace (`/plugin install hanzo-*`)
+
+## What's in the box
+
+| Surface | Count | Examples |
+|---|---|---|
+| Role-based agents | 16 | Staff Engineer, Tech Lead, DevOps, Security, Frontend, Backend, Data, ML, QA, Platform, Mobile, PM, Tech Writer |
+| Specialized agents | 88 | Architecture, languages, infra, quality, data/AI, docs, biz-ops, SEO |
+| Workflow orchestrators | 15 | Full-stack feature shipping, security hardening, ML pipelines, incident response |
+| Dev tools | 42 | API scaffolding, security scanning, test automation, infra setup |
+
+All are Hanzo-native — they prefer `@hanzo/ui` components, the Hanzo LLM gateway, the Hanzo Cloud Platform, and use `hanzo-mcp` for filesystem, search, shell, and agent-to-agent dispatch.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      HANZO AGENTS                                │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
+│  │   Agents     │  │ Orchestrators│  │       Tools          │  │
+│  │ (88 + 16)    │  │ (15)         │  │       (42)           │  │
+│  └──────┬───────┘  └──────┬───────┘  └──────────┬───────────┘  │
+│         │                  │                      │             │
+│  ┌──────▼──────────────────▼──────────────────────▼──────────┐ │
+│  │                  Control Plane (Go)                         │ │
+│  │    Routing · Handoffs · Guardrails · Context · Tracing      │ │
+│  └────┬─────────────────────────────────────────────────┬─────┘ │
+│       │                                                   │       │
+│  ┌────▼──────────┐   ┌──────────────┐   ┌──────────────▼─────┐ │
+│  │  hanzo-mcp    │   │ Hanzo Brain  │   │  Hanzo LLM Gateway │ │
+│  │  (file/sh/    │   │  (memory,    │   │  (100+ providers,  │ │
+│  │   search)     │   │   facts)     │   │   Zen MoDE)        │ │
+│  └───────────────┘   └──────────────┘   └────────────────────┘ │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Quickstart
+
+### Inside Claude Code (plugin)
+
+```bash
+# In Claude Code:
+/plugin marketplace add hanzoai/agents
+/plugin install hanzo-essentials
+```
+
+Pre-built plugin bundles:
+
+| Plugin | What you get |
+|---|---|
+| `hanzo-essentials` | Code explanation, debugging, docs, PR enhancement, git workflows |
+| `hanzo-full-stack` | Backend API → Frontend UI → Mobile → Testing → Security → Deploy |
+| `hanzo-security` | OWASP scanning, pen testing, code review, SOC2/HIPAA/GDPR compliance |
+| `hanzo-data-ml` | ML/AI development, MLOps pipelines, model evaluation |
+| `hanzo-incident` | Incident response orchestrator |
+
+### TypeScript SDK
+
+```bash
+npm install @hanzo/agents
+```
+
+```typescript
+import { Agent, Runtime } from '@hanzo/agents'
+
+const agent = new Agent({
+  name: 'researcher',
+  model: 'claude-sonnet-4-5-20250929',
+  brain: { org: 'startx' },             // wires Hanzo Brain
+  tools: ['search', 'fetch', 'brain.recall'],
+})
+
+const result = await Runtime.run(agent, 'Summarize Q3 customer feedback.')
+console.log(result.output)
+```
+
+### Python SDK
+
+```bash
+pip install hanzo-agents
+```
+
+```python
+from hanzo_agents import Agent, Runtime
+
+agent = Agent(
+    name="researcher",
+    model="claude-sonnet-4-5-20250929",
+    brain={"org": "startx"},
+    tools=["search", "fetch", "brain.recall"],
+)
+
+result = Runtime.run(agent, "Summarize Q3 customer feedback.")
+print(result.output)
+```
+
+### Go SDK
+
+```bash
+go get github.com/hanzoai/agents/sdk/go
+```
+
+```go
+import agents "github.com/hanzoai/agents/sdk/go"
+
+agent := agents.New(agents.Config{
+    Name:  "researcher",
+    Model: "claude-sonnet-4-5-20250929",
+    Brain: agents.Brain{Org: "startx"},
+    Tools: []string{"search", "fetch", "brain.recall"},
+})
+
+result, err := agents.Run(ctx, agent, "Summarize Q3 customer feedback.")
+```
+
+### Control plane binary
+
+```bash
+# Self-host the control plane
+go install github.com/hanzoai/agents/control-plane/cmd/hanzo-agents@latest
+
+hanzo-agents serve --org startx
+```
+
+That starts the control plane on `:8095`. The TypeScript / Python / Go SDKs target it by default at `http://localhost:8095`; in production it lives at `agents.hanzo.ai`.
+
+## Core concepts
+
+### Agent
+
+A configured persona with: name, model, brain handle, tool list, guardrails, optional handoff targets. Stateless by itself — state lives in [Brain](/docs/services/brain).
+
+### Handoff
+
+One agent delegates to another. The control plane records the chain and enforces handoff policy (e.g., security agent must approve before deploy agent runs).
+
+### Guardrail
+
+Pre/post filters that gate a step. Built-ins: PII redaction, prompt-injection detection, output schema validation, token-budget enforcement. Plug in your own.
+
+### Orchestrator
+
+A graph of agents + handoffs + guardrails packaged as one unit. Run an orchestrator like a single agent; the control plane unrolls the graph.
+
+### Tool
+
+A typed function the model can call. Hanzo Agents auto-loads:
+
+- `hanzo-mcp` — 26 tools (files, search, shell, browser, agent dispatch)
+- `brain.*` — recall, store, link, search
+- `kms.*` — get scoped secrets
+- `iam.*` — check identity / permissions
+- Your custom tools
+
+See [MCP](/docs/mcp) for the full tool surface.
+
+## Multi-agent patterns
+
+### `batch()` — run independent agents in parallel
+
+```typescript
+const [pr, summary, plan] = await Runtime.batch([
+  Runtime.run(reviewer, 'Review PR #1234'),
+  Runtime.run(summarizer, 'Summarize the spec'),
+  Runtime.run(planner,    'Plan the migration'),
+])
+```
+
+### `dispatch_agent()` — agent kicks off another agent mid-step
+
+```typescript
+await Runtime.run(triage, 'Inbound issue', {
+  tools: {
+    dispatch_agent: (name, prompt) => Runtime.run(byName(name), prompt),
+  },
+})
+```
+
+### Orchestrators — graph-defined flows
+
+```typescript
+import { fullStackFeature } from '@hanzo/agents/orchestrators'
+
+await Runtime.run(fullStackFeature, 'Add invite-by-email to the dashboard')
+// unrolls into: spec → backend → frontend → mobile → tests → security → deploy
+```
+
+## Brain integration
+
+Every agent gets a [Brain](/docs/services/brain) handle scoped to the active org. Reads and writes go through the same `~/.hanzo/brain/<org>/brain.db` your bot uses. This is how a question asked in Slack ("what did engineering decide last week?") returns an answer grounded in the same memory your agents wrote yesterday.
+
+```typescript
+const agent = new Agent({
+  name: 'product-historian',
+  brain: { org: 'startx', team: 'engineering' },
+})
+```
+
+## IAM and KMS
+
+Agents authenticate to the control plane with the same `hk-*` API key as the rest of the stack. The control plane:
+
+- Calls [Hanzo IAM](/docs/services/iam) to validate the token and resolve the org.
+- Reads any per-agent secrets from [Hanzo KMS](/docs/services/kms) (model API keys, tool credentials).
+- Stamps every step with `X-Org-Id` so downstream services scope correctly.
+
+## Observability
+
+Every agent step emits structured spans (OpenTelemetry) and structured logs (Hanzo o11y). The control plane writes traces to [Hanzo o11y](/docs/o11y); the dashboard lives at `agents.hanzo.ai/<org>/traces`.
+
+Local development:
+
+```bash
+hanzo-agents serve --org startx --otlp-endpoint http://localhost:4317
+```
+
+## Self-hosting
+
+`hanzo-agents` ships as a single Go binary. The control plane needs:
+
+- A Postgres database (or SQLite for dev)
+- A Hanzo Brain mounted at `/data/brain`
+- An LLM Gateway URL (set `HANZO_LLM_URL`)
+- IAM + KMS endpoints (default to `hanzo.id` + `kms.hanzo.ai`)
+
+See [Self-hosting Hanzo Platform](/docs/services/platform) for the K8s overlay.
+
+## Source layout
+
+```
+hanzoai/agents/
+├── control-plane/         Go binary — routes, handoffs, guardrails
+├── sdk/
+│   ├── go/                Go SDK
+│   ├── python/            hanzo-agents Python package
+│   └── typescript/        @hanzo/agents npm package
+├── packages/shared/       shared schemas, prompts, types
+├── apps/                  example apps + dashboard
+└── docs/                  agent specs, recipes, orchestrators
+```
+
+## Further reading
+
+- [`hanzoai/agents` README](https://github.com/hanzoai/agents)
+- [Brain](/docs/services/brain) — the memory layer agents share
+- [MCP](/docs/mcp) — the tool surface agents call
+- [Bot](/docs/services/bot) — channel layer that fronts agents
+- [Run your org](/docs/run-your-org) — agents are step 6 in the customer flow
