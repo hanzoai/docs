@@ -1,0 +1,191 @@
+---
+title: Run Your Org
+description: From signup to a running brain, team, and bot for your organization — under ten minutes.
+---
+
+# Run Your Org
+
+Take an organization from zero — no account, no infra, no team workspace — to a fully provisioned Hanzo footprint in under ten minutes. By the end you will have:
+
+- A Hanzo identity for you and your teammates
+- A scoped organization in [Hanzo IAM](/docs/services/iam)
+- Project-scoped API keys
+- A seeded [Hanzo Brain](/docs/services/brain) profile for your org
+- A [Hanzo Bot](/docs/services/bot) wired to the channels you use
+- A [team workspace](/docs/services/team) for collaboration
+
+The whole flow runs against the public Hanzo cloud. Every step has an equivalent self-host path; the [self-hosting](/docs/services/platform) guide covers the same flow against your own cluster.
+
+## Pre-flight
+
+You need:
+
+- A laptop with `bash`, `curl`, and either `npm` or `pip`.
+- A team email domain (e.g. `startx.ai`) that you control.
+- One or more channel credentials for the bot (Slack token, Telegram bot token, etc. — optional, you can add these later).
+
+## 1. Sign up
+
+Go to [hanzo.id](https://hanzo.id) and sign in with email, GitHub, Google, or wallet. The first user to sign up under your domain becomes the owner. You are redirected to [console.hanzo.ai](https://console.hanzo.ai).
+
+See [Getting Started](/docs/getting-started) for the per-method details.
+
+## 2. Create your organization
+
+In the console:
+
+1. Click your profile menu → **Switch organization** → **Create organization**.
+2. Enter a slug (e.g. `startx`). This becomes your namespace everywhere in Hanzo — IAM, brain, bot, team.
+3. Invite teammates by email. They will receive a sign-in link bound to your org.
+
+Roles ship with the org:
+
+- `owner` — full admin
+- `admin` — manage members and projects
+- `member` — use API keys and resources
+
+See [Organizations](/docs/organizations) for the full role matrix.
+
+## 3. Generate a scoped API key
+
+From the console, **Projects** → **New Project** → **API Keys** → **Create Key**.
+
+```
+hk-proj-org-startx-abc123...
+```
+
+Copy it now. Set it in your shell:
+
+```bash
+export HANZO_API_KEY="hk-proj-org-startx-abc123..."
+```
+
+This single key is the credential for every Hanzo service. The gateway routes calls based on the key's project scope.
+
+## 4. Seed secrets into KMS
+
+[Hanzo KMS](/docs/services/kms) holds anything you would otherwise stuff into a `.env` file: channel tokens, third-party API keys, signing keys.
+
+```bash
+# Authenticate (one-time) — uses your active hanzo.id session
+hanzo kms login
+
+# Seed a Slack bot token under your org
+hanzo kms put /channels/slack/BOT_TOKEN "xoxb-..." --org startx
+
+# Seed an OpenAI key
+hanzo kms put /providers/openai/API_KEY "sk-..." --org startx
+```
+
+Every downstream Hanzo service reads from KMS at startup — you never paste secrets into a YAML file. See [KMS Quickstart](/docs/services/kms/getting-started).
+
+## 5. Install a brain profile
+
+A **brain profile** is a saved starting state for [Hanzo Brain](/docs/services/brain): schema, seeded pages, embedding model, search weights.
+
+Pick the one that fits your org:
+
+| Profile | Best for |
+|---|---|
+| `default` | Empty brain |
+| `coder` | Engineering-led orgs |
+| `founder` | Pre-product-market-fit founders |
+| `support` | Customer-facing teams |
+| `research` | Long-form note-taking teams |
+
+Install:
+
+```bash
+npm install -g @hanzo/bot
+hanzo-bot brain install founder --org startx
+```
+
+That writes `~/.hanzo/brain/startx/brain.db`, seeds it with the `founder` profile content, and registers it with your Hanzo org. From now on every agent, bot, and MCP call your org makes reads and writes through that brain.
+
+The brain file is byte-identical across runtimes — you can swap the Go binary in later without re-seeding:
+
+```bash
+go install github.com/hanzobot/go/cmd/hanzo-bot@latest
+hanzo-bot brain status --org startx   # same file, same ids
+```
+
+See [Brain](/docs/services/brain) for the full algorithm surface.
+
+## 6. Wire up the bot
+
+The bot is the gateway between every channel and your brain + agents.
+
+```bash
+hanzo-bot serve --org startx
+```
+
+That starts the bot, connects to every channel for which it found a token in KMS, and routes inbound messages through the agents framework against your seeded brain.
+
+Add a channel later:
+
+```bash
+hanzo kms put /channels/discord/BOT_TOKEN "..." --org startx
+hanzo-bot reload
+```
+
+See [Bot](/docs/services/bot) and [`hanzobot/ts`](https://github.com/hanzobot/ts) for adapter details.
+
+## 7. Stand up the team workspace
+
+[Hanzo Team](/docs/services/team) gives your org a shared workspace: docs, tasks, calls, meetings, files. It uses the same IAM identity so your existing org members sign in with one click.
+
+```bash
+hanzo team open --org startx
+```
+
+That provisions a team workspace at `team.hanzo.ai/startx` (or your custom domain) and joins every IAM member.
+
+## 8. Test the full path
+
+Send a message to one of your wired channels:
+
+```
+What's on the roadmap?
+```
+
+What happens behind the scenes:
+
+```
+Channel (Slack)
+   │
+   ▼
+Hanzo Bot      ──► reads ~/.hanzo/brain/startx/brain.db   (Brain)
+   │                ─► hybrid search finds the right page
+   ▼
+Hanzo Agents   ──► dispatches to the agent that owns the topic
+   │                ─► agent calls Hanzo LLM Gateway with HANZO_API_KEY
+   ▼
+Hanzo IAM      ──► validates token, checks org scope (X-Org-Id)
+   │
+   ▼
+Reply in Slack
+```
+
+Every step is scoped to `startx`. Teammates outside the org cannot read or write the brain even if they have a Hanzo identity.
+
+## 9. Add a teammate
+
+Already invited from step 2. They click the email link, sign in via hanzo.id, land in `startx`'s console. Their messages flow through the same bot, the same brain, the same agents.
+
+## Production checklist
+
+- [ ] Domain pinned: `hanzo.id` redirect, `team.hanzo.ai/startx` (or your custom domain) reachable.
+- [ ] At least two `owner`-role members (avoid single-owner lockout).
+- [ ] KMS rotation policy enabled for channel tokens.
+- [ ] Brain backup configured — see [Brain backups](/docs/services/brain) (the brain.db is a SQLite file; `litestream` or daily `cp` both work).
+- [ ] Bot deployed with at least one channel + one agent.
+- [ ] Audit log enabled in IAM.
+
+See [Production checklist](/docs/services/platform) for the platform-level set.
+
+## What's next
+
+- **More agents.** Drop new agents into `~/.hanzo/agents/<org>/` and the bot loads them on reload. See [Agents](/docs/services/agents).
+- **More channels.** Every adapter the bot supports — Discord, Telegram, iMessage, WhatsApp, Matrix, IRC, MS Teams, Mattermost — is one KMS secret away.
+- **Self-host.** Move the same flow onto your own cluster via [Hanzo Platform / PaaS](/docs/services/platform).
+- **Bring your model.** Point the LLM gateway at a private model with [Hanzo Engine](/docs/services/engine).
