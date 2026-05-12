@@ -5,7 +5,7 @@ description: "Hanzo ID is the unified identity platform for the entire Hanzo/Lux
 
 ## Overview
 
-Hanzo ID is the **unified identity platform** for the entire Hanzo/Lux/Zoo ecosystem. Custom login UI built on Casdoor (IAM), serving OAuth2/OIDC for all Hanzo services. White-label-ready with per-org customization.
+Hanzo ID is the **unified identity platform** for the entire Hanzo/Lux/Zoo ecosystem. Custom login UI built on Hanzo IAM (IAM), serving OAuth2/OIDC for all Hanzo services. White-label-ready with per-org customization.
 
 ### Why Hanzo ID?
 
@@ -17,7 +17,7 @@ Hanzo ID is the **unified identity platform** for the entire Hanzo/Lux/Zoo ecosy
 
 ### OSS Base
 
-**Casdoor** (IAM backend) + custom **Next.js** login UI (`hanzo/id`).
+**Hanzo IAM** (IAM backend) + custom **Next.js** login UI (`hanzo/id`).
 
 ## When to use
 
@@ -29,9 +29,9 @@ Hanzo ID is the **unified identity platform** for the entire Hanzo/Lux/Zoo ecosy
 
 ## Hard requirements
 
-1. **Casdoor** IAM backend running
-2. **App registered** in Casdoor admin (owner=`admin`, NOT org name)
-3. **Implicit flow preferred** — code flow has Casdoor bug with empty grant_type
+1. **Hanzo IAM** IAM backend running
+2. **App registered** in Hanzo IAM admin (owner=`admin`, NOT org name)
+3. **Implicit flow preferred** — code flow has Hanzo IAM bug with empty grant_type
 
 ## Quick reference
 
@@ -62,7 +62,7 @@ Hanzo ID is the **unified identity platform** for the entire Hanzo/Lux/Zoo ecosy
 | Device | `/oauth/device` | |
 | Logout | `/oauth/logout` | |
 
-Legacy Casdoor paths still work but NEVER use them for new integrations.
+Legacy Hanzo IAM paths still work but NEVER use them for new integrations.
 
 ## One-file quickstart
 
@@ -124,11 +124,11 @@ Each org can have its own domain, branding, and app set.
 
 ### Token Flow Gotchas
 
-**Code flow bug**: `response_type=code` maps to empty grant_type `""` in Casdoor. Even with `""` in DB `grant_types` array, Go xorm drops empty strings.
+**Code flow bug**: `response_type=code` maps to empty grant_type `""` in Hanzo IAM. Even with `""` in DB `grant_types` array, Go xorm drops empty strings.
 
 **Solution**: Use `response_type=token` (implicit flow) for all browser-based auth.
 
-**Token expiry**: Casdoor apps default `expireInHours=0` which means instant expiry. Always set `expireInHours=168` (7 days).
+**Token expiry**: Hanzo IAM apps default `expireInHours=0` which means instant expiry. Always set `expireInHours=168` (7 days).
 
 ### Worker Architecture
 
@@ -139,16 +139,16 @@ Each org can have its own domain, branding, and app set.
 
 ### API Masking Warning
 
-Casdoor's `/api/get-application` masks fields for unauthenticated requests — appears empty but DB has real values. Always use authenticated requests or `/api/get-app-login`.
+Hanzo IAM's `/api/get-application` masks fields for unauthenticated requests — appears empty but DB has real values. Always use authenticated requests or `/api/get-app-login`.
 
 ## Troubleshooting
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| Login returns empty token | `expireInHours=0` | Set to 168 in Casdoor app config |
+| Login returns empty token | `expireInHours=0` | Set to 168 in Hanzo IAM app config |
 | Code flow rejected | Empty grant_type bug | Use implicit flow (response_type=token) |
 | Wrong org after login | Hardcoded `organization: "hanzo"` | Use `/api/get-app-login` lookup |
-| Userinfo only returns `sub` | Normal Casdoor behavior | Use `/api/get-account` for full profile |
+| Userinfo only returns `sub` | Normal Hanzo IAM behavior | Use `/api/get-account` for full profile |
 | App appears to have no config | API masking | Use authenticated request |
 | Missing cert reference | Wrong client_id for scoped SSO | Use `/api/get-app-login` |
 
