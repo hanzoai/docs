@@ -1,0 +1,267 @@
+---
+title: Hanzo Brain
+description: The brain.db substrate every Hanzo runtime hosts — pages, edges, facts, FTS5 hybrid search, BLAKE3 content-addressable ids, byte-identical across TypeScript, Go, C++, Python, and Rust.
+---
+
+# Hanzo Brain
+
+Hanzo Brain is the **knowledge substrate** every Hanzo agent, bot, and runtime shares. One SQLite file at `~/.hanzo/brain/brain.db` holds pages, edges, facts, and an FTS5 hybrid-search index. Every supported runtime writes the exact same schema, the exact same content-addressable ids, the exact same byte-on-disk format.
+
+**Source:** [github.com/hanzoai/brain](https://github.com/hanzoai/brain)
+**npm:** [`@hanzo/brain`](https://www.npmjs.com/package/@hanzo/brain)
+**Python:** [`hanzo-memory`](https://pypi.org/project/hanzo-memory/)
+**Go:** [`github.com/hanzobot/go`](https://github.com/hanzobot/go)
+**C++:** [`github.com/hanzobot/cpp`](https://github.com/hanzobot/cpp)
+**Rust:** [`hanzo-mcp::brain`](https://github.com/hanzoai/mcp)
+
+## Why a brain
+
+Every Hanzo product reads and writes the same brain:
+
+- **Bot** persists chat history, facts, and skill outputs.
+- **Agents** stash memories between runs, share context across agents.
+- **MCP** servers expose brain contents as tools.
+- **Search**, **Studio**, **Chat** read from the same store.
+
+One schema. Five runtimes. Wallet-style content-addressable ids that match across all of them.
+
+## Architecture
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                       HANZO BRAIN                               │
+├────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐   │
+│  │  Pages   │  │  Edges   │  │  Facts   │  │  FTS5 Index  │   │
+│  │ (nodes)  │  │ (graph)  │  │ (k=v)    │  │ (hybrid)     │   │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └──────┬───────┘   │
+│       │              │              │               │           │
+│  ┌────▼──────────────▼──────────────▼───────────────▼──────┐   │
+│  │            Wallet-style ids (BLAKE3, base58check)        │   │
+│  │   hanzo:UFC8qCW8LRUmpfyRq2qnAvYi11cqftY3b                │   │
+│  └──────────────────────────┬───────────────────────────────┘   │
+│                              │                                  │
+│  ┌──────────────────────────▼────────────────────────────────┐  │
+│  │                  Hybrid search                             │  │
+│  │   RRF + RSF + MMR + dedup + Unicode script detection       │  │
+│  │   MRL truncation + UUIDv7 + WebVTT/SRT/RTTM                │  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │                  Five-runtime contract                      │ │
+│  │   TS · Python · Go · C++ · Rust — byte-identical brain.db   │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────┘
+```
+
+## Quickstart
+
+Pick the runtime that fits your stack. They all write the same file.
+
+### TypeScript
+
+```bash
+npm install @hanzo/brain
+```
+
+```typescript
+import { Brain } from '@hanzo/brain'
+
+const brain = await Brain.open('~/.hanzo/brain/brain.db')
+
+// Add a page
+const id = await brain.pages.add({
+  title: 'Onboarding notes',
+  body: 'New CEO signed up via hanzo.id...',
+  tags: ['org:startx', 'topic:onboarding'],
+})
+
+// Search
+const hits = await brain.search('CEO signup')
+console.log(hits[0].title)
+```
+
+### Python
+
+```bash
+pip install hanzo-memory
+```
+
+```python
+from hanzo_memory import Brain
+
+brain = Brain.open("~/.hanzo/brain/brain.db")
+
+brain.pages.add(
+    title="Onboarding notes",
+    body="New CEO signed up via hanzo.id...",
+    tags=["org:startx", "topic:onboarding"],
+)
+
+for hit in brain.search("CEO signup"):
+    print(hit.title)
+```
+
+### Go
+
+```bash
+go install github.com/hanzobot/go/cmd/hanzo-bot@latest
+```
+
+```bash
+hanzo-bot brain init
+hanzo-bot brain ingest README.md
+hanzo-bot brain search "founded"
+```
+
+```go
+import "github.com/hanzobot/go/pkg/brain"
+
+b, _ := brain.Open("~/.hanzo/brain/brain.db")
+id, _ := b.Pages.Add(brain.Page{
+    Title: "Onboarding notes",
+    Body:  "New CEO signed up via hanzo.id...",
+    Tags:  []string{"org:startx", "topic:onboarding"},
+})
+hits, _ := b.Search("CEO signup")
+```
+
+### C++
+
+```bash
+git clone https://github.com/hanzobot/cpp.git
+cmake -S cpp -B build && cmake --build build
+```
+
+```cpp
+#include <hanzobot/brain.hpp>
+
+auto brain = hanzobot::Brain::open("~/.hanzo/brain/brain.db");
+
+brain.pages.add({
+    .title = "Onboarding notes",
+    .body  = "New CEO signed up via hanzo.id...",
+    .tags  = {"org:startx", "topic:onboarding"},
+});
+
+for (const auto& hit : brain.search("CEO signup")) {
+    std::cout << hit.title << '\n';
+}
+```
+
+### Rust (via hanzo-mcp)
+
+```bash
+cargo add hanzo-mcp
+```
+
+```rust
+use hanzo_mcp::brain::Brain;
+
+let brain = Brain::open("~/.hanzo/brain/brain.db")?;
+brain.pages.add(Page {
+    title: "Onboarding notes".into(),
+    body:  "New CEO signed up via hanzo.id...".into(),
+    tags:  vec!["org:startx".into(), "topic:onboarding".into()],
+})?;
+for hit in brain.search("CEO signup")? {
+    println!("{}", hit.title);
+}
+```
+
+## Content-addressable ids
+
+Every record gets a wallet-style id derived from a [BLAKE3](https://github.com/luxfi/blake3) hash of its canonical encoding, base58check-encoded with a `hanzo:` prefix:
+
+```
+hanzo:UFC8qCW8LRUmpfyRq2qnAvYi11cqftY3b
+```
+
+The same record written by the TypeScript runtime, the Go runtime, the C++ runtime, the Python runtime, and the Rust runtime produces **the same id**. This is the contract that makes a brain portable across the stack.
+
+## Hybrid search
+
+Brain search blends BM25 (lexical) and dense embeddings (semantic) via reciprocal rank fusion:
+
+| Stage | What it does |
+|---|---|
+| **BM25 / FTS5** | SQLite full-text index over titles and bodies |
+| **Dense recall** | Embedding similarity (vectors stored alongside pages) |
+| **RRF** | Reciprocal Rank Fusion — combines the two ranked lists |
+| **RSF** | Rank-Sum Fusion fallback for very small corpora |
+| **MMR** | Maximal Marginal Relevance — re-rank for diversity |
+| **Dedup** | Near-duplicate detection on hash + canonical text |
+| **MRL truncation** | Truncate embeddings to the smallest viable Matryoshka dim |
+
+Bonus pipelines: Unicode script detection, UUIDv7 ids for chronologically sorted records, WebVTT / SRT / RTTM ingest for transcript-shaped sources.
+
+## Brain profiles
+
+A **brain profile** is a saved bundle of: schema overrides, seeded pages, embedding model choice, search weights, and access policy. Profiles let an org or team start a brain in a known state.
+
+Built-in profiles:
+
+| Profile | Purpose |
+|---|---|
+| `default` | Empty brain — bring your own pages |
+| `coder` | Seeded with code-review heuristics + dev recipes |
+| `founder` | CEO-shaped seed: pitch decks, term sheets, investor notes |
+| `support` | Customer-support flow: tickets, escalation tree, FAQ |
+| `research` | Long-form note-taking + citation chains |
+
+Install:
+
+```bash
+hanzo-bot brain install founder --org startx
+```
+
+That writes a `~/.hanzo/brain/<org>/brain.db` seeded for the chosen profile and registers it with your Hanzo org. The same profile installed via the TypeScript or Python runtime produces a byte-identical file.
+
+## Multi-tenant brains
+
+For organizations, brains scope by `<org>` and optionally by `<team>`:
+
+```
+~/.hanzo/brain/
+├── brain.db                    # personal
+├── startx/
+│   ├── brain.db                # org-wide
+│   ├── engineering/brain.db    # team
+│   └── sales/brain.db          # team
+```
+
+The Hanzo Agents framework and Hanzo Bot route reads and writes to the right brain automatically based on the active org context (see [Organizations](/docs/organizations) and [Run your org](/docs/run-your-org)).
+
+## Integration with the rest of the stack
+
+| Component | What it reads / writes |
+|---|---|
+| [Hanzo Bot](/docs/services/bot) | Conversation history, skill outputs, channel transcripts |
+| [Hanzo Agents](/docs/services/agents) | Inter-agent shared memory, scratch facts |
+| [Hanzo MCP](/docs/mcp) | Exposes brain contents as tool surface |
+| [Hanzo Studio](/docs/services/studio) | Loads brain in editor for inspection / curation |
+| [Hanzo IAM](/docs/services/iam) | Enforces per-page access policy from brain ACLs |
+| [Hanzo KMS](/docs/services/kms) | Seals encrypted-at-rest brain shards |
+
+## Spec
+
+The language-agnostic contract lives at [`hanzobot/core`](https://github.com/hanzobot/core). Any runtime that conforms to the spec can host the same `brain.db`.
+
+## Source layout
+
+```
+hanzoai/brain/
+├── packages/
+│   ├── brain/             @hanzo/brain                — TypeScript runtime (canonical)
+│   ├── memory/            @hanzo/memory               — light-weight memory API on top
+│   ├── graph-links/       @hanzo/graph-links          — graph edge utilities
+│   └── recipes-brain/     @hanzo/recipes-brain        — seeded recipes / profiles
+```
+
+## Further reading
+
+- [`hanzoai/brain` README](https://github.com/hanzoai/brain)
+- [`hanzobot/core` spec](https://github.com/hanzobot/core) — language-agnostic contract
+- [Bot runtimes](https://github.com/hanzoai/bot) — entry door to every runtime
+- [Run your org](/docs/run-your-org) — install a brain profile end-to-end
