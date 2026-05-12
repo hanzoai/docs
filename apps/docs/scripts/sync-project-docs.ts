@@ -3,7 +3,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Octokit } from 'octokit';
+
+// `octokit` is lazy-imported inside createOctokit() so bun doesn't try
+// to resolve the @octokit/plugin-retry pnpm symlink at top-level when
+// the sync step is disabled (HANZO_DOCS_SYNC=0). The build pre-step
+// short-circuits before createOctokit() runs in that case.
+type Octokit = any;
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const SCRIPT_DIR = path.dirname(SCRIPT_PATH);
@@ -64,7 +69,7 @@ export async function syncProjectDocs() {
     process.env.HANZO_DOCS_INCLUDE_PRIVATE === '1' || config.includePrivate === true;
   const prune = process.env.HANZO_DOCS_PRUNE !== '0';
 
-  const octokit = createOctokit();
+  const octokit = await createOctokit();
   const projects: RepoRecord[] = [];
 
   ensureDir(outputDir, dryRun);
@@ -157,11 +162,13 @@ function ensureDir(dir: string, dryRun: boolean) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
-function createOctokit() {
+async function createOctokit(): Promise<Octokit> {
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || process.env.GH_PAT;
-  return new Octokit({
-    auth: token || undefined,
-  });
+  // Dynamic import so the octokit dep tree only loads when the sync
+  // step is actually running. Avoids a bun-vs-pnpm-symlink ENOENT at
+  // top-level import time during local builds with HANZO_DOCS_SYNC=0.
+  const { Octokit } = await import('octokit');
+  return new Octokit({ auth: token || undefined });
 }
 
 async function listOrgRepos(octokit: Octokit, org: string) {
