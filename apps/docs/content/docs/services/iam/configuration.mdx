@@ -1,0 +1,193 @@
+---
+title: Configuration
+description: Canonical IAM_* environment variable contract for services that consume Hanzo IAM.
+---
+
+# Configuration
+
+Every Hanzo service that delegates authentication to Hanzo IAM reads the same
+canonical `IAM_*` environment variables. There is exactly one way to wire a
+consumer to IAM — no fallback aliases, no `HANZO_IAM_*` legacy names, no
+`HANZO_CLIENT_*` variants.
+
+If you find an older `HANZO_IAM_URL`, `HANZO_IAM_CLIENT_ID`, or `HANZO_IAM_CLIENT_SECRET`
+reference in any consumer (manifest, docker-compose, code), it is stale and
+must be renamed.
+
+## Consumer environment variables
+
+These are read by **services that consume IAM** (web apps, APIs, gateways).
+They are populated from KMS at deploy time.
+
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `IAM_ENDPOINT` | yes | IAM server URL. In-cluster: `http://iam:8000`. Public: `https://hanzo.id`. | `https://hanzo.id` |
+| `IAM_ISSUER` | optional | OIDC issuer URL used for token validation. Defaults to `IAM_ENDPOINT`. | `https://hanzo.id` |
+| `IAM_CLIENT_ID` | yes | OAuth client ID issued for this application. | `app-myapp` |
+| `IAM_CLIENT_SECRET` | yes | OAuth client secret. Must come from KMS, never plaintext. | `${IAM_APP_MYAPP_CLIENT_SECRET}` |
+| `IAM_ORG` | optional | Organization slug this app is scoped to. | `hanzo` |
+| `IAM_APP` | optional | Application name as registered in IAM. | `app-myapp` |
+| `IAM_CERT` | optional | PEM-encoded signing certificate (for offline JWT validation). | (PEM blob) |
+| `IAM_USERINFO_URL` | optional | Override for the OIDC userinfo URL. Defaults to `${IAM_ENDPOINT}/oauth/userinfo`. | `https://hanzo.id/oauth/userinfo` |
+
+The `<org>-<app>` naming scheme is canonical for `IAM_APP` values: `hanzo-team`,
+`hanzo-tasks`, `lux-cloud`, `zoo-research`, etc.
+
+## RFC-compliant OAuth/OIDC endpoints
+
+All consumer integrations MUST use the RFC 6749 / OpenID Connect Core 1.0
+standard paths. Legacy Casdoor paths (`/login/oauth/authorize`,
+`/api/login/oauth/access_token`, `/api/userinfo`, …) are still served for
+backward compatibility but are deprecated and MUST NOT appear in new code or
+docs.
+
+| Purpose | Path |
+|---------|------|
+| Authorization | `/oauth/authorize` |
+| Token | `/oauth/token` |
+| Introspection | `/oauth/introspect` |
+| Revocation | `/oauth/revoke` |
+| UserInfo | `/oauth/userinfo` |
+| Device authorization | `/oauth/device` |
+| End-session / logout | `/oauth/logout` |
+| Discovery | `/.well-known/openid-configuration` |
+| JSON Web Key Set | `/.well-known/jwks` |
+
+A consumer that reads `IAM_ENDPOINT` constructs every endpoint by
+concatenation — there are no other env vars for individual OAuth URLs.
+
+## Secrets sourcing
+
+Client secrets land in [Hanzo KMS](/docs/services/kms) first. The KMS storage
+key for an application's secret follows the convention
+`IAM_APP_<APP>_CLIENT_SECRET` (uppercased, hyphens removed). Example:
+
+| KMS key | Consumes |
+|---------|----------|
+| `IAM_APP_HANZO_CLIENT_SECRET` | app-hanzo |
+| `IAM_APP_CLOUD_CLIENT_SECRET` | app-cloud |
+| `IAM_APP_COMMERCE_CLIENT_SECRET` | app-commerce |
+
+The KMS operator syncs these into a service-scoped K8s `Secret`, and the
+consumer pod reads them as `IAM_CLIENT_SECRET` from that Secret. See
+[KMS Integration](/docs/services/iam/kms-integration) for the full sync
+pattern.
+
+## Example: docker-compose
+
+```yaml
+services:
+  myapp:
+    image: ghcr.io/hanzoai/myapp:v1.0.0
+    environment:
+      IAM_ENDPOINT: https://hanzo.id
+      IAM_CLIENT_ID: app-myapp
+      IAM_CLIENT_SECRET: ${IAM_APP_MYAPP_CLIENT_SECRET}
+      IAM_ORG: hanzo
+      IAM_APP: app-myapp
+```
+
+## Example: Kubernetes
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    spec:
+      containers:
+        - name: myapp
+          image: ghcr.io/hanzoai/myapp:v1.0.0
+          env:
+            - name: IAM_ENDPOINT
+              value: http://iam.hanzo.svc.cluster.local:8000
+            - name: IAM_CLIENT_ID
+              value: app-myapp
+            - name: IAM_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: myapp-secrets
+                  key: IAM_CLIENT_SECRET
+            - name: IAM_ORG
+              value: hanzo
+```
+
+## Example: code
+
+```typescript
+const iam = {
+  endpoint: process.env.IAM_ENDPOINT!,
+  clientId: process.env.IAM_CLIENT_ID!,
+  clientSecret: process.env.IAM_CLIENT_SECRET!,
+  issuer: process.env.IAM_ISSUER ?? process.env.IAM_ENDPOINT!,
+};
+
+const tokenUrl = `${iam.endpoint}/oauth/token`;
+const userInfoUrl =
+  process.env.IAM_USERINFO_URL ?? `${iam.endpoint}/oauth/userinfo`;
+```
+
+```python
+import os
+
+IAM_ENDPOINT = os.environ["IAM_ENDPOINT"]
+IAM_CLIENT_ID = os.environ["IAM_CLIENT_ID"]
+IAM_CLIENT_SECRET = os.environ["IAM_CLIENT_SECRET"]
+IAM_ISSUER = os.environ.get("IAM_ISSUER", IAM_ENDPOINT)
+
+TOKEN_URL = f"{IAM_ENDPOINT}/oauth/token"
+USERINFO_URL = os.environ.get(
+    "IAM_USERINFO_URL", f"{IAM_ENDPOINT}/oauth/userinfo"
+)
+```
+
+```go
+package main
+
+import "os"
+
+var (
+    IAMEndpoint     = os.Getenv("IAM_ENDPOINT")
+    IAMClientID     = os.Getenv("IAM_CLIENT_ID")
+    IAMClientSecret = os.Getenv("IAM_CLIENT_SECRET")
+    IAMIssuer       = orDefault(os.Getenv("IAM_ISSUER"), IAMEndpoint)
+)
+
+func orDefault(v, d string) string {
+    if v == "" {
+        return d
+    }
+    return v
+}
+```
+
+## IAM server environment variables
+
+These are read by the IAM server itself (not by consumers). They live in
+`~/work/hanzo/iam/CLAUDE.md` and are reproduced here for completeness.
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `IAM_DATA_DIR` | Base/SQLite parent directory | `/data/iam` |
+| `IAM_LISTEN` | HTTP listen address | `:8000` |
+| `IAM_ZAP_LISTEN` | ZAP RPC listen | `:9653` |
+| `IAM_KMS_MASTER_KEY` | Master encryption key (from KMS) | required |
+| `IAM_REPLICATE_BUCKET` | Object-storage bucket for WAL replication | optional |
+| `IAM_REPLICATE_AGE_RECIPIENT` | age public key for at-rest encryption | required if bucket set |
+| `IAM_ADMIN_ORG` | Bootstrap admin organization name | `admin` |
+| `IAM_ADMIN_APP` | Bootstrap admin application name | `iam` |
+| `IAM_ADMIN_USER` | Bootstrap admin user name | `root` |
+
+## Related
+
+<Cards>
+  <Card title="IAM Overview" href="/docs/services/iam">
+    Features, organizations, and authentication methods
+  </Card>
+  <Card title="OIDC Flows" href="/docs/services/iam/how-to-connect/oidc-flows">
+    Authorization code, PKCE, client credentials, device code
+  </Card>
+  <Card title="KMS Integration" href="/docs/services/iam/kms-integration">
+    How IAM client secrets are sourced from KMS
+  </Card>
+</Cards>
