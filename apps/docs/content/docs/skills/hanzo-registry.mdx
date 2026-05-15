@@ -9,7 +9,7 @@ Hanzo Registry is a **private Docker container registry** running Docker Distrib
 
 ### Why Hanzo Registry?
 
-- **IAM-integrated auth**: Token-based auth via `iam.hanzo.ai/api/registry/token`
+- **IAM-integrated auth**: Token-based auth via `iam.hanzo.ai/v1/iam/registry/token`
 - **Persistent storage**: 50Gi PVC on DigitalOcean Block Storage
 - **CORS-enabled**: Supports browser-based registry operations
 - **Delete support**: Image deletion enabled for cleanup workflows
@@ -47,7 +47,7 @@ Repo: `hanzoai/registry` (Apache 2.0).
 |------|-------|
 | Endpoint | `registry.hanzo.ai` |
 | Internal port | 5000 (ClusterIP) |
-| Auth realm | `https://iam.hanzo.ai/api/registry/token` |
+| Auth realm | `https://iam.hanzo.ai/v1/iam/registry/token` |
 | Token issuer | `hanzo-iam` |
 | Storage | 50Gi PVC (`registry-data`) |
 | K8s namespace | `hanzo` |
@@ -115,7 +115,7 @@ make restart
 ### Auth Flow
 
 1. Docker client attempts to push/pull from `registry.hanzo.ai`
-2. Registry returns 401 with token realm URL (`iam.hanzo.ai/api/registry/token`)
+2. Registry returns 401 with token realm URL (`iam.hanzo.ai/v1/iam/registry/token`)
 3. Client requests token from IAM, providing credentials
 4. IAM validates credentials and returns a signed JWT (issuer: `hanzo-iam`)
 5. Client retries with JWT in Authorization header
@@ -139,7 +139,7 @@ http:
     Access-Control-Allow-Methods: ['HEAD', 'GET', 'OPTIONS', 'DELETE']
 auth:
   token:
-    realm: https://iam.hanzo.ai/api/registry/token
+    realm: https://iam.hanzo.ai/v1/iam/registry/token
     service: registry.hanzo.ai
     issuer: hanzo-iam
     rootcertbundle: /etc/registry-signing/signing.crt

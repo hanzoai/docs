@@ -42,8 +42,8 @@ Hanzo ID is the **unified identity platform** for the entire Hanzo/Lux/Zoo ecosy
 | Authorize | `/oauth/authorize` |
 | Token | `/oauth/token` |
 | Userinfo | `/oauth/userinfo` (limited: sub/iss/aud only) |
-| Full profile | `/api/get-account` (needs auth) |
-| App lookup | `/api/get-app-login` (source of truth) |
+| Full profile | `/v1/iam/get-account` (needs auth) |
+| App lookup | `/v1/iam/get-app-login` (source of truth) |
 | Discovery | `/.well-known/openid-configuration` |
 | Worker | `hanzo.id-worker` (Cloudflare) |
 | Repo (UI) | `github.com/hanzoai/id` |
@@ -55,10 +55,10 @@ Hanzo ID is the **unified identity platform** for the entire Hanzo/Lux/Zoo ecosy
 | Endpoint | Path | Notes |
 |----------|------|-------|
 | Authorize | `/oauth/authorize` | NOT `/login/oauth/authorize` |
-| Token | `/oauth/token` | NOT `/api/login/oauth/access_token` |
-| Introspect | `/oauth/introspect` | NOT `/api/login/oauth/introspect` |
+| Token | `/oauth/token` | NOT `/api/login/oauth/access_token`. Hanzo alias: `/v1/iam/login/oauth/access_token` |
+| Introspect | `/oauth/introspect` | NOT `/api/login/oauth/introspect`. Hanzo alias: `/v1/iam/login/oauth/introspect` |
 | Revoke | `/oauth/revoke` | |
-| UserInfo | `/oauth/userinfo` | Also `/api/userinfo` |
+| UserInfo | `/oauth/userinfo` | Hanzo alias: `/v1/iam/userinfo` (`/api/userinfo` is legacy Casdoor compat) |
 | Device | `/oauth/device` | |
 | Logout | `/oauth/logout` | |
 
@@ -89,7 +89,7 @@ const accessToken = hash.get("access_token")
 const state = hash.get("state")
 
 // Get full profile (userinfo only returns sub)
-const profile = await fetch("https://iam.hanzo.ai/api/get-account", {
+const profile = await fetch("https://iam.hanzo.ai/v1/iam/get-account", {
   headers: { "Authorization": `Bearer ${accessToken}` }
 }).then(r => r.json())
 // profile.name, profile.email, profile.avatar, etc.
@@ -99,7 +99,7 @@ const profile = await fetch("https://iam.hanzo.ai/api/get-account", {
 
 ```typescript
 // ALWAYS use this before login — source of truth for app/org
-const appLogin = await fetch("https://hanzo.id/api/get-app-login", {
+const appLogin = await fetch("https://hanzo.id/v1/iam/get-app-login", {
   method: "POST",
   body: JSON.stringify({ clientId: "app-hanzo" })
 }).then(r => r.json())
@@ -135,11 +135,11 @@ Each org can have its own domain, branding, and app set.
 `hanzo.id-worker` (Cloudflare Worker) handles:
 - `/oauth/hanzo/platform` → starts IAM auth, pins callback
 - `/callback/platform/hanzo` → exchanges code, redirects with tokens
-- Uses `/api/get-app-login` as source of truth (NOT hardcoded)
+- Uses `/v1/iam/get-app-login` as source of truth (NOT hardcoded)
 
 ### API Masking Warning
 
-Hanzo IAM's `/api/get-application` masks fields for unauthenticated requests — appears empty but DB has real values. Always use authenticated requests or `/api/get-app-login`.
+Hanzo IAM's `/v1/iam/get-application` masks fields for unauthenticated requests — appears empty but DB has real values. Always use authenticated requests or `/v1/iam/get-app-login`.
 
 ## Troubleshooting
 
@@ -147,10 +147,10 @@ Hanzo IAM's `/api/get-application` masks fields for unauthenticated requests —
 |-------|-------|----------|
 | Login returns empty token | `expireInHours=0` | Set to 168 in Hanzo IAM app config |
 | Code flow rejected | Empty grant_type bug | Use implicit flow (response_type=token) |
-| Wrong org after login | Hardcoded `organization: "hanzo"` | Use `/api/get-app-login` lookup |
-| Userinfo only returns `sub` | Normal Hanzo IAM behavior | Use `/api/get-account` for full profile |
+| Wrong org after login | Hardcoded `organization: "hanzo"` | Use `/v1/iam/get-app-login` lookup |
+| Userinfo only returns `sub` | Normal Hanzo IAM behavior | Use `/v1/iam/get-account` for full profile |
 | App appears to have no config | API masking | Use authenticated request |
-| Missing cert reference | Wrong client_id for scoped SSO | Use `/api/get-app-login` |
+| Missing cert reference | Wrong client_id for scoped SSO | Use `/v1/iam/get-app-login` |
 
 ## Related Skills
 
