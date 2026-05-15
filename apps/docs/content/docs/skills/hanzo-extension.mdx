@@ -53,7 +53,7 @@ Hanzo Extensions is a **monorepo of browser and IDE extensions** providing AI-po
 **CRITICAL**: Uses implicit OAuth2 (`response_type=token`), NOT code flow.
 
 ```
-1. Extension opens tab → hanzo.id/login/oauth/authorize?response_type=token&...
+1. Extension opens tab → hanzo.id/oauth/authorize?response_type=token&...
 2. User logs in on Hanzo IAM form
 3. Redirect to hanzo.ai/callback?access_token=JWT&state=...
 4. Extension catches redirect via chrome.tabs.onUpdated
@@ -69,7 +69,7 @@ Hanzo Extensions is a **monorepo of browser and IDE extensions** providing AI-po
 async function startAuth(): Promise<string> {
   const state = crypto.randomUUID()
 
-  const authUrl = new URL("https://hanzo.id/login/oauth/authorize")
+  const authUrl = new URL("https://hanzo.id/oauth/authorize")
   authUrl.searchParams.set("response_type", "token")
   authUrl.searchParams.set("client_id", "app-hanzo")
   authUrl.searchParams.set("redirect_uri", "https://hanzo.ai/callback")
@@ -99,7 +99,7 @@ async function startAuth(): Promise<string> {
 ### User Profile
 
 ```typescript
-// /api/userinfo only returns `sub` — use /api/get-account
+// /oauth/userinfo only returns `sub` — use /api/get-account for full profile
 async function getProfile(token: string) {
   const res = await fetch("https://iam.hanzo.ai/api/get-account", {
     headers: { "Authorization": `Bearer ${token}` }
