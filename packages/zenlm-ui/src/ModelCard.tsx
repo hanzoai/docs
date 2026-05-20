@@ -1,7 +1,24 @@
 'use client'
 
-import { ExternalLink, MessageSquare, Github, FileText } from 'lucide-react'
+import { MessageSquare, Github, FileText, ExternalLink } from 'lucide-react'
 import type { ZenModelLike } from './types'
+
+/** HuggingFace logo SVG — uses currentColor for theming. */
+function HuggingFaceIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 95 88"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M47.21 76.7c14.46 0 26.18-11.72 26.18-26.18 0-14.45-11.72-26.17-26.18-26.17S21.04 36.07 21.04 50.52 32.76 76.7 47.21 76.7zm0-46.65c11.34 0 20.51 9.17 20.51 20.51 0 11.34-9.17 20.51-20.51 20.51S26.7 61.9 26.7 50.56s9.17-20.51 20.51-20.51z M31.66 49.8c1.83 0 3.32-1.49 3.32-3.32s-1.49-3.32-3.32-3.32-3.32 1.49-3.32 3.32 1.48 3.32 3.32 3.32zm31.59 0c1.83 0 3.32-1.49 3.32-3.32s-1.49-3.32-3.32-3.32-3.32 1.49-3.32 3.32 1.49 3.32 3.32 3.32zM38.39 58c-2.95 4.39 2.06 9.4 6.49 9.43h.13c4.43-.03 9.46-5.05 6.49-9.43-1.06-1.55-3.71-2.36-6.55-2.36-2.84 0-5.48.81-6.56 2.36zM85.78 56.91c.46-2.65.84-5.21.84-5.21s.84.86 1.45 1.71c1.94 2.71 1.86 6.62-1.34 8.71-.36.24-.7.42-.95.48zM7.4 56.91c-.46-2.65-.84-5.21-.84-5.21s-.84.86-1.45 1.71c-1.94 2.71-1.86 6.62 1.34 8.71.36.24.7.42.95.48z"
+      />
+    </svg>
+  )
+}
 
 function fmtCtx(ctx: number | undefined): string {
   if (!ctx) return ''
@@ -127,17 +144,19 @@ export function ModelCard({
       {/* Description */}
       <p className="text-xs text-muted-foreground mb-3">{model.description}</p>
 
-      {/* Action buttons */}
-      <div className="flex flex-wrap gap-1.5 mt-auto">
+      {/* Action buttons — Chat is the primary text CTA; HF + GitHub are
+          icon-only buttons with generous tap targets (h-8 w-8 / 32x32px).
+          Always visible so they don't depend on hover state. */}
+      <div className="flex items-center gap-2 mt-auto">
         {status === 'contact-sales' && (
           <a
             href={requestAccessUrl}
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => { e.stopPropagation() }}
-            className="inline-flex items-center gap-1 text-xs bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded hover:bg-purple-500/30 transition"
+            className="inline-flex items-center gap-1.5 text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30 px-3 h-8 rounded-md hover:bg-purple-500/30 transition"
           >
-            <ExternalLink className="h-2.5 w-2.5" /> Request Access
+            <ExternalLink className="h-3.5 w-3.5" /> Request access
           </a>
         )}
         {(status === 'available' || status === 'preview' || status === 'cloud-only') && (
@@ -146,44 +165,53 @@ export function ModelCard({
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => { e.stopPropagation() }}
-            className="inline-flex items-center gap-1 text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded hover:opacity-90 transition"
+            className="inline-flex items-center gap-1.5 text-xs font-medium bg-primary text-primary-foreground px-3 h-8 rounded-md hover:opacity-90 transition"
           >
-            <MessageSquare className="h-2.5 w-2.5" /> Chat
+            <MessageSquare className="h-3.5 w-3.5" /> Chat
           </a>
         )}
-        {model.huggingface && (
-          <a
-            href={model.huggingface}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => { e.stopPropagation() }}
-            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-          >
-            <ExternalLink className="h-2.5 w-2.5" /> Weights
-          </a>
-        )}
-        {model.github && (
-          <a
-            href={model.github}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => { e.stopPropagation() }}
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline"
-          >
-            <Github className="h-2.5 w-2.5" /> Repo
-          </a>
-        )}
-        {model.paper && (
-          <a
-            href={model.paper}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => { e.stopPropagation() }}
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline"
-          >
-            <FileText className="h-2.5 w-2.5" /> Paper
-          </a>
-        )}
+
+        <div className="ml-auto flex items-center gap-1.5">
+          {model.huggingface && (
+            <a
+              href={model.huggingface}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => { e.stopPropagation() }}
+              aria-label={`Download ${model.id} weights on HuggingFace`}
+              title="HuggingFace weights"
+              className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-border bg-background text-foreground hover:border-primary/60 hover:bg-primary/5 transition"
+            >
+              <HuggingFaceIcon className="h-4 w-4" />
+            </a>
+          )}
+          {model.github && (
+            <a
+              href={model.github}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => { e.stopPropagation() }}
+              aria-label={`${model.id} source code on GitHub`}
+              title="GitHub source"
+              className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-border bg-background text-foreground hover:border-primary/60 hover:bg-primary/5 transition"
+            >
+              <Github className="h-4 w-4" />
+            </a>
+          )}
+          {model.paper && (
+            <a
+              href={model.paper}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => { e.stopPropagation() }}
+              aria-label={`${model.id} paper`}
+              title="Paper"
+              className="inline-flex items-center justify-center h-8 w-8 rounded-md border border-border bg-background text-foreground hover:border-primary/60 hover:bg-primary/5 transition"
+            >
+              <FileText className="h-4 w-4" />
+            </a>
+          )}
+        </div>
       </div>
     </div>
   )
