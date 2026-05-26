@@ -89,7 +89,7 @@ export const thirdPartyModels = [
     openrouterId: 'deepseek/deepseek-chat',
     features: ['164K context window', 'Fast and efficient'],
     contextWindow: 163_840,
-    pricing: { input: 0.32, output: 0.89, cacheRead: null, cacheWrite: null },
+    pricing: { input: 0.229, output: 0.914, cacheRead: null, cacheWrite: null },
   },
 ] as const
 
