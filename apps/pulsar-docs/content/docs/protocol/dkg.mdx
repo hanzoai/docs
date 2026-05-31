@@ -1,0 +1,131 @@
+---
+title: DKG and proactive resharing
+description: Pedersen DKG over R_q^k, with proactive resharing under a beacon-randomized quorum.
+---
+
+Pulsar distributes key generation via a Pedersen DKG over the M-LWE module
+ring $R_q^k$, with the Feldman-style verifiable secret sharing replaced by
+the module-shaped Pedersen commitment scheme. The construction inherits
+its soundness argument from the Ring-LWE version that ships in
+[`luxfi/corona`](https://github.com/luxfi/corona), ported to the module
+shape with constant overhead per coefficient slot.
+
+## Why Pedersen, not trusted-dealer
+
+The academic 2-round threshold ML-DSA literature largely assumes a
+**trusted dealer**: a single party samples the master secret and hands out
+shares. That model is incompatible with open public chains.
+
+Pulsar's Pedersen DKG removes the trusted dealer: each party samples a
+random polynomial over $R_q^k$, broadcasts a hiding commitment to it, and
+emits shares of its polynomial to every other party. The aggregate group
+secret is the sum of all parties' polynomials evaluated at zero; no single
+party (and no proper subset of fewer than $t$ parties) ever holds the
+group secret in clear.
+
+## Round structure (sketch)
+
+### Per-party setup
+
+Party $i$ samples a degree-$(t-1)$ polynomial
+$f_i: R_q^k \to R_q^k$ (one polynomial per module slot) with
+$f_i(0) = \mathbf{a}_i \cdot \chi$ where $\chi$ is the M-LWE error
+distribution and $\mathbf{a}_i$ is sampled uniformly. Party $i$ commits
+to $f_i$ via the module-shaped Pedersen commitment scheme and broadcasts
+the commitment.
+
+### Share delivery
+
+Party $i$ emits to each other party $j$ the share $f_i(j)$ via an
+encrypted, authenticated point-to-point channel. The encryption uses an
+ML-KEM-768 wrapper bound to the recipient's long-term identity key
+(CR-6 closure, see [postmortem references in BLOCKERS.md](https://github.com/luxfi/pulsar/blob/main/BLOCKERS.md)).
+
+### Verification
+
+Each party $j$ verifies that every received share is consistent with the
+broadcasted commitment. Inconsistent shares trigger an identifiable abort
+with signed evidence.
+
+### Aggregation
+
+The group secret share at party $j$ is $s_j = \sum_i f_i(j)$. The group
+public key is
+
+$$
+\mathbf{t} = \mathbf{A} \cdot \mathbf{s_1} + \mathbf{s_2}
+$$
+
+where $\mathbf{s_1}, \mathbf{s_2}$ are the Lagrange-reconstructed group
+secrets at quorum-evaluation points 0.
+
+## Class N4 — public-key preservation across resharing
+
+Proactive resharing rotates the share custodians without changing the
+group public key. For long-lived deployments (multi-epoch validator set),
+the relevant adversary model is mobile (HJKY97): the adversary may corrupt
+up to $t-1$ parties **per epoch**, with the corruption set varying.
+
+Pulsar's reshare:
+
+1. The outgoing quorum samples fresh randomness and emits re-shared
+   contributions for the incoming quorum.
+2. The incoming quorum aggregates the contributions to form fresh shares
+   of the same group secret.
+3. Public-key continuity is verified: the new shares Lagrange-reconstruct
+   to the same $\mathbf{s_1}$ as the previous epoch.
+
+The Class N4 theorem `reshare_preserves_secret_honest` in
+`proofs/easycrypt/Pulsar_N4.ec` proves public-key continuity over the
+abstract reshare module under the honest-execution model. The Lean-bridged
+algebraic axioms `add_share_zeroR`, `reconstruct_linear`, and
+`shamir_correct` discharge the additive structure on shares; see
+[Lean ↔ EC bridge](/docs/proofs/lean-bridge).
+
+## Beacon-randomized quorum selection
+
+For the proactive resharing path specifically, the **quorum selection** must
+not be deterministic. A mobile adversary that knows the deterministic
+quorum-selection rule can pre-position corruptions to land in the
+selected quorum every epoch, defeating the mobile-adversary security
+argument.
+
+Pulsar's reshare selects the per-epoch quorum via a beacon-derived
+randomness commit at the epoch boundary (HIP-0077 §"reshare quorum" F10
+fix). Production deployments bind this to the consensus layer's existing
+randomness beacon.
+
+## Identifiable abort
+
+If any party deviates during DKG or reshare — emits an inconsistent
+share, omits a round message, broadcasts an invalid commitment — the
+remaining honest parties identify the deviating party and produce signed
+evidence suitable for slashing.
+
+Pulsar identifies deviations under synchronous network assumptions only;
+asynchronous identifiable abort is out of scope for this submission.
+
+## Out-of-scope adversary capabilities
+
+- Compromise of the cryptographic hash function (SHAKE-256 / cSHAKE-256 /
+  KMAC-256). NIST FIPS 202 + SP 800-185 are taken as building blocks.
+- Side-channel attacks on the physical hardware running a party (power
+  analysis, EM, fault injection). Handled at the deployed-binary layer;
+  the algorithm-correctness chain is independent.
+- Compromise of the BIP-32/BIP-39 mnemonic from which device-specific
+  keys are derived.
+
+## Source pointers
+
+- DKG: `ref/go/pkg/pulsar/dkg.go`, `dkg_parallel.go` (GPU fan-out path,
+  honestly labelled per v1.0.x rename), `large_dkg.go`.
+- Reshare: `ref/go/pkg/pulsar/reshare.go`, `large_reshare.go`.
+- Pedersen commitment scheme over $R_q^k$: see spec `spec/pulsar.tex` §4.5.
+- Class N4 proof: `proofs/easycrypt/Pulsar_N4.ec`.
+
+## See also
+
+- [Parameters](/docs/protocol/parameters) — module dimension $k$, secret
+  dimension $\ell$, threshold $(n, t)$ per parameter set.
+- [Axiom inventory](/docs/proofs/axiom-inventory) — the N4 cone's
+  Lean-bridged algebraic axioms.

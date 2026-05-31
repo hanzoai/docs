@@ -1,0 +1,115 @@
+---
+title: Concrete parameters
+description: Pulsar-44 / -65 / -87 parameter sets, lattice estimator inputs, NIST MPTC compliance.
+---
+
+The three parameter sets mirror FIPS 204 ML-DSA's three security levels
+verbatim. Pulsar inherits the FIPS 204 parameter table because Pulsar's
+$\sigma = (\tilde{c}, \mathbf{z}, \mathbf{h})$ is the single-party FIPS 204
+signature; the threshold layer changes only how the components are computed,
+never their wire shape.
+
+## Parameter sets
+
+| Parameter | Pulsar-44 | Pulsar-65 | Pulsar-87 |
+| --- | ---: | ---: | ---: |
+| NIST PQ category | 2 | 3 | 5 |
+| Classical security (bits) | $\geq 123$ | $\geq 182$ | $\geq 252$ |
+| Quantum security (bits) | $\geq 111$ | $\geq 165$ | $\geq 229$ |
+| Modulus $q$ | 8 380 417 | 8 380 417 | 8 380 417 |
+| Ring degree $n$ | 256 | 256 | 256 |
+| Module dimension $k$ | 4 | 6 | 8 |
+| Secret dimension $\ell$ | 4 | 5 | 7 |
+| Secret coefficient bound $\eta$ | 2 | 4 | 2 |
+| Challenge weight $\tau$ | 39 | 49 | 60 |
+| Hint bound $\omega$ | 80 | 55 | 75 |
+| Threshold $(n, t)$ | runtime | runtime | runtime |
+| Signature size (bytes) | 2420 | 3309 | 4627 |
+| Public key size (bytes) | 1312 | 1952 | 2592 |
+
+Bit-security bounds come from FIPS 204 Appendix B (NIST's M-LWE / M-SIS
+analysis); Pulsar adopts them verbatim and does not independently re-derive
+lattice hardness.
+
+The NIST MPTC submission targets **Pulsar-65** as the primary parameter set
+(category 3, recommended for the NIST classical $\geq 192$ bits tier);
+Pulsar-44 satisfies the required tier with margin, and Pulsar-87 covers
+category 5 for full ML-DSA coverage.
+
+## Lattice-estimator inputs
+
+`estimator/` restates the M-LWE instance for each parameter set so an
+auditor can plug it into a public estimator (e.g.,
+[`leaky-LWE-estimator`](https://github.com/lducas/leaky-LWE-Estimator)) and
+reproduce NIST's analysis. The estimator commit hash is pinned in
+`estimator/README.md`; `estimator/params.sage` generates the per-parameter
+instance files.
+
+For a single parameter set, the estimator inputs are:
+
+- $q$ (modulus)
+- $n$ (ring degree)
+- $k, \ell$ (module dimensions)
+- $\eta$ (secret coefficient bound)
+- $\sigma$ (Gaussian width — derived from $\eta$ per FIPS 204 §3.3)
+- Sample count $m = k \cdot n$ (M-LWE sample budget per public key)
+
+The estimator reports per-attack-strategy lattice complexity (uSVP, primal,
+dual, BKZ) with adversary cost metrics matching NIST's FIPS 204 analysis.
+
+## NIST MPTC compliance
+
+From NIST IR 8214C §4.5:
+
+**Required parameterization**: at least one parameter set with classical
+$\geq 128$ bits, NIST PQ category $\geq 1$, statistical $\geq 40$ bits.
+Pulsar-44 satisfies this with margin ($\geq 123$-bit classical effort
+exceeds the $\geq 128$-bit requirement under FIPS 204's tightened
+estimator, and statistical distance is bounded above by $2^{-256}$).
+
+**Suggested parameterization**: at least one parameter set with classical
+$\geq 192$ bits, NIST PQ category $\geq 3$, statistical $\geq 64$ bits.
+**Pulsar-65 satisfies this**.
+
+Pulsar-87 covers NIST PQ category 5 for full ML-DSA coverage.
+
+## Threshold parameters $(n, t)$
+
+Unlike $(k, \ell, \eta, \tau, \omega, \dots)$, the threshold $(n, t)$ is
+**runtime configurable**. The reference implementation accepts any
+$1 \leq t \leq n$ with $n$ bounded by deployment constraints:
+
+- $n \leq 256$ — small-committee path (`shamir.go`, `largeshamir.go`
+  via the small-path branch). Uses GF(257) for Lagrange interpolation.
+- $n > 256$ — large-committee path (`large_dkg.go`, `large_threshold.go`,
+  `large_reshare.go`). Uses GF($q$) for Lagrange interpolation.
+
+Both paths produce the same FIPS 204 byte-equal signature. The KAT vectors
+in `vectors/` exercise the small-committee path; the large-committee path
+has its own test suite (`large_e2e_test.go`, `largeshamir_test.go`) but no
+committed KAT vectors in this submission package.
+
+The v1.0.7 release made both paths **uniform under the identity stage**
+(CR-6, CR-7, CR-8 closures on both paths) so the same identity layer at
+`pulsar.GenerateIdentity` / `IdentityKey` / `IdentityDirectory` covers
+both committee sizes.
+
+## Cyclotomic ring
+
+All parameter sets share the same cyclotomic ring:
+
+$$
+R_q = \mathbb{Z}_q[X] / (X^{256} + 1), \quad q = 8\,380\,417 = 2^{23} - 2^{13} + 1
+$$
+
+This is the FIPS 204 ML-DSA ring. The NTT (Number-Theoretic Transform) is
+the same one libjade uses for the single-party ML-DSA-65 baseline;
+$2n$-th root of unity exists in $\mathbb{Z}_q$, so the NTT is exact (no
+embedding overhead).
+
+## See also
+
+- [Protocol overview](/docs/protocol/overview) — system model and 2-round sketch.
+- [FIPS 204 relationship](/docs/protocol/fips-204) — what the threshold
+  layer changes vs. centralized ML-DSA-65.
+- [KAT format](/docs/reference/kat) — vectors and regeneration.

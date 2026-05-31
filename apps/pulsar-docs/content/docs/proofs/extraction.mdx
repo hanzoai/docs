@@ -1,0 +1,173 @@
+---
+title: Extraction roadmap
+description: How combine_body_compute_sig_spec and sign_body_compute_sig_spec moved from single bundled axioms to proved lemmas through versions v3 → v12+.
+---
+
+The byte-equality theorem
+`pulsar_n1_byte_equality_extracted` reduces, on each side, to a
+`*_body_compute_sig_spec` obligation. In the original extraction these
+were single bundled axioms; both are now **proved lemmas**:
+
+| Side | File:line | Status |
+| --- | --- | --- |
+| Combine | `proofs/easycrypt/Pulsar_N1_Combine_Refinement.ec:893` | Proved lemma |
+| Sign | `proofs/easycrypt/Pulsar_N1_Sign_Refinement.ec:776` | Proved lemma |
+
+This page documents how the decomposition landed (v3 → v12+) and why
+each version moved trust into strictly narrower axioms.
+
+## Version timeline
+
+| Version | SHA | Change | Trust-footprint effect |
+| --- | --- | --- | --- |
+| v4 | `2eae979` | byte-walk: factor through `pack_n1_signature` | Component-triple axioms with codec roundtrip in `Pulsar_N1.ec` |
+| v4b | `564a330` | per-stage split | 2 component-triple → 6 stage-level axioms; broader surface but per-FIPS-stage |
+| v5 | `58af7b4` | c_tilde stage decomposition | `*_body_c_tilde_spec` → derived lemmas via mu + w1 sub-axioms |
+| v6 | `18d01af` | mu sub-stage decomposed via SHAKE/byte-layout | `*_body_mu_spec` → derived lemmas |
+| v7 | `76eae80` | w1 sub-stage via HighBits structural split | `*_body_w1_spec` → derived lemmas |
+| v8 | `835c176` | combine z-stage via Lean Lagrange bridge | `combine_body_z_spec` → derived lemma; new Lean-bridged `threshold_partial_response_identity` |
+| v9 | `01bdbc3` | `mu_shake_input_t = int list` concretization | constructive prep |
+| v9 + v10 | `83e3c38` | 3-agent parallel: sign mu_input close + combine mu_input decomp + h-stage MakeHint bridge | `*_body_{mu_input,h}_spec` → derived lemmas |
+| v11 sign z | `02c29f2` | sign z-stage via $z = y + c \cdot s_1$ structural split | `sign_body_z_spec` → derived lemma; 2 new sub-axioms `sign_body_y_spec` + `sign_body_cs1_spec` |
+| v11 codec | `81da17b` | `signature_t` concretization as record wrapping `int list` | **3 codec axioms ELIMINATED** (real closure, not decomposition) |
+| v12 w_spec | `02798c7` | w-stage via ExpandA + ExpandMask + mat_vec_mul structural split | `*_body_w_spec` × 2 → derived lemmas; 4 new sub-axioms (matrix_a + mask_y on each side) |
+| v13 accept | `02798c7` | per-R1/R2/R3/R4 accept bridge axiom | +1 bridge axiom (`accept_signing_attempt_iff_R1234`) connects bundled predicate to 4 per-R conditions |
+
+## What's a decomposition vs. what's a closure
+
+Most of the version moves are **decompositions**: a single broader axiom
+is replaced by narrower sub-axioms plus a proved structural composition.
+Trust moves to smaller, independently-attackable obligations; total
+axiom count typically stays the same or grows by 1.
+
+A few moves are **real closures** where an axiom is removed without
+replacement:
+
+- **v11 codec** eliminated 3 codec axioms outright by concretizing
+  `signature_t` as a record-wrapper structure
+  (`encode_decode_signature`, `decode_encode_signature_wf` removed;
+  `encode_signature_wf` narrowed to a length-only axiom;
+  `encode_signature_len` derived via record-wrap structure).
+
+## Combine-side stage map
+
+Mapping the FIPS 204 §6.2 inner-loop stages to extracted procedure regions
+in `combine.ec:3245-3617`. The Jasmin → EC extraction lives at
+`proofs/easycrypt/extraction/build/combine.ec` after running
+`scripts/extract-jasmin-ec.sh`.
+
+| Stage | Extracted lines | Functional op | Current state |
+| --- | --- | --- | --- |
+| 1. Read c_tilde from input pointer | `combine.ec:3413-3416` | identity (wire input) | folded into `layout_combine_args` |
+| 2. Read t0 from t0 pointer | `combine.ec:3417-3426` | identity (wire input) | folded into `layout_combine_args` |
+| 3. Read & aggregate Round-2 messages | `combine.ec:3430-3505` | `vec_l_add`, `vec_k_add` | `combine_body_z_via_aggregation_spec` + `combine_body_partial_responses_spec` + `threshold_partial_response_identity` ⇒ `combine_body_z_spec` (lemma) |
+| 4. SampleInBall on c_tilde | `combine.ec:3506` | `sample_in_ball` | structural `central_c_from_c_tilde` shared by both sides |
+| 5. Compute $\mathbf{w}' = \mathbf{w}_{\mathrm{agg}} + c \mathbf{t}_0$ | `combine.ec:3530-3545` | `vec_k_add` + decompose math | `combine_body_matrix_a_spec` + `combine_body_mask_y_spec` ⇒ `combine_body_w_spec` (lemma) |
+| 6. Decompose $\mathbf{w}'$ | `combine.ec:3560` | `decompose_vec_k` | factored through structural `high_bits_of_w` ⇒ `combine_body_w1_spec` (lemma) |
+| 7. MakeHint(v0, v1) | `combine.ec:3550` | `vec_k_make_hint` | `combine_body_w_spec` + `combine_body_w_low_spec` ⇒ `combine_body_h_spec` (lemma) via structural `make_hint_of_w` |
+| 8. Rejection checks R1–R4 | `combine.ec:3562-3594` | norm bounds | `combine_no_reject_on_accepted_honest_layout` (axiom) |
+| 9. Pack signature | `combine.ec:3604` | `pack_signature` | folded into structural `pack_n1_signature` + `pack_unpack_n1_signature_roundtrip` (axiom in `Pulsar_N1.ec:817`) |
+| 10. Write sig_packed at sig_out_ptr | `combine.ec:3606-3611` | `write_signature_at` | proved in `Pulsar_N1_Combine_Layout.ec` |
+
+## Sign-side stage map
+
+Mapping the FIPS 204 §6.2 stages to extracted procedure regions in
+`sign.ec:3603-3641` (with `sign_inner` at `sign.ec:3469`). The kappa
+rejection-sampling loop wraps stages 5–8.
+
+| Stage | Functional op | Current state |
+| --- | --- | --- |
+| 1. ExternalMu derivation | `external_mu_layout` | `sign_layout_m_buffer_external_mu` (axiom) → `sign_body_mu_input_spec` (lemma) → `sign_body_mu_spec` (lemma) |
+| 2. SampleInBall on c_tilde | `sample_in_ball` | structural |
+| 3. Compute $\mathbf{w} = \mathbf{A} \mathbf{y}$ at accepted κ | `mat_vec_mul` + `expand_a` + `expand_mask` | `sign_body_matrix_a_spec` + `sign_body_mask_y_spec` ⇒ `sign_body_w_spec` (lemma) |
+| 4. HighBits($\mathbf{w}$) → $\mathbf{w}_1$ | `high_bits_of_w` | structural |
+| 5. Compute $\mathbf{z} = \mathbf{y} + c \cdot \mathbf{s}_1$ at accepted κ | (vec ops) | `sign_body_y_spec` + `sign_body_cs1_spec` ⇒ `sign_body_z_spec` (lemma) |
+| 6. LowBits → $\mathbf{w}_\mathrm{low}$ | `decompose_vec_k` | `sign_body_w_low_spec` ⇒ `sign_body_h_spec` (lemma) via `make_hint_of_w` |
+| 7. Rejection checks R1–R4 | norm bounds | `sign_no_reject_on_accepted_honest_layout` (axiom) |
+| 8. Pack signature | `pack_signature` | folded into `pack_n1_signature` + codec round-trip axiom |
+
+The sign side does **not** consume `threshold_partial_response_identity` —
+that bridge is only required on the combine side (Lagrange aggregation
+across the quorum). The sign-side z-stage uses the structural
+`add_response_vec` composition shared with `Pulsar_N1.mldsa_compute_z`.
+
+## Accept-event conditioning (v13)
+
+The v13 accept-bridge axiom `accept_signing_attempt_iff_R1234` connects
+the bundled protocol-level `accept_signing_attempt` predicate to the four
+per-rejection-condition predicates ($R_1, R_2, R_3, R_4$) used inside the
+byte-walks. Each per-stage lemma after v10 is **conditioned on
+`status = 0`** (the accepted-path precondition); the no-reject companion
+axioms discharge the status bit from the protocol-level accept event.
+
+This sidesteps the prior framing — "the sign-side proof is harder because
+of the kappa loop" — by introducing `combine_body_compute_status` /
+`sign_body_compute_status` and threading the accept event through each
+per-stage lemma rather than over-the-loop.
+
+## Per-version derived lemmas
+
+The following obligations have been **converted from primitive axioms to
+derived lemmas** across the v5–v13 progression. The original obligation
+follows from narrower sub-axioms plus structural composition:
+
+- v5: `{combine,sign}_body_c_tilde_spec`
+- v6: `{combine,sign}_body_mu_spec`
+- v7: `{combine,sign}_body_w1_spec`
+- v8: `combine_body_z_spec` (Lean-bridged)
+- v9: `{combine,sign}_body_mu_input_spec`
+- v10: `{combine,sign}_body_h_spec`
+- v11: `sign_body_z_spec`
+- v12: `{combine,sign}_body_w_spec`
+
+Total: **14 axioms re-classified into derived lemmas** across v5–v13.
+
+## Real-closure summary
+
+In addition to the 14 re-classifications, **3 codec axioms** were
+**eliminated outright** in v11 (no replacement axiom):
+
+- `encode_decode_signature` (removed)
+- `decode_encode_signature_wf` (removed)
+- `encode_signature_wf` (kept, narrowed to a length-only axiom)
+- `encode_signature_len` → derived via record-wrap structure
+
+## Gate properties maintained throughout
+
+- 13/13 EC files compile clean
+- jasmin-ct 3/3 blocking on threshold layer (round1, round2, combine)
+- Lean ↔ EC bridge guard 5/5
+- Admit budget 0/0
+- Lean bridge doc + check-script entry per bridged axiom
+- Refinement scaffold (no stray `declare axiom`) clean
+
+## What's still axiomatic
+
+See [Axiom inventory](/docs/proofs/axiom-inventory) for the 22 named
+axioms that remain in the dependency cone after the v12+ decompositions.
+Each has a documented closure path.
+
+## Recommended next proof work (post-submission)
+
+Per the user's review prioritization (revised after v7):
+
+1. `*_body_z_spec` — likely easier than full `w_spec` with the Lean
+   Lagrange bridge already stable. Use
+   `Crypto.Threshold.Lagrange.threshold_partial_response_identity` for
+   combine; reduce via vec ops + accepted-κ model for sign.
+2. `*_body_mu_input_spec` — byte-layout proof, mechanical and
+   high-confidence once the FIPS 204 §5.4.1 byte serialization is
+   concretised.
+3. `*_body_h_spec` — bridge toward `vec_k_make_hint`.
+4. `*_body_w_spec` — the hardest target; requires the loop/fixed-point
+   accepted-κ model + `ExpandA` / `ExpandMask` / `mat_vec_mul`.
+
+This reverses the earlier ordering (which had `w` as the natural next
+target after `w1`'s HighBits decomposition). The revised ordering
+optimizes for fastest residual-trust reduction.
+
+## See also
+
+- [Axiom inventory](/docs/proofs/axiom-inventory) — the 22 axioms after v12+.
+- [Lean ↔ EC bridge](/docs/proofs/lean-bridge) — the 5 algebraic axioms.
+- [Proofs overview](/docs/proofs/overview) — the three-prover stack.
