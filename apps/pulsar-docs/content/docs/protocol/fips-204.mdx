@@ -1,0 +1,162 @@
+---
+title: FIPS 204 relationship
+description: What the threshold layer changes vs. single-party ML-DSA-65, and why the wire shape is preserved.
+---
+
+Pulsar's headline claim is **output interchangeability** with FIPS 204: a
+signature produced by an $n$-of-$t$ threshold ceremony verifies under
+unmodified FIPS 204 `ML-DSA.Verify(pk, message, signature)`. This page
+explains what changes versus single-party ML-DSA-65 and why those changes
+do not alter the wire shape.
+
+## What is shared with FIPS 204
+
+| Element | Source |
+| --- | --- |
+| Ring `R_q = Z_q[X] / (X^256 + 1)`, `q = 8380417` | FIPS 204 §3.1 |
+| Parameters `(k, ℓ, η, τ, ω, …)` per ML-DSA-65 | FIPS 204 §4 |
+| Public matrix sampling (`ExpandA`) | FIPS 204 §3.5 Algorithm 32 |
+| Per-session masking sampling (`ExpandMask`) | FIPS 204 §3.6 |
+| Challenge derivation (`SampleInBall`, c̃) | FIPS 204 §3.7 |
+| External-mu hashing (`ExternalMu`, μ) | FIPS 204 §5.4.1 |
+| Hint derivation (`MakeHint`) | FIPS 204 §6.2 |
+| Norm and rejection checks | FIPS 204 §6.2 |
+| Signature packing σ = (c̃, z, h) | FIPS 204 §3.5.5 |
+
+The wire shape and packed-signature codec are inherited verbatim. The
+EasyCrypt formalization names each FIPS 204 building block via the abstract
+ops in `lemmas/MLDSA65_Functional.ec` and ties them back to FIPS 204
+section references in `docs/fips-204-traceability.md`.
+
+## What the threshold layer adds
+
+The 2-round threshold protocol replaces the centralized computation of
+$\mathbf{z} = \mathbf{y} + c \cdot \mathbf{s_1}$ with a distributed
+computation that recovers the same $\mathbf{z}$ via Lagrange aggregation
+across the per-party partial responses.
+
+Per-party partial response, abstractly:
+
+$$
+\mathbf{z}_i = \mathbf{y}_i + c \cdot \mathbf{s}_{1,i}
+$$
+
+where $\mathbf{s}_{1,i}$ is party $i$'s share of $\mathbf{s_1}$ from the
+Pedersen DKG.
+
+Lagrange aggregation across the quorum $Q$:
+
+$$
+\mathbf{z} = \sum_{i \in Q} \lambda_{i,Q} \cdot \mathbf{z}_i
+$$
+
+where $\lambda_{i,Q}$ are the Lagrange coefficients for evaluating at $X = 0$
+on the quorum's index set.
+
+By linearity of the Lagrange interpolation (Axiom 2,
+[`reconstruct_linear`](/docs/proofs/axiom-inventory)), the aggregated
+**z** equals:
+
+$$
+\sum_{i \in Q} \lambda_{i,Q} \cdot (\mathbf{y}_i + c \cdot \mathbf{s}_{1,i})
+  = \mathbf{y} + c \cdot \mathbf{s_1}
+$$
+
+where **y** is the implicit quorum aggregation of the per-party masks
+and **s_1** is the Lagrange-reconstructed group secret. The aggregated
+**z** is the **same wire bytes** as the centralized FIPS 204
+computation.
+
+## What the threshold layer leaves unchanged
+
+All the **shape-preserving** stages — $\mathbf{w}$ derivation,
+$\mathbf{w_1}$ HighBits decomposition, $\tilde{c}$ derivation,
+$\mathbf{h}$ MakeHint computation, the FIPS 204 §6.2 norm and rejection
+checks — operate on the same polynomial-vector-over-$R_q^k$ algebra as
+single-party ML-DSA-65, with the per-party computations summed
+under Lagrange weights. The accepting kappa selection in the
+rejection-sampling loop is the same predicate
+(`accept_signing_attempt`) as the centralized model.
+
+The result: the threshold combine and the centralized FIPS 204 Sign
+produce **the same 3309-byte ML-DSA-65 signature** on the same protocol
+inputs.
+
+## What this gives a FIPS-validated verifier
+
+A FIPS-validated ML-DSA-65 verifier (BoringSSL FIPS, AWS-LC, OpenSSL 3.0 PQ
+provider) consumes a Pulsar signature without code changes. The verifier
+sees:
+
+- A 3309-byte payload with the FIPS 204 §3.5.5 layout.
+- A public key derived from the Pedersen-DKG group $\mathbf{t} = \mathbf{A} \mathbf{s_1} + \mathbf{s_2}$ — same wire shape as centralized FIPS 204 keygen.
+- The same FIPS 204 verification path.
+
+This means:
+
+1. Threshold-produced signatures verify under unmodified FIPS 204 verifiers.
+2. Existing FIPS-validated ML-DSA modules consume Pulsar certs without code
+   changes.
+3. The threshold layer can be Class-N-claimed at NIST without a parallel
+   algorithm standardization track.
+
+## v0.2 vs v0.3 — aggregator-honesty caveat
+
+Bit-identity to a single-party FIPS 204 signature is achieved without
+master-secret reconstruction only by the **v0.3 algebraic** aggregator:
+
+| Variant | File | TCB at sign time |
+| --- | --- | --- |
+| v0.3 algebraic | `ref/go/pkg/pulsar/threshold_v03.go` | public-only material |
+| v0.2 transitional | `ref/go/pkg/pulsar/threshold_v02.go` | aggregator + master sk |
+
+The v0.2 transitional aggregator reconstructs the master ML-DSA secret in
+aggregator memory and calls `mldsaSign(setup.SkBytes, ...)`. Output
+byte-equality holds, but the TCB at sign time includes the aggregator.
+v0.2 is documented for protocol-evolution traceability; **the N1 submission
+targets v0.3**.
+
+The PULSAR-V03-1 closure record — the v0.3 byte-equality fix in
+v1.0.20 — lives in [`postmortem`](/docs/postmortem).
+
+## Theorem framing — accepted-path correctness
+
+The Class N1 byte-equality theorem is **conditional on acceptance**: *if*
+the threshold combine (and the single-party comparator) accepts — i.e.,
+passes the ML-DSA norm and rejection checks and the kappa rejection-sampling
+loop converged — *then* the produced byte string equals the centralized
+ML-DSA-65 signature on the same protocol-level inputs, under the stated
+layout, algebraic, and byte-walk assumptions.
+
+Acceptance probability is tracked separately through the
+`accept_signing_attempt` predicate and the `mldsa_accept_lower_bound`
+operational bound; ML-DSA rejection sampling remains probabilistic per
+FIPS 204, and the deterministic EC model captures the accepted-path
+conditioning via the predicate rather than via probabilistic Hoare logic.
+
+## Cross-validation evidence
+
+Every KAT vector in `vectors/` is verified by three independent ML-DSA
+implementations (`test/interoperability/`):
+
+1. The canonical Pulsar reference implementation (`github.com/luxfi/pulsar`).
+2. The FIPS 204 reference (`pq-crystals/dilithium` C reference).
+3. A third independent implementation (`cloudflare/circl` FIPS 204 verifier;
+   BoringSSL FIPS or OpenSSL 3.0 PQ provider when available).
+
+The 19/19 N1 subtests in `test/interoperability/n1_class_test.go`:
+
+- `TestN1_SinglePartySignatures_VerifyUnderFIPS204`
+- `TestN1_ThresholdSignatures_VerifyUnderFIPS204`
+- `TestN1_TamperedSignatures_Rejected`
+- `TestN1_WrongMessage_Rejected`
+
+all PASS as of `main` HEAD.
+
+## See also
+
+- [Protocol overview](/docs/protocol/overview) — system model, 2-round
+  sketch.
+- [Axiom inventory](/docs/proofs/axiom-inventory) — the formal byte-equality
+  chain.
+- [Postmortem](/docs/postmortem) — v1.0.20 ExpandA-convention fix.
