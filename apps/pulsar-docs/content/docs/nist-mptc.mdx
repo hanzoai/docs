@@ -1,0 +1,198 @@
+---
+title: NIST MPTC cover
+description: Submission cover sheet — what NIST receives, target dates, how to evaluate.
+---
+
+This page is the public face of the NIST MPTC submission. For the
+authoritative cover sheet shipped with the submission tarball, see
+[`SUBMISSION.md` in the repository](https://github.com/luxfi/pulsar/blob/main/SUBMISSION.md).
+
+## At a glance
+
+| Field | Value |
+| --- | --- |
+| Submission name | **Pulsar** |
+| Submitting organisation | Lux Industries, Inc. |
+| Algorithm | Threshold ML-DSA-65 (Module-LWE, FIPS 204-aligned) |
+| Target NIST MPTC classes | **N1** (single-party-compatible threshold signing) + **N4** (multi-party key generation with public-key preservation across resharing) |
+| Underlying primitive | FIPS 204 ML-DSA-65 |
+| Round count | 2 rounds per signature |
+| Signature output | **Byte-identical** to single-party FIPS 204 ML-DSA-65 |
+| Repository | [luxfi/pulsar](https://github.com/luxfi/pulsar) |
+| Spec PDF | [`spec/pulsar.pdf`](https://github.com/luxfi/pulsar/blob/main/spec/pulsar.pdf) (built via `scripts/build.sh`) |
+| License | Apache-2.0 |
+| Patent posture | Royalty-free grant ([`docs/patents.md`](https://github.com/luxfi/pulsar/blob/main/docs/patents.md)) |
+| Tier | **Tier 1** — Threshold ML-DSA-65 (this submission). Tier 2 — SLH-DSA single-party compat (consumes FIPS 205 directly). Tier 3 — Threshold SLH-DSA, research-only. |
+
+## Headline claim
+
+> Every signature produced by a Pulsar threshold ceremony
+> (DKG → Round-1 → Round-2 → Combine) is **bit-identical** to a signature
+> produced by single-party FIPS 204 ML-DSA-65 on the same message and
+> group public key.
+
+A FIPS-validated ML-DSA verifier (BoringSSL FIPS, AWS-LC, OpenSSL 3.0 PQ
+provider) accepts a Pulsar signature without modification.
+
+### Two-variant disclosure
+
+The submission ships **both**:
+
+- The **v0.1 reveal-and-aggregate flow** — the runnable Go reference +
+  KAT vectors + 19/19 N1 interop subtests.
+- The **v0.2 FSwA Lagrange-linearity flow** — the Jasmin sources
+  type-check against this; the EasyCrypt N1 reduction is stated against
+  this.
+
+Both variants produce a FIPS 204 byte-equal $\sigma = (\tilde{c},
+\mathbf{z}, \mathbf{h})$. The v0.1 path carries a documented
+reconstruction-aggregator trust caveat; v0.2 avoids the reconstruction
+via Lagrange-linearity but is not yet the reference runtime.
+
+The Class N1 byte-equality theorem in EasyCrypt is stated and proved
+against the centralized recovery model; both wire variants emit
+$\sigma = (\tilde{c}, \mathbf{z}, \mathbf{h})$ byte-equal to single-party
+FIPS 204.
+
+### Theorem framing — accepted-path correctness
+
+The Class N1 byte-equality theorem is **conditional on acceptance**:
+*if* the threshold combine (and the single-party comparator) accepts —
+i.e., passes the ML-DSA norm and rejection checks and the kappa
+rejection-sampling loop converged — *then* the produced byte string
+equals the centralized ML-DSA-65 signature on the same protocol-level
+inputs, under the stated layout, algebraic, and byte-walk assumptions.
+
+ML-DSA rejection sampling remains probabilistic per FIPS 204; the
+deterministic EC model captures the accepted-path conditioning via the
+`accept_signing_attempt` predicate rather than via probabilistic Hoare
+logic.
+
+## Target dates
+
+| Date | Event |
+| --- | --- |
+| 2026-Jul-20 | NIST third preview deadline — preview writeup |
+| **2026-Nov-16** | NIST first call package submission — `submission-2026-11-16` tag cut from `main` |
+
+## What NIST receives
+
+The tarball includes:
+
+- `SUBMISSION.md` — this cover sheet (extended).
+- `README.md` — repository layout, reproduction commands.
+- `LICENSE` — Apache-2.0.
+- `SECURITY.md` — threat model + responsible disclosure.
+- `CONTRIBUTING.md` — external-contribution policy.
+- `spec/pulsar.{tex,pdf}` — full algorithm specification (1633-line
+  LaTeX, 577 KB PDF).
+- `ref/go/pkg/pulsar/` — canonical Go reference implementation (83.9%
+  statement coverage).
+- `vectors/{dkg,keygen,sign,threshold-sign,verify}.json` — KAT vectors,
+  deterministic from seed.
+- `test/interoperability/` — cross-validation harness (19/19 N1
+  subtests PASS).
+- `proofs/easycrypt/` — 13 EasyCrypt files, 0/0 admits, 22 axioms.
+- `proofs/lean-easycrypt-bridge.md` — Lean↔EC bridge correspondence.
+- `ct/dudect/` — constant-time analysis (results in
+  `ct/dudect/results/`).
+- `jasmin/` — high-assurance Jasmin sources (libjade pinned at
+  `9426b32`; ~2600 lines of threshold layer).
+- `bench/results/REPORT.md` — performance evaluation (M1 Max, Go 1.26.2,
+  KeyGen / Sign / Verify medians per parameter set).
+- `docs/patent-notes-draft.md`, `docs/patents.md` — patent posture.
+- `scripts/` — build, test, vector generation, cut tooling.
+
+## What to read first
+
+A NIST reviewer with limited time should read in this order:
+
+1. **`SUBMISSION.md`** — cover sheet, metadata, headline claim.
+2. **`spec/pulsar.pdf`** — full algorithm specification.
+3. **`docs/proof-claims.md`** — what's proved vs. what's not (narrow
+   claim).
+4. **`docs/proof-axiom-inventory.md`** — residual EC trust base, per-axiom
+   closure plan ([rendered here](/docs/proofs/axiom-inventory)).
+5. **`docs/tcb.md`** — EC/Jasmin/OCaml TCB.
+6. **`docs/fips-204-traceability.md`** — op/lemma → FIPS 204 § map.
+7. **`docs/evaluation.md`** — performance + correctness + CT + sec-param
+   evidence.
+8. **`docs/patents.md`** — royalty-free patent grant text.
+9. **`README.md`** — repository layout and how to reproduce.
+10. **`vectors/README.md`** — KAT format + cross-validation gates
+    ([rendered here](/docs/reference/kat)).
+11. **[`BLOCKERS.md`](https://github.com/luxfi/pulsar/blob/main/BLOCKERS.md)**
+    — what the construction does NOT claim. Load-bearing entries:
+    "Spec ↔ Go-reference protocol drift" (two-variant submission
+    disclosure), "Class N1 byte-equal output" (v0.1 aggregator trust
+    caveat), "EUF-CMA under adaptive corruption" (static-corruption
+    only in v0.1).
+12. **`docs/cryptographer-sign-off.md`** — independent cryptographer
+    review (APPROVED WITH GATES) covering construction soundness, proof-
+    artifact verification, test surface, and pre-publish disclosure
+    gates.
+
+## What to run
+
+The reproducibility gate is `scripts/build.sh` against the tarball
+extract — the entire submission is self-contained, so no network access
+is required:
+
+```bash
+tar xzf submission-YYYY-MM-DD.tar.gz
+cd pulsar
+scripts/build.sh          # builds Go ref + spec PDF
+scripts/test.sh           # runs unit + KAT + interoperability tests
+scripts/bench.sh          # produces signature/verification benchmarks
+scripts/gen_vectors.sh    # regenerates KAT vectors (deterministic)
+```
+
+`scripts/build.sh` exits non-zero on any failure. CI runs the same
+script on every commit; the reproducibility property is the load-bearing
+one for the submission.
+
+## Class N1 — output interchangeability
+
+The N1 claim is asserted at four levels of evidence:
+
+| Evidence | Where |
+| --- | --- |
+| Algorithmic argument | `spec/pulsar.tex` §6, Theorem 6.1 |
+| Symbolic / Lean proof | `~/work/lux/proofs/lean/Crypto/Pulsar/OutputInterchange.lean` |
+| Test harness | `test/interoperability/` runs every KAT through 3 independent verifiers |
+| Cross-implementation KATs | `vectors/sign.json` shares vectors with FIPS 204 reference |
+
+## Class N4 — public-key preservation across resharing
+
+Multi-party proactive resharing preserves the group public key across
+committee rotations (epoch boundaries), so a single long-lived public
+identity persists while the secret-share custodians rotate.
+
+| Evidence | Where |
+| --- | --- |
+| Algorithmic argument | `spec/pulsar.tex` §4.5 (Reshare protocol) |
+| Symbolic / Lean proof | `~/work/lux/proofs/lean/Crypto/Pulsar/Shamir.lean` |
+| Test harness | `vectors/transcripts/n*-t*-reshare.jsonl` carry pre/post-reshare public keys + verify both verify under unmodified ML-DSA |
+
+## Comparison to related submissions
+
+| Submission | Round count | Output interchange | Underlying lattice |
+| --- | --- | --- | --- |
+| **Pulsar** (this) | 2 | Byte-equal to FIPS 204 ML-DSA | Module-LWE |
+| Lux Corona (R-LWE sibling) | 2 | Byte-equal to FIPS 204 ML-DSA | Ring-LWE |
+| Raccoon | 3 | Compatible verification | Module-LWE |
+| Corona (upstream academic) | 2 | Not interchange-tested at submission time | R-LWE |
+
+## Contact
+
+- Primary: `z@lux.network` (Lux Industries, Inc.)
+- Submission coordination: `mptc@lux.network`
+- Security disclosure: see [security policy](/docs/security)
+- Public discussion: [github.com/luxfi/pulsar/discussions](https://github.com/luxfi/pulsar/discussions)
+
+## Reproducibility commitment
+
+The build, test, vector-generation, and benchmark scripts are
+deterministic from a 48-byte seed. A reviewer reproducing the submission
+tarball from `submission-YYYY-MM-DD` should obtain byte-identical
+artifacts. Drift is a build bug — please open an issue.

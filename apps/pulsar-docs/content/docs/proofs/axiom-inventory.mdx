@@ -1,0 +1,162 @@
+---
+title: Axiom inventory
+description: The canonical 22 named axioms in the extracted N1 byte-equality theorem's dependency cone, with file:line citations and closure paths.
+---
+
+The extracted Class N1 byte-equality theorem
+`pulsar_n1_byte_equality_extracted` in
+`proofs/easycrypt/Pulsar_N1_Extracted.ec` reduces to **22 named axioms**.
+Each axiom is cited inline with its EasyCrypt location, with closure-path
+notes and (for the Lean-bridged five) a pointer to the discharging Lean
+theorem.
+
+## At a glance
+
+| Category | Count |
+| --- | ---: |
+| Implementation refinement — combine side | 9 |
+| Implementation refinement — sign side | 7 |
+| Implementation refinement — Pulsar_N1 codec round-trip | 1 |
+| **Subtotal — implementation refinement** | **17** |
+| Lean-bridged algebraic | 5 |
+| **Total named axioms** | **22** |
+
+Authoritative source: `Pulsar_N1_Extracted.ec:34-92` and the per-file
+accounting blocks at the end of each `*_Refinement.ec`.
+
+## Combine-side refinement axioms
+
+All in `Pulsar_N1_Combine_Refinement.ec`.
+
+| Axiom | Line | Category | Closure path |
+| --- | ---: | --- | --- |
+| `combine_body_mu_input_prefix_spec` | 504 | codec layout (FIPS 204 §5.4.1 prefix bytes) | byte-level layout proof — mechanical |
+| `combine_body_mu_input_ctx_bytes_spec` | 517 | codec layout (ctx-bytes slice) | byte-level layout proof — mechanical |
+| `combine_body_mu_input_m_bytes_spec` | 531 | codec layout (M-bytes suffix) | byte-level layout proof — mechanical |
+| `combine_body_matrix_a_spec` | 616 | w-stage sub-axiom (matrix A) | reduces to `MLDSA65_Functional.expand_a` byte-walk |
+| `combine_body_mask_y_spec` | 629 | w-stage sub-axiom (mask y at accepting kappa) | reduces to `MLDSA65_Functional.expand_mask` + accepted-kappa selection |
+| `combine_body_z_via_aggregation_spec` | 725 | z-stage structural (Lagrange aggregation shape) | mechanical structural identity |
+| `combine_body_partial_responses_spec` | 745 | z-stage byte-walk (per-party PR extraction) | narrow byte-walk through round-2 message parsing |
+| `combine_body_w_low_spec` | 810 | h-stage sub-axiom (w_low decompose output) | reduces to `decompose_vec_k` byte-walk |
+| `combine_no_reject_on_accepted_honest_layout` | 950 | accepted-path companion: layout + accept event ⇒ status = 0 | probabilistic Hoare logic on the kappa rejection loop |
+
+## Sign-side refinement axioms
+
+All in `Pulsar_N1_Sign_Refinement.ec`.
+
+| Axiom | Line | Category | Closure path |
+| --- | ---: | --- | --- |
+| `sign_layout_m_buffer_external_mu` | 510 | wrapper byte-layout (`load_bytes` ↔ `external_mu`) | byte-layout proof — mechanical |
+| `sign_body_matrix_a_spec` | 560 | w-stage sub-axiom (matrix A) | reduces to `MLDSA65_Functional.expand_a` byte-walk |
+| `sign_body_mask_y_spec` | 570 | w-stage sub-axiom (mask y at accepting kappa) | reduces to `MLDSA65_Functional.expand_mask` + accepted-kappa selection |
+| `sign_body_y_spec` | 649 | z-stage sub-axiom (central y at accepting kappa) | reduces to `expand_mask` at accepted kappa |
+| `sign_body_cs1_spec` | 662 | z-stage sub-axiom (c · s1 mixed product) | reduces to `apply_c_to_s1` byte-walk |
+| `sign_body_w_low_spec` | 704 | h-stage sub-axiom (w_low decompose output) | reduces to `decompose_vec_k` byte-walk |
+| `sign_no_reject_on_accepted_honest_layout` | 826 | accepted-path companion: layout + accept event ⇒ status = 0 | probabilistic Hoare logic on the kappa rejection loop |
+
+## Pulsar_N1 codec round-trip axiom
+
+In `Pulsar_N1.ec`:
+
+| Axiom | Line | Category | Closure path |
+| --- | ---: | --- | --- |
+| `pack_unpack_n1_signature_roundtrip` | 817 | FIPS 204 §3.5.5 packed-signature codec round-trip | bridge to `MLDSA65_Functional.pack_signature` when bit-level mechanization lands (Barbosa–Barthe–Dupressoir scale) |
+
+## Lean-bridged algebraic axioms
+
+Each axiom below is stated in EasyCrypt and discharged by a proved Lean
+theorem. The correspondence is pinned in
+`proofs/lean-easycrypt-bridge.md` and operationally guarded by
+`scripts/check-lean-bridge.sh`. See [Lean ↔ EC bridge](/docs/proofs/lean-bridge)
+for the full statements and proofs.
+
+| EC axiom | EC file:line | Lean theorem |
+| --- | --- | --- |
+| `lagrange_inverse_eval` | `Pulsar_N1.ec:339` | `Crypto/Pulsar/Shamir.lean::shamir_correct_at_target` |
+| `add_share_zeroR` | `Pulsar_N4.ec:155` | structural (Mathlib `AddCommMonoid`) |
+| `reconstruct_linear` | `Pulsar_N4.ec:162` | `Crypto/Threshold_Lagrange.lean::combine_distributes_over_sum` |
+| `shamir_correct` | `Pulsar_N4.ec:176` | `Crypto/Pulsar/Shamir.lean::shamir_correct_at_target` (different specialization) |
+| `threshold_partial_response_identity` | `Pulsar_N1.ec:789` | `Crypto/Threshold_Lagrange.lean::threshold_partial_response_identity` |
+
+## Closure-path summary
+
+The 22 axioms decompose into four closure strategies:
+
+### Mechanical byte-level (8 axioms)
+
+The byte-layout axioms (`*_mu_input_*_spec`, `sign_layout_m_buffer_external_mu`)
+and the structural-shape axioms (`combine_body_z_via_aggregation_spec`,
+`combine_body_partial_responses_spec`) are pure byte-walk arguments. They
+close by bridging extracted procedure regions to FIPS 204 byte-format
+specifications. Estimated effort per axiom: days.
+
+### FIPS 204 functional-op bridges (8 axioms)
+
+The w-stage, z-stage sub-axioms and `pack_unpack_n1_signature_roundtrip`
+reduce to bit-level pack/unpack identities on the abstract types. Closing
+them means concretizing the abstract types against
+`MLDSA65_Functional.pack_signature` / `MLDSA65_Functional.encode_sk` once
+the FIPS 204 bit-level mechanization is in place. That mechanization is a
+multi-month research project comparable to Barbosa–Barthe–Dupressoir's
+Dilithium mechanization (CRYPTO 2023).
+
+### Probabilistic Hoare (2 axioms)
+
+The accepted-path no-reject axioms condition `status = 0` on the protocol-
+level `accept_signing_attempt` event. Closing them requires a probabilistic
+Hoare-logic chain that proves the kappa rejection-sampling loop terminates
+on honest inputs. The accompanying `mldsa_accept_lower_bound` operational
+bound — approximately $1 - 2^{-128}$ after the kappa-bounded loop — is
+operational rather than mechanized.
+
+### Lean bridge (5 axioms)
+
+The five Lean-bridged algebraic axioms are mechanized on the Lean side and
+connected by a CI-guarded citation bridge. **Replacing the bridges with
+checked translation artifacts** is the right step toward 100% mechanized.
+A translation layer that ingests both the Lean theorem statement and the
+EC axiom statement and machine-verifies their semantic equivalence is its
+own multi-week-to-multi-month project.
+
+Alternatively, ported the Lean polynomial-Lagrange theory into EC itself
+(estimated 3–4 weeks for a minimal interpolation theory sufficient to
+discharge the five axioms).
+
+## Derived lemmas (no longer axioms)
+
+For traceability against the proof-artifact progression, the following
+axioms have been **converted to derived lemmas** since the original
+extraction (v3 → v12+). Each lemma now follows from narrower sub-axioms
+plus structural composition:
+
+- `{combine,sign}_body_c_tilde_spec` (v5)
+- `{combine,sign}_body_mu_spec` (v6)
+- `{combine,sign}_body_w1_spec` (v7)
+- `combine_body_z_spec` (v8 — Lean-bridged)
+- `{combine,sign}_body_mu_input_spec` (v9)
+- `{combine,sign}_body_h_spec` (v10)
+- `sign_body_z_spec` (v11 — z = y + c·s1 structural split)
+- `{combine,sign}_body_w_spec` (v12 — A·y structural split)
+
+Total: 14 axioms re-classified into derived lemmas across v5–v13. v11
+additionally eliminated 3 codec axioms outright by concretizing
+`signature_t` as a record-wrapper structure.
+
+See [Extraction roadmap](/docs/proofs/extraction) for the per-version
+decomposition history.
+
+## What this is not
+
+The 22 axioms enumerate the **trust footprint** of the byte-equality
+chain. They are not the only EasyCrypt declarations in the dependency cone;
+the per-file accounting blocks distinguish axioms (trusted) from lemmas
+(derived). The headline byte-equality theorem
+`pulsar_n1_byte_equality_extracted` is itself a **proved lemma**, not an
+axiom — its proof composes the wrapper-bridge equivs with the body-spec
+lemmas, and trust reduces to the 22 axioms listed above.
+
+## See also
+
+- [Proofs overview](/docs/proofs/overview) — the three-prover stack.
+- [Lean ↔ EC bridge](/docs/proofs/lean-bridge) — the 5 algebraic axioms in detail.
+- [Extraction roadmap](/docs/proofs/extraction) — byte-walk decomposition history.

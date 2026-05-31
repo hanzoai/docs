@@ -1,0 +1,155 @@
+---
+title: KAT format
+description: Known-answer test vectors — schema, regeneration, and cross-validation.
+---
+
+The `vectors/` directory holds Pulsar's known-answer test (KAT) vectors.
+Every entry is **deterministic from a 48-byte master seed** —
+reproducibility is the load-bearing CI invariant. `scripts/gen_vectors.sh`
+must produce byte-identical output on any fresh checkout; drift is a CI
+failure.
+
+## File layout
+
+| File | Format | Purpose |
+| --- | --- | --- |
+| `vectors/kat-v1.json` | NIST MPTC §IO-Testing | Full per-ceremony vectors |
+| `vectors/kat-v1.rsp` | CAVS-style response file | Legacy ACVP-inspired tooling compat |
+| `vectors/dkg.json` | per-DKG-run | DKG transcripts |
+| `vectors/keygen.json` | per-keypair | Key-generation vectors |
+| `vectors/sign.json` | per-single-party-sign | Single-party signing vectors for cross-validation |
+| `vectors/threshold-sign.json` | per-ceremony | Threshold-signing vectors |
+| `vectors/verify.json` | per-signature | FIPS 204 verification vectors |
+| `vectors/transcripts/n*-t*.jsonl` | per-line ceremony | Full-protocol KATs per $(n, t)$ sweep |
+
+## Per-entry schema (`kat-v1.json`)
+
+Each entry in `kat-v1.json` is a single threshold ceremony with the full
+deterministic transcript:
+
+```json
+{
+  "n": 5,
+  "t": 3,
+  "party_seeds":             ["..."],
+  "public_params":           {"mode": "Pulsar-65", "...": "..."},
+  "shares":                  ["..."],
+  "commitments":             ["..."],
+  "preprocessing_transcript": {"...": "..."},
+  "message":                 "0xdeadbeef...",
+  "per_party_messages":      [{"round1": "...", "round2": "..."}],
+  "final_signature":         "0x...",
+  "verify_result":           true,
+  "abort_evidence":          null
+}
+```
+
+A `null` `abort_evidence` indicates the ceremony completed without
+identifying any party as deviating from the protocol.
+
+## $(n, t)$ sweep coverage
+
+The committed transcript vectors cover:
+
+| $(n, t)$ | File |
+| --- | --- |
+| (3, 2) | `vectors/transcripts/n3-t2.jsonl` |
+| (5, 3) | `vectors/transcripts/n5-t3.jsonl` |
+| (7, 5) | `vectors/transcripts/n7-t5.jsonl` |
+| (10, 7) | `vectors/transcripts/n10-t7.jsonl` |
+| (16, 11) | `vectors/transcripts/n16-t11.jsonl` |
+| (32, 21) | `vectors/transcripts/n32-t21.jsonl` |
+
+Each line in a `.jsonl` file is a complete protocol run.
+
+The small-committee path covers $n \leq 256$. The large-committee path
+(`large_e2e_test.go`, `largeshamir_test.go`) is exercised separately and
+has no committed KAT vectors in this submission package — the byte stream
+is identical to the small-committee path up to the wire encoding of the
+$(n, t)$ field.
+
+## Determinism
+
+Every entry in `kat-v1.json` is reproducible from a `master_seed` (a
+48-byte hex value at the head of the file):
+
+```bash
+./scripts/gen_vectors.sh
+# emits vectors/kat-v1.json byte-identical to the committed file
+```
+
+The KAT generator binary lives at `ref/go/cmd/genkat/`. It imports the
+canonical algorithm sources from `ref/go/pkg/pulsar/` and runs each
+ceremony with the deterministic randomness reader seeded from
+`master_seed`. CI runs the regen on every commit and compares against the
+committed vectors:
+
+```bash
+bash scripts/checks/test/kat.sh
+```
+
+A KAT mismatch on this gate is a release blocker.
+
+## Cross-validation against FIPS 204
+
+The headline Class N1 interchangeability claim requires every
+`final_signature` in `kat-v1.json` to verify against unmodified FIPS 204
+`ML-DSA.Verify(pk, message, signature)` returning `accept`. The
+cross-validation harness at `test/interoperability/` runs each KAT
+through three independent ML-DSA implementations:
+
+1. The canonical Pulsar reference (`github.com/luxfi/pulsar`).
+2. The FIPS 204 reference (`pq-crystals/dilithium` C reference).
+3. A third independent implementation
+   ([`cloudflare/circl`](https://github.com/cloudflare/circl) FIPS 204
+   verifier; BoringSSL FIPS or OpenSSL 3.0 PQ provider when available).
+
+A KAT mismatch with any of the three is a release blocker.
+
+```bash
+bash scripts/checks/test/interop.sh
+```
+
+## ACVP / CAVP positioning
+
+The reference implementation produces ACVP-compatible JSON via
+`scripts/gen_vectors.sh`. The ACVP test vector format
+([NIST ACVP ML-DSA draft](https://pages.nist.gov/ACVP/draft-celi-acvp-ml-dsa.html))
+is a downstream lab-validation track and not part of the MPTC
+algorithm-level submission.
+
+The `kat-v1.rsp` CAVS-style response file ships alongside the JSON for
+legacy ACVP-inspired tooling that expects the older CAVS format.
+
+## Status (per `vectors/README.md`)
+
+- KAT generator at `ref/go/cmd/genkat` — shipped.
+- First v1 KAT set — shipped.
+- FIPS 204 cross-validation — wired in `test/interoperability/`, 19/19 N1
+  subtests PASS.
+- Independent-impl cross-validation — circl wired; pq-crystals C ref
+  wired; BoringSSL/OpenSSL when available.
+- Transcript coverage at $(n, t) \in \{(3, 2), (5, 3), (7, 5), (10, 7),
+  (16, 11), (32, 21)\}$.
+
+## Regenerating after a source change
+
+When `ref/go/pkg/pulsar/` semantics change, `scripts/gen_vectors.sh`
+regenerates the KATs from the in-tree sources. The cut-submission
+workflow includes the regen:
+
+```bash
+./scripts/cut-submission.sh                          # dry-run; no tarball
+./scripts/cut-submission.sh submission-2026-11-16    # production cut + tag
+```
+
+The cut script verifies a clean tree, verifies all proof gates are green,
+regenerates the KATs from the in-tree canonical implementation, re-runs
+the round-trip replay tests, tars the entire submission checkout, and
+prints the SHA-256.
+
+## See also
+
+- [Interop](/docs/reference/interop) — cross-validation harness details.
+- [API reference](/docs/reference/api) — `KeyFromSeed`, `Sign` for
+  reproducing single-party KATs locally.

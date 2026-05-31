@@ -1,0 +1,193 @@
+---
+title: Changelog
+description: Substantive changes to the EasyCrypt proof artifact, the spec, and the residual trust footprint.
+---
+
+This page tracks substantive changes to the EasyCrypt proof artifact,
+the specification, and the residual trust footprint. For
+implementation-level changes see `git log` on the
+[`luxfi/pulsar`](https://github.com/luxfi/pulsar) repository.
+
+For the full release-by-release file, see
+[`CHANGELOG.md` on GitHub](https://github.com/luxfi/pulsar/blob/main/CHANGELOG.md).
+
+## v1.0.22 — AST regression guard hardening
+
+Tag `29094a7`. Hardened `TestAlgebraic_NoSkAccess` to walk
+`*ast.SelectorExpr.Sel.Name` and `*ast.Ident`, so an indirect dispatch
+cannot bypass the banned-call check on `AlgebraicAggregate`. Closes the
+indirect-dispatch hole flagged during the v0.3 graduation sweep.
+
+## v1.0.21 — v0.3 regression guard hardening (`km.a` NTT-domain invariant)
+
+Tag `267ec04`. Pinned the FIPS 204 §3.5 `ExpandA` convention byte-for-byte
+against `cloudflare/circl@v1.6.3`:
+
+- `TestAMatrix_IsAlreadyInNTTDomain` compares `km.a` at corners.
+- `TestCirclInternalShape_VsPulsar` mirrors circl's `PublicKey` via
+  unsafe-pointer and asserts `km.a == pk.A`.
+
+## v1.0.20 — Close PULSAR-V03-1 (v0.3 algebraic byte-equality)
+
+Tag `023a3ed`. Fix `deriveKeyMaterial` in
+`ref/go/pkg/pulsar/mldsa_keyderive.go` to drop the spurious forward-NTT
+loop that double-rotated $\mathbf{A}$ after `polyDeriveUniform` had
+already sampled it directly into the NTT representation. v0.3 algebraic
+sign is now byte-equal to single-party `circl.mldsa65.Sign` on the
+Lagrange-reconstructed group secret.
+
+Full root cause and graduation gate in [postmortem](/docs/postmortem).
+
+## v1.0.14 — v0.2 honesty rename (Algebraic → Transitional)
+
+The v0.2 API previously named `Algebraic*` was materially misleading:
+the file-header docstring claimed `AlgebraicCombine is a pure function
+of public-only material` while the implementation calls
+`mldsaSign(setup.SkBytes, message, ...)` against the master sk packed in
+`AlgebraicSetup.SkBytes`. The aggregator TCB at sign time was therefore
+identical to v0.1 reconstruct-and-sign — only the parties' side of the
+protocol was honestly algebraic.
+
+v1.0.14 fixes the honesty defect without changing the algorithm.
+
+### API rename (forward-only, no compat aliases)
+
+- `AlgebraicThresholdSigner` → `TransitionalThresholdSigner`
+- `NewAlgebraicThresholdSigner` → `NewTransitionalThresholdSigner`
+- `AlgebraicCombine` → `TransitionalAggregate`
+- `AlgebraicSetup` → `TransitionalSetup`
+- `AlgebraicRound1Message` → `TransitionalRound1Message`
+- `AlgebraicRound2Message` → `TransitionalRound2Message`
+- `DealAlgebraicShares` → `DealTransitionalShares`
+- All `ErrAlg*` sentinels → `ErrTransitional*`
+- All `TestV02_*` test functions → `TestTransitional_*`
+
+### Honesty docstrings rewritten
+
+- `threshold_v02.go` file header now opens with HONEST SCOPE declaring
+  the aggregator-side SkBytes dependency.
+- `TransitionalAggregate` docstring spells out the TCB equivalence with
+  v0.1 at sign time.
+- `TransitionalSetup` docstring declares SkBytes as the v0.2 TCB defect
+  and the v0.3 graduation gate.
+
+### New load-bearing test
+
+`TestTransitional_DependsOnSkBytes` — runs the full Round1/Round2 cycle
+then sets `setup.SkBytes = nil` and asserts `TransitionalAggregate`
+returns `ErrTransitionalNoSetup`. The test currently PASSES (because v0.2
+indeed depends on SkBytes). When v0.3 ships and removes the SkBytes
+dependency, this test starts FAILING — that failure is the load-bearing
+red flag documenting the v0.3 graduation.
+
+The wire protocol is byte-for-byte unchanged: protocol constants
+(`PULSAR-ALG-*` customisation strings) are preserved so any existing v0.2
+test vectors continue to verify.
+
+## v0.1.0 — proof-artifact progression (v4 → v13)
+
+Target tag `submission-2026-11-16`.
+
+| Version | Change | Trust-footprint effect |
+| --- | --- | --- |
+| v4 | byte-walk: factor through `pack_n1_signature` | Component-triple axioms with codec roundtrip in `Pulsar_N1.ec` |
+| v4b | per-stage split | 2 component-triple → 6 stage-level axioms |
+| v5 | c_tilde stage decomposition | `*_body_c_tilde_spec` → derived lemmas |
+| v6 | mu sub-stage decomposed via SHAKE/byte-layout | `*_body_mu_spec` → derived lemmas |
+| v7 | w1 sub-stage via HighBits structural split | `*_body_w1_spec` → derived lemmas |
+| v8 | combine z-stage via Lean Lagrange bridge | `combine_body_z_spec` → derived lemma; new Lean-bridged `threshold_partial_response_identity` |
+| v9 | `mu_shake_input_t = int list` concretization + 3-agent parallel close | `*_body_{mu_input,h}_spec` → derived lemmas |
+| v10 | full submission package: patents, axiom inventory, proof claims, FIPS traceability, TCB, NIST submission, evaluation | submission-grade documentation |
+| v11 | sign z-stage via $z = y + c \cdot s_1$ split + codec axiom elimination | `sign_body_z_spec` → derived lemma; **3 codec axioms ELIMINATED** |
+| v12 | w-stage via `ExpandA` + `ExpandMask` + `mat_vec_mul` structural split | `*_body_w_spec` × 2 → derived lemmas |
+| v13 | per-R1/R2/R3/R4 accept bridge axiom | +1 bridge axiom; connects bundled predicate to 4 per-R conditions |
+
+### Derived lemmas added (previously primitive axioms)
+
+After v10, the following primitive axioms have been **converted to
+derived lemmas** (the original obligation now follows from narrower
+sub-axioms + structural composition):
+
+- v5: `{combine,sign}_body_c_tilde_spec`
+- v6: `{combine,sign}_body_mu_spec`
+- v7: `{combine,sign}_body_w1_spec`
+- v8: `combine_body_z_spec` (Lean-bridged)
+- v9: `{combine,sign}_body_mu_input_spec`
+- v10: `{combine,sign}_body_h_spec`
+- v11: `sign_body_z_spec` (z = y + c·s1 structural split)
+- v12: `{combine,sign}_body_w_spec` (A·y structural split)
+
+Total: 14 axioms re-classified into derived lemmas across v5–v13.
+
+### Actual axiom eliminations (v11 codec, real closure)
+
+In addition to the 14 re-classifications, v11 delivered 3 PRIMITIVE
+AXIOM ELIMINATIONS in `Pulsar_N1_Signature_Codec.ec` (no replacement
+axiom on that path):
+
+- `encode_decode_signature` (removed)
+- `decode_encode_signature_wf` (removed)
+- `encode_signature_wf` (kept, narrowed to a length-only axiom)
+- `encode_signature_len` → DERIVED via record-wrap structure
+
+### Gate properties maintained throughout
+
+- 13/13 EC files compile clean
+- jasmin-ct 3/3 blocking on threshold layer (round1, round2, combine)
+- Lean ↔ EC bridge guard 5/5
+- Admit budget 0/0
+- Lean bridge doc + check-script entry per bridged axiom
+- Refinement scaffold (no stray `declare axiom`) clean
+
+### Submission documentation added (v10)
+
+- `SUBMISSION.md` — NIST MPTC cover sheet
+- `docs/patents.md` — royalty-free patent grant + defensive termination
+- `docs/proof-axiom-inventory.md` — per-axiom residual trust accounting
+- `docs/proof-claims.md` — narrow EC/Lean refinement claim with explicit
+  non-claims
+- `docs/fips-204-traceability.md` — op/lemma → FIPS 204 § map
+- `docs/tcb.md` — EC/Jasmin/OCaml/Lean TCB with per-layer risk
+- `docs/patent-claims.md` — numbered claim drafts for attorney review
+- `docs/evaluation.md` — experimental evaluation report per NIST IR 8214C
+  §6
+
+## Out-of-scope for v0.1
+
+- Full κ-loop probabilistic Hoare model (multi-week)
+- Full bit-level FIPS 204 codec mechanization (multi-month,
+  Barbosa–Barthe–Dupressoir scale)
+- Lean ↔ EC checked translation tooling (multi-month research)
+- ACVP/CAVP algorithm validation certificate (lab work)
+- FIPS 140-3 module validation (downstream)
+- Threshold SLH-DSA experimental profile (Tier 3, not in v0.1)
+- Production Rust / C / WASM implementations (Tier 1 priorities for v0.2+)
+- External cryptographic audit (engagement scheduled post-submission)
+
+## What this submission DOES claim (precise)
+
+> Under the trusted-computing base in `docs/tcb.md` and the residual
+> axioms enumerated in `docs/proof-axiom-inventory.md`, every signature
+> byte string produced by the Pulsar Combine procedure on inputs
+> satisfying the protocol's threshold-interpolation well-formedness
+> invariants is bit-identical to a signature produced by single-party
+> FIPS 204 ML-DSA-65 Sign on the Lagrange-reconstructed group secret.
+
+This is an implementation-correctness result. It does NOT prove
+post-quantum hardness of ML-DSA itself; ML-DSA hardness is inherited
+from NIST FIPS 204's analysis.
+
+## Known limitations
+
+- No identifiable abort under network partition (synchronous only).
+- No 1-round signing (FIPS 204 rejection sampling precludes).
+- DKG bias resistance under collusion requires external randomness
+  beacon.
+- v0.1 cross-committee reshare without external state binding is not
+  supported.
+
+## See also
+
+- [Postmortem](/docs/postmortem) — closed-finding registry.
+- [Proofs overview](/docs/proofs/overview) — the three-prover stack.
+- [Axiom inventory](/docs/proofs/axiom-inventory) — the 22 named axioms.
