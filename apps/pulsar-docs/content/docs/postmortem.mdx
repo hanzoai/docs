@@ -1,0 +1,136 @@
+---
+title: Postmortem
+description: Closed-finding registry — v1.0.20 ExpandA-convention fix that closed PULSAR-V03-1 (the v0.3 algebraic-sign byte-equality bug).
+---
+
+This page is the closed-finding registry. New findings open under the
+`Open` section in [`BLOCKERS.md`](https://github.com/luxfi/pulsar/blob/main/BLOCKERS.md);
+on fix they move to `Closed` with commit + tag. IDs are cited from
+source-code comments and from `docs/cryptographer-sign-off.md`,
+`docs/deployment.md`, `SUBMISSION.md`, `spec/blockers.tex`.
+
+## Status
+
+**Submission-ready. No open items.**
+
+Earlier IDs `CR-6` / `CR-7` / `CR-8` (KEM-wrap of DKG envelopes, ephemeral
+per-pair session keys, identity-bound MAC layer) survive only as
+source-code references. They closed in the luxfi/pulsar-mptc →
+luxfi/pulsar consolidation (commit `7be057b`, v1.0.7 sign-off); the
+canonical narrative lives in `CHANGELOG.md` and the v1.0.7 sign-off.
+
+## PULSAR-V03-1 — v0.3 algebraic sign byte-equality
+
+**Status**: CLOSED in v1.0.20 (commit `023a3ed`).
+**Regression-guard hardening**: v1.0.21 (`267ec04`), v1.0.22 (`29094a7`).
+**Owner**: cryptographer.
+
+### Root cause
+
+`deriveKeyMaterial` in `ref/go/pkg/pulsar/mldsa_keyderive.go` was
+applying a spurious forward NTT to the public matrix $\mathbf{A}$ AFTER
+sampling it via `polyDeriveUniform`:
+
+```go
+// BEFORE (buggy, v1.0.19 and earlier), per (i,j) over K×L:
+polyDeriveUniform(&km.a[i][j], &km.rho, ...)   // already NTT-domain
+// ... later, separate K×L pass over the same matrix:
+km.a[i][j].ntt()                               // EXTRA NTT — wrong
+```
+
+Per FIPS 204 §3.5 Algorithm 32 (`ExpandA`), $\mathbf{A}$ is sampled
+**directly** into the NTT representation; no separate forward-NTT step
+exists. `polyDeriveUniform` is exactly that algorithm — byte-identical
+to `cloudflare/circl@v1.6.3`'s `PolyDeriveUniform`. The post-step
+produced double-NTT'd values.
+
+### Why the bug was invisible before v0.3
+
+- **v0.1** calls `circl.SignTo`, which maintains its own
+  $\mathbf{A}$ — never touches the contaminated `km.a`.
+- **v0.2** emits via `circl.SignTo(setup.SkBytes, ...)`; the wrong
+  $\mathbf{A}$ only entered transcript-level commits, which are
+  self-consistent across parties.
+- **Keygen** consumes `km.a` BEFORE the spurious NTT step (in
+  $\mathbf{t} = \mathbf{A} \mathbf{s}_1 + \mathbf{s}_2$), so the public
+  key matched circl byte-for-byte. Only the post-step contaminated the
+  cached `km.a` that v0.3 sign later consumed as `setup.A`.
+
+v0.3 was the first mode that propagated the wrong $\mathbf{A}$ all the
+way to the output signature.
+
+### Fix
+
+Drop the post-sample NTT loop in `deriveKeyMaterial`. The same redundant
+`.ntt()` in `manualVerifyOnce` (`threshold_v03_bytediff_test.go`) and in
+`TestPrimDiff_VerifyPipeline_OnCirclSig` was removed.
+
+Regression guards pin the convention byte-for-byte against circl's
+stored `pk.A`:
+
+- `TestAMatrix_IsAlreadyInNTTDomain` compares `km.a` (the previously-
+  contaminated field) at corners `[0][0]` and `[K-1][L-1]`.
+- `TestCirclInternalShape_VsPulsar` mirrors circl's `PublicKey` via
+  unsafe-pointer and asserts `km.a == pk.A`.
+
+v1.0.22 hardened the AST guard in `TestAlgebraic_NoSkAccess` to walk
+`*ast.SelectorExpr.Sel.Name` and `*ast.Ident`, so an indirect dispatch
+(`var fn = polyDeriveUniformLeqEta; fn(...)`) cannot bypass the
+banned-call check on `AlgebraicAggregate`.
+
+### Graduation gate
+
+All currently TRUE on the tip of `main` at v1.0.22:
+
+1. `TestAlgebraic_FullCycle_n5_t3` PASS — v0.3 sig verifies under
+   stock `mldsa65.Verify`.
+2. `TestAlgebraic_NoSkAccess` PASS — public-BFT safety contract:
+   `AlgebraicAggregate` has no `*PrivateKey`/`SkBytes`/`seed`
+   parameter; AST walks confirm no sk-bearing primitive is reachable
+   from its body (including indirect dispatch).
+3. `TestAMatrix_IsAlreadyInNTTDomain` and
+   `TestCirclInternalShape_VsPulsar` PASS — byte-equality vs circl
+   `pk.A`.
+4. `TestTransitional_DependsOnSkBytes` PASS — v0.2 still declares
+   its `SkBytes` dependency honestly. (The original gate expected this
+   to FAIL on the assumption v0.2 would be edited in place; the actual
+   closure shipped v0.3 as a parallel track and left v0.2 honest. Both
+   paths now coexist.)
+5. Class N1 byte-equality preserved: `TestN1_ByteEquality_*` PASS.
+6. Full suite green under `-race`:
+   `cd ref/go && GOWORK=off go test -count=1 -short -timeout 300s ./pkg/pulsar/`.
+
+### Lessons
+
+- **Cross-impl byte-walks catch convention drift early.** The
+  `TestN1_ByteEquality_*` and `TestCirclInternalShape_VsPulsar` tests
+  pinned the FIPS 204 convention against `cloudflare/circl@v1.6.3`. The
+  v0.3 cycle stopped byte-matching the moment the spurious post-sample
+  NTT silently double-rotated the matrix — the regression surface was
+  obvious and the diagnosis went from `git bisect` to root cause in
+  hours rather than days.
+- **AST guards prevent invariant erosion.** The
+  `TestAlgebraic_NoSkAccess` AST walk is a stronger contract than a
+  comment that says "this function must not see SkBytes". v1.0.22's
+  hardening (walking `SelectorExpr.Sel.Name` and `*ast.Ident`) prevents
+  indirect dispatch — a future refactor cannot accidentally re-introduce
+  the v0.2 reconstruction defect in v0.3 territory.
+- **Two-variant disclosure works.** Keeping v0.2 alive as a documented
+  transitional aggregator made the v0.3 graduation surface visible
+  rather than hidden. The `TestTransitional_DependsOnSkBytes` gate
+  documents the contract publicly.
+
+### Source pointers
+
+- `ref/go/pkg/pulsar/mldsa_keyderive.go` — fixed `deriveKeyMaterial`.
+- `ref/go/pkg/pulsar/threshold_v03_bytediff_test.go` — removed redundant
+  `manualVerifyOnce` `.ntt()`.
+- `ref/go/pkg/pulsar/threshold_v03_*_test.go` — regression tests.
+- `BLOCKERS.md` §Closed — original closure record.
+
+## See also
+
+- [BLOCKERS.md](https://github.com/luxfi/pulsar/blob/main/BLOCKERS.md) —
+  authoritative closed-finding registry.
+- [CHANGELOG](/docs/changelog) — release-by-release narrative.
+- [Security policy](/docs/security) — disclosure and CVE assignment.

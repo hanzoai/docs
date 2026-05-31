@@ -1,0 +1,113 @@
+---
+title: Security policy
+description: Vulnerability disclosure, in-scope vs out-of-scope findings, CVE assignment, MPTC public-analysis process.
+---
+
+## Reporting vulnerabilities
+
+Report cryptographic or implementation vulnerabilities privately to
+**security@lux.network** — encrypted with the team key at
+[`lux.network/security/key.asc`](https://lux.network/security/key.asc).
+Public disclosure happens after a fix lands and downstream consumers
+have had a 14-day private window.
+
+## In-scope
+
+- Specification ambiguity that leads to exploitable verifier behaviour.
+- Threshold-protocol soundness gaps (forgery, key recovery, share
+  extraction, rogue-key, adaptive-corruption breaks).
+- Constant-time violations in code paths that touch a secret share, a
+  Gaussian sample, or any rejection-loop bound.
+- KAT mismatches with the FIPS 204 reference — output interchangeability
+  is the headline claim, so KAT divergence is high-severity.
+- Information leaks via logging, panics on secret-correlated paths, or
+  variable-time equality.
+
+## Out of scope
+
+- Performance or implementation efficiency complaints — file an issue.
+- DoS attacks against the reference implementation that don't affect the
+  threshold-correctness invariants.
+- Issues exclusively in upstream `luxfi/corona` (R-LWE sibling) — file
+  there.
+- Pre-spec-freeze API ergonomics — the API will change up to the spec
+  encoding freeze (target end of August 2026). After freeze the API is
+  fixed.
+
+## CVE assignment
+
+Pulsar maintainers will request CVEs for any in-scope vulnerability
+prior to public disclosure. CVE numbers will be embedded in the ePrint
+changelog and the release tag's commit message.
+
+## NIST MPTC submission disclosures
+
+Findings discovered after the 2026-Nov-16 MPTC package submission
+deadline will be added to the submission's "known limitations" appendix
+and disclosed publicly per NIST's MPTC public-analysis process. There is
+no embargo window for findings against actively-submitted MPTC packages.
+
+## Threat model summary
+
+For the full threat model, see
+[`docs/threat-model.md` in the repository](https://github.com/luxfi/pulsar/blob/main/docs/threat-model.md).
+Highlights:
+
+### Adversary classes
+
+- **Static corruption (default)**: up to $t-1$ parties corrupted before
+  protocol start. All other capabilities — broadcast view, p2p view into
+  corrupted parties, full per-party state — included.
+- **Adaptive corruption (stronger)**: up to $t-1$ parties corruptible at
+  any point during the protocol, conditioned on the transcript.
+  Stretch goal for the first MPTC submission.
+- **Mobile corruption (proactive resharing)**: HJKY97 mobile adversary,
+  up to $t-1$ parties per epoch with varying corruption set.
+
+### Trusted parameters
+
+- The cyclotomic ring $R_q = \mathbb{Z}_q[X] / (X^{256} + 1)$ and
+  parameters $(q, k, \ell, \eta, \beta, \omega, \dots)$ exactly as in
+  FIPS 204 ML-DSA-65.
+- The hash family: SHAKE-256 (FIPS 202), cSHAKE-256 / KMAC-256 /
+  TupleHash-256 (NIST SP 800-185).
+- Gaussian sampler parameters from FIPS 204 §3.3 / §4.2.
+
+No trusted setup beyond NIST primitives.
+
+### Out-of-scope adversary capabilities
+
+- Compromise of the cryptographic hash function (SHAKE-256 / cSHAKE-256
+  / KMAC-256). NIST FIPS 202 + SP 800-185 are taken as building blocks.
+- Side-channel attacks on the physical hardware running a party (power
+  analysis, EM, fault injection). Handled at the deployed-binary layer;
+  the algorithm-correctness chain is independent.
+- Compromise of the BIP-32/BIP-39 mnemonic from which device-specific
+  keys are derived.
+
+## Failure modes addressed
+
+Pulsar's design closes specific failure modes that broke earlier
+threshold-lattice schemes:
+
+- **Rejection-sampling restart leaking secret information across rounds**
+  — per-round PRNG-key domain separation (CRIT-1 fix from upstream's
+  2026-05-03 amendment, ported forward).
+- **Constant-time share comparison** — `dkg2.constTimePolyEqual` pattern
+  ported from upstream (`reshare/commit.go` F9 fix).
+- **Information leaks via logging** — zero stdlib `log` use in any
+  secret-touching path; all logging via `luxfi/log` at fields that are
+  explicitly public. Enforced by `scripts/checks/test/no-secret-logs.sh`.
+- **Deterministic quorum selection in resharing leaking adversary
+  positioning** — beacon-derived per-reshare quorum selection (HIP-0077
+  §"reshare quorum" F10 fix).
+- **Cross-mode hash-suite confusion** — NIST profile is exclusively
+  SHA-3 family; no BLAKE3 in Pulsar ever.
+
+## See also
+
+- [Postmortem](/docs/postmortem) — closed-finding registry; v1.0.20
+  ExpandA-convention fix.
+- [BLOCKERS.md on GitHub](https://github.com/luxfi/pulsar/blob/main/BLOCKERS.md)
+  — load-bearing entries on protocol drift, byte-equal output caveats,
+  EUF-CMA scope.

@@ -1,0 +1,129 @@
+---
+title: Interoperability harness
+description: Cross-validation of every Pulsar signature against the FIPS 204 reference (pq-crystals/dilithium) and a third independent implementation (cloudflare/circl).
+---
+
+The Class N1 byte-equality claim is **load-bearing**: a Pulsar signature
+must verify under any FIPS 204-conformant ML-DSA verifier without
+modification. The interoperability harness at `test/interoperability/`
+makes this verifiable in CI.
+
+## Two verifier targets
+
+| Verifier | File | Linkage |
+| --- | --- | --- |
+| `cloudflare/circl` FIPS 204 | `test/interoperability/n1_class_test.go` | Direct Go import |
+| `pq-crystals/dilithium` reference | `test/interoperability/pq_crystals/pq_crystals_class_test.go` | C reference compiled to cgo bindings |
+
+`cloudflare/circl` is the in-tree differential target for fast iteration
+on a Go-only test stack. `pq-crystals/dilithium` is the FIPS 204
+**editor's reference** implementation; cross-validation against it is the
+authoritative test for FIPS 204 conformance.
+
+When `BoringSSL FIPS` or `OpenSSL 3.0 PQ provider` is available in the
+test environment, a third verifier is added to the comparison.
+
+## Subtests under `n1_class_test.go`
+
+```text
+TestN1_SinglePartySignatures_VerifyUnderFIPS204
+TestN1_ThresholdSignatures_VerifyUnderFIPS204
+TestN1_TamperedSignatures_Rejected
+TestN1_WrongMessage_Rejected
+```
+
+19 subtests total across the four top-level tests, all PASS on the tip
+of `main`. The mirror suite under `test/interoperability/pq_crystals/`
+covers the same cases against the FIPS 204 C reference.
+
+## Running the harness
+
+Whole interop:
+
+```bash
+bash scripts/checks/test/interop.sh
+```
+
+Just the circl subtests:
+
+```bash
+cd ref/go
+GOWORK=off go test -count=1 -short -timeout 300s ./test/interoperability/...
+```
+
+The full `cgo` build (pq-crystals) requires the C reference checked out
+under `test/interoperability/pq_crystals/dilithium-ref/` and is gated by
+a Go build tag (`interop_cgo`).
+
+## What each subtest proves
+
+### `TestN1_SinglePartySignatures_VerifyUnderFIPS204`
+
+Drives `Sign(params, sk, message, ctx, deterministic, rng)` for each of
+the three Pulsar parameter sets, then verifies the resulting signature
+under `circl.mldsa{44,65,87}.Verify`. Asserts byte-equality of the Pulsar
+signature with the circl output on the same seed.
+
+### `TestN1_ThresholdSignatures_VerifyUnderFIPS204`
+
+Runs the full v0.3 algebraic threshold ceremony (DKG → R1 → R2 → Combine)
+for a small $(n, t)$ sweep, then verifies each combined signature under
+`circl.mldsa65.Verify`. Asserts the combined signature is the same byte
+string as a centralized FIPS 204 sign on the Lagrange-reconstructed group
+secret.
+
+### `TestN1_TamperedSignatures_Rejected`
+
+Flips a bit in the combined signature at each of three positions
+(challenge, response, hint) and asserts `circl.mldsa65.Verify` returns
+`false`.
+
+### `TestN1_WrongMessage_Rejected`
+
+Verifies a valid signature against a different message and asserts the
+verifier rejects.
+
+## Cross-impl differential testing
+
+The per-push gate also runs a **differential fuzz** between Pulsar's
+single-party `Sign` and `circl.mldsa65.Sign` on randomized inputs. Any
+byte-level divergence is a fuzz-discovered bug and a release blocker.
+
+Nightly:
+
+```bash
+./scripts/nightly.sh
+# 1h-per-target Go native fuzz
+# 1h-per-target differential fuzz against cloudflare/circl
+```
+
+## What this does not cover
+
+- **ACVP / CAVP**: lab-validated algorithm conformance against the NIST
+  ACVP ML-DSA harness is a downstream track. The reference implementation
+  produces ACVP-compatible JSON; the lab engagement is downstream of this
+  submission.
+- **FIPS 140-3 module validation**: applies to a packaged crypto module,
+  not to this reference implementation.
+- **Negative validity beyond the four subtests** — see `test/negative/`
+  for malformed pk / sk / sig / ctx-length / message-length boundary
+  cases, run on every per-push gate.
+
+## Source pointers
+
+- `test/interoperability/n1_class_test.go` — circl cross-validation.
+- `test/interoperability/pq_crystals/` — pq-crystals C reference
+  bindings.
+- `test/interoperability/pq_crystals/dilithium-ref/` — pinned upstream
+  C reference (fetched on demand).
+- `test/negative/` — boundary and malformed-input tests.
+- `test/fuzz/` — Go native fuzz harnesses.
+- `bench/` — performance benchmarks (M1 Max, Go 1.26.2; KeyGen / Sign /
+  Verify medians per parameter set).
+
+## See also
+
+- [KAT format](/docs/reference/kat) — vectors driven through the harness.
+- [Postmortem](/docs/postmortem) — the v1.0.20 ExpandA-convention fix was
+  caught by this harness when the tip-of-`main` v0.3 cycle stopped
+  byte-matching `circl.mldsa65.Sign`.

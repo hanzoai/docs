@@ -1,0 +1,121 @@
+---
+title: Pulsar
+description: Threshold ML-DSA-65 — a 2-round threshold signing and DKG system whose per-party-aggregated signature is bit-identical to a single-party FIPS 204 ML-DSA signature.
+---
+
+Pulsar is the NIST MPTC submission package for **threshold ML-DSA-65**, the
+post-quantum digital signature standardized by FIPS 204. The submission targets
+**Class N1** (single-party-compatible threshold signing) and **Class N4**
+(multi-party key generation with public-key preservation across resharing).
+
+The headline claim:
+
+> Every signature produced by a Pulsar threshold ceremony
+> (DKG → Round-1 → Round-2 → Combine) is **bit-identical** to a signature
+> produced by single-party FIPS 204 ML-DSA-65 on the same message and group
+> public key.
+
+A FIPS-validated ML-DSA verifier (BoringSSL FIPS, AWS-LC, OpenSSL 3.0 PQ
+provider) accepts a Pulsar signature without modification. Cross-validation
+against `cloudflare/circl` is wired into the per-push gate at
+`test/interoperability/n1_class_test.go` (19/19 N1 subtests PASS).
+
+## At a glance
+
+| Field | Value |
+| --- | --- |
+| Algorithm | Threshold ML-DSA-65 (Module-LWE, FIPS 204-aligned) |
+| Target NIST MPTC classes | **N1** (signing) + **N4** (DKG with public-key preservation) |
+| Round count | 2 rounds per signature |
+| Signature output | **Byte-identical** to single-party FIPS 204 ML-DSA-65 |
+| Underlying ring | $R_q = \mathbb{Z}_q[X] / (X^{256} + 1)$, $q = 8\,380\,417$ |
+| Hash family | SHAKE-256 / cSHAKE-256 / KMAC-256 / TupleHash-256 |
+| Repository | [luxfi/pulsar](https://github.com/luxfi/pulsar) |
+| License | Apache-2.0 |
+| Submission tag | `submission-2026-11-16` (cut from `main` at NIST deadline) |
+
+## 90-second pitch
+
+NIST FIPS 204 (ML-DSA) is the only NIST-approved post-quantum digital signature
+in 2026. NIST's Multi-Party Threshold Cryptography project is collecting
+threshold variants now (IR 8214C, January 2026; first call package deadline
+expected 2026-Nov-16).
+
+Pulsar's 2-round threshold protocol skeleton is the same one Lux ships in
+production for Ring-LWE in [`luxfi/corona`](https://github.com/luxfi/corona),
+retargeted to ML-DSA's polynomial-vector-over-$R_q^k$ algebra. The
+per-party-aggregated signature (under the v0.3 algebraic aggregator) is
+bit-identical to a single-party FIPS 204 ML-DSA signature on the same message
+and public key — no verifier modifications, no new validation track.
+
+Two aggregator variants ship in the same module:
+
+- **v0.3 algebraic** (`AlgebraicAggregate` in `ref/go/pkg/pulsar/threshold_v03.go`)
+  — public-only material at sign time; no master-secret reconstruction. **This is
+  the N1 submission target.**
+- **v0.2 transitional** (`TransitionalAggregate` in `threshold_v02.go`) —
+  reconstructs the master ML-DSA secret in aggregator memory and calls
+  `mldsaSign(setup.SkBytes, ...)`. Output byte-equality holds, but the TCB at
+  sign time includes the aggregator. Documented for protocol-evolution
+  traceability; not the recommended deployment.
+
+## Quickstart
+
+A fresh clone runs the full per-push submission gate in under 60 seconds.
+
+```bash
+git clone https://github.com/luxfi/pulsar
+cd pulsar
+./scripts/build.sh                  # Go ref + spec PDF
+./scripts/test.sh                   # Go unit + DD-007 linter + KAT replay + N1 interop
+./scripts/gen_vectors.sh            # deterministic KAT regen
+./scripts/check-high-assurance.sh   # Jasmin + EasyCrypt + Lean↔EC bridge guard
+./scripts/bench.sh                  # signing / verification benchmarks
+```
+
+Each per-push script is an **orchestrator** sequencing per-check scripts under
+`scripts/checks/`. Per-check scripts are independently runnable for fast
+iteration:
+
+```bash
+bash scripts/checks/ec-compile.sh        # just the EC compile gate
+bash scripts/checks/jasmin.sh            # just jasminc + jasmin-ct
+bash scripts/checks/test/kat.sh          # just KAT replay
+```
+
+Per-push gates run real-budget checks only. The 1h-per-target fuzz +
+$10^9$-sample dudect runs live in the cron-scheduled `scripts/nightly.sh`.
+
+## Where to start
+
+- [Getting started](/docs/getting-started) — install, single-party sign,
+  threshold ceremony.
+- [Protocol overview](/docs/protocol/overview) — 2-round sketch, system model,
+  the byte-equality argument.
+- [FIPS 204 relationship](/docs/protocol/fips-204) — what changes vs.
+  single-party ML-DSA-65; why aggregation is wire-shape-preserving.
+- [Proofs overview](/docs/proofs/overview) — EasyCrypt + Lean + Jasmin tracks,
+  what's mechanized vs. axiomatic.
+- [Axiom inventory](/docs/proofs/axiom-inventory) — the canonical list of 22
+  named axioms with file:line in EC and Lean.
+- [Reference API](/docs/reference/api) — exported Go types and functions from
+  `ref/go/pkg/pulsar`.
+- [KAT format](/docs/reference/kat) — vector schema, regeneration, cross-impl
+  validation.
+- [Security policy](/docs/security) — disclosure, CVE assignment, MPTC public
+  analysis window.
+- [NIST MPTC cover](/docs/nist-mptc) — submission cover sheet, target dates,
+  what NIST reviewers should read first.
+
+## Related libraries
+
+| Repository | Lattice basis | Role |
+| --- | --- | --- |
+| [luxfi/pulsar](https://github.com/luxfi/pulsar) | Module-LWE ($R_q^k$) | This NIST MPTC submission package. |
+| [luxfi/corona](https://github.com/luxfi/corona) | Ring-LWE ($R_q$) | Production R-LWE threshold ML-DSA library — same 2-round skeleton, different lattice. |
+
+Pulsar and Corona are independent libraries with no shared types. A downstream
+consumer may combine the two as a **Double Lattice** PQ pair so a break in one
+lattice family does not break finality — that layered combination is the
+consumer's design choice and is not part of this submission. Pulsar stands
+alone as an MPTC Class N1 + N4 candidate.

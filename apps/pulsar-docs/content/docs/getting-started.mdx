@@ -1,0 +1,194 @@
+---
+title: Getting started
+description: Install the Go reference, run a single-party FIPS 204 sign, then run a 3-of-5 threshold ceremony with byte-equal output.
+---
+
+The reference implementation lives in `ref/go/pkg/pulsar/`. A single Go module
+serves as both the production library and the NIST MPTC submission artifact;
+the module path is `github.com/luxfi/pulsar`.
+
+## Prerequisites
+
+- Go 1.26 or newer (`go.mod` pins toolchain semantics; tested on 1.26.2).
+- `git`. Network egress is only required to clone — the submission tarball is
+  self-contained and `vendor/` is populated.
+
+Optional, for the high-assurance gate:
+
+- EasyCrypt (source build, commit pinned by `.github/workflows/ci.yml`).
+- Jasmin compiler and `jasmin-ct` (`opam install jasmin`).
+- TeX Live or MacTeX for `spec/pulsar.pdf`.
+
+The per-push gate skips any tool that isn't installed; Go-only contributors
+can keep moving without the proof-tool dependencies.
+
+## Clone and build
+
+```bash
+git clone https://github.com/luxfi/pulsar
+cd pulsar
+./scripts/build.sh
+```
+
+`scripts/build.sh` builds the Go reference and (if TeX Live is present)
+`spec/pulsar.pdf`. It exits non-zero on any failure — reproducibility is the
+load-bearing CI invariant.
+
+## Run the per-push gates
+
+```bash
+./scripts/test.sh                   # Go unit + DD-007 linter + KAT replay + N1 interop
+./scripts/check-high-assurance.sh   # Jasmin + EasyCrypt + Lean↔EC bridge guard
+```
+
+Both finish under 60 seconds on a fresh clone. The unit suite includes:
+
+- `TestN1_SinglePartySignatures_VerifyUnderFIPS204`
+- `TestN1_ThresholdSignatures_VerifyUnderFIPS204`
+- `TestN1_TamperedSignatures_Rejected`
+- `TestN1_WrongMessage_Rejected`
+
+across `test/interoperability/n1_class_test.go` — 19 subtests vs.
+`cloudflare/circl` FIPS 204 verifier, all PASS.
+
+## Single-party sign — sanity check
+
+The single-party flow validates the Go reference against the FIPS 204
+specification without any threshold layer in the way.
+
+```go
+package main
+
+import (
+    "fmt"
+
+    "github.com/luxfi/pulsar/ref/go/pkg/pulsar"
+)
+
+func main() {
+    seed := [48]byte{1, 2, 3 /* ... 48 bytes ... */}
+    sk, pk, err := pulsar.KeyFromSeed(seed)
+    if err != nil {
+        panic(err)
+    }
+
+    msg := []byte("hello, pulsar")
+    sig, err := pulsar.Sign(sk, msg, nil) // nil ctx
+    if err != nil {
+        panic(err)
+    }
+
+    ok := pulsar.Verify(pk, msg, nil, sig)
+    fmt.Println("verify:", ok) // true
+}
+```
+
+The signature `sig` is wire-identical to what `cloudflare/circl`'s
+`mldsa65.Sign` produces from the same seed and message. The byte-equality
+guard test
+[`TestN1_ByteEquality_*`](https://github.com/luxfi/pulsar/blob/main/ref/go/pkg/pulsar/n1_byte_equality_test.go)
+pins this property at HEAD.
+
+## Threshold ceremony — 3-of-5
+
+The v0.3 algebraic aggregator is the recommended path: aggregator-side TCB
+contains only public material, and the per-party-aggregated signature is
+bit-identical to a centralized FIPS 204 signature.
+
+```go
+package main
+
+import (
+    "fmt"
+
+    "github.com/luxfi/pulsar/ref/go/pkg/pulsar"
+)
+
+func main() {
+    // DKG: 5-party Pedersen DKG over R_q^k, threshold t = 3.
+    parties, groupPK, err := pulsar.DealAlgebraicShares(5, 3, sessionID)
+    if err != nil {
+        panic(err)
+    }
+
+    msg := []byte("threshold-signed")
+    ctx := []byte{}
+
+    // Round 1: per-party commitments.
+    r1Msgs := make([]pulsar.AlgebraicRound1Message, len(parties))
+    for i, p := range parties {
+        r1Msgs[i], err = p.Round1(msg, ctx)
+        if err != nil { panic(err) }
+    }
+
+    // Round 2: per-party partial responses, conditioned on R1 transcript.
+    r2Msgs := make([]pulsar.AlgebraicRound2Message, len(parties))
+    for i, p := range parties {
+        r2Msgs[i], err = p.Round2(r1Msgs)
+        if err != nil { panic(err) }
+    }
+
+    // Combine: public-only Lagrange aggregation, byte-equal to FIPS 204 Sign.
+    sig, err := pulsar.AlgebraicAggregate(groupPK, msg, ctx, r1Msgs, r2Msgs)
+    if err != nil {
+        panic(err)
+    }
+
+    ok := pulsar.Verify(groupPK, msg, ctx, sig)
+    fmt.Println("verify:", ok) // true
+}
+```
+
+The `AlgebraicAggregate` function has no `*PrivateKey`, no `SkBytes`, and no
+`seed` parameter — its public-BFT safety contract is enforced by a Go AST
+walk in `TestAlgebraic_NoSkAccess` that fails if any sk-bearing primitive is
+reachable from `AlgebraicAggregate`'s body, including indirect dispatch
+(hardened in v1.0.22).
+
+## Cross-validate against FIPS 204
+
+The interoperability harness verifies every Pulsar signature under three
+independent ML-DSA implementations:
+
+1. The Pulsar reference itself (`luxfi/pulsar`).
+2. The FIPS 204 reference (`pq-crystals/dilithium`).
+3. A third independent implementation (`cloudflare/circl` FIPS 204 verifier;
+   BoringSSL FIPS or OpenSSL 3.0 PQ provider when available).
+
+```bash
+cd ref/go
+GOWORK=off go test -count=1 -short -timeout 300s ./pkg/pulsar/
+```
+
+## Per-check scripts
+
+For fast iteration on a specific gate:
+
+```bash
+bash scripts/checks/ec-compile.sh             # EasyCrypt compile
+bash scripts/checks/ec-admits.sh              # admit budget enforced 0/0
+bash scripts/checks/ec-refinement-scaffold.sh # no stray declare axiom in scaffolds
+bash scripts/checks/jasmin.sh                 # jasminc + jasmin-ct
+bash scripts/check-lean-bridge.sh             # Lean ↔ EC bridge guard
+bash scripts/checks/test/kat.sh               # KAT replay
+bash scripts/checks/test/interop.sh           # N1 interop suite
+bash scripts/checks/test/no-secret-logs.sh    # DD-007 linter
+```
+
+## Nightly (multi-hour)
+
+Real-budget side-channel and fuzz coverage runs from the cron-scheduled
+`scripts/nightly.sh`:
+
+- 1h-per-target Go native fuzz
+- 1h-per-target differential fuzz against cloudflare/circl
+- $10^9$-sample dudect per CT-relevant target
+
+Results land in `ct/dudect/results/`.
+
+## Next
+
+- [Protocol overview](/docs/protocol/overview) — the 2-round threshold sketch.
+- [FIPS 204 relationship](/docs/protocol/fips-204) — what changes vs.
+  single-party ML-DSA-65.
+- [API reference](/docs/reference/api) — exported types and functions.
