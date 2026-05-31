@@ -1,0 +1,211 @@
+---
+title: Proofs overview
+description: The Pulsar high-assurance stack — Jasmin, EasyCrypt, Lean Mathlib bridge, and what's mechanized vs. axiomatic.
+---
+
+Pulsar ships a Jasmin + EasyCrypt high-assurance track aimed at the same
+formal-method footing libjade gives the single-party ML-DSA implementation:
+Jasmin sources whose verified compiler produces bit-identical assembly, and
+EasyCrypt theories that machine-check both functional correctness and
+constant-time against the Barthe–Grégoire–Laporte leakage model.
+
+The Lean side carries the algebraic content (Shamir reconstruction,
+Lagrange interpolation linearity, finite-field polynomial uniqueness)
+that EasyCrypt's first-order field theory cannot ergonomically reach.
+
+## Headline
+
+All local EasyCrypt theorem bodies are admit-free, per-push gates are green,
+threshold Jasmin CT is blocking, fuzz / KAT / interop / dudect gates are
+wired at documented budgets, and the extracted N1 theorem has no
+section-local module-contract axioms. The remaining implementation-refinement
+assumptions are progressively decomposed into strictly narrower axioms with a
+committed proof roadmap; the Lean↔EC algebraic bridge is named, cited, and
+CI-guarded.
+
+| Item | Count |
+| --- | ---: |
+| Section-local module-contract axioms in extracted N1 corollary | **0** |
+| Implementation-refinement axioms in dependency cone | **17** |
+| Lean-bridged algebraic axioms | **5** |
+| EasyCrypt `admit` budget | **0 / 0** |
+| EC files in the per-push gate | **13** |
+| `declare axiom` in refinement scaffolds | **0** |
+
+Authoritative source: the accounting block at
+`Pulsar_N1_Extracted.ec:34-92` and the per-file accounting blocks at the
+end of each `*_Refinement.ec`.
+
+## The three provers
+
+### EasyCrypt
+
+Procedure-level refinement and equivalence proofs for the threshold layer:
+
+- `Pulsar_N1.ec` — Class N1 protocol-level spec + generic byte-equality theorem
+- `Pulsar_N4.ec` — Class N4 reshare public-key preservation
+- `Pulsar_N1_Memory.ec` — byte-memory model (zero axioms)
+- `Pulsar_N1_Signature_Codec.ec` — FIPS 204 §3.5.5 signature codec
+- `Pulsar_N1_Combine_Layout.ec` — combine ABI byte layout
+- `Pulsar_N1_Sign_Layout.ec` — libjade Sign ABI byte layout
+- `Pulsar_N1_Combine_Refinement.ec` — combine refinement scaffold
+- `Pulsar_N1_Sign_Refinement.ec` — sign refinement scaffold + ctx/rho_rnd ghost contract
+- `Pulsar_N1_Combine_Wrapper.ec` — combine wrapper module + bridge lemma
+- `Pulsar_N1_Sign_Wrapper.ec` — sign wrapper module + bridge lemma
+- `Pulsar_N1_Extracted.ec` — concrete extracted N1 byte-equality corollary
+- `lemmas/MLDSA65_Functional.ec` — FIPS 204 functional ops
+- `lemmas/Pulsar_CT.ec` — constant-time obligations
+
+The dependency graph is acyclic; each file owns one concern.
+
+### Lean 4 + Mathlib
+
+Algebraic content for Shamir / Lagrange identities:
+
+- `~/work/lux/proofs/lean/Crypto/Pulsar/Shamir.lean` — Shamir correctness
+  at the target (degree bound matched).
+- `~/work/lux/proofs/lean/Crypto/Threshold_Lagrange.lean` — linearity of
+  interpolation, threshold partial-response identity.
+- `~/work/lux/proofs/lean/Crypto/Pulsar/OutputInterchange.lean` —
+  symbolic-level byte-interchange argument.
+- `~/work/lux/proofs/lean/Crypto/Pulsar/dkg2.lean` and `Unforgeability.lean`
+  — DKG soundness and unforgeability statements.
+
+### Jasmin
+
+Constant-time-aware low-level sources whose verified compiler produces
+bit-identical assembly:
+
+- `jasmin/ml-dsa-65/` — libjade single-party baseline (pinned at commit
+  `9426b32`, fetched on demand).
+- `jasmin/threshold/round1.jazz` (~400 lines)
+- `jasmin/threshold/round2.jazz` (~600 lines)
+- `jasmin/threshold/combine.jazz` (~400 lines)
+
+`jasmin-ct` is **blocking** on the threshold layer (round1, round2, combine
+all CT-clean). The libjade single-party sign side carries an upstream
+annotation gap tracked as advisory (`ct/jasmin-ct-libjade.md`).
+
+## Dependency layering
+
+```
+Pulsar_N1 ──┐
+            │
+Memory ── Signature_Codec
+   │              │
+   ├── Combine_Layout      Sign_Layout
+   │      │                    │
+   │      Combine_Refinement   Sign_Refinement
+   │          │                    │
+   │      Combine_Wrapper       Sign_Wrapper
+   │          │_________ Extracted ____│
+   │
+   └── (Pulsar_N1: protocol types + module types + generic theorem)
+```
+
+`Sign_Layout` does not transitively depend on combine-specific encoders;
+the two layouts are siblings sharing Memory + Signature_Codec.
+
+## What's proved
+
+| Object | Status | Location |
+| --- | --- | --- |
+| Class N1 byte-equality (concrete) | **Proven as a lemma** (`pulsar_n1_byte_equality_extracted`) | `Pulsar_N1_Extracted.ec` |
+| Class N1 byte-equality (generic) | **Proven as a theorem** (`pulsar_n1_byte_equality`) | `Pulsar_N1.ec` |
+| Class N4 public-key preservation | **Proven** (concrete `ReshareHonest` module + lemma) | `Pulsar_N4.ec` |
+| Wrapper bridges (combine + sign) | **Proven as lemmas** (both — neither is an axiom) | `Pulsar_N1_{Combine,Sign}_Wrapper.ec` |
+| Body separation (combine + sign) | **Proven as lemmas** | `Pulsar_N1_{Combine,Sign}_Refinement.ec` |
+| Memory frame laws | **Proven** (0 axioms) | `Pulsar_N1_Memory.ec` |
+| Combine `compute_sig` byte-walk | **Proven as a lemma** (composed of narrower stage-level facts) | `Pulsar_N1_Combine_Refinement.ec:893` |
+| Sign `compute_sig` byte-walk | **Proven as a lemma** (composed of narrower stage-level facts) | `Pulsar_N1_Sign_Refinement.ec:776` |
+
+## What's axiomatic — the 22 named axioms
+
+The trust footprint of the extracted N1 byte-equality theorem decomposes
+into **22 named axioms**, each cited with file:line in EasyCrypt and (for
+the Lean-bridged five) in Lean:
+
+| Category | Count | Notes |
+| --- | ---: | --- |
+| Stage-level byte-walks (post v12) | 1 | `sign_body_z_spec` |
+| w-stage matrix_a / mask_y sub-axioms (v12) | 4 | combine + sign × \{matrix_a, mask_y\} |
+| Combine-side z extraction (v8) | 2 | `combine_body_z_via_aggregation_spec` + `combine_body_partial_responses_spec` |
+| w_low sub-axioms (h-stage, v10) | 2 | `{combine,sign}_body_w_low_spec` |
+| Codec mu_input layout (v9) | 4 | combine: 3 per-range; sign: 1 collapsed |
+| Accepted-path no-reject | 2 | `{combine,sign}_no_reject_on_accepted_honest_layout` |
+| Codec roundtrip | 1 | `pack_unpack_n1_signature_roundtrip` |
+| **Subtotal — implementation refinement** | **17** | byte-walk + codec round-trip + honest-execution no-reject |
+| Lean-bridged algebraic | 5 | `lagrange_inverse_eval`, `reconstruct_linear`, `shamir_correct`, `add_share_zeroR`, `threshold_partial_response_identity` |
+| **Total named axioms** | **22** | each with file:line in EC and Lean |
+
+See [Axiom inventory](/docs/proofs/axiom-inventory) for each axiom's
+statement, citation, and closure path. See [Lean ↔ EC bridge](/docs/proofs/lean-bridge)
+for the Lean theorems backing the five algebraic axioms. See
+[Extraction roadmap](/docs/proofs/extraction) for the byte-walk
+decomposition history (v3 → v12+).
+
+## Conventions
+
+- `admit` is banned (budget 0/0; enforced by
+  `scripts/checks/ec-admits.sh`).
+- `declare axiom` is banned in refinement scaffolds (enforced by
+  `scripts/checks/ec-refinement-scaffold.sh`).
+- Lean-bridged axioms carry an inline citation comment naming the Lean
+  theorem and file (enforced by `scripts/check-lean-bridge.sh`).
+- Per-push gate is real-budget: `scripts/check-high-assurance.sh` runs
+  every check at the budget that matters (jasmin-ct, EC admit budget,
+  EC regression guards, refinement-scaffold guard, Lean bridge guard,
+  Jasmin→EC extraction, EC compile). No smoke gates.
+- Real-budget dudect ($10^9$ samples per target) + 1h-per-target fuzz run
+  from the nightly gate: `scripts/nightly.sh`.
+
+## How to check
+
+Per-push:
+
+```bash
+./scripts/check-high-assurance.sh    # proof gate
+./scripts/test.sh                    # Go test gate
+```
+
+Nightly (multi-hour, cron-scheduled):
+
+```bash
+./scripts/nightly.sh
+```
+
+Per-check (independently runnable):
+
+```bash
+bash scripts/checks/ec-compile.sh
+bash scripts/checks/jasmin.sh
+bash scripts/checks/ec-admits.sh
+bash scripts/check-lean-bridge.sh
+```
+
+## What this submission does NOT yet claim
+
+The Class N1 byte-equality theorem is **proven in EasyCrypt as a lemma**;
+the headline byte-equality corollary follows from it via the wrapper
+bridges. Closing the gap to fully mechanized correctness requires closing
+the named obligations enumerated in [Axiom inventory](/docs/proofs/axiom-inventory):
+
+- 17 implementation-refinement axioms (byte-walks + codec round-trip +
+  honest-execution no-reject)
+- 5 Lean-bridged algebraic axioms (replace the conceptual bridge with a
+  machine-checked translation artifact, or port the Lean polynomial-
+  Lagrange theory into EC)
+- The libjade jasmin-ct annotation gap (advisory, upstream issue #2)
+
+Each axiom is **independently attackable** with a documented closure path.
+
+## Citations
+
+- Barthe, Grégoire, Laporte. *Secure compilation of side-channel
+  countermeasures: The case of cryptographic constant-time.* CSF 2018.
+- Barbosa, Barthe, Doczkal, Don, Fehr, Grégoire, Huang, Hülsing,
+  Lee, Wu. *Fixing and Mechanizing the Security Proof of
+  Fiat–Shamir with Aborts and Dilithium.* CRYPTO 2023.
+- Almeida et al. *Formally verifying Kyber.* CRYPTO 2024.
+- libjade ML-DSA EasyCrypt theories —
+  https://github.com/formosa-crypto/libjade/tree/main/proof

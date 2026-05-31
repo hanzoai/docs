@@ -1,0 +1,283 @@
+---
+title: Go API reference
+description: Exported types and functions in github.com/luxfi/pulsar/ref/go/pkg/pulsar.
+---
+
+The reference implementation is a single flat package at
+`github.com/luxfi/pulsar/ref/go/pkg/pulsar`. This page covers the
+load-bearing exports. Full godoc:
+[`pkg.go.dev/github.com/luxfi/pulsar/ref/go/pkg/pulsar`](https://pkg.go.dev/github.com/luxfi/pulsar/ref/go/pkg/pulsar).
+
+**Status — pre-spec-freeze.** The exported API will change up to the spec
+encoding freeze (target end of August 2026). After freeze the API is fixed
+and a `v0.1` tag is cut.
+
+All cryptographic operations route through:
+
+- `hash`        — NIST SP 800-185 (cSHAKE256 / KMAC256 / TupleHash256) only
+- `primitives`  — Module-LWE polynomial-vector arithmetic
+- `sign`        — 2-round threshold sign protocol
+- `dkg`         — Pedersen DKG over $R_q^k$
+- `reshare`     — proactive resharing with beacon-randomized quorum
+- `fmt`         — wire encoding / KAT format
+
+All logging — including for any error path — uses `github.com/luxfi/log`.
+The standard library's `log` package is **forbidden** in this module:
+a secret-correlated value reaching stdout is a side channel even at debug
+level (HIP-0077 red review F8). Enforced by a CI lint, not just convention
+(`scripts/checks/test/no-secret-logs.sh`).
+
+## Parameter modes
+
+```go
+type Mode uint8
+
+const (
+    ModeUnspecified Mode = 0
+    ModeP44         Mode = 44 // NIST PQ Category 2
+    ModeP65         Mode = 65 // NIST PQ Category 3 (production target)
+    ModeP87         Mode = 87 // NIST PQ Category 5
+)
+```
+
+`Pulsar-65` is the production target for Lux consensus (`SigSchemePulsar65`).
+
+```go
+type Params struct {
+    Mode Mode
+
+    // FIPS 204 module-LWE shape.
+    K     int    // module dimension
+    L     int    // secret dimension (ℓ)
+    Eta   int    // secret coefficient bound η
+    Tau   int    // challenge weight τ
+    Omega int    // hint bound ω
+    Q     uint64 // 8 380 417 — FIPS 204 prime modulus
+    N     int    // 256 — ring degree
+
+    PublicKeySize  int
+    PrivateKeySize int
+    SignatureSize  int
+
+    ShamirPrime uint64
+    MaxRestart  uint32
+}
+
+func ParamsFor(mode Mode) (*Params, error)
+func MustParamsFor(mode Mode) *Params
+```
+
+Source: `ref/go/pkg/pulsar/params.go`.
+
+## Single-party signing
+
+```go
+func GenerateKey(params *Params, rng io.Reader) (*PrivateKey, error)
+func KeyFromSeed(params *Params, seed [SeedSize]byte) (*PrivateKey, error)
+
+const SeedSize = 32
+
+type PrivateKey struct { /* ... */ }
+type PublicKey  struct { /* ... */ }
+
+func (sk *PrivateKey) Public() *PublicKey
+func (pk *PublicKey)  Equal(other *PublicKey) bool
+
+func Sign(
+    params *Params,
+    sk     *PrivateKey,
+    message, ctx []byte,
+    randomized bool,
+    rng        io.Reader,
+) (*Signature, error)
+```
+
+`Sign` produces a 3309-byte (for Pulsar-65) `*Signature` wire-identical to
+`cloudflare/circl`'s `mldsa65.Sign` from the same seed and message.
+`randomized=true` (the default for production) uses the FIPS 204 hedged
+variant; `randomized=false` is deterministic and KAT-reproducible. If
+`rng` is `nil` and `randomized=true`, `crypto/rand.Reader` is used.
+
+Source: `ref/go/pkg/pulsar/sign.go`, `keygen.go`.
+
+## Threshold signing — v0.3 algebraic (recommended)
+
+The algebraic aggregator is **public-only at sign time** — no master
+secret reconstruction in aggregator memory. This is the N1 submission
+target.
+
+```go
+type AlgebraicSetup struct { /* ... */ }
+type AlgebraicKeyShare struct { /* ... */ }
+
+func DealAlgebraicV03Shares(
+    params *Params,
+    rng    io.Reader,
+    quorum []NodeID,
+    n, t   int,
+) (*AlgebraicSetup, []*AlgebraicKeyShare, error)
+
+type AlgebraicRound1Message struct { /* ... */ }
+type AlgebraicRound2Message struct { /* ... */ }
+
+type AlgebraicThresholdSigner struct { /* ... */ }
+
+func NewAlgebraicThresholdSigner(
+    params  *Params,
+    setup   *AlgebraicSetup,
+    share   *AlgebraicKeyShare,
+    sid     [16]byte,
+    message []byte,
+) (*AlgebraicThresholdSigner, error)
+
+func (s *AlgebraicThresholdSigner) Round1() (*AlgebraicRound1Message, error)
+func (s *AlgebraicThresholdSigner) Round2W(
+    round1 []*AlgebraicRound1Message,
+) (*AlgebraicRound2Message, *AbortEvidence, error)
+func (s *AlgebraicThresholdSigner) Round2Sign(
+    round1 []*AlgebraicRound1Message,
+    peerW  map[NodeID]polyVec,
+) (*AlgebraicRound2Message, *AbortEvidence, error)
+
+func AlgebraicAggregate(
+    params *Params,
+    setup  *AlgebraicSetup, // public-only material
+    sid    [16]byte,
+    message []byte,
+    round1 []*AlgebraicRound1Message,
+    round2 []*AlgebraicRound2Message,
+) (*Signature, error)
+```
+
+`AlgebraicAggregate` has **no** `*PrivateKey`, **no** `SkBytes`, **no**
+`seed` parameter — its public-BFT safety contract is enforced by a Go AST
+walk in `TestAlgebraic_NoSkAccess` that fails if any sk-bearing primitive
+is reachable from `AlgebraicAggregate`'s body, including indirect dispatch
+(hardened in v1.0.22).
+
+Source: `ref/go/pkg/pulsar/threshold_v03.go`.
+
+## Threshold signing — v0.2 transitional (legacy)
+
+The transitional aggregator reconstructs the master ML-DSA secret in
+aggregator memory and calls `mldsaSign(setup.SkBytes, ...)`. Output
+byte-equality holds, but the TCB at sign time includes the aggregator.
+v0.2 is documented for protocol-evolution traceability; the N1 submission
+targets v0.3.
+
+```go
+type TransitionalSetup struct {
+    /* SkBytes — present; declared as v0.2 TCB defect */
+    /* ... */
+}
+type TransitionalThresholdSigner struct { /* ... */ }
+
+func DealTransitionalShares(/* ... */) (*TransitionalSetup, []*PolyKeyShare, error)
+func NewTransitionalThresholdSigner(/* ... */) (*TransitionalThresholdSigner, error)
+
+func (s *TransitionalThresholdSigner) Round1() (*TransitionalRound1Message, error)
+func (s *TransitionalThresholdSigner) Round2(
+    round1 []*TransitionalRound1Message,
+) (*TransitionalRound2Message, *AbortEvidence, error)
+
+func TransitionalAggregate(/* SkBytes-dependent */) (*Signature, error)
+```
+
+`TestTransitional_DependsOnSkBytes` runs the full Round1/Round2 cycle
+then sets `setup.SkBytes = nil` and asserts `TransitionalAggregate`
+returns `ErrTransitionalNoSetup`. The test currently PASSES (because v0.2
+indeed depends on SkBytes); the original gate expected this to FAIL once
+v0.3 shipped — the actual closure shipped v0.3 as a parallel track and
+left v0.2 honest. Both paths now coexist.
+
+Source: `ref/go/pkg/pulsar/threshold_v02.go`.
+
+## DKG
+
+Pedersen DKG over $R_q^k$ with identity-bound coefficient commitments and
+KEM-wrapped share envelopes (CR-6 + CR-8 closures via the identity layer).
+
+```go
+type DKGSession struct { /* ... */ }
+type DKGRound1Msg struct { /* ... */ }
+type DKGRound2Msg struct { /* ... */ }
+type DKGOutput    struct { /* ... */ }
+
+func (s *DKGSession) Round1() (*DKGRound1Msg, error)
+func (s *DKGSession) Round2(round1 []*DKGRound1Msg) (*DKGRound2Msg, error)
+func (s *DKGSession) Round3(
+    round1 []*DKGRound1Msg,
+    round2 []*DKGRound2Msg,
+) (*DKGOutput, error)
+```
+
+Source: `ref/go/pkg/pulsar/dkg.go`. Large-committee variant
+(beyond $n = 256$ — GF($q$) instead of GF(257)) at
+`ref/go/pkg/pulsar/large_dkg.go`.
+
+## Identity layer (mandatory)
+
+Per CR-6, CR-7, CR-8 closures:
+
+```go
+type IdentityKey struct { /* ML-DSA-65 long-term identity */ }
+type IdentityPublicKey struct { /* ... */ }
+type IdentityDirectory map[NodeID]*IdentityPublicKey
+
+func GenerateIdentity(rng io.Reader) (*IdentityKey, error)
+func NewIdentityDirectory(entries map[NodeID]*IdentityPublicKey) (IdentityDirectory, error)
+func (k *IdentityKey) PublicKey() *IdentityPublicKey
+
+// Per-pair authenticated channel with ML-KEM-768 wrapping.
+func EstablishSession(/* ... */) (/* ... */, error)
+func SymmetricSession (/* ... */) (/* ... */, error)
+func DeriveSessionKey(myID, peerID NodeID, sid [16]byte, mySS, peerSS []byte) ([32]byte, error)
+```
+
+Source: `ref/go/pkg/pulsar/identity.go`.
+
+## Proactive resharing
+
+```go
+type ReshareSession struct { /* ... */ }
+type KeyShare       struct { /* ... */ }
+
+func (s *ReshareSession) SetPriorGroupPubkey(pk *PublicKey)
+func (s *ReshareSession) InReshareQuorum() bool
+func (s *ReshareSession) Round1() (*DKGRound1Msg, error)
+func (s *ReshareSession) Round2(round1 []*DKGRound1Msg) (*DKGRound2Msg, error)
+func (s *ReshareSession) Round3(
+    round1 []*DKGRound1Msg,
+    round2 []*DKGRound2Msg,
+) (*KeyShare, *AbortEvidence, error)
+```
+
+Source: `ref/go/pkg/pulsar/reshare.go`.
+
+## Errors
+
+Each subsystem declares its own sentinel errors with descriptive names
+that match the failure mode:
+
+- `ErrNilKey`, `ErrModeMismatch`, `ErrCtxTooLong` (`sign.go:30`)
+- `ErrTransitionalNoSetup`, `ErrTransitionalRound1MACBad`,
+  `ErrTransitionalRound2MACBad`, `ErrTransitionalRound2CommitBad`,
+  `ErrTransitionalRestart` (`threshold_v02.go`)
+- DKG, reshare, identity sentinels in their respective files
+
+`*AbortEvidence` carries signed evidence of an identifiable abort
+suitable for slashing.
+
+## Determinism for KAT replay
+
+The KAT regen pipeline (`scripts/gen_vectors.sh`) seeds all randomness
+from a 48-byte master seed. Calling `Sign` with `randomized=false` and
+the corresponding deterministic reader produces a byte-identical
+signature on every architecture. CI runs the regen on every commit and
+compares against the committed vectors.
+
+## See also
+
+- [Getting started](/docs/getting-started) — end-to-end usage.
+- [KAT format](/docs/reference/kat) — vector schema and regen.
+- [Interop](/docs/reference/interop) — cross-validation harness.

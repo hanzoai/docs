@@ -1,0 +1,182 @@
+---
+title: Protocol overview
+description: 2-round threshold ML-DSA sketch, system model, the byte-equality argument.
+---
+
+Pulsar is a 2-round threshold construction over Module-LWE. The protocol
+skeleton is the same one Lux ships in production for Ring-LWE in
+[`luxfi/corona`](https://github.com/luxfi/corona), retargeted to the
+polynomial-vector-over-$R_q^k$ algebra that ML-DSA-65 uses natively.
+
+## Notation
+
+- $R_q = \mathbb{Z}_q[X] / (X^{256} + 1)$, $q = 8\,380\,417$.
+- Module dimension $k$, secret dimension $\ell$ (see [parameters](/docs/protocol/parameters)).
+- A single-party ML-DSA-65 keypair is $(\mathbf{s_1} \in R_q^\ell, \mathbf{s_2} \in R_q^k)$
+  with public matrix $\mathbf{A} \in R_q^{k \times \ell}$ and public key
+  $\mathbf{t} = \mathbf{A}\mathbf{s_1} + \mathbf{s_2}$.
+- A FIPS 204 signature has shape $\sigma = (\tilde{c}, \mathbf{z}, \mathbf{h})$.
+- A threshold ceremony has $n$ parties and reconstruction threshold $t$.
+
+## System model
+
+| Channel | Property | Purpose |
+| --- | --- | --- |
+| Broadcast | authenticated, eventual-delivery | round transcripts, public coins |
+| Point-to-point | authenticated, encrypted | private share / blind delivery |
+| Public bulletin | authenticated, append-only | DKG commitments, reshare records |
+
+Channels are realized over TCP + TLS in the reference implementation.
+Production deployments (Lux consensus + Quasar) bind these to their existing
+P2P transport.
+
+## Trusted parameters
+
+The cyclotomic ring $R_q = \mathbb{Z}_q[X] / (X^{256} + 1)$ and parameters
+$(q, k, \ell, \eta, \beta, \omega, \dots)$ are inherited verbatim from FIPS 204
+ML-DSA-65. The hash family is SHAKE-256 (FIPS 202) + cSHAKE-256 / KMAC-256 /
+TupleHash-256 (NIST SP 800-185). Customization tags are pinned in
+`spec/pulsar.tex`.
+
+No trusted setup beyond NIST primitives.
+
+## Adversary model
+
+### Static corruption (default)
+
+The adversary $\mathcal{A}$ selects up to $t-1$ parties to corrupt **before**
+protocol start. From start to end, those $t-1$ parties are controlled; the
+remaining honest parties run the protocol faithfully.
+
+$\mathcal{A}$ sees all broadcast messages and all authenticated point-to-point
+messages into corrupted parties. $\mathcal{A}$ learns each corrupted party's
+full state (secret share, per-round randomness, session values).
+$\mathcal{A}$ can selectively delay messages within the round window but cannot
+forge messages from honest parties on authenticated channels.
+
+### Adaptive corruption (stronger)
+
+$\mathcal{A}$ can corrupt up to $t-1$ parties at any time during the protocol,
+including mid-round, conditioned on the transcript so far. Once corrupted,
+a party remains corrupted. Adaptive security is a stretch goal for the first
+MPTC submission and a hard requirement for the second-round response.
+
+### Mobile corruption (proactive resharing)
+
+For long-lived deployments where the validator set rotates between epochs,
+the relevant model is HJKY97 mobile adversary: $\mathcal{A}$ can corrupt up
+to $t-1$ parties **per epoch**, with the corruption set varying across
+epochs. The MPTC submission documents the mobile-adversary game explicitly.
+
+## Security goals
+
+### Threshold unforgeability (TS-UF)
+
+For any PPT adversary $\mathcal{A}$ controlling up to $t-1$ parties,
+$\mathcal{A}$ cannot produce a valid Pulsar signature $\sigma^*$ on any message
+$\mu^*$ that an honest signing ceremony has not produced.
+
+### Output indistinguishability from FIPS 204
+
+A Pulsar signature $\sigma$ on message $\mu$ against group public key $pk$ is
+computationally indistinguishable from a FIPS 204 ML-DSA signature on the
+same $(pk, \mu)$. **Pulsar achieves the stronger property of byte-equality**
+under the v0.3 algebraic aggregator.
+
+### Robustness / identifiable abort
+
+If a corrupted party deviates from the protocol, the honest parties:
+
+1. Detect the deviation.
+2. Identify the deviating party.
+3. Produce signed evidence of the deviation suitable for
+   slashing / reputation reduction.
+
+Pulsar identifies aborting parties under synchronous network assumptions;
+asynchronous identifiable abort is out of scope for this submission.
+
+### Bias resistance
+
+The randomness used in each party's contribution (Gaussian samples, challenge
+polynomials) is statistically indistinguishable from uniform even given the
+adversary's view of corrupted parties' randomness.
+
+### DKG soundness
+
+Pedersen DKG over $R_q^k$ produces a public key $pk$ distributed uniformly
+over the valid M-LWE public-key space, with no party holding more than $1/n$
+partial information about the corresponding secret key.
+
+## The 2-round signing protocol
+
+The two rounds, in sketch (full spec: `spec/pulsar.tex` §4):
+
+### Round 1 — commit
+
+Each party $i$ in the quorum $Q$ samples its per-session masking values
+($\mathbf{y}_i \in R_q^\ell$ via ExpandMask) and emits a commitment to its
+contribution to $\mathbf{w} = \mathbf{A}\mathbf{y}$. The commitment carries the
+session identifier and the long-term identity public key for replay
+resistance.
+
+### Round 2 — respond
+
+After receiving the full Round-1 transcript and computing $\tilde{c}$ via
+ExpandH on the aggregated $\mathbf{w}_1 = \mathrm{HighBits}(\mathbf{w})$, each
+party $i$ emits its partial response $\mathbf{z}_i = \mathbf{y}_i + c \cdot
+\mathbf{s}_{1,i}$ where $\mathbf{s}_{1,i}$ is its share of $\mathbf{s}_1$.
+
+### Combine — public-only aggregation
+
+The aggregator performs Lagrange aggregation on the per-party responses to
+recover the centralized $\mathbf{z}$, then packs the FIPS 204 signature
+$\sigma = (\tilde{c}, \mathbf{z}, \mathbf{h})$. No master secret is ever
+reconstructed in aggregator memory.
+
+## The byte-equality argument
+
+The combine-side aggregation identity is, abstractly:
+
+$$
+\mathrm{Lagrange}_Q\bigl(\{z_i\}_{i \in Q}\bigr) = \mathbf{y} + c \cdot \mathbf{s_1}
+$$
+
+where $\mathbf{s_1}$ is the Lagrange-reconstructed group secret, $\mathbf{y}$
+is the implicit aggregation of the per-party masks, and $c$ is the challenge
+derived from the joint transcript via ExpandH. This is the algebraic content
+of [Axiom 5](/docs/proofs/axiom-inventory) (`threshold_partial_response_identity`)
+in the EasyCrypt proof, discharged by a proved Lean theorem
+(`Crypto/Threshold_Lagrange.lean::threshold_partial_response_identity`).
+
+The signature is then packed via the FIPS 204 §3.5.5 packed-signature codec
+shared by both the threshold combine path and the centralized FIPS 204 Sign
+path; the codec round-trip is [Axiom 17](/docs/proofs/axiom-inventory)
+(`pack_unpack_n1_signature_roundtrip` in `Pulsar_N1.ec:817`).
+
+Combining these two facts with the FIPS 204 §6.2 stage-level byte-walks
+yields the headline byte-equality theorem
+`pulsar_n1_byte_equality_extracted` in
+`proofs/easycrypt/Pulsar_N1_Extracted.ec`.
+
+## Out of scope
+
+Read [BLOCKERS.md](https://github.com/luxfi/pulsar/blob/main/BLOCKERS.md) for
+the authoritative list. Highlights:
+
+- **No identifiable abort under network partition** — Pulsar identifies
+  aborting parties under synchronous network assumptions only. Asynchronous
+  identifiable abort requires a separate accountability layer.
+- **No 1-round signing** — the construction is 2-round by design. The
+  rejection-sampling step inherent to FIPS 204 ML-DSA precludes a 1-round
+  threshold variant without a non-NIST-standard preprocessing oracle.
+- **DKG without external randomness beacon** — Pulsar DKG produces unbiased
+  coefficients under honest-majority assumptions but does not provide bias
+  resistance under collusion. Production deployments bind a randomness beacon
+  at the consensus layer.
+
+## Next
+
+- [FIPS 204 relationship](/docs/protocol/fips-204) — the byte-equality story
+  in detail.
+- [DKG](/docs/protocol/dkg) — Pedersen DKG over $R_q^k$, proactive resharing.
+- [Parameters](/docs/protocol/parameters) — concrete parameter sets.
