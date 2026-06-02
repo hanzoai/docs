@@ -59,17 +59,17 @@ export interface HanzoSyncOptions {
   /**
    * The index API endpoint.
    *
-   * For `backend: 'cloud'`: the cloud-api index-docs URL.
+   * For `backend: 'cloud'`: the Hanzo AI `/v1/index` URL.
    * For `backend: 'meilisearch'`: the Meilisearch base URL (e.g. 'https://search.hanzo.ai').
    *
-   * @defaultValue 'https://api.cloud.hanzo.ai/api/index-docs'
+   * @defaultValue 'https://api.hanzo.ai/v1/index'
    */
   endpoint?: string;
 
   /**
    * Sync backend to use.
    *
-   * - `'cloud'`: Hanzo cloud-api `/api/index-docs` endpoint.
+   * - `'cloud'`: Hanzo AI `/v1/index` endpoint.
    * - `'meilisearch'`: Direct Meilisearch instance (requires `index`).
    *
    * @defaultValue 'cloud'
@@ -235,7 +235,7 @@ async function waitForTask(
 
 export async function sync(options: HanzoSyncOptions): Promise<void> {
   const {
-    endpoint = 'https://api.cloud.hanzo.ai/api/index-docs',
+    endpoint = 'https://api.hanzo.ai/v1/index',
     backend = 'cloud',
     index: indexName = 'app-docs-hanzo-ai-docs',
     apiKey,
