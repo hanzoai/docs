@@ -1,5 +1,5 @@
 import { docs } from 'collections/server';
-import { type InferPageType, loader } from '@hanzo/docs-core/source';
+import { type InferPageType, loader } from 'fumadocs-core/source';
 import { docsContentRoute, docsImageRoute, docsRoute } from './shared';
 
 // See https://fumadocs.dev/docs/headless/source-api for more info
