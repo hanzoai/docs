@@ -1,7 +1,6 @@
 import type { OpenAPIV3_2, OpenAPIV3 } from './_openapi/types';
-import type { default as Slugger } from 'github-slugger';
 import type { NoReference } from '@/utils/schema';
-import type { ProcessedDocument } from '@/utils/process-document';
+import type { DereferencedDocument } from '@/utils/document/dereference';
 import type { MediaAdapter } from '@/requests/media/adapter';
 import type { OpenAPIOptions } from '@/server';
 import type { CreateAPIPageOptions } from './ui/base';
@@ -26,7 +25,7 @@ export type MediaTypeObject = OpenAPIV3_2.MediaTypeObject;
 export type RequestBodyObject = OpenAPIV3_2.RequestBodyObject;
 
 export type MethodInformation = NoReference<OperationObject> & {
-  method: string;
+  method: HttpMethods;
   'x-codeSamples'?: InlineCodeUsageGenerator[];
   'x-selectedCodeSample'?: string;
   'x-exclusiveCodeSample'?: string;
@@ -38,23 +37,17 @@ export interface RenderContext
   extends
     Pick<OpenAPIOptions, 'proxyUrl'>,
     Omit<
-      RequireKeys<CreateAPIPageOptions, 'generateTypeScriptDefinitions' | 'renderMarkdown'>,
-      'renderCodeBlock' | 'renderHeading'
+      RequireKeys<CreateAPIPageOptions, 'renderMarkdown' | 'generateTypeScriptDefinitions'>,
+      'renderCodeBlock' | 'renderHeading' | 'generateTypeScriptSchema'
     > {
-  slugger: Slugger;
-
   /**
    * dereferenced schema
    */
-  schema: ProcessedDocument;
+  schema: DereferencedDocument;
+  clientBoundary: typeof import('@/ui/client/boundary');
 
   mediaAdapters: Record<string, MediaAdapter>;
 
-  renderHeading: (
-    depth: number,
-    text: string | ReactNode,
-    props?: HTMLAttributes<HTMLHeadingElement> & { id?: string },
-  ) => ReactNode;
   renderCodeBlock: (lang: string, code: string) => ReactNode;
 }
 

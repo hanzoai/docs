@@ -125,7 +125,7 @@ export function createGenerator(options: GeneratorOptions = {}) {
       options: GenerateOptions = {},
     ) {
       const fullPath = path.resolve(file.path);
-      const content = file.content ?? (await fs.readFile(fullPath)).toString();
+      const content = file.content ?? (await fs.readFile(fullPath, 'utf-8'));
       let cacheKey: string | undefined;
       if (cache) {
         cacheKey = generateHash(`${file.path}:${name}:${content}:${packageVersion}`);
@@ -220,17 +220,10 @@ async function getDocEntry(prop: TsSymbol, context: EntryContext): Promise<DocEn
       context.declaration,
       ts.TypeFormatFlags.UseAliasDefinedOutsideCurrentScope | ts.TypeFormatFlags.NoTruncation,
     ),
-    simplifiedType: getSimpleForm(
-      {
-        type: subType,
-        checker: program.getTypeChecker(),
-        location: context.declaration,
-      },
-      {
-        ...context.typeSimplifier,
-        noUndefined: isOptional,
-      },
-    ),
+    simplifiedType: getSimpleForm(subType, program.getTypeChecker(), context.declaration, {
+      ...context.typeSimplifier,
+      noUndefined: isOptional,
+    }),
     required: !isOptional,
     deprecated: false,
   };

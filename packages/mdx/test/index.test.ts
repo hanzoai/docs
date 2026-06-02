@@ -160,7 +160,7 @@ for (const { name, config } of cases) {
     });
 
     await core.init({
-      config: buildConfig(config),
+      config: buildConfig(config, process.cwd()),
     });
 
     const { entries, workspaces } = await core.emit();

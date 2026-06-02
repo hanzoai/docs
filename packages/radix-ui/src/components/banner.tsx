@@ -4,6 +4,7 @@ import { type HTMLAttributes, useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { buttonVariants } from '@/components/ui/button';
+import { useTranslations } from '@/contexts/i18n';
 
 type BannerVariant = 'rainbow' | 'normal';
 
@@ -31,7 +32,7 @@ export function Banner({
   variant?: BannerVariant;
 
   /**
-   * For rainbow variant only, customise the colors
+   * For rainbow variant only, customize the colors
    */
   rainbowColors?: string[];
 
@@ -42,12 +43,18 @@ export function Banner({
    */
   changeLayout?: boolean;
 }) {
+  const t = useTranslations();
   const [open, setOpen] = useState(true);
-  const globalKey = id ? `nd-banner-${id}` : null;
+  const globalKey = id ? `nd-banner-${encodeBase32(id)}` : null;
 
   useEffect(() => {
-    if (globalKey) setOpen(localStorage.getItem(globalKey) !== 'true');
+    if (globalKey && localStorage.getItem(globalKey) === 'true') setOpen(false);
   }, [globalKey]);
+
+  function onClose() {
+    setOpen(false);
+    if (globalKey) localStorage.setItem(globalKey, 'true');
+  }
 
   if (!open) return null;
 
@@ -91,15 +98,12 @@ export function Banner({
       {id ? (
         <button
           type="button"
-          aria-label="Close Banner"
-          onClick={() => {
-            setOpen(false);
-            if (globalKey) localStorage.setItem(globalKey, 'true');
-          }}
+          aria-label={t.bannerClose}
+          onClick={onClose}
           className={cn(
             buttonVariants({
               color: 'ghost',
-              className: 'absolute end-2 top-1/2 -translate-y-1/2 text-fd-muted-foreground/50',
+              className: 'absolute inset-e-2 top-1/2 -translate-y-1/2 text-fd-muted-foreground/50',
               size: 'icon-sm',
             }),
           )}
@@ -118,7 +122,7 @@ function flow({ colors }: { colors: string[] }) {
   return (
     <>
       <div
-        className="absolute inset-0 z-[-1]"
+        className="absolute inset-0 -z-1"
         style={
           {
             maskImage,
@@ -138,4 +142,28 @@ function flow({ colors }: { colors: string[] }) {
       </style>
     </>
   );
+}
+
+function encodeBase32(str: string) {
+  const alphabet = 'abcdefghijklmnopqrstuvwxyz234567';
+  let encoded = '';
+
+  let buffer = 0;
+  let bitsLeft = 0;
+
+  for (let i = 0; i < str.length; i++) {
+    buffer = (buffer << 8) | str.charCodeAt(i);
+    bitsLeft += 8;
+
+    while (bitsLeft >= 5) {
+      bitsLeft -= 5;
+      encoded += alphabet[(buffer >> bitsLeft) & 31];
+    }
+  }
+
+  if (bitsLeft > 0) {
+    encoded += alphabet[(buffer << (5 - bitsLeft)) & 31];
+  }
+
+  return encoded;
 }

@@ -48,48 +48,52 @@ export function ResponseTabs({
   operation: NoReference<MethodInformation>;
   ctx: RenderContext;
 }) {
-  if (!operation.responses) return null;
-  const tabs: ResponseTab[] = [];
+  const tabs = useMemo(() => {
+    const tabs: ResponseTab[] = [];
+    if (!operation.responses) return tabs;
 
-  for (const [code, response] of Object.entries(operation.responses)) {
-    const media = response.content ? getPreferredType(response.content) : null;
-    const responseOfType = media ? response.content?.[media] : null;
+    for (const [code, response] of Object.entries(operation.responses)) {
+      const media = response.content ? getPreferredType(response.content) : null;
+      const responseOfType = media ? response.content?.[media] : null;
 
-    const tab: ResponseTab = {
-      code,
-      response,
-      mediaType: media as string | null,
-    };
+      const tab: ResponseTab = {
+        code,
+        response,
+        mediaType: media as string | null,
+      };
 
-    if (responseOfType?.examples) {
-      tab.examples ??= [];
+      if (responseOfType?.examples) {
+        tab.examples ??= [];
 
-      for (const [key, sample] of Object.entries(responseOfType.examples)) {
+        for (const [key, sample] of Object.entries(responseOfType.examples)) {
+          tab.examples.push({
+            label: sample?.summary ?? <I18nLabel label="responseTabName" replacements={{ key }} />,
+            sample: sample.value,
+            description: sample?.description,
+          });
+        }
+      } else if (responseOfType?.example || responseOfType?.schema) {
+        tab.examples ??= [];
         tab.examples.push({
-          label: sample?.summary ?? <I18nLabel label="responseTabName" replacements={{ key }} />,
-          sample: sample.value,
-          description: sample?.description,
+          label: <I18nLabel label="responseTabNameDefault" />,
+          sample: responseOfType.example ?? sample(responseOfType.schema as object),
         });
       }
-    } else if (responseOfType?.example || responseOfType?.schema) {
-      tab.examples ??= [];
-      tab.examples.push({
-        label: <I18nLabel label="responseTabNameDefault" />,
-        sample: responseOfType.example ?? sample(responseOfType.schema as object),
-      });
+
+      tabs.push(tab);
     }
 
-    tabs.push(tab);
-  }
+    return tabs;
+  }, [operation.responses]);
+
+  if (tabs.length === 0) return null;
+
   const { renderResponseTabs = renderResponseTabsDefault } = ctx.content ?? {};
 
   return renderResponseTabs(tabs, ctx);
 }
 
-function renderResponseTabsDefault(
-  tabs: ResponseTab[],
-  ctx: RenderContext,
-): ReactNode | Promise<ReactNode> {
+function renderResponseTabsDefault(tabs: ResponseTab[], ctx: RenderContext): ReactNode {
   function renderExampleContent(example: ResponseExample) {
     return (
       <>
@@ -98,34 +102,6 @@ function renderResponseTabsDefault(
       </>
     );
   }
-
-  async function renderResponse(tab: ResponseTab) {
-    const { examples = [] } = tab;
-
-    let slot: ReactNode = <I18nLabel label="empty" />;
-    if (examples.length > 1) {
-      slot = (
-        <Accordions type="single" className="pt-2" defaultValue="0">
-          {examples.map((example, i) => (
-            <AccordionItem key={i} value={i.toString()}>
-              <AccordionHeader>
-                <AccordionTrigger>{example.label}</AccordionTrigger>
-              </AccordionHeader>
-              <AccordionContent className="prose-no-margin">
-                {renderExampleContent(example)}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordions>
-      );
-    } else if (examples.length === 1) {
-      slot = renderExampleContent(examples[0]);
-    }
-
-    return <Tab value={tab.code}>{slot}</Tab>;
-  }
-
-  if (tabs.length === 0) return null;
 
   return (
     <Tabs groupId="hanzo_docs_openapi_responses" items={tabs.map((tab) => tab.code)}>

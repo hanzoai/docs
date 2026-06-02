@@ -9,7 +9,7 @@ import {
   useState,
 } from 'react';
 import { cn } from '@/utils/cn';
-import { I18nLabel, useI18n } from '@/contexts/i18n';
+import { I18nLabel, useTranslations } from '@/contexts/i18n';
 import { TOC, TOCProvider, type TOCProviderProps, type TOCProps } from './slots/toc';
 import { Footer, type FooterProps } from './slots/footer';
 import { Breadcrumb, type BreadcrumbProps } from './slots/breadcrumb';
@@ -26,8 +26,7 @@ export interface DocsPageProps extends ComponentProps<'article'> {
    *
    * @defaultValue false
    */
-  full?: boolean;
-  children?: ReactNode;
+  full?: boolean | undefined;
   slots?: Partial<DocsPageSlots>;
 
   footer?: FooterOptions;
@@ -35,13 +34,14 @@ export interface DocsPageProps extends ComponentProps<'article'> {
   tableOfContent?: TableOfContentOptions;
 }
 
-interface TableOfContentOptions extends Pick<TOCProviderProps, 'single'>, TOCProps {
-  enabled?: boolean;
-  /**
-   * @deprecated use `slots.toc` instead.
-   */
-  component?: ReactNode;
-}
+type TableOfContentOptions = Pick<TOCProviderProps, 'single'> &
+  TOCProps & {
+    enabled?: boolean;
+    /**
+     * @deprecated use `slots.toc` instead.
+     */
+    component?: ReactNode;
+  };
 
 interface BreadcrumbOptions extends BreadcrumbProps {
   enabled?: boolean;
@@ -69,10 +69,8 @@ interface DocsPageSlots {
   breadcrumb: FC<BreadcrumbProps>;
 }
 
-type PageSlotsProps = Pick<DocsPageProps, 'full'>;
-
 const PageContext = createContext<{
-  props: PageSlotsProps;
+  full: NonNullable<DocsPageProps['full']>;
   slots: DocsPageSlots;
 } | null>(null);
 
@@ -86,17 +84,15 @@ export function useDocsPage() {
 }
 
 export function DocsPage({
-  tableOfContent: { enabled: tocEnabled, single, ...tocProps } = {},
+  full = false,
+  tableOfContent: { enabled: tocEnabled = !full, single, ...tocProps } = {},
   breadcrumb: { enabled: breadcrumbEnabled = true, ...breadcrumb } = {},
   footer: { enabled: footerEnabled = true, ...footer } = {},
-  full = false,
   toc = [],
   slots: defaultSlots = {},
   children,
   ...containerProps
 }: DocsPageProps) {
-  tocEnabled ??= Boolean(toc.length > 0 || tocProps.header || tocProps.footer);
-
   const slots: DocsPageSlots = {
     breadcrumb: defaultSlots.breadcrumb ?? Breadcrumb,
     footer: defaultSlots.footer ?? Footer,
@@ -110,7 +106,7 @@ export function DocsPage({
   return (
     <PageContext
       value={{
-        props: { full },
+        full,
         slots,
       }}
     >
@@ -185,7 +181,7 @@ export function PageLastUpdate({
   date: value,
   ...props
 }: Omit<ComponentProps<'p'>, 'children'> & { date: Date }) {
-  const { text } = useI18n();
+  const t = useTranslations();
   const [date, setDate] = useState('');
 
   useEffect(() => {
@@ -195,7 +191,7 @@ export function PageLastUpdate({
 
   return (
     <p {...props} className={cn('text-sm text-fd-muted-foreground', props.className)}>
-      {text.lastUpdate} {date}
+      {t.lastUpdate} {date}
     </p>
   );
 }

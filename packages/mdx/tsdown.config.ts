@@ -27,19 +27,13 @@ export default defineConfig([
       neverBundle: external,
     },
   },
-  {
-    outDir: 'dist/next',
-    // ensure Next.js CJS config compatibility
-    // because next.config.ts by default uses CJS
-    entry: ['./src/next/index.ts'],
-    format: 'cjs',
-    dts: false,
-    fixedExtension: false,
-    target: 'node22',
-    deps: {
-      onlyBundle: noExternal,
-      alwaysBundle: noExternal,
-      neverBundle: external,
-    },
+  target: 'es2023',
+  platform: 'neutral',
+  exports: {
+    bin: false,
   },
-]);
+  deps: {
+    onlyBundle: ['@fumadocs/vite'],
+    neverBundle: ['webpack', 'bun', /^node:/],
+  },
+});

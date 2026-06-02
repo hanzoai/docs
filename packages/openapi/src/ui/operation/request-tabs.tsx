@@ -1,5 +1,5 @@
 import type { MethodInformation, RenderContext } from '@/types';
-import { getPreferredType, type NoReference, pickExample } from '@/utils/schema';
+import type { NoReference } from '@/utils/schema';
 import { I18nLabel } from '@/ui/client/i18n';
 import {
   AccordionContent,
@@ -8,205 +8,41 @@ import {
   Accordions,
   AccordionTrigger,
 } from '@/ui/components/accordion';
-import { sample } from 'openapi-sampler';
 import type { ReactNode } from 'react';
 import type { RawRequestData, RequestData } from '@/requests/types';
 import { encodeRequestData } from '@/requests/media/encode';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@hanzo/docs-base-ui/components/ui/tabs';
 import { resolveRequestData } from '@/utils/url';
 import { MethodLabel } from '../components/method-label';
+import type { ExampleRequestItem } from './get-example-requests';
 
-export interface ExampleRequestItem {
-  id: string;
-  name: string;
-  description?: string;
-  data: RawRequestData;
-  encoded: RequestData;
+export interface RequestTabsRenderContext extends RenderContext {
+  route: string;
+  operation: NoReference<MethodInformation>;
 }
 
-export function getExampleRequests(
-  path: string,
-  operation: NoReference<MethodInformation>,
-  ctx: RenderContext,
-): ExampleRequestItem[] {
-  const requestBody = operation.requestBody;
-  const media = requestBody?.content ? getPreferredType(requestBody.content) : null;
-  const bodyOfType = media ? requestBody!.content![media] : null;
-
-  if (bodyOfType?.examples) {
-    const result: ExampleRequestItem[] = [];
-
-    for (const [key, value] of Object.entries(bodyOfType.examples)) {
-      const data = getRequestData(path, operation, key, ctx);
-
-      result.push({
-        id: key,
-        name: value.summary || key,
-        description: value.description,
-        data,
-        encoded: encodeRequestData(data, ctx.mediaAdapters, operation.parameters ?? []),
-      });
-    }
-
-    if (result.length > 0) return result;
-  }
-
-  const data = getRequestData(path, operation, null, ctx);
-  return [
-    {
-      id: '_default',
-      name: 'Default',
-      description:
-        typeof bodyOfType?.schema === 'object' ? bodyOfType.schema.description : undefined,
-      data,
-      encoded: encodeRequestData(data, ctx.mediaAdapters, operation.parameters ?? []),
-    },
-  ];
-}
-
-function getRequestData(
-  path: string,
-  method: NoReference<MethodInformation>,
-  sampleKey: string | null,
-  _ctx: RenderContext,
-): RawRequestData {
-  const result: RawRequestData = {
-    path: {},
-    cookie: {},
-    header: {},
-    query: {},
-    method: method.method,
-  };
-
-  for (const param of method.parameters ?? []) {
-    let value = pickExample(param as never);
-
-    if (value === undefined && param.required) {
-      if (param.schema) {
-        value = sample(param.schema as object);
-      } else if (param.content) {
-        const type = getPreferredType(param.content);
-        const content = type ? param.content[type] : undefined;
-        if (!content || !content.schema)
-          throw new Error(
-            `Cannot find "${param.name}" parameter info for media type "${type}" in ${path} ${method.method}`,
-          );
-
-        value = sample(content.schema as object);
-      }
-    }
-
-    switch (param.in) {
-      case 'cookie':
-        result.cookie[param.name!] = value;
-        break;
-      case 'header':
-        result.header[param.name!] = value;
-        break;
-      case 'query':
-        result.query[param.name!] = value;
-        break;
-      default:
-        result.path[param.name!] = value;
-    }
-  }
-
-  if (method.requestBody?.content) {
-    const body = method.requestBody.content;
-    const type = getPreferredType(body);
-    if (!type)
-      throw new Error(`Cannot find body schema for ${path} ${method.method}: missing media type`);
-    result.bodyMediaType = type as RawRequestData['bodyMediaType'];
-    const bodyOfType = body[type];
-
-    if (bodyOfType.examples && sampleKey) {
-      result.body = bodyOfType.examples[sampleKey].value;
-    } else if (bodyOfType.example) {
-      result.body = bodyOfType.example;
-    } else {
-      result.body = sample((bodyOfType?.schema ?? {}) as object, {
-        skipReadOnly: method.method !== 'GET',
-        skipWriteOnly: method.method === 'GET',
-        skipNonRequired: true,
-      });
-    }
-  }
-
-  return result;
-}
-
-export async function RequestTabs({
+export function RequestTabs({
   path,
   operation,
+  examples,
   ctx,
 }: {
   path: string;
+  examples: ExampleRequestItem[];
   operation: NoReference<MethodInformation>;
   ctx: RenderContext;
 }) {
   if (!operation.requestBody) return null;
   const { renderRequestTabs = renderRequestTabsDefault } = ctx.content ?? {};
 
-  return renderRequestTabs(getExampleRequests(path, operation, ctx), {
+  return renderRequestTabs(examples, {
     ...ctx,
     route: path,
     operation,
   });
 }
 
-function renderRequestTabsDefault(
-  items: ExampleRequestItem[],
-  ctx: RenderContext & {
-    route: string;
-    operation: NoReference<MethodInformation>;
-  },
-) {
-  function renderItem(item: ExampleRequestItem) {
-    const requestData = item.data;
-    const displayNames: Partial<Record<keyof RawRequestData, ReactNode>> = {
-      body: (
-        <>
-          <I18nLabel label="titleRequestBody" />
-          <code className="text-xs text-fd-muted-foreground ms-auto">
-            {requestData.bodyMediaType}
-          </code>
-        </>
-      ),
-      cookie: <I18nLabel label="cookieParameters" />,
-      header: <I18nLabel label="headerParameters" />,
-      query: <I18nLabel label="queryParameters" />,
-      path: <I18nLabel label="pathParameters" />,
-    };
-
-    return (
-      <>
-        {item.description && ctx.renderMarkdown(item.description)}
-        <div className="flex flex-row gap-2 items-center justify-between">
-          <MethodLabel>{requestData.method}</MethodLabel>
-          <code>{resolveRequestData(ctx.route, item.encoded)}</code>
-        </div>
-
-        <Accordions type="multiple" className="mt-2">
-          {Object.entries(displayNames).map(([k, v]) => {
-            const data = requestData[k as keyof RawRequestData];
-            if (!data || Object.keys(data).length === 0) return;
-
-            return (
-              <AccordionItem key={k} value={k}>
-                <AccordionHeader>
-                  <AccordionTrigger>{v}</AccordionTrigger>
-                </AccordionHeader>
-                <AccordionContent className="prose-no-margin">
-                  {ctx.renderCodeBlock('json', JSON.stringify(data, null, 2))}
-                </AccordionContent>
-              </AccordionItem>
-            );
-          })}
-        </Accordions>
-      </>
-    );
-  }
-
+function renderRequestTabsDefault(items: ExampleRequestItem[], ctx: RequestTabsRenderContext) {
   let children: ReactNode;
   if (items.length > 1) {
     children = (
@@ -220,13 +56,13 @@ function renderRequestTabsDefault(
         </TabsList>
         {items.map((item) => (
           <TabsContent key={item.id} value={item.id}>
-            {renderItem(item)}
+            <RequestTabsItem item={item} ctx={ctx} />
           </TabsContent>
         ))}
       </Tabs>
     );
   } else if (items.length === 1) {
-    children = renderItem(items[0]);
+    children = <RequestTabsItem item={items[0]} ctx={ctx} />;
   } else {
     children = (
       <p className="text-fd-muted-foreground text-xs">
@@ -242,5 +78,57 @@ function renderRequestTabsDefault(
       </p>
       {children}
     </div>
+  );
+}
+
+function RequestTabsItem({
+  item,
+  ctx,
+}: {
+  item: ExampleRequestItem;
+  ctx: RequestTabsRenderContext;
+}) {
+  const requestData = item.data;
+  const displayNames: Partial<Record<keyof RawRequestData, ReactNode>> = {
+    body: (
+      <>
+        <I18nLabel label="titleRequestBody" />
+        <code className="text-xs text-fd-muted-foreground ms-auto">
+          {requestData.bodyMediaType}
+        </code>
+      </>
+    ),
+    cookie: <I18nLabel label="cookieParameters" />,
+    header: <I18nLabel label="headerParameters" />,
+    query: <I18nLabel label="queryParameters" />,
+    path: <I18nLabel label="pathParameters" />,
+  };
+
+  return (
+    <>
+      {item.description && ctx.renderMarkdown(item.description)}
+      <div className="flex flex-row gap-2 items-center justify-between">
+        <MethodLabel>{requestData.method}</MethodLabel>
+        <code>{resolveRequestData(ctx.route, item.encoded)}</code>
+      </div>
+
+      <Accordions type="multiple" className="mt-2">
+        {Object.entries(displayNames).map(([k, v]) => {
+          const data = requestData[k as keyof RawRequestData];
+          if (!data || Object.keys(data).length === 0) return;
+
+          return (
+            <AccordionItem key={k} value={k}>
+              <AccordionHeader>
+                <AccordionTrigger>{v}</AccordionTrigger>
+              </AccordionHeader>
+              <AccordionContent className="prose-no-margin">
+                {ctx.renderCodeBlock('json', JSON.stringify(data, null, 2))}
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordions>
+    </>
   );
 }

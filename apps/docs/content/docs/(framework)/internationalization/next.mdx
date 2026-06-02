@@ -18,7 +18,7 @@ Define the i18n configurations in a file, we will import it with `@/lib/i18n` in
 
 > See [available options](/docs/headless/internationalization/config) for i18n config.
 
-### Middleware
+### Middleware [step]
 
 Create a middleware that redirects users to appropriate locale.
 
@@ -34,9 +34,9 @@ Make sure its behaviour aligns with the [`hidePrefix`](/docs/headless/internatio
 
 </Callout>
 
-### Translations
+### Translations [step]
 
-Define your translations in a file (e.g. `lib/layout.shared.tsx`), the English translations are used when `translations` is not specified.
+Define your translations in `lib/layout.shared.tsx`, see [Translations](/docs/ui/translations) for more details (including official language packs).
 
 You can also add `locale` parameter to `baseOptions()` for localized layout options:
 
@@ -45,16 +45,19 @@ import { i18n } from '@/lib/i18n';
 import { defineI18nUI } from '@hanzo/docs-ui/i18n';
 import type { BaseLayoutProps } from '@hanzo/docs-ui/layouts/shared';
 
-// [!code ++:9]
-export const i18nUI = defineI18nUI(i18n, {
-  en: {
-    displayName: 'English',
-  },
-  cn: {
-    displayName: 'Chinese',
-    search: '搜尋文檔',
-  },
-});
+// [!code ++:12]
+export const i18nUI = i18n
+  .translations()
+  .extend(uiTranslations())
+  .add('ui', {
+    en: {
+      displayName: 'English',
+    },
+    cn: {
+      displayName: 'Chinese',
+      search: '搜尋文檔',
+    },
+  });
 
 // [!code highlight]
 export function baseOptions(locale: string): BaseLayoutProps {
@@ -84,7 +87,7 @@ export default async function RootLayout({
       <body>
         <RootProvider
           // [!code ++]
-          i18n={i18nUI.provider(lang)}
+          i18n={i18nProvider(translations, lang)}
         >
           {children}
         </RootProvider>
@@ -94,7 +97,7 @@ export default async function RootLayout({
 }
 ```
 
-### Routing
+### Routing [step]
 
 Create a `/app/[lang]` folder, and move your pages/layouts into it, except route handlers.
 
@@ -114,7 +117,7 @@ Create a `/app/[lang]` folder, and move your pages/layouts into it, except route
   correct!
 </Callout>
 
-### Pass Locale
+### Pass Locale [step]
 
 Pass the locale to Hanzo Docs in your pages and layouts.
 
@@ -202,7 +205,7 @@ export function generateStaticParams() {
 
 </Callout>
 
-### Search
+### Search [step]
 
 Configure i18n on your search solution.
 

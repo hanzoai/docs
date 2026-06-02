@@ -1,6 +1,5 @@
 import type { Root } from 'hast';
-import type { RehypeShikiOptions } from '@shikijs/rehype';
-import rehypeShikiFromHighlighter from '@shikijs/rehype/core';
+import rehypeShikiFromHighlighter, { type RehypeShikiCoreOptions } from './rehype-code/shiki';
 import {
   transformerNotationDiff,
   transformerNotationFocus,
@@ -8,18 +7,17 @@ import {
   transformerNotationWordHighlight,
 } from '@shikijs/transformers';
 import type { Processor, Transformer } from 'unified';
-import type { Highlighter, HighlighterCore, ShikiTransformer } from 'shiki';
+import type { BuiltinLanguage, HighlighterCore, LanguageInput, ShikiTransformer } from 'shiki';
 import type { MdxJsxFlowElement } from 'mdast-util-mdx';
 import type { CodeBlockIcon, IconOptions } from './transformer-icon';
 import { transformerIcon } from './transformer-icon';
 import { parseCodeBlockAttributes } from '@/mdx-plugins/codeblock-utils';
-import type { Awaitable, DistributiveOmit } from '@/types';
+import type { Awaitable } from '@/types';
 import type { ShikiFactory } from '@/highlight/shiki';
 import { defaultThemes, getRequiredThemes } from '@/highlight/utils';
 
 export function rehypeCodeDefaultOptions(): RehypeCodeOptionsCommon {
   return {
-    lazy: true,
     ...defaultThemes,
     defaultLanguage: 'plaintext',
     fallbackLanguage: 'text',
@@ -42,7 +40,7 @@ export function rehypeCodeDefaultOptions(): RehypeCodeOptionsCommon {
       const data: Record<string, unknown> = parsed.attributes;
       parsed.rest = parseLineNumber(parsed.rest, data);
 
-      data.__parsed_raw = parsed.rest;
+      data.__raw = parsed.rest;
       return data;
     },
   };
@@ -58,17 +56,16 @@ function parseLineNumber(str: string, data: Record<string, unknown>) {
   });
 }
 
-export type RehypeCodeOptionsCommon = DistributiveOmit<RehypeShikiOptions, 'lazy'> & {
+export type RehypeCodeOptionsCommon = RehypeShikiCoreOptions & {
   /**
-   * Load languages and themes on-demand.
-   * @defaultValue true
+   * Language names to include & preload.
    */
-  lazy?: boolean;
-
+  langs?: Array<LanguageInput | BuiltinLanguage>;
   /**
-   * Filter meta string before processing
+   * Alias of languages
+   * @example { 'my-lang': 'javascript' }
    */
-  filterMetaString?: (metaString: string) => string;
+  langAlias?: Record<string, string>;
 
   /**
    * Add icon to code blocks
@@ -107,23 +104,7 @@ export function createRehypeCode<
       options = (_options ?? {}) as RehypeCodeOptionsCommon;
     }
 
-    const transformers = options.transformers ? [...options.transformers] : [];
-    transformers.unshift({
-      name: 'rehype-code:pre-process',
-      preprocess(code, { meta }) {
-        if (meta && '__parsed_raw' in meta) {
-          meta.__raw = meta.__parsed_raw;
-          delete meta.__parsed_raw;
-        }
-
-        if (meta && options.filterMetaString) {
-          meta.__raw = options.filterMetaString(meta.__raw ?? '');
-        }
-
-        // Remove empty line at end
-        return code.replace(/\n$/, '');
-      },
-    });
+    const transformers: ShikiTransformer[] = options.transformers ? [...options.transformers] : [];
 
     if (options.icon !== false) {
       transformers.push(transformerIcon(options.icon));
@@ -133,15 +114,17 @@ export function createRehypeCode<
       transformers.push(transformerTab());
     }
 
-    const langs =
-      options.langs ??
-      (options.lazy ? ['js', 'jsx', 'ts', 'tsx'] : Object.keys(highlighter.getBundledLanguages()));
+    const lazy = options.lazy ?? true;
+    let preloadLangs: unknown[] | undefined = options.langs;
+    if (!lazy) {
+      preloadLangs ??= Object.keys(highlighter.getBundledLanguages());
+    }
 
     await Promise.all([
       highlighter.loadTheme(...(getRequiredThemes(options) as never[])),
-      highlighter.loadLanguage(...(langs as never[])),
+      preloadLangs && highlighter.loadLanguage(...(preloadLangs as never[])),
     ]);
-    return rehypeShikiFromHighlighter(highlighter as Highlighter, {
+    return rehypeShikiFromHighlighter(highlighter, {
       ...options,
       transformers,
     });

@@ -16,16 +16,14 @@ Add the Tailwind CSS preset.
 @import '@hanzo/docs-story/css/preset.css';
 ```
 
-Externalize `ts-morph`:
+Add the Vite plugin:
 
 ```ts title="vite.config.ts"
 import { defineConfig } from 'vite';
+import story from '@fumadocs/story/vite';
 
 export default defineConfig({
-  resolve: {
-    // [!code ++]
-    external: ['ts-morph'],
-  },
+  plugins: [story()],
 });
 ```
 
@@ -36,15 +34,7 @@ Create a story factory to store your global settings:
 ```ts title="lib/story.ts"
 import { createFileSystemCache, defineStoryFactory } from '@hanzo/docs-story';
 
-export const { defineStory, getStoryPayloads } = defineStoryFactory({
-  // for Vercel, this is required: choose a directory for cache.
-  cache: process.env.NODE_ENV === 'production' ? createFileSystemCache('.story/cache') : undefined,
-
-  tsc: {
-    // we use tsc to generate controls from types
-    // you can pass TypeScript options here
-  },
-});
+export const { defineStory } = defineStoryFactory();
 ```
 
 Now create your first story:
@@ -70,10 +60,13 @@ export const story = defineStory<typeof MyComponent>(
 ```tsx tab="my-component.story.client.tsx"
 import { createStoryClient } from '@hanzo/docs-story/client';
 import { MyComponent } from './my-component';
-import type { story } from './my-component.story';
 
-export const storyClient = createStoryClient<typeof story>({
+export const story = defineStory({
   Component: MyComponent,
+  args: {
+    // default props (recommended)
+    initial: {},
+  },
 });
 ```
 
@@ -87,7 +80,9 @@ export function MyComponent({ title }: MyComponentProps) {
 }
 ```
 
-Story clients require payloads from server to render, you can leverage the SSR functionality of your React.js framework.
+<Callout type='warn' title={<>The <code>.story</code> suffix is required</>}>
+  The Vite plugin will only transform files matching `*.story.{js,jsx,ts,tsx}`, you can also configure filters from the Vite plugin.
+</Callout>
 
 For instance, on Tanstack Start:
 
@@ -135,8 +130,8 @@ function Page() {
 
 Now you can render the story like:
 
-```mdx title="index.mdx" tab="From Instance"
-import { storyClient } from '@/components/my-component.story.client';
+```mdx title="index.mdx"
+import { story } from '@/components/my-component.story';
 
 <storyClient.WithControl />
 ```

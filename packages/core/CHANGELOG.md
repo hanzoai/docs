@@ -1,5 +1,154 @@
 # fumadocs-core
 
+## 16.9.3
+
+### Patch Changes
+
+- 42f0255: Support `invalidate` & `revalidate` on dynamic loader
+- a807798: Improve source API utils & types
+
+## 16.9.2
+
+### Patch Changes
+
+- 5d579bd: improve loader API types
+- 5836093: Expose icon transformer
+
+## 16.9.1
+
+### Patch Changes
+
+- e77b9b3: Introduce `pagesIndex` property to explicitly define the index page for folder
+- 334c8fd: [i18n] support different orders of `preset()` calls
+
+## 16.9.0
+
+### Minor Changes
+
+- 214d5b0: Introduce new translations API
+
+### Patch Changes
+
+- 818ed21: support `sort` option in page tree builder
+- 3b66725: Support `sort.by` in loader page tree option
+
+## 16.8.12
+
+### Patch Changes
+
+- 768b676: Standardize `structuredData` in page data
+
+## 16.8.11
+
+### Patch Changes
+
+- 1dc86c7: loosen the range for waku
+
+## 16.8.10
+
+### Patch Changes
+
+- 062beab: fix internal types
+- 505cfe0: Add `remark-block-id` plugin
+
+## 16.8.9
+
+### Patch Changes
+
+- 2ca3eab: Support `tab-group` in codeblock tabs
+
+## 16.8.8
+
+## 16.8.7
+
+## 16.8.6
+
+## 16.8.5
+
+### Patch Changes
+
+- 79d3209: Narrow schema type for private OpenAPI properties
+
+## 16.8.4
+
+### Patch Changes
+
+- 61b15e9: fix Shiki languages not loaded under lazy mode
+- 1a5433c: Support `$` in locale for page tree generation
+
+## 16.8.3
+
+## 16.8.2
+
+## 16.8.1
+
+## 16.8.0
+
+### Minor Changes
+
+- 68c2b49: Support multi-source natively in `loader()` API
+- 92a1204: Introduce `dynamicLoader()` API, `loader()` with revalidation supported out-of-the-box
+
+### Patch Changes
+
+- b60fa32: Support function for loader option in Search API
+- a744f9f: Support frontmatter parsing at core-level
+
+## 16.7.16
+
+### Patch Changes
+
+- 9cf33e9: Improve inline code output
+- 9cf33e9: Support async hooks in Shiki transformers
+
+## 16.7.15
+
+### Patch Changes
+
+- e1567e2: use local fork of Shiki rehype integration
+- 9a200c8: fix multi-line in remark-npm
+- c731a92: Implement selective re-render for TOC
+- a4189ce: Improve AST plugins
+
+## 16.7.14
+
+### Patch Changes
+
+- 2d8f596: fix `npm pack` skipping nested `node_modules`
+
+## 16.7.13
+
+### Patch Changes
+
+- 690ddb9: bundle more deps
+
+## 16.7.12
+
+## 16.7.11
+
+### Patch Changes
+
+- 5524927: extend page tree root scope
+- d47c4f1: LLMs: support generating section for a specific page tree node
+
+## 16.7.10
+
+## 16.7.9
+
+### Patch Changes
+
+- f580ef6: Fix deserialized page tree item name styles
+
+## 16.7.8
+
+## 16.7.7
+
+### Patch Changes
+
+- 0a6507b: Improve `remarkSteps()` integration & support tag usage
+
+## 16.7.6
+
 ## 16.7.5
 
 ### Patch Changes

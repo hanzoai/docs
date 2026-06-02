@@ -4,6 +4,7 @@ import type { DocCollection, DocsCollection, MetaCollection } from '../config';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import type { CompiledMDXProperties } from '../loaders/mdx/build-mdx';
 import type { InternalTypeConfig, DocData, DocMethods, FileInfo, MetaMethods } from './types';
+import type { StructuredData } from 'fumadocs-core/mdx-plugins/remark-structure';
 
 export type MetaCollectionEntry<Data> = Data & MetaMethods;
 
@@ -13,12 +14,18 @@ export type DocCollectionEntry<
   TC extends InternalTypeConfig = InternalTypeConfig,
 > = DocData & DocMethods & Frontmatter & TC['DocData'][Name];
 
+interface ToFumadocsSourceOptions {
+  /** base directory for virtual file paths */
+  baseDir?: string;
+}
+
 export type AsyncDocCollectionEntry<
   Name extends string = string,
   Frontmatter = unknown,
   TC extends InternalTypeConfig = InternalTypeConfig,
 > = {
   load: () => Promise<DocData & TC['DocData'][Name]>;
+  structuredData: () => Promise<StructuredData>;
 } & DocMethods &
   Frontmatter;
 
@@ -97,7 +104,11 @@ export function server<Config, TC extends InternalTypeConfig>(options: ServerOpt
       _name: Name,
       base: string,
       glob: AwaitableGlobEntries<unknown>,
-    ) {
+    ): Promise<
+      Config[Name] extends DocCollection<infer Schema> | DocsCollection<infer Schema>
+        ? DocCollectionEntry<Name, StandardSchemaV1.InferOutput<Schema>, TC>[]
+        : never
+    > {
       const out = await Promise.all(
         Object.entries(glob).map(async ([k, v]) => {
           const data: CompiledMDXProperties = typeof v === 'function' ? await v() : v;
@@ -110,18 +121,18 @@ export function server<Config, TC extends InternalTypeConfig>(options: ServerOpt
         }),
       );
 
-      return out as unknown as Config[Name] extends
-        | DocCollection<infer Schema>
-        | DocsCollection<infer Schema>
-        ? DocCollectionEntry<Name, StandardSchemaV1.InferOutput<Schema>, TC>[]
-        : never;
+      return out as never;
     },
     async docLazy<Name extends keyof Config & string>(
       _name: Name,
       base: string,
       head: AwaitableGlobEntries<unknown>,
       body: Record<string, () => Promise<unknown>>,
-    ) {
+    ): Promise<
+      Config[Name] extends DocCollection<infer Schema> | DocsCollection<infer Schema>
+        ? AsyncDocCollectionEntry<Name, StandardSchemaV1.InferOutput<Schema>, TC>[]
+        : never
+    > {
       const out = await Promise.all(
         Object.entries(head).map(async ([k, v]) => {
           const data = typeof v === 'function' ? await v() : v;
@@ -133,21 +144,26 @@ export function server<Config, TC extends InternalTypeConfig>(options: ServerOpt
             async load() {
               return mapDocData(await content());
             },
+            async structuredData() {
+              return (await content()).structuredData;
+            },
           } satisfies AsyncDocCollectionEntry;
         }),
       );
 
-      return out as unknown as Config[Name] extends
-        | DocCollection<infer Schema>
-        | DocsCollection<infer Schema>
-        ? AsyncDocCollectionEntry<Name, StandardSchemaV1.InferOutput<Schema>, TC>[]
-        : never;
+      return out as never;
     },
     async meta<Name extends keyof Config & string>(
       _name: Name,
       base: string,
       glob: AwaitableGlobEntries<unknown>,
-    ) {
+    ): Promise<
+      Config[Name] extends
+        | MetaCollection<infer Schema>
+        | DocsCollection<StandardSchemaV1, infer Schema>
+        ? MetaCollectionEntry<StandardSchemaV1.InferOutput<Schema>>[]
+        : never
+    > {
       const out = await Promise.all(
         Object.entries(glob).map(async ([k, v]) => {
           const data = typeof v === 'function' ? await v() : v;
@@ -159,11 +175,7 @@ export function server<Config, TC extends InternalTypeConfig>(options: ServerOpt
         }),
       );
 
-      return out as unknown as Config[Name] extends
-        | MetaCollection<infer Schema>
-        | DocsCollection<StandardSchemaV1, infer Schema>
-        ? MetaCollectionEntry<StandardSchemaV1.InferOutput<Schema>>[]
-        : never;
+      return out as never;
     },
 
     async docs<Name extends keyof Config & string>(
@@ -191,7 +203,17 @@ export function server<Config, TC extends InternalTypeConfig>(options: ServerOpt
               >
             : never
           : never
-        : never;
+        : never
+    > {
+      const entry = {
+        docs: await this.doc(name, base, docGlob),
+        meta: await this.meta(name, base, metaGlob),
+        toFumadocsSource(options) {
+          return toFumadocsSource(this.docs, this.meta, options);
+        },
+      } satisfies DocsCollectionEntry;
+
+      return entry as never;
     },
     async docsLazy<Name extends keyof Config & string>(
       name: Name,
@@ -219,7 +241,17 @@ export function server<Config, TC extends InternalTypeConfig>(options: ServerOpt
               >
             : never
           : never
-        : never;
+        : never
+    > {
+      const entry = {
+        docs: await this.docLazy(name, base, docHeadGlob, docBodyGlob),
+        meta: await this.meta(name, base, metaGlob),
+        toFumadocsSource(options) {
+          return toFumadocsSource(this.docs, this.meta, options);
+        },
+      } satisfies AsyncDocsCollectionEntry;
+
+      return entry as never;
     },
   };
 }
@@ -230,10 +262,12 @@ export function createSource<
 >(
   pages: Page[],
   metas: Meta[],
+  options?: ToFumadocsSourceOptions,
 ): Source<{
   pageData: Page;
   metaData: Meta;
 }> {
+  const baseDir = options?.baseDir;
   const files: VirtualFile<{
     pageData: Page;
     metaData: Meta;
@@ -242,7 +276,7 @@ export function createSource<
   for (const entry of pages) {
     files.push({
       type: 'page',
-      path: entry.info.path,
+      path: baseDir ? path.join(baseDir, entry.info.path) : entry.info.path,
       absolutePath: entry.info.fullPath,
       data: entry,
     });
@@ -251,7 +285,7 @@ export function createSource<
   for (const entry of metas) {
     files.push({
       type: 'meta',
-      path: entry.info.path,
+      path: baseDir ? path.join(baseDir, entry.info.path) : entry.info.path,
       absolutePath: entry.info.fullPath,
       data: entry,
     });
@@ -272,7 +306,7 @@ function createDocMethods(
       if (type === 'raw') {
         const fs = await import('node:fs/promises');
 
-        return (await fs.readFile(info.fullPath)).toString();
+        return await fs.readFile(info.fullPath, 'utf-8');
       }
 
       const data = await load();

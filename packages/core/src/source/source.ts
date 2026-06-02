@@ -1,17 +1,36 @@
-export interface Source<Config extends SourceConfig = SourceConfig> {
+import type { Awaitable } from '@/types';
+import type { DynamicLoader } from './dynamic';
+import type { StructuredData } from '@/mdx-plugins';
+
+export type SourceUnion<Config extends SourceConfig = SourceConfig> =
+  | StaticSource<Config>
+  | DynamicSource<Config>;
+
+/**
+ * @deprecated use `StaticSource<Config>` instead
+ */
+export type Source<Config extends SourceConfig = SourceConfig> = StaticSource<Config>;
+
+export interface StaticSource<Config extends SourceConfig = SourceConfig> {
   files: VirtualFile<Config>[];
 }
 
-export interface SourceConfig {
+export interface DynamicSource<Config extends SourceConfig = SourceConfig> {
+  files: () => Awaitable<VirtualFile<Config>[]>;
+  configure?: (loader: DynamicLoader) => void;
+}
+
+type SourceConfig = {
   pageData: PageData;
   metaData: MetaData;
-}
+};
 
 export interface MetaData {
   icon?: string | undefined;
   title?: string | undefined;
   root?: boolean | undefined;
   pages?: string[] | undefined;
+  pagesIndex?: string | undefined;
   defaultOpen?: boolean | undefined;
   collapsible?: boolean | undefined;
 
@@ -20,7 +39,7 @@ export interface MetaData {
 
 export interface PageData {
   icon?: string | undefined;
-  title?: string;
+  title?: string | undefined;
   description?: string | undefined;
 
   /**
@@ -66,37 +85,34 @@ interface VirtualMeta<Data extends MetaData> extends BaseVirtualFile {
   data: Data;
 }
 
-export type _ConfigUnion_<T extends Record<string, Source>> = {
-  [K in keyof T]: T[K] extends Source<infer Config>
-    ? {
-        pageData: Config['pageData'] & { type: K };
-        metaData: Config['metaData'] & { type: K };
-      }
-    : never;
-}[keyof T];
-
-export function multiple<T extends Record<string, Source>>(sources: T) {
-  const out: Source<_ConfigUnion_<T>> = { files: [] };
-
-  for (const [type, source] of Object.entries(sources)) {
-    for (const file of source.files) {
-      out.files.push({
-        ...file,
-        data: {
-          ...file.data,
-          type,
-        },
-      });
+/**
+ * @deprecated you can directly pass a record of source objects to `loader()`.
+ */
+export function multiple<T extends Record<string, StaticSource>>(
+  sources: T,
+): T extends Record<infer K extends string, StaticSource>
+  ? {
+      [k in K]: T[k] extends StaticSource<infer C>
+        ? StaticSource<{
+            metaData: C['metaData'] & { type: k };
+            pageData: C['pageData'] & { type: k };
+          }>
+        : never;
     }
+  : never {
+  const out: Record<string, StaticSource> = {};
+  for (const k in sources) {
+    out[k] = {
+      files: sources[k].files.map((file) => ({ ...file, data: { ...file.data, type: k } })),
+    };
   }
-
-  return out;
+  return out as never;
 }
 
 export function source<Page extends PageData, Meta extends MetaData>(config: {
   pages: VirtualPage<Page>[];
   metas: VirtualMeta<Meta>[];
-}): Source<{
+}): StaticSource<{
   pageData: Page;
   metaData: Meta;
 }> {
@@ -105,39 +121,39 @@ export function source<Page extends PageData, Meta extends MetaData>(config: {
   };
 }
 
-export interface _SourceUpdate_<Config extends SourceConfig> {
+interface SourceUpdater<Config extends SourceConfig> {
   files: <Page extends PageData, Meta extends MetaData>(
     fn: (files: VirtualFile<Config>[]) => (VirtualPage<Page> | VirtualMeta<Meta>)[],
-  ) => _SourceUpdate_<{
+  ) => SourceUpdater<{
     pageData: Page;
     metaData: Meta;
   }>;
   page: <V extends PageData>(
     fn: (page: VirtualPage<Config['pageData']>) => VirtualPage<V>,
-  ) => _SourceUpdate_<{
+  ) => SourceUpdater<{
     pageData: V;
     metaData: Config['metaData'];
   }>;
 
   meta: <V extends MetaData>(
     fn: (meta: VirtualMeta<Config['metaData']>) => VirtualMeta<V>,
-  ) => _SourceUpdate_<{
+  ) => SourceUpdater<{
     pageData: Config['pageData'];
     metaData: V;
   }>;
-  build: () => Source<Config>;
+  build: () => StaticSource<Config>;
 }
 
 /**
  * update a source object in-place.
  */
 export function update<Config extends SourceConfig>(
-  source: Source<Config>,
-): _SourceUpdate_<Config> {
+  source: StaticSource<Config>,
+): SourceUpdater<Config> {
   return {
     files(fn) {
       source.files = fn(source.files);
-      return this as _SourceUpdate_<never>;
+      return this as SourceUpdater<never>;
     },
     page(fn) {
       for (let i = 0; i < source.files.length; i++) {
@@ -145,7 +161,7 @@ export function update<Config extends SourceConfig>(
         if (file.type === 'page') source.files[i] = fn(file);
       }
 
-      return this as _SourceUpdate_<never>;
+      return this as SourceUpdater<never>;
     },
     meta(fn) {
       for (let i = 0; i < source.files.length; i++) {
@@ -153,10 +169,18 @@ export function update<Config extends SourceConfig>(
         if (file.type === 'meta') source.files[i] = fn(file);
       }
 
-      return this as _SourceUpdate_<never>;
+      return this as SourceUpdater<never>;
     },
     build() {
       return source;
     },
   };
+}
+
+export function isStaticSource(s: object): s is StaticSource {
+  return 'files' in s && Array.isArray(s.files);
+}
+
+export function isDynamicSource(s: object): s is DynamicSource {
+  return 'files' in s && typeof s.files === 'function';
 }

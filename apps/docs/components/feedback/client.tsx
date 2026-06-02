@@ -3,10 +3,12 @@ import { cn } from '@/lib/cn';
 import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
 import { CornerDownRightIcon, MessageSquare, ThumbsDown, ThumbsUp } from 'lucide-react';
 import {
-  ReactNode,
+  type HTMLAttributes,
+  type ReactNode,
   type SyntheticEvent,
   useEffect,
   useEffectEvent,
+  useRef,
   useState,
   useTransition,
 } from 'react';
@@ -24,6 +26,7 @@ import {
   type PageFeedback,
 } from './schema';
 import { z } from 'zod/mini';
+import { usePathname } from 'fumadocs-core/framework';
 
 const rateButtonVariants = cva(
   'inline-flex items-center gap-2 px-3 py-2 rounded-full font-medium border text-sm [&_svg]:size-4 disabled:cursor-not-allowed',
@@ -67,7 +70,7 @@ export function Feedback({
 
     startTransition(async () => {
       const feedback: PageFeedback = {
-        url,
+        url: location.href,
         opinion,
         message,
       };
@@ -189,19 +192,194 @@ export function Feedback({
   );
 }
 
+export interface FeedbackTextProps {
+  onSendAction: (feedback: BlockFeedback) => Promise<ActionResponse>;
+  children?: ReactNode;
+}
+
 /**
  * A feedback component for each content block in page, should be used with `remark-feedback-block`.
  *
  * See https://hanzoai.github.io/docs/docs/integrations/feedback.
  */
-export function FeedbackBlock({
-  id,
-  body,
+export function FeedbackText({ onSendAction, children }: FeedbackTextProps) {
+  const [popup, _setPopup] = useState<{
+    mode: 'tooltip' | 'expanded';
+    blockId: string;
+    selection: string;
+    range: Range;
+  } | null>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { refs, floatingStyles } = useFloating({
+    open: popup !== null,
+    placement: 'bottom',
+    middleware: [offset(6), flip(), shift({ padding: 8 })],
+    whileElementsMounted: autoUpdate,
+  });
+
+  function expandPopup() {
+    if (popup?.mode !== 'tooltip') return;
+
+    const highlight = new Highlight(popup.range);
+    CSS.highlights.set('fd-feedback-text', highlight);
+
+    _setPopup({ ...popup, mode: 'expanded' });
+  }
+
+  function closePopup() {
+    if (popup?.mode === 'expanded') {
+      CSS.highlights.delete('fd-feedback-text');
+    }
+
+    _setPopup(null);
+  }
+
+  const updateSelectionPopover = useEffectEvent(() => {
+    if (popup && popup.mode === 'expanded') return;
+
+    const container = containerRef.current;
+    const selection = window.getSelection();
+
+    if (!container || !selection || selection.isCollapsed || selection.rangeCount === 0) {
+      closePopup();
+      return;
+    }
+
+    const range = selection.getRangeAt(0).cloneRange();
+    if (!container.contains(range.commonAncestorContainer)) {
+      closePopup();
+      return;
+    }
+
+    const selectionText = selection.toString().trim();
+    // also prevent cross-paragraph selection
+    if (selectionText.length === 0 || selectionText.includes('\n')) {
+      closePopup();
+      return;
+    }
+
+    const element =
+      range.startContainer instanceof Element
+        ? range.startContainer
+        : range.startContainer.parentElement;
+    const blockId = element?.closest('[data-block="feedback"]')?.id;
+    if (!blockId) {
+      closePopup();
+      return;
+    }
+
+    refs.setReference({
+      getBoundingClientRect() {
+        return range.getBoundingClientRect();
+      },
+      contextElement: container,
+    });
+
+    _setPopup({ mode: 'tooltip', range, selection: selectionText, blockId });
+  });
+
+  const closeOnEscape = useEffectEvent((event: KeyboardEvent) => {
+    if (popup === null) return;
+    if (event.key === 'Escape') closePopup();
+  });
+
+  const closeOnPointerDown = useEffectEvent((event: PointerEvent) => {
+    const target = event.target;
+    if (popup === null || !(target instanceof Node)) return;
+
+    if (
+      refs.floating.current?.contains(target) ||
+      (popup.mode === 'tooltip' && containerRef.current?.contains(target))
+    ) {
+      return;
+    }
+
+    closePopup();
+  });
+
+  useEffect(() => {
+    let frame: number | null = null;
+
+    function scheduleSelectionPopover() {
+      if (frame !== null) window.cancelAnimationFrame(frame);
+
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        updateSelectionPopover();
+      });
+    }
+
+    document.addEventListener('selectionchange', scheduleSelectionPopover);
+    document.addEventListener('keydown', closeOnEscape);
+    document.addEventListener('pointerdown', closeOnPointerDown);
+
+    return () => {
+      document.removeEventListener('keydown', closeOnEscape);
+      document.removeEventListener('pointerdown', closeOnPointerDown);
+      document.removeEventListener('selectionchange', scheduleSelectionPopover);
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
+  }, []);
+
+  return (
+    <>
+      <div
+        ref={containerRef}
+        className="prose-no-margin [&_::highlight(fd-feedback-text)]:bg-fd-primary [&_::highlight(fd-feedback-text)]:text-fd-primary-foreground"
+      >
+        {children}
+      </div>
+
+      {popup && (
+        <div
+          ref={refs.setFloating}
+          className={cn(
+            'not-prose z-40 text-sm bg-fd-popover text-fd-popover-foreground border overflow-hidden shadow-lg rounded-xl w-30 h-9.5 box-content transition-[width,height]',
+            popup.mode === 'expanded' ? 'w-[300px] h-32 max-w-[98vw]' : 'select-none',
+          )}
+          style={floatingStyles}
+        >
+          {popup.mode === 'tooltip' ? (
+            <div className="w-30 h-9.5 p-1">
+              <button
+                className={cn(
+                  buttonVariants({ variant: 'ghost', size: 'sm' }),
+                  'size-full gap-1.5',
+                )}
+                onClick={expandPopup}
+              >
+                <CornerDownRightIcon className="size-4 text-fd-muted-foreground" />
+                Feedback
+              </button>
+            </div>
+          ) : (
+            <FeedbackTextForm
+              blockId={popup.blockId}
+              selection={popup.selection}
+              onSendAction={onSendAction}
+              onClose={closePopup}
+              container={{ className: 'p-2 w-[300px] h-32 max-w-[98vw] animate-fd-fade-in' }}
+            />
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+function FeedbackTextForm({
+  blockId,
+  selection,
   onSendAction,
-  children,
-}: FeedbackBlockProps & {
+  onClose,
+  container,
+}: {
+  container: HTMLAttributes<HTMLElement>;
+  blockId: string;
+  selection: string;
   onSendAction: (feedback: BlockFeedback) => Promise<ActionResponse>;
-  children: ReactNode;
+  onClose: () => void;
 }) {
   const url = usePathname() ?? '/';
   const blockId = `${url}-${id}`;
@@ -212,14 +390,13 @@ export function FeedbackBlock({
   });
   const [message, setMessage] = useState('');
   const [isPending, startTransition] = useTransition();
-  const [open, setOpen] = useState(false);
 
   function submit(e?: SyntheticEvent) {
     startTransition(async () => {
       const feedback: BlockFeedback = {
         blockId,
-        blockBody: body,
-        url,
+        blockBody: selection,
+        url: location.href,
         message,
       };
 
@@ -234,103 +411,91 @@ export function FeedbackBlock({
     e?.preventDefault();
   }
 
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <div className="relative group/feedback">
-        <div
-          className={cn(
-            'absolute -inset-1 rounded-sm pointer-events-none transition-colors duration-100 z-[-1]',
-            open
-              ? 'bg-fd-accent'
-              : 'group-hover/feedback:bg-fd-accent group-hover/feedback:delay-100',
-          )}
-        />
-        <PopoverTrigger
-          className={cn(
-            buttonVariants({ variant: 'secondary', size: 'sm' }),
-            'absolute -top-7 end-0 backdrop-blur-sm text-fd-muted-foreground gap-1.5 transition-all duration-100 data-[state=open]:bg-fd-accent data-[state=open]:text-fd-accent-foreground',
-            !open &&
-              'opacity-0 pointer-events-none group-hover/feedback:pointer-events-auto group-hover/feedback:opacity-100 group-hover/feedback:delay-100 hover:pointer-events-auto hover:opacity-100 hover:delay-100',
-          )}
-          onClick={(e) => {
-            setOpen((prev) => !prev);
-            e.stopPropagation();
-            e.preventDefault();
-          }}
-        >
-          <MessageSquare className="size-3.5" />
-          Feedback
-        </PopoverTrigger>
-
-        <div className="in-[.prose-no-margin]:prose-no-margin">{children}</div>
-      </div>
-
-      <PopoverContent className="min-w-[300px] bg-fd-card text-fd-card-foreground">
-        {previous ? (
-          <div className="flex flex-col items-center py-2 gap-2 text-fd-muted-foreground text-sm text-center rounded-xl">
-            <p>Thank you for your feedback!</p>
-            <div className="flex flex-row items-center gap-2">
-              <a
-                href={previous.response?.githubUrl}
-                rel="noreferrer noopener"
-                target="_blank"
-                className={cn(
-                  buttonVariants({
-                    color: 'primary',
-                  }),
-                  'text-xs',
-                )}
-              >
-                View on GitHub
-              </a>
-
-              <button
-                className={cn(
-                  buttonVariants({
-                    color: 'secondary',
-                  }),
-                  'text-xs',
-                )}
-                onClick={() => {
-                  setPrevious(null);
-                }}
-              >
-                Submit Again
-              </button>
-            </div>
-          </div>
-        ) : (
-          <form className="flex flex-col gap-2" onSubmit={submit}>
-            <textarea
-              autoFocus
-              required
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              className="border rounded-lg bg-fd-secondary text-fd-secondary-foreground p-3 resize-none focus-visible:outline-none placeholder:text-fd-muted-foreground"
-              placeholder="Leave your feedback..."
-              onKeyDown={(e) => {
-                if (!e.shiftKey && e.key === 'Enter') {
-                  submit(e);
-                }
-              }}
-            />
-            <button
-              type="submit"
-              className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'gap-1.5')}
-              disabled={isPending}
-            >
-              <CornerDownRightIcon className="text-fd-muted-foreground size-4" />
-              Submit
-            </button>
-          </form>
+  if (previous)
+    return (
+      <div
+        {...container}
+        className={cn(
+          'flex flex-col items-center justify-center gap-2 text-fd-muted-foreground text-center',
+          container.className,
         )}
-      </PopoverContent>
-    </Popover>
+      >
+        <p>Thank you for your feedback!</p>
+        <div className="flex flex-row items-center gap-2">
+          <a
+            href={previous.response?.githubUrl}
+            rel="noreferrer noopener"
+            target="_blank"
+            className={cn(
+              buttonVariants({
+                color: 'primary',
+              }),
+              'text-xs',
+            )}
+          >
+            View on GitHub
+          </a>
+
+          <button
+            className={cn(
+              buttonVariants({
+                color: 'secondary',
+              }),
+              'text-xs',
+            )}
+            onClick={() => {
+              setPrevious(null);
+            }}
+          >
+            Submit Again
+          </button>
+        </div>
+      </div>
+    );
+
+  return (
+    <form
+      {...container}
+      className={cn('flex flex-col gap-2', container.className)}
+      onSubmit={submit}
+    >
+      <textarea
+        autoFocus
+        required
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        className="border rounded-lg bg-fd-secondary text-fd-secondary-foreground p-3 resize-none focus-visible:outline-none placeholder:text-fd-muted-foreground"
+        placeholder="Leave your feedback..."
+        onKeyDown={(e) => {
+          if (!e.shiftKey && e.key === 'Enter') {
+            submit(e);
+          }
+        }}
+      />
+      <div className="grid grid-cols-2 gap-2 mt-auto">
+        <button
+          type="submit"
+          className={cn(buttonVariants({ variant: 'primary', size: 'sm' }), 'gap-1.5')}
+          disabled={isPending}
+        >
+          <CornerDownRightIcon className="size-4" />
+          Submit
+        </button>
+        <button
+          type="button"
+          className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'gap-1.5')}
+          disabled={isPending}
+          onClick={onClose}
+        >
+          Close
+        </button>
+      </div>
+    </form>
   );
 }
 
-function useSubmissionStorage<Result>(blockId: string, validate: (v: unknown) => Result | null) {
-  const storageKey = `docs-feedback-${blockId}`;
+function useSubmissionStorage<Result>(key: string, validate: (v: unknown) => Result | null) {
+  const storageKey = `docs-feedback-${key}`;
   const [value, setValue] = useState<Result | null>(null);
   const validateCallback = useEffectEvent(validate);
 

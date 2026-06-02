@@ -18,7 +18,7 @@ export async function getFullExport(entry: CollectionEntry<'docs'>) {
 }
 
 async function createMySource() {
-  const out: Source<{
+  const out: StaticSource<{
     metaData: CollectionEntry<'meta'>['data'];
     pageData: CollectionEntry<'docs'>['data'] & {
       _raw: CollectionEntry<'docs'>;

@@ -84,9 +84,14 @@ const showcases: ShowcaseObject[] = [
     url: 'https://comfydeploy.com',
   },
   {
-    image: '/showcases/octarine.png',
-    name: 'Octarine',
-    url: 'https://docs.octarine.app',
+    image: '/showcases/conductor.png',
+    name: 'Conductor',
+    url: 'https://conductor.build/docs',
+  },
+  {
+    image: '/showcases/cossistant.png',
+    name: 'Cossistant',
+    url: 'https://cossistant.com',
   },
   {
     image: '/showcases/llm-gateway.png',
