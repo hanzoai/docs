@@ -13,18 +13,20 @@ import {
 } from 'react';
 import { Loader2, MessageCircleIcon, RefreshCw, Send, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
-import Link from '@hanzo/docs-core/link';
-import { type UIMessage, useChat, type UseChatHelpers } from '@ai-sdk/react';
-type ChatLink = { title?: string; url: string };
+import { buttonVariants } from 'fumadocs-ui/components/ui/button';
+import Link from 'fumadocs-core/link';
+import { useChat, type UseChatHelpers } from '@ai-sdk/react';
+import type { ProvideLinksToolSchema } from '@/lib/inkeep/inkeep-qa-schema';
+import type { z } from 'zod';
 import { DefaultChatTransport } from 'ai';
-import { Markdown } from './markdown';
+import { Markdown } from '../markdown';
 import { Presence } from '@radix-ui/react-presence';
+import type { InkeepUIMessage } from '@/lib/inkeep/server';
 
 const Context = createContext<{
   open: boolean;
   setOpen: (open: boolean) => void;
-  chat: UseChatHelpers<UIMessage>;
+  chat: UseChatHelpers<InkeepUIMessage>;
 } | null>(null);
 
 export function AISearchPanelHeader({ className, ...props }: ComponentProps<'div'>) {
@@ -42,8 +44,8 @@ export function AISearchPanelHeader({ className, ...props }: ComponentProps<'div
         <p className="text-sm font-medium mb-2">AI Chat</p>
         <p className="text-xs text-fd-muted-foreground">
           Powered by{' '}
-          <a href="https://hanzo.ai" target="_blank" rel="noreferrer noopener">
-            Hanzo AI
+          <a href="https://inkeep.com" target="_blank" rel="noreferrer noopener">
+            Inkeep AI
           </a>
         </p>
       </div>
@@ -114,11 +116,27 @@ export function AISearchInput(props: ComponentProps<'form'>) {
   const isLoading = status === 'streaming' || status === 'submitted';
   const onStart = (e?: SyntheticEvent) => {
     e?.preventDefault();
-    void sendMessage({ text: input });
-    setInput('');
-  };
+    const message = input.trim();
+    if (message.length === 0) return;
 
-  localStorage.setItem(StorageKeyInput, input);
+    void sendMessage({
+      role: 'user',
+      parts: [
+        {
+          type: 'data-client',
+          data: {
+            location: location.href,
+          },
+        },
+        {
+          type: 'text',
+          text: message,
+        },
+      ],
+    });
+    setInput('');
+    localStorage.removeItem(StorageKeyInput);
+  };
 
   useEffect(() => {
     if (isLoading) document.getElementById('nd-ai-input')?.focus();
@@ -134,6 +152,7 @@ export function AISearchInput(props: ComponentProps<'form'>) {
         disabled={status === 'streaming' || status === 'submitted'}
         onChange={(e) => {
           setInput(e.target.value);
+          localStorage.setItem(StorageKeyInput, e.target.value);
         }}
         onKeyDown={(event) => {
           if (!event.shiftKey && event.key === 'Enter') {
@@ -238,12 +257,12 @@ function Input(props: ComponentProps<'textarea'>) {
 
 const roleName: Record<string, string> = {
   user: 'you',
-  assistant: 'hanzo-docs',
+  assistant: 'fumadocs',
 };
 
-function Message({ message, ...props }: { message: UIMessage } & ComponentProps<'div'>) {
+function Message({ message, ...props }: { message: InkeepUIMessage } & ComponentProps<'div'>) {
   let markdown = '';
-  let links: ChatLink[] = [];
+  let links: z.infer<typeof ProvideLinksToolSchema>['links'] = [];
 
   for (const part of message.parts ?? []) {
     if (part.type === 'text') {
@@ -252,7 +271,7 @@ function Message({ message, ...props }: { message: UIMessage } & ComponentProps<
     }
 
     if (part.type === 'tool-provideLinks' && part.input) {
-      links = (part.input as { links: ChatLink[] }).links;
+      links = (part.input as z.infer<typeof ProvideLinksToolSchema>).links;
     }
   }
 
@@ -287,29 +306,13 @@ function Message({ message, ...props }: { message: UIMessage } & ComponentProps<
   );
 }
 
-const chatTransport = new DefaultChatTransport({
-  api: process.env.NEXT_PUBLIC_HANZO_CHAT_ENDPOINT ?? 'https://cloud-api.hanzo.ai/api/chat-docs',
-  headers: {
-    Authorization: `Bearer ${process.env.NEXT_PUBLIC_HANZO_SEARCH_KEY ?? 'pk-hanzo-docs-search-2026'}`,
-  },
-});
-
-const systemPrompt =
-  'You are the documentation assistant for Hanzo AI, a Techstars-backed applied AI lab. ' +
-  'Hanzo is the creator of the Zen open-source family of LLMs (100+ models) and thousands of OSS projects ' +
-  'that make up Hanzo Cloud — a full AI infrastructure platform including Dev (AI-native CLI and coding agents), ' +
-  'Bot (personal AI assistant for desktop, mobile, and messaging), Console (LLM observability and prompt engineering), ' +
-  'Flow (visual AI workflow builder), Search (hybrid fulltext + vector search), Commerce (usage-based billing), ' +
-  'IAM (identity and access management), and more. ' +
-  'Answer confidently and directly — you know what Hanzo is. Never hedge with "appears to be" or "it seems." ' +
-  'Be concise. Use markdown. Include doc links when relevant.';
-
 export function AISearch({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const chat = useChat({
+  const chat = useChat<InkeepUIMessage>({
     id: 'search',
-    initialMessages: [{ id: 'system', role: 'system' as const, content: systemPrompt, parts: [] }],
-    transport: chatTransport,
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+    }),
   });
 
   return (
@@ -329,7 +332,7 @@ export function AISearchTrigger({
       data-state={open ? 'open' : 'closed'}
       className={cn(
         position === 'float' && [
-          'fixed bottom-4 gap-3 w-24 end-[calc(--spacing(4)+var(--removed-body-scroll-bar-size,0px))] shadow-lg z-20 transition-[translate,opacity]',
+          'fixed bottom-4 gap-3 w-24 inset-e-[calc(--spacing(4)+var(--removed-body-scroll-bar-size,0px))] shadow-lg z-20 transition-[translate,opacity]',
           open && 'translate-y-10 opacity-0',
         ],
         className,
@@ -378,14 +381,14 @@ export function AISearchPanel() {
         <div
           className={cn(
             'overflow-hidden z-30 bg-fd-card text-fd-card-foreground [--ai-chat-width:400px] 2xl:[--ai-chat-width:460px]',
-            'max-lg:fixed max-lg:inset-x-2 max-lg:top-4 max-lg:border max-lg:rounded-2xl max-lg:shadow-xl',
+            'max-lg:fixed max-lg:inset-x-2 max-lg:inset-y-4 max-lg:border max-lg:rounded-2xl max-lg:shadow-xl',
             'lg:sticky lg:top-0 lg:h-dvh lg:border-s lg:ms-auto lg:in-[#nd-docs-layout]:[grid-area:toc] lg:in-[#nd-notebook-layout]:row-span-full lg:in-[#nd-notebook-layout]:col-start-5',
             open
               ? 'animate-fd-dialog-in lg:animate-[ask-ai-open_200ms]'
               : 'animate-fd-dialog-out lg:animate-[ask-ai-close_200ms]',
           )}
         >
-          <div className="flex flex-col size-full p-2 max-lg:max-h-[80dvh] lg:p-3 lg:w-(--ai-chat-width)">
+          <div className="flex flex-col size-full p-2 lg:p-3 lg:w-(--ai-chat-width)">
             <AISearchPanelHeader />
             <AISearchPanelList className="flex-1" />
             <div className="rounded-xl border bg-fd-secondary text-fd-secondary-foreground shadow-sm has-focus-visible:shadow-md">

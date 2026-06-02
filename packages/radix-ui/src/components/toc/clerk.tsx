@@ -1,5 +1,5 @@
 'use client';
-import * as Primitive from '@hanzo/docs-core/toc';
+import * as Primitive from 'fumadocs-core/toc';
 import { type ComponentProps, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import { cn } from '@/utils/cn';
 import { TocThumb, useTOCItems } from '.';
