@@ -1,22 +1,17 @@
-import {
-  FileSystem,
-  type ContentStorage,
-  type PageTreeBuilderContext,
-  type PageTreeTransformer,
-  type SourceConfig,
-} from '@/source';
-import { PageTreeBuilder } from '@/source/page-tree/builder';
+import { FileSystem, type PageTreeBuilderContext, type PageTreeTransformer } from '@/source';
+import { createPageTreeBuilder } from '@/source/page-tree/builder';
+import type { ContentStorage } from '../storage/content';
 
 export function transformerFallback(): PageTreeTransformer {
   const addedFiles = new Set<string>();
-  function shouldIgnore(context: PageTreeBuilderContext<SourceConfig>) {
+  function shouldIgnore(context: PageTreeBuilderContext) {
     return context.custom?._fallback === true;
   }
 
   return {
     root(root) {
       if (shouldIgnore(this)) return root;
-      const isolatedStorage: ContentStorage = new FileSystem();
+      const isolatedStorage = new FileSystem() as ContentStorage;
       if (addedFiles.size === this.storage.files.size) return root;
 
       for (const file of this.storage.getFiles()) {
@@ -25,11 +20,9 @@ export function transformerFallback(): PageTreeTransformer {
         isolatedStorage.write(file, this.storage.read(file)!);
       }
 
-      root.fallback = new PageTreeBuilder(isolatedStorage, {
-        idPrefix: this.idPrefix ? `fallback:${this.idPrefix}` : 'fallback',
-        url: this.getUrl,
-        noRef: this.noRef,
-        transformers: this.transformers,
+      root.fallback = createPageTreeBuilder(isolatedStorage, {
+        ...this.options,
+        idPrefix: this.options.idPrefix ? `fallback:${this.options.idPrefix}` : 'fallback',
         generateFallback: false,
         context: { ...this.custom, _fallback: true },
       }).root();

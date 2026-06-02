@@ -4,14 +4,14 @@ import { docs } from 'collections/server';
 import { openapi } from './openapi';
 
 export const source = loader(
-  multiple({
+  {
     docs: docs.toFumadocsSource(),
-    openapi: await openapiSource(openapi, {
+    openapi: await openapi.staticSource({
       groupBy: 'tag',
     }),
-  }),
+  },
   {
     baseUrl: '/docs',
-    plugins: [openapiPlugin()],
+    plugins: [openapi.loaderPlugin()],
   },
 );

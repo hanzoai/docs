@@ -8,7 +8,14 @@ interface ID {
 }
 
 export interface Root extends ID {
+  /**
+   * @internal folder `$ref`
+   */
+  $ref?: Folder['$ref'];
+
+  type?: 'root';
   name: ReactNode;
+  description?: ReactNode;
   children: Node[];
   /**
    * Another page tree that won't be displayed unless being opened.
@@ -20,11 +27,9 @@ export type Node = Item | Separator | Folder;
 
 export interface Item extends ID {
   /**
-   * @internal
+   * @internal page file path
    */
-  $ref?: {
-    file: string;
-  };
+  $ref?: string;
 
   type: 'page';
   name: ReactNode;
@@ -59,11 +64,9 @@ export interface Separator extends ID {
 
 export interface Folder extends ID {
   /**
-   * @internal
+   * @internal paths of meta file & folder
    */
-  $ref?: {
-    metaFile?: string;
-  };
+  $ref?: { meta?: string; folder: string };
 
   type: 'folder';
   name: ReactNode;

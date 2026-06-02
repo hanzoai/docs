@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { createGetUrl, getSlugs, loader, LoaderOptions, Source } from '@/source';
+import { createGetUrl, getSlugs, loader, LoaderOptions, StaticSource } from '@/source';
 import type { ReactElement } from 'react';
 import { removeUndefined } from '@/utils/remove-undefined';
 import { lucideIconsPlugin } from '@/source/plugins/lucide-icons';
@@ -35,8 +35,8 @@ test('Get URL: Base', () => {
 const pageTreeTests: {
   title: string;
   output: string;
-  source: Source;
-  loader?: Partial<LoaderOptions>;
+  source: StaticSource;
+  loader?: Pick<Partial<LoaderOptions>, 'i18n' | 'pageTree'>;
 }[] = [
   {
     title: 'Basic',
@@ -52,6 +52,16 @@ const pageTreeTests: {
     title: 'Rest',
     source: (await import('./fixtures/page-trees/rest')).source,
     output: './fixtures/page-trees/rest.tree.json',
+  },
+  {
+    title: 'Rest: sort by name',
+    source: (await import('./fixtures/page-trees/rest')).source,
+    output: './fixtures/page-trees/rest-by-name.tree.json',
+    loader: {
+      pageTree: {
+        sort: { by: 'name' },
+      },
+    },
   },
   {
     title: 'Rest: priority',
@@ -87,6 +97,18 @@ const pageTreeTests: {
     },
   },
   {
+    title: 'Internationalized Routing: No Fallback',
+    source: (await import('./fixtures/page-trees/i18n')).source,
+    output: './fixtures/page-trees/i18n-no-fallback.tree.json',
+    loader: {
+      i18n: {
+        languages: ['cn', 'en'],
+        defaultLanguage: 'en',
+        fallbackLanguage: null,
+      },
+    },
+  },
+  {
     title: 'Internationalized Routing: dir',
     source: (await import('./fixtures/page-trees/i18n-dir')).source,
     output: './fixtures/page-trees/i18n-dir.test.json',
@@ -109,13 +131,16 @@ for (const pageTreeTest of pageTreeTests) {
   test(`Page Tree: ${pageTreeTest.title}`, async () => {
     const source = loader(pageTreeTest.source, {
       baseUrl: '/',
+      ...pageTreeTest.loader,
       pageTree: {
         noRef: true,
+        ...(pageTreeTest.loader?.pageTree as object),
       },
-      ...pageTreeTest.loader,
     });
 
-    await expect(removeUndefined(source.pageTree, true)).toMatchFileSnapshot(pageTreeTest.output);
+    await expect(
+      JSON.stringify(removeUndefined(source.pageTree, true), null, 2),
+    ).toMatchFileSnapshot(pageTreeTest.output);
   });
 }
 
@@ -346,6 +371,7 @@ test('Loader: No duplicate pages when referencing subfolder items and folder', (
         },
       ],
       "name": "Docs",
+      "type": "root",
     }
   `);
 });
@@ -423,6 +449,7 @@ test('Loader: Serialize data', async () => {
           },
         ],
         "name": "Docs",
+        "type": "root",
       },
     }
   `);

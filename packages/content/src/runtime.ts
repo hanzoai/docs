@@ -16,7 +16,7 @@ export function toFumadocsSource<
   >,
   Meta extends { data: MetaData } = { data: MetaData },
 >(mdxStore?: FileCollectionStore<Mdx>, metaStore?: FileCollectionStore<Meta>) {
-  const out: Source<{
+  const out: StaticSource<{
     pageData: ToPageData<Mdx>;
     metaData: Meta['data'];
   }> = { files: [] };

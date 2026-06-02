@@ -1,5 +1,21 @@
 # @fumadocs/content-collections
 
+## 1.2.9
+
+### Patch Changes
+
+- 2d8f596: fix `npm pack` skipping nested `node_modules`
+- Updated dependencies [2d8f596]
+  - fumadocs-core@16.7.14
+
+## 1.2.8
+
+### Patch Changes
+
+- 690ddb9: bundle more deps
+- Updated dependencies [690ddb9]
+  - fumadocs-core@16.7.13
+
 ## 1.2.7
 
 ### Patch Changes

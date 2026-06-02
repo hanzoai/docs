@@ -17,7 +17,7 @@ import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
 import { getMDXComponents } from '@/components/mdx';
 import { Banner } from '@hanzo/docs-base-ui/components/banner';
 import { Installation } from '@/components/preview/installation';
-import { Customisation } from '@/components/preview/customisation';
+import { Customization } from '@/components/preview/customization';
 import {
   DocsBody,
   DocsPage,
@@ -52,7 +52,7 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
       />
     );
 
-  if (page.data.type === 'openapi') {
+  if (page.type === 'openapi') {
     const { APIPage } = await import('@/components/api-page');
     if (!APIPage) {
       return (

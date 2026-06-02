@@ -1,10 +1,9 @@
-import { transformSpecifiers } from '@/utils/ast';
-import type { ComponentInstallerPlugin } from '../installer';
+import type { InstallerPlugin } from 'fuma-cli/registry/installer';
 
 /**
  * keep references to `@hanzo/docs-ui/layouts/*` components as original, unless the user is installing them directly.
  */
-export function pluginPreserveLayouts(): ComponentInstallerPlugin {
+export function pluginPreserveLayouts(): InstallerPlugin {
   const layoutNames = [
     'layouts/home',
     'layouts/flux',
@@ -14,20 +13,20 @@ export function pluginPreserveLayouts(): ComponentInstallerPlugin {
   ];
   // original specifier -> new specifier
   const layoutComps: Record<string, string> = {
-    '@/<dir>/home/index.tsx': 'layouts/home',
-    '@/<dir>/shared/index.tsx': 'layouts/shared',
-    '@/<dir>/shared/client.tsx': 'layouts/shared',
-    '@/<dir>/notebook/index.tsx': 'layouts/notebook',
-    '@/<dir>/notebook/client.tsx': 'layouts/notebook',
-    '@/<dir>/notebook/page/index.tsx': 'layouts/notebook/page',
-    '@/<dir>/notebook/page/client.tsx': 'layouts/notebook/page',
-    '@/<dir>/docs/index.tsx': 'layouts/docs',
-    '@/<dir>/docs/client.tsx': 'layouts/docs',
-    '@/<dir>/docs/page/index.tsx': 'layouts/docs/page',
-    '@/<dir>/docs/page/client.tsx': 'layouts/docs/page',
-    '@/<dir>/flux/index.tsx': 'layouts/flux',
-    '@/<dir>/flux/page/index.tsx': 'layouts/flux/page',
-    '@/<dir>/flux/page/client.tsx': 'layouts/flux/page',
+    'local:<dir>/home/index.tsx': 'layouts/home',
+    'local:<dir>/shared/index.tsx': 'layouts/shared',
+    'local:<dir>/shared/client.tsx': 'layouts/shared',
+    'local:<dir>/notebook/index.tsx': 'layouts/notebook',
+    'local:<dir>/notebook/client.tsx': 'layouts/notebook',
+    'local:<dir>/notebook/page/index.tsx': 'layouts/notebook/page',
+    'local:<dir>/notebook/page/client.tsx': 'layouts/notebook/page',
+    'local:<dir>/docs/index.tsx': 'layouts/docs',
+    'local:<dir>/docs/client.tsx': 'layouts/docs',
+    'local:<dir>/docs/page/index.tsx': 'layouts/docs/page',
+    'local:<dir>/docs/page/client.tsx': 'layouts/docs/page',
+    'local:<dir>/flux/index.tsx': 'layouts/flux',
+    'local:<dir>/flux/page/index.tsx': 'layouts/flux/page',
+    'local:<dir>/flux/page/client.tsx': 'layouts/flux/page',
   };
   const layoutNameSet = new Set(layoutNames);
 
@@ -41,9 +40,10 @@ export function pluginPreserveLayouts(): ComponentInstallerPlugin {
         $subComponents: comp.$subComponents.filter((child) => !layoutNameSet.has(child.name)),
       };
     },
-    beforeTransform({ parsed, s, stack }) {
+    transformImport(specifier, { stack }) {
       const isDirectInstall = layoutNameSet.has(stack[0].name);
-      if (isDirectInstall) return;
+      // skip if direct install or unrelated to layout component
+      if (isDirectInstall || !(specifier in layoutComps)) return specifier;
 
       transformSpecifiers(parsed.program, s, (specifier) => {
         // skip if unrelated to layout component

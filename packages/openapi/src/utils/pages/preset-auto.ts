@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import type { ProcessedDocument } from '@/utils/process-document';
+import type { DereferencedDocument } from '@/utils/document/dereference';
 import type {
   OperationOutput,
   OutputEntry,
@@ -79,7 +79,7 @@ type NameFn<
 > = (
   this: PagesBuilder,
   output: DistributiveOmit<Entry, 'path'>,
-  document: ProcessedDocument['dereferenced'],
+  document: DereferencedDocument['dereferenced'],
 ) => string;
 
 interface NameFnOptions {
@@ -197,14 +197,16 @@ export function createAutoPreset(options: SchemaToPagesOptions): PagesBuilderCon
           }
 
           for (const tag of tags) {
+            const res = builder.fromTagName(tag);
+            if (!res) continue;
+
             const groupName = slugify(tag);
-            const { displayName, info } = builder.fromTagName(tag)!;
             let group = groups.get(groupName);
             if (!group) {
               group = {
                 type: 'group',
-                info: { title: displayName, description: info.description },
-                tag: info,
+                info: { title: res.displayName, description: res.info.description },
+                tag: res.info,
                 entries: [],
                 schemaId: builder.id,
                 path: groupName,
@@ -315,6 +317,7 @@ export function createAutoPreset(options: SchemaToPagesOptions): PagesBuilderCon
           info: {
             title: displayName,
             description: operation.description ?? pathItem.description,
+            deprecated: operation.deprecated,
           },
         });
       }
@@ -328,6 +331,7 @@ export function createAutoPreset(options: SchemaToPagesOptions): PagesBuilderCon
           info: {
             title: displayName,
             description: operation.description ?? pathItem.description,
+            deprecated: operation.deprecated,
           },
           item: webhook,
         });

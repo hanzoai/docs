@@ -76,6 +76,10 @@ async function buildTypeProp(
       node.addJsxProperty('description', await renderer.renderMarkdownToHast(entry.description));
     }
 
+    if (entry.deprecated) {
+      node.addExpressionNode('deprecated', valueToEstree(true));
+    }
+
     return node.build();
   }
 
@@ -122,7 +126,7 @@ export interface RemarkAutoTypeTableOptions {
   renderType?: MarkdownRenderer['renderTypeToHast'];
 
   /**
-   * Customise type table generation
+   * Customize type table generation
    */
   options?: GenerateTypeTableOptions;
 

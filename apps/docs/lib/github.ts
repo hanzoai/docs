@@ -84,8 +84,10 @@ export async function onPageFeedbackAction(feedback: PageFeedback): Promise<Acti
     return { githubUrl: '#' };
   }
   feedback = pageFeedback.parse(feedback);
+  const url = new URL(feedback.url);
+
   return createDiscussionThread(
-    feedback.url,
+    url.pathname,
     `[${feedback.opinion}] ${feedback.message}\n\n> Forwarded from user feedback.`,
   );
 }
@@ -98,9 +100,12 @@ export async function onBlockFeedbackAction(feedback: BlockFeedback): Promise<Ac
     return { githubUrl: '#' };
   }
   feedback = blockFeedback.parse(feedback);
+  const url = new URL(feedback.url);
+  url.hash = feedback.blockId;
+
   return createDiscussionThread(
-    feedback.url,
-    `> ${feedback.blockBody ?? feedback.blockId}\n\n${feedback.message}\n\n> Forwarded from user feedback.`,
+    url.pathname,
+    `> ${feedback.blockBody}\n\n${feedback.message}\n\n> [Forwarded from user feedback](${url.href}).`,
   );
 }
 
@@ -114,22 +119,20 @@ async function createDiscussionThread(pageId: string, body: string) {
   if (!category) throw new Error(`Please create a "${DocsCategory}" category in GitHub Discussion`);
 
   const title = `Feedback for ${pageId}`;
-  const {
+  const queryResult: {
     search: {
-      nodes: [discussion],
-    },
-  }: {
-    search: {
-      nodes: { id: string; url: string }[];
+      nodes: { id: string; title: string; url: string }[];
     };
   } = await octokit.graphql(`
           query {
-            search(type: DISCUSSION, query: ${JSON.stringify(`${title} in:title repo:${owner}/${repo} author:@me`)}, first: 1) {
+            search(type: DISCUSSION, query: ${JSON.stringify(`"${title}" in:title repo:${owner}/${repo} author:@me`)}, first: 10) {
               nodes {
-                ... on Discussion { id, url }
+                ... on Discussion { id, title, url }
               }
             }
           }`);
+
+  const discussion = queryResult.search.nodes.find((item) => item.title === title);
 
   if (discussion) {
     const result: {
@@ -148,7 +151,9 @@ async function createDiscussionThread(pageId: string, body: string) {
     };
   } else {
     const result: {
-      discussion: { id: string; url: string };
+      createDiscussion: {
+        discussion: { id: string; url: string };
+      };
     } = await octokit.graphql(`
             mutation {
               createDiscussion(input: { repositoryId: "${destination.id}", categoryId: "${category.id}", body: ${JSON.stringify(body)}, title: ${JSON.stringify(title)} }) {
@@ -157,7 +162,7 @@ async function createDiscussionThread(pageId: string, body: string) {
             }`);
 
     return {
-      githubUrl: result.discussion.url,
+      githubUrl: result.createDiscussion.discussion.url,
     };
   }
 }

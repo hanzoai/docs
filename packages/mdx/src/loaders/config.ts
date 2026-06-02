@@ -43,13 +43,9 @@ export function createStandaloneConfigLoader({
       if (!prev || hash !== prev.hash) {
         prev = {
           hash,
-          init: (async () => {
-            const { loadConfig } = await import('../config/load-from-file');
-
-            await core.init({
-              config: loadConfig(core, buildConfig),
-            });
-          })(),
+          init: core.init({
+            config: loadConfig(core, buildConfig),
+          }),
         };
       }
 

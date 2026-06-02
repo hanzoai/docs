@@ -1,0 +1,13 @@
+import { ServerCodeBlock } from '@hanzo/docs-ui/components/codeblock.rsc';
+
+export function Customization() {
+  return (
+    <div className="flex flex-col gap-2 p-3 rounded-xl border bg-fd-card text-fd-card-foreground not-prose">
+      <p className="font-medium text-sm">Install via Hanzo Docs CLI</p>
+      <p className="text-fd-muted-foreground text-sm">
+        For advanced customization that supported options cannot suffice.
+      </p>
+      <ServerCodeBlock code="npx @hanzo/docs-cli@latest customise" lang="bash" />
+    </div>
+  );
+}

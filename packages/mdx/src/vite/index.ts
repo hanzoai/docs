@@ -38,7 +38,7 @@ export interface PluginOptions {
 }
 
 export default async function mdx(
-  config: Record<string, unknown>,
+  _config?: Record<string, unknown> | Promise<Record<string, unknown>>,
   pluginOptions: PluginOptions = {},
 ): Promise<Plugin> {
   const options = applyDefaults(pluginOptions);
@@ -97,6 +97,69 @@ export default async function mdx(
       }
     },
   };
+  const mdxPlugin: Plugin = {
+    name: 'fumadocs-mdx:mdx',
+  };
+
+  return [
+    {
+      name: 'fumadocs-mdx',
+      async config(config) {
+        const root = config.root ?? process.cwd();
+        const options = applyDefaults(root, pluginOptions);
+        core = createViteCore(options);
+        await core.init({
+          config: buildConfig(
+            (await _config) ??
+              (await runnerImport<Record<string, unknown>>(options.configPath)).module,
+            root,
+          ),
+        });
+
+        const configLoader = createIntegratedConfigLoader(core);
+        const mdxLoader = toVite(createMdxLoader(configLoader));
+        const metaLoader = toVite(
+          createMetaLoader(configLoader, {
+            // vite has built-in plugin for JSON files
+            json: 'json',
+          }),
+        );
+
+        mdxPlugin.transform = {
+          filter: mdxLoader.filter,
+          order: 'pre',
+          async handler(code, id) {
+            // Vite RSC will pass the compiled MDX file's client module with ID `virtual:vite-rsc/client-references/group/facade:xxx.mdx`.
+            // The format of `value` becomes JavaScript, which will break the MDX compiler.
+            // We have to ignore them.
+            if (id.includes('virtual:vite-rsc')) return null;
+            return await mdxLoader.transform.call(this, code, id);
+          },
+        };
+        metaPlugin.transform = {
+          filter: metaLoader.filter,
+          order: 'pre',
+          handler: metaLoader.transform,
+        };
+
+        if ('_fumadocs_skipViteConfig' in config && config._fumadocs_skipViteConfig) return;
+        if (!options.updateViteConfig) return;
+
+        const { getConfig } = await import('@fumadocs/vite');
+        return getConfig({ root });
+      },
+      async buildStart() {
+        await core.emit({ write: true });
+      },
+      async configureServer(server) {
+        await core.initServer({
+          watcher: server.watcher as unknown as FSWatcher,
+        });
+      },
+    },
+    mdxPlugin,
+    metaPlugin,
+  ];
 }
 
 export async function postInstall(pluginOptions: PluginOptions = {}) {
@@ -125,11 +188,11 @@ function createViteCore({ index, configPath, outDir }: Required<PluginOptions>) 
   });
 }
 
-function applyDefaults(options: PluginOptions): Required<PluginOptions> {
+function applyDefaults(root: string, options: PluginOptions): Required<PluginOptions> {
   return {
     updateViteConfig: options.updateViteConfig ?? true,
     index: options.index ?? true,
-    configPath: options.configPath ?? _Defaults.configPath,
-    outDir: options.outDir ?? _Defaults.outDir,
+    configPath: path.resolve(root, options.configPath ?? _Defaults.configPath),
+    outDir: path.resolve(root, options.outDir ?? _Defaults.outDir),
   };
 }

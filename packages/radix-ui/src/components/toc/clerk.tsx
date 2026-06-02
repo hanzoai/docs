@@ -1,157 +1,252 @@
 'use client';
 import * as Primitive from 'fumadocs-core/toc';
-import { type ComponentProps, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import {
+  type ComponentProps,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { cn } from '@/utils/cn';
-import { TocThumb, useTOCItems } from '.';
+import { useTOCItems } from '.';
 import { mergeRefs } from '@/utils/merge-refs';
-import { useI18n } from '@/contexts/i18n';
+import { useTranslations } from '@/contexts/i18n';
 
 interface ComputedSVG {
-  d: string;
   width: number;
   height: number;
+  content: ReactNode;
+  d: string;
+  positions: [top: number, bottom: number, x: number][];
+  itemLineLengths: [top: number, bottom: number][];
 }
 
-export function TOCItems({ ref, className, ...props }: ComponentProps<'div'>) {
+export interface TOCItemsProps extends ComponentProps<'div'> {
+  thumbBox?: boolean;
+}
+
+export function TOCItems({ ref, className, thumbBox = true, children, ...props }: TOCItemsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const items = useTOCItems();
-  const [svg, setSvg] = useState<ComputedSVG>();
+  const [svg, setSvg] = useState<ComputedSVG | null>(null);
 
-  const onResize = useEffectEvent(() => {
+  const onPrint = useCallback(() => {
     const container = containerRef.current;
     if (!container || container.clientHeight === 0) return;
+    if (items.length === 0) {
+      setSvg(null);
+      return;
+    }
     let w = 0;
     let h = 0;
-    let b0 = 0;
     let d = '';
+    const positions: [top: number, bottom: number, x: number][] = [];
+    const output: ReactNode[] = [];
 
     for (let i = 0; i < items.length; i++) {
-      const element: HTMLElement | null = container.querySelector(
-        `a[href="#${items[i].url.slice(1)}"]`,
-      );
+      const item = items[i];
+      const element: HTMLElement | null = container.querySelector(`a[href="${item.url}"]`);
       if (!element) continue;
 
       const styles = getComputedStyle(element);
-      const offset = getLineOffset(items[i].depth) + 1,
-        top = element.offsetTop + parseFloat(styles.paddingTop),
-        bottom = element.offsetTop + element.clientHeight - parseFloat(styles.paddingBottom);
+      const x = getLineOffset(item.depth) + 0.5;
+      const top = element.offsetTop + parseFloat(styles.paddingTop);
+      const bottom = element.offsetTop + element.clientHeight - parseFloat(styles.paddingBottom);
 
-      w = Math.max(offset, w);
+      w = Math.max(x + 8, w);
       h = Math.max(h, bottom);
 
       if (i === 0) {
-        d += ` M${offset} ${top} L${offset} ${bottom}`;
+        d += ` M${x} ${top} L${x} ${bottom}`;
       } else {
-        const pOffset = getLineOffset(items[i - 1].depth) + 1;
-        d += ` C ${pOffset} ${top - 4} ${offset} ${b0! + 4} ${offset} ${top} L${offset} ${bottom}`;
+        const [, upperBottom, upperX] = i > 0 ? positions[i - 1] : [0, 0, 0];
+
+        d += ` C ${upperX} ${top - 4} ${x} ${upperBottom + 4} ${x} ${top} L${x} ${bottom}`;
       }
 
-      b0 = bottom;
+      if (item._step !== undefined) {
+        output.push(
+          <g key={i} transform={`translate(${x}, ${(top + bottom) / 2})`}>
+            <circle cx="0" cy="0" r="8" className="fill-fd-primary" />
+            <text
+              cx="0"
+              cy="0"
+              textAnchor="middle"
+              alignmentBaseline="central"
+              dominantBaseline="middle"
+              className="fill-fd-primary-foreground font-medium text-xs leading-none font-mono rtl:-scale-x-100"
+            >
+              {item._step}
+            </text>
+          </g>,
+        );
+      }
+
+      positions.push([top, bottom, x]);
+    }
+
+    output.unshift(
+      <path key="path" d={d} className="stroke-fd-primary" strokeWidth="1" fill="none" />,
+    );
+
+    const itemLineLengths: [top: number, bottom: number][] = [];
+
+    if (thumbBox) {
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', d);
+
+      const n = path.getTotalLength();
+      for (let i = 0; i < positions.length; i++) {
+        const [top, bottom] = positions[i];
+        let l = i > 0 ? itemLineLengths[i - 1][1] + (top - positions[i - 1][1]) : top;
+        while (l < n && path.getPointAtLength(l).y < top) l++;
+
+        // vertical line distance = bottom - top
+        itemLineLengths.push([l, l + bottom - top]);
+      }
     }
 
     setSvg({
-      d,
-      width: w + 1,
+      content: output,
+      width: w,
       height: h,
+      d,
+      itemLineLengths,
+      positions,
     });
-  });
+  }, [items, thumbBox]);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-    const observer = new ResizeObserver(onResize);
-    onResize();
+    const container = containerRef.current;
+    if (!container) return;
 
-    observer.observe(containerRef.current);
+    const observer = new ResizeObserver(onPrint);
+    observer.observe(container);
+    onPrint();
     return () => {
-      observer.disconnect();
+      observer.unobserve(container);
     };
-  }, []);
+  }, [onPrint]);
 
   return (
-    <>
-      {svg && (
-        <TocThumb
-          containerRef={containerRef}
-          className="absolute top-0 inset-s-0"
-          style={{
-            width: svg.width,
-            height: svg.height,
-          }}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox={`0 0 ${svg.width} ${svg.height}`}
-            className="absolute transition-[clip-path]"
-            style={{
-              width: svg.width,
-              height: svg.height,
-              clipPath: `polygon(0 var(--fd-top), 100% var(--fd-top), 100% calc(var(--fd-top) + var(--fd-height)), 0 calc(var(--fd-top) + var(--fd-height)))`,
-            }}
-          >
-            <path d={svg.d} className="stroke-fd-primary" strokeWidth="1" fill="none" />
-          </svg>
-          <ThumbBox />
-        </TocThumb>
-      )}
-      <div
-        ref={mergeRefs(containerRef, ref)}
-        className={cn('flex flex-col', className)}
-        {...props}
-      />
-    </>
-  );
-}
-
-export function TOCEmpty() {
-  const { text } = useI18n();
-
-  return (
-    <div className="rounded-lg border bg-fd-card p-3 text-xs text-fd-muted-foreground">
-      {text.tocNoHeadings}
+    <div
+      ref={mergeRefs(containerRef, ref)}
+      className={cn('relative flex flex-col', className)}
+      {...props}
+    >
+      {svg && <ThumbTrack computed={svg} thumbBox={thumbBox} />}
+      {children}
     </div>
   );
 }
 
-function ThumbBox() {
-  const items = Primitive.useItems();
-  let startIdx = -1;
-  let endIdx = -1;
-  let lastInactiveIdx = -1;
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
+export function TOCEmpty() {
+  const t = useTranslations();
 
-    if (item.active) {
-      if (startIdx === -1) startIdx = i;
-      endIdx = i;
-    } else if (lastInactiveIdx === -1 || items[lastInactiveIdx].t < item.t) {
-      lastInactiveIdx = i;
-    }
-  }
-
-  if (startIdx === -1) return;
-  const isStart = endIdx < lastInactiveIdx;
   return (
-    <div
-      className="absolute size-1 bg-fd-primary rounded-full transition-transform"
-      style={{
-        translate: `calc(${getLineOffset(items[isStart ? startIdx : endIdx].original.depth)}px - 1.25px) ${
-          isStart ? 'var(--fd-top)' : 'calc(var(--fd-top) + var(--fd-height))'
-        }`,
-      }}
-    />
+    <div className="rounded-lg border bg-fd-card p-3 text-xs text-fd-muted-foreground">
+      {t.tocNoHeadings}
+    </div>
   );
 }
 
+interface ThumbBoxInfo {
+  startIdx: number;
+  endIdx: number;
+  isUp: boolean;
+}
+
+function ThumbTrack({ computed, thumbBox }: { computed: ComputedSVG; thumbBox: boolean }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const previousRef = useRef<ThumbBoxInfo>(null);
+  const tocInfo = Primitive.useTOC();
+
+  function calculate(items: Primitive.TOCItemInfo[]) {
+    const out: Record<string, string> = {};
+    const startIdx = items.findIndex((item) => item.active);
+    if (startIdx === -1) return out;
+
+    const endIdx = items.findLastIndex((item) => item.active);
+    out['--track-top'] = `${computed.positions[startIdx][0]}px`;
+    out['--track-bottom'] = `${computed.positions[endIdx][1]}px`;
+
+    if (thumbBox) {
+      let isUp = false;
+      if (previousRef.current) {
+        const prev = previousRef.current;
+        isUp =
+          prev.startIdx > startIdx ||
+          prev.endIdx > endIdx ||
+          (prev.startIdx === startIdx && prev.endIdx === endIdx && prev.isUp);
+      }
+
+      previousRef.current = { startIdx, endIdx, isUp };
+      out['--offset-distance'] = isUp
+        ? `${computed.itemLineLengths[startIdx][0]}px`
+        : `${computed.itemLineLengths[endIdx][1]}px`;
+      out['--opacity'] = items[isUp ? startIdx : endIdx].original._step !== undefined ? '0' : '1';
+    }
+
+    return out;
+  }
+
+  Primitive.useTOCListener((items) => {
+    const element = ref.current;
+    if (!element) return;
+
+    for (const [k, v] of Object.entries(calculate(items))) {
+      element.style.setProperty(k, v);
+    }
+  });
+
+  return (
+    <div
+      ref={ref}
+      className="absolute top-0 inset-s-0 origin-center rtl:-scale-x-100"
+      style={{
+        width: computed.width,
+        height: computed.height,
+        ...calculate(tocInfo.get()),
+      }}
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox={`0 0 ${computed.width} ${computed.height}`}
+        className="absolute transition-[clip-path]"
+        style={{
+          width: computed.width,
+          height: computed.height,
+          clipPath: `polygon(0 var(--track-top,0), 100% var(--track-top,0), 100% var(--track-bottom,0), 0 var(--track-bottom,0))`,
+        }}
+      >
+        {computed.content}
+      </svg>
+      {thumbBox && (
+        <div
+          className="absolute left-0 size-1 bg-fd-primary rounded-full [offset-distance:var(--offset-distance,0)] opacity-(--opacity,0) transition-[opacity,offset-distance]"
+          style={{
+            offsetPath: `path("${computed.d}")`,
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+const a = 8;
+
 function getItemOffset(depth: number): number {
-  if (depth <= 2) return 14;
-  if (depth === 3) return 26;
-  return 36;
+  if (depth <= 2) return 12 + a;
+  if (depth === 3) return 24 + a;
+  return 36 + a;
 }
 
 function getLineOffset(depth: number): number {
-  if (depth <= 2) return 2;
-  if (depth === 3) return 10;
-  return 20;
+  if (depth <= 2) return a;
+  if (depth === 3) return 8 + a;
+  return 16 + a;
 }
 
 export function TOCItem({
@@ -159,13 +254,63 @@ export function TOCItem({
   ...props
 }: Primitive.TOCItemProps & { item: Primitive.TOCItemType }) {
   const items = useTOCItems();
-  const { lowerOffset, offset, upperOffset } = useMemo(() => {
+  const { isFirst, isLast, svg } = useMemo(() => {
     const index = items.indexOf(item);
-    const offset = getLineOffset(item.depth);
+    const isFirst = index === 0;
+    const isLast = index === items.length - 1;
+
+    const l1 = getLineOffset(item.depth);
+    const l0 = isFirst ? l1 : getLineOffset(items[index - 1].depth);
+    const l2 = isLast ? l1 : getLineOffset(items[index + 1].depth);
+
     return {
-      offset,
-      upperOffset: index > 0 ? getLineOffset(items[index - 1].depth) : offset,
-      lowerOffset: index + 1 < items.length ? getLineOffset(items[index + 1].depth) : offset,
+      isFirst,
+      isLast,
+      svg: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className={cn(
+            'absolute -top-1.5 inset-s-0 bottom-0 h-[calc(100%+--spacing(1.5))] -z-1 rtl:-scale-x-100',
+            l1 !== l2 && 'h-full bottom-1.5',
+          )}
+          style={{
+            width: Math.max(l0, l1) + 9,
+          }}
+        >
+          {l0 !== l1 && (
+            <path
+              d={`M ${l0 + 0.5} 0 C ${l0 + 0.5} 8 ${l1 + 0.5} 4 ${l1 + 0.5} 12`}
+              stroke="black"
+              strokeWidth="1"
+              fill="none"
+              className="stroke-fd-foreground/10"
+            />
+          )}
+          <line
+            x1={l1 + 0.5}
+            y1={l0 === l1 ? '6' : '12'}
+            x2={l1 + 0.5}
+            y2="100%"
+            strokeWidth="1"
+            className="stroke-fd-foreground/10"
+          />
+          {item._step !== undefined && (
+            <g transform={`translate(${l1 + 0.5}, ${l1 === l2 ? '3' : '6'})`}>
+              <circle cx="0" cy="50%" r="8" className="fill-fd-muted" />
+              <text
+                x="0"
+                y="50%"
+                textAnchor="middle"
+                alignmentBaseline="central"
+                dominantBaseline="middle"
+                className="fill-fd-muted-foreground font-medium text-xs leading-none font-mono rtl:-scale-x-100"
+              >
+                {item._step}
+              </text>
+            </g>
+          )}
+        </svg>
+      ),
     };
   }, [items, item]);
 
@@ -174,7 +319,9 @@ export function TOCItem({
       href={item.url}
       {...props}
       className={cn(
-        'prose relative py-1.5 text-sm scroll-m-4 text-fd-muted-foreground hover:text-fd-accent-foreground transition-colors wrap-anywhere first:pt-0 last:pb-0 data-[active=true]:text-fd-primary',
+        'prose relative py-1.5 text-sm scroll-m-4 text-fd-muted-foreground hover:text-fd-accent-foreground transition-colors wrap-anywhere data-[active=true]:text-fd-primary',
+        isFirst && 'pt-0',
+        isLast && 'pb-0',
         props.className,
       )}
       style={{
@@ -182,36 +329,7 @@ export function TOCItem({
         ...props.style,
       }}
     >
-      {offset !== upperOffset && (
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox={`${Math.min(offset, upperOffset)} 0 ${Math.abs(upperOffset - offset)} 12`}
-          className="absolute -top-1.5"
-          style={{
-            width: Math.abs(upperOffset - offset) + 1,
-            height: 12,
-            insetInlineStart: Math.min(offset, upperOffset),
-          }}
-        >
-          <path
-            d={`M ${upperOffset} 0 C ${upperOffset} 8 ${offset} 4 ${offset} 12`}
-            stroke="black"
-            strokeWidth="1"
-            fill="none"
-            className="stroke-fd-foreground/10"
-          />
-        </svg>
-      )}
-      <div
-        className={cn(
-          'absolute inset-y-0 w-px bg-fd-foreground/10',
-          offset !== upperOffset && 'top-1.5',
-          offset !== lowerOffset && 'bottom-1.5',
-        )}
-        style={{
-          insetInlineStart: offset,
-        }}
-      />
+      {svg}
       {item.title}
     </Primitive.TOCItem>
   );

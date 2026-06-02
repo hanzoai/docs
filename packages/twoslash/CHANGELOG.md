@@ -1,5 +1,41 @@
 # fumadocs-twoslash
 
+## 3.2.0
+
+### Minor Changes
+
+- 9cf33e9: Support lazy loading with `rehype-code`
+
+### Patch Changes
+
+- Updated dependencies [f2c6e59]
+- Updated dependencies [9cf33e9]
+- Updated dependencies [9cf33e9]
+  - fumadocs-ui@16.7.16
+  - fumadocs-core@16.7.16
+
+## 3.1.17
+
+### Patch Changes
+
+- 2d8f596: fix `npm pack` skipping nested `node_modules`
+- Updated dependencies [2d8f596]
+  - fumadocs-ui@16.7.14
+
+## 3.1.16
+
+### Patch Changes
+
+- 690ddb9: bundle more deps
+- Updated dependencies [690ddb9]
+  - fumadocs-ui@16.7.13
+
+## 3.1.15
+
+### Patch Changes
+
+- da50bc3: Force default options for TypeScript 6
+
 ## 3.1.14
 
 ### Patch Changes

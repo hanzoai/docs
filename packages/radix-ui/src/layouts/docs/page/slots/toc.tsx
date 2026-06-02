@@ -2,7 +2,7 @@
 import * as TocDefault from '@/components/toc/default';
 import * as TocClerk from '@/components/toc/clerk';
 import * as Base from '@/components/toc';
-import { I18nLabel, useI18n } from '@/contexts/i18n';
+import { I18nLabel, useTranslations } from '@/contexts/i18n';
 import { cn } from '@/utils/cn';
 import { ChevronDown, Text } from 'lucide-react';
 import {
@@ -26,7 +26,7 @@ export function TOCProvider(props: TOCProviderProps) {
   return <Base.TOCProvider {...props} />;
 }
 
-export interface TOCProps {
+export type TOCProps = {
   container?: ComponentProps<'div'>;
   /**
    * Custom content in TOC container, before the main TOC
@@ -37,23 +37,31 @@ export interface TOCProps {
    * Custom content in TOC container, after the main TOC
    */
   footer?: ReactNode;
+} & (
+  | {
+      style?: 'normal';
+      list?: TocDefault.TOCItemsProps;
+    }
+  | {
+      style: 'clerk';
+      list?: TocClerk.TOCItemsProps;
+    }
+);
 
-  /**
-   * @defaultValue 'normal'
-   */
-  style?: 'normal' | 'clerk';
-}
-
-export function TOC({ container, header, footer, style = 'normal' }: TOCProps) {
+export function TOC({ container, header, footer, style = 'normal', list }: TOCProps) {
   const items = Base.useTOCItems();
   const { TOCItems, TOCEmpty, TOCItem } = style === 'clerk' ? TocClerk : TocDefault;
+
+  if (items.length === 0 && !header && !footer) {
+    return <div id="nd-toc-placeholder" className="hidden xl:layout:[--fd-toc-width:268px]" />;
+  }
 
   return (
     <div
       id="nd-toc"
       {...container}
       className={cn(
-        'sticky top-(--fd-docs-row-1) h-[calc(var(--fd-docs-height)-var(--fd-docs-row-1))] flex flex-col [grid-area:toc] w-(--fd-toc-width) pt-12 pe-4 pb-2 max-xl:hidden',
+        'sticky top-(--fd-docs-row-1) h-[calc(var(--fd-docs-height)-var(--fd-docs-row-1))] flex flex-col [grid-area:toc] w-(--fd-toc-width) pt-12 pe-4 pb-2 xl:layout:[--fd-toc-width:268px] max-xl:hidden',
         container?.className,
       )}
     >
@@ -66,7 +74,7 @@ export function TOC({ container, header, footer, style = 'normal' }: TOCProps) {
         <I18nLabel label="toc" />
       </h3>
       <Base.TOCScrollArea>
-        <TOCItems>
+        <TOCItems {...list}>
           {items.length === 0 && <TOCEmpty />}
           {items.map((item) => (
             <TOCItem key={item.url} item={item} />
@@ -83,7 +91,7 @@ const TocPopoverContext = createContext<{
   setOpen: (open: boolean) => void;
 } | null>(null);
 
-export interface TOCPopoverProps {
+export type TOCPopoverProps = {
   container?: ComponentProps<'div'>;
   trigger?: ComponentProps<'button'>;
   content?: ComponentProps<'div'>;
@@ -97,12 +105,16 @@ export interface TOCPopoverProps {
    * Custom content in TOC container, after the main TOC
    */
   footer?: ReactNode;
-
-  /**
-   * @defaultValue 'normal'
-   */
-  style?: 'normal' | 'clerk';
-}
+} & (
+  | {
+      style?: 'normal';
+      list?: TocDefault.TOCItemsProps;
+    }
+  | {
+      style: 'clerk';
+      list?: TocClerk.TOCItemsProps;
+    }
+);
 
 export function TOCPopover({
   container,
@@ -111,6 +123,7 @@ export function TOCPopover({
   header,
   footer,
   style = 'normal',
+  list,
 }: TOCPopoverProps) {
   const items = Base.useTOCItems();
   const ref = useRef<HTMLElement>(null);
@@ -168,7 +181,7 @@ export function TOCPopover({
           <PageTOCPopoverContent {...content}>
             {header}
             <Base.TOCScrollArea>
-              <TOCItems>
+              <TOCItems {...list}>
                 {items.length === 0 && <TOCEmpty />}
                 {items.map((item) => (
                   <TOCItem key={item.url} item={item} onClick={onClickItem} />
@@ -184,7 +197,7 @@ export function TOCPopover({
 }
 
 function PageTOCPopoverTrigger({ className, ...props }: ComponentProps<'button'>) {
-  const { text } = useI18n();
+  const t = useTranslations();
   const { open } = use(TocPopoverContext)!;
   const items = Base.useItems();
   const selectedIdx = items.findIndex((item) => item.active);
@@ -201,7 +214,7 @@ function PageTOCPopoverTrigger({ className, ...props }: ComponentProps<'button'>
       {...props}
     >
       <ProgressCircle
-        value={(selectedIdx + 1) / Math.max(1, items.length)}
+        value={(items.findLastIndex((item) => item.active) + 1) / Math.max(1, items.length)}
         max={1}
         className={cn('shrink-0', open && 'text-fd-primary')}
       />
@@ -213,7 +226,7 @@ function PageTOCPopoverTrigger({ className, ...props }: ComponentProps<'button'>
             showItem && 'opacity-0 -translate-y-full pointer-events-none',
           )}
         >
-          {path?.name ?? text.toc}
+          {path?.name ?? t.toc}
         </span>
         <span
           className={cn(
@@ -245,14 +258,15 @@ function clamp(input: number, min: number, max: number): number {
 
 function ProgressCircle({
   value,
-  strokeWidth = 2,
-  size = 24,
+  strokeWidth = 1.5,
+  size = 18,
   min = 0,
   max = 100,
+  style,
   ...restSvgProps
 }: ProgressCircleProps) {
   const normalizedValue = clamp(value, min, max);
-  const radius = (size - strokeWidth) / 2;
+  const radius = size / 2 - strokeWidth;
   const circumference = 2 * Math.PI * radius;
   const progress = (normalizedValue / max) * circumference;
   const circleProps = {
@@ -270,6 +284,7 @@ function ProgressCircle({
       aria-valuenow={normalizedValue}
       aria-valuemin={min}
       aria-valuemax={max}
+      style={{ width: size, height: size, ...style }}
       {...restSvgProps}
     >
       <circle {...circleProps} className="stroke-current/25" />
