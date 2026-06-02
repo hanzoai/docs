@@ -1,14 +1,17 @@
 import { Ajv2020 } from 'ajv/dist/2020';
 import { createContext, ReactNode, use, useMemo } from 'react';
-import type { ParsedSchema, ResolvedSchema } from '@/utils/schema';
-import { mergeAllOf } from '@/utils/merge-schema';
+import type { ParsedSchema } from '@/utils/schema';
+import { mergeAllOf } from '@/utils/schema/merge';
 import { FieldKey, useDataEngine, useFieldValue, useNamespace } from '@fumari/stf';
 import { stringifyFieldKey } from '@fumari/stf/lib/utils';
-import { sample } from 'openapi-sampler';
-import { FormatFlags, schemaToString } from '@/utils/schema-to-string';
+import { sample } from '@/utils/schema/sample';
+import { FormatFlags, schemaToString } from '@/utils/schema/to-string';
+import { dereferenceSwallow } from '@/utils/schema/dereference';
+import type { Document } from '@/types';
 
 interface SchemaContextType extends SchemaScope {
-  references: Record<string, ParsedSchema>;
+  /** (not dereferenced) */
+  doc: Document;
   ajv: Ajv2020;
 }
 
@@ -44,7 +47,7 @@ export const anyFields = {
 } satisfies ParsedSchema;
 
 export function SchemaProvider({
-  references,
+  doc,
   readOnly,
   writeOnly,
   children,
@@ -61,10 +64,7 @@ export function SchemaProvider({
 
   return (
     <SchemaContext.Provider
-      value={useMemo(
-        () => ({ references, ajv, readOnly, writeOnly }),
-        [references, ajv, readOnly, writeOnly],
-      )}
+      value={useMemo(() => ({ doc, ajv, readOnly, writeOnly }), [doc, ajv, readOnly, writeOnly])}
     >
       {children}
     </SchemaContext.Provider>
@@ -91,7 +91,7 @@ export function useFieldInfo(
   schema: Exclude<ParsedSchema, boolean>;
   updateInfo: (value: Partial<FieldInfo>) => void;
 } {
-  const { ajv, references } = use(SchemaContext)!;
+  const { ajv, doc } = use(SchemaContext)!;
   const engine = useDataEngine();
   const { generateDefault } = useSchemaUtils();
   const fieldData = useNamespace({
@@ -105,8 +105,8 @@ export function useFieldInfo(
       if (union) {
         const [members, field] = union;
 
-        out.oneOf = members.findIndex((item) =>
-          ajv.validate(typeof item === 'object' ? { ...item, ...references } : item, value),
+        out.oneOf = members.findIndex(
+          (item) => typeof item === 'object' && ajv.validate({ ...doc, ...item }, value),
         );
         if (out.oneOf === -1) out.oneOf = 0;
         out.unionField = field;
@@ -117,7 +117,7 @@ export function useFieldInfo(
 
         out.selectedType =
           types.find((type) => {
-            return ajv.validate({ ...schema, ...references, type }, value);
+            return ajv.validate({ ...doc, ...schema, type }, value);
           }) ?? types[0];
       }
 
@@ -155,20 +155,27 @@ export function useFieldInfo(
 }
 
 export function useSchemaUtils() {
-  const { references } = use(SchemaContext)!;
+  const { doc, readOnly } = use(SchemaContext)!;
 
   return {
     generateDefault(schema: ParsedSchema): unknown {
       return sample(
         schema as never,
-        { skipNonRequired: true, skipReadOnly: true, quiet: true },
-        references,
+        {
+          skipNonRequired: true,
+          skipReadOnly: !readOnly,
+          quiet: true,
+        },
+        doc,
       );
     },
-    schemaToString(value: ResolvedSchema, flags?: FormatFlags) {
+    schemaToString(value: ParsedSchema, flags?: FormatFlags) {
       return schemaToString(
         value,
-        (s) => ({ dereferenced: dereference(s, references), raw: s }),
+        (raw) => ({
+          raw,
+          dereferenced: dereferenceSwallow(raw, doc),
+        }),
         flags,
       );
     },
@@ -176,45 +183,23 @@ export function useSchemaUtils() {
 }
 
 /**
- * resolve $ref & merge `allOf`.
+ * dereference & merge `allOf`.
  */
 export function useResolvedSchema(raw: ParsedSchema): Exclude<ParsedSchema, boolean> {
-  const { references } = use(SchemaContext)!;
-
+  const { doc } = use(SchemaContext)!;
   return useMemo(() => {
-    const schema = dereference(raw, references);
-    if (typeof schema === 'boolean') return anyFields;
+    let out = dereferenceSwallow(raw, doc);
 
-    if (schema.allOf) {
-      return fallbackAny(
-        mergeAllOf(schema, {
-          dereference(schema) {
-            return dereference(schema, references);
-          },
-        }),
-      );
+    if (typeof out === 'object' && out.allOf) {
+      out = mergeAllOf(out, {
+        dereference(schema) {
+          return dereferenceSwallow(schema, doc);
+        },
+      });
     }
 
-    return schema;
-  }, [raw, references]);
-}
-
-function dereference(schema: ParsedSchema, references: Record<string, ParsedSchema>): ParsedSchema {
-  if (typeof schema === 'boolean') return schema;
-
-  let ref = schema.$ref;
-  if (ref) {
-    // use swallow resolution as it is already preprocessed in `playground/index.tsx`
-    const prefix = '#/';
-    if (ref.startsWith(prefix)) ref = ref.slice(prefix.length);
-    if (ref in references) return references[ref];
-  }
-
-  return schema;
-}
-
-function fallbackAny(schema: ParsedSchema): Exclude<ParsedSchema, boolean> {
-  return typeof schema === 'boolean' ? anyFields : schema;
+    return typeof out === 'boolean' ? anyFields : out;
+  }, [doc, raw]);
 }
 
 function getUnion(

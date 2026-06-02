@@ -4,6 +4,7 @@ import { updateSearchIndexes } from './update-hanzo-index';
 env.loadEnvConfig(process.cwd());
 
 async function main() {
+  const { updateSearchIndexes } = await import('./update-orama-index.ts');
   await Promise.all([updateSearchIndexes()]);
 }
 

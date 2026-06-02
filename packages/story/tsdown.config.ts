@@ -5,15 +5,24 @@ export default defineConfig({
   target: 'es2023',
   entry: [
     './src/index.{ts,tsx}',
-    './src/client/{index,with-control}.tsx',
+    './src/i18n.ts',
     './src/type-tree/index.ts',
+    './src/vite/*',
+    './src/next/*',
+    './src/webpack/story.ts',
   ],
   unbundle: true,
-  fixedExtension: false,
   dts: {
     sourcemap: false,
   },
+  platform: 'browser',
+  exports: {
+    customExports: {
+      './css/*': './css/*',
+    },
+  },
   deps: {
-    onlyBundle: ['@fastify/deepmerge', '@ungap/structured-clone'],
+    onlyBundle: ['@fastify/deepmerge', '@ungap/structured-clone', 'react-error-boundary'],
+    neverBundle: [/^node:/],
   },
 });

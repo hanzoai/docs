@@ -27,36 +27,36 @@ interface LocaleItem {
 }
 
 interface I18nContextType {
-  text: Translations & TranslationsOption;
+  text: Translations & Record<string, string | Record<string, string>>;
   locale?: string;
   onChange?: (v: string) => void;
   locales?: LocaleItem[];
 }
 
-export const defaultTranslations: Translations = {
-  search: 'Search',
-  searchNoResult: 'No results found',
-  toc: 'On this page',
-  tocNoHeadings: 'No Headings',
-  lastUpdate: 'Last updated on',
-  chooseLanguage: 'Choose a language',
-  nextPage: 'Next Page',
-  previousPage: 'Previous Page',
-  chooseTheme: 'Theme',
-  editOnGithub: 'Edit on GitHub',
-};
-
 const I18nContext = createContext<I18nContextType>({
-  text: { ...defaultTranslations },
+  text: defaultTranslations,
 });
 
-export function I18nLabel(props: { label: keyof Translations }): string {
-  const text = useI18n().text;
-  return text[props.label];
+export function I18nLabel<K extends keyof Translations = keyof Translations>({
+  label,
+  params,
+}: {
+  label: K;
+  params?: Translations[K] extends TranslationValue<infer Params> ? Record<Params, string> : never;
+}): string {
+  const t = useTranslations();
+  return renderTranslation(t[label], params!);
 }
 
 export function useI18n(): I18nContextType {
-  return useContext(I18nContext);
+  return use(I18nContext);
+}
+
+export function useTranslations(): Translations;
+export function useTranslations<Obj extends TranslationObject>(namespace: string): Obj | undefined;
+
+export function useTranslations(namespace?: string) {
+  return namespace ? use(I18nContext).text[namespace] : use(I18nContext).text;
 }
 
 export interface I18nProviderProps {
@@ -73,7 +73,7 @@ export interface I18nProviderProps {
   /**
    * Translations of current locale
    */
-  translations?: TranslationsOption;
+  translations?: Partial<I18nContextType['text']>;
 
   /**
    * Available languages
@@ -99,7 +99,7 @@ export function I18nProvider({
     const segments = pathname.split('/').filter((v) => v.length > 0);
 
     // If locale prefix hidden
-    if (segments[0] !== locale) {
+    if (segments.length === 0 || segments[0] !== locale) {
       segments.unshift(value);
     } else {
       segments[0] = value;

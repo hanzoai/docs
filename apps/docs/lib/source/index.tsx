@@ -1,30 +1,23 @@
-import {
-  type InferMetaType,
-  type InferPageType,
-  type LoaderPlugin,
-  loader,
-  multiple,
-} from 'fumadocs-core/source';
-import { openapiPlugin, openapiSource } from 'fumadocs-openapi/server';
+import { type LoaderPlugin, loader } from 'fumadocs-core/source';
 import { blog as blogPosts, docs } from 'collections/server';
 import { toFumadocsSource } from 'fumadocs-mdx/runtime/server';
 import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
 import { openapi } from '@/lib/openapi';
 
 export const source = loader(
-  multiple({
+  {
     docs: docs.toFumadocsSource(),
-    openapi: await openapiSource(openapi, {
+    openapi: await openapi.staticSource({
       baseDir: 'openapi/(generated)',
       meta: {
         folderStyle: 'separator',
       },
       groupBy: 'tag',
     }),
-  }),
+  },
   {
     baseUrl: '/docs',
-    plugins: [pageTreeCodeTitles(), lucideIconsPlugin(), openapiPlugin()],
+    plugins: [pageTreeCodeTitles(), lucideIconsPlugin(), openapi.loaderPlugin()],
   },
 );
 
@@ -55,5 +48,5 @@ export const blog = loader(toFumadocsSource(blogPosts, []), {
   baseUrl: '/blog',
 });
 
-export type Page = InferPageType<typeof source>;
-export type Meta = InferMetaType<typeof source>;
+export type Page = (typeof source)['$inferPage'];
+export type Meta = (typeof source)['$inferMeta'];

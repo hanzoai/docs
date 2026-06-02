@@ -1,5 +1,58 @@
 # @fumadocs/story
 
+## 1.0.1
+
+### Patch Changes
+
+- c800347: Support Webpack/Turbopack plugin
+- Updated dependencies [5d579bd]
+- Updated dependencies [84ce691]
+- Updated dependencies [5836093]
+  - fumadocs-core@16.9.2
+  - fumadocs-ui@16.9.2
+
+## 1.0.0
+
+### Major Changes
+
+- 5c5d319: New Vite plugin for non-RSC environment
+
+## 0.1.0
+
+### Minor Changes
+
+- 214d5b0: Introduce new translations API
+
+### Patch Changes
+
+- Updated dependencies [818ed21]
+- Updated dependencies [214d5b0]
+- Updated dependencies [3b66725]
+  - fumadocs-core@16.9.0
+  - fumadocs-ui@16.9.0
+
+## 0.0.14
+
+### Patch Changes
+
+- 64d6b10: Bump `ts-morph`
+
+## 0.0.13
+
+### Patch Changes
+
+- 690ddb9: bundle more deps
+- Updated dependencies [690ddb9]
+  - fumadocs-ui@16.7.13
+  - @fumari/stf@1.0.5
+
+## 0.0.12
+
+### Patch Changes
+
+- Updated dependencies [f15e322]
+  - @fumari/stf@1.0.4
+
 ## 0.0.11
 
 ### Patch Changes

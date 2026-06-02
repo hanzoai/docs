@@ -9,12 +9,13 @@ export default defineConfig({
     port: 3000,
   },
   resolve: {
-    external: ['typescript', 'ts-morph'],
+    external: ['typescript'],
     tsconfigPaths: true,
   },
   plugins: [
-    mdx(await import('./source.config')),
+    mdx(),
     tailwindcss(),
+    story(),
     tanstackStart({
       prerender: {
         enabled: true,

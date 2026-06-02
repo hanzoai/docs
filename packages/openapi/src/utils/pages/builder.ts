@@ -1,6 +1,5 @@
-import type { ProcessedDocument } from '@/utils/process-document';
-import type { OpenAPIServer } from '@/server';
-import type { OperationItem, WebhookItem } from '@/ui/api-page';
+import type { DereferencedDocument } from '@/utils/document/dereference';
+import type { ApiPageProps, OperationItem, WebhookItem } from '@/ui/api-page';
 import type { OperationObject, PathItemObject, TagObject } from '@/types';
 import { getTagDisplayName, methodKeys, type NoReference } from '@/utils/schema';
 import { idToTitle } from '@/utils/id-to-title';
@@ -11,6 +10,7 @@ interface BaseEntry {
   info: {
     title: string;
     description?: string;
+    deprecated?: boolean;
   };
 }
 
@@ -50,7 +50,7 @@ export interface PagesBuilder {
    * the input ID in OpenAPI server
    */
   id: string;
-  document: ProcessedDocument;
+  document: DereferencedDocument;
   /**
    * add output entry.
    */
@@ -97,28 +97,9 @@ interface ExtractedInfo {
   })[];
 }
 
-export async function fromServer(
-  server: OpenAPIServer,
-  config: PagesBuilderConfig,
-): Promise<Record<string, OutputEntry[]>> {
-  const schemas = await server.getSchemas();
-  const generated: Record<string, OutputEntry[]> = {};
-
-  const entries = Object.entries(schemas);
-  if (entries.length === 0) {
-    throw new Error('No input files found.');
-  }
-
-  for (const [id, schema] of entries) {
-    generated[id] = fromSchema(id, schema, config);
-  }
-
-  return generated;
-}
-
 export function fromSchema(
   schemaId: string,
-  processed: ProcessedDocument,
+  processed: DereferencedDocument,
   config: PagesBuilderConfig,
 ): OutputEntry[] {
   const files: OutputEntry[] = [];
@@ -225,4 +206,27 @@ export function fromSchema(
   });
 
   return files;
+}
+
+export function getPageProps(entry: PageOutput | OperationOutput | WebhookOutput): ApiPageProps {
+  if (entry.type === 'operation')
+    return {
+      document: entry.schemaId,
+      operations: [entry.item],
+      showDescription: true,
+    };
+  if (entry.type === 'webhook')
+    return {
+      document: entry.schemaId,
+      webhooks: [entry.item],
+      showDescription: true,
+    };
+
+  return {
+    showTitle: true,
+    showDescription: true,
+    document: entry.schemaId,
+    operations: entry.operations,
+    webhooks: entry.webhooks,
+  };
 }

@@ -18,6 +18,336 @@
   - fumadocs-ui@16.7.5
   - fumadocs-core@16.7.5
 
+## 16.0.119
+
+### Patch Changes
+
+- Updated dependencies [42f0255]
+- Updated dependencies [d35d0d6]
+- Updated dependencies [a807798]
+  - fumadocs-core@16.9.3
+  - fumadocs-mdx@15.0.10
+  - fumadocs-ui@16.9.3
+
+## 16.0.118
+
+### Patch Changes
+
+- Updated dependencies [5d579bd]
+- Updated dependencies [84ce691]
+- Updated dependencies [5836093]
+  - fumadocs-core@16.9.2
+  - fumadocs-ui@16.9.2
+
+## 16.0.117
+
+### Patch Changes
+
+- Updated dependencies [cd04425]
+  - fumadocs-mdx@15.0.9
+
+## 16.0.116
+
+### Patch Changes
+
+- 511f1b1: lower eslint version
+
+## 16.0.115
+
+### Patch Changes
+
+- Updated dependencies [e77b9b3]
+- Updated dependencies [334c8fd]
+- Updated dependencies [dca5b49]
+  - fumadocs-core@16.9.1
+  - fumadocs-mdx@15.0.8
+  - fumadocs-ui@16.9.1
+
+## 16.0.114
+
+### Patch Changes
+
+- Updated dependencies [818ed21]
+- Updated dependencies [214d5b0]
+- Updated dependencies [3b66725]
+  - fumadocs-core@16.9.0
+  - fumadocs-ui@16.9.0
+
+## 16.0.113
+
+### Patch Changes
+
+- Updated dependencies [768b676]
+  - fumadocs-core@16.8.12
+  - fumadocs-mdx@15.0.7
+  - fumadocs-ui@16.8.12
+
+## 16.0.112
+
+### Patch Changes
+
+- Updated dependencies [da4a81a]
+  - fumadocs-mdx@15.0.6
+
+## 16.0.111
+
+### Patch Changes
+
+- Updated dependencies [1fb6a61]
+  - fumadocs-mdx@15.0.5
+
+## 16.0.110
+
+### Patch Changes
+
+- Updated dependencies [1dc86c7]
+  - fumadocs-core@16.8.11
+  - fumadocs-ui@16.8.11
+
+## 16.0.109
+
+### Patch Changes
+
+- Updated dependencies [819b6ec]
+  - fumadocs-mdx@15.0.4
+
+## 16.0.108
+
+### Patch Changes
+
+- Updated dependencies [062beab]
+- Updated dependencies [505cfe0]
+- Updated dependencies [2569154]
+  - fumadocs-core@16.8.10
+  - fumadocs-mdx@15.0.3
+  - fumadocs-ui@16.8.10
+
+## 16.0.107
+
+### Patch Changes
+
+- Updated dependencies [298ac97]
+- Updated dependencies [b212481]
+  - fumadocs-mdx@15.0.2
+
+## 16.0.106
+
+### Patch Changes
+
+- Updated dependencies [2ca3eab]
+- Updated dependencies [91cac42]
+- Updated dependencies [3696a7e]
+  - fumadocs-core@16.8.9
+  - fumadocs-mdx@15.0.1
+  - fumadocs-ui@16.8.9
+
+## 16.0.105
+
+### Patch Changes
+
+- Updated dependencies [5745fcf]
+- Updated dependencies [3de9dfe]
+- Updated dependencies [b494c8d]
+- Updated dependencies [3de9dfe]
+- Updated dependencies [03626ba]
+  - fumadocs-mdx@15.0.0
+  - fumadocs-ui@16.8.8
+  - fumadocs-core@16.8.8
+
+## 16.0.104
+
+### Patch Changes
+
+- Updated dependencies [34f37f3]
+  - fumadocs-ui@16.8.7
+  - fumadocs-core@16.8.7
+
+## 16.0.103
+
+### Patch Changes
+
+- Updated dependencies [1aa48d0]
+  - fumadocs-ui@16.8.6
+  - fumadocs-core@16.8.6
+
+## 16.0.102
+
+### Patch Changes
+
+- fumadocs-ui@16.8.5
+
+## 16.0.101
+
+### Patch Changes
+
+- Updated dependencies [79d3209]
+- Updated dependencies [79d3209]
+  - fumadocs-core@16.8.5
+  - fumadocs-mdx@14.3.2
+  - fumadocs-ui@16.8.5
+
+## 16.0.100
+
+### Patch Changes
+
+- Updated dependencies [61b15e9]
+- Updated dependencies [1a5433c]
+- Updated dependencies [b5ff03b]
+  - fumadocs-core@16.8.4
+  - fumadocs-ui@16.8.4
+
+## 16.0.99
+
+### Patch Changes
+
+- Updated dependencies [8082ef6]
+- Updated dependencies [8082ef6]
+- Updated dependencies [8082ef6]
+  - fumadocs-ui@16.8.3
+  - fumadocs-core@16.8.3
+
+## 16.0.98
+
+### Patch Changes
+
+- Updated dependencies [0e8405a]
+  - fumadocs-ui@16.8.2
+  - fumadocs-core@16.8.2
+
+## 16.0.97
+
+### Patch Changes
+
+- Updated dependencies [3ae8809]
+  - fumadocs-ui@16.8.1
+  - fumadocs-core@16.8.1
+
+## 16.0.96
+
+### Patch Changes
+
+- Updated dependencies [68c2b49]
+
+## 16.0.95
+
+### Patch Changes
+
+- Updated dependencies [fa9f678]
+  - fumadocs-mdx@14.3.0
+  - fumadocs-ui@16.7.16
+
+## 16.0.94
+
+### Patch Changes
+
+- Updated dependencies [f2c6e59]
+- Updated dependencies [9cf33e9]
+- Updated dependencies [9cf33e9]
+  - fumadocs-ui@16.7.16
+  - fumadocs-core@16.7.16
+
+## 16.0.93
+
+### Patch Changes
+
+- Updated dependencies [eb62304]
+- Updated dependencies [e1567e2]
+- Updated dependencies [9a200c8]
+- Updated dependencies [c731a92]
+- Updated dependencies [ccad791]
+- Updated dependencies [a4189ce]
+  - fumadocs-mdx@14.2.14
+  - fumadocs-core@16.7.15
+  - fumadocs-ui@16.7.15
+
+## 16.0.92
+
+### Patch Changes
+
+- Updated dependencies [2d8f596]
+  - fumadocs-ui@16.7.14
+  - fumadocs-core@16.7.14
+  - fumadocs-mdx@14.2.13
+
+## 16.0.91
+
+### Patch Changes
+
+- 690ddb9: bundle more deps
+- Updated dependencies [690ddb9]
+  - fumadocs-ui@16.7.13
+  - fumadocs-core@16.7.13
+  - fumadocs-mdx@14.2.12
+
+## 16.0.90
+
+### Patch Changes
+
+- Updated dependencies [a5dcc11]
+- Updated dependencies [56f7e5b]
+  - fumadocs-ui@16.7.12
+  - fumadocs-core@16.7.12
+
+## 16.0.89
+
+### Patch Changes
+
+- Updated dependencies [5524927]
+- Updated dependencies [d47c4f1]
+  - fumadocs-core@16.7.11
+  - fumadocs-ui@16.7.11
+
+## 16.0.88
+
+### Patch Changes
+
+- fumadocs-core@16.7.10
+- fumadocs-ui@16.7.10
+
+## 16.0.87
+
+### Patch Changes
+
+- Updated dependencies [f580ef6]
+  - fumadocs-ui@16.7.9
+  - fumadocs-core@16.7.9
+
+## 16.0.86
+
+### Patch Changes
+
+- fumadocs-ui@16.7.8
+
+## 16.0.85
+
+### Patch Changes
+
+- Updated dependencies [f7e69a6]
+  - fumadocs-ui@16.7.8
+  - fumadocs-core@16.7.8
+
+## 16.0.84
+
+## 16.0.83
+
+### Patch Changes
+
+- Updated dependencies [9eb3c84]
+- Updated dependencies [0f39a9f]
+- Updated dependencies [0a6507b]
+  - fumadocs-ui@16.7.7
+  - fumadocs-core@16.7.7
+
+## 16.0.82
+
+## 16.0.81
+
+### Patch Changes
+
+- Updated dependencies [6849807]
+  - fumadocs-ui@16.7.6
+  - fumadocs-core@16.7.6
+
 ## 16.0.80
 
 ### Patch Changes

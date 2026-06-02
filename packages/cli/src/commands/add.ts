@@ -1,57 +1,48 @@
-import {
-  isCancel,
-  autocompleteMultiselect,
-  outro,
-  spinner,
-  confirm,
-  box,
-  log,
-} from '@clack/prompts';
+import { isCancel, autocompleteMultiselect, outro, spinner } from '@clack/prompts';
 import picocolors from 'picocolors';
-import { ComponentInstaller } from '@/registry/installer';
-import type { RegistryClient } from '@/registry/client';
 import { UIRegistries } from '@/commands/shared';
-import { pluginPreserveLayouts } from '@/registry/plugins/preserve';
+import { RegistryConnector } from 'fuma-cli/registry/connector';
+import { LoadedConfig } from '@/config';
+import { FumadocsComponentInstaller } from '@/registry/installer';
 
-export async function add(input: string[], client: RegistryClient) {
-  const config = client.config;
-  let target: string[];
-  const installer = new ComponentInstaller(client, {
-    plugins: [pluginPreserveLayouts()],
-  });
-  const registry = UIRegistries[config.uiLibrary];
+interface AddOption {
+  label: string;
+  value: Target;
+  hint?: string;
+}
+
+export interface Target {
+  name: string;
+  subRegistry?: string;
+}
+
+export async function add(input: string[], connector: RegistryConnector, config: LoadedConfig) {
+  let targets: Target[];
+  const installer = new FumadocsComponentInstaller(connector, config);
+  const subRegistry = UIRegistries[config.uiLibrary];
 
   if (input.length === 0) {
     const spin = spinner();
     spin.start('fetching registry');
-    const info = await client.fetchRegistryInfo();
-    const options: {
-      label: string;
-      value: string;
-      hint?: string;
-    }[] = [];
 
-    for (const item of info.indexes) {
-      options.push({
-        label: item.title ?? item.name,
-        value: item.name,
-        hint: item.description,
-      });
-    }
-    const { indexes } = await client.createLinkedRegistryClient(registry).fetchRegistryInfo();
+    async function scan(subRegistry?: string, prefix?: string): Promise<AddOption[]> {
+      const info = await connector.fetchRegistryInfo(subRegistry);
 
-    for (const item of indexes) {
-      options.push({
-        label: item.title ?? item.name,
-        value: `${registry}/${item.name}`,
+      return info.indexes.map((item) => ({
+        label: `${prefix ? `${picocolors.bold(prefix)} - ` : ''}${item.title ?? item.name}`,
+        value: { name: item.name, subRegistry },
         hint: item.description,
-      });
+      }));
     }
 
     spin.stop(picocolors.bold(picocolors.greenBright('registry fetched')));
     const value = await autocompleteMultiselect({
       message: 'Select components to install',
-      options,
+      options: [
+        ...(await scan(undefined, 'common')),
+        ...(await scan('fumadocs/sanity', 'sanity')),
+        ...(await scan(subRegistry, 'ui')),
+      ].sort((a, b) => a.label.localeCompare(b.label)),
     });
 
     if (isCancel(value)) {
@@ -59,73 +50,18 @@ export async function add(input: string[], client: RegistryClient) {
       return;
     }
 
-    target = value;
+    targets = value;
   } else {
-    target = await Promise.all(
-      input.map(async (item) => ((await client.hasComponent(item)) ? item : `${registry}/${item}`)),
+    targets = await Promise.all(
+      input.map(async (item) =>
+        (await connector.hasComponent(item)) ? { name: item } : { subRegistry, name: item },
+      ),
     );
   }
 
-  await install(target, installer);
-}
-
-export async function install(target: string[], installer: ComponentInstaller) {
-  for (const name of target) {
-    const spin = spinner();
-    spin.start(picocolors.bold(picocolors.cyanBright(`Installing ${name}`)));
-
-    try {
-      await installer.install(name, {
-        onWarn(message) {
-          spin.message(message);
-        },
-        async confirmFileOverride(options) {
-          spin.clear();
-          const value = await confirm({
-            message: `Do you want to override ${options.path}?`,
-            initialValue: false,
-          });
-          if (isCancel(value)) {
-            outro('Installation terminated');
-            process.exit(0);
-          }
-          spin.start(picocolors.bold(picocolors.cyanBright(`Installing ${name}`)));
-          return value;
-        },
-        onFileDownloaded(options) {
-          spin.message(options.path);
-        },
-      });
-      spin.stop(picocolors.bold(picocolors.greenBright(`${name} installed`)));
-    } catch (e) {
-      spin.error(e instanceof Error ? e.message : String(e));
-      process.exit(-1);
-    }
+  for (const target of targets) {
+    await installer.installInteractive(target.name, target.subRegistry);
   }
 
-  const deps = await installer.deps();
-  if (deps.hasRequired()) {
-    log.message();
-    box([...deps.dependencies, ...deps.devDependencies].join('\n'), 'New Dependencies');
-    const value = await confirm({
-      message: `Do you want to install with ${deps.packageManager}?`,
-    });
-
-    if (isCancel(value)) {
-      outro('Installation terminated');
-      process.exit(0);
-    }
-
-    if (value) {
-      const spin = spinner({
-        errorMessage: 'Failed to install dependencies',
-      });
-      spin.start('Installing dependencies');
-      await deps.installRequired();
-      spin.stop('Dependencies installed');
-    }
-  }
-
-  await installer.onEnd();
   outro(picocolors.bold(picocolors.greenBright('Successful')));
 }

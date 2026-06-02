@@ -1,7 +1,8 @@
 import { fileURLToPath } from 'node:url';
 import type { Registry } from '@hanzo/docs-cli/build';
 import * as path from 'node:path';
-import { commonComponents, findSlotComponents, resolveExternal } from '../../shared/registry';
+import type { Registry } from 'fuma-cli/compiler';
+import { commonComponents, findSlotComponents } from '../../shared/registry.ts';
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../src');
 
@@ -49,11 +50,17 @@ export const registry: Registry = {
           type: 'layout',
           path: 'layouts/shared/index.tsx',
           target: '<dir>/shared/index.tsx',
+          meta: {
+            preserveAs: 'layouts/shared',
+          },
         },
         {
           type: 'layout',
           path: 'layouts/shared/client.tsx',
           target: '<dir>/shared/client.tsx',
+          meta: {
+            preserveAs: 'layouts/shared',
+          },
         },
       ],
     },
@@ -64,16 +71,25 @@ export const registry: Registry = {
           type: 'layout',
           path: 'layouts/docs/index.tsx',
           target: '<dir>/docs/index.tsx',
+          meta: {
+            preserveAs: 'layouts/docs',
+          },
         },
         {
           type: 'layout',
           path: 'layouts/docs/client.tsx',
           target: '<dir>/docs/client.tsx',
+          meta: {
+            preserveAs: 'layouts/docs',
+          },
         },
         {
           type: 'layout',
           path: 'layouts/docs/page/index.tsx',
           target: '<dir>/docs/page/index.tsx',
+          meta: {
+            preserveAs: 'layouts/docs/page',
+          },
         },
       ],
       unlisted: true,
@@ -85,11 +101,17 @@ export const registry: Registry = {
           type: 'layout',
           path: 'layouts/flux/index.tsx',
           target: '<dir>/flux/index.tsx',
+          meta: {
+            preserveAs: 'layouts/flux',
+          },
         },
         {
           type: 'layout',
           path: 'layouts/flux/page/index.tsx',
           target: '<dir>/flux/page/index.tsx',
+          meta: {
+            preserveAs: 'layouts/flux/page',
+          },
         },
       ],
       unlisted: true,
@@ -101,16 +123,25 @@ export const registry: Registry = {
           type: 'layout',
           path: 'layouts/notebook/index.tsx',
           target: '<dir>/notebook/index.tsx',
+          meta: {
+            preserveAs: 'layouts/notebook',
+          },
         },
         {
           type: 'layout',
           path: 'layouts/notebook/client.tsx',
           target: '<dir>/notebook/client.tsx',
+          meta: {
+            preserveAs: 'layouts/notebook',
+          },
         },
         {
           type: 'layout',
           path: 'layouts/notebook/page/index.tsx',
           target: '<dir>/notebook/page/index.tsx',
+          meta: {
+            preserveAs: 'layouts/notebook/page',
+          },
         },
       ],
       unlisted: true,
@@ -122,6 +153,9 @@ export const registry: Registry = {
           type: 'layout',
           path: 'layouts/home/index.tsx',
           target: '<dir>/home/index.tsx',
+          meta: {
+            preserveAs: 'layouts/home',
+          },
         },
         {
           type: 'ui',
@@ -303,7 +337,6 @@ export const registry: Registry = {
     },
     {
       name: 'ai/page-actions',
-      title: 'Page Actions',
       description: 'Common page actions',
       files: [
         {

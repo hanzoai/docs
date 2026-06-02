@@ -16,6 +16,7 @@ export const defaultTranslations = {
   body: 'Body',
   deprecated: 'Deprecated',
   submit: 'Submit',
+  test: 'Test',
   unsupported: 'Unsupported',
   close: 'Close',
   inputPlaceholder: 'Enter value',
@@ -42,7 +43,7 @@ export const defaultTranslations = {
 
   // TypeScript panel
   typeScriptDefinitions: 'TypeScript Definitions',
-  useTypeInTypeScript: 'Use the {name} type in TypeScript.',
+  useTypeInTypeScript: 'Use the {name} type in TypeScript.' as TranslationValue<'name'>,
 
   // Schema info tags
   schemaDefault: 'Default',
@@ -57,7 +58,7 @@ export const defaultTranslations = {
   schemaExample: 'Example',
 
   // Response tabs
-  responseTabName: 'Example {key}',
+  responseTabName: 'Example {key}' as TranslationValue<'key'>,
   responseTabNameDefault: 'Example',
 
   // Playground
@@ -76,9 +77,11 @@ export const defaultTranslations = {
   statusInternalServerError: 'Internal Server Error',
   statusSuccessful: 'Successful',
   statusError: 'Error',
-  statusNoDescription: 'No Description',
+  statusClientError: 'Client Error',
+  statusBinaryBody: 'Binary response body, {length} bytes' as TranslationValue<'length'>,
 
   // OAuth dialog
+  oauthFlowPlaceholder: 'Select a flow',
   obtainAccessToken: 'Obtain the access token for API.',
   resourceOwnerPassword: 'Resource Owner Password Flow',
   resourceOwnerPasswordDesc: 'Authenticate using username and password.',
@@ -97,6 +100,7 @@ export const defaultTranslations = {
   usernameField: 'Username',
   passwordField: 'Password',
   fetchingToken: 'Fetching token...',
+  fetchTokenError: 'Failed to fetch token',
 
   // Server select
   serverUrl: 'Server URL',
@@ -123,11 +127,18 @@ export const defaultTranslations = {
 
 export type Translations = typeof defaultTranslations;
 
+export function openapiTranslations(): TranslationsAPIExtension<'openapi', Translations> {
+  return {
+    namespace: 'openapi',
+    defaultValue: defaultTranslations,
+  };
+}
+
+/** @deprecated use `i18n.translations()` & `openapiTranslations()` instead */
 export function defineI18nOpenAPI<Languages extends string>(
   config: I18nUIConfig<Languages>,
   translations: Partial<Record<NoInfer<Languages>, Partial<Translations>>>,
 ): I18nUIConfig<Languages> {
-  const dm = deepmerge();
   return {
     ...config,
     provider(locale = config.defaultLanguage) {
@@ -135,7 +146,7 @@ export function defineI18nOpenAPI<Languages extends string>(
       const data = translations[locale as Languages];
       if (data) {
         out.translations ??= {};
-        out.translations.openapi = dm(defaultTranslations, data) as TranslationsOption;
+        out.translations.openapi = { ...defaultTranslations, ...data };
       }
       return out;
     },

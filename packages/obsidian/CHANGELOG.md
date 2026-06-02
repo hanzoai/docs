@@ -1,5 +1,31 @@
 # fumadocs-obsidian
 
+## 0.1.0
+
+### Minor Changes
+
+- a744f9f: Update min Fumadocs version
+
+### Patch Changes
+
+- a744f9f: Support frontmatter parsing at core-level
+
+## 0.0.15
+
+### Patch Changes
+
+- 2d8f596: fix `npm pack` skipping nested `node_modules`
+- Updated dependencies [2d8f596]
+  - fumadocs-core@16.7.14
+
+## 0.0.14
+
+### Patch Changes
+
+- 690ddb9: bundle more deps
+- Updated dependencies [690ddb9]
+  - fumadocs-core@16.7.13
+
 ## 0.0.13
 
 ### Patch Changes

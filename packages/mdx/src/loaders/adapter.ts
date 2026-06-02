@@ -2,8 +2,8 @@ import type { CompilerOptions } from './mdx/build-mdx';
 import type { LoadFnOutput, LoadHook } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs/promises';
-import type { TransformPluginContext } from 'rolldown';
-import type { TransformResult } from 'vite';
+import type { HookFilter, TransformPluginContext } from 'rolldown';
+import type { Environment, TransformResult } from 'vite';
 import { parse } from 'node:querystring';
 import { ValidationError } from '../utils/validation';
 import type { LoaderContext } from 'webpack';
@@ -68,7 +68,7 @@ export function toNode(loader: Loader): LoadHook {
         filePath,
         query: Object.fromEntries(parsedUrl.searchParams.entries()),
         async getSource() {
-          return (await fs.readFile(filePath)).toString();
+          return await fs.readFile(filePath, 'utf-8');
         },
         development: false,
         compiler: {
@@ -90,10 +90,10 @@ export function toNode(loader: Loader): LoadHook {
 }
 
 export interface ViteLoader {
-  filter: (id: string) => boolean;
+  filter: HookFilter;
 
   transform: (
-    this: TransformPluginContext,
+    this: TransformPluginContext & { environment?: Environment },
     value: string,
     id: string,
   ) => Promise<TransformResult | null>;
@@ -101,34 +101,45 @@ export interface ViteLoader {
 
 export function toVite(loader: Loader): ViteLoader {
   return {
-    filter(id) {
-      return !loader.test || loader.test.test(id);
+    filter: {
+      id: loader.test,
     },
     async transform(value, id) {
-      // Vite doesn't expose the real context types
-      const environment = this.environment;
       const [file, query = ''] = id.split('?', 2);
 
-      const result = await loader.load({
-        filePath: file,
-        query: parse(query),
-        getSource() {
-          return value;
-        },
-        development: environment.mode === 'dev',
-        compiler: {
-          addDependency: (file) => {
-            this.addWatchFile(file);
-          },
-        },
-      });
+      try {
+        const parsedQuery = parse(query);
+        if ('raw' in parsedQuery) {
+          return null;
+        }
 
-      if (result === null) return null;
-      return {
-        code: result.code,
-        map: result.map as TransformResult['map'],
-        moduleType: result.moduleType,
-      };
+        const result = await loader.load({
+          filePath: file,
+          query: parsedQuery,
+          getSource() {
+            return value;
+          },
+          development: this.environment ? this.environment.mode === 'dev' : false,
+          compiler: {
+            addDependency: (file) => {
+              this.addWatchFile(file);
+            },
+          },
+        });
+
+        if (result === null) return null;
+        return {
+          code: result.code,
+          map: result.map as TransformResult['map'],
+          moduleType: result.moduleType,
+        };
+      } catch (e) {
+        if (e instanceof ValidationError) {
+          throw new Error(await e.toStringFormatted(), { cause: e });
+        }
+
+        throw e;
+      }
     },
   };
 }
@@ -328,7 +339,7 @@ export function toBun(loader: Loader) {
       };
 
       if (loader.bun?.load) {
-        return loader.bun.load(readFileSync(filePath).toString(), input);
+        return loader.bun.load(readFileSync(filePath, 'utf-8'), input);
       }
 
       const result = loader.load(input);

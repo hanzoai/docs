@@ -49,9 +49,9 @@ For example, to report user feedback as a `on_rate_docs` event on Hanzo Insights
 
 ### Feedback Block
 
-You can also configure block-level feedback (e.g. a feedback popover for each paragraph).
+You can also configure block-level feedback (e.g. a feedback popover as user select text).
 
-Add the `remark-feedback-block` Remark plugin:
+Add the `remark-block-id` Remark plugin:
 
 ```tsx title="source.config.ts (Hanzo Docs MDX)"
 import {
@@ -60,37 +60,41 @@ import {
 } from '@hanzo/docs-core/mdx-plugins/remark-feedback-block';
 import { defineConfig } from '@hanzo/docs-mdx/config';
 
-const feedbackOptions: RemarkFeedbackBlockOptions = {
-  // other options:
+const blockIdOptions: RemarkBlockIdOptions = {
+  addDataAttribute: 'feedback',
 };
 
 export default defineConfig({
   mdxOptions: {
     remarkPlugins: [
       // [!code ++]
-      [remarkFeedbackBlock, feedbackOptions],
+      [remarkBlockId, blockIdOptions],
     ],
   },
 });
 ```
 
-Then, define the `FeedbackBlock` MDX component:
+Then, wrap your page content under the `FeedbackText` component:
 
 ```tsx title="components/mdx.tsx"
 import { FeedbackBlock } from '@/components/feedback/client';
 import defaultComponents from '@hanzo/docs-ui/mdx';
 import type { MDXComponents } from 'mdx/types';
 
-export function getMDXComponents(components?: MDXComponents) {
-  return {
-    ...defaultComponents,
-    FeedbackBlock: ({ children, ...rest }) => (
-      <FeedbackBlock {...rest} onSendAction={onBlockFeedbackAction}>
-        {children}
-      </FeedbackBlock>
-    ),
-    ...components,
-  } satisfies MDXComponents;
+export default async function Page() {
+  return (
+    <DocsPage>
+      <FeedbackText
+        onSendAction={async (feedback) => {
+          'use server';
+
+          console.log(feedback);
+        }}
+      >
+        {/* the content of page */}
+      </FeedbackText>
+    </DocsPage>
+  );
 }
 ```
 
@@ -98,7 +102,7 @@ export function getMDXComponents(components?: MDXComponents) {
 
 <Callout type='info' title='Good to know'>
 
-`remark-feedback-block` generates a block ID from its content and order in the page, hence it is also possible to track the blocks from 3rd party services.
+`remark-block-id` generates a block ID from its content and order in the page, hence it is also possible to track the blocks from 3rd party services.
 
 </Callout>
 

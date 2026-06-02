@@ -1,5 +1,61 @@
 # fumadocs-typescript
 
+## 5.2.6
+
+### Patch Changes
+
+- 64d6b10: Bump `ts-morph`
+
+## 5.2.5
+
+### Patch Changes
+
+- ccad791: update peer deps
+- Updated dependencies [e1567e2]
+- Updated dependencies [9a200c8]
+- Updated dependencies [c731a92]
+- Updated dependencies [ccad791]
+- Updated dependencies [a4189ce]
+  - fumadocs-core@16.7.15
+  - fumadocs-ui@16.7.15
+
+## 5.2.4
+
+### Patch Changes
+
+- 2d8f596: fix `npm pack` skipping nested `node_modules`
+- Updated dependencies [2d8f596]
+  - fumadocs-ui@16.7.14
+  - fumadocs-core@16.7.14
+
+## 5.2.3
+
+### Patch Changes
+
+- 690ddb9: bundle more deps
+- Updated dependencies [690ddb9]
+  - fumadocs-ui@16.7.13
+  - fumadocs-core@16.7.13
+
+## 5.2.2
+
+### Patch Changes
+
+- a070650: fix `remarkAutoTypeTable` not serializing `deprecated` field to MDX output
+- Updated dependencies [5524927]
+- Updated dependencies [d47c4f1]
+  - fumadocs-core@16.7.11
+  - fumadocs-ui@16.7.11
+
+## 5.2.1
+
+### Patch Changes
+
+- c64e406: fix `noUndefined` for union types in `getSimpleForm()`
+- Updated dependencies [f7e69a6]
+  - fumadocs-ui@16.7.8
+  - fumadocs-core@16.7.8
+
 ## 5.2.0
 
 ### Minor Changes
@@ -90,7 +146,6 @@
   This is necessary to support async cache adapter.
 
 - 9a3e2e8: **Remove deprecated APIs**
-
   - removed standalone `generateDocumentation()` function, create a generator instead.
   - removed `generateFiles` & MDX generation APIs, use `remarkAutoTypeTable` instead.
 
@@ -373,7 +428,6 @@
 - f75287d: **Introduce `fumadocs-docgen` package.**
 
   Offer a better authoring experience for advanced use cases.
-
   - Move `remark-dynamic-content` and `remark-install` plugins to the new package `fumadocs-docgen`.
   - Support Typescript generator by default
 

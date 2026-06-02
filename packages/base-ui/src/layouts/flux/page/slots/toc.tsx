@@ -1,7 +1,7 @@
 'use client';
 
 import * as Base from '@/components/toc';
-import { useI18n } from '@/contexts/i18n';
+import { useTranslations } from '@/contexts/i18n';
 import { useTreePath } from '@/contexts/tree';
 import { cn } from '@/utils/cn';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -31,7 +31,7 @@ export type TOCProviderProps = Base.TOCProviderProps;
 
 export const { TOCProvider } = Base;
 
-export interface TOCProps {
+export type TOCProps = {
   container?: ComponentProps<'div'>;
   trigger?: ComponentProps<'button'>;
   content?: ComponentProps<'div'>;
@@ -45,23 +45,37 @@ export interface TOCProps {
    * Custom content in TOC container, after the main TOC
    */
   footer?: ReactNode;
+} & (
+  | {
+      style?: 'normal';
+      list?: TocDefault.TOCItemsProps;
+    }
+  | {
+      style: 'clerk';
+      list?: TocClerk.TOCItemsProps;
+    }
+);
 
-  /**
-   * @defaultValue 'normal'
-   */
-  style?: 'normal' | 'clerk';
-}
-
-export function TOC({ container, trigger, content, header, footer, style = 'normal' }: TOCProps) {
+export function TOC({
+  container,
+  trigger,
+  content,
+  header,
+  footer,
+  style = 'normal',
+  list,
+}: TOCProps) {
   const items = Base.useTOCItems();
   const { TOCItems, TOCEmpty, TOCItem } = style === 'clerk' ? TocClerk : TocDefault;
+
+  if (items.length === 0 && !header && !footer) return;
 
   return (
     <PageTOCPopover {...container}>
       <PageTOCPopoverContent {...content}>
         {header}
         <Base.TOCScrollArea>
-          <TOCItems>
+          <TOCItems {...list}>
             {items.length === 0 && <TOCEmpty />}
             {items.map((item) => (
               <TOCItem key={item.url} item={item} />
@@ -138,7 +152,7 @@ function PageTOCPopoverPhysical({ className, children, ...rest }: ComponentProps
 }
 
 function PageTOCPopoverTrigger({ className, ...props }: ComponentProps<'button'>) {
-  const { text } = useI18n();
+  const t = useTranslations();
   const { open } = use(TocPopoverContext)!;
   const items = Base.useItems();
   const selectedIdx = items.findIndex((item) => item.active);
@@ -172,7 +186,7 @@ function PageTOCPopoverTrigger({ className, ...props }: ComponentProps<'button'>
       {...props}
     >
       <ProgressCircle
-        value={(selectedIdx + 1) / Math.max(1, items.length)}
+        value={(items.findLastIndex((item) => item.active) + 1) / Math.max(1, items.length)}
         max={1}
         className={cn('shrink-0', open && 'text-fd-primary')}
       />
@@ -187,7 +201,7 @@ function PageTOCPopoverTrigger({ className, ...props }: ComponentProps<'button'>
           </motion.span>
         ) : (
           <motion.span key=":toc" {...spanProps}>
-            {text.toc}
+            {t.toc}
           </motion.span>
         )}
       </AnimatePresence>
@@ -213,14 +227,15 @@ function clamp(input: number, min: number, max: number): number {
 
 function ProgressCircle({
   value,
-  strokeWidth = 2,
-  size = 24,
+  strokeWidth = 1.5,
+  size = 18,
   min = 0,
   max = 100,
+  style,
   ...restSvgProps
 }: ProgressCircleProps) {
   const normalizedValue = clamp(value, min, max);
-  const radius = (size - strokeWidth) / 2;
+  const radius = size / 2 - strokeWidth;
   const circumference = 2 * Math.PI * radius;
   const progress = (normalizedValue / max) * circumference;
   const circleProps = {
@@ -238,6 +253,7 @@ function ProgressCircle({
       aria-valuenow={normalizedValue}
       aria-valuemin={min}
       aria-valuemax={max}
+      style={{ width: size, height: size, ...style }}
       {...restSvgProps}
     >
       <circle {...circleProps} className="stroke-current/25" />

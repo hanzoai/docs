@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import * as path from 'node:path';
 import { resolveFromRemote } from '@hanzo/docs-cli/build';
 
-const baseDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../');
+const baseDir = path.join(import.meta.dirname, '../../');
 
 export const registry: Registry = {
   dir: baseDir,
@@ -17,28 +17,63 @@ export const registry: Registry = {
     // source object is external
     if (filePath.startsWith('lib/source/')) return false;
   },
-  onResolve(ref) {
+  onParseReference(ref) {
+    if (ref.type === 'unknown' && ref.specifier === 'hast') {
+      return {
+        type: 'dependency',
+        dep: '@types/hast',
+        specifier: 'hast',
+      };
+    }
+
     if (ref.type === 'file') {
-      const file = path.relative(baseDir, ref.file);
+      let file = path.relative(baseDir, ref.file);
 
       if (file === 'lib/cn.ts') {
-        return resolveFromRemote(radixUi.registry, 'cn', () => true)!;
+        return {
+          type: 'file',
+          file: path.join(radixUi.registry.dir, 'utils/cn.ts'),
+        };
+      }
+
+      file = path.relative(radixUi.registry.dir, ref.file);
+      if (file.startsWith('contexts/') || file.startsWith('utils/use-')) {
+        return {
+          dep: 'fumadocs-ui',
+          type: 'dependency',
+          specifier: `fumadocs-ui/${removeExtname(file)}`,
+        };
+      }
+
+      file = path.relative(baseUi.registry.dir, ref.file);
+      if (file.startsWith('contexts/') || file.startsWith('utils/use-')) {
+        return {
+          dep: '@fumadocs/base-ui',
+          type: 'dependency',
+          specifier: `@fumadocs/base-ui/${removeExtname(file)}`,
+        };
       }
     }
 
     if (ref.type === 'dependency' && ref.dep === '@hanzo/docs-ui') {
       const match = /@hanzo\/docs-ui\/components\/ui\/(.*)/.exec(ref.specifier);
       if (match) {
-        return resolveFromRemote(
-          radixUi.registry,
-          match[1],
-          (file) => path.basename(file.path, path.extname(file.path)) === match[1],
-        )!;
+        return {
+          type: 'file',
+          file: path.join(radixUi.registry.dir, `components/ui/${match[1]}.tsx`),
+        };
       }
     }
 
     return ref;
   },
+};
+
+export const registry: Registry = {
+  dir: baseDir,
+  name: 'fumadocs',
+  subRegistries: [radixUi.registry, baseUi.registry, sanity.registry],
+
   components: [
     {
       name: 'layouts/docs-min',
@@ -90,19 +125,40 @@ export const registry: Registry = {
       ],
     },
     {
-      name: 'ai/openrouter',
-      title: 'AI Chat (Next.js + OpenRouter)',
-      description: 'Ask AI dialog for your docs, requires OPENROUTER_API_KEY',
+      name: 'ai/shared',
+      unlisted: true,
       files: [
         {
           type: 'components',
-          path: 'components/openrouter/search.tsx',
+          path: 'components/ai-sdk/search.tsx',
           target: '<dir>/ai/search.tsx',
         },
+      ],
+    },
+    {
+      name: 'ai/openrouter',
+      title: 'AI Chat (AI SDK)',
+      description: 'Ask AI dialog for your docs, default using OpenRouter',
+      files: [
         {
-          type: 'route',
-          path: 'lib/openrouter/server.ts',
-          target: 'app/api/chat/route.ts',
+          type: 'route-handler',
+          route: 'api/chat',
+          path: 'lib/openrouter/route.ts',
+        },
+      ],
+      dependencies: {
+        flexsearch: '^0.8.212',
+      },
+    },
+    {
+      name: 'ai/llmgateway',
+      title: 'AI Chat (LLMGateway)',
+      description: 'Ask AI dialog for your docs, using LLMGateway',
+      files: [
+        {
+          type: 'route-handler',
+          route: 'api/chat',
+          path: 'lib/llmgateway/route.ts',
         },
       ],
       dependencies: {
@@ -143,7 +199,7 @@ export const registry: Registry = {
     },
     {
       name: 'og/mono',
-      description: 'Open graph image generation (mono-style)',
+      description: 'Open graph image generation - mono style',
       files: [
         {
           type: 'lib',
@@ -171,3 +227,7 @@ export const registry: Registry = {
     react: null,
   },
 };
+
+function removeExtname(file: string) {
+  return file.slice(0, -path.extname(file).length);
+}
