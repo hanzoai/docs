@@ -4,36 +4,29 @@ import {
   type LoaderPlugin,
   loader,
   multiple,
-} from '@hanzo/docs/core/source';
-import { openapiPlugin, openapiSource } from '@hanzo/docs/openapi/server';
-import { blog as blogPosts, docs } from '@hanzo/mdx:collections/server';
-import { createSource } from '@hanzo/docs/mdx/runtime/server';
-import { lucideIconsPlugin } from '@hanzo/docs/core/source/lucide-icons';
-import { openapi, hasSpecs } from '@/lib/openapi';
+} from 'fumadocs-core/source';
+import { openapiPlugin, openapiSource } from 'fumadocs-openapi/server';
+import { blog as blogPosts, docs } from 'collections/server';
+import { toFumadocsSource } from 'fumadocs-mdx/runtime/server';
+import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
+import { openapi } from '@/lib/openapi';
 
-const sources: Record<string, any> = {
-  docs: docs.toSource(),
-};
-
-// Only load OpenAPI source when specs exist (skipped during static export)
-if (hasSpecs) {
-  sources.openapi = await openapiSource(openapi, {
-    baseDir: 'openapi/(generated)',
-    meta: {
-      folderStyle: 'separator',
-    },
-    groupBy: 'tag',
-  });
-}
-
-export const source = loader(multiple(sources), {
-  baseUrl: '/docs',
-  plugins: [
-    pageTreeCodeTitles(),
-    lucideIconsPlugin(),
-    ...(hasSpecs ? [openapiPlugin()] : []),
-  ],
-});
+export const source = loader(
+  multiple({
+    docs: docs.toFumadocsSource(),
+    openapi: await openapiSource(openapi, {
+      baseDir: 'openapi/(generated)',
+      meta: {
+        folderStyle: 'separator',
+      },
+      groupBy: 'tag',
+    }),
+  }),
+  {
+    baseUrl: '/docs',
+    plugins: [pageTreeCodeTitles(), lucideIconsPlugin(), openapiPlugin()],
+  },
+);
 
 function pageTreeCodeTitles(): LoaderPlugin {
   return {
@@ -58,8 +51,7 @@ function pageTreeCodeTitles(): LoaderPlugin {
   };
 }
 
-export const blog = loader({
-  source: createSource(blogPosts, []),
+export const blog = loader(toFumadocsSource(blogPosts, []), {
   baseUrl: '/blog',
 });
 

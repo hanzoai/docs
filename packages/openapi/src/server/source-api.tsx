@@ -7,12 +7,12 @@ import {
   type PageTreeTransformer,
   type Source,
   type VirtualFile,
-} from '@hanzo/docs-core/source';
+} from 'fumadocs-core/source';
 import type { OpenAPIServer } from '@/server/create';
 import type { SchemaToPagesOptions } from '@/utils/pages/preset-auto';
 import type { ApiPageProps } from '@/ui/api-page';
-import type { StructuredData } from '@hanzo/docs-core/mdx-plugins';
-import type { TOCItemType } from '@hanzo/docs-core/toc';
+import type { StructuredData } from 'fumadocs-core/mdx-plugins';
+import type { TOCItemType } from 'fumadocs-core/toc';
 import type { ProcessedDocument } from '@/utils/process-document';
 import type {
   OperationOutput,
@@ -22,7 +22,7 @@ import type {
 } from '@/utils/pages/builder';
 import path from 'node:path';
 
-declare module '@hanzo/docs-core/source' {
+declare module 'fumadocs-core/source' {
   export interface PageData {
     /**
      * Added by Fumadocs OpenAPI
