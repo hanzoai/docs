@@ -4,17 +4,17 @@ export interface HanzoSearchOptions {
   /**
    * The Hanzo Search API endpoint.
    *
-   * For `backend: 'cloud'` (default): the cloud-api search-docs URL.
+   * For `backend: 'cloud'` (default): the Hanzo AI `/v1/search` URL.
    * For `backend: 'meilisearch'`: the Meilisearch base URL (e.g. 'https://search.hanzo.ai').
    *
-   * @defaultValue 'https://cloud-api.hanzo.ai/api/search-docs'
+   * @defaultValue 'https://api.hanzo.ai/v1/search'
    */
   endpoint?: string;
 
   /**
    * Search backend to use.
    *
-   * - `'cloud'`: Hanzo cloud-api `/api/search-docs` endpoint.
+   * - `'cloud'`: Hanzo AI `/v1/search` endpoint.
    * - `'meilisearch'`: Direct Meilisearch instance (requires `index`).
    *
    * @defaultValue 'cloud'
@@ -128,7 +128,7 @@ export async function searchDocs(
   options: HanzoSearchOptions,
 ): Promise<SortedResult[]> {
   const {
-    endpoint = 'https://cloud-api.hanzo.ai/api/search-docs',
+    endpoint = 'https://api.hanzo.ai/v1/search',
     backend = 'cloud',
     index = 'app-docs-hanzo-ai-docs',
     apiKey,
