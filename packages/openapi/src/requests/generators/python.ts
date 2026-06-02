@@ -1,6 +1,6 @@
 import type { CodeUsageGenerator } from '@/requests/generators';
-import { generatePythonObject } from '@/requests/to-python-object';
 import { resolveMediaAdapter } from '@/requests/media/adapter';
+import { doubleQuote } from '../string-utils';
 
 export const python: CodeUsageGenerator = {
   label: 'Python',
@@ -8,7 +8,7 @@ export const python: CodeUsageGenerator = {
   generate(url, data, { mediaAdapters }) {
     const headers: Record<string, string> = {};
     const imports = new Set<string>();
-    const params = [`"${data.method}"`, 'url'];
+    const params = [`"${data.method.toUpperCase()}"`, 'url'];
     let body: string | undefined;
 
     imports.add('requests');
@@ -49,10 +49,35 @@ export const python: CodeUsageGenerator = {
       .map((name) => 'import ' + name)
       .join('\n')}
 
-url = ${JSON.stringify(url)}
+url = ${doubleQuote(url)}
 ${body ?? ''}
 response = requests.request(${params.join(', ')})
 
 print(response.text)`;
   },
 };
+
+export function generatePythonObject(v: unknown, imports: Set<string>): string {
+  if (v === null) {
+    return 'None';
+  } else if (typeof v === 'boolean') {
+    return v ? 'True' : 'False';
+  } else if (typeof v === 'string') {
+    return doubleQuote(v);
+  } else if (typeof v === 'number') {
+    return v.toString();
+  } else if (Array.isArray(v)) {
+    const items = v.map((item) => generatePythonObject(item, imports));
+    return `[${items.join(', ')}]`;
+  } else if (v instanceof Date) {
+    imports.add('datetime');
+    return `datetime.datetime(${v.getFullYear()}, ${v.getMonth() + 1}, ${v.getDate()}, ${v.getHours()}, ${v.getMinutes()}, ${v.getSeconds()}, ${v.getMilliseconds()})`;
+  } else if (typeof v === 'object') {
+    const entries = Object.entries(v).map(
+      ([key, value]) => `  ${doubleQuote(key)}: ${generatePythonObject(value, imports)}`,
+    );
+    return `{\n${entries.join(', \n')}\n}`;
+  } else {
+    throw new Error(`Unsupported type: ${typeof v}`);
+  }
+}

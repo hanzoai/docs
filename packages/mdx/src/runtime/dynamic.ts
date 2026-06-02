@@ -7,6 +7,7 @@ import fs from 'node:fs/promises';
 import { server, type ServerOptions } from './server';
 import { type CoreOptions, createCore } from '../core';
 import type { FileInfo, InternalTypeConfig } from './types';
+import jsxRuntimeDefault from 'react/jsx-runtime';
 
 export interface LazyEntry<Data = unknown> {
   info: FileInfo;
@@ -19,6 +20,31 @@ export type CreateDynamic<Config, TC extends InternalTypeConfig = InternalTypeCo
   typeof dynamic<Config, TC>
 >;
 
+interface ExecuteOptions {
+  scope?: Record<string, unknown>;
+  baseUrl?: string | URL;
+  jsxRuntime?: unknown;
+}
+
+const AsyncFunction: new (...args: string[]) => (...args: unknown[]) => Promise<unknown> =
+  Object.getPrototypeOf(executeMdx).constructor;
+
+/** we always assume the input code is safe and execute it directly */
+async function executeMdx(compiled: string, options: ExecuteOptions = {}) {
+  const { opts: scopeOpts, ...scope } = options.scope ?? {};
+  const fullScope = {
+    opts: {
+      ...(scopeOpts as object),
+      ...(options.jsxRuntime ?? jsxRuntimeDefault),
+      baseUrl: options.baseUrl,
+    },
+    ...scope,
+  };
+
+  const hydrateFn = new AsyncFunction(...Object.keys(fullScope), compiled);
+  return await hydrateFn.apply(hydrateFn, Object.values(fullScope));
+}
+
 export async function dynamic<Config, TC extends InternalTypeConfig>(
   configExports: Config,
   coreOptions: CoreOptions,
@@ -26,7 +52,7 @@ export async function dynamic<Config, TC extends InternalTypeConfig>(
 ) {
   const core = createCore(coreOptions);
   await core.init({
-    config: buildConfig(configExports as Record<string, unknown>),
+    config: buildConfig(configExports as Record<string, unknown>, process.cwd()),
   });
 
   const create = server<Config, TC>(serverOptions);

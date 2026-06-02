@@ -1,10 +1,58 @@
 # fumadocs
 
+## 1.3.10
+
+### Patch Changes
+
+- 2d22086: Improve for Sanity registry
+
+## 1.3.9
+
+### Patch Changes
+
+- af7ee2d: fix layout preserve plugin
+
+## 1.3.8
+
+### Patch Changes
+
+- 71c15fd: fix base dir detection for React Router
+
+## 1.3.7
+
+### Patch Changes
+
+- 2d8f596: fix `npm pack` skipping nested `node_modules`
+
+## 1.3.6
+
+### Patch Changes
+
+- 690ddb9: bundle more deps
+
+## 1.3.5
+
+### Patch Changes
+
+- 7c59264: Adopt Fuma CLI
+
+## 1.3.4
+
+### Patch Changes
+
+- 1a84b96: hotfix cwd for default config
+
+## 1.3.3
+
+### Patch Changes
+
+- 3ff78c9: Support framework-agnostic route handler
+
 ## 1.3.2
 
 ### Patch Changes
 
-- 823d880: Support slot in customise command
+- 823d880: Support slot in customize command
 
 ## 1.3.1
 
@@ -37,7 +85,7 @@
 ### Patch Changes
 
 - c22f6ee: bump tsdown
-- 4c570ce: add Flux layout to customise option
+- 4c570ce: add Flux layout to customize option
 
 ## 1.2.3
 
@@ -67,7 +115,7 @@
 
 ### Minor Changes
 
-- 897fdef: Update `customise` command to support Fumadocs UI 16.2.0
+- 897fdef: Update `customize` command to support Fumadocs UI 16.2.0
 
 ## 1.0.3
 
@@ -114,13 +162,13 @@
 
 ### Patch Changes
 
-- 482f728: add home layout to customise option
+- 482f728: add home layout to customize option
 
 ## 0.1.0
 
 ### Minor Changes
 
-- 72a3e8c: Add customise command
+- 72a3e8c: Add customize command
 
 ## 0.0.8
 

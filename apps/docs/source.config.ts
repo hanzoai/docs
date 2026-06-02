@@ -79,7 +79,6 @@ export const docs = defineDocs({
         rehypeCodeOptions: isLint
           ? false
           : {
-              langs: ['ts', 'js', 'html', 'tsx', 'mdx'],
               inline: 'tailing-curly-colon',
               themes: {
                 light: 'catppuccin-latte',
@@ -89,6 +88,11 @@ export const docs = defineDocs({
                 ...(rehypeCodeDefaultOptions.transformers ?? []),
                 transformerTwoslash({
                   typesCache: createFileSystemTypesCache(),
+                  twoslashOptions: {
+                    compilerOptions: {
+                      types: ['@types/node'],
+                    },
+                  },
                 }),
                 transformerEscape(),
               ],
@@ -117,6 +121,7 @@ export const docs = defineDocs({
             },
           },
         },
+        remarkImageOptions: isLint ? false : undefined,
         remarkNpmOptions: {
           persist: {
             id: 'package-manager',
@@ -128,7 +133,7 @@ export const docs = defineDocs({
               remarkPassthroughUnknownJsx,
               remarkSteps,
               remarkMath,
-              remarkFeedbackBlock,
+              [remarkBlockId, { addDataAttribute: 'feedback' }],
               [remarkAutoTypeTable, typeTableOptions],
               remarkTypeScriptToJavaScript,
             ],
@@ -173,6 +178,7 @@ export const blog = defineCollections({
       remarkCodeTabOptions: {
         parseMdx: true,
       },
+      remarkImageOptions: isLint ? false : undefined,
       remarkNpmOptions: {
         persist: {
           id: 'package-manager',

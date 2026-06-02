@@ -23,14 +23,6 @@ export const Route = createFileRoute('/docs/$')({
   },
 });
 
-const stories = {
-  callout: calloutStory,
-};
-
-const clientStories = {
-  callout: calloutStoryClient,
-};
-
 const serverLoader = createServerFn({
   method: 'GET',
 })
@@ -41,7 +33,6 @@ const serverLoader = createServerFn({
 
     return {
       path: page.path,
-      storyPayloads: await getStoryPayloads(stories),
       pageTree: await source.serializePageTree(source.getPageTree()),
     };
   });
@@ -71,13 +62,11 @@ function Page() {
 
   return (
     <DocsLayout {...baseOptions()} tree={data.pageTree}>
-      <StoryPayloadProvider payloads={data.storyPayloads} clients={clientStories}>
-        <Suspense>
-          {clientLoader.useContent(data.path, {
-            className: '',
-          })}
-        </Suspense>
-      </StoryPayloadProvider>
+      <Suspense>
+        {clientLoader.useContent(data.path, {
+          className: '',
+        })}
+      </Suspense>
     </DocsLayout>
   );
 }

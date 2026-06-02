@@ -1,13 +1,13 @@
 import { cancel, group, intro, log, outro, select } from '@clack/prompts';
 import picocolors from 'picocolors';
-import { install } from '@/commands/add';
-import type { RegistryClient } from '@/registry/client';
-import { ComponentInstaller } from '@/registry/installer';
+import type { Target } from '@/commands/add';
 import { UIRegistries } from '@/commands/shared';
-import { pluginPreserveLayouts } from '@/registry/plugins/preserve';
+import { LoadedConfig } from '@/config';
+import { RegistryConnector } from 'fuma-cli/registry/connector';
+import { FumadocsComponentInstaller } from '@/registry/installer';
 
 interface TargetInfo {
-  target: string[];
+  targets: Target[];
   id: string;
   print?: () => void;
 }
@@ -19,26 +19,24 @@ interface SlotPrintInfo {
   isPage: boolean;
 }
 
-export async function customise(client: RegistryClient) {
-  intro(picocolors.bgBlack(picocolors.whiteBright('Customise Fumadocs UI')));
-  const config = client.config;
-  const installer = new ComponentInstaller(client, {
-    plugins: [pluginPreserveLayouts()],
-  });
-  const registry = UIRegistries[config.uiLibrary];
-  const info = await client.createLinkedRegistryClient(registry).fetchRegistryInfo();
+export async function customise(config: LoadedConfig, connector: RegistryConnector) {
+  intro(picocolors.bgBlack(picocolors.whiteBright('Customize Fumadocs UI')));
+
+  const installer = new FumadocsComponentInstaller(connector, config);
+  const subRegistry = UIRegistries[config.uiLibrary];
+  const info = await connector.fetchRegistryInfo(subRegistry);
 
   const result = await group(
     {
       layout: (): Promise<TargetInfo | symbol> =>
         select({
-          message: 'What do you want to customise?',
+          message: 'What do you want to customize?',
           options: [
             {
               label: 'Docs Layout',
               value: {
                 id: 'docs',
-                target: [`${registry}/layouts/docs`],
+                targets: [{ subRegistry, name: 'layouts/docs' }],
                 print() {
                   printLayout(
                     ['@hanzo/docs-ui/layouts/docs', '@/layouts/docs'],
@@ -52,7 +50,7 @@ export async function customise(client: RegistryClient) {
               label: 'Notebook Layout',
               value: {
                 id: 'notebook',
-                target: [`${registry}/layouts/notebook`],
+                targets: [{ subRegistry, name: 'layouts/notebook' }],
                 print() {
                   printLayout(
                     ['@hanzo/docs-ui/layouts/notebook', '@/layouts/notebook'],
@@ -66,7 +64,7 @@ export async function customise(client: RegistryClient) {
               label: 'Flux Layout',
               value: {
                 id: 'flux',
-                target: [`${registry}/layouts/flux`],
+                targets: [{ subRegistry, name: 'layouts/flux' }],
                 print() {
                   printLayout(
                     ['@hanzo/docs-ui/layouts/flux', '@/layouts/flux'],
@@ -80,7 +78,7 @@ export async function customise(client: RegistryClient) {
               label: 'Home Layout',
               value: {
                 id: 'home',
-                target: [`${registry}/layouts/home`],
+                targets: [{ subRegistry, name: 'layouts/home' }],
                 print() {
                   printLayout(['@hanzo/docs-ui/layouts/home', `@/layouts/home`]);
                 },
@@ -94,7 +92,7 @@ export async function customise(client: RegistryClient) {
         if (selected.id === 'home') return Promise.resolve(selected);
 
         return select<TargetInfo>({
-          message: 'Which part do you want to customise?',
+          message: 'Which part do you want to customize?',
           options: [
             {
               label: 'All',
@@ -106,7 +104,7 @@ export async function customise(client: RegistryClient) {
               hint: 'for those who want to build their own UI from ground up',
               value: {
                 id: 'docs-min',
-                target: ['layouts/docs-min'],
+                targets: [{ name: 'layouts/docs-min' }],
                 print() {
                   printLayout(
                     ['@hanzo/docs-ui/layouts/docs', '@/layouts/docs'],
@@ -128,7 +126,7 @@ export async function customise(client: RegistryClient) {
                   hint: "only replace a part of layout's page, useful for adjusting details",
                   value: {
                     id: index.name,
-                    target: [`${registry}/${index.name}`],
+                    targets: [{ subRegistry, name: index.name }],
                     print() {
                       printSlot({
                         at: `@/layouts/${selected.id}/page/slots/${name}`,
@@ -146,7 +144,7 @@ export async function customise(client: RegistryClient) {
                 hint: 'only replace a part of layout, useful for adjusting details',
                 value: {
                   id: index.name,
-                  target: [`${registry}/${index.name}`],
+                  targets: [{ subRegistry, name: index.name }],
                   print() {
                     printSlot({
                       at: `@/layouts/${selected.id}/slots/${name}`,
@@ -170,9 +168,12 @@ export async function customise(client: RegistryClient) {
     },
   );
 
-  const target = result.target as TargetInfo;
-  await install(target.target, installer);
-  target.print?.();
+  const targetInfo = result.target as TargetInfo;
+  for (const target of targetInfo.targets) {
+    await installer.installInteractive(target.name, target.subRegistry);
+  }
+
+  targetInfo.print?.();
 
   outro(picocolors.bold('Have fun!'));
 }

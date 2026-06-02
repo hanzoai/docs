@@ -12,7 +12,7 @@ export const source = loader({
 });
 
 async function createMarbleSource(): Promise<
-  Source<{
+  StaticSource<{
     metaData: MetaData;
     pageData: Post;
   }>

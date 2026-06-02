@@ -1,5 +1,233 @@
 # fumadocs-ui
 
+## 16.9.3
+
+### Patch Changes
+
+- Updated dependencies [42f0255]
+- Updated dependencies [a807798]
+  - fumadocs-core@16.9.3
+
+## 16.9.2
+
+### Patch Changes
+
+- 84ce691: consistent toc size when empty
+- Updated dependencies [5d579bd]
+- Updated dependencies [5836093]
+  - fumadocs-core@16.9.2
+
+## 16.9.1
+
+### Patch Changes
+
+- Updated dependencies [e77b9b3]
+- Updated dependencies [334c8fd]
+  - fumadocs-core@16.9.1
+
+## 16.9.0
+
+### Minor Changes
+
+- 214d5b0: Introduce new translations API
+
+### Patch Changes
+
+- Updated dependencies [818ed21]
+- Updated dependencies [214d5b0]
+- Updated dependencies [3b66725]
+  - fumadocs-core@16.9.0
+
+## 16.8.12
+
+### Patch Changes
+
+- Updated dependencies [768b676]
+  - fumadocs-core@16.8.12
+
+## 16.8.11
+
+### Patch Changes
+
+- Updated dependencies [1dc86c7]
+  - fumadocs-core@16.8.11
+
+## 16.8.10
+
+### Patch Changes
+
+- Updated dependencies [062beab]
+- Updated dependencies [505cfe0]
+  - fumadocs-core@16.8.10
+
+## 16.8.9
+
+### Patch Changes
+
+- Updated dependencies [2ca3eab]
+  - fumadocs-core@16.8.9
+
+## 16.8.8
+
+### Patch Changes
+
+- b494c8d: Support copy ID in headings
+- 03626ba: [Search UI] show `ctrl` for Linux machines
+  - fumadocs-core@16.8.8
+
+## 16.8.7
+
+### Patch Changes
+
+- 34f37f3: hotfix TOC
+  - fumadocs-core@16.8.7
+
+## 16.8.6
+
+### Patch Changes
+
+- 1aa48d0: fix RTL layout for Clerk style
+  - fumadocs-core@16.8.6
+
+## 16.8.5
+
+### Patch Changes
+
+- Updated dependencies [79d3209]
+  - fumadocs-core@16.8.5
+
+## 16.8.4
+
+### Patch Changes
+
+- b5ff03b: Support new OG image design for Takumi
+- Updated dependencies [61b15e9]
+- Updated dependencies [1a5433c]
+  - fumadocs-core@16.8.4
+
+## 16.8.3
+
+### Patch Changes
+
+- 8082ef6: Add `legacy/layout` for versions prior to 16.2
+- 8082ef6: Add `css/preset-legacy.css` for versions prior to 16.2
+- 8082ef6: Add `legacy/sidebar` for versions prior to 16.2
+  - fumadocs-core@16.8.3
+
+## 16.8.2
+
+### Patch Changes
+
+- 0e8405a: Update default OG image
+  - fumadocs-core@16.8.2
+
+## 16.8.1
+
+### Patch Changes
+
+- 3ae8809: Improve TOC sizing
+  - fumadocs-core@16.8.1
+
+## 16.8.0
+
+### Patch Changes
+
+- Updated dependencies [68c2b49]
+
+## 16.7.16
+
+### Patch Changes
+
+- f2c6e59: Reduce iterations for calculating TOC track
+- 9cf33e9: Improve inline code output
+- 9cf33e9: Support async hooks in Shiki transformers
+- Updated dependencies [9cf33e9]
+- Updated dependencies [9cf33e9]
+  - fumadocs-core@16.7.16
+
+## 16.7.15
+
+### Patch Changes
+
+- c731a92: Implement selective re-render for TOC
+- ccad791: Expose `next-themes`
+- Updated dependencies [e1567e2]
+- Updated dependencies [9a200c8]
+- Updated dependencies [c731a92]
+- Updated dependencies [a4189ce]
+  - fumadocs-core@16.7.15
+
+## 16.7.14
+
+### Patch Changes
+
+- 2d8f596: fix `npm pack` skipping nested `node_modules`
+- Updated dependencies [2d8f596]
+  - @fumadocs/tailwind@0.0.5
+  - fumadocs-core@16.7.14
+
+## 16.7.13
+
+### Patch Changes
+
+- 690ddb9: bundle more deps
+- Updated dependencies [690ddb9]
+  - @fumadocs/tailwind@0.0.4
+  - fumadocs-core@16.7.13
+
+## 16.7.12
+
+### Patch Changes
+
+- a5dcc11: allow to specify `<TOCItems />` props
+- 56f7e5b: Improve TOC thumb box
+  - fumadocs-core@16.7.12
+
+## 16.7.11
+
+### Patch Changes
+
+- Updated dependencies [5524927]
+- Updated dependencies [d47c4f1]
+  - fumadocs-core@16.7.11
+
+## 16.7.10
+
+### Patch Changes
+
+- fumadocs-core@16.7.10
+
+## 16.7.9
+
+### Patch Changes
+
+- f580ef6: Fix deserialized page tree item name styles
+- Updated dependencies [f580ef6]
+  - fumadocs-core@16.7.9
+
+## 16.7.8
+
+### Patch Changes
+
+- f7e69a6: Redesign sidebar footer
+  - fumadocs-core@16.7.8
+
+## 16.7.7
+
+### Patch Changes
+
+- 9eb3c84: fix TOC line offset
+- 0f39a9f: Improve TOC rendering for steps
+- Updated dependencies [0a6507b]
+  - fumadocs-core@16.7.7
+
+## 16.7.6
+
+### Patch Changes
+
+- 6849807: Fix `shiki.css` padding
+  - fumadocs-core@16.7.6
+
 ## 16.7.5
 
 ### Patch Changes
@@ -923,7 +1151,7 @@
 ### Patch Changes
 
 - 6de6ff3: Restrict exports of `layouts` to avoid projects importing internal/unstable APIs
-- f0b1fee: Improve layout component customisation experience by handling RWD automatically
+- f0b1fee: Improve layout component customization experience by handling RWD automatically
   - fumadocs-core@15.6.11
 
 ## 15.6.10
@@ -1306,7 +1534,7 @@
 
 ### Patch Changes
 
-- eb18da9: Support `searchToggle` option to customise search toggle
+- eb18da9: Support `searchToggle` option to customize search toggle
 - 085e39f: Fix inline code issues
 - 4d50bcf: fix banner overlapping with collapsible control
 - Updated dependencies [ec85a6c]
@@ -1415,7 +1643,7 @@
 
 ### Patch Changes
 
-- b790699: Support `themeSwitch` option in layouts to customise theme switch
+- b790699: Support `themeSwitch` option in layouts to customize theme switch
 - Updated dependencies [72f79cf]
   - fumadocs-core@15.0.17
 
@@ -2258,7 +2486,7 @@
 
 - b02eebf: **Move `keepCodeBlockBackground` option to code block component**
 
-  **why:** Easier to customise code block styles.
+  **why:** Easier to customize code block styles.
 
   **migrate:**
 
@@ -2407,7 +2635,7 @@
   />;
   ```
 
-  You can ignore this if you didn't customise the default `pre` element.
+  You can ignore this if you didn't customize the default `pre` element.
 
 - 4373231: **Remove `RollButton` component**
 
@@ -3216,7 +3444,7 @@
 
 - 2ea9437: **Change usage of Code Block component**
 
-  The inner `pre` element is now separated from code block container, making it easier to customise.`
+  The inner `pre` element is now separated from code block container, making it easier to customize.`
 
   Before:
 

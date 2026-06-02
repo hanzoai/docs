@@ -2,7 +2,6 @@
 import {
   type FC,
   Fragment,
-  lazy,
   type ReactNode,
   useEffect,
   useMemo,
@@ -11,9 +10,8 @@ import {
   useRef,
 } from 'react';
 import { useApiContext, useServerContext } from '@/ui/contexts/api';
-import type { FetchResult } from '@/playground/fetcher';
-import type { SecurityEntry } from '@/playground/index';
-import { getStatusInfo } from './status-info';
+import type { BrowserFetcherOptions } from '@/playground/fetcher';
+import { DefaultResultDisplay, type ResultDisplayProps } from './components/result-display';
 import { joinURL, resolveRequestData, resolveServerUrl, withBase } from '@/utils/url';
 import { MethodLabel } from '@/ui/components/method-label';
 import { useQuery } from '@/utils/use-query';
@@ -26,7 +24,7 @@ import { ChevronDown, LoaderCircle } from 'lucide-react';
 import { encodeRequestData } from '@/requests/media/encode';
 import { buttonVariants } from '@hanzo/docs-ui/components/ui/button';
 import { cn } from '@/utils/cn';
-import { SchemaProvider, SchemaScope, useResolvedSchema } from '@/playground/schema';
+import { anyFields, SchemaProvider, SchemaScope, useResolvedSchema } from '@/playground/schema';
 import {
   Select,
   SelectContent,
@@ -35,24 +33,28 @@ import {
   SelectValue,
 } from '@/ui/components/select';
 import { labelVariants } from '@/ui/components/input';
-import type { ParsedSchema } from '@/utils/schema';
+import { getPreferredType, type SecurityEntry, type ParsedSchema } from '@/utils/schema';
 import ServerSelect from './components/server-select';
 import { useStorageKey } from '@/ui/client/storage-key';
-import { useExampleRequests } from '@/ui/operation/usage-tabs/client';
 import {
+  type DataEngine,
   FieldKey,
-  Stf,
   StfProvider,
   useDataEngine,
   useFieldValue,
   useListener,
   useStf,
 } from '@fumari/stf';
-import { objectGet, objectSet, stringifyFieldKey } from '@fumari/stf/lib/utils';
+import { arrayStartsWith, objectGet, objectSet, stringifyFieldKey } from '@fumari/stf/lib/utils';
 import { FieldInput, FieldSet, JsonInput, ObjectInput } from './components/inputs';
-import type { ParameterObject } from '@/types';
-import { ClientCodeBlock } from '@/ui/components/codeblock';
+import type { Document, HttpMethods, ParameterObject } from '@/types';
 import { useTranslations } from '@/ui/client/i18n';
+import { useOperationContext } from '@/ui/operation/client';
+import { OAuthDialog, OAuthDialogContent, OAuthDialogTrigger } from './components/oauth-dialog';
+import { dereferenceSwallow } from '@/utils/schema/dereference';
+import { useAuth } from './auth';
+import { useOnChange } from 'fumadocs-core/utils/use-on-change';
+import { Spinner } from './components/spinner';
 
 export interface FormValues extends Record<string, unknown> {
   path: Record<string, unknown>;
@@ -64,18 +66,20 @@ export interface FormValues extends Record<string, unknown> {
 
 export interface PlaygroundClientProps extends ComponentProps<'form'>, SchemaScope {
   route: string;
-  method: string;
-  parameters?: ParameterObject[];
+  method: HttpMethods;
   securities: SecurityEntry[][];
-  body?: {
-    schema: ParsedSchema;
-    mediaType: string;
-  };
-  /**
-   * Resolver for $ref schemas you've passed
-   */
-  references: Record<string, ParsedSchema>;
+  /** the OpenAPI document (not dereferenced) */
+  doc: Document;
   proxyUrl?: string;
+  deprecated?: boolean;
+}
+
+export type { ResultDisplayProps };
+export { DefaultResultDisplay };
+
+export interface CollapsiblePanelProps extends Omit<ComponentProps<typeof Collapsible>, 'title'> {
+  'data-type': 'authorization' | 'body' | ParamType;
+  title: ReactNode;
 }
 
 export interface PlaygroundClientOptions {
@@ -84,14 +88,18 @@ export interface PlaygroundClientOptions {
    */
   transformAuthInputs?: (fields: AuthField[]) => AuthField[];
 
+  fetchOptions?: BrowserFetcherOptions;
+
   /**
    * Request timeout in seconds (default: 10s)
+   * @deprecated use `fetchOptions.requestTimeout` instead.
    */
   requestTimeout?: number;
 
-  components?: Partial<{
-    ResultDisplay: FC<{ data: FetchResult }>;
-  }>;
+  components?: {
+    ResultDisplay?: FC<ResultDisplayProps>;
+    CollapsiblePanel?: FC<CollapsiblePanelProps>;
+  };
 
   /**
    * render the parameter inputs of API endpoint.
@@ -106,62 +114,68 @@ export interface PlaygroundClientOptions {
   /**
    * render the input for API endpoint body.
    *
-   * @see renderParameterField for customisation tips
+   * @see renderParameterField for customization tips
    */
-  renderBodyField?: (
-    fieldName: 'body',
-    info: {
-      schema: ParsedSchema;
-      mediaType: string;
-    },
-  ) => ReactNode;
+  renderBodyField?: (fieldName: 'body', info: RequestBodyInfo) => ReactNode;
 }
 
-const OauthDialog = lazy(() =>
-  import('./components/oauth-dialog').then((mod) => ({
-    default: mod.OauthDialog,
-  })),
-);
-const OauthDialogTrigger = lazy(() =>
-  import('./components/oauth-dialog').then((mod) => ({
-    default: mod.OauthDialogTrigger,
-  })),
-);
+interface RequestBodyInfo {
+  schema: ParsedSchema;
+  mediaType: string;
+}
 
 export default function PlaygroundClient({
   route,
-  method = 'GET',
+  method,
   securities,
-  parameters = [],
-  body,
-  references,
+  doc,
   proxyUrl,
   writeOnly,
   readOnly,
+  deprecated,
   ...rest
 }: PlaygroundClientProps) {
   const t = useTranslations();
-  const { example: exampleId, examples, setExampleData } = useExampleRequests();
-  const storageKeys = useStorageKey();
+  const { parameters, body } = useMemo(() => {
+    const operation = doc.paths![route]![method]!;
+    const parameters: ParameterObject[] =
+      operation.parameters?.map((param) => dereferenceSwallow(param, doc)) ?? [];
+    let body: RequestBodyInfo | undefined;
+
+    if (operation.requestBody) {
+      const content = dereferenceSwallow(operation.requestBody, doc).content;
+      const mediaType = content ? getPreferredType(content) : undefined;
+
+      if (content && mediaType) {
+        body = {
+          mediaType,
+          schema: dereferenceSwallow(content[mediaType], doc).schema ?? true,
+        };
+      }
+    }
+
+    return {
+      body,
+      parameters,
+    };
+  }, [doc, route, method]);
+
+  const { example: exampleId, examples, setExampleData } = useOperationContext();
+  const { server } = useServerContext();
   const {
     mediaAdapters,
     client: {
       playground: {
-        components: { ResultDisplay = DefaultResultDisplay } = {},
-        requestTimeout = 10,
-        transformAuthInputs,
+        components: {
+          ResultDisplay = DefaultResultDisplay,
+          CollapsiblePanel = DefaultCollapsiblePanel,
+        } = {},
+        requestTimeout,
+        fetchOptions = { requestTimeout },
+        renderBodyField,
       } = {},
     },
   } = useApiContext();
-  const { serverRef } = useServerContext();
-  const [securityId, setSecurityId] = useState(() => {
-    const idx = securities.findIndex((s) => s.every((entry) => !entry.deprecated));
-    return idx === -1 ? 0 : idx;
-  });
-  const { inputs, mapInputs, initAuthValues } = useAuthInputs(
-    securities[securityId],
-    transformAuthInputs,
-  );
 
   const defaultValues: FormValues = useMemo(() => {
     const requestData = examples.find((example) => example.id === exampleId)?.data;
@@ -181,11 +195,16 @@ export default function PlaygroundClient({
     defaultValues,
   });
 
+  const { inputs, requirementId, setRequirementId, mapInputs, initAuthInputs } = useAuthInputs(
+    stf.dataEngine,
+    securities,
+  );
+
   const testQuery = useQuery(async (input: FormValues) => {
-    const targetServer = serverRef.current;
     const fetcher = await import('./fetcher').then((mod) =>
-      mod.createBrowserFetcher(mediaAdapters, requestTimeout),
+      mod.createBrowserFetcher(mediaAdapters, { proxyUrl, ...fetchOptions }),
     );
+
     const encoded = encodeRequestData(
       { ...mapInputs(input), method, bodyMediaType: body?.mediaType },
       mediaAdapters,
@@ -194,43 +213,35 @@ export default function PlaygroundClient({
     return fetcher.fetch(
       joinURL(
         withBase(
-          targetServer ? resolveServerUrl(targetServer.url, targetServer.variables) : '/',
+          server ? resolveServerUrl(server.url, server.variables) : '/',
           window.location.origin,
         ),
         resolveRequestData(route, encoded),
       ),
-      {
-        proxyUrl,
-        ...encoded,
-      },
+      encoded,
     );
   });
 
   const timerRef = useRef<number | null>(null);
+  const stfSync = useRef(false);
+  function triggerExampleUpdate() {
+    const data = {
+      ...mapInputs(stf.dataEngine.getData() as FormValues),
+      method,
+      bodyMediaType: body?.mediaType,
+    };
+    setExampleData(data, encodeRequestData(data, mediaAdapters, parameters));
+  }
+
   useListener({
     stf,
     onUpdate() {
-      if (timerRef.current) window.clearTimeout(timerRef.current);
-      timerRef.current = window.setTimeout(
-        () => {
-          const values = stf.dataEngine.getData() as FormValues;
-          for (const item of inputs) {
-            const value = stf.dataEngine.get(item.fieldName);
+      if (!stfSync.current) return;
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+      }
 
-            if (value) {
-              localStorage.setItem(storageKeys.AuthField(item), JSON.stringify(value));
-            }
-          }
-
-          const data = {
-            ...mapInputs(values),
-            method,
-            bodyMediaType: body?.mediaType,
-          };
-          setExampleData(data, encodeRequestData(data, mediaAdapters, parameters));
-        },
-        timerRef.current ? 400 : 0,
-      );
+      timerRef.current = window.setTimeout(triggerExampleUpdate, 400);
     },
   });
 
@@ -243,13 +254,19 @@ export default function PlaygroundClient({
   }, [defaultValues]);
 
   useEffect(() => {
-    return initAuthValues(stf);
+    const reset = initAuthInputs();
+    triggerExampleUpdate();
+    stfSync.current = true;
+    return () => {
+      stfSync.current = false;
+      reset();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- ignore other parts
   }, [defaultValues, inputs]);
 
   return (
     <StfProvider value={stf}>
-      <SchemaProvider references={references} writeOnly={writeOnly} readOnly={readOnly}>
+      <SchemaProvider doc={doc} writeOnly={writeOnly} readOnly={readOnly}>
         <form
           {...rest}
           className={cn(
@@ -257,14 +274,14 @@ export default function PlaygroundClient({
             rest.className,
           )}
           onSubmit={(e) => {
-            testQuery.start(mapInputs(stf.dataEngine.getData() as FormValues));
+            testQuery.start(stf.dataEngine.getData() as FormValues);
             e.preventDefault();
           }}
         >
           <ServerSelect className="border-b" />
           <div className="flex flex-row items-center gap-2 text-sm p-3 not-last:pb-0">
             <MethodLabel>{method}</MethodLabel>
-            <Route route={route} className="flex-1" />
+            <Route route={route} className={cn('flex-1', deprecated && 'line-through')} />
             <button
               type="submit"
               className={cn(buttonVariants({ color: 'primary', size: 'sm' }), 'w-14 py-1.5')}
@@ -276,24 +293,29 @@ export default function PlaygroundClient({
           {testQuery.data ? <ResultDisplay data={testQuery.data} reset={testQuery.reset} /> : null}
 
           {securities.length > 0 && (
-            <SecurityTabs
+            <SecurityRequirements
               securities={securities}
-              securityId={securityId}
-              setSecurityId={setSecurityId}
+              securityId={requirementId}
+              setSecurityId={setRequirementId}
             >
               {inputs.map((input) => (
                 <Fragment key={stringifyFieldKey(input.fieldName)}>{input.children}</Fragment>
               ))}
-            </SecurityTabs>
+            </SecurityRequirements>
           )}
-          <FormBody body={body} parameters={parameters} />
+          <ParametersForm parameters={parameters} />
+          {body && (
+            <CollapsiblePanel data-type="body" title={t.body}>
+              {renderBodyField ? renderBodyField('body', body) : <BodyInput field={body.schema} />}
+            </CollapsiblePanel>
+          )}
         </form>
       </SchemaProvider>
     </StfProvider>
   );
 }
 
-function SecurityTabs({
+function SecurityRequirements({
   securities,
   setSecurityId,
   securityId,
@@ -304,32 +326,49 @@ function SecurityTabs({
   setSecurityId: (value: number) => void;
   children: ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
-  const engine = useDataEngine();
   const t = useTranslations();
+  const { isLoading, error } = useAuth();
+  const defaultOpen = isLoading || error != null;
+  const [open, setOpen] = useState(defaultOpen);
+  const { CollapsiblePanel = DefaultCollapsiblePanel } =
+    useApiContext().client.playground?.components ?? {};
 
-  const result = (
-    <CollapsiblePanel title={t.authorization}>
+  useOnChange(defaultOpen, () => {
+    if (defaultOpen) setOpen(true);
+  });
+
+  return (
+    <CollapsiblePanel
+      title={
+        <>
+          {t.authorization}
+          {isLoading && (
+            <span className="border-s ps-2 inline-flex items-center gap-1.5 text-fd-muted-foreground text-xs font-mono">
+              <Spinner /> {t.fetchingToken}
+            </span>
+          )}
+        </>
+      }
+      data-type="authorization"
+      open={open}
+      onOpenChange={setOpen}
+    >
+      {error != null && (
+        <div className="p-2 border rounded-lg bg-fd-secondary">
+          <p className="text-fd-muted-foreground font-medium mb-1">{t.fetchTokenError}</p>
+          <p>{String(error)}</p>
+        </div>
+      )}
       <Select value={securityId.toString()} onValueChange={(v) => setSecurityId(Number(v))}>
         <SelectTrigger>
-          <SelectValue />
+          <SelectValue>
+            <SecurityRequirement requirement={securities[securityId]} />
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           {securities.map((security, i) => (
             <SelectItem key={i} value={i.toString()}>
-              {security.map((item) => (
-                <div key={item.id} className="max-w-[600px]">
-                  <p
-                    className={cn(
-                      'font-mono font-medium',
-                      item.deprecated && 'text-fd-muted-foreground line-through',
-                    )}
-                  >
-                    {item.id}
-                  </p>
-                  <p className="text-fd-muted-foreground whitespace-pre-wrap">{item.description}</p>
-                </div>
-              ))}
+              <SecurityRequirement requirement={security} />
             </SelectItem>
           ))}
         </SelectContent>
@@ -337,95 +376,85 @@ function SecurityTabs({
       {children}
     </CollapsiblePanel>
   );
+}
 
-  for (let i = 0; i < securities.length; i++) {
-    const security = securities[i];
+function SecurityRequirement({ requirement }: { requirement: SecurityEntry[] }) {
+  const { schemes } = useApiContext();
 
-    for (const item of security) {
-      if (item.type === 'oauth2') {
+  return (
+    <div className="flex flex-col gap-2 max-w-[600px]">
+      {requirement.map((item) => {
+        const scheme = schemes[item.id];
+
         return (
-          <OauthDialog
-            scheme={item}
-            scopes={item.scopes}
-            open={open}
-            setOpen={(v) => {
-              setOpen(v);
-              if (v) {
-                setSecurityId(i);
-              }
-            }}
-            setToken={(token) => engine.update(['header', 'Authorization'], token)}
-          >
-            {result}
-          </OauthDialog>
+          <div key={item.id}>
+            <p
+              className={cn(
+                'font-mono font-medium',
+                scheme.deprecated && 'text-fd-muted-foreground line-through',
+              )}
+            >
+              {item.id}
+            </p>
+            <p className="text-fd-muted-foreground whitespace-pre-wrap">{scheme.description}</p>
+          </div>
         );
-      }
-    }
-  }
-
-  return result;
+      })}
+    </div>
+  );
 }
 
 const ParamTypes = ['path', 'header', 'cookie', 'query'] as const;
+type ParamType = (typeof ParamTypes)[number];
 
-function FormBody({ parameters = [], body }: Pick<PlaygroundClientProps, 'parameters' | 'body'>) {
-  const { renderParameterField, renderBodyField } = useApiContext().client.playground ?? {};
+function ParameterItem({ type, parameters }: { type: ParamType; parameters: ParameterObject[] }) {
+  const { renderParameterField } = useApiContext().client.playground ?? {};
+
+  return parameters.map((field) => {
+    const fieldName: FieldKey = [type, field.name!];
+    if (renderParameterField) {
+      return renderParameterField(fieldName, field);
+    }
+
+    const contentTypes = field.content && Object.keys(field.content);
+    const schema =
+      field.content && contentTypes && contentTypes.length > 0
+        ? field.content[contentTypes[0]].schema
+        : field.schema;
+
+    return (
+      <FieldSet
+        key={stringifyFieldKey(fieldName)}
+        name={field.name}
+        fieldName={fieldName}
+        field={(schema ?? anyFields) as ParsedSchema}
+        isRequired={field.required}
+      />
+    );
+  });
+}
+
+function ParametersForm({ parameters }: { parameters: ParameterObject[] }) {
+  const { components: { CollapsiblePanel = DefaultCollapsiblePanel } = {} } =
+    useApiContext().client.playground ?? {};
   const t = useTranslations();
-  const panels = useMemo(() => {
-    return ParamTypes.map((type) => {
-      const items = parameters.filter((v) => v.in === type);
-      if (items.length === 0) return;
+  const displayNames = {
+    header: t.header,
+    cookie: t.cookies,
+    query: t.query,
+    path: t.path,
+  };
 
-      return (
-        <CollapsiblePanel
-          key={type}
-          title={
-            {
-              header: t.header,
-              cookie: t.cookies,
-              query: t.query,
-              path: t.path,
-            }[type]
-          }
-        >
-          {items.map((field) => {
-            const fieldName: FieldKey = [type, field.name!];
-            if (renderParameterField) {
-              return renderParameterField(fieldName, field);
-            }
+  return ParamTypes.map((type) => {
+    const items = parameters.filter((v) => v.in === type);
+    if (items.length === 0) return;
 
-            const contentTypes = field.content && Object.keys(field.content);
-            const schema = (
-              field.content && contentTypes && contentTypes.length > 0
-                ? field.content[contentTypes[0]].schema
-                : field.schema
-            ) as ParsedSchema;
-
-            return (
-              <FieldSet
-                key={stringifyFieldKey(fieldName)}
-                name={field.name}
-                fieldName={fieldName}
-                field={schema}
-                isRequired={field.required}
-              />
-            );
-          })}
-        </CollapsiblePanel>
-      );
-    });
-  }, [parameters, renderParameterField, t]);
-
-  return (
-    <>
-      {panels}
-      {body && (
-        <CollapsiblePanel title={t.body}>
-          {renderBodyField ? renderBodyField('body', body) : <BodyInput field={body.schema} />}
-        </CollapsiblePanel>
-      )}
-    </>
-  );
+    return (
+      <CollapsiblePanel key={type} data-type={type} title={displayNames[type]}>
+        <ParameterItem parameters={items} type={type} />
+      </CollapsiblePanel>
+    );
+  });
 }
 
 function BodyInput({ field: _field }: { field: ParsedSchema }) {
@@ -482,41 +511,51 @@ function BodyInput({ field: _field }: { field: ParsedSchema }) {
 
 export interface AuthField {
   fieldName: FieldKey;
+  schemeId: string;
+  storageKey: string;
   defaultValue: unknown;
-
-  original?: SecurityEntry;
   children: ReactNode;
 
   mapOutput?: (values: unknown) => unknown;
 }
 
-function useAuthInputs(
-  securities?: SecurityEntry[],
-  transform?: (fields: AuthField[]) => AuthField[],
-) {
+function useAuthInputs(engine: DataEngine, requirements: SecurityEntry[][]) {
+  const authCtx = useAuth();
   const storageKeys = useStorageKey();
   const t = useTranslations();
-  const inputs = useMemo(() => {
-    const result: AuthField[] = [];
-    if (!securities) return result;
+  const {
+    schemes,
+    client: { playground: { transformAuthInputs } = {} },
+  } = useApiContext();
+  const [requirementId, setRequirementId] = useState(() => {
+    if (requirements.length === 0) return -1;
 
-    for (const security of securities) {
-      if (security.type === 'http' && security.scheme === 'basic') {
+    const idx = requirements.findIndex((s) => s.every((item) => !schemes[item.id].deprecated));
+    return idx !== -1 ? idx : 0;
+  });
+  const requirement = requirementId === -1 ? null : requirements[requirementId];
+
+  let inputs = useMemo<AuthField[]>(() => {
+    if (!requirement) return [];
+
+    return requirement.map((item) => {
+      const scheme = schemes[item.id];
+
+      if (scheme.type === 'http' && scheme.scheme === 'basic') {
         const fieldName: FieldKey = ['header', 'Authorization'];
-
-        result.push({
+        return {
           fieldName,
-          original: security,
+          schemeId: item.id,
+          storageKey: storageKeys.AuthField(item.id),
           defaultValue: {
             username: '',
             password: '',
           },
-          mapOutput(out) {
+          mapOutput(out: unknown) {
             if (out && typeof out === 'object') {
               const obj = out as Record<string, unknown>;
               return `Basic ${btoa(`${obj.username ?? ''}:${obj.password ?? ''}`)}`;
             }
-
             return out;
           },
           children: (
@@ -535,49 +574,24 @@ function useAuthInputs(
               fieldName={fieldName}
             />
           ),
-        });
-      } else if (security.type === 'oauth2') {
+        };
+      }
+      if (scheme.type === 'oauth2') {
         const fieldName: FieldKey = ['header', 'Authorization'];
-
-        result.push({
+        return {
           fieldName,
-          original: security,
+          schemeId: item.id,
+          storageKey: storageKeys.AuthField(item.id),
           defaultValue: 'Bearer ',
-          children: (
-            <fieldset className="flex flex-col gap-2">
-              <label htmlFor={stringifyFieldKey(fieldName)} className={cn(labelVariants())}>
-                {t.accessToken}
-              </label>
-              <div className="flex gap-2">
-                <FieldInput
-                  fieldName={fieldName}
-                  field={{
-                    type: 'string',
-                  }}
-                  className="flex-1"
-                />
-
-                <OauthDialogTrigger
-                  type="button"
-                  className={cn(
-                    buttonVariants({
-                      size: 'sm',
-                      color: 'secondary',
-                    }),
-                  )}
-                >
-                  {t.authorize}
-                </OauthDialogTrigger>
-              </div>
-            </fieldset>
-          ),
-        });
-      } else if (security.type === 'http') {
+          children: <OAuth2Input fieldName={fieldName} security={item} />,
+        };
+      }
+      if (scheme.type === 'http') {
         const fieldName: FieldKey = ['header', 'Authorization'];
-
-        result.push({
+        return {
           fieldName,
-          original: security,
+          schemeId: item.id,
+          storageKey: storageKeys.AuthField(item.id),
           defaultValue: 'Bearer ',
           children: (
             <FieldSet
@@ -588,86 +602,166 @@ function useAuthInputs(
               }}
             />
           ),
-        });
-      } else if (security.type === 'apiKey') {
-        const fieldName: FieldKey = [security.in!, security.name!];
-
-        result.push({
+        };
+      }
+      if (scheme.type === 'apiKey') {
+        const fieldName: FieldKey = [scheme.in!, scheme.name!];
+        return {
           fieldName,
+          schemeId: item.id,
           defaultValue: '',
-          original: security,
+          storageKey: storageKeys.AuthField(item.id),
           children: (
             <FieldSet
               fieldName={fieldName}
-              name={`${security.name} (${security.in})`}
+              name={`${scheme.name} (${scheme.in})`}
               field={{
                 type: 'string',
               }}
             />
           ),
-        });
-      } else {
-        const fieldName: FieldKey = ['header', 'Authorization'];
-
-        result.push({
-          fieldName,
-          defaultValue: '',
-          original: security,
-          children: (
-            <>
-              <FieldSet
-                name={`${t.authorization} (${t.header})`}
-                fieldName={fieldName}
-                field={{
-                  type: 'string',
-                }}
-              />
-              <p className="text-fd-muted-foreground text-xs">{t.openIdUnsupported}</p>
-            </>
-          ),
-        });
+        };
       }
-    }
+      // fallback: openid or unknown
+      const fieldName: FieldKey = ['header', 'Authorization'];
+      return {
+        fieldName,
+        schemeId: item.id,
+        defaultValue: '',
+        storageKey: storageKeys.AuthField(item.id),
+        children: (
+          <>
+            <FieldSet
+              name={`${t.authorization} (${t.header})`}
+              fieldName={fieldName}
+              field={{
+                type: 'string',
+              }}
+            />
+            <p className="text-fd-muted-foreground text-xs">{t.openIdUnsupported}</p>
+          </>
+        ),
+      };
+    });
+  }, [requirement, storageKeys, schemes, t]);
+  if (transformAuthInputs) inputs = transformAuthInputs(inputs);
 
-    return transform ? transform(result) : result;
-  }, [securities, transform, t]);
+  useListener({
+    stf: engine,
+    onUpdate(key) {
+      for (const item of inputs) {
+        if (!arrayStartsWith(item.fieldName, key)) continue;
+        const value = engine.get(item.fieldName);
 
-  const mapInputs = (values: FormValues) => {
-    const cloned = structuredClone(values);
-
-    for (const item of inputs) {
-      if (!item.mapOutput) continue;
-      objectSet(cloned, item.fieldName, item.mapOutput(objectGet(cloned, item.fieldName)));
-    }
-
-    return cloned;
-  };
-
-  const initAuthValues = (stf: Stf) => {
-    const { dataEngine } = stf;
-    for (const item of inputs) {
-      const stored = localStorage.getItem(storageKeys.AuthField(item));
-
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (typeof parsed === typeof item.defaultValue) {
-          dataEngine.init(item.fieldName, parsed);
-          continue;
+        if (value != null) {
+          localStorage.setItem(item.storageKey, JSON.stringify(value));
         }
       }
+    },
+  });
 
-      dataEngine.init(item.fieldName, item.defaultValue);
+  useOnChange(authCtx.updatedSchemeId, () => {
+    const { updatedSchemeId } = authCtx;
+    if (!updatedSchemeId) return;
+    const { token } = authCtx.store[updatedSchemeId]!;
+
+    const input = inputs.find((input) => input.schemeId === updatedSchemeId);
+    if (input) {
+      // update current value
+      engine.update(input.fieldName, token);
+      return;
     }
 
-    // reset
-    return () => {
-      for (const item of inputs) {
-        stf.dataEngine.delete(item.fieldName);
-      }
-    };
-  };
+    const idx = requirements.findIndex((requirement) =>
+      requirement.some((item) => item.id === updatedSchemeId),
+    );
+    if (idx !== -1) {
+      // persisted value
+      localStorage.setItem(storageKeys.AuthField(updatedSchemeId), JSON.stringify(token));
+      setRequirementId(idx);
+    }
+  });
 
-  return { inputs, mapInputs, initAuthValues };
+  return {
+    inputs,
+    requirementId,
+    setRequirementId,
+    mapInputs(values: FormValues) {
+      const cloned = structuredClone(values);
+
+      for (const item of inputs) {
+        if (!item.mapOutput) continue;
+        objectSet(cloned, item.fieldName, item.mapOutput(objectGet(cloned, item.fieldName)));
+      }
+
+      return cloned;
+    },
+    initAuthInputs() {
+      for (const item of inputs) {
+        const stored = localStorage.getItem(item.storageKey);
+
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (typeof parsed === typeof item.defaultValue) {
+            engine.init(item.fieldName, parsed);
+            continue;
+          }
+        }
+
+        engine.init(item.fieldName, item.defaultValue);
+      }
+
+      // reset
+      return () => {
+        for (const item of inputs) {
+          engine.delete(item.fieldName);
+        }
+      };
+    },
+  };
+}
+
+function OAuth2Input({ fieldName, security }: { fieldName: FieldKey; security: SecurityEntry }) {
+  const [open, setOpen] = useState(false);
+  const engine = useDataEngine();
+  const t = useTranslations();
+
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <label htmlFor={stringifyFieldKey(fieldName)} className={cn(labelVariants())}>
+        {t.accessToken}
+      </label>
+      <div className="flex gap-2">
+        <FieldInput
+          fieldName={fieldName}
+          field={{
+            type: 'string',
+          }}
+          className="flex-1"
+        />
+
+        <OAuthDialog open={open} onOpenChange={setOpen}>
+          <OAuthDialogTrigger
+            type="button"
+            className={cn(
+              buttonVariants({
+                size: 'sm',
+                color: 'secondary',
+              }),
+            )}
+          >
+            {t.authorize}
+          </OAuthDialogTrigger>
+          <OAuthDialogContent
+            setOpen={setOpen}
+            schemeId={security.id}
+            scopes={security.scopes}
+            setToken={(token) => engine.update(['header', 'Authorization'], token)}
+          ></OAuthDialogContent>
+        </OAuthDialog>
+      </div>
+    </fieldset>
+  );
 }
 
 function Route({ route, ...props }: ComponentProps<'div'> & { route: string }) {
@@ -693,45 +787,9 @@ function Route({ route, ...props }: ComponentProps<'div'> & { route: string }) {
   );
 }
 
-function DefaultResultDisplay({ data, reset }: { data: FetchResult; reset: () => void }) {
-  const t = useTranslations();
-  const statusInfo = useMemo(() => getStatusInfo(data.status, t), [data.status, t]);
-
+export function DefaultCollapsiblePanel({ title, children, ...props }: CollapsiblePanelProps) {
   return (
-    <div className="flex flex-col gap-3 mt-2 px-3 py-2 border-y bg-fd-secondary text-fd-secondary-foreground">
-      <div className="flex justify-between items-center">
-        <div className="inline-flex items-center gap-1.5 text-sm font-medium">
-          <statusInfo.icon className={cn('size-4', statusInfo.color)} />
-          {statusInfo.description}
-        </div>
-        <button
-          type="button"
-          className={cn(buttonVariants({ size: 'sm', variant: 'outline' }))}
-          onClick={() => reset()}
-        >
-          {t.close}
-        </button>
-      </div>
-      <p className="text-sm text-fd-muted-foreground">{data.status}</p>
-      {data.data !== undefined && (
-        <ClientCodeBlock
-          lang={typeof data.data === 'string' && data.data.length > 50000 ? 'text' : data.type}
-          code={typeof data.data === 'string' ? data.data : JSON.stringify(data.data, null, 2)}
-        />
-      )}
-    </div>
-  );
-}
-
-function CollapsiblePanel({
-  title,
-  children,
-  ...props
-}: Omit<ComponentProps<'div'>, 'title'> & {
-  title: ReactNode;
-}) {
-  return (
-    <Collapsible {...props} className="border-b last:border-b-0">
+    <Collapsible {...props} className={cn('border-b last:border-b-0', props.className)}>
       <CollapsibleTrigger className="group w-full flex items-center gap-2 p-3 text-sm font-medium">
         {title}
         <ChevronDown className="ms-auto size-3.5 text-fd-muted-foreground group-data-[state=open]:rotate-180" />

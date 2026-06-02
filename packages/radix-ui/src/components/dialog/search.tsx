@@ -14,7 +14,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { I18nLabel, useI18n } from '@/contexts/i18n';
+import { I18nLabel, useTranslations } from '@/contexts/i18n';
 import { cn } from '@/utils/cn';
 import { Dialog, DialogContent, DialogOverlay, DialogTitle } from '@radix-ui/react-dialog';
 import type { HighlightedText, ReactSortedResult as BaseResultType } from '@hanzo/docs-core/search';
@@ -219,7 +219,7 @@ export function SearchDialogHeader(props: ComponentProps<'div'>) {
 }
 
 export function SearchDialogInput(props: ComponentProps<'input'>) {
-  const { text } = useI18n();
+  const t = useTranslations();
   const { search, onSearchChange } = useSearch();
 
   return (
@@ -227,7 +227,7 @@ export function SearchDialogInput(props: ComponentProps<'input'>) {
       {...props}
       value={search}
       onChange={(e) => onSearchChange(e.target.value)}
-      placeholder={text.search}
+      placeholder={t.search}
       className="w-0 flex-1 bg-transparent text-lg placeholder:text-fd-muted-foreground focus-visible:outline-none"
     />
   );
@@ -239,10 +239,12 @@ export function SearchDialogClose({
   ...props
 }: ComponentProps<'button'>) {
   const { onOpenChange } = useSearch();
+  const t = useTranslations();
 
   return (
     <button
       type="button"
+      aria-label={t.searchClose}
       onClick={() => onOpenChange(false)}
       className={cn(
         buttonVariants({
@@ -276,7 +278,7 @@ export function SearchDialogOverlay(props: ComponentProps<typeof DialogOverlay>)
 }
 
 export function SearchDialogContent({ children, ...props }: ComponentProps<typeof DialogContent>) {
-  const { text } = useI18n();
+  const t = useTranslations();
 
   return (
     <DialogContent
@@ -288,7 +290,7 @@ export function SearchDialogContent({ children, ...props }: ComponentProps<typeo
         props.className,
       )}
     >
-      <DialogTitle className="hidden">{text.search}</DialogTitle>
+      <DialogTitle className="hidden">{t.search}</DialogTitle>
       {children}
     </DialogContent>
   );
@@ -431,10 +433,10 @@ export function SearchDialogListItem({
         </div>
 
         {item.type !== 'page' && (
-          <div role="none" className="absolute start-3 inset-y-0 w-px bg-fd-border" />
+          <div role="none" className="absolute inset-s-3 inset-y-0 w-px bg-fd-border" />
         )}
         {item.type === 'heading' && (
-          <Hash className="absolute start-6 top-2.5 size-4 text-fd-muted-foreground" />
+          <Hash className="absolute inset-s-6 top-2.5 size-4 text-fd-muted-foreground" />
         )}
         <div
           className={cn(

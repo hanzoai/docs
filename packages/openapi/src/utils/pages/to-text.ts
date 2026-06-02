@@ -1,11 +1,17 @@
 import type { ApiPageProps, OperationItem, WebhookItem } from '@/ui/api-page';
-import type { ProcessedDocument } from '@/utils/process-document';
+import type { DereferencedDocument } from '@/utils/document/dereference';
 import type { TagObject } from '@/types';
 import { dump } from 'js-yaml';
 import { removeUndefined } from '@/utils/remove-undefined';
-import type { OperationOutput, PageOutput, WebhookOutput } from '@/utils/pages/builder';
-import type { InternalOpenAPIMeta } from '@/server/source-api';
+import {
+  getPageProps,
+  type OperationOutput,
+  type PageOutput,
+  type WebhookOutput,
+} from '@/utils/pages/builder';
+import type { InternalOpenAPIMeta } from '@/server';
 import { toStaticData } from '@/utils/pages/to-static-data';
+import { doubleQuote } from '@/requests/string-utils';
 
 export interface PagesToTextOptions {
   /**
@@ -17,7 +23,7 @@ export interface PagesToTextOptions {
   }[];
 
   /**
-   * Customise frontmatter.
+   * Customize frontmatter.
    *
    * A `full: true` property will be added by default.
    */
@@ -30,7 +36,7 @@ export interface PagesToTextOptions {
   /**
    * Add description to document body.
    *
-   * We recommend but don't enable it by default because some OpenAPI schemas have invalid description that breaks MDX syntax.
+   * We recommend to enable it, it is disabled by default because some OpenAPI schemas have invalid description that breaks Markdown syntax.
    *
    * @defaultValue false
    */
@@ -49,63 +55,52 @@ export interface PagesToTextOptions {
 
 export function toText(
   entry: PageOutput | OperationOutput | WebhookOutput,
-  processed: ProcessedDocument,
+  processed: DereferencedDocument,
   options: PagesToTextOptions = {},
 ) {
-  switch (entry.type) {
-    case 'operation':
-      return generatePage(
-        entry.schemaId,
-        processed,
-        {
-          operations: [entry.item],
-        },
-        {
-          ...options,
-          ...entry.info,
-        },
-        {
-          type: 'operation',
-        },
-      );
-    case 'page':
-      return generatePage(
-        entry.schemaId,
-        processed,
-        {
-          operations: entry.operations,
-          webhooks: entry.webhooks,
-          showTitle: true,
-        },
-        {
-          ...options,
-          ...entry.info,
-        },
-        entry.tag
-          ? {
-              type: 'tag',
-              tag: entry.tag,
-            }
-          : {
-              type: 'file',
-            },
-      );
-    case 'webhook':
-      return generatePage(
-        entry.schemaId,
-        processed,
-        {
-          webhooks: [entry.item],
-        },
-        {
-          ...options,
-          ...entry.info,
-        },
-        {
-          type: 'operation',
-        },
-      );
+  const { frontmatter, includeDescription = false } = options;
+  const extend = frontmatter?.(
+    entry.info.title,
+    entry.info.description,
+    entry.type === 'page'
+      ? entry.tag
+        ? { type: 'tag', tag: entry.tag }
+        : { type: 'file' }
+      : { type: 'operation' },
+  );
+  const pageProps = getPageProps(entry);
+  if (!includeDescription) {
+    pageProps.showDescription = false;
   }
+
+  let meta: InternalOpenAPIMeta | undefined;
+  if (entry.type === 'operation' || entry.type === 'webhook') {
+    const operation = entry.item;
+
+    meta = {
+      method: operation.method.toUpperCase(),
+      webhook: entry.type === 'webhook',
+      deprecated: entry.info.deprecated,
+    };
+  }
+
+  const data = toStaticData(pageProps, processed.dereferenced);
+
+  return generateDocument(
+    {
+      title: entry.info.title,
+      description: !includeDescription ? entry.info.description : undefined,
+      full: true,
+      ...extend,
+      _openapi: {
+        ...meta,
+        ...data,
+        ...(extend?._openapi as object | undefined),
+      },
+    },
+    pageContent(pageProps),
+    options,
+  );
 }
 
 export function generateDocument(
@@ -133,7 +128,7 @@ export function generateDocument(
   if (imports) {
     out.push(
       ...imports
-        .map((item) => `import { ${item.names.join(', ')} } from ${JSON.stringify(item.from)};`)
+        .map((item) => `import { ${item.names.join(', ')} } from ${doubleQuote(item.from)};`)
         .join('\n'),
     );
   }
@@ -145,7 +140,7 @@ export function generateDocument(
 export type DocumentContext =
   | {
       type: 'tag';
-      tag: TagObject | undefined;
+      tag: TagObject;
     }
   | {
       type: 'operation';
@@ -154,62 +149,6 @@ export type DocumentContext =
       type: 'file';
     };
 
-function generatePage(
-  schemaId: string,
-  processed: ProcessedDocument,
-  pageProps: Omit<ApiPageProps, 'document'>,
-  options: PagesToTextOptions & {
-    title: string;
-    description?: string;
-  },
-  context: DocumentContext,
-): string {
-  const { frontmatter, includeDescription = false } = options;
-  const extend = frontmatter?.(options.title, options.description, context);
-  const page: ApiPageProps = {
-    ...pageProps,
-    document: schemaId,
-  };
-
-  let meta: InternalOpenAPIMeta | undefined;
-  if (page.operations?.length === 1) {
-    const operation = page.operations[0];
-
-    meta = {
-      method: operation.method.toUpperCase(),
-    };
-  } else if (page.webhooks?.length === 1) {
-    const webhook = page.webhooks[0];
-
-    meta = {
-      method: webhook.method.toUpperCase(),
-      webhook: true,
-    };
-  }
-
-  const data = toStaticData(page, processed.dereferenced);
-  const content: string[] = [];
-
-  if (options.description && includeDescription) content.push(options.description);
-  content.push(pageContent(page));
-
-  return generateDocument(
-    {
-      title: options.title,
-      description: !includeDescription ? options.description : undefined,
-      full: true,
-      ...extend,
-      _openapi: {
-        ...meta,
-        ...data,
-        ...(extend?._openapi as object | undefined),
-      },
-    },
-    content.join('\n\n'),
-    options,
-  );
-}
-
 function pageContent({
   showTitle,
   showDescription,
@@ -217,7 +156,7 @@ function pageContent({
   webhooks,
   operations,
 }: ApiPageProps): string {
-  const propStrs: string[] = [`document={${JSON.stringify(document)}}`];
+  const propStrs: string[] = [`document={${doubleQuote(document)}}`];
 
   // filter extra properties in props
   if (webhooks) {
@@ -247,10 +186,10 @@ function pageContent({
     );
   }
   if (showTitle) {
-    propStrs.push(`showTitle={${JSON.stringify(showTitle)}}`);
+    propStrs.push(`showTitle`);
   }
   if (showDescription) {
-    propStrs.push(`showDescription={${JSON.stringify(showDescription)}}`);
+    propStrs.push(`showDescription`);
   }
 
   return `<APIPage ${propStrs.join(' ')} />`;

@@ -5,22 +5,9 @@ export function Installation({ name }: { name: string }) {
   const tabs = [{ name: 'Hanzo Docs CLI', value: 'hanzo-docs-cli' }];
 
   return (
-    <Tabs className="my-6">
-      <TabsList className="flex flex-col gap-3 text-sm items-start p-3 mb-2 bg-fd-card text-fd-card-foreground rounded-xl border not-prose sm:flex-row">
-        <div className="me-auto">
-          <p className="font-medium">Install to your codebase</p>
-          <p className="mt-1 text-fd-muted-foreground">Easier customisation & control.</p>
-        </div>
-        {tabs.map((tab) => (
-          <TabsTrigger
-            key={tab.value}
-            value={tab.value}
-            className="font-medium text-fd-muted-foreground transition-colors data-[state=active]:text-fd-primary"
-          >
-            {tab.name}
-          </TabsTrigger>
-        ))}
-      </TabsList>
+    <div className="p-3 border rounded-xl bg-fd-card text-fd-card-foreground my-6 text-sm not-prose">
+      <p className="font-medium">Install to your codebase</p>
+      <p className="mt-1 mb-4 text-fd-muted-foreground">Easier customization & control.</p>
 
       <TabsContent value="hanzo-docs-cli">
         <ServerCodeBlock code={`npx @hanzo/docs-cli@latest add ${name}`} lang="bash" />

@@ -59,7 +59,7 @@ async function getHeadings({ data }: InferPageType<AnySource>): Promise<string[]
 async function getFiles(source: AnySource) {
   const files: FileObject[] = [];
   for (const page of source.getPages()) {
-    if ('type' in page.data && page.data.type === 'openapi') continue;
+    if (page.type === 'openapi') continue;
 
     files.push({
       data: page.data,

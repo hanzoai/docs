@@ -8,5 +8,5 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
-  plugins: [mdx(MdxConfig), tailwindcss(), reactRouter()],
+  plugins: [mdx(), tailwindcss(), reactRouter()],
 });

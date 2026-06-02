@@ -21,7 +21,7 @@ import type { z } from 'zod';
 import { DefaultChatTransport } from 'ai';
 import { Markdown } from '../markdown';
 import { Presence } from '@radix-ui/react-presence';
-import type { InkeepUIMessage } from '@/lib/inkeep/server';
+import type { InkeepUIMessage } from '@/lib/inkeep/route';
 
 const Context = createContext<{
   open: boolean;
@@ -372,8 +372,10 @@ export function AISearchPanel() {
       </style>
       <Presence present={open}>
         <div
-          data-state={open ? 'open' : 'closed'}
-          className="fixed inset-0 z-30 backdrop-blur-xs bg-fd-overlay data-[state=open]:animate-fd-fade-in data-[state=closed]:animate-fd-fade-out lg:hidden"
+          className={cn(
+            'fixed inset-0 z-30 backdrop-blur-xs bg-fd-overlay lg:hidden',
+            open ? 'animate-fd-fade-in' : 'animate-fd-fade-out',
+          )}
           onClick={() => setOpen(false)}
         />
       </Presence>

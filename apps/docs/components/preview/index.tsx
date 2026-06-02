@@ -20,6 +20,8 @@ import {
   InlineTOC,
 } from '@/components/preview/lazy';
 import BannerImage from '@/public/banner.png';
+import { GraphView } from '@/components/preview/lazy';
+import { buildGraph } from '@/lib/build-graph';
 
 export function heading(): ReactNode {
   return (
@@ -227,7 +229,7 @@ export function banner(): ReactNode {
           ]}
           changeLayout={false}
         >
-          customise the <code>rainbow</code> variant
+          customize the <code>rainbow</code> variant
         </Banner>
       </div>
     </Wrapper>
@@ -245,4 +247,8 @@ export function githubInfo() {
       />
     </Wrapper>
   );
+}
+
+export async function graphView() {
+  return <GraphView graph={await buildGraph()} />;
 }
