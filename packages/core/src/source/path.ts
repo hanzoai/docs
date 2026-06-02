@@ -5,17 +5,20 @@ export function basename(path: string, ext?: string): string {
 }
 
 export function extname(path: string): string {
-  const dotIdx = path.lastIndexOf('.');
-
-  if (dotIdx !== -1) {
-    return path.substring(dotIdx);
+  for (let i = path.length - 1; i >= 0; i--) {
+    const c = path[i];
+    if (c === '.') return path.substring(i);
+    if (c === '/') return '';
   }
 
   return '';
 }
 
 export function dirname(path: string): string {
-  return path.split('/').slice(0, -1).join('/');
+  const idx = path.lastIndexOf('/');
+  if (idx === -1) return '';
+
+  return path.substring(0, idx);
 }
 /**
  * Split path into segments, trailing/leading slashes are removed
@@ -37,17 +40,19 @@ export function splitPath(path: string): string[] {
  */
 export function joinPath(...paths: string[]): string {
   const out = [];
-  const parsed = paths.flatMap(splitPath);
 
-  for (const seg of parsed) {
-    switch (seg) {
-      case '..':
-        out.pop();
-        break;
-      case '.':
-        break;
-      default:
-        out.push(seg);
+  for (const path of paths) {
+    for (const seg of path.split('/')) {
+      switch (seg) {
+        case '..':
+          out.pop();
+          break;
+        case '':
+        case '.':
+          break;
+        default:
+          out.push(seg);
+      }
     }
   }
 
@@ -62,4 +67,18 @@ export function slash(path: string): string {
   }
 
   return path.replaceAll('\\', '/');
+}
+
+/**
+ * Convert (relative) file path to virtual file path.
+ *
+ * @param path - Relative path
+ * @returns Normalized path, with no trailing/leading slashes
+ * @throws Throws error if path starts with `./` or `../`
+ */
+export function normalize(path: string): string {
+  const segments = path.split(/\/|\\/).filter((v) => v.length > 0);
+  if (segments[0] === '.' || segments[0] === '..')
+    throw new Error("It must not start with './' or '../'");
+  return segments.join('/');
 }

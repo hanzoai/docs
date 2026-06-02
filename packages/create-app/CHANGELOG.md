@@ -1,5 +1,141 @@
 # create-next-docs-app
 
+## 16.0.119
+
+## 16.0.118
+
+## 16.0.117
+
+## 16.0.116
+
+## 16.0.115
+
+## 16.0.114
+
+## 16.0.113
+
+## 16.0.112
+
+## 16.0.111
+
+## 16.0.110
+
+## 16.0.109
+
+## 16.0.108
+
+## 16.0.107
+
+## 16.0.106
+
+## 16.0.105
+
+## 16.0.104
+
+## 16.0.103
+
+## 16.0.102
+
+### Patch Changes
+
+- Updated dependencies [2d22086]
+  - @fumadocs/cli@1.3.10
+
+## 16.0.101
+
+### Patch Changes
+
+- Updated dependencies [af7ee2d]
+  - @fumadocs/cli@1.3.9
+
+## 16.0.100
+
+## 16.0.99
+
+## 16.0.98
+
+## 16.0.97
+
+## 16.0.96
+
+## 16.0.95
+
+### Patch Changes
+
+- f51b849: update Waku template
+- Updated dependencies [71c15fd]
+  - @fumadocs/cli@1.3.8
+
+## 16.0.94
+
+## 16.0.93
+
+## 16.0.92
+
+### Patch Changes
+
+- 2d8f596: fix `npm pack` skipping nested `node_modules`
+- Updated dependencies [2d8f596]
+  - @fumadocs/cli@1.3.7
+
+## 16.0.91
+
+### Patch Changes
+
+- 690ddb9: bundle more deps
+- Updated dependencies [690ddb9]
+  - @fumadocs/cli@1.3.6
+
+## 16.0.90
+
+## 16.0.89
+
+### Patch Changes
+
+- 7c59264: Adopt Fuma CLI
+- Updated dependencies [7c59264]
+  - @fumadocs/cli@1.3.5
+
+## 16.0.88
+
+## 16.0.87
+
+## 16.0.86
+
+### Patch Changes
+
+- 1a84b96: hotfix cwd for default config
+- Updated dependencies [1a84b96]
+  - @fumadocs/cli@1.3.4
+
+## 16.0.85
+
+### Patch Changes
+
+- a77a4ad: Support other React.js frameworks for AI chat
+- Updated dependencies [3ff78c9]
+  - @fumadocs/cli@1.3.3
+
+## 16.0.84
+
+### Patch Changes
+
+- 43cd8db: Support Oxlint as linter
+
+## 16.0.83
+
+## 16.0.82
+
+### Patch Changes
+
+- 3d4bc07: fix templates
+
+## 16.0.81
+
+### Patch Changes
+
+- d050370: include shared.ts in all templates
+
 ## 16.0.80
 
 ## 16.0.79

@@ -18,6 +18,8 @@ export type AccessLevel = z.infer<typeof accessSchema>;
 export const metaSchema = z.object({
   title: z.string().optional(),
   pages: z.array(z.string()).optional(),
+  /** specify a index page for folder */
+  pagesIndex: z.string().optional(),
   description: z.string().optional(),
   root: z.boolean().optional(),
   defaultOpen: z.boolean().optional(),
@@ -25,6 +27,15 @@ export const metaSchema = z.object({
   icon: z.string().optional(),
 });
 
+export type _JSONType =
+  | number
+  | boolean
+  | string
+  | null
+  | _JSONType[]
+  | {
+      [key: string]: _JSONType;
+    };
 /**
  * Zod 4 schema
  */

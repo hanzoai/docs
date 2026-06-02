@@ -1,5 +1,219 @@
 # @fuma-docs/openapi
 
+## 10.10.0
+
+### Minor Changes
+
+- 2305581: Support anchor link for schema UI properties
+
+### Patch Changes
+
+- c5d1619: Deprecate `renderHeading` option
+
+## 10.9.1
+
+### Patch Changes
+
+- 5d579bd: improve loader API types
+- Updated dependencies [5d579bd]
+- Updated dependencies [84ce691]
+- Updated dependencies [5836093]
+  - fumadocs-core@16.9.2
+  - fumadocs-ui@16.9.2
+
+## 10.9.0
+
+### Minor Changes
+
+- 214d5b0: Introduce new translations API
+
+### Patch Changes
+
+- Updated dependencies [818ed21]
+- Updated dependencies [214d5b0]
+- Updated dependencies [3b66725]
+  - fumadocs-core@16.9.0
+  - fumadocs-ui@16.9.0
+
+## 10.8.6
+
+### Patch Changes
+
+- 975b530: Add Source API methods & Dynamic Source support to OpenAPI server
+- Updated dependencies [768b676]
+  - fumadocs-core@16.8.12
+  - fumadocs-ui@16.8.12
+
+## 10.8.5
+
+### Patch Changes
+
+- da4a81a: Bundle `ajv`
+
+## 10.8.4
+
+### Patch Changes
+
+- e84da60: Bundle `xml-js`
+
+## 10.8.3
+
+### Patch Changes
+
+- d4c78e4: OpenAPI: display a "Deprecated" badge for operations marked as `deprecated: true` in the spec, next to the operation heading and the method/path bar.
+- Updated dependencies [1dc86c7]
+  - fumadocs-core@16.8.11
+  - fumadocs-ui@16.8.11
+
+## 10.8.2
+
+### Patch Changes
+
+- e89fd74: fix hydration errors
+- Updated dependencies [2ca3eab]
+  - fumadocs-core@16.8.9
+  - fumadocs-ui@16.8.9
+
+## 10.8.1
+
+### Patch Changes
+
+- 970b1bf: fix inconsistency in option names
+- Updated dependencies [79d3209]
+  - fumadocs-core@16.8.5
+  - fumadocs-ui@16.8.5
+
+## 10.8.0
+
+### Minor Changes
+
+- cfeb2c5: Fix `@scalar/api-client-react` version as 2.0.2 has a breaking change
+
+### Patch Changes
+
+- Updated dependencies [3ae8809]
+  - fumadocs-ui@16.8.1
+  - fumadocs-core@16.8.1
+
+## 10.7.1
+
+### Patch Changes
+
+- 1ecb7ae: expose more types
+  - fumadocs-ui@16.7.16
+
+## 10.7.0
+
+### Minor Changes
+
+- ccad791: Update min Fumadocs versions requirements
+
+### Patch Changes
+
+- Updated dependencies [e1567e2]
+- Updated dependencies [9a200c8]
+- Updated dependencies [c731a92]
+- Updated dependencies [ccad791]
+- Updated dependencies [a4189ce]
+  - fumadocs-core@16.7.15
+  - fumadocs-ui@16.7.15
+
+## 10.6.8
+
+### Patch Changes
+
+- 9518cc8: Reduce deps
+- 690ddb9: bundle more deps
+- Updated dependencies [690ddb9]
+  - fumadocs-ui@16.7.13
+  - fumadocs-core@16.7.13
+  - @fumari/stf@1.0.5
+
+## 10.6.7
+
+### Patch Changes
+
+- 8462aa6: Support displaying response results of different mime types
+- Updated dependencies [5524927]
+- Updated dependencies [d47c4f1]
+  - fumadocs-core@16.7.11
+  - fumadocs-ui@16.7.11
+
+## 10.6.6
+
+### Patch Changes
+
+- f15e322: Improve auth UI for playground
+- Updated dependencies [f15e322]
+  - @fumari/stf@1.0.4
+
+## 10.6.5
+
+### Patch Changes
+
+- 94a45da: workaround ajv limitations
+
+## 10.6.4
+
+### Patch Changes
+
+- 9b88a56: Avoid re-serialization on non-RSC mode
+  - fumadocs-core@16.7.10
+  - fumadocs-ui@16.7.10
+
+## 10.6.3
+
+### Patch Changes
+
+- b9dd611: Improve pre-render layout shift
+- Updated dependencies [f580ef6]
+  - fumadocs-ui@16.7.9
+  - fumadocs-core@16.7.9
+
+## 10.6.2
+
+### Patch Changes
+
+- 9b350d7: Support sync loading components on client mode
+- f1962ec: [Schema UI] prefer alias name for display names
+- Updated dependencies [f7e69a6]
+  - fumadocs-ui@16.7.8
+  - fumadocs-core@16.7.8
+
+## 10.6.1
+
+### Patch Changes
+
+- d38e641: Support forwarding pure playground cookies with proxy
+
+## 10.6.0
+
+### Minor Changes
+
+- 9b7b5b5: Support non-RSC environment via `createClientAPIPage()`
+
+### Patch Changes
+
+- b8a95e8: Improve performance
+- a5186a7: Support `watch` option
+- Updated dependencies [9eb3c84]
+- Updated dependencies [0f39a9f]
+- Updated dependencies [0a6507b]
+  - fumadocs-ui@16.7.7
+  - fumadocs-core@16.7.7
+
+## 10.5.0
+
+### Minor Changes
+
+- 0edf9ce: Support `meta.json` file generation
+
+### Patch Changes
+
+- Updated dependencies [6849807]
+  - fumadocs-ui@16.7.6
+  - fumadocs-core@16.7.6
+
 ## 10.4.1
 
 ### Patch Changes
@@ -447,7 +661,7 @@
   import { createAPIPage } from "fumadocs-openapi/ui";
 
   export const APIPage = createAPIPage(openapi, {
-    // e.g. customise render functions
+    // e.g. customize render functions
     content: {
       renderResponseTabs,
       renderAPIExampleLayout,
@@ -470,7 +684,7 @@
   })
   ```
 
-  You can customise the renderers of different layouts:
+  You can customize the renderers of different layouts:
 
   ```tsx
   // components/api-page.tsx
@@ -1826,7 +2040,7 @@
 
 ### Patch Changes
 
-- 5730116: Improve experience to customise API Playground
+- 5730116: Improve experience to customize API Playground
 - Updated dependencies [886da49]
 - Updated dependencies [04e6c6e]
   - fumadocs-ui@15.0.11
@@ -2787,7 +3001,7 @@
 
 ### Minor Changes
 
-- abf84bb: Support to customise/disable TypeScript Response generation
+- abf84bb: Support to customize/disable TypeScript Response generation
 - 40728a1: Support custom fields (auth, query, header, path and body)
 
 ### Patch Changes
@@ -2950,11 +3164,11 @@
 
   **migrate:**
 
-  Removed the `render` option from `generate`, `generateFiles` and `generateTags`, use `frontmatter` to customise frontmatter, `imports` to customise imports.
+  Removed the `render` option from `generate`, `generateFiles` and `generateTags`, use `frontmatter` to customize frontmatter, `imports` to customize imports.
 
 - 284a571: **Support Custom MDX Renderer.**
 
-  **why:** Allow people to customise how the MDX file is generated.
+  **why:** Allow people to customize how the MDX file is generated.
 
   **migrate:**
 

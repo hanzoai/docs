@@ -29,6 +29,12 @@ export default defineClientConfig({
 });
 ```
 
+<Callout title="For non-RSC environment">
+
+You do not need to create a separate `api-page.client.tsx` file for client options, it is only required under RSC environment.
+
+</Callout>
+
 ### Generate Code Usages
 
 Generate code usage examples for each API endpoint.
@@ -112,16 +118,23 @@ const i18n = defineI18n({
   defaultLanguage: 'en',
 });
 
-export let i18nUI = defineI18nUI(i18n, {
-  cn: { displayName: 'Chinese' },
-});
-
-i18nUI = defineI18nOpenAPI(i18nUI, {
-  cn: {
-    titleRequestBody: '請求正文',
-  },
-});
+export const translations = i18n
+  .translations()
+  .extend(uiTranslations())
+  // [!code ++]
+  .extend(openapiTranslations())
+  .add('ui', {
+    cn: { displayName: 'Chinese' },
+  })
+  // [!code ++:5]
+  .add('openapi', {
+    cn: {
+      titleRequestBody: '請求正文',
+    },
+  });
 ```
+
+See [Translations](/docs/ui/translations) for more details.
 
 ## Media Adapters
 

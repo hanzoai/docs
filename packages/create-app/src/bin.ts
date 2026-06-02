@@ -36,8 +36,9 @@ const command = program
     new Option('--og-image <name>', 'configure OG image generation').choices(['next-og', 'takumi']),
   )
   .addOption(
-    new Option('--ai-chat <name>', 'configure AI chat (Next.js only)').choices([
+    new Option('--ai-chat <name>', 'configure AI chat').choices([
       'openrouter',
+      'llmgateway',
       'inkeep',
     ]),
   )
@@ -109,6 +110,10 @@ async function main(): Promise<void> {
                   value: 'biome',
                   label: 'Biome',
                 },
+                {
+                  value: 'oxlint',
+                  label: 'Oxlint',
+                },
               ]
             : [
                 {
@@ -118,6 +123,10 @@ async function main(): Promise<void> {
                 {
                   value: 'biome',
                   label: 'Biome',
+                },
+                {
+                  value: 'oxlint',
+                  label: 'Oxlint',
                 },
               ],
         });
@@ -151,7 +160,7 @@ async function main(): Promise<void> {
           message: 'Configure Open Graph Image generation?',
           options: [
             {
-              value: 'next-og',
+              value: 'next/og',
               label: 'next/og',
               hint: 'Next.js built-in solution',
             },
@@ -165,10 +174,14 @@ async function main(): Promise<void> {
       },
       aiChat: async ({ results }: { results: { template?: Template } }) => {
         if (config.aiChat !== undefined) return config.aiChat;
-        if (results.template !== '+next+fuma-docs-mdx') return false;
-        if (isCI) return false;
+        if (
+          isCI ||
+          results.template === '+next+fuma-docs-mdx+static' ||
+          results.template!.endsWith('-spa')
+        )
+          return false;
 
-        return select<false | 'openrouter' | 'inkeep'>({
+        return select<false | 'openrouter' | 'llmgateway' | 'inkeep'>({
           message: 'Configure AI Chat?',
           options: [
             {
@@ -177,8 +190,13 @@ async function main(): Promise<void> {
             },
             {
               value: 'openrouter',
-              label: 'OpenRouter',
-              hint: 'API key required',
+              label: 'AI SDK',
+              hint: 'default to OpenRouter',
+            },
+            {
+              value: 'llmgateway',
+              label: 'LLMGateway',
+              hint: 'open-source LLM gateway, API key required',
             },
             {
               value: 'inkeep',
@@ -222,25 +240,33 @@ async function main(): Promise<void> {
     plugins.push(oramaCloud());
   }
 
-  if (options.lint === 'eslint') {
-    const { eslint } = await import('./plugins/eslint');
-    plugins.push(eslint());
+  switch (options.lint) {
+    case 'eslint': {
+      const { eslint } = await import('./plugins/eslint');
+      plugins.push(eslint());
+      break;
+    }
+    case 'biome': {
+      const { biome } = await import('./plugins/biome');
+      plugins.push(biome());
+      break;
+    }
+    case 'oxlint': {
+      const { oxlint } = await import('./plugins/oxlint');
+      plugins.push(oxlint());
+      break;
+    }
   }
 
-  if (options.lint === 'biome') {
-    const { biome } = await import('./plugins/biome');
-    plugins.push(biome());
-  }
-
-  if (options.ogImage) {
+  if (options.ogImage === 'takumi') {
     const { nextUseTakumi } = await import('./plugins/next-use-takumi');
     plugins.push(nextUseTakumi());
   }
 
   if (options.aiChat) {
-    const { nextUseAi } = await import('./plugins/next-use-ai');
+    const { ai } = await import('./plugins/ai');
 
-    plugins.push(nextUseAi(options.aiChat));
+    plugins.push(ai(options.aiChat));
   }
 
   await create({

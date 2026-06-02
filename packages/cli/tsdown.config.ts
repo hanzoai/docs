@@ -1,15 +1,10 @@
 import { defineConfig } from 'tsdown';
 import fs from 'node:fs/promises';
-import { createConfigSchema } from './src/config';
+import { createConfigSchema } from './src/config.ts';
 import { z } from 'zod';
 
 export default defineConfig({
-  entry: [
-    './src/{index,config}.ts',
-    './src/registry/{client,schema}.ts',
-    './src/registry/installer/index.ts',
-    './src/build/index.ts',
-  ],
+  entry: ['./src/{index,config}.ts', './src/registry/installer.ts'],
   format: 'esm',
   dts: true,
   fixedExtension: false,
@@ -25,17 +20,9 @@ export default defineConfig({
     console.log('JSON schema generated');
     await fs.mkdir('dist/schema', { recursive: true });
     await fs.writeFile(
-      'dist/schema/src.json',
+      'dist/schema.json',
       JSON.stringify(
-        z.toJSONSchema(createConfigSchema(true), {
-          io: 'input',
-        }),
-      ),
-    );
-    await fs.writeFile(
-      'dist/schema/default.json',
-      JSON.stringify(
-        z.toJSONSchema(createConfigSchema(false), {
+        z.toJSONSchema(await createConfigSchema(), {
           io: 'input',
         }),
       ),

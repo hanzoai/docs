@@ -1,5 +1,146 @@
 # next-docs-mdx
 
+## 15.0.10
+
+### Patch Changes
+
+- d35d0d6: Respect `root` in Vite config
+- Updated dependencies [42f0255]
+- Updated dependencies [a807798]
+  - fumadocs-core@16.9.3
+
+## 15.0.9
+
+### Patch Changes
+
+- cd04425: Support `_fumadocs_skipViteConfig` internal flag
+
+## 15.0.8
+
+### Patch Changes
+
+- dca5b49: Fix compatibility with `?raw` query string
+- Updated dependencies [e77b9b3]
+- Updated dependencies [334c8fd]
+  - fumadocs-core@16.9.1
+
+## 15.0.7
+
+### Patch Changes
+
+- 768b676: Standardize `structuredData` in page data
+- Updated dependencies [768b676]
+  - fumadocs-core@16.8.12
+
+## 15.0.6
+
+### Patch Changes
+
+- da4a81a: Update vite configs
+
+## 15.0.5
+
+### Patch Changes
+
+- 1fb6a61: Support custom base directory for content sources
+
+## 15.0.4
+
+### Patch Changes
+
+- 819b6ec: Support Rolldown integration
+
+## 15.0.3
+
+### Patch Changes
+
+- 2569154: Pre-generate Vite config to prevent CJS compat issues
+- Updated dependencies [062beab]
+- Updated dependencies [505cfe0]
+  - fumadocs-core@16.8.10
+
+## 15.0.2
+
+### Patch Changes
+
+- 298ac97: fix compatibility issues with Vite RSC
+- b212481: remove vitefu from inline deps
+
+## 15.0.1
+
+### Patch Changes
+
+- 91cac42: remove unused deps
+- 3696a7e: Make source config optional in Vite plugin
+- Updated dependencies [2ca3eab]
+  - fumadocs-core@16.8.9
+
+## 15.0.0
+
+### Major Changes
+
+- 3de9dfe: **Require ESM for `next.config`**
+
+  Modern Node.js now supports `next.config.mts` format, compatibility layer is no longer needed.
+
+- 3de9dfe: Raise minimum `fumadocs-core` version to `16.7.0`
+
+### Patch Changes
+
+- 5745fcf: Support better Node.js loader registry
+  - fumadocs-core@16.8.8
+
+## 14.3.2
+
+### Patch Changes
+
+- 79d3209: Deprecate forwarded schemas at `fumadocs-mdx/config`, recommend `fumadocs-core/source/schema` instead.
+- Updated dependencies [79d3209]
+  - fumadocs-core@16.8.5
+
+## 14.3.1
+
+### Patch Changes
+
+- a744f9f: Support frontmatter parsing at core-level
+
+## 14.3.0
+
+### Minor Changes
+
+- fa9f678: **Make Next.js config ESM only**
+
+  Newer Next.js supported `.mts` extension for Next.js config files, see [Next.js docs](https://nextjs.org/docs/app/api-reference/config/typescript#using-nodejs-native-typescript-resolver-for-nextconfigts) for more info.
+
+## 14.2.14
+
+### Patch Changes
+
+- eb62304: Make `mdx-remote` optional for dynamic mode
+- Updated dependencies [e1567e2]
+- Updated dependencies [9a200c8]
+- Updated dependencies [c731a92]
+- Updated dependencies [a4189ce]
+  - fumadocs-core@16.7.15
+
+## 14.2.13
+
+### Patch Changes
+
+- 2d8f596: fix `npm pack` skipping nested `node_modules`
+- Updated dependencies [2d8f596]
+  - @fumadocs/mdx-remote@1.4.8
+  - fumadocs-core@16.7.14
+
+## 14.2.12
+
+### Patch Changes
+
+- 690ddb9: bundle more deps
+- Updated dependencies [690ddb9]
+  - @fumadocs/mdx-remote@1.4.7
+  - fumadocs-core@16.7.13
+
 ## 14.2.11
 
 ### Patch Changes
@@ -308,12 +449,10 @@
 - 3caa5cd: **Vite: move `source.generated.ts` to `.source/index.ts`**
 
   **Why:**
-
   - with Fumadocs MDX Plugins, we want to unify the output directory across Vite & Next.js.
   - `source.generated.ts` looks ugly compared by `.source`.
 
   **Migrate:**
-
   - run dev server/typegen to generate a `.source` folder.
   - import it over the original `source.generated.ts`.
   - note that both docs and `create-fumadocs-app` are updated to `.source` folder.
@@ -327,7 +466,6 @@
 
   With Fumadocs MDX Plugins, you can extend Fumadocs MDX without worrying the underlying bundler.
   It is designed for:
-
   - Generate files from config (e.g. types, index files, JSON schemas)
   - Modify received config
 
@@ -390,7 +528,6 @@
 - f11f89d: **[Next.js] Rename APIS**
 
   On page data:
-
   - `_file` -> `info`.
   - `_file.absolutePath` -> `info.fullPath`.
 

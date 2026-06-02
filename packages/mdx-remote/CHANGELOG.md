@@ -1,5 +1,35 @@
 # @fumadocs/mdx-remote
 
+## 1.4.10
+
+### Patch Changes
+
+- 3e85c69: reduce deps
+- Updated dependencies [79d3209]
+  - fumadocs-core@16.8.5
+
+## 1.4.9
+
+### Patch Changes
+
+- a744f9f: Support frontmatter parsing at core-level
+
+## 1.4.8
+
+### Patch Changes
+
+- 2d8f596: fix `npm pack` skipping nested `node_modules`
+- Updated dependencies [2d8f596]
+  - fumadocs-core@16.7.14
+
+## 1.4.7
+
+### Patch Changes
+
+- 690ddb9: bundle more deps
+- Updated dependencies [690ddb9]
+  - fumadocs-core@16.7.13
+
 ## 1.4.6
 
 ### Patch Changes
@@ -49,7 +79,7 @@
 
 ### Patch Changes
 
-- b867d07: Support customise scope variables
+- b867d07: Support customize scope variables
 
 ## 1.4.1
 

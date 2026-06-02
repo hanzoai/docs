@@ -10,7 +10,7 @@ import { usePathname } from '@hanzo/docs-core/framework';
 const cache = new Map<string, Promise<string>>();
 
 /**
- * see https://fumadocs.dev/docs/integrations/llms#page-actions to customise.
+ * see https://fumadocs.dev/docs/integrations/llms#page-actions to customize.
  */
 export function MarkdownCopyButton({
   markdownUrl,
@@ -21,6 +21,7 @@ export function MarkdownCopyButton({
    */
   markdownUrl: string;
 }) {
+  const t = useTranslations();
   const [isLoading, setLoading] = useState(false);
   const [checked, onClick] = useCopyButton(async () => {
     const cached = cache.get(markdownUrl);
@@ -56,12 +57,12 @@ export function MarkdownCopyButton({
       )}
     >
       {checked ? <Check /> : <Copy />}
-      {props.children ?? 'Copy Markdown'}
+      {props.children ?? t.pageActionsCopyMarkdown}
     </button>
   );
 }
 /**
- * see https://fumadocs.dev/docs/integrations/llms#page-actions to customise.
+ * see https://fumadocs.dev/docs/integrations/llms#page-actions to customize.
  */
 export function ViewOptionsPopover({
   markdownUrl,
@@ -79,14 +80,15 @@ export function ViewOptionsPopover({
   githubUrl?: string;
 }) {
   const pathname = usePathname();
+  const t = useTranslations();
   const items = useMemo(() => {
     const pageUrl =
       typeof window === 'undefined' ? pathname : new URL(pathname, window.location.origin);
-    const q = `Read ${pageUrl}, I want to ask questions about it.`;
+    const q = renderTranslation(t.pageActionsOpenInLLMPrompt, { url: String(pageUrl) });
 
     return [
       githubUrl && {
-        title: 'Open in GitHub',
+        title: t.pageActionsOpenGitHub,
         href: githubUrl,
         icon: (
           <svg fill="currentColor" role="img" viewBox="0 0 24 24">
@@ -96,12 +98,12 @@ export function ViewOptionsPopover({
         ),
       },
       markdownUrl && {
-        title: 'View as Markdown',
+        title: t.pageActionsViewMarkdown,
         href: markdownUrl,
         icon: <TextIcon />,
       },
       {
-        title: 'Open in Scira AI',
+        title: t.pageActionsOpenScira,
         href: `https://scira.ai/?${new URLSearchParams({
           q,
         })}`,
@@ -165,7 +167,7 @@ export function ViewOptionsPopover({
         ),
       },
       {
-        title: 'Open in ChatGPT',
+        title: t.pageActionsOpenChatGPT,
         href: `https://chatgpt.com/?${new URLSearchParams({
           hints: 'search',
           q,
@@ -183,7 +185,7 @@ export function ViewOptionsPopover({
         ),
       },
       {
-        title: 'Open in Claude',
+        title: t.pageActionsOpenClaude,
         href: `https://claude.ai/new?${new URLSearchParams({
           q,
         })}`,
@@ -200,7 +202,7 @@ export function ViewOptionsPopover({
         ),
       },
       {
-        title: 'Open in Cursor',
+        title: t.pageActionsOpenCursor,
         icon: (
           <svg
             fill="currentColor"
@@ -217,7 +219,7 @@ export function ViewOptionsPopover({
         })}`,
       },
     ].filter((v) => !!v);
-  }, [githubUrl, markdownUrl, pathname]);
+  }, [githubUrl, markdownUrl, pathname, t]);
 
   return (
     <Popover>
@@ -234,7 +236,7 @@ export function ViewOptionsPopover({
           )
         }
       >
-        {props.children ?? 'Open'}
+        {props.children ?? t.pageActionsOpen}
         <ChevronDown className="size-3.5 text-fd-muted-foreground" />
       </PopoverTrigger>
       <PopoverContent className="flex flex-col">

@@ -6,7 +6,7 @@ import mdx from '@hanzo/docs-mdx/vite';
 import * as MdxConfig from './source.config';
 
 export default defineConfig({
-  plugins: [mdx(MdxConfig), tailwindcss(), reactRouterRSC(), rsc()],
+  plugins: [mdx(), tailwindcss(), reactRouterRSC(), rsc()],
   resolve: {
     tsconfigPaths: true,
   },

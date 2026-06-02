@@ -9,7 +9,7 @@ import {
   useState,
 } from 'react';
 import { cn } from '@/utils/cn';
-import { I18nLabel, useI18n } from '@/contexts/i18n';
+import { I18nLabel, useTranslations } from '@/contexts/i18n';
 import {
   TOC,
   TOCPopover,
@@ -32,7 +32,7 @@ export interface DocsPageProps extends ComponentProps<'article'> {
    *
    * @defaultValue false
    */
-  full?: boolean;
+  full?: boolean | undefined;
   slots?: Partial<DocsPageSlots>;
 
   footer?: FooterOptions;
@@ -57,21 +57,22 @@ interface FooterOptions extends FooterProps {
   component?: ReactNode;
 }
 
-interface TableOfContentOptions extends Pick<TOCProviderProps, 'single'>, TOCProps {
-  enabled?: boolean;
-  /**
-   * @deprecated use `slots.toc` instead.
-   */
-  component?: ReactNode;
-}
+type TableOfContentOptions = Pick<TOCProviderProps, 'single'> &
+  TOCProps & {
+    enabled?: boolean;
+    /**
+     * @deprecated use `slots.toc` instead.
+     */
+    component?: ReactNode;
+  };
 
-interface TableOfContentPopoverOptions extends TOCPopoverProps {
+type TableOfContentPopoverOptions = TOCPopoverProps & {
   enabled?: boolean;
   /**
    * @deprecated use `slots.tocPopover` instead.
    */
   component?: ReactNode;
-}
+};
 
 interface DocsPageSlots {
   toc: {
@@ -84,10 +85,8 @@ interface DocsPageSlots {
   breadcrumb: FC<BreadcrumbProps>;
 }
 
-type PageSlotsProps = Pick<DocsPageProps, 'full'>;
-
 const PageContext = createContext<{
-  props: PageSlotsProps;
+  full: NonNullable<DocsPageProps['full']>;
   slots: DocsPageSlots;
 } | null>(null);
 
@@ -101,17 +100,16 @@ export function useDocsPage() {
 }
 
 export function DocsPage({
-  tableOfContent: { enabled: tocEnabled, single, ...tocProps } = {},
+  full = false,
+  tableOfContent: { enabled: tocEnabled = !full, single, ...tocProps } = {},
   tableOfContentPopover: { enabled: tocPopoverEnabled, ...tocPopoverProps } = {},
   breadcrumb: { enabled: breadcrumbEnabled = true, ...breadcrumb } = {},
   footer: { enabled: footerEnabled = true, ...footer } = {},
-  full = false,
   toc = [],
   slots: defaultSlots = {},
   children,
   ...containerProps
 }: DocsPageProps) {
-  tocEnabled ??= Boolean(!full && (toc.length > 0 || tocProps.footer || tocProps.header));
   tocPopoverEnabled ??= Boolean(toc.length > 0 || tocPopoverProps.header || tocPopoverProps.footer);
 
   const slots: DocsPageSlots = {
@@ -128,7 +126,7 @@ export function DocsPage({
   return (
     <PageContext
       value={{
-        props: { full },
+        full,
         slots,
       }}
     >
@@ -205,7 +203,7 @@ export function PageLastUpdate({
   date: value,
   ...props
 }: Omit<ComponentProps<'p'>, 'children'> & { date: Date }) {
-  const { text } = useI18n();
+  const t = useTranslations();
   const [date, setDate] = useState('');
 
   useEffect(() => {
@@ -215,7 +213,7 @@ export function PageLastUpdate({
 
   return (
     <p {...props} className={cn('text-sm text-fd-muted-foreground', props.className)}>
-      {text.lastUpdate} {date}
+      {t.lastUpdate} {date}
     </p>
   );
 }

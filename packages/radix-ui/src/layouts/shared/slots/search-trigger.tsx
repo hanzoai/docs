@@ -2,7 +2,7 @@
 import type { ComponentProps } from 'react';
 import { Search } from 'lucide-react';
 import { useSearchContext } from '@/contexts/search';
-import { useI18n } from '@/contexts/i18n';
+import { useTranslations } from '@/contexts/i18n';
 import { cn } from '@/utils/cn';
 import { type ButtonProps, buttonVariants } from '@/components/ui/button';
 
@@ -17,6 +17,7 @@ export function SearchTrigger({
   ...props
 }: SearchTriggerProps) {
   const { setOpenSearch, enabled } = useSearchContext();
+  const t = useTranslations();
   if (hideIfDisabled && !enabled) return null;
 
   return (
@@ -30,7 +31,7 @@ export function SearchTrigger({
         props.className,
       )}
       data-search=""
-      aria-label="Open Search"
+      aria-label={t.searchOpen}
       onClick={() => {
         setOpenSearch(true);
       }}
@@ -46,7 +47,7 @@ export interface FullSearchTriggerProps extends ComponentProps<'button'> {
 
 export function FullSearchTrigger({ hideIfDisabled, ...props }: FullSearchTriggerProps) {
   const { enabled, hotKey, setOpenSearch } = useSearchContext();
-  const { text } = useI18n();
+  const t = useTranslations();
   if (hideIfDisabled && !enabled) return null;
 
   return (
@@ -63,7 +64,7 @@ export function FullSearchTrigger({ hideIfDisabled, ...props }: FullSearchTrigge
       }}
     >
       <Search className="size-4" />
-      {text.search}
+      {t.search}
       <div className="ms-auto inline-flex gap-0.5">
         {hotKey.map((k, i) => (
           <kbd key={i} className="rounded-md border bg-fd-background px-1.5">

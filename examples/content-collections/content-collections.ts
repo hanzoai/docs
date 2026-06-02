@@ -9,7 +9,7 @@ const docs = defineCollection({
   name: 'docs',
   directory: 'content/docs',
   include: '**/*.mdx',
-  schema: frontmatterSchema,
+  schema: pageSchema,
   transform: transformMDX,
 });
 
