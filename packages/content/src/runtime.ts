@@ -9,7 +9,7 @@ type ToPageData<T> =
       ? Frontmatter & T
       : never;
 
-export function toFumadocsSource<
+export function toDocsSource<
   Mdx extends MDXStoreData<PageData> | MDXStoreLazyData<PageData, unknown> = MDXStoreData<
     PageData,
     unknown
@@ -49,8 +49,8 @@ export function docsStore<
   Meta extends { data: MetaData } = { data: MetaData },
 >(mdxStore: FileCollectionStore<Mdx>, metaStore: FileCollectionStore<Meta>) {
   return {
-    toFumadocsSource() {
-      return toFumadocsSource(mdxStore, metaStore);
+    toDocsSource() {
+      return toDocsSource(mdxStore, metaStore);
     },
   };
 }
