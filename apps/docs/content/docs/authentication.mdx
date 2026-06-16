@@ -1,213 +1,219 @@
 ---
 title: Authentication
-description: Single sign-on, OAuth 2.0 + OIDC flows, session management, and account linking across all Hanzo services.
+description: The one way to authenticate against Hanzo IAM — canonical OIDC endpoints, the @hanzo/iam SDK, and per-framework integration.
 ---
 
 # Authentication
 
-Hanzo uses a single identity provider -- [hanzo.id](https://hanzo.id) -- for all services. One account, one login, one session across console, chat, platform, cloud, and every API.
+Hanzo uses one identity provider per brand, a standards-compliant OIDC provider. You integrate through exactly one library — [`@hanzo/iam`](https://www.npmjs.com/package/@hanzo/iam) — against one set of endpoints. There is no second way.
 
-## How It Works
+| Brand | IAM origin (`serverUrl`) | Login UI |
+|-------|--------------------------|----------|
+| Hanzo | `https://iam.hanzo.ai` | `hanzo.id` |
+| Lux | `https://lux.id` | `lux.id` |
+| Zoo | `https://zoo.id` | `zoo.id` |
+| Bootnode | `https://id.bootno.de` | `id.bootno.de` |
+| Pars | `https://pars.id` | `pars.id` |
 
-All Hanzo web applications redirect to `hanzo.id` for authentication using standard OAuth 2.0 + OpenID Connect (OIDC). The flow is the same whether you are logging into the console, chat, or any other service:
-
-1. You visit a Hanzo service (e.g. `console.hanzo.ai`)
-2. The service redirects you to `hanzo.id/oauth/authorize`
-3. You authenticate (password, GitHub, Google, or wallet)
-4. hanzo.id redirects back with an authorization code
-5. The service exchanges the code for access and refresh tokens
-6. You are logged in
-
-This is the standard **Authorization Code + PKCE** flow defined in RFC 7636. PKCE (Proof Key for Code Exchange) is used for all browser-based flows, including single-page applications.
+The SDK is brand-agnostic. Select the brand with `serverUrl`; nothing else changes.
 
 ## OIDC Endpoints
 
-All endpoints follow RFC 6749 and OpenID Connect Discovery:
+These `/v1/iam/oauth/*` paths are the only endpoints. There is no `/oauth/*`, no `/api/login/*`, no `/api/` prefix. They are relative to the brand `serverUrl` (shown here for Hanzo).
 
-| Endpoint | URL |
-|----------|-----|
-| **Discovery** | `https://hanzo.id/.well-known/openid-configuration` |
-| **Authorize** | `https://hanzo.id/oauth/authorize` |
-| **Token** | `https://hanzo.id/oauth/token` |
-| **UserInfo** | `https://hanzo.id/oauth/userinfo` |
-| **Introspect** | `https://hanzo.id/oauth/introspect` |
-| **Revoke** | `https://hanzo.id/oauth/revoke` |
-| **Logout** | `https://hanzo.id/oauth/logout` |
-| **Device** | `https://hanzo.id/oauth/device` |
+| Purpose | Path |
+|---------|------|
+| Discovery | `https://iam.hanzo.ai/.well-known/openid-configuration` |
+| Authorize | `https://iam.hanzo.ai/v1/iam/oauth/authorize` |
+| Token | `https://iam.hanzo.ai/v1/iam/oauth/token` |
+| UserInfo | `https://iam.hanzo.ai/v1/iam/oauth/userinfo` |
+| JWKS | `https://iam.hanzo.ai/v1/iam/.well-known/jwks` |
+| Logout | `https://iam.hanzo.ai/v1/iam/oauth/logout` |
 
-These are the canonical paths. Legacy Hanzo IAM-style paths are still served for backward compatibility but must not be used in new integrations.
+Every flow uses **PKCE `S256`**, **`client_secret_basic`** for confidential clients, and scopes **`openid profile email`**. The flow is Authorization Code + PKCE; implicit grant is not supported.
 
-## Session Duration
+You never write these paths yourself. `@hanzo/iam` holds them in one place and every entry point reads from there, so a misconfiguration can't drift onto a wrong URL.
 
-- **Web sessions** last 30 days from last activity
-- **Access tokens** expire after 1 hour
-- **Refresh tokens** are long-lived and rotate silently
+## The SDK: `@hanzo/iam`
 
-When an access token expires, the SDK or browser client uses the refresh token to obtain a new one without requiring re-authentication. The 30-day session window resets on every authenticated request.
-
-## Cross-Service Single Sign-On
-
-Once you are logged in to one Hanzo service, you are logged in to all of them. The session is maintained at `hanzo.id` -- when another service redirects you there, it recognizes your existing session and issues tokens immediately without showing a login screen.
-
-Services sharing the SSO session:
-
-| Service | URL | Purpose |
-|---------|-----|---------|
-| Console | `console.hanzo.ai` | Dashboard, API keys, usage |
-| Chat | `chat.hanzo.ai` | AI chat with Zen models and MCP tools |
-| Cloud | `cloud.hanzo.ai` | LLM gateway management |
-| Platform | `platform.hanzo.ai` | PaaS deployment and hosting |
-| KMS | `kms.hanzo.ai` | Secrets management |
-| Tasks | `tasks.hanzo.ai` | Durable workflow engine |
-
-## OAuth 2.0 + PKCE Flow
-
-For applications integrating with Hanzo IAM, here is the complete PKCE flow:
-
-### 1. Generate a Code Verifier and Challenge
-
-```typescript
-import crypto from 'crypto'
-
-const codeVerifier = crypto.randomBytes(32).toString('base64url')
-const codeChallenge = crypto
-  .createHash('sha256')
-  .update(codeVerifier)
-  .digest('base64url')
-```
-
-### 2. Redirect to Authorize
-
-```
-https://hanzo.id/oauth/authorize?
-  response_type=code&
-  client_id=YOUR_CLIENT_ID&
-  redirect_uri=https://yourapp.com/callback&
-  scope=openid profile email&
-  code_challenge=CODE_CHALLENGE&
-  code_challenge_method=S256&
-  state=RANDOM_STATE
-```
-
-### 3. Exchange the Code for Tokens
+Install once, import the entry point that matches your runtime:
 
 ```bash
-curl -X POST https://hanzo.id/oauth/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "grant_type=authorization_code" \
-  -d "code=AUTHORIZATION_CODE" \
-  -d "redirect_uri=https://yourapp.com/callback" \
-  -d "client_id=YOUR_CLIENT_ID" \
-  -d "code_verifier=CODE_VERIFIER"
+pnpm add @hanzo/iam
 ```
 
-Response:
+| Subpath | Surface | Use |
+|---------|---------|-----|
+| `@hanzo/iam` | `IamClient`, types | conditional Node/browser entry |
+| `@hanzo/iam/server` | `validateToken`, `getServerSession` | server-side JWT validation + session |
+| `@hanzo/iam/betterauth` | `iamProvider` | better-auth apps |
+| `@hanzo/iam/nextauth` | `IamProvider` | NextAuth / Auth.js apps |
+| `@hanzo/iam/react` | hooks, `OrgProjectSwitcher` | React SPAs |
+| `@hanzo/iam/browser` | `IAM` (PKCE client) | browser PKCE login |
+| `@hanzo/iam/passport` | `createIamPassportStrategy` | Node / Express + Passport |
 
-```json
-{
-  "access_token": "eyJhbGciOiJSUzI1NiIs...",
-  "token_type": "Bearer",
-  "expires_in": 3600,
-  "refresh_token": "rt-abc123...",
-  "id_token": "eyJhbGciOiJSUzI1NiIs...",
-  "scope": "openid profile email"
+## Server-Side Token Validation
+
+Any backend validates a bearer token like this:
+
+```ts
+import { validateToken } from '@hanzo/iam/server'
+
+const result = await validateToken(accessToken, {
+  serverUrl: process.env.IAM_ENDPOINT!, // https://iam.hanzo.ai
+  clientId: process.env.IAM_CLIENT_ID!,
+})
+
+if (!result.ok) {
+  // result.reason explains why
+  return unauthorized()
+}
+
+const { userId, email, owner } = result
+// owner is the org slug — scope every query to it
+```
+
+`validateToken` discovers the JWKS, caches the key set per issuer, and verifies the signature plus `iss`, `aud`, and `exp`. The `owner` claim is the organization; all multi-tenant data access must be scoped to it.
+
+## Server Session (App Router / RSC)
+
+```ts
+import { getServerSession } from '@hanzo/iam/server'
+
+const session = await getServerSession({ serverUrl: process.env.IAM_ENDPOINT! })
+if (!session) redirect('/login')
+```
+
+## better-auth
+
+```ts
+import { betterAuth } from 'better-auth'
+import { genericOAuth } from 'better-auth/plugins'
+import { iamProvider } from '@hanzo/iam/betterauth'
+
+export const auth = betterAuth({
+  plugins: [
+    genericOAuth({
+      config: [
+        iamProvider({
+          serverUrl: process.env.IAM_ENDPOINT!,
+          clientId: process.env.IAM_CLIENT_ID!,
+          clientSecret: process.env.IAM_CLIENT_SECRET!,
+        }),
+      ],
+    }),
+  ],
+})
+```
+
+`iamProvider()` returns a config with **explicit** authorize, token, and userinfo endpoints — it never relies on discovery resolution. Register the redirect URI `https://<app-host>/api/auth/oauth2/callback/hanzo`.
+
+Do not use raw `genericOAuth({ discoveryUrl })`. Discovery resolves to the IAM SPA catch-all HTML and the client dies with `content-type must be application/json`. Always use `iamProvider()`.
+
+## NextAuth / Auth.js
+
+```ts
+import { IamProvider } from '@hanzo/iam/nextauth'
+
+export default NextAuth({
+  providers: [
+    IamProvider({
+      serverUrl: process.env.IAM_ENDPOINT!,
+      clientId: process.env.IAM_CLIENT_ID!,
+      clientSecret: process.env.IAM_CLIENT_SECRET!,
+      checks: ['state', 'pkce'],
+    }),
+  ],
+})
+```
+
+Register the redirect URI `https://<app-host>/api/auth/callback/iam`.
+
+## React SPA (PKCE)
+
+```ts
+import { IAM } from '@hanzo/iam/browser'
+
+const iam = new IAM({
+  serverUrl: 'https://iam.hanzo.ai',
+  clientId: 'hanzo-myspa',
+  redirectUri: `${location.origin}/auth/callback`,
+})
+
+await iam.signinRedirect()              // start login
+const token = await iam.handleCallback() // on /auth/callback
+const access = await iam.getValidAccessToken() // auto-refreshes
+```
+
+With React context and hooks:
+
+```tsx
+import { IamProvider, useIam } from '@hanzo/iam/react'
+
+function Root() {
+  return (
+    <IamProvider serverUrl="https://iam.hanzo.ai" clientId="hanzo-myspa">
+      <App />
+    </IamProvider>
+  )
+}
+
+function Profile() {
+  const { user, signIn, signOut } = useIam()
+  return user ? <button onClick={signOut}>{user.email}</button> : <button onClick={signIn}>Sign in</button>
 }
 ```
 
-### 4. Extract Identity from the JWT
+The browser client uses PKCE `S256`, holds tokens in memory, and refreshes silently. Register the redirect URI `https://<app-host>/auth/callback`. Never store access tokens in `localStorage`.
 
-The `access_token` and `id_token` are JWTs. The key claims:
+## Node / Express + Passport
 
-| Claim | Description |
-|-------|-------------|
-| `sub` | User ID |
-| `email` | User email |
-| `name` | Display name |
-| `owner` | Organization ID (used for data scoping) |
-| `iss` | Issuer (`https://hanzo.id`) |
-| `aud` | Client ID |
-| `exp` | Expiration timestamp |
+```ts
+import passport from 'passport'
+import { createIamPassportStrategy } from '@hanzo/iam/passport'
 
-The `owner` claim is critical for multi-tenant applications. All data queries must be scoped to this organization ID.
-
-## Account Linking
-
-You can link multiple identity providers to a single Hanzo account:
-
-- **GitHub** -- OAuth via GitHub
-- **Google** -- OAuth via Google Workspace or personal accounts
-- **Wallet** -- Ethereum-compatible wallet signature (MetaMask, WalletConnect, etc.)
-- **Email + Password** -- Traditional credentials
-
-Link accounts in the console at **Settings > Account > Connected Accounts**. All linked providers authenticate to the same identity, same organizations, same API keys.
-
-## Org Switching
-
-If you belong to multiple organizations, you can switch between them in any Hanzo service:
-
-1. Click your avatar or org name in the top-right corner
-2. Select the target organization from the dropdown
-3. The UI reloads with the new org context
-
-When you switch orgs:
-- API keys shown are scoped to the new org's projects
-- Usage and billing reflect the new org
-- The JWT `owner` claim updates on next token refresh
-
-See [Organizations](/docs/organizations) for full details on multi-org setup.
-
-## Backend Token Validation
-
-For services that validate Hanzo tokens server-side:
-
-```python
-import jwt
-import requests
-
-# Fetch JWKS from IAM
-jwks_url = "https://hanzo.id/.well-known/jwks.json"
-jwks = requests.get(jwks_url).json()
-
-# Validate the token
-decoded = jwt.decode(
-    token,
-    jwks,
-    algorithms=["RS256"],
-    audience="your-client-id",
-    issuer="https://hanzo.id",
-)
-org_id = decoded["owner"]
-user_id = decoded["sub"]
+passport.use('iam', createIamPassportStrategy({
+  serverUrl: 'https://iam.hanzo.ai',
+  clientId: 'hanzo-myservice',
+  clientSecret: process.env.IAM_CLIENT_SECRET!,
+  callbackUrl: 'https://myservice.hanzo.ai/v1/sso/oidc/callback',
+}))
 ```
 
-Or use the IAM SDK:
+Register the redirect URI `https://<app-host>/v1/sso/oidc/callback`.
 
-```typescript
-import { validateToken } from '@hanzo/iam/auth'
+## App Registration
 
-const identity = await validateToken(token, {
-  issuer: 'https://hanzo.id',
-  audience: 'your-client-id',
-})
-// identity.sub, identity.owner, identity.email
-```
+Every app is registered once per brand in IAM before it can authenticate:
 
-## API Key vs. Token Authentication
+- **`client_id`** is named `<org>-<app>` (e.g. `hanzo-console`, `lux-wallet`). One ID per app per brand.
+- **`redirectUris`** must contain the **exact** callback the framework above uses. There is no wildcard.
+- **Client secret** is KMS-managed. Never in Git, env files, or images.
+- **Superuser** convention: `z@<domain>` / `Ilove<App>2026!!`.
 
-Hanzo supports two authentication methods depending on the use case:
+## Forbidden
 
-| Method | Header | When to Use |
-|--------|--------|-------------|
-| **API Key** | `Authorization: Bearer hk-*` | Server-to-server, scripts, CI/CD |
-| **OIDC Token** | `Authorization: Bearer eyJ...` | User-facing apps after OAuth login |
+These break in production and must never be used:
 
-Both methods are accepted by the API gateway (`api.hanzo.ai`). API keys are simpler for machine-to-machine communication. OIDC tokens carry user identity and org context, which is required for user-facing applications.
+- Raw `better-auth` `genericOAuth({ discoveryUrl })` — resolves to the SPA catch-all HTML.
+- Hand-rolled OAuth, PKCE, or JWKS validation — use the SDK.
+- Any per-app OIDC path string — the path lives in the SDK; pass only `serverUrl`.
+- Legacy paths (`/oauth/*`, `/api/login/oauth/*`, anything `/api/`-prefixed).
 
-## Security Notes
+## Gotcha: the SPA catch-all
 
-- All auth endpoints enforce TLS. Plain HTTP is rejected.
-- Tokens are signed with RS256. Validate the signature against the JWKS endpoint.
-- Always validate `iss`, `aud`, and `exp` claims.
-- The `owner` claim must be used to scope all database queries in multi-tenant services.
-- Never store access tokens in localStorage. Use httpOnly cookies or in-memory storage.
-- PKCE is mandatory for all browser-based flows. Implicit grant is not supported.
+IAM serves a `200 text/html` page for any unregistered path. A wrong path is **not** a `404` — it is a `200` with an HTML body, which then fails downstream as a confusing content-type error. This is the single most common integration mistake. Use `@hanzo/iam` and the exact `/v1/iam/*` paths; never let discovery resolution drift.
+
+## Multi-Tenancy
+
+The JWT `owner` claim is the organization slug. Scope every database query to it.
+
+Behind the API gateway (`api.hanzo.ai`), the gateway validates the token, strips any client-supplied identity headers, and re-injects `X-Org-Id` (from `owner`), `X-User-Id` (from `sub`), and `X-User-Email` (from `email`). Services behind the gateway trust those headers and do not re-parse the JWT. A service that talks to IAM directly uses `validateToken` as shown above. These are the only two patterns.
+
+## Security
+
+- PKCE `S256` is mandatory for all flows. Implicit grant is not supported.
+- Validate the signature against JWKS and check `iss`, `aud`, and `exp` — `validateToken` does this.
+- Tokens live in memory or httpOnly cookies, never `localStorage`.
+- Confidential-client secrets come from KMS and use `client_secret_basic` over TLS.
+- All endpoints enforce TLS; plaintext is rejected.
