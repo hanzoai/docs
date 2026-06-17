@@ -1,4 +1,4 @@
-# LLM.md - Hanzo Docs Framework
+# Hanzo Docs Framework
 
 Fork of [fumadocs](https://github.com/fuma-nama/fumadocs) with all packages renamed to `@hanzo/docs-*` namespace.
 
