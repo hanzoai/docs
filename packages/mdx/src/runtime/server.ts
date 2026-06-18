@@ -208,8 +208,8 @@ export function server<Config, TC extends InternalTypeConfig>(options: ServerOpt
       const entry = {
         docs: await this.doc(name, base, docGlob),
         meta: await this.meta(name, base, metaGlob),
-        toFumadocsSource(options) {
-          return toFumadocsSource(this.docs, this.meta, options);
+        toDocsSource(options) {
+          return toDocsSource(this.docs, this.meta, options);
         },
       } satisfies DocsCollectionEntry;
 
@@ -246,8 +246,8 @@ export function server<Config, TC extends InternalTypeConfig>(options: ServerOpt
       const entry = {
         docs: await this.docLazy(name, base, docHeadGlob, docBodyGlob),
         meta: await this.meta(name, base, metaGlob),
-        toFumadocsSource(options) {
-          return toFumadocsSource(this.docs, this.meta, options);
+        toDocsSource(options) {
+          return toDocsSource(this.docs, this.meta, options);
         },
       } satisfies AsyncDocsCollectionEntry;
 
