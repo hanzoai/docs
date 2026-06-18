@@ -130,7 +130,7 @@ export interface EmitOutput {
 
 export const _Defaults = {
   configPath: 'source.config.ts',
-  outDir: 'docs',
+  outDir: '.docs',
 };
 
 async function getPlugins(pluginOptions: PluginOption[]): Promise<Plugin[]> {
