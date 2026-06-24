@@ -4,7 +4,7 @@ import { createConfigSchema } from './src/config.ts';
 import { z } from 'zod';
 
 export default defineConfig({
-  entry: ['./src/{index,config}.ts', './src/registry/installer.ts'],
+  entry: ['./src/{index,config,build}.ts', './src/registry/installer.ts'],
   format: 'esm',
   dts: true,
   fixedExtension: false,
