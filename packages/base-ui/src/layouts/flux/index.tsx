@@ -1,5 +1,5 @@
 'use client';
-import type * as PageTree from '@hanzo/docs-core/page-tree';
+import type * as PageTree from 'fumadocs-core/page-tree';
 import {
   type BaseLayoutProps,
   baseSlots,
@@ -70,7 +70,7 @@ export function useFluxLayout() {
   const context = use(LayoutContext);
   if (!context)
     throw new Error(
-      'Please use Flux layout components under <DocsLayout /> (`@hanzo/docs-ui/layouts/flux`).',
+      'Please use Flux layout components under <DocsLayout /> (`fumadocs-ui/layouts/flux`).',
     );
   return context;
 }

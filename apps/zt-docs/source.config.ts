@@ -4,10 +4,10 @@ import {
   defineDocs,
   frontmatterSchema,
   metaSchema,
-} from '@hanzo/docs-mdx/config';
+} from 'fumadocs-mdx/config';
 import { z } from 'zod';
-import jsonSchema from '@hanzo/docs-mdx/plugins/json-schema';
-import lastModified from '@hanzo/docs-mdx/plugins/last-modified';
+import jsonSchema from 'fumadocs-mdx/plugins/json-schema';
+import lastModified from 'fumadocs-mdx/plugins/last-modified';
 
 export const docs = defineDocs({
   docs: {
@@ -20,10 +20,10 @@ export const docs = defineDocs({
     },
     async: true,
     async mdxOptions(environment) {
-      const { rehypeCodeDefaultOptions } = await import('@hanzo/docs-core/mdx-plugins/rehype-code');
+      const { rehypeCodeDefaultOptions } = await import('fumadocs-core/mdx-plugins/rehype-code');
       const { remarkStructureDefaultOptions } =
-        await import('@hanzo/docs-core/mdx-plugins/remark-structure');
-      const { remarkSteps } = await import('@hanzo/docs-core/mdx-plugins/remark-steps');
+        await import('fumadocs-core/mdx-plugins/remark-structure');
+      const { remarkSteps } = await import('fumadocs-core/mdx-plugins/remark-steps');
 
       return applyMdxPreset({
         remarkStructureOptions: {

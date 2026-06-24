@@ -24,8 +24,8 @@ import { Check, ChevronsUpDown, Languages, SidebarIcon, X } from 'lucide-react';
 import { useNotebookLayout } from '../client';
 import { isLayoutTabActive, type LayoutTab } from '@/layouts/shared';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { usePathname } from '@hanzo/docs-core/framework';
-import Link from '@hanzo/docs-core/link';
+import { usePathname } from 'fumadocs-core/framework';
+import Link from 'fumadocs-core/link';
 
 const itemVariants = cva(
   'relative flex flex-row items-center gap-2 rounded-lg p-2 text-start text-fd-muted-foreground wrap-anywhere [&_svg]:size-4 [&_svg]:shrink-0',

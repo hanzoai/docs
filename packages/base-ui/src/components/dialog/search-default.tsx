@@ -1,8 +1,8 @@
 'use client';
 
-import { useDocsSearch } from '@hanzo/docs-core/search/client';
+import { useDocsSearch } from 'fumadocs-core/search/client';
 import { type ReactNode, useMemo, useState } from 'react';
-import { useOnChange } from '@hanzo/docs-core/utils/use-on-change';
+import { useOnChange } from 'fumadocs-core/utils/use-on-change';
 import { useI18n } from '@/contexts/i18n';
 import {
   SearchDialog,
@@ -18,7 +18,7 @@ import {
   TagsList,
   TagsListItem,
 } from './search';
-import type { SortedResult } from '@hanzo/docs-core/search';
+import type { SortedResult } from 'fumadocs-core/search';
 import type { SearchLink, TagItem } from '@/contexts/search';
 
 export interface DefaultSearchDialogProps extends SharedProps {

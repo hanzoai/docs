@@ -1,5 +1,5 @@
 import type { Route } from './+types/docs';
-import { DocsLayout } from '@hanzo/docs-ui/layouts/docs';
+import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import {
   DocsBody,
   DocsDescription,
@@ -7,12 +7,12 @@ import {
   DocsTitle,
   MarkdownCopyButton,
   ViewOptionsPopover,
-} from '@hanzo/docs-ui/layouts/docs/page';
+} from 'fumadocs-ui/layouts/docs/page';
 import { getPageMarkdownUrl, source } from '@/lib/source';
 import browserCollections from 'collections/browser';
 import { baseOptions } from '@/lib/layout.shared';
 import { gitConfig } from '@/lib/shared';
-import { useFumadocsLoader } from '@hanzo/docs-core/source/client';
+import { useFumadocsLoader } from 'fumadocs-core/source/client';
 import { getPageImagePath } from '@/lib/og';
 import { useMDXComponents } from '@/components/mdx';
 

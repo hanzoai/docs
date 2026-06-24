@@ -1,12 +1,12 @@
 'use client';
-import type * as PageTree from '@hanzo/docs-core/page-tree';
+import type * as PageTree from 'fumadocs-core/page-tree';
 import { type ComponentProps, createContext, type ReactNode, use, useMemo, useState } from 'react';
 import { cn } from '@/lib/cn';
-import { TreeContextProvider, useTreeContext } from '@hanzo/docs-base-ui/contexts/tree';
-import Link from '@hanzo/docs-core/link';
-import { useSearchContext } from '@hanzo/docs-base-ui/contexts/search';
+import { TreeContextProvider, useTreeContext } from '@fumadocs/base-ui/contexts/tree';
+import Link from 'fumadocs-core/link';
+import { useSearchContext } from '@fumadocs/base-ui/contexts/search';
 import { cva } from 'class-variance-authority';
-import { usePathname } from '@hanzo/docs-core/framework';
+import { usePathname } from 'fumadocs-core/framework';
 
 interface SidebarContext {
   open: boolean;

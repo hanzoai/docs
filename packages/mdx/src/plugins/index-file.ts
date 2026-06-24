@@ -64,7 +64,7 @@ export default function indexFile(options: IndexFilePluginOptions = {}): Plugin 
     tc: string;
   } {
     const serverOptions: ServerOptions = {};
-    const typeConfigs: string[] = ['import("@hanzo/docs-mdx/runtime/types").InternalTypeConfig'];
+    const typeConfigs: string[] = ['import("fumadocs-mdx/runtime/types").InternalTypeConfig'];
     const ctx = core.getPluginContext();
 
     for (const plugin of core.getPlugins()) {
@@ -159,7 +159,7 @@ export default function indexFile(options: IndexFilePluginOptions = {}): Plugin 
 async function generateServerIndexFile(ctx: FileGenContext) {
   const { core, codegen, serverOptions, tc } = ctx;
   codegen.lines.push(
-    `import { server } from '@hanzo/docs-mdx/runtime/server';`,
+    `import { server } from 'fumadocs-mdx/runtime/server';`,
     `import type * as Config from '${codegen.formatImportPath(core.getOptions().configPath)}';`,
     '',
     `const create = server<typeof Config, ${tc}>(${JSON.stringify(serverOptions)});`,
@@ -306,7 +306,7 @@ async function generateDynamicIndexFile(ctx: FileGenContext) {
   const hasDynamicCollection = objects.some(Boolean);
 
   codegen.lines.push(
-    `import { dynamic } from '@hanzo/docs-mdx/runtime/dynamic';`,
+    `import { dynamic } from 'fumadocs-mdx/runtime/dynamic';`,
     ...(hasDynamicCollection ? [`import path from 'node:path';`] : []),
     `import * as Config from '${codegen.formatImportPath(configPath)}';`,
     '',
@@ -319,7 +319,7 @@ async function generateDynamicIndexFile(ctx: FileGenContext) {
 async function generateBrowserIndexFile(ctx: FileGenContext) {
   const { core, codegen, tc } = ctx;
   codegen.lines.push(
-    `import { browser } from '@hanzo/docs-mdx/runtime/browser';`,
+    `import { browser } from 'fumadocs-mdx/runtime/browser';`,
     `import type * as Config from '${codegen.formatImportPath(core.getOptions().configPath)}';`,
     '',
     `const create = browser<typeof Config, ${tc}>();`,

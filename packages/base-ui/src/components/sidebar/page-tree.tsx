@@ -1,8 +1,8 @@
 import { useTreeContext, useTreePath } from '@/contexts/tree';
 import { type FC, Fragment, type ReactNode, createContext, use, useMemo } from 'react';
-import type * as PageTree from '@hanzo/docs-core/page-tree';
+import type * as PageTree from 'fumadocs-core/page-tree';
 import type * as Base from './base';
-import { usePathname } from '@hanzo/docs-core/framework';
+import { usePathname } from 'fumadocs-core/framework';
 import { isActive } from '@/utils/urls';
 
 export interface SidebarPageTreeComponents {

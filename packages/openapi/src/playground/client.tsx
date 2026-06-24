@@ -19,10 +19,10 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '@hanzo/docs-ui/components/ui/collapsible';
+} from 'fumadocs-ui/components/ui/collapsible';
 import { ChevronDown, LoaderCircle } from 'lucide-react';
 import { encodeRequestData } from '@/requests/media/encode';
-import { buttonVariants } from '@hanzo/docs-ui/components/ui/button';
+import { buttonVariants } from 'fumadocs-ui/components/ui/button';
 import { cn } from '@/utils/cn';
 import { anyFields, SchemaProvider, SchemaScope, useResolvedSchema } from '@/playground/schema';
 import {
@@ -105,7 +105,7 @@ export interface PlaygroundClientOptions {
    * render the parameter inputs of API endpoint.
    *
    * for updating values, use:
-   * - the `Custom.useController()` from `@hanzo/docs-openapi/playground/client`.
+   * - the `Custom.useController()` from `fumadocs-openapi/playground/client`.
    *
    * Recommended types packages: `json-schema-typed`, `openapi-types`.
    */

@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronDown } from 'lucide-react';
-import Link from '@hanzo/docs-core/link';
+import Link from 'fumadocs-core/link';
 import { cva } from 'class-variance-authority';
 import { cn } from '@/utils/cn';
 import { type ComponentProps, type ReactNode, useEffect, useState } from 'react';

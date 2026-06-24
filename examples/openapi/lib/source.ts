@@ -1,5 +1,5 @@
-import { loader, multiple } from '@hanzo/docs-core/source';
-import { openapiPlugin, openapiSource } from '@hanzo/docs-openapi/server';
+import { loader, multiple } from 'fumadocs-core/source';
+import { openapiPlugin, openapiSource } from 'fumadocs-openapi/server';
 import { docs } from 'collections/server';
 import { openapi } from './openapi';
 

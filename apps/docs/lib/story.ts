@@ -1,3 +1,3 @@
-import { defineStoryFactory } from '@fumadocs/story/next/client';
+import { defineStoryFactory } from '@hanzo/docs-story/next/client';
 
 export const { defineStory } = defineStoryFactory();

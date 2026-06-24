@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { type ComponentProps, type FC, type ReactNode } from 'react';
 import * as Twoslash from '@hanzo/docs-twoslash/ui';
-import { Callout } from '@hanzo/docs-base-ui/components/callout';
-import { TypeTable } from '@hanzo/docs-base-ui/components/type-table';
+import { Callout } from '@fumadocs/base-ui/components/callout';
+import { TypeTable } from '@fumadocs/base-ui/components/type-table';
 import * as Preview from '@/components/preview';
 import { createMetadata, getPageImage } from '@/lib/metadata';
 import { source } from '@/lib/source';
@@ -11,11 +11,11 @@ import { Mermaid } from '@/components/mdx/mermaid';
 import { PageFeedback, PageFeedbackBlock } from '@/components/feedback';
 import { owner, repo } from '@/lib/github';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
-import Link from '@hanzo/docs-core/link';
-import { findSiblings } from '@hanzo/docs-core/page-tree';
-import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+import Link from 'fumadocs-core/link';
+import { findSiblings } from 'fumadocs-core/page-tree';
+import { Card, Cards } from '@fumadocs/base-ui/components/card';
 import { getMDXComponents } from '@/components/mdx';
-import { Banner } from '@hanzo/docs-base-ui/components/banner';
+import { Banner } from '@fumadocs/base-ui/components/banner';
 import { Installation } from '@/components/preview/installation';
 import { Customization } from '@/components/preview/customization';
 import {
@@ -24,11 +24,11 @@ import {
   PageLastUpdate,
   MarkdownCopyButton,
   ViewOptionsPopover,
-} from '@hanzo/docs-base-ui/layouts/docs/page';
+} from '@fumadocs/base-ui/layouts/docs/page';
 import { NotFound } from '@/components/layouts/not-found';
 import { MdxErrorBoundary } from '@/components/mdx-error-boundary';
 import { getSuggestions } from './suggestions';
-import { PathUtils } from '@hanzo/docs-core/source';
+import { PathUtils } from 'fumadocs-core/source';
 
 function PreviewRenderer({ preview }: { preview: string }): ReactNode {
   if (preview && preview in Preview) {

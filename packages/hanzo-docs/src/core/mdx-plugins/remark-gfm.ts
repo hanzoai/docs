@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-core/mdx-plugins/remark-gfm';
+export * from 'fumadocs-core/mdx-plugins/remark-gfm';

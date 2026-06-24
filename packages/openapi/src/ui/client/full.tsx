@@ -1,7 +1,7 @@
 'use client';
 import type { ReactNode } from 'react';
 import { ClientCodeBlockProvider } from './components/codeblock';
-import { defaultShikiFactory } from '@hanzo/docs-core/highlight/shiki/full';
+import { defaultShikiFactory } from 'fumadocs-core/highlight/shiki/full';
 
 export function FullProvider({ children }: { children: ReactNode }) {
   return (

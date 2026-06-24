@@ -1,5 +1,5 @@
-import type * as PageTree from '@hanzo/docs-core/page-tree';
-import { flattenTree } from '@hanzo/docs-core/page-tree';
+import type * as PageTree from 'fumadocs-core/page-tree';
+import { flattenTree } from 'fumadocs-core/page-tree';
 
 /**
  * Get pages in the order they appear in the page tree (navigation order).

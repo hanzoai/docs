@@ -11,7 +11,7 @@ import {
 } from '@/ui/components/select';
 import { Input, labelVariants } from '@/ui/components/input';
 import { cn } from '@/utils/cn';
-import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
+import { buttonVariants } from '@fumadocs/base-ui/components/ui/button';
 import { FormatFlags } from '@/utils/schema-to-string';
 import {
   anyFields,

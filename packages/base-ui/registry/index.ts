@@ -13,10 +13,10 @@ export const registry: Registry = {
   tsconfigPath: '../tsconfig.json',
   packageJson: '../package.json',
   env: {
-    ui: '@hanzo/docs-base-ui',
+    ui: '@fumadocs/base-ui',
   },
   onResolve(ref) {
-    return resolveExternal(ref, '@hanzo/docs-ui', dir) ?? ref;
+    return resolveExternal(ref, 'fumadocs-ui', dir) ?? ref;
   },
   components: [
     ...commonComponents,
@@ -348,8 +348,8 @@ export const registry: Registry = {
     },
   ],
   dependencies: {
-    '@hanzo/docs-core': null,
-    '@hanzo/docs-base-ui': null,
+    'fumadocs-core': null,
+    '@fumadocs/base-ui': null,
     react: null,
   },
 };

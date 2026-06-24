@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-core/mdx-plugins/remark-structure';
+export * from 'fumadocs-core/mdx-plugins/remark-structure';

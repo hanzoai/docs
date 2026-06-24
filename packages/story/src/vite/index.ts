@@ -36,7 +36,7 @@ export default function story(pluginOptions: StoryPluginOptions = {}): Plugin {
       async handler(code, id) {
         projectPromise ??= createControlsProject(tsconfigPath);
 
-        return transformStoryFile('@fumadocs/story/vite/client', code, id, await projectPromise);
+        return transformStoryFile('@hanzo/docs-story/vite/client', code, id, await projectPromise);
       },
     },
   };

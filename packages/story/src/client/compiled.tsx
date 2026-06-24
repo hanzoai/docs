@@ -14,7 +14,7 @@ export interface StoryOptions<C extends FC<any>> {
   args?: ArgsOptions<C> | (ArgsOptions<C> & VariantInfo)[];
 
   /**
-   * Controls & data generated at build time by `@fumadocs/story/vite` or `@fumadocs/story/next`.
+   * Controls & data generated at build time by `@hanzo/docs-story/vite` or `@hanzo/docs-story/next`.
    *
    * @internal
    */
@@ -95,7 +95,7 @@ export function defineStoryFactory(): StoryFactory {
               controls = generatedControls;
             } else {
               throw new Error(
-                `[@fumadocs/story] No generated data for story, make sure the Vite plugin or Turbopack loader is configured correctly`,
+                `[@hanzo/docs-story] No generated data for story, make sure the Vite plugin or Turbopack loader is configured correctly`,
               );
             }
 
