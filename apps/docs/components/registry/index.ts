@@ -55,7 +55,7 @@ export const registry: Registry = {
       }
     }
 
-    if (ref.type === 'dependency' && ref.dep === '@hanzo/docs-ui') {
+    if (ref.type === 'dependency' && ref.dep === 'fumadocs-ui') {
       const match = /@hanzo\/docs-ui\/components\/ui\/(.*)/.exec(ref.specifier);
       if (match) {
         return {
@@ -220,8 +220,8 @@ export const registry: Registry = {
     },
   ],
   dependencies: {
-    '@hanzo/docs-core': null,
-    '@hanzo/docs-ui': null,
+    'fumadocs-core': null,
+    'fumadocs-ui': null,
     'lucide-react': null,
     next: null,
     react: null,

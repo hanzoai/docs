@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-base-ui/page';
+export * from '@fumadocs/base-ui/page';

@@ -5,10 +5,10 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from '@hanzo/docs-base-ui/components/ui/collapsible';
-import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
+} from '@fumadocs/base-ui/components/ui/collapsible';
+import { buttonVariants } from '@fumadocs/base-ui/components/ui/button';
 import { ChevronRight } from 'lucide-react';
-import { highlight } from '@hanzo/docs-core/highlight';
+import { highlight } from 'fumadocs-core/highlight';
 
 const cardVariants = cva('bg-fd-card rounded-lg text-sm my-6 p-3 border');
 const badgeVariants = cva('text-xs font-medium border p-1 rounded-lg not-prose', {
@@ -148,4 +148,4 @@ async function InlineCode({
   });
 }
 
-export { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs';
+export { Tab, Tabs } from '@fumadocs/base-ui/components/tabs';

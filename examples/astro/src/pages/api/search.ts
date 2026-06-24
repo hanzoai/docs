@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { createFromSource } from '@hanzo/docs-core/search/server';
+import { createFromSource } from 'fumadocs-core/search/server';
 import { getFullExport, source } from '@/lib/source';
 
 const server = createFromSource(source, {

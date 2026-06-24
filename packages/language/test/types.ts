@@ -1,4 +1,4 @@
-import { storyTranslations } from '@fumadocs/story/i18n';
+import { storyTranslations } from '@hanzo/docs-story/i18n';
 import { defineI18n } from 'fumadocs-core/i18n';
 import { openapiTranslations } from 'fumadocs-openapi/i18n';
 import { uiTranslations } from 'fumadocs-ui/i18n';

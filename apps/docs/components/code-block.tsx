@@ -1,6 +1,6 @@
-import * as Base from '@hanzo/docs-base-ui/components/codeblock';
+import * as Base from '@fumadocs/base-ui/components/codeblock';
 import { cn } from '@/lib/cn';
-import { highlight } from '@hanzo/docs-core/highlight';
+import { highlight } from 'fumadocs-core/highlight';
 import { shikiConfig } from '@/lib/shiki';
 
 export interface CodeBlockProps {

@@ -1,28 +1,28 @@
 import type { PageProps } from 'waku/router';
-import defaultMdxComponents from '@hanzo/docs-ui/mdx';
+import defaultMdxComponents from 'fumadocs-ui/mdx';
 import { getPageImage, getSource, type SourcePage } from '@/lib/source';
 import { layoutConfig } from '@/layouts/config';
 import { getConfigRuntime } from '@/config/load-runtime';
-import { Card, Cards } from '@hanzo/docs-ui/components/card';
+import { Card, Cards } from 'fumadocs-ui/components/card';
 import { type CompileResult, createMarkdownCompiler, plugin } from '@/lib/md';
-import { remarkHeading } from '@hanzo/docs-core/mdx-plugins/remark-heading';
-import { remarkGfm } from '@hanzo/docs-core/mdx-plugins/remark-gfm';
-import { remarkCodeTab } from '@hanzo/docs-core/mdx-plugins/remark-code-tab';
-import { remarkNpm } from '@hanzo/docs-core/mdx-plugins/remark-npm';
-import { rehypeCode } from '@hanzo/docs-core/mdx-plugins/rehype-code';
-import { rehypeToc } from '@hanzo/docs-core/mdx-plugins';
-import type { TOCItemType } from '@hanzo/docs-core/toc';
+import { remarkHeading } from 'fumadocs-core/mdx-plugins/remark-heading';
+import { remarkGfm } from 'fumadocs-core/mdx-plugins/remark-gfm';
+import { remarkCodeTab } from 'fumadocs-core/mdx-plugins/remark-code-tab';
+import { remarkNpm } from 'fumadocs-core/mdx-plugins/remark-npm';
+import { rehypeCode } from 'fumadocs-core/mdx-plugins/rehype-code';
+import { rehypeToc } from 'fumadocs-core/mdx-plugins';
+import type { TOCItemType } from 'fumadocs-core/toc';
 import { Fragment } from 'react/jsx-runtime';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import { CodeBlock, Pre } from '@hanzo/docs-ui/components/codeblock';
-import { remarkMdxMermaid } from '@hanzo/docs-core/mdx-plugins/remark-mdx-mermaid';
+import { CodeBlock, Pre } from 'fumadocs-ui/components/codeblock';
+import { remarkMdxMermaid } from 'fumadocs-core/mdx-plugins/remark-mdx-mermaid';
 import { Mermaid } from '@/components/mermaid';
 import type { ComponentProps, ReactNode } from 'react';
 import { Image } from '@/components/image';
 import { AISearch, AISearchPanel, AISearchTrigger } from '@/components/ai/search';
 import { cn } from '@/lib/cn';
-import { buttonVariants } from '@hanzo/docs-ui/components/ui/button';
+import { buttonVariants } from 'fumadocs-ui/components/ui/button';
 import { MessageCircleIcon } from 'lucide-react';
 import { isAISupported } from '@/lib/ai';
 
@@ -67,10 +67,10 @@ function useMdxComponents(page: SourcePage) {
 }
 
 interface MdPresetComponents {
-  layout: typeof import('@hanzo/docs-ui/layouts/docs') | typeof import('@hanzo/docs-ui/layouts/flux');
+  layout: typeof import('fumadocs-ui/layouts/docs') | typeof import('fumadocs-ui/layouts/flux');
   page:
-    | typeof import('@hanzo/docs-ui/layouts/docs/page')
-    | typeof import('@hanzo/docs-ui/layouts/flux/page');
+    | typeof import('fumadocs-ui/layouts/docs/page')
+    | typeof import('fumadocs-ui/layouts/flux/page');
 }
 
 export default async function DocPage({ slugs }: PageProps<'/docs/[...slugs]'>) {
@@ -82,13 +82,13 @@ export default async function DocPage({ slugs }: PageProps<'/docs/[...slugs]'>) 
 
   if (mdPreset === 'docs') {
     mdPresetComponents = {
-      layout: await import('@hanzo/docs-ui/layouts/docs'),
-      page: await import('@hanzo/docs-ui/layouts/docs/page'),
+      layout: await import('fumadocs-ui/layouts/docs'),
+      page: await import('fumadocs-ui/layouts/docs/page'),
     };
   } else {
     mdPresetComponents = {
-      layout: await import('@hanzo/docs-ui/layouts/flux'),
-      page: await import('@hanzo/docs-ui/layouts/flux/page'),
+      layout: await import('fumadocs-ui/layouts/flux'),
+      page: await import('fumadocs-ui/layouts/flux/page'),
     };
   }
 

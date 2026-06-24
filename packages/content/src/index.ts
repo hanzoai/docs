@@ -2,8 +2,8 @@ import type { StandardSchemaV1 } from '@standard-schema/spec';
 import { Collection } from 'fuma-content/collections';
 import { dataCollection, type DataCollectionConfig } from 'fuma-content/collections/data';
 import { mdxCollection, type MDXCollectionConfig } from 'fuma-content/collections/mdx';
-import { type MDXBundlerPresetOptions, mdxPreset } from '@hanzo/docs-core/content/mdx/preset-bundler';
-import { metaSchema, pageSchema } from '@hanzo/docs-core/source/schema';
+import { type MDXBundlerPresetOptions, mdxPreset } from 'fumadocs-core/content/mdx/preset-bundler';
+import { metaSchema, pageSchema } from 'fumadocs-core/source/schema';
 
 export interface DocsMDXCollectionConfig<
   FrontmatterSchema extends StandardSchemaV1 | undefined,

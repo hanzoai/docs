@@ -1,5 +1,5 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@hanzo/docs-base-ui/components/ui/tabs';
-import { ServerCodeBlock } from '@hanzo/docs-ui/components/codeblock.rsc';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@fumadocs/base-ui/components/ui/tabs';
+import { ServerCodeBlock } from 'fumadocs-ui/components/codeblock.rsc';
 
 export function Installation({ name }: { name: string }) {
   const tabs = [{ name: 'Hanzo Docs CLI', value: 'hanzo-docs-cli' }];

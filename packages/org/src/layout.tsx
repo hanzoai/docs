@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { BaseLayoutProps, LinkItemType } from '@hanzo/docs-base-ui/layouts/shared';
+import type { BaseLayoutProps, LinkItemType } from '@fumadocs/base-ui/layouts/shared';
 import type { ProjectConfig } from './types';
 import { resolveProjectUrl } from './config';
 import { ProjectSwitcher } from './components/project-switcher';

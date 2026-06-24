@@ -4,9 +4,9 @@ import { useTranslations } from '@/contexts/i18n';
 import { cn } from '@/utils/cn';
 import { isActive } from '@/utils/urls';
 import { useFooterItems } from '@/utils/use-footer-items';
-import { usePathname } from '@hanzo/docs-core/framework';
-import Link from '@hanzo/docs-core/link';
-import type * as PageTree from '@hanzo/docs-core/page-tree';
+import { usePathname } from 'fumadocs-core/framework';
+import Link from 'fumadocs-core/link';
+import type * as PageTree from 'fumadocs-core/page-tree';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { type ComponentProps, useMemo } from 'react';
 

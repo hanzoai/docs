@@ -31,11 +31,11 @@ export default defineConfig({
   clean: true,
   external: [
     // Core packages (we re-export from these)
-    '@hanzo/docs-core',
-    '@hanzo/docs-mdx',
-    '@hanzo/docs-base-ui',
-    '@hanzo/docs-ui',
-    '@hanzo/docs-openapi',
+    'fumadocs-core',
+    'fumadocs-mdx',
+    '@fumadocs/base-ui',
+    'fumadocs-ui',
+    'fumadocs-openapi',
     '@hanzo/docs-twoslash',
     '@hanzo/docs-obsidian',
     '@hanzo/docs-mdx-remote',

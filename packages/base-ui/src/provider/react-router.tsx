@@ -1,8 +1,8 @@
 'use client';
 import type { ComponentProps } from 'react';
 import { RootProvider as BaseProvider } from '@/provider/base';
-import { ReactRouterProvider } from '@hanzo/docs-core/framework/react-router';
-import type { Framework } from '@hanzo/docs-core/framework';
+import { ReactRouterProvider } from 'fumadocs-core/framework/react-router';
+import type { Framework } from 'fumadocs-core/framework';
 
 export interface RootProviderProps extends ComponentProps<typeof BaseProvider> {
   /**

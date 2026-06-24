@@ -1,11 +1,11 @@
-import { DocsLayout } from '@hanzo/docs-base-ui/layouts/docs';
+import { DocsLayout } from '@fumadocs/base-ui/layouts/docs';
 import { baseOptions, linkItems, logo } from '@/components/layouts/shared';
 import { source } from '@/lib/source';
 import { getSection } from '@/lib/source/navigation';
 import { AISearch, AISearchPanel, AISearchTrigger } from '@/components/ai/search';
 import { MessageCircleIcon } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
+import { buttonVariants } from '@fumadocs/base-ui/components/ui/button';
 import { ProjectSwitcher } from '@/components/projects/project-switcher';
 import { AuthButtons } from '@/components/auth-buttons';
 import { TryHanzoDropdown } from '@/components/try-hanzo-dropdown';

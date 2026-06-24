@@ -3,8 +3,8 @@ import { defineConfig } from 'tsdown';
 const external = ['next', 'typescript', 'webpack', 'bun', 'mdx/types'];
 
 const noExternal = [
-  '@hanzo/docs-core/source/schema',
-  '@hanzo/docs-core/mdx-plugins/remark-llms',
+  'fumadocs-core/source/schema',
+  'fumadocs-core/mdx-plugins/remark-llms',
 ];
 
 export default defineConfig([

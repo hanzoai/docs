@@ -1,6 +1,6 @@
-import { type InferPageType, loader, source } from '@hanzo/docs-core/source';
+import { type InferPageType, loader, source } from 'fumadocs-core/source';
 import { revalidable } from '@/lib/revalidable';
-import { lucideIconsPlugin } from '@hanzo/docs-core/source/lucide-icons';
+import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
 import { getPages } from './storage';
 import type { ParsedAppConfig } from '@/config/global';
 

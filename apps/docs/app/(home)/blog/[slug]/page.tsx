@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import type { TOCItemType } from '@hanzo/docs-core/toc';
+import type { TOCItemType } from 'fumadocs-core/toc';
 import { InlineTOC } from '@hanzo/docs/ui/components/inline-toc';
 import { blog } from '@/lib/source';
 import { createMetadata } from '@/lib/metadata';

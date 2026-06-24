@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-core/framework/next';
+export * from 'fumadocs-core/framework/next';
