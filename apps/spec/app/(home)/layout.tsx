@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { HomeLayout } from 'fumadocs-ui/ui/layouts/home';
+import { HomeLayout } from '@hanzo/docs/ui/layouts/home';
 import { baseOptions, linkItems, logo } from '@/lib/layout.shared';
 
 export default function Layout({ children }: { children: ReactNode }) {

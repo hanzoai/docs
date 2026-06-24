@@ -1,5 +1,5 @@
 import { BookOpenIcon, ComponentIcon } from 'lucide-react';
-import type { BaseLayoutProps, LinkItemType } from 'fumadocs-ui/ui/layouts/shared';
+import type { BaseLayoutProps, LinkItemType } from '@hanzo/docs/ui/layouts/shared';
 
 export const linkItems: LinkItemType[] = [
   {
