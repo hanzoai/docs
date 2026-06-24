@@ -59,15 +59,7 @@ const config: NextConfig = {
       '@hanzo/mdx:collections/browser': path.resolve(__dirname, 'docs/browser.ts'),
       '@hanzo/mdx:collections/dynamic': path.resolve(__dirname, 'docs/dynamic.ts'),
 
-      // (a) fumadocs -> @hanzo/docs equivalents (real components/APIs)
-
-      '@hanzo/docs-ui': '@hanzo/docs-base-ui',
-      '@hanzo/docs-core': '@hanzo/docs-core',
-      '@hanzo/docs-mdx': '@hanzo/docs-mdx',
-      '@hanzo/docs-core': '@hanzo/docs-core',
-      '@hanzo/docs-mdx': '@hanzo/docs-mdx',
-
-      // (b) Other doc-platform packages -> no-op stub
+      // Other doc-platform packages -> no-op stub
       '@docusaurus': emptyProjectModule,
       '@theme/Tabs': emptyProjectModule,
       '@theme/TabItem': emptyProjectModule,
@@ -172,8 +164,7 @@ const config: NextConfig = {
   ],
   typescript: {
 
-    // Upstream project docs import @hanzo/docs-ui which is aliased to @hanzo/docs-base-ui
-    // at webpack level, but TS type-checker doesn't see webpack aliases.
+    // Some fork packages emit types the consuming app doesn't type-check against.
     ignoreBuildErrors: true,
   },
   images: {
