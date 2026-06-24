@@ -2,9 +2,9 @@ import {
   type InferMetaType,
   type InferPageType,
   loader,
-} from 'fumadocs-core/source';
-import { docs } from '@/.source/index';
-import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
+} from '@hanzo/docs/core/source';
+import { docs } from '@hanzo/mdx:collections/server';
+import { lucideIconsPlugin } from '@hanzo/docs/core/source/lucide-icons';
 
 export const source = loader({
   source: docs.toSource(),
