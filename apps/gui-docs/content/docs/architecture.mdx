@@ -1,70 +1,37 @@
 ---
 title: Architecture
-description: One substrate, one component library, brands as values — the unified cross-platform design system.
+description: One substrate, one component library, brands as values.
 icon: Layers
 ---
 
-Hanzo GUI is the **substrate** for one unified design system shared across every Hanzo, Lux, and Zoo surface — web, native, and desktop. This page is the canonical architecture: the layering, the rules that keep it de-duplicated, and the dependency spine every app inherits.
+Hanzo GUI is the **substrate** for one unified design system shared across every
+Hanzo, Lux, and Zoo surface — web, native (React Native / Expo), and desktop
+(Tauri). This page is a short orientation; the **binding standard is
+[HIP-0504: Unified Cross-Platform Design System](https://hips.hanzo.ai/HIPs/hip-0504-unified-design-system)**,
+which is the single source of truth. Don't restate its rules here — link to them.
 
-## The problem it removes
-
-Historically the ecosystem grew three parallel component systems for one concept: `@hanzo/gui` (cross-platform substrate), a standalone `@hanzo/ui` (with no relation to it), and per-brand forks (`@luxfi/ui`, `@zooai/ui`). The same button existed three times. That is the complection this architecture cuts: **a component is defined once, themed many times, and rendered everywhere.**
-
-## Two orthogonal axes
-
-Design-system concerns separate cleanly along two independent axes. Brand is only one of them — and it is *not* the substrate axis.
-
-| | **Substrate** (mechanism: render anywhere) | **Components** (composition: the parts) |
-|---|---|---|
-| **Generic** | `@hanzo/gui` | `@hanzo/ui` |
-| **Domain** (web3 / wallet / crypto) | `@hanzo/gui-web3` | `@hanzo/ui-web3` |
-| **Brand** (lux / zoo values) | *— nothing here —* | `@luxfi/ui`, `@zooai/ui` |
-
-- **Substrate** = *how* to render on web, native (React Native / Expo), and desktop (Tauri): tokens, themes, the compiler, accessible primitives. Knows nothing of brand or app.
-- **Components** = *what* the parts are — Hanzo's design language, composed from substrate primitives. The single public surface apps import.
-- **Brand** = *values*, not places. Theme tokens (color, type, radius, motion) plus a few brand-specific compositions. Brands re-implement **nothing**.
-
-## The two rules that keep it "exactly one way"
-
-> **Rule 1 — Substrate splits by *domain*, never by *brand*.**
-> `@hanzo/gui` (generic) + `@hanzo/gui-web3` (crypto primitives: wallet-connect, chain selector, address/amount inputs, QR scanner with native camera, hardware-wallet bridge). These are cross-platform *mechanism* and brand-agnostic — Lux needs them and so does Zoo. A brand-scoped substrate (`@luxfi/gui`) would re-fork the same primitives and re-introduce the complection. Resist brand-at-the-substrate.
-
-> **Rule 2 — Brand is a *value*, not a *place*.**
-> `@luxfi/ui` / `@zooai/ui` = theme tokens + brand-only compositions over `@hanzo/ui`. A `Button` is defined once, in `@hanzo/ui`. Brands never redefine it; they theme it.
-
-## The dependency spine
+## The shape, in one diagram
 
 ```text
-@hanzo/gui ──┬── @hanzo/gui-web3        substrate: generic + crypto domain
-             │                          (shared, never brand-forked)
+@hanzo/gui ──┬── @hanzo/gui-web3        substrate: generic + crypto domain (shared, never brand-forked)
              ▼
 @hanzo/ui ───┴── @hanzo/ui-web3         components composed from the substrate
              ▼
 @luxfi/ui  = @hanzo/ui(+web3) + lux theme + lux-only compositions
 @zooai/ui  = @hanzo/ui(+web3) + zoo theme + zoo-only compositions
              ▼
-Lux apps  import  @luxfi/ui   only
-Zoo apps  import  @zooai/ui   only
-Hanzo apps import @hanzo/ui   only
+Lux apps → @luxfi/ui   Zoo apps → @zooai/ui   Hanzo apps → @hanzo/ui   (one import each)
 ```
 
-An app imports **one** package. From it, transitively, it inherits web + native + desktop rendering, the crypto primitives, and its brand theme. No app imports `@hanzo/gui` directly — the substrate is internal, like React's own internals.
+## Why it's built this way
 
-## Invariants
+- **Substrate** (`@hanzo/gui`) = *how* to render anywhere. **Components**
+  (`@hanzo/ui`) = *what* the parts are. **Brand** (`@luxfi/ui`, `@zooai/ui`) =
+  *values* (theme tokens), not component forks.
+- A component is defined **once**, themed many times, rendered everywhere. An app
+  imports **one** package — never `@hanzo/gui` directly.
+- Cross-platform capability splits by **domain** (`@hanzo/gui-web3` for
+  wallet/chain/crypto), never by brand — Lux and Zoo share it.
 
-1. **One definition.** Every component is defined exactly once (in `@hanzo/ui` / `@hanzo/ui-web3`). No duplicate exists anywhere in the tree.
-2. **One import per app.** Apps depend only on their brand `ui` (`@hanzo/ui` for Hanzo). Importing `@hanzo/gui` from an app is a smell.
-3. **Brand = theme.** A new brand is a token set + theme, not a component fork. Adding `@parsdao/ui` means writing a theme, not 60 components.
-4. **Substrate by domain.** New cross-platform capability goes in `@hanzo/gui` (generic) or a domain module (`@hanzo/gui-web3`) — never in a brand package.
-5. **Stable public API.** Re-basing `@hanzo/ui` onto `@hanzo/gui` preserves its import surface, so consuming apps upgrade without rewrites.
-6. **Look/feel is a contract.** Migrations are gated by Playwright visual-regression: the rendered output must match the pre-migration baseline within tolerance before a phase merges. Decomplecting the implementation must not change a single pixel the user sees.
-
-## Migration phases
-
-Each phase builds green and passes the visual-regression gate before the next begins — no big-bang.
-
-- **Phase 0 — Foundation.** `@hanzo/ui` takes a dependency on `@hanzo/gui` and re-bases its components as substrate compositions, **keeping the public API identical**. The standalone primitives are deleted.
-- **Phase 1 — Brands.** `@luxfi/ui` and `@zooai/ui` become token/theme overlays on the new `@hanzo/ui`; brand-unique widgets re-expressed as substrate compositions.
-- **Phase 2 — Adopt.** Sites and apps move to the unified brand `ui` and inherit web / native / desktop.
-
-The canonical, binding form of this standard is the corresponding HIP; this page is its developer-facing reference.
+For the normative rules, conformance criteria, the migration phases (Phase
+0/1/2), and the visual-regression gate, see **HIP-0504**.
