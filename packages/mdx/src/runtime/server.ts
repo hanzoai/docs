@@ -183,16 +183,8 @@ export function server<Config, TC extends InternalTypeConfig>(options: ServerOpt
       base: string,
       metaGlob: AwaitableGlobEntries<unknown>,
       docGlob: AwaitableGlobEntries<unknown>,
-    ) {
-      const entry = {
-        docs: await this.doc(name, base, docGlob),
-        meta: await this.meta(name, base, metaGlob),
-        toSource() {
-          return createSource(this.docs, this.meta);
-        },
-      } satisfies DocsCollectionEntry;
-
-      return entry as Config[Name] extends DocsCollection<infer Page, infer Meta>
+    ): Promise<
+      Config[Name] extends DocsCollection<infer Page, infer Meta>
         ? StandardSchemaV1.InferOutput<Page> extends PageData
           ? StandardSchemaV1.InferOutput<Meta> extends MetaData
             ? DocsCollectionEntry<
@@ -208,8 +200,8 @@ export function server<Config, TC extends InternalTypeConfig>(options: ServerOpt
       const entry = {
         docs: await this.doc(name, base, docGlob),
         meta: await this.meta(name, base, metaGlob),
-        toFumadocsSource(options) {
-          return toFumadocsSource(this.docs, this.meta, options);
+        toSource() {
+          return createSource(this.docs, this.meta);
         },
       } satisfies DocsCollectionEntry;
 
@@ -221,16 +213,8 @@ export function server<Config, TC extends InternalTypeConfig>(options: ServerOpt
       metaGlob: AwaitableGlobEntries<unknown>,
       docHeadGlob: AwaitableGlobEntries<unknown>,
       docBodyGlob: Record<string, () => Promise<unknown>>,
-    ) {
-      const entry = {
-        docs: await this.docLazy(name, base, docHeadGlob, docBodyGlob),
-        meta: await this.meta(name, base, metaGlob),
-        toSource() {
-          return createSource(this.docs, this.meta);
-        },
-      } satisfies AsyncDocsCollectionEntry;
-
-      return entry as Config[Name] extends DocsCollection<infer Page, infer Meta>
+    ): Promise<
+      Config[Name] extends DocsCollection<infer Page, infer Meta>
         ? StandardSchemaV1.InferOutput<Page> extends PageData
           ? StandardSchemaV1.InferOutput<Meta> extends MetaData
             ? AsyncDocsCollectionEntry<
@@ -246,8 +230,8 @@ export function server<Config, TC extends InternalTypeConfig>(options: ServerOpt
       const entry = {
         docs: await this.docLazy(name, base, docHeadGlob, docBodyGlob),
         meta: await this.meta(name, base, metaGlob),
-        toFumadocsSource(options) {
-          return toFumadocsSource(this.docs, this.meta, options);
+        toSource() {
+          return createSource(this.docs, this.meta);
         },
       } satisfies AsyncDocsCollectionEntry;
 
