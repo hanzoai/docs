@@ -1,6 +1,6 @@
 import type { ProcessorOptions } from '@mdx-js/mdx';
 import type { Pluggable } from 'unified';
-import type * as Plugins from '@hanzo/docs-core/mdx-plugins';
+import type * as Plugins from 'fumadocs-core/mdx-plugins';
 import type { BuildEnvironment } from './build';
 
 type ResolvePlugins = Pluggable[] | ((v: Pluggable[]) => Pluggable[]);
@@ -53,7 +53,7 @@ export function applyMdxPreset(
   return async (environment = 'bundler') => {
     if (options.preset === 'minimal') return options;
 
-    const plugins = await import('@hanzo/docs-core/mdx-plugins');
+    const plugins = await import('fumadocs-core/mdx-plugins');
     const {
       valueToExport = [],
       rehypeCodeOptions,

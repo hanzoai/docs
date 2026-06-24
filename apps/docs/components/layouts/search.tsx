@@ -15,7 +15,7 @@ import {
 } from '@hanzo/docs/ui/components/dialog/search';
 import { useDocsSearch } from '@hanzo/docs/core/search/client';
 import { useMemo, useState } from 'react';
-import { Popover, PopoverContent, PopoverTrigger } from '@hanzo/docs-base-ui/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@fumadocs/base-ui/components/ui/popover';
 import { ArrowRight, ChevronDown } from 'lucide-react';
 import { buttonVariants } from '@hanzo/docs/ui/components/ui/button';
 import { cn } from '@/lib/cn';

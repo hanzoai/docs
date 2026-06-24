@@ -7,4 +7,4 @@ export {
   metaSchema,
   pageSchema as frontmatterSchema,
   accessSchema,
-} from '@hanzo/docs-core/source/schema';
+} from 'fumadocs-core/source/schema';

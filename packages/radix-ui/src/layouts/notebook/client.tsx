@@ -59,7 +59,7 @@ export function useNotebookLayout() {
   const context = use(LayoutContext);
   if (!context)
     throw new Error(
-      'Please use <DocsPage /> (`@hanzo/docs-ui/layouts/notebook/page`) under <DocsLayout /> (`@hanzo/docs-ui/layouts/notebook`).',
+      'Please use <DocsPage /> (`fumadocs-ui/layouts/notebook/page`) under <DocsLayout /> (`fumadocs-ui/layouts/notebook`).',
     );
   return context;
 }

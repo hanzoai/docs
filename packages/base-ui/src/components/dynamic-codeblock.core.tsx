@@ -1,6 +1,6 @@
 'use client';
 import { CodeBlock, type CodeBlockProps, Pre } from '@/components/codeblock';
-import { useShikiDynamic, type UseShikiOptions } from '@hanzo/docs-core/highlight/shiki/react';
+import { useShikiDynamic, type UseShikiOptions } from 'fumadocs-core/highlight/shiki/react';
 import { cn } from '@/utils/cn';
 import { type ComponentProps, createContext, type FC, use, useId } from 'react';
 import type { HighlighterCore } from 'shiki';

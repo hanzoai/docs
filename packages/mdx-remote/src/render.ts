@@ -1,5 +1,5 @@
 import type { MDXComponents } from 'mdx/types';
-import type { TOCItemType } from '@hanzo/docs-core/toc';
+import type { TOCItemType } from 'fumadocs-core/toc';
 import type { FC } from 'react';
 import jsxRuntimeDefault from 'react/jsx-runtime';
 

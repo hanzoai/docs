@@ -3,7 +3,7 @@
 import { type ReactNode } from 'react';
 import { useDocsAuth } from './provider';
 import { cn } from '@/utils/cn';
-import type { AccessLevel } from '@hanzo/docs-core/source/schema';
+import type { AccessLevel } from 'fumadocs-core/source/schema';
 
 export interface ProtectedProps {
   /** Minimum access level required. @default "authenticated" */

@@ -2,7 +2,7 @@
 import type { HTMLAttributes } from 'react';
 import type * as Base from './base';
 import { isLinkItemActive, type LinkItemType } from '@/layouts/shared';
-import { usePathname } from '@hanzo/docs-core/framework';
+import { usePathname } from 'fumadocs-core/framework';
 
 type InternalComponents = Pick<
   typeof Base,

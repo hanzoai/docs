@@ -1,4 +1,4 @@
-import { loader } from '@hanzo/docs-core/source';
+import { loader } from 'fumadocs-core/source';
 import { i18n } from '@/lib/i18n';
 import { docs } from 'collections/server';
 

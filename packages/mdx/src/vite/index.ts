@@ -57,7 +57,7 @@ export default async function mdx(
   );
 
   return {
-    name: '@hanzo/docs-mdx',
+    name: 'fumadocs-mdx',
     // needed, otherwise other plugins will be executed before our `transform`.
     enforce: 'pre',
     config(config) {
@@ -65,9 +65,9 @@ export default async function mdx(
 
       return mergeConfig(config, {
         resolve: {
-          noExternal: ['@hanzo/docs-core', '@hanzo/docs-base-ui', '@hanzo/docs-openapi', '@hanzo/docs-base-ui'],
+          noExternal: ['fumadocs-core', '@fumadocs/base-ui', 'fumadocs-openapi', '@fumadocs/base-ui'],
           // only dedupe for public, non-transitive libs
-          dedupe: ['@hanzo/docs-core', '@hanzo/docs-base-ui', '@hanzo/docs-openapi', '@hanzo/docs-base-ui'],
+          dedupe: ['fumadocs-core', '@fumadocs/base-ui', 'fumadocs-openapi', '@fumadocs/base-ui'],
         },
       } satisfies UserConfig);
     },

@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-core/i18n';
+export * from 'fumadocs-core/i18n';
