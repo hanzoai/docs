@@ -1,4 +1,4 @@
-import { loader, type InferPageType } from '@hanzo/docs-core/source';
+import { loader, type InferPageType } from 'fumadocs-core/source';
 import { docs } from 'collections/server';
 import { docsContentRoute, docsRoute } from './shared';
 

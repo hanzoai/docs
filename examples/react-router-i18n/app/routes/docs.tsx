@@ -1,10 +1,10 @@
 import type { Route } from './+types/docs';
-import { DocsLayout } from '@hanzo/docs-ui/layouts/docs';
-import { DocsBody, DocsDescription, DocsPage, DocsTitle } from '@hanzo/docs-ui/layouts/docs/page';
+import { DocsLayout } from 'fumadocs-ui/layouts/docs';
+import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page';
 import { source } from '@/lib/source';
 import browserCollections from 'collections/browser';
 import { baseOptions } from '@/lib/layout.shared';
-import { useFumadocsLoader } from '@hanzo/docs-core/source/client';
+import { useFumadocsLoader } from 'fumadocs-core/source/client';
 import { useMDXComponents } from '@/components/mdx';
 
 export async function loader({ params }: Route.LoaderArgs) {

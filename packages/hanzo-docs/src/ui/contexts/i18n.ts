@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-base-ui/contexts/i18n';
+export * from '@fumadocs/base-ui/contexts/i18n';

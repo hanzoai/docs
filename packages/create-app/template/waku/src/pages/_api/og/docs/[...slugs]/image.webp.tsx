@@ -1,6 +1,6 @@
 import { source } from '@/lib/source';
 import { ImageResponse } from '@takumi-rs/image-response';
-import { generate as DefaultImage } from '@hanzo/docs-ui/og/takumi';
+import { generate as DefaultImage } from 'fumadocs-ui/og/takumi';
 import { ApiContext } from 'waku/router';
 
 export async function GET(_: Request, { params }: ApiContext<'/og/docs/[...slugs]/image.webp'>) {

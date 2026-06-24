@@ -1,6 +1,6 @@
 import { ImageResponse } from '@takumi-rs/image-response';
 import type { Route } from './+types/og.docs';
-import { generate as DefaultImage } from '@hanzo/docs-ui/og/takumi';
+import { generate as DefaultImage } from 'fumadocs-ui/og/takumi';
 import { source } from '@/lib/source';
 import { appName } from '@/lib/shared';
 

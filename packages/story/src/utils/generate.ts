@@ -11,7 +11,7 @@ export async function createControlsProject(tsconfigPath: string): Promise<Proje
   });
 }
 
-export type Mode = '@fumadocs/story/vite/client' | '@fumadocs/story/next/client';
+export type Mode = '@hanzo/docs-story/vite/client' | '@hanzo/docs-story/next/client';
 
 export function generateControls(
   mode: Mode,

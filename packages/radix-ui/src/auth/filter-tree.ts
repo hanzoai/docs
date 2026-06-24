@@ -1,4 +1,4 @@
-import type * as PageTree from '@hanzo/docs-core/page-tree';
+import type * as PageTree from 'fumadocs-core/page-tree';
 
 /**
  * Filter a page tree to remove nodes that require auth the current user doesn't have.

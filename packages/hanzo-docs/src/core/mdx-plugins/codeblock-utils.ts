@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-core/mdx-plugins/codeblock-utils';
+export * from 'fumadocs-core/mdx-plugins/codeblock-utils';

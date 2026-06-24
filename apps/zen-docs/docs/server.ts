@@ -124,10 +124,10 @@ import { frontmatter as __fd_glob_3 } from "../content/blog/case-for-decentraliz
 import { frontmatter as __fd_glob_2 } from "../content/blog/bitdelta-behavioral-compression.mdx?collection=blog&only=frontmatter"
 import { frontmatter as __fd_glob_1 } from "../content/blog/agent-nfts.mdx?collection=blog&only=frontmatter"
 import { frontmatter as __fd_glob_0 } from "../content/blog/7680-dim-embeddings.mdx?collection=blog&only=frontmatter"
-import { server } from '@hanzo/docs-mdx/runtime/server';
+import { server } from 'fumadocs-mdx/runtime/server';
 import type * as Config from '../source.config';
 
-const create = server<typeof Config, import("@hanzo/docs-mdx/runtime/types").InternalTypeConfig & {
+const create = server<typeof Config, import("fumadocs-mdx/runtime/types").InternalTypeConfig & {
   DocData: {
   }
 }>({"doc":{"passthroughs":["extractedReferences"]}});

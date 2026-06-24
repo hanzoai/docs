@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-openapi/server';
+export * from 'fumadocs-openapi/server';

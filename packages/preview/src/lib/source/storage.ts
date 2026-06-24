@@ -2,7 +2,7 @@ import type { contentConfigSchema } from '@/config/global';
 import fs from 'node:fs/promises';
 import { glob } from 'tinyglobby';
 import path from 'node:path';
-import { metaSchema, pageSchema } from '@hanzo/docs-core/source/schema';
+import { metaSchema, pageSchema } from 'fumadocs-core/source/schema';
 import { type NormalizedProjectConfig, normalizeProjects } from './config';
 import type z from 'zod';
 

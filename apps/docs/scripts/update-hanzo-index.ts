@@ -1,4 +1,4 @@
-import { type HanzoDocument, sync } from '@hanzo/docs-core/search/hanzo';
+import { type HanzoDocument, sync } from 'fumadocs-core/search/hanzo';
 import * as fs from 'node:fs/promises';
 
 export async function updateSearchIndexes(): Promise<void> {

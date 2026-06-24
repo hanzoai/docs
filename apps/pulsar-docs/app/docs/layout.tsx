@@ -1,4 +1,4 @@
-import { DocsLayout } from '@hanzo/docs-ui/layouts/docs';
+import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import type { ReactNode } from 'react';
 import { source } from '@/lib/source';
 

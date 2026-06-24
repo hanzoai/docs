@@ -39,8 +39,8 @@ export async function customise(config: LoadedConfig, connector: RegistryConnect
                 targets: [{ subRegistry, name: 'layouts/docs' }],
                 print() {
                   printLayout(
-                    ['@hanzo/docs-ui/layouts/docs', '@/layouts/docs'],
-                    ['@hanzo/docs-ui/layouts/docs/page', '@/layouts/docs/page'],
+                    ['fumadocs-ui/layouts/docs', '@/layouts/docs'],
+                    ['fumadocs-ui/layouts/docs/page', '@/layouts/docs/page'],
                   );
                 },
               },
@@ -53,8 +53,8 @@ export async function customise(config: LoadedConfig, connector: RegistryConnect
                 targets: [{ subRegistry, name: 'layouts/notebook' }],
                 print() {
                   printLayout(
-                    ['@hanzo/docs-ui/layouts/notebook', '@/layouts/notebook'],
-                    ['@hanzo/docs-ui/layouts/notebook/page', '@/layouts/notebook/page'],
+                    ['fumadocs-ui/layouts/notebook', '@/layouts/notebook'],
+                    ['fumadocs-ui/layouts/notebook/page', '@/layouts/notebook/page'],
                   );
                 },
               },
@@ -67,8 +67,8 @@ export async function customise(config: LoadedConfig, connector: RegistryConnect
                 targets: [{ subRegistry, name: 'layouts/flux' }],
                 print() {
                   printLayout(
-                    ['@hanzo/docs-ui/layouts/flux', '@/layouts/flux'],
-                    ['@hanzo/docs-ui/layouts/flux/page', '@/layouts/flux/page'],
+                    ['fumadocs-ui/layouts/flux', '@/layouts/flux'],
+                    ['fumadocs-ui/layouts/flux/page', '@/layouts/flux/page'],
                   );
                 },
               },
@@ -80,7 +80,7 @@ export async function customise(config: LoadedConfig, connector: RegistryConnect
                 id: 'home',
                 targets: [{ subRegistry, name: 'layouts/home' }],
                 print() {
-                  printLayout(['@hanzo/docs-ui/layouts/home', `@/layouts/home`]);
+                  printLayout(['fumadocs-ui/layouts/home', `@/layouts/home`]);
                 },
               },
               hint: 'the layout for other non-docs pages',
@@ -107,8 +107,8 @@ export async function customise(config: LoadedConfig, connector: RegistryConnect
                 targets: [{ name: 'layouts/docs-min' }],
                 print() {
                   printLayout(
-                    ['@hanzo/docs-ui/layouts/docs', '@/layouts/docs'],
-                    ['@hanzo/docs-ui/layouts/docs/page', '@/layouts/docs/page'],
+                    ['fumadocs-ui/layouts/docs', '@/layouts/docs'],
+                    ['fumadocs-ui/layouts/docs/page', '@/layouts/docs/page'],
                   );
                 },
               },

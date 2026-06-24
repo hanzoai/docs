@@ -1,6 +1,6 @@
 import { type FC, useMemo, type ComponentProps, type ReactNode } from 'react';
-import type { I18nConfig } from '@hanzo/docs-core/i18n';
-import * as PageTree from '@hanzo/docs-core/page-tree';
+import type { I18nConfig } from 'fumadocs-core/i18n';
+import * as PageTree from 'fumadocs-core/page-tree';
 import { isActive, normalize } from '@/utils/urls';
 import type { BaseSlots } from './client';
 import type { ThemeSwitchProps } from './slots/theme-switch';

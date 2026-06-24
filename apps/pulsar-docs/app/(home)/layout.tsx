@@ -1,4 +1,4 @@
-import { HomeLayout } from '@hanzo/docs-base-ui/layouts/home';
+import { HomeLayout } from '@fumadocs/base-ui/layouts/home';
 import type { ReactNode } from 'react';
 
 export default function Layout({ children }: { children: ReactNode }) {

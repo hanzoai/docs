@@ -1,12 +1,12 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
-import { DocsLayout } from '@hanzo/docs-ui/layouts/docs';
+import { DocsLayout } from 'fumadocs-ui/layouts/docs';
 import { createServerFn } from '@tanstack/react-start';
 import { source } from '@/lib/source';
 import browserCollections from 'collections/browser';
-import { DocsBody, DocsDescription, DocsPage, DocsTitle } from '@hanzo/docs-ui/layouts/docs/page';
-import defaultMdxComponents from '@hanzo/docs-ui/mdx';
+import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page';
+import defaultMdxComponents from 'fumadocs-ui/mdx';
 import { baseOptions } from '@/lib/layout.shared';
-import { useFumadocsLoader } from '@hanzo/docs-core/source/client';
+import { useFumadocsLoader } from 'fumadocs-core/source/client';
 import { Suspense } from 'react';
 
 export const Route = createFileRoute('/$lang/docs/$')({

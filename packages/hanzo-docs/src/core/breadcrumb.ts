@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-core/breadcrumb';
+export * from 'fumadocs-core/breadcrumb';
