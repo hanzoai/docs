@@ -1,14 +1,11 @@
 import { TemplatePlugin, TemplatePluginContext } from '@/index';
-import { ComponentInstaller } from '@hanzo/docs-cli/registry/installer';
 import { getDefaultConfig } from '@hanzo/docs-cli/config';
-import { HttpRegistryClient } from '@hanzo/docs-cli/registry/client';
 import { createSourceFile } from '@/transform/shared';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { SyntaxKind } from 'ts-morph';
 import { FumadocsComponentInstaller } from '@hanzo/docs-cli/registry/installer';
 import { HttpRegistryConnector } from 'fuma-cli/registry/connector';
-import { getDefaultConfig } from '@hanzo/docs-cli/config';
 
 const envKey: Record<'openrouter' | 'llmgateway' | 'inkeep', string> = {
   openrouter: 'OPENROUTER_API_KEY',

@@ -23,6 +23,6 @@ export default defineConfig({
   },
   deps: {
     onlyBundle: ['@fastify/deepmerge', '@ungap/structured-clone', 'react-error-boundary'],
-    neverBundle: [/^node:/],
+    neverBundle: [/^node:/, 'next', 'webpack'],
   },
 });
