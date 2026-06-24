@@ -1,5 +1,5 @@
 import type { MDXComponents } from 'mdx/types';
-import defaultComponents from '@hanzo/docs-ui/mdx';
+import defaultComponents from 'fumadocs-ui/mdx';
 import { DynamicModelTable, DynamicCostExamples } from './components/DynamicModelTable';
 import { ModelTable } from './components/ModelTable';
 

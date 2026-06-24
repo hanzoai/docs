@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { HomeLayout } from '@hanzo/docs-base-ui/layouts/home';
+import { HomeLayout } from '@fumadocs/base-ui/layouts/home';
 import { baseOptions } from '@/lib/layout.shared';
 import { linkItems } from '@/lib/layout.shared';
 

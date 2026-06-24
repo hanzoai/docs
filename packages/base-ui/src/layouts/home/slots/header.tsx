@@ -2,7 +2,7 @@
 
 import { type ComponentProps, Fragment, useEffect, useEffectEvent, useRef, useState } from 'react';
 import { cva } from 'class-variance-authority';
-import Link from '@hanzo/docs-core/link';
+import Link from 'fumadocs-core/link';
 import { cn } from '@/utils/cn';
 import { type LinkItemType, LinkItem } from '@/layouts/shared';
 import {

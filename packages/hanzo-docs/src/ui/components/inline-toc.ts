@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-base-ui/components/inline-toc';
+export * from '@fumadocs/base-ui/components/inline-toc';

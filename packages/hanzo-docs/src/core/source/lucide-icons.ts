@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-core/source/lucide-icons';
+export * from 'fumadocs-core/source/lucide-icons';

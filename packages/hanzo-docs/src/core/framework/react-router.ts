@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-core/framework/react-router';
+export * from 'fumadocs-core/framework/react-router';

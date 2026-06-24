@@ -21,7 +21,7 @@ import {
 import { Footer, type FooterProps } from './slots/footer';
 import { Breadcrumb, type BreadcrumbProps } from './slots/breadcrumb';
 import { Container } from './slots/container';
-import type { TOCItemType } from '@hanzo/docs-core/toc';
+import type { TOCItemType } from 'fumadocs-core/toc';
 import { buttonVariants } from '@/components/ui/button';
 import { Edit } from 'lucide-react';
 
@@ -95,7 +95,7 @@ export function useDocsPage() {
   const context = use(PageContext);
   if (!context)
     throw new Error(
-      'Please use page components under <DocsPage /> (`@hanzo/docs-ui/layouts/docs/page`).',
+      'Please use page components under <DocsPage /> (`fumadocs-ui/layouts/docs/page`).',
     );
   return context;
 }

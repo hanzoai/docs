@@ -12,7 +12,7 @@ import ArkType from '@/public/showcases/arktype.png';
 import AssistantUI from '@/public/showcases/assistant-ui.png';
 import VisionUI from '@/public/showcases/vision-ui.png';
 import Design from './design.png';
-import Link from '@hanzo/docs-core/link';
+import Link from 'fumadocs-core/link';
 import MixSpace from '@/public/showcases/mix-space.png';
 import TurboStarter from '@/public/showcases/turbostarter.png';
 import HexaasBlog from '@/public/showcases/hexaas-blog.png';

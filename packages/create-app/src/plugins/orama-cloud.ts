@@ -78,7 +78,7 @@ See https://hanzoai.github.io/docs/docs/headless/search/orama-cloud for integrat
 
       await writeFile(
         path.join(dest, 'scripts/sync-content.ts'),
-        `import { type OramaDocument, sync } from '@hanzo/docs-core/search/orama-cloud';
+        `import { type OramaDocument, sync } from 'fumadocs-core/search/orama-cloud';
 import * as fs from 'node:fs/promises';
 import { OramaCloud } from '@orama/core';
 

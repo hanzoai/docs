@@ -56,7 +56,7 @@ ${children.map(toNode).filter(Boolean).join('\n')}
 export function treeToJavaScript(
   input: JsonTreeNode[],
   noRoot?: boolean,
-  importName = '@hanzo/docs-base-ui/components/files',
+  importName = '@fumadocs/base-ui/components/files',
 ): string {
   return `import { File, Files, Folder } from ${JSON.stringify(importName)}
 

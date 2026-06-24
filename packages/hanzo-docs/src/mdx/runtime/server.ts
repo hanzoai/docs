@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-mdx/runtime/server';
+export * from 'fumadocs-mdx/runtime/server';

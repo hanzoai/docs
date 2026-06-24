@@ -2,8 +2,8 @@
 
 import { type ComponentProps, createContext, type FC, use, useMemo } from 'react';
 import { cn } from '@/utils/cn';
-import { usePathname } from '@hanzo/docs-core/framework';
-import Link from '@hanzo/docs-core/link';
+import { usePathname } from 'fumadocs-core/framework';
+import Link from 'fumadocs-core/link';
 import { useIsScrollTop } from '@/utils/use-is-scroll-top';
 import type { LinkItemType } from '@/layouts/shared';
 import {
@@ -65,7 +65,7 @@ export function useDocsLayout() {
   const context = use(LayoutContext);
   if (!context)
     throw new Error(
-      'Please use <DocsPage /> (`@hanzo/docs-ui/layouts/docs/page`) under <DocsLayout /> (`@hanzo/docs-ui/layouts/docs`).',
+      'Please use <DocsPage /> (`fumadocs-ui/layouts/docs/page`) under <DocsLayout /> (`fumadocs-ui/layouts/docs`).',
     );
   return context;
 }

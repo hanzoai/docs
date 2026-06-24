@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-base-ui/components/codeblock';
+export * from '@fumadocs/base-ui/components/codeblock';

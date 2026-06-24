@@ -1,6 +1,6 @@
 import type { FileCollectionStore } from 'fuma-content/collections/runtime/file-store';
 import type { MDXStoreLazyData, MDXStoreData } from 'fuma-content/collections/mdx/runtime';
-import type { MetaData, PageData, Source } from '@hanzo/docs-core/source';
+import type { MetaData, PageData, Source } from 'fumadocs-core/source';
 
 type ToPageData<T> =
   T extends MDXStoreData<infer Frontmatter>

@@ -1,4 +1,4 @@
-import type { BaseLayoutProps } from '@hanzo/docs-ui/layouts/shared';
+import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import z from 'zod';
 
 type Awaitable<T> = T | Promise<T>;

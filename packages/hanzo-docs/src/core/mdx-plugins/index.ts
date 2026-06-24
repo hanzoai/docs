@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-core/mdx-plugins';
+export * from 'fumadocs-core/mdx-plugins';

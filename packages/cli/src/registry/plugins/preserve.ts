@@ -1,7 +1,7 @@
 import type { InstallerPlugin } from 'fuma-cli/registry/installer';
 
 /**
- * keep references to `@hanzo/docs-ui/layouts/*` components as original, unless the user is installing them directly.
+ * keep references to `fumadocs-ui/layouts/*` components as original, unless the user is installing them directly.
  */
 export function pluginPreserveLayouts(): InstallerPlugin {
   const layoutNames = [
@@ -49,7 +49,7 @@ export function pluginPreserveLayouts(): InstallerPlugin {
         // skip if unrelated to layout component
         if (!(specifier in layoutComps)) return specifier;
 
-        return `@hanzo/docs-ui/${layoutComps[specifier]}`;
+        return `fumadocs-ui/${layoutComps[specifier]}`;
       });
     },
   };
