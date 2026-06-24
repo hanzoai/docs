@@ -1,1 +1,2 @@
-export * from 'fumadocs-core/content';
+export * from './github';
+export * from './toc';
