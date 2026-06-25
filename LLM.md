@@ -1,12 +1,12 @@
 # LLM.md - Hanzo Docs Framework
 
-Fork of [fumadocs](https://github.com/fuma-nama/fumadocs) with all packages renamed to `@hanzo/docs-*` namespace.
+Fork of [Hanzo Docs](https://github.com/hanzoai/docs) with all packages renamed to `@hanzo/docs-*` namespace.
 
 ## Branch Convention
 
 - **`main`** — Production branch. CF Pages deploys docs.hanzo.ai from here. All Hanzo work lands here.
-- **`dev`** — Tracks upstream `fumadocs/dev`. Used for upstream sync merges only.
-- **`upstream`** remote — points to `fuma-nama/fumadocs`
+- **`dev`** — Tracks upstream `Hanzo Docs/dev`. Used for upstream sync merges only.
+- **`upstream`** remote — points to `hanzoai/docs`
 
 ## Architecture
 
@@ -38,7 +38,7 @@ pnpm workspace monorepo with turbo. Two apps, 24 packages, 24 examples.
 │   ├── create-app/     # @hanzo/docs-create-app - project scaffolding
 │   ├── create-app-versions/ # version tracking for create-app
 │   ├── shared/         # shared utilities
-│   ├── stf/            # @fumari/stf (upstream dependency)
+│   ├── stf/            # @hanzo/docs-stf (upstream dependency)
 │   ├── mdx-runtime/    # @hanzo/mdx-runtime
 │   ├── eslint-config-custom/ # shared ESLint config
 │   └── tsconfig/       # shared TypeScript config
@@ -47,26 +47,50 @@ pnpm workspace monorepo with turbo. Two apps, 24 packages, 24 examples.
 
 ## Package Naming Convention
 
-All upstream `fumadocs-*` and `@fumadocs/*` packages are renamed:
+One brand: every workspace package publishes under `@hanzo/docs-*`. The
+rename rule (applied when merging from the upstream fork) drops the upstream
+prefix and re-scopes to `@hanzo/docs-`:
 
-| Upstream | Hanzo Fork |
-|----------|-----------|
-| `fumadocs-core` | `@hanzo/docs-core` |
-| `fumadocs-mdx` | `@hanzo/docs-mdx` |
-| `fumadocs-ui` / `@fumadocs/radix-ui` | `@hanzo/docs-ui` (in packages/radix-ui) |
-| `@fumadocs/base-ui` | `@hanzo/docs-base-ui` |
-| `fumadocs-openapi` | `@hanzo/docs-openapi` |
-| `fumadocs-typescript` | `@hanzo/docs-typescript` |
-| `fumadocs-twoslash` | `@hanzo/docs-twoslash` |
-| `@fumadocs/cli` | `@hanzo/docs-cli` |
-| `@fumadocs/story` | `@hanzo/docs-story` |
-| `@fumadocs/tailwind` | `@hanzo/docs-tailwind` |
+- `<basename>` (unscoped upstream) → `@hanzo/docs-<basename>`
+- `@<scope>/<basename>` (scoped upstream) → `@hanzo/docs-<basename>`
 
-**Important**: `packages/radix-ui` publishes as `@hanzo/docs-ui` (drop-in replacement for the old `fumadocs-ui`). The `base-ui` variant uses `@base-ui/react` instead of Radix.
+Canonical workspace packages and their paths:
+
+| Hanzo name | Path |
+|------------|------|
+| `@hanzo/docs-core` | packages/core |
+| `@hanzo/docs-mdx` | packages/mdx |
+| `@hanzo/docs-ui` | packages/radix-ui |
+| `@hanzo/docs-base-ui` | packages/base-ui |
+| `@hanzo/docs-openapi` | packages/openapi |
+| `@hanzo/docs-preview` | packages/preview |
+| `@hanzo/docs-typescript` | packages/typescript |
+| `@hanzo/docs-twoslash` | packages/twoslash |
+| `@hanzo/docs-cli` | packages/cli |
+| `@hanzo/docs-story` | packages/story |
+| `@hanzo/docs-tailwind` | packages/tailwind |
+| `@hanzo/docs-language` | packages/language |
+| `@hanzo/docs-local-md` | packages/local-md |
+| `@hanzo/docs-sanity` | packages/sanity |
+| `@hanzo/docs-shadcn` | packages/shadcn |
+| `@hanzo/docs-vite` | packages/vite |
+| `@hanzo/docs-basehub` | packages/basehub |
+| `@hanzo/docs-mdx-remote` | packages/mdx-remote |
+| `@hanzo/docs-stf` | packages/stf |
+| `@hanzo/create-docs` | packages/create-app |
+| `@hanzo/docs-create-versions` | packages/create-app-versions |
+
+**Important**: `packages/radix-ui` publishes as `@hanzo/docs-ui` (Radix
+variant). The `base-ui` variant (`@hanzo/docs-base-ui`) uses `@base-ui/react`
+instead of Radix.
+
+**External deps kept verbatim** (real upstream npm packages, NOT renamed):
+`fuma-cli`, `fuma-content`, `@fumari/json-schema-ts`, and the third-party
+search adapters (typesense / trieve) documented under `apps/docs`.
 
 ## Upstream Sync
 
-Remote `upstream` points to `fuma-nama/fumadocs`. Local `dev` tracks `upstream/dev`.
+Remote `upstream` points to the upstream fork. Local `dev` tracks `upstream/dev`.
 
 To merge upstream changes:
 
@@ -74,21 +98,13 @@ To merge upstream changes:
 git checkout dev && git pull upstream dev
 git checkout -b merge-upstream-YYYY-MM-DD main
 git merge dev
-# Resolve conflicts, then rename fumadocs-* → @hanzo/docs-*
+# Resolve conflicts, then re-apply the package rename (table above)
 # Merge into main when ready
 ```
 
-After merge, do bulk rename:
-```bash
-find packages/ apps/ examples/ -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.json' -o -name '*.mdx' \) \
-  ! -path '*/node_modules/*' ! -path '*/dist/*' \
-  -exec sed -i '' \
-  -e 's|fumadocs-core|@hanzo/docs-core|g' \
-  -e 's|fumadocs-ui|@hanzo/docs-ui|g' \
-  -e 's|@fumadocs/base-ui|@hanzo/docs-base-ui|g' \
-  # ... etc for all packages
-  {} +
-```
+After merge, re-apply the rename with the canonical script
+(`scripts/rebrand-packages.mjs` — masks the external KEEP-list, then maps
+each upstream name to its `@hanzo/docs-*` form).
 
 ## Key Patterns
 
@@ -104,7 +120,7 @@ import { loader } from '@hanzo/docs-core/source';
 
 export const source = loader({
   baseUrl: '/docs',
-  source: docs.toFumadocsSource(), // API name kept from upstream
+  source: docs.toHanzoDocsSource(), // API name kept from upstream
 });
 ```
 

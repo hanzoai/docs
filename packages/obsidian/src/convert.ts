@@ -15,7 +15,7 @@ import type { VaultFile } from '@/read-vaults';
 import { getRemarkPlugins } from '@/remark';
 import type { Root } from 'mdast';
 import remarkParse from 'remark-parse';
-import { remarkGfm } from 'fumadocs-core/mdx-plugins/remark-gfm';
+import { remarkGfm } from '@hanzo/docs-core/mdx-plugins/remark-gfm';
 import remarkMath from 'remark-math';
 
 export interface OutputFile {

@@ -36,7 +36,7 @@ export interface RemarkHeadingOptions {
 declare module 'vfile' {
   interface DataMap {
     /**
-     * [Fumadocs: remark-heading] output data.
+     * [Hanzo Docs: remark-heading] output data.
      */
     toc?: TOCItemType[];
   }

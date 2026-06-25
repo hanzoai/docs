@@ -61,7 +61,7 @@ function extractHeadingTitle(text: string): string {
 }
 
 /**
- * @deprecated Use `createMixedbreadSearchAPI` from `fumadocs-core/search/mixedbread` instead.
+ * @deprecated Use `createMixedbreadSearchAPI` from `@hanzo/docs-core/search/mixedbread` instead.
  * This client-side approach exposes your API key in the browser.
  * The server-side approach keeps the key secure and uses `type: 'fetch'` on the client.
  */

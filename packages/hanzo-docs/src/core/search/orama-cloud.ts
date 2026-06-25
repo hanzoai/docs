@@ -1,1 +1,1 @@
-export * from 'fumadocs-core/search/orama-cloud';
+export * from '@hanzo/docs-core/search/orama-cloud';

@@ -15,9 +15,9 @@ import { mergeRefs } from '@/utils/merge-refs';
 import { useDocsLayout } from '../client';
 import { LinkItem } from '@/layouts/shared';
 import { isLayoutTabActive, type LayoutTab } from '@/layouts/shared';
-import { usePathname } from 'fumadocs-core/framework';
+import { usePathname } from '@hanzo/docs-core/framework';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import Link from 'fumadocs-core/link';
+import Link from '@hanzo/docs-core/link';
 
 const itemVariants = cva(
   'relative flex flex-row items-center gap-2 rounded-lg p-2 text-start text-fd-muted-foreground wrap-anywhere [&_svg]:size-4 [&_svg]:shrink-0',

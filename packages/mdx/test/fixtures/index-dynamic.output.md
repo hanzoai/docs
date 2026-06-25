@@ -17,7 +17,7 @@ const create = server<typeof Config, import("@hanzo/docs-mdx/runtime/types").Int
 
 ```ts title="dynamic.ts"
 // @ts-nocheck
-import { dynamic } from 'fumadocs-mdx/runtime/dynamic';
+import { dynamic } from '@hanzo/docs-mdx/runtime/dynamic';
 import path from 'node:path';
 import * as Config from './config';
 

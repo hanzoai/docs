@@ -1,5 +1,5 @@
 import type { Route } from './+types/not-found';
-import { HomeLayout } from 'fumadocs-ui/layouts/home';
+import { HomeLayout } from '@hanzo/docs-ui/layouts/home';
 import { Link } from 'react-router';
 import { baseOptions } from '#/lib/layout.shared.tsx';
 

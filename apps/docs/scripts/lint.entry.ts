@@ -1,5 +1,5 @@
-import { postInstall } from 'fumadocs-mdx/next';
-import mdx from 'fumadocs-mdx/rolldown';
+import { postInstall } from '@hanzo/docs-mdx/next';
+import mdx from '@hanzo/docs-mdx/rolldown';
 import { unrun } from 'unrun';
 
 process.env.LINT = '1';

@@ -17,7 +17,7 @@ export interface OramaCloudLegacyOptions {
   /**
    * The type of your index.
    *
-   * You can set it to `crawler` if you use crawler instead of the JSON index with schema provided by Fumadocs.
+   * You can set it to `crawler` if you use crawler instead of the JSON index with schema provided by Hanzo Docs.
    */
   index?: 'default' | 'crawler';
 

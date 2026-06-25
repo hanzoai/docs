@@ -1,7 +1,7 @@
 'use client';
 import { type ComponentProps, type HTMLAttributes, type ReactNode, useState } from 'react';
 import { ChevronRight, Plus, Trash2, X } from 'lucide-react';
-import { FieldKey, useArray, useDataEngine, useFieldValue, useObject } from '@fumari/stf';
+import { FieldKey, useArray, useDataEngine, useFieldValue, useObject } from '@hanzo/docs-stf';
 import {
   Select,
   SelectContent,
@@ -11,7 +11,7 @@ import {
 } from '@/ui/components/select';
 import { Input, labelVariants } from '@/ui/components/input';
 import { cn } from '@/utils/cn';
-import { buttonVariants } from '@fumadocs/base-ui/components/ui/button';
+import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
 import { FormatFlags } from '@/utils/schema-to-string';
 import {
   anyFields,
@@ -21,7 +21,7 @@ import {
   useResolvedSchema,
 } from '@/playground/schema';
 import type { ParsedSchema } from '@/utils/schema';
-import { stringifyFieldKey } from '@fumari/stf/lib/utils';
+import { stringifyFieldKey } from '@hanzo/docs-stf/lib/utils';
 import { cva } from 'class-variance-authority';
 import { useTranslations } from '@/ui/client/i18n';
 

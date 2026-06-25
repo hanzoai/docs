@@ -1,5 +1,5 @@
 import type { PortableTextTypeComponent } from '@portabletext/react';
-import { File, Files, Folder } from 'fumadocs-ui/components/files';
+import { File, Files, Folder } from '@hanzo/docs-ui/components/files';
 
 export interface FileValue {
   _key?: string;

@@ -1,5 +1,5 @@
 import type { Pluggable } from 'unified';
-import { frontmatter as matter } from 'fumadocs-core/content/md/frontmatter';
+import { frontmatter as matter } from '@hanzo/docs-core/content/md/frontmatter';
 
 export type ResolvePlugins = Pluggable[] | ((v: Pluggable[]) => Pluggable[]);
 

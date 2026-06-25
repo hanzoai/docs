@@ -1,7 +1,7 @@
-import { defineConfig, defineDocs } from 'fumadocs-mdx/config';
+import { defineConfig, defineDocs } from '@hanzo/docs-mdx/config';
 import { remarkObsidian, RemarkObsidianOptions } from '@hanzo/docs-obsidian/mdx';
 import { readVaultFiles } from '@hanzo/docs-obsidian';
-import { pageSchema } from 'fumadocs-core/source/schema';
+import { pageSchema } from '@hanzo/docs-core/source/schema';
 
 export const docs = defineDocs({
   dir: 'content/docs',

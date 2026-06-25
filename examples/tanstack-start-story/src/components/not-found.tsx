@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { HomeLayout } from '@fumadocs/base-ui/layouts/home';
+import { HomeLayout } from '@hanzo/docs-base-ui/layouts/home';
 
 export function NotFound() {
   return (

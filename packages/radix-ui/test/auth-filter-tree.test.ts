@@ -1,6 +1,6 @@
 import { expect, test, describe } from 'vitest';
 import { filterPageTreeByAccess } from '../src/auth/filter-tree';
-import type * as PageTree from 'fumadocs-core/page-tree';
+import type * as PageTree from '@hanzo/docs-core/page-tree';
 
 function item(name: string, access?: 'public' | 'authenticated' | 'team' | 'admin', accessOrgs?: string[]): PageTree.Item {
   return {

@@ -1,5 +1,5 @@
 'use client';
-import * as Primitive from 'fumadocs-core/toc';
+import * as Primitive from '@hanzo/docs-core/toc';
 import {
   type ComponentProps,
   createContext,
@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { cn } from '@/utils/cn';
 import { mergeRefs } from '@/utils/merge-refs';
-import { useOnChange } from 'fumadocs-core/utils/use-on-change';
+import { useOnChange } from '@hanzo/docs-core/utils/use-on-change';
 
 const TOCContext = createContext<Primitive.TOCItemType[]>([]);
 

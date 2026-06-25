@@ -1,11 +1,11 @@
 import { source } from '@/lib/source';
-import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page';
+import { DocsBody, DocsDescription, DocsPage, DocsTitle } from '@hanzo/docs-ui/layouts/docs/page';
 import { notFound } from 'next/navigation';
 import { getMDXComponents } from '@/components/mdx';
 import type { Metadata } from 'next';
-import { createRelativeLink } from 'fumadocs-ui/mdx';
-import { createShadcnDocs } from '@fumadocs/shadcn';
-import { Snippet } from '@fumadocs/shadcn/rsc';
+import { createRelativeLink } from '@hanzo/docs-ui/mdx';
+import { createShadcnDocs } from '@hanzo/docs-shadcn';
+import { Snippet } from '@hanzo/docs-shadcn/rsc';
 
 const shadcnDocs = createShadcnDocs({
   registryPath: 'registry/default/registry.json',

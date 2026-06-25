@@ -1,12 +1,12 @@
 import { docs } from 'collections/server';
-import { loader } from 'fumadocs-core/source';
-import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
+import { loader } from '@hanzo/docs-core/source';
+import { lucideIconsPlugin } from '@hanzo/docs-core/source/lucide-icons';
 import { docsContentRoute, docsImageRoute, docsRoute } from './shared';
 
-// See https://fumadocs.dev/docs/headless/source-api for more info
+// See https://docs.hanzo.ai/docs/headless/source-api for more info
 export const source = loader({
   baseUrl: docsRoute,
-  source: docs.toFumadocsSource(),
+  source: docs.toHanzoDocsSource(),
   plugins: [lucideIconsPlugin()],
 });
 

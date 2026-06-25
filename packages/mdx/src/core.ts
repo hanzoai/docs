@@ -359,7 +359,7 @@ function postprocessPlugin(): Plugin {
   /**
    * extracted references (e.g. hrefs, paths), useful for analyzing relationships between pages.
    */
-  extractedReferences: import("fumadocs-mdx").ExtractedReference[];
+  extractedReferences: import("@hanzo/docs-mdx").ExtractedReference[];
 }`;
 
   return {

@@ -1,6 +1,6 @@
 'use client';
-import { usePathname } from 'fumadocs-core/framework';
-import { useOnChange } from 'fumadocs-core/utils/use-on-change';
+import { usePathname } from '@hanzo/docs-core/framework';
+import { useOnChange } from '@hanzo/docs-core/utils/use-on-change';
 import {
   createContext,
   type ReactNode,
@@ -25,7 +25,7 @@ export function useSidebar() {
   const ctx = use(SidebarContext);
   if (!ctx)
     throw new Error(
-      'the component must be wrapped under <SidebarProvider /> (fumadocs-ui/legacy/sidebar)',
+      'the component must be wrapped under <SidebarProvider /> (@hanzo/docs-ui/legacy/sidebar)',
     );
   return ctx;
 }

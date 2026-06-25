@@ -1,1 +1,1 @@
-export * from 'fumadocs-core/framework/tanstack';
+export * from '@hanzo/docs-core/framework/tanstack';

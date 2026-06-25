@@ -12,17 +12,17 @@ import {
   useState,
 } from 'react';
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
-import Link from 'fumadocs-core/link';
+import Link from '@hanzo/docs-core/link';
 import { cn } from '@/utils/cn';
 import { useI18n } from '@/contexts/i18n';
 import { useTreeContext, useTreePath } from '@/contexts/tree';
-import type * as PageTree from 'fumadocs-core/page-tree';
-import { usePathname } from 'fumadocs-core/framework';
-import { type BreadcrumbOptions, getBreadcrumbItemsFromPath } from 'fumadocs-core/breadcrumb';
+import type * as PageTree from '@hanzo/docs-core/page-tree';
+import { usePathname } from '@hanzo/docs-core/framework';
+import { type BreadcrumbOptions, getBreadcrumbItemsFromPath } from '@hanzo/docs-core/breadcrumb';
 import { isActive } from '@/utils/urls';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useTOCItems } from '@/components/toc';
-import { useActiveAnchor } from 'fumadocs-core/toc';
+import { useActiveAnchor } from '@hanzo/docs-core/toc';
 import { useNotebookLayout } from '../client';
 import { useFooterItems } from '@/utils/use-footer-items';
 
