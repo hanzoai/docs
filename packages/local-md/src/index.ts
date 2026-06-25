@@ -4,11 +4,11 @@ import {
   type PageData,
   type StaticSource,
   type VirtualFile,
-} from 'fumadocs-core/source';
+} from '@hanzo/docs-core/source';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import path from 'node:path';
 import { createStorage, RawPage } from './storage';
-import type * as defaultSchemas from 'fumadocs-core/source/schema';
+import type * as defaultSchemas from '@hanzo/docs-core/source/schema';
 import {
   type MarkdownRenderer,
   type MarkdownRendererASTOptions,
@@ -17,7 +17,7 @@ import {
 } from './md/renderer';
 import { CompileResult, createMarkdownCompiler, MarkdownCompilerOptions } from './md/compiler';
 import { getDevServerUrlFromEnv } from './dev/shared';
-import type { DynamicLoader } from 'fumadocs-core/source/dynamic';
+import type { DynamicLoader } from '@hanzo/docs-core/source/dynamic';
 import { defaultInclude } from './shared';
 import { pathToFileURL } from 'node:url';
 
@@ -117,7 +117,7 @@ export function localMd<
           title: frontmatter.title ?? path.basename(page.path, path.extname(page.path)),
           description: frontmatter.description,
           icon: frontmatter.icon,
-          // for Fumadocs OpenAPI
+          // for Hanzo Docs OpenAPI
           ['_openapi' as never]: frontmatter._openapi,
 
           content: page.content,
@@ -174,7 +174,7 @@ export function localMd<
     async devServer(url = getDevServerUrlFromEnv()) {
       if (!url) {
         console.warn(
-          `[@fumadocs/local-md] dev server URL could not be found, try passing the URL to devServer() explicitly instead`,
+          `[@hanzo/docs-local-md] dev server URL could not be found, try passing the URL to devServer() explicitly instead`,
         );
         return;
       }

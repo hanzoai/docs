@@ -3,7 +3,7 @@ import { cn } from '@/utils/cn';
 import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
 import { ApiClientModalProvider, useApiClientModal } from '@scalar/api-client-react';
 import { MethodLabel } from '@/ui/components/method-label';
-import { useTheme } from 'fumadocs-ui/provider/base';
+import { useTheme } from '@hanzo/docs-ui/provider/base';
 import { useEffect, useState } from 'react';
 import type { HttpMethods } from '@/types';
 import { I18nLabel } from '@/ui/client/i18n';

@@ -176,7 +176,7 @@ async function main(): Promise<void> {
         if (config.aiChat !== undefined) return config.aiChat;
         if (
           isCI ||
-          results.template === '+next+fuma-docs-mdx+static' ||
+          results.template === '+next+hanzo-docs-mdx+static' ||
           results.template!.endsWith('-spa')
         )
           return false;

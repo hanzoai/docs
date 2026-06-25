@@ -1,12 +1,12 @@
-import { loader } from 'fumadocs-core/source';
+import { loader } from '@hanzo/docs-core/source';
 import { docs } from 'collections/server';
-import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
+import { lucideIconsPlugin } from '@hanzo/docs-core/source/lucide-icons';
 import { docsRoute } from './shared';
 import { openapi } from './openapi';
 
 export const source = loader(
   {
-    docs: docs.toDocsSource(),
+    docs: docs.toHanzoDocsSource(),
     openapi: await openapi.staticSource({
       baseDir: 'openapi',
     }),

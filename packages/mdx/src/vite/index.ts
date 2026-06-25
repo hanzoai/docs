@@ -98,12 +98,12 @@ export default async function mdx(
     },
   };
   const mdxPlugin: Plugin = {
-    name: 'fumadocs-mdx:mdx',
+    name: '@hanzo/docs-mdx:mdx',
   };
 
   return [
     {
-      name: 'fumadocs-mdx',
+      name: '@hanzo/docs-mdx',
       async config(config) {
         const root = config.root ?? process.cwd();
         const options = applyDefaults(root, pluginOptions);
@@ -145,7 +145,7 @@ export default async function mdx(
         if ('_fumadocs_skipViteConfig' in config && config._fumadocs_skipViteConfig) return;
         if (!options.updateViteConfig) return;
 
-        const { getConfig } = await import('@fumadocs/vite');
+        const { getConfig } = await import('@hanzo/docs-vite');
         return getConfig({ root });
       },
       async buildStart() {

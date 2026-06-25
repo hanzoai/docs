@@ -18,7 +18,7 @@ import type { Processor } from 'unified';
 declare module 'mdast' {
   interface Data {
     /**
-     * [Fumadocs: stringify] Extra info for stringifying the node:
+     * [Hanzo Docs: stringify] Extra info for stringifying the node:
      * - `children-only`: only stringify its children.
      * - `{ node }`: stringify as another node.
      * - `{ text }`: the stringified form of node.

@@ -4,6 +4,6 @@ import { docs } from 'collections/server';
 
 export const source = loader({
   baseUrl: '/docs',
-  source: docs.toDocsSource(),
+  source: docs.toHanzoDocsSource(),
   i18n,
 });

@@ -2,9 +2,9 @@ import fs from 'node:fs/promises';
 import { glob } from 'tinyglobby';
 import path from 'node:path';
 import { LocalMarkdownConfig } from '.';
-import { frontmatter as parseFrontmatter } from 'fumadocs-core/content/md/frontmatter';
+import { frontmatter as parseFrontmatter } from '@hanzo/docs-core/content/md/frontmatter';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
-import * as defaultSchemas from 'fumadocs-core/source/schema';
+import * as defaultSchemas from '@hanzo/docs-core/source/schema';
 import { defaultInclude } from './shared';
 
 export interface RawPage<Frontmatter = Record<string, unknown>> {

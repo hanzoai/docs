@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router';
 import { DocsLayout } from '@hanzo/docs-ui/layouts/docs';
 import { createServerFn } from '@tanstack/react-start';
-import { getPageMarkdownUrl, source } from '@/lib/source';
+import { slugsToMarkdownPath, source } from '@/lib/source';
 import browserCollections from 'collections/browser';
 import {
   DocsBody,
@@ -14,7 +14,7 @@ import {
 import { baseOptions } from '@/lib/layout.shared';
 import { gitConfig } from '@/lib/shared';
 import { staticFunctionMiddleware } from '@tanstack/start-static-server-functions';
-import { useFumadocsLoader } from '@hanzo/docs-core/source/client';
+import { useHanzoDocsLoader } from '@hanzo/docs-core/source/client';
 import { Suspense } from 'react';
 import { useMDXComponents } from '@/components/mdx';
 
@@ -39,7 +39,7 @@ const loader = createServerFn({
 
     return {
       path: page.path,
-      markdownUrl: getPageMarkdownUrl(page).url,
+      markdownUrl: slugsToMarkdownPath(page.slugs).url,
       pageTree: await source.serializePageTree(source.getPageTree()),
     };
   });
@@ -76,7 +76,7 @@ const clientLoader = browserCollections.docs.createClientLoader({
 });
 
 function Page() {
-  const { pageTree, path, markdownUrl } = useFumadocsLoader(Route.useLoaderData());
+  const { pageTree, path, markdownUrl } = useHanzoDocsLoader(Route.useLoaderData());
 
   return (
     <DocsLayout {...baseOptions()} tree={pageTree}>

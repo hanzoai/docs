@@ -143,7 +143,7 @@ export interface TypeTableProps extends BaseTypeTableProps {
 }
 
 /**
- * Compile `auto-type-table` into Fumadocs UI compatible TypeTable
+ * Compile `auto-type-table` into Hanzo Docs UI compatible TypeTable
  *
  * MDX is required to use this plugin.
  */

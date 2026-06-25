@@ -1,14 +1,11 @@
 import { TemplatePlugin, TemplatePluginContext } from '@/index';
-import { ComponentInstaller } from '@hanzo/docs-cli/registry/installer';
 import { getDefaultConfig } from '@hanzo/docs-cli/config';
-import { HttpRegistryClient } from '@hanzo/docs-cli/registry/client';
 import { createSourceFile } from '@/transform/shared';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { SyntaxKind } from 'ts-morph';
-import { FumadocsComponentInstaller } from '@fumadocs/cli/registry/installer';
+import { HanzoDocsComponentInstaller } from '@hanzo/docs-cli/registry/installer';
 import { HttpRegistryConnector } from 'fuma-cli/registry/connector';
-import { getDefaultConfig } from '@fumadocs/cli/config';
 
 const envKey: Record<'openrouter' | 'llmgateway' | 'inkeep', string> = {
   openrouter: 'OPENROUTER_API_KEY',
@@ -20,8 +17,8 @@ export function ai(provider: 'openrouter' | 'llmgateway' | 'inkeep'): TemplatePl
   return {
     async afterWrite() {
       const config = await getDefaultConfig(this.dest);
-      const installer = new FumadocsComponentInstaller(
-        new HttpRegistryConnector('https://fumadocs.dev/registry'),
+      const installer = new HanzoDocsComponentInstaller(
+        new HttpRegistryConnector('https://docs.hanzo.ai/registry'),
         config,
         this.dest,
       );
@@ -42,8 +39,8 @@ export function ai(provider: 'openrouter' | 'llmgateway' | 'inkeep'): TemplatePl
 async function addAIChat({ template, appDir }: TemplatePluginContext) {
   let filePath: string;
   switch (template.value) {
-    case '+next+fuma-docs-mdx':
-    case '+next+fuma-docs-mdx+static':
+    case '+next+hanzo-docs-mdx':
+    case '+next+hanzo-docs-mdx+static':
       filePath = path.join(appDir, 'app/docs/layout.tsx');
       break;
     case 'waku':

@@ -11,11 +11,11 @@ program
   .action(async () => {
     if ((await findConfigPath()) === null) {
       await fs.writeFile(
-        'fumapress.config.ts',
+        'hanzo-docs-preview.config.ts',
         `import { defineConfig } from "@hanzo/docs-press/config";\n\nexport default defineConfig();`,
       );
 
-      console.log('note: make sure to install `fumadocs-preview` as a dev dependency too.');
+      console.log('note: make sure to install `@hanzo/docs-preview` as a dev dependency too.');
     }
   });
 

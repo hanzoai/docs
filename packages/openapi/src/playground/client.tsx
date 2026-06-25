@@ -44,8 +44,8 @@ import {
   useFieldValue,
   useListener,
   useStf,
-} from '@fumari/stf';
-import { arrayStartsWith, objectGet, objectSet, stringifyFieldKey } from '@fumari/stf/lib/utils';
+} from '@hanzo/docs-stf';
+import { arrayStartsWith, objectGet, objectSet, stringifyFieldKey } from '@hanzo/docs-stf/lib/utils';
 import { FieldInput, FieldSet, JsonInput, ObjectInput } from './components/inputs';
 import type { Document, HttpMethods, ParameterObject } from '@/types';
 import { useTranslations } from '@/ui/client/i18n';
@@ -53,7 +53,7 @@ import { useOperationContext } from '@/ui/operation/client';
 import { OAuthDialog, OAuthDialogContent, OAuthDialogTrigger } from './components/oauth-dialog';
 import { dereferenceSwallow } from '@/utils/schema/dereference';
 import { useAuth } from './auth';
-import { useOnChange } from 'fumadocs-core/utils/use-on-change';
+import { useOnChange } from '@hanzo/docs-core/utils/use-on-change';
 import { Spinner } from './components/spinner';
 
 export interface FormValues extends Record<string, unknown> {

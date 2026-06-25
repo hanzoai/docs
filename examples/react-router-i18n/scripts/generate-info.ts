@@ -1,5 +1,5 @@
-import { register } from 'fumadocs-mdx/node';
-import { postInstall } from 'fumadocs-mdx/vite';
+import { register } from '@hanzo/docs-mdx/node';
+import { postInstall } from '@hanzo/docs-mdx/vite';
 import { writeFile } from 'node:fs/promises';
 
 register();

@@ -1,5 +1,4 @@
-import type { Component, Reference, SourceReference } from '@hanzo/docs-cli/build';
-import { glob } from 'node:fs/promises';
+import { glob } from 'tinyglobby';
 import path from 'node:path';
 import type { Component } from 'fuma-cli/compiler';
 

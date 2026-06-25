@@ -53,7 +53,7 @@ export function createMDX(createOptions: CreateMDXOptions = {}) {
         '*.{md,mdx}': {
           loaders: [
             {
-              loader: '@hanzo/docs-mdx/loader-mdx',
+              loader: '@hanzo/docs-mdx/webpack/mdx',
               options: loaderOptions as unknown as TurbopackLoaderOptions,
             },
           ],
@@ -62,7 +62,7 @@ export function createMDX(createOptions: CreateMDXOptions = {}) {
         '*.json': {
           loaders: [
             {
-              loader: '@hanzo/docs-mdx/loader-meta',
+              loader: '@hanzo/docs-mdx/webpack/meta',
               options: loaderOptions as unknown as TurbopackLoaderOptions,
             },
           ],
@@ -71,7 +71,7 @@ export function createMDX(createOptions: CreateMDXOptions = {}) {
         '*.yaml': {
           loaders: [
             {
-              loader: '@hanzo/docs-mdx/loader-meta',
+              loader: '@hanzo/docs-mdx/webpack/meta',
               options: loaderOptions as unknown as TurbopackLoaderOptions,
             },
           ],
@@ -96,7 +96,7 @@ export function createMDX(createOptions: CreateMDXOptions = {}) {
             use: [
               options.defaultLoaders.babel,
               {
-                loader: '@hanzo/docs-mdx/loader-mdx',
+                loader: '@hanzo/docs-mdx/webpack/mdx',
                 options: loaderOptions,
               },
             ],
@@ -106,7 +106,7 @@ export function createMDX(createOptions: CreateMDXOptions = {}) {
             enforce: 'pre',
             use: [
               {
-                loader: '@hanzo/docs-mdx/loader-meta',
+                loader: '@hanzo/docs-mdx/webpack/meta',
                 options: loaderOptions,
               },
             ],
