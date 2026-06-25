@@ -1,4 +1,4 @@
-# LLM.md - Hanzo Docs Framework
+# Hanzo Docs Framework
 
 Fork of [Hanzo Docs](https://github.com/hanzoai/docs) with all packages renamed to `@hanzo/docs-*` namespace.
 
