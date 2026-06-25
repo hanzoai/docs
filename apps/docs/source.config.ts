@@ -232,7 +232,7 @@ function remarkPassthroughUnknownJsx(): Transformer<Root, Root> {
     // Upstream docs use components from various platforms (Mintlify, Docusaurus,
     // GitBook, etc.) with incompatible APIs. Rather than maintaining a
     // whitelist and risking API mismatches (e.g. Mintlify <Tab title="..."> vs
-    // fumadocs <Tab value="...">), we strip all custom components and render
+    // Hanzo Docs <Tab value="...">), we strip all custom components and render
     // just their children. First-party docs are unaffected by this plugin.
     visit(tree, ['mdxJsxFlowElement', 'mdxJsxTextElement'], (node: any) => {
       if (!node.name) return; // already a fragment

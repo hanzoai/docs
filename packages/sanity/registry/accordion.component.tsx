@@ -3,7 +3,7 @@ import type {
   PortableTextBlock,
   PortableTextTypeComponent,
 } from '@portabletext/react';
-import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Accordion, Accordions } from '@hanzo/docs-ui/components/accordion';
 
 export interface AccordionValue {
   _key?: string;

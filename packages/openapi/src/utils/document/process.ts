@@ -7,7 +7,7 @@ import { dereferenceDocument, type DereferencedDocument } from './dereference';
 export type ProcessedDocument = DereferencedDocument;
 
 /**
- * process & reference input document to a Fumadocs OpenAPI compatible format
+ * process & reference input document to a Hanzo Docs OpenAPI compatible format
  */
 export async function processDocument(input: string | Document): Promise<ProcessedDocument> {
   const bundled: Document = await bundle(input, {

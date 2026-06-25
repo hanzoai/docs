@@ -1,6 +1,6 @@
 import type { OpenAPIServer } from '@/server';
 import * as base from './base';
-import { defaultShikiFactory } from 'fumadocs-core/highlight/shiki/full';
+import { defaultShikiFactory } from '@hanzo/docs-core/highlight/shiki/full';
 import { FullProvider } from './client/full';
 
 export type CreateAPIPageOptions = Partial<base.CreateAPIPageOptions>;

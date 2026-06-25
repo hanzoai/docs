@@ -23,6 +23,8 @@ export async function createConfigSchema(cwd = process.cwd()) {
   let framework = await detectFramework(cwd);
   if (!isSupportedFramework(framework)) framework = 'next';
 
+  const isSrc = existsSync(path.resolve(cwd, 'src'));
+
   return z.object({
     $schema: z
       .string()

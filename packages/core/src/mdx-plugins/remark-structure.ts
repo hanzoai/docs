@@ -74,7 +74,7 @@ export interface StructureOptions {
 declare module 'mdast' {
   interface Data {
     /**
-     * [Fumadocs: remark-structure] Items to add to the structured data.
+     * [Hanzo Docs: remark-structure] Items to add to the structured data.
      */
     structuredData?: {
       contents: StructuredDataContent[];
@@ -85,7 +85,7 @@ declare module 'mdast' {
 declare module 'vfile' {
   interface DataMap {
     /**
-     * [Fumadocs: remark-structure] output data.
+     * [Hanzo Docs: remark-structure] output data.
      */
     structuredData: StructuredData;
   }
@@ -134,7 +134,7 @@ export function remarkStructure(
     const data: StructuredData = { contents: [], headings: [] };
     let lastHeading: string | undefined;
 
-    // Fumadocs OpenAPI Generated Structured Data
+    // Hanzo Docs OpenAPI Generated Structured Data
     if (file.data.frontmatter) {
       const frontmatter = file.data.frontmatter as {
         _openapi?: {

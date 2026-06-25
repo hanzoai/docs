@@ -1,12 +1,12 @@
-import { ServerCodeBlock } from 'fumadocs-ui/components/codeblock.rsc';
+import { ServerCodeBlock } from '@hanzo/docs-ui/components/codeblock.rsc';
 import type { ManualInstallationSnippet } from './manual-installation';
-import { transformerIcon } from 'fumadocs-core/mdx-plugins/transformer-icon';
+import { transformerIcon } from '@hanzo/docs-core/mdx-plugins/transformer-icon';
 import {
   CodeBlockTab,
   CodeBlockTabs,
   CodeBlockTabsList,
   CodeBlockTabsTrigger,
-} from 'fumadocs-ui/components/codeblock';
+} from '@hanzo/docs-ui/components/codeblock';
 import { transformerNotationDiff } from '@shikijs/transformers';
 
 const transformers = [transformerNotationDiff(), transformerIcon()];

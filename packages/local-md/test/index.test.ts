@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { executorNative } from '@/js/executor-native';
 import { CompileResult, createMarkdownCompiler } from '@/md/compiler';
 import { fromAst, fromJS } from '@/md/renderer';
-import type { TOCItemType } from 'fumadocs-core/toc';
+import type { TOCItemType } from '@hanzo/docs-core/toc';
 
 const cwd = path.dirname(fileURLToPath(import.meta.url));
 const fixturesDir = path.join(cwd, 'fixtures');

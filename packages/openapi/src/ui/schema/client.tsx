@@ -34,7 +34,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@hanzo/docs-ui/componen
 import { cn } from '@/utils/cn';
 import { cva } from 'class-variance-authority';
 import { useAnchorId } from '@/utils/auto-anchor.client';
-import { useCopyButton } from 'fumadocs-ui/utils/use-copy-button';
+import { useCopyButton } from '@hanzo/docs-ui/utils/use-copy-button';
 import { mergeRefs } from '@/utils/merge-refs';
 import {
   Select,
