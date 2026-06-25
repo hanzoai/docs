@@ -60,9 +60,9 @@ export default async function Page() {
         height="536"
         className="absolute top-16 z-[-1] w-full max-w-[1200px] opacity-0 dark:opacity-20"
       />
-      <h1 className="text-4xl font-semibold">Support Fumadocs</h1>
+      <h1 className="text-4xl font-semibold">Support Hanzo Docs</h1>
       <p className="mt-4 text-sm">
-        Support the development work of Fumadocs. Fumadocs is fully open source, your sponsorship
+        Support the development work of Hanzo Docs. Hanzo Docs is fully open source, your sponsorship
         means a lot.
       </p>
       <a
@@ -165,7 +165,7 @@ export default async function Page() {
           }}
         />
         <text dx="256" dy="147.793041" fontSize="18" fontWeight="400" fill="rgba(70,70,86,0.9)">
-          Fumadocs
+          Hanzo Docs
         </text>
       </svg>
       <h2 className="mt-12 font-mono text-xs mb-7">Organization Sponsors</h2>

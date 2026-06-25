@@ -80,21 +80,21 @@ const components: Component[] = [
 
 export const registry: Registry = {
   dir: import.meta.dirname,
-  name: 'fumadocs/sanity',
+  name: 'hanzo/sanity',
   components: [
     ...components,
     {
       name: 'all',
       subComponents: components.map((comp) => ({
         type: 'sub-registry',
-        subRegistry: 'fumadocs/sanity',
+        subRegistry: 'hanzo/sanity',
         component: comp.name,
       })),
     },
   ],
   dependencies: {
-    'fumadocs-core': null,
-    'fumadocs-ui': null,
+    '@hanzo/docs-core': null,
+    '@hanzo/docs-ui': null,
     react: null,
     sanity: null,
   },

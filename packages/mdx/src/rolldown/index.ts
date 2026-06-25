@@ -37,7 +37,7 @@ export default async function mdx(
 
   return [
     {
-      name: 'fumadocs-mdx',
+      name: '@hanzo/docs-mdx',
       load: {
         filter: { id: [metaLoaderGlob, mdxLoaderGlob] },
         // Rolldown couldn't read the correct file path when query params exist.
@@ -50,14 +50,14 @@ export default async function mdx(
       },
     },
     {
-      name: 'fumadocs-mdx:mdx',
+      name: '@hanzo/docs-mdx:mdx',
       transform: {
         filter: mdxLoader.filter,
         handler: mdxLoader.transform,
       },
     },
     {
-      name: 'fumadocs-mdx:meta',
+      name: '@hanzo/docs-mdx:meta',
       transform: {
         filter: metaLoader.filter,
         handler: metaLoader.transform,

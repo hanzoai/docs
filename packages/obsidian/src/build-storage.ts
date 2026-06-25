@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { frontmatter } from 'fumadocs-core/content/md/frontmatter';
+import { frontmatter } from '@hanzo/docs-core/content/md/frontmatter';
 import { type Frontmatter, frontmatterSchema } from '@/utils/schema';
 import { slash } from '@/utils/slash';
 import type { VaultFile } from '@/read-vaults';

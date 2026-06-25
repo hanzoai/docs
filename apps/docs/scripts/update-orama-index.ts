@@ -1,4 +1,4 @@
-import { type OramaDocument, sync } from 'fumadocs-core/search/orama-cloud';
+import { type OramaDocument, sync } from '@hanzo/docs-core/search/orama-cloud';
 import fs from 'node:fs/promises';
 import { DataSourceId, isAdmin, orama } from '../lib/orama/client.ts';
 

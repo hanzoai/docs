@@ -1,6 +1,6 @@
 import { getSource } from '@/lib/source';
 import { createFileRoute } from '@tanstack/react-router';
-import { llms } from 'fumadocs-core/source';
+import { llms } from '@hanzo/docs-core/source';
 
 export const Route = createFileRoute('/llms.txt')({
   server: {

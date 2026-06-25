@@ -3,14 +3,14 @@ import { ReactNode, useEffect, useMemo, useState, type ComponentProps } from 're
 import { CircleX } from 'lucide-react';
 import type { FetchResponseResult, FetchResult } from '@/playground/fetcher';
 import { useStatusInfo } from '../status-info';
-import { buttonVariants } from 'fumadocs-ui/components/ui/button';
+import { buttonVariants } from '@hanzo/docs-ui/components/ui/button';
 import { cn } from '@/utils/cn';
 import { ClientCodeBlock } from '@/ui/components/codeblock';
 import { useTranslations } from '@/ui/client/i18n';
 import { safeParse } from 'fast-content-type-parse';
 import { cva } from 'class-variance-authority';
 import type { BuiltinLanguage, SpecialLanguage } from 'shiki';
-import { renderTranslation } from 'fumadocs-core/i18n';
+import { renderTranslation } from '@hanzo/docs-core/i18n';
 
 export interface ResultDisplayProps extends ComponentProps<'div'> {
   data: FetchResult;

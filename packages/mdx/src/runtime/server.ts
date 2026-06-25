@@ -4,7 +4,7 @@ import type { DocCollection, DocsCollection, MetaCollection } from '../config';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import type { CompiledMDXProperties } from '../loaders/mdx/build-mdx';
 import type { InternalTypeConfig, DocData, DocMethods, FileInfo, MetaMethods } from './types';
-import type { StructuredData } from 'fumadocs-core/mdx-plugins/remark-structure';
+import type { StructuredData } from '@hanzo/docs-core/mdx-plugins/remark-structure';
 
 export type MetaCollectionEntry<Data> = Data & MetaMethods;
 
@@ -14,7 +14,7 @@ export type DocCollectionEntry<
   TC extends InternalTypeConfig = InternalTypeConfig,
 > = DocData & DocMethods & Frontmatter & TC['DocData'][Name];
 
-interface ToFumadocsSourceOptions {
+interface ToHanzoDocsSourceOptions {
   /** base directory for virtual file paths */
   baseDir?: string;
 }
@@ -183,16 +183,8 @@ export function server<Config, TC extends InternalTypeConfig>(options: ServerOpt
       base: string,
       metaGlob: AwaitableGlobEntries<unknown>,
       docGlob: AwaitableGlobEntries<unknown>,
-    ) {
-      const entry = {
-        docs: await this.doc(name, base, docGlob),
-        meta: await this.meta(name, base, metaGlob),
-        toSource() {
-          return createSource(this.docs, this.meta);
-        },
-      } satisfies DocsCollectionEntry;
-
-      return entry as Config[Name] extends DocsCollection<infer Page, infer Meta>
+    ): Promise<
+      Config[Name] extends DocsCollection<infer Page, infer Meta>
         ? StandardSchemaV1.InferOutput<Page> extends PageData
           ? StandardSchemaV1.InferOutput<Meta> extends MetaData
             ? DocsCollectionEntry<
@@ -208,8 +200,8 @@ export function server<Config, TC extends InternalTypeConfig>(options: ServerOpt
       const entry = {
         docs: await this.doc(name, base, docGlob),
         meta: await this.meta(name, base, metaGlob),
-        toDocsSource(options) {
-          return toDocsSource(this.docs, this.meta, options);
+        toSource() {
+          return createSource(this.docs, this.meta);
         },
       } satisfies DocsCollectionEntry;
 
@@ -221,16 +213,8 @@ export function server<Config, TC extends InternalTypeConfig>(options: ServerOpt
       metaGlob: AwaitableGlobEntries<unknown>,
       docHeadGlob: AwaitableGlobEntries<unknown>,
       docBodyGlob: Record<string, () => Promise<unknown>>,
-    ) {
-      const entry = {
-        docs: await this.docLazy(name, base, docHeadGlob, docBodyGlob),
-        meta: await this.meta(name, base, metaGlob),
-        toSource() {
-          return createSource(this.docs, this.meta);
-        },
-      } satisfies AsyncDocsCollectionEntry;
-
-      return entry as Config[Name] extends DocsCollection<infer Page, infer Meta>
+    ): Promise<
+      Config[Name] extends DocsCollection<infer Page, infer Meta>
         ? StandardSchemaV1.InferOutput<Page> extends PageData
           ? StandardSchemaV1.InferOutput<Meta> extends MetaData
             ? AsyncDocsCollectionEntry<
@@ -246,8 +230,8 @@ export function server<Config, TC extends InternalTypeConfig>(options: ServerOpt
       const entry = {
         docs: await this.docLazy(name, base, docHeadGlob, docBodyGlob),
         meta: await this.meta(name, base, metaGlob),
-        toDocsSource(options) {
-          return toDocsSource(this.docs, this.meta, options);
+        toSource() {
+          return createSource(this.docs, this.meta);
         },
       } satisfies AsyncDocsCollectionEntry;
 
@@ -262,7 +246,7 @@ export function createSource<
 >(
   pages: Page[],
   metas: Meta[],
-  options?: ToFumadocsSourceOptions,
+  options?: ToHanzoDocsSourceOptions,
 ): Source<{
   pageData: Page;
   metaData: Meta;

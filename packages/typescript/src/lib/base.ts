@@ -230,8 +230,8 @@ async function getDocEntry(prop: TsSymbol, context: EntryContext): Promise<DocEn
 
   for (const tag of tags) {
     switch (tag.name) {
-      case 'fumadocsType': {
-        // replace full type with @fumadocsType
+      case 'hanzoDocsType': {
+        // replace full type with @hanzoDocsType
         const match = /`(?<name>.+)`$/.exec(tag.text)?.[1];
         if (match) entry.type = match;
         break;
@@ -242,7 +242,7 @@ async function getDocEntry(prop: TsSymbol, context: EntryContext): Promise<DocEn
         if (match) entry.simplifiedType = match;
         break;
       }
-      case 'fumadocsHref': {
+      case 'hanzoDocsHref': {
         // add anchor to output property type
         const content = tag.text.trim();
         if (content.length > 0) entry.typeHref = content;

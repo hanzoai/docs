@@ -1,5 +1,5 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
-import { DocsLayout } from 'fumadocs-ui/layouts/docs';
+import { DocsLayout } from '@hanzo/docs-ui/layouts/docs';
 import { createServerFn } from '@tanstack/react-start';
 import { getSource, slugsToMarkdownPath } from '@/lib/source';
 import {
@@ -9,13 +9,13 @@ import {
   DocsTitle,
   MarkdownCopyButton,
   ViewOptionsPopover,
-} from 'fumadocs-ui/layouts/docs/page';
+} from '@hanzo/docs-ui/layouts/docs/page';
 import { baseOptions } from '@/lib/layout.shared';
 import { gitConfig } from '@/lib/shared';
-import { useFumadocsLoader } from 'fumadocs-core/source/client';
+import { useHanzoDocsLoader } from '@hanzo/docs-core/source/client';
 import { useMemo } from 'react';
 import { useMDXComponents } from '@/components/mdx';
-import { rendererFromSerialized } from '@fumadocs/local-md/client';
+import { rendererFromSerialized } from '@hanzo/docs-local-md/client';
 
 export const Route = createFileRoute('/docs/$')({
   component: Page,
@@ -46,7 +46,7 @@ const serverLoader = createServerFn({
   });
 
 function Page() {
-  const { path, frontmatter, pageTree, markdownUrl, render } = useFumadocsLoader(
+  const { path, frontmatter, pageTree, markdownUrl, render } = useHanzoDocsLoader(
     Route.useLoaderData(),
   );
   const renderer = useMemo(() => rendererFromSerialized(render), [render]);

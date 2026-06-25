@@ -5,7 +5,7 @@ import { openapi } from './openapi';
 
 export const source = loader(
   {
-    docs: docs.toDocsSource(),
+    docs: docs.toHanzoDocsSource(),
     openapi: await openapi.staticSource({
       groupBy: 'tag',
     }),

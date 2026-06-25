@@ -10,7 +10,7 @@ export function UwuHero() {
       <Image alt="logo" src={Logo} className="mb-6 w-full max-w-[400px] px-4" priority />
 
       <p className="mb-6 h-fit p-2 text-lg text-fd-muted-foreground md:max-w-[80%] md:text-xl">
-        Fumadocs is the framework for building documentation with{' '}
+        Hanzo Docs is the framework for building documentation with{' '}
         <b className="font-medium text-fd-foreground">anime and fuwa fuwa power</b>. Using the power
         of weebs and waifus.
       </p>
@@ -22,7 +22,7 @@ export function UwuHero() {
           Getting Started
         </Link>
         <a
-          href="https://stackblitz.com/github/fuma-nama/fumadocs/tree/main/examples/stackblitz"
+          href="https://stackblitz.com/github/hanzoai/docs/tree/main/examples/stackblitz"
           className={cn(
             buttonVariants({
               size: 'lg',

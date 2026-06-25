@@ -6,14 +6,14 @@ import {
   DocsTitle,
   MarkdownCopyButton,
   ViewOptionsPopover,
-} from 'fumadocs-ui/layouts/docs/page';
+} from '@hanzo/docs-ui/layouts/docs/page';
 import { notFound } from 'next/navigation';
 import { getMDXComponents } from '@/components/mdx';
 import type { Metadata } from 'next';
-import { createRelativeLink } from 'fumadocs-ui/mdx';
+import { createRelativeLink } from '@hanzo/docs-ui/mdx';
 import { gitConfig } from '@/lib/shared';
-import { Card, Cards } from 'fumadocs-ui/components/card';
-import { findSiblings } from 'fumadocs-core/page-tree';
+import { Card, Cards } from '@hanzo/docs-ui/components/card';
+import { findSiblings } from '@hanzo/docs-core/page-tree';
 
 export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   const params = await props.params;
