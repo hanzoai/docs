@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import type { FeedbackBlockProps } from 'fumadocs-core/mdx-plugins/remark-feedback-block';
+import type { FeedbackBlockProps } from '@hanzo/docs-core/mdx-plugins/remark-feedback-block';
 import { Feedback as FeedbackInner, FeedbackBlock as FeedbackBlockInner } from './client';
 import type { ActionResponse, BlockFeedback, PageFeedback } from './schema';
 

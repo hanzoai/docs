@@ -1,5 +1,5 @@
 'use client';
-import { defaultShikiFactory } from 'fumadocs-core/highlight/shiki/full';
+import { defaultShikiFactory } from '@hanzo/docs-core/highlight/shiki/full';
 import * as Base from './dynamic-codeblock.core';
 
 export type DynamicCodeblockProps = Omit<Base.DynamicCodeblockProps, 'highlighter' | 'options'> & {

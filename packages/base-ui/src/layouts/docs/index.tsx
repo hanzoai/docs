@@ -1,4 +1,4 @@
-import type * as PageTree from 'fumadocs-core/page-tree';
+import type * as PageTree from '@hanzo/docs-core/page-tree';
 import { type HTMLAttributes, type ReactNode, useMemo } from 'react';
 import type { SidebarProps, SidebarProviderProps } from './slots/sidebar';
 import {

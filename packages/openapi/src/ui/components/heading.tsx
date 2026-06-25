@@ -1,7 +1,7 @@
 'use client';
 import { useAnchorId } from '@/utils/auto-anchor.client';
 import type { ComponentProps } from 'react';
-import { Heading as BaseHeading } from 'fumadocs-ui/components/heading';
+import { Heading as BaseHeading } from '@hanzo/docs-ui/components/heading';
 
 export function Heading({
   id: _id,

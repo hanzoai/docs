@@ -1,7 +1,7 @@
 import epub, { type Options } from 'epub-gen-memory';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import type { LoaderConfig, Page } from 'fumadocs-core/source';
+import type { LoaderConfig, Page } from '@hanzo/docs-core/source';
 import { getPagesInTreeOrder } from './toc-builder';
 import { markdownToHtml } from './markdown-to-html';
 import { defaultEpubStyles } from './default-styles';

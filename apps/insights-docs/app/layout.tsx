@@ -1,7 +1,7 @@
 import './global.css';
 import type { Viewport } from 'next';
 import { baseUrl, createMetadata } from '@/lib/metadata';
-import { RootProvider } from '@fumadocs/base-ui/provider/next';
+import { RootProvider } from '@hanzo/docs-base-ui/provider/next';
 import type { ReactNode } from 'react';
 
 export const metadata = createMetadata({

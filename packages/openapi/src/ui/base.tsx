@@ -7,22 +7,22 @@ import { defaultAdapters, MediaAdapter } from '@/requests/media/adapter';
 import type { FC, HTMLAttributes, ReactNode } from 'react';
 import type { OpenAPIServer } from '@/server';
 import type { APIPageClientOptions } from './client';
-import { Heading } from 'fumadocs-ui/components/heading';
-import { createRehypeCode } from 'fumadocs-core/mdx-plugins/rehype-code.core';
-import { remarkGfm } from 'fumadocs-core/mdx-plugins/remark-gfm';
-import defaultMdxComponents from 'fumadocs-ui/mdx';
+import { Heading } from '@hanzo/docs-ui/components/heading';
+import { createRehypeCode } from '@hanzo/docs-core/mdx-plugins/rehype-code.core';
+import { remarkGfm } from '@hanzo/docs-core/mdx-plugins/remark-gfm';
+import defaultMdxComponents from '@hanzo/docs-ui/mdx';
 import { remark } from 'remark';
 import remarkRehype from 'remark-rehype';
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime';
 import * as JsxRuntime from 'react/jsx-runtime';
-import { CodeBlock, Pre } from 'fumadocs-ui/components/codeblock';
+import { CodeBlock, Pre } from '@hanzo/docs-ui/components/codeblock';
 import type { SchemaUIOptions } from './schema';
 import type { ResponseTab } from './operation/response-tabs';
 import { APIPage, type ApiPageProps, type OperationItem, type WebhookItem } from './api-page';
 import type { CodeUsageGeneratorRegistry, InlineCodeUsageGenerator } from '@/requests/generators';
 import type { JSONSchema } from 'json-schema-typed';
 import type { BundledTheme, CodeOptionsThemes, CodeToHastOptionsCommon } from 'shiki';
-import { highlightHast, type ShikiFactory } from 'fumadocs-core/highlight/shiki';
+import { highlightHast, type ShikiFactory } from '@hanzo/docs-core/highlight/shiki';
 
 export interface GenerateTypeScriptDefinitionsContext extends RenderContext {
   operation: NoReference<MethodInformation>;

@@ -1,5 +1,5 @@
 import { Inter } from 'next/font/google';
-import { RootProvider } from '@fumadocs/base-ui/provider/next';
+import { RootProvider } from '@hanzo/docs-base-ui/provider/next';
 import './global.css';
 
 const inter = Inter({

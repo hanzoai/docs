@@ -1,5 +1,5 @@
 import { defineConfig } from 'waku/config';
-import mdx from 'fumadocs-mdx/vite';
+import mdx from '@hanzo/docs-mdx/vite';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({

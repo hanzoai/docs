@@ -1,6 +1,6 @@
 'use client';
 import { defaultTranslations, type Translations } from '@/i18n';
-import { useI18n } from 'fumadocs-ui/contexts/i18n';
+import { useI18n } from '@hanzo/docs-ui/contexts/i18n';
 
 export function useTranslations() {
   return useTranslationsBase<Translations>('openapi') ?? defaultTranslations;

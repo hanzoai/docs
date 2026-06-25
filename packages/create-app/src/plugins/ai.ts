@@ -4,7 +4,7 @@ import { createSourceFile } from '@/transform/shared';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { SyntaxKind } from 'ts-morph';
-import { FumadocsComponentInstaller } from '@hanzo/docs-cli/registry/installer';
+import { HanzoDocsComponentInstaller } from '@hanzo/docs-cli/registry/installer';
 import { HttpRegistryConnector } from 'fuma-cli/registry/connector';
 
 const envKey: Record<'openrouter' | 'llmgateway' | 'inkeep', string> = {
@@ -17,8 +17,8 @@ export function ai(provider: 'openrouter' | 'llmgateway' | 'inkeep'): TemplatePl
   return {
     async afterWrite() {
       const config = await getDefaultConfig(this.dest);
-      const installer = new FumadocsComponentInstaller(
-        new HttpRegistryConnector('https://fumadocs.dev/registry'),
+      const installer = new HanzoDocsComponentInstaller(
+        new HttpRegistryConnector('https://docs.hanzo.ai/registry'),
         config,
         this.dest,
       );
@@ -39,8 +39,8 @@ export function ai(provider: 'openrouter' | 'llmgateway' | 'inkeep'): TemplatePl
 async function addAIChat({ template, appDir }: TemplatePluginContext) {
   let filePath: string;
   switch (template.value) {
-    case '+next+fuma-docs-mdx':
-    case '+next+fuma-docs-mdx+static':
+    case '+next+hanzo-docs-mdx':
+    case '+next+hanzo-docs-mdx+static':
       filePath = path.join(appDir, 'app/docs/layout.tsx');
       break;
     case 'waku':
@@ -100,7 +100,7 @@ async function addAIChat({ template, appDir }: TemplatePluginContext) {
       namedImports: ['cn'],
     },
     {
-      moduleSpecifier: 'fumadocs-ui/components/ui/button',
+      moduleSpecifier: '@hanzo/docs-ui/components/ui/button',
       namedImports: ['buttonVariants'],
     },
   ]);

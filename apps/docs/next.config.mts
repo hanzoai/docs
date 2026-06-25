@@ -50,7 +50,7 @@ const config: NextConfig = {
     // Upstream project docs (content/docs/projects/) are cloned verbatim //
     // from other repos and import packages that don't exist here.        //
     // Three categories:                                                  //
-    //   a) fumadocs-* -> @hanzo/docs-* (same library, forked)            //
+    //   a) upstream doc-framework imports -> @hanzo/docs-* (forked lib)   //
     //   b) other doc platforms -> empty stub module                       //
     //   c) absolute path imports -> false (empty object)                 //
     // ------------------------------------------------------------------ //
@@ -89,7 +89,7 @@ const config: NextConfig = {
     // ------------------------------------------------------------------ //
     const aliasedPrefixes = [
       // Already handled by aliases above – skip to avoid double-processing
-      'fumadocs-', '@hanzo/', '@docusaurus', '@theme', 'nextra', '@mintlify',
+      '@hanzo/docs-', '@hanzo/', '@docusaurus', '@theme', 'nextra', '@mintlify',
       '/snippets', '/src/components', '@site',
       // Core dependencies that must always resolve normally
       'react', 'next', 'node:', 'webpack',

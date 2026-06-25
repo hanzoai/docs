@@ -15,8 +15,8 @@ import { LinkItem, type LinkItemType, type MenuItemType } from '@/layouts/shared
 import { useNotebookLayout } from '../client';
 import { type LayoutTab, isLayoutTabActive } from '@/layouts/shared';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { usePathname } from 'fumadocs-core/framework';
-import Link from 'fumadocs-core/link';
+import { usePathname } from '@hanzo/docs-core/framework';
+import Link from '@hanzo/docs-core/link';
 
 export function Header(props: ComponentProps<'header'>) {
   const {

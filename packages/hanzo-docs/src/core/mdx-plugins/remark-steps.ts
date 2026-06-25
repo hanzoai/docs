@@ -1,1 +1,1 @@
-export * from 'fumadocs-core/mdx-plugins/remark-steps';
+export * from '@hanzo/docs-core/mdx-plugins/remark-steps';

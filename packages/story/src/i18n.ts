@@ -1,4 +1,4 @@
-import type { TranslationsAPIExtension } from 'fumadocs-core/i18n';
+import type { TranslationsAPIExtension } from '@hanzo/docs-core/i18n';
 
 export const defaultTranslations = {
   noVariant: 'No Variant',

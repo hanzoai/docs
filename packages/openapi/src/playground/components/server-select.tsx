@@ -21,7 +21,7 @@ import {
 import { resolveServerUrl, withBase } from '@/utils/url';
 import type { ServerVariableObject } from '@/types';
 import type { NoReference } from '@/utils/schema';
-import { StfProvider, useFieldValue, useListener, useStf } from '@fumari/stf';
+import { StfProvider, useFieldValue, useListener, useStf } from '@hanzo/docs-stf';
 import { EditIcon } from 'lucide-react';
 import { useTranslations } from '@/ui/client/i18n';
 

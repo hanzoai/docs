@@ -1,7 +1,7 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import type { MDXPresetOptions } from './preset';
 import type { ProcessorOptions } from '@mdx-js/mdx';
-import { metaSchema, pageSchema } from 'fumadocs-core/source/schema';
+import { metaSchema, pageSchema } from '@hanzo/docs-core/source/schema';
 import type { PostprocessOptions } from '../loaders/mdx/remark-postprocess';
 import type { PluginOption } from '../core';
 import type { BuildEnvironment } from './build';
@@ -44,7 +44,7 @@ export interface DocCollection<
   /**
    * By defining a collection-level MDX options, **the default options & plugins will be removed**.
    *
-   * See [`mdxOptions`](https://fumadocs.dev/docs/mdx/collections#mdxoptions) for details.
+   * See [`mdxOptions`](https://docs.hanzo.ai/docs/mdx/collections#mdxoptions) for details.
    */
   mdxOptions?: ProcessorOptions | ((environment: BuildEnvironment) => Promise<ProcessorOptions>);
 

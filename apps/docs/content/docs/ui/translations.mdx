@@ -5,7 +5,7 @@ description: Adding Translations to UI
 
 ## Overview
 
-All official Fumadocs packages use English by default, you can add translations for other languages.
+All official Hanzo Docs packages use English by default, you can add translations for other languages.
 
 > This page mainly covers details for adding UI translations, you may be interested in the full [Internationalization](/docs/internationalization) guide instead.
 
@@ -14,8 +14,8 @@ All official Fumadocs packages use English by default, you can add translations 
 **Singular** refers to adding translations for only one language:
 
 ```ts title="lib/layout.shared.tsx"
-import { defineTranslations } from 'fumadocs-core/i18n';
-import { uiTranslations } from 'fumadocs-ui/i18n';
+import { defineTranslations } from '@hanzo/docs-core/i18n';
+import { uiTranslations } from '@hanzo/docs-ui/i18n';
 
 export const translations = defineTranslations()
   .extend(uiTranslations())
@@ -30,8 +30,8 @@ export const translations = defineTranslations()
 Pass the translations to `<RootProvider />`.
 
 ```tsx
-import { RootProvider } from 'fumadocs-ui/provider/<framework>';
-import { i18nProvider } from 'fumadocs-ui/i18n';
+import { RootProvider } from '@hanzo/docs-ui/provider/<framework>';
+import { i18nProvider } from '@hanzo/docs-ui/i18n';
 import { translations } from '@/lib/layout.shared';
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -51,8 +51,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 Define translations for multiple languages, this requires a standard [i18n](/docs/internationalization) setup.
 
 ```ts title="lib/layout.shared.tsx"
-import { defineTranslations } from 'fumadocs-core/i18n';
-import { uiTranslations } from 'fumadocs-ui/i18n';
+import { defineTranslations } from '@hanzo/docs-core/i18n';
+import { uiTranslations } from '@hanzo/docs-ui/i18n';
 import { i18n } from '@/lib/i18n';
 
 export const translations = i18n
@@ -70,8 +70,8 @@ export const translations = i18n
 Pass the translations to `<RootProvider />`.
 
 ```tsx
-import { RootProvider } from 'fumadocs-ui/provider/<framework>';
-import { i18nProvider } from 'fumadocs-ui/i18n';
+import { RootProvider } from '@hanzo/docs-ui/provider/<framework>';
+import { i18nProvider } from '@hanzo/docs-ui/i18n';
 import { translations } from '@/lib/layout.shared';
 
 export function Layout({ locale, children }: { locale: string; children: React.ReactNode }) {
@@ -88,41 +88,41 @@ export function Layout({ locale, children }: { locale: string; children: React.R
 
 ## Language Packs
 
-Language packs provide translations for `fumadocs-ui` and several other integrations like Fumadocs OpenAPI.
+Language packs provide translations for `@hanzo/docs-ui` and several other integrations like Hanzo Docs OpenAPI.
 
 ```npm
-npm i @fumadocs/language
+npm i @hanzo/docs-language
 ```
 
-> If your desired language is missing in the official language packs, we welcome contributions to [our repository](https://github.com/fuma-nama/fumadocs).
+> If your desired language is missing in the official language packs, we welcome contributions to [our repository](https://github.com/hanzoai/docs).
 
 Use `preset()` to consume language packs:
 
 ```ts tab="Singular"
-import { defineTranslations } from 'fumadocs-core/i18n';
-import { openapiTranslations } from 'fumadocs-openapi/i18n';
-import { uiTranslations } from 'fumadocs-ui/i18n';
-import { zhTW } from '@fumadocs/language/zh-tw';
+import { defineTranslations } from '@hanzo/docs-core/i18n';
+import { openapiTranslations } from '@hanzo/docs-openapi/i18n';
+import { uiTranslations } from '@hanzo/docs-ui/i18n';
+import { zhTW } from '@hanzo/docs-language/zh-tw';
 
 export const translations = defineTranslations()
   .extend(uiTranslations())
-  // add extensions according to the integrations you configured, e.g. Fumadocs OpenAPI:
+  // add extensions according to the integrations you configured, e.g. Hanzo Docs OpenAPI:
   .extend(openapiTranslations())
   // Traditional Chinese
   .preset(zhTW());
 ```
 
 ```ts tab="Multilingual"
-import { defineTranslations } from 'fumadocs-core/i18n';
-import { openapiTranslations } from 'fumadocs-openapi/i18n';
-import { uiTranslations } from 'fumadocs-ui/i18n';
-import { zhTW } from '@fumadocs/language/zh-tw';
+import { defineTranslations } from '@hanzo/docs-core/i18n';
+import { openapiTranslations } from '@hanzo/docs-openapi/i18n';
+import { uiTranslations } from '@hanzo/docs-ui/i18n';
+import { zhTW } from '@hanzo/docs-language/zh-tw';
 import { i18n } from '@/lib/i18n';
 
 export const translations = i18n
   .translations()
   .extend(uiTranslations())
-  // add extensions according to the integrations you configured, e.g. Fumadocs OpenAPI:
+  // add extensions according to the integrations you configured, e.g. Hanzo Docs OpenAPI:
   .extend(openapiTranslations())
   // add Traditional Chinese translations to the "cn" locale code
   .preset('cn', zhTW());
@@ -135,10 +135,10 @@ You can also create & publish your own language packs.
 For example, the structure of `zh-TW` language pack looks like:
 
 ```ts
-import type { TranslationPreset } from 'fumadocs-core/i18n';
-import * as OpenAPI from 'fumadocs-openapi/i18n';
-import * as UI from 'fumadocs-ui/i18n';
-import * as Story from '@fumadocs/story/i18n';
+import type { TranslationPreset } from '@hanzo/docs-core/i18n';
+import * as OpenAPI from '@hanzo/docs-openapi/i18n';
+import * as UI from '@hanzo/docs-ui/i18n';
+import * as Story from '@hanzo/docs-story/i18n';
 
 const ui = {
   displayName: '繁體中文',
@@ -177,10 +177,10 @@ Extensions declare the available namespace & labels for translations, only trans
 
 ### Custom Extension
 
-If you are building community packages for Fumadocs, you can create extensions to register your own translations.
+If you are building community packages for Hanzo Docs, you can create extensions to register your own translations.
 
 ```ts tab="i18n.ts"
-import type { TranslationsAPIExtension, TranslationValue } from 'fumadocs-core/i18n';
+import type { TranslationsAPIExtension, TranslationValue } from '@hanzo/docs-core/i18n';
 
 export const defaultTranslations = {
   labelExample: 'Hello World',
@@ -199,7 +199,7 @@ export function myTranslations(): TranslationsAPIExtension<'my-package', Transla
 
 ```ts tab="Reference"
 'use client';
-import { useTranslations } from 'fumadocs-ui/contexts/i18n';
+import { useTranslations } from '@hanzo/docs-ui/contexts/i18n';
 import { type Translations, defaultTranslations } from '@/i18n';
 
 export function Comp() {
@@ -210,7 +210,7 @@ export function Comp() {
 Consumers can use your extension like:
 
 ```ts
-import { defineTranslations } from 'fumadocs-core/i18n';
+import { defineTranslations } from '@hanzo/docs-core/i18n';
 import { myTranslations } from 'my-package/i18n';
 
 export const translations = defineTranslations()

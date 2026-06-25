@@ -1,6 +1,6 @@
 import { source } from '@/lib/source';
 import type { Metadata } from 'next';
-import { DocsPage, DocsBody, DocsTitle, DocsDescription } from '@fumadocs/base-ui/layouts/docs/page';
+import { DocsPage, DocsBody, DocsTitle, DocsDescription } from '@hanzo/docs-base-ui/layouts/docs/page';
 import { notFound } from 'next/navigation';
 import { MDXContent } from '@content-collections/mdx/react';
 import { getMDXComponents } from '@/mdx-components';

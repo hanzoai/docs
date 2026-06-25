@@ -1,5 +1,5 @@
-import type { StructuredData } from 'fumadocs-core/mdx-plugins/remark-structure';
-import type { TOCItemType } from 'fumadocs-core/toc';
+import type { StructuredData } from '@hanzo/docs-core/mdx-plugins/remark-structure';
+import type { TOCItemType } from '@hanzo/docs-core/toc';
 import type { Root } from 'mdast';
 import type { MDXContent } from 'mdx/types';
 

@@ -60,7 +60,7 @@ function main() {
     const slug = file.replace(/\.mdx?$/, '')
     const desc = [fm.type, fm.category, status].filter(Boolean).join(' · ')
 
-    // Fumadocs frontmatter (title + description); HIP metadata preserved as a lede.
+    // Hanzo Docs frontmatter (title + description); HIP metadata preserved as a lede.
     const out = `---
 title: "HIP-${num}: ${esc(title)}"
 description: "${esc(desc)}"

@@ -1,5 +1,5 @@
 import { createMiddleware, createStart } from '@tanstack/react-start';
-import { isMarkdownPreferred } from 'fumadocs-core/negotiation';
+import { isMarkdownPreferred } from '@hanzo/docs-core/negotiation';
 import { redirect } from '@tanstack/react-router';
 import { docsRoute } from '@/lib/shared';
 import { slugsToMarkdownPath } from './lib/source';

@@ -1,1 +1,1 @@
-export * from 'fumadocs-core/search/algolia';
+export * from '@hanzo/docs-core/search/algolia';

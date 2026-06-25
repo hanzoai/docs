@@ -1,8 +1,8 @@
 // source.config.ts
-import { applyMdxPreset, defineCollections, defineConfig, defineDocs } from "fumadocs-mdx/config";
+import { applyMdxPreset, defineCollections, defineConfig, defineDocs } from "@hanzo/docs-mdx/config";
 import { z } from "zod";
-import jsonSchema from "fumadocs-mdx/plugins/json-schema";
-import lastModified from "fumadocs-mdx/plugins/last-modified";
+import jsonSchema from "@hanzo/docs-mdx/plugins/json-schema";
+import lastModified from "@hanzo/docs-mdx/plugins/last-modified";
 
 // lib/shiki.ts
 var defaultShikiOptions = {
@@ -14,7 +14,7 @@ var defaultShikiOptions = {
 var shikiConfig = defaultShikiOptions;
 
 // source.config.ts
-import { metaSchema, pageSchema } from "fumadocs-core/source/schema";
+import { metaSchema, pageSchema } from "@hanzo/docs-core/source/schema";
 import { visit } from "unist-util-visit";
 var isLint = process.env.LINT === "1";
 var isExport = process.env.NEXT_EXPORT === "1";
@@ -49,9 +49,9 @@ var docs = defineDocs({
     },
     async: true,
     async mdxOptions(environment) {
-      const { rehypeCodeDefaultOptions } = await import("fumadocs-core/mdx-plugins/rehype-code");
-      const { remarkSteps } = await import("fumadocs-core/mdx-plugins/remark-steps");
-      const { remarkFeedbackBlock } = await import("fumadocs-core/mdx-plugins/remark-feedback-block");
+      const { rehypeCodeDefaultOptions } = await import("@hanzo/docs-core/mdx-plugins/rehype-code");
+      const { remarkSteps } = await import("@hanzo/docs-core/mdx-plugins/remark-steps");
+      const { remarkFeedbackBlock } = await import("@hanzo/docs-core/mdx-plugins/remark-feedback-block");
       const { transformerTwoslash } = await import("@hanzo/docs-twoslash");
       const { createFileSystemTypesCache } = await import("@hanzo/docs-twoslash/cache-fs");
       const { default: remarkMath } = await import("remark-math");
@@ -144,8 +144,8 @@ var blog = defineCollections({
   }),
   async: true,
   async mdxOptions(environment) {
-    const { rehypeCodeDefaultOptions } = await import("fumadocs-core/mdx-plugins/rehype-code");
-    const { remarkSteps } = await import("fumadocs-core/mdx-plugins/remark-steps");
+    const { rehypeCodeDefaultOptions } = await import("@hanzo/docs-core/mdx-plugins/rehype-code");
+    const { remarkSteps } = await import("@hanzo/docs-core/mdx-plugins/remark-steps");
     return applyMdxPreset({
       rehypeCodeOptions: isLint ? false : {
         inline: "tailing-curly-colon",

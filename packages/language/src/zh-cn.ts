@@ -1,6 +1,6 @@
-import type { TranslationPreset } from 'fumadocs-core/i18n';
-import * as OpenAPI from 'fumadocs-openapi/i18n';
-import * as UI from 'fumadocs-ui/i18n';
+import type { TranslationPreset } from '@hanzo/docs-core/i18n';
+import * as OpenAPI from '@hanzo/docs-openapi/i18n';
+import * as UI from '@hanzo/docs-ui/i18n';
 import * as Story from '@hanzo/docs-story/i18n';
 
 const ui = {

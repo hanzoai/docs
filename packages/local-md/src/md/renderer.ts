@@ -1,5 +1,5 @@
-import type { TOCItemType } from 'fumadocs-core/toc';
-import type { RehypeTOCItemType, StructuredData } from 'fumadocs-core/mdx-plugins';
+import type { TOCItemType } from '@hanzo/docs-core/toc';
+import type { RehypeTOCItemType, StructuredData } from '@hanzo/docs-core/mdx-plugins';
 import type { ReactNode } from 'react';
 import * as JsxRuntime from 'react/jsx-runtime';
 import { type Evaluater, toJsxRuntime } from 'hast-util-to-jsx-runtime';

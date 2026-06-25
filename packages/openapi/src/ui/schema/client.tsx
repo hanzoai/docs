@@ -14,7 +14,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from 'fumadocs-ui/components/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@hanzo/docs-ui/components/tabs';
 import { useTranslations } from '@/ui/client/i18n';
 import type {
   InfoTag,
@@ -26,15 +26,15 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from 'fumadocs-ui/components/ui/collapsible';
-import { buttonVariants } from 'fumadocs-ui/components/ui/button';
+} from '@hanzo/docs-ui/components/ui/collapsible';
+import { buttonVariants } from '@hanzo/docs-ui/components/ui/button';
 import { ChevronDown, FilterIcon } from 'lucide-react';
 import { Badge } from '@/ui/components/method-label';
-import { Popover, PopoverContent, PopoverTrigger } from 'fumadocs-ui/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@hanzo/docs-ui/components/ui/popover';
 import { cn } from '@/utils/cn';
 import { cva } from 'class-variance-authority';
 import { useAnchorId } from '@/utils/auto-anchor.client';
-import { useCopyButton } from 'fumadocs-ui/utils/use-copy-button';
+import { useCopyButton } from '@hanzo/docs-ui/utils/use-copy-button';
 import { mergeRefs } from '@/utils/merge-refs';
 import {
   Select,

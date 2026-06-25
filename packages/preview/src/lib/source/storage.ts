@@ -2,7 +2,7 @@ import type { contentConfigSchema } from '@/config/global';
 import fs from 'node:fs/promises';
 import { glob } from 'tinyglobby';
 import path from 'node:path';
-import { metaSchema, pageSchema } from 'fumadocs-core/source/schema';
+import { metaSchema, pageSchema } from '@hanzo/docs-core/source/schema';
 import { type NormalizedProjectConfig, normalizeProjects } from './config';
 import type z from 'zod';
 
@@ -118,7 +118,7 @@ async function md(
   const content = await fs.readFile(absolutePath, 'utf-8');
   const parsed = parseFrontmatter(content);
 
-  // use default frontmatter if invalid in Fumadocs' spec
+  // use default frontmatter if invalid in Hanzo Docs' spec
   const { data: frontmatter = {} } = pageSchema.partial().loose().safeParse(parsed.data);
 
   return {
@@ -144,7 +144,7 @@ async function json(
   const parsed = JSON.parse(content);
   const result = metaSchema.loose().safeParse(parsed);
 
-  // ignore if it is not `meta.json` for Fumadocs
+  // ignore if it is not `meta.json` for Hanzo Docs
   if (result.error) return;
   return {
     type: 'meta',

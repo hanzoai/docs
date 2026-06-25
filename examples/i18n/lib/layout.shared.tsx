@@ -1,6 +1,6 @@
 import type { BaseLayoutProps } from '@hanzo/docs/ui/layouts/shared';
 import { i18n } from '@/lib/i18n';
-import { defineI18nUI } from 'fumadocs-ui/i18n';
+import { defineI18nUI } from '@hanzo/docs-ui/i18n';
 
 export const translations = i18n
   .translations()

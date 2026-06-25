@@ -8,7 +8,7 @@ description: Setup guide for non-RSC environments.
 Install the required packages.
 
 ```npm
-npm i fumadocs-openapi shiki
+npm i @hanzo/docs-openapi shiki
 ```
 
 > `shiki` must be installed, otherwise Vite will have bundling problem with Shiki's WASM regex engine.
@@ -19,10 +19,10 @@ Add the following line:
 
 ```css title="Tailwind CSS"
 @import 'tailwindcss';
-@import 'fumadocs-ui/css/neutral.css';
-@import 'fumadocs-ui/css/preset.css';
+@import '@hanzo/docs-ui/css/neutral.css';
+@import '@hanzo/docs-ui/css/preset.css';
 /* [!code ++] */
-@import 'fumadocs-openapi/css/preset.css';
+@import '@hanzo/docs-openapi/css/preset.css';
 ```
 
 ### Configure Plugin [step]
@@ -30,7 +30,7 @@ Add the following line:
 Create the OpenAPI server instance & `<ClientAPIPage />` component.
 
 ```ts tab="lib/openapi.ts"
-import { createOpenAPI } from 'fumadocs-openapi/server';
+import { createOpenAPI } from '@hanzo/docs-openapi/server';
 
 export const openapi = createOpenAPI({
   // the OpenAPI schema, you can also give it an external URL.
@@ -39,14 +39,14 @@ export const openapi = createOpenAPI({
 ```
 
 ```tsx tab="components/api-page.tsx"
-import { createClientAPIPage } from 'fumadocs-openapi/ui/create-client';
+import { createClientAPIPage } from '@hanzo/docs-openapi/ui/create-client';
 
 export const ClientAPIPage = createClientAPIPage();
 ```
 
 ```ts tab="lib/source.ts"
-import { openapiPlugin } from 'fumadocs-openapi/server';
-import { loader } from 'fumadocs-core/source';
+import { openapiPlugin } from '@hanzo/docs-openapi/server';
+import { loader } from '@hanzo/docs-core/source';
 
 export const source = loader({
   // [!code ++] optional: adds a badge to each page item in page tree
@@ -61,14 +61,14 @@ See [`createOpenAPI()`](/docs/integrations/openapi/server) & [`<APIPage />`](/do
 You can generate pages dynamically by integrating into [Loader API](/docs/headless/source-api/source).
 
 ```ts title="lib/source.ts"
-import { loader } from 'fumadocs-core/source';
+import { loader } from '@hanzo/docs-core/source';
 import { docs } from 'collections/server';
 import { openapi } from '@/lib/openapi';
 
 export const source = loader(
   // [!code ++:6]
   {
-    docs: docs.toFumadocsSource(),
+    docs: docs.toHanzoDocsSource(),
     openapi: await openapi.staticSource({
       baseDir: 'openapi',
     }),
@@ -135,12 +135,12 @@ For example, in Tanstack Start:
 
 ```tsx title="routes/docs/$.tsx"
 import { createFileRoute, notFound } from '@tanstack/react-router';
-import { DocsLayout } from 'fumadocs-ui/layouts/docs';
+import { DocsLayout } from '@hanzo/docs-ui/layouts/docs';
 import { createServerFn } from '@tanstack/react-start';
 import { source } from '@/lib/source';
 import browserCollections from 'collections/browser';
-import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/docs/page';
-import { useFumadocsLoader } from 'fumadocs-core/source/client';
+import { DocsBody, DocsDescription, DocsPage, DocsTitle } from '@hanzo/docs-ui/layouts/docs/page';
+import { useHanzoDocsLoader } from '@hanzo/docs-core/source/client';
 import { type ReactNode, Suspense } from 'react';
 import { ClientAPIPage } from '@/components/api-page';
 
@@ -150,7 +150,7 @@ export const Route = createFileRoute('/docs/$')({
     const slugs = params._splat?.split('/') ?? [];
     const data = await serverLoader({ data: slugs });
 
-    // Fumadocs MDX: only preload content for normal pages [!code highlight:3]
+    // Hanzo Docs MDX: only preload content for normal pages [!code highlight:3]
     if (data.type === 'docs') {
       await clientLoader.preload(data.path);
     }
@@ -193,7 +193,7 @@ const clientLoader = browserCollections.docs.createClientLoader({
 });
 
 function Page() {
-  const page = useFumadocsLoader(Route.useLoaderData());
+  const page = useHanzoDocsLoader(Route.useLoaderData());
   let content: ReactNode;
 
   // render OpenAPI page content [!code ++:11]
@@ -220,6 +220,6 @@ function Page() {
 }
 ```
 
-You can see the full [Tanstack Start example](https://github.com/fuma-nama/fumadocs/blob/dev/examples/tanstack-start-openapi).
+You can see the full [Tanstack Start example](https://github.com/hanzoai/docs/blob/dev/examples/tanstack-start-openapi).
 
-After configurating Fumadocs OpenAPI, you should be able to view the generated API pages after starting your app.
+After configurating Hanzo Docs OpenAPI, you should be able to view the generated API pages after starting your app.

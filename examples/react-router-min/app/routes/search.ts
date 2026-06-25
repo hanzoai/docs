@@ -1,5 +1,5 @@
 import type { Route } from './+types/search';
-import { createFromSource } from 'fumadocs-core/search/server';
+import { createFromSource } from '@hanzo/docs-core/search/server';
 import { source } from '@/lib/source';
 
 const server = createFromSource(source, {

@@ -1,4 +1,4 @@
-import type { LoaderConfig, LoaderOutput, Page } from 'fumadocs-core/source';
+import type { LoaderConfig, LoaderOutput, Page } from '@hanzo/docs-core/source';
 
 export interface EpubConfig<Config extends LoaderConfig = LoaderConfig> {
   /** Book title */
@@ -28,7 +28,7 @@ export interface EpubConfig<Config extends LoaderConfig = LoaderConfig> {
 export interface EpubExportOptions<
   Config extends LoaderConfig = LoaderConfig,
 > extends EpubConfig<Config> {
-  /** Fumadocs source (from loader()) */
+  /** Hanzo Docs source (from loader()) */
   source: LoaderOutput<Config>;
   /** function to get page Markdown content */
   getMarkdown?: (page: Config['page']) => string | undefined | Promise<string | undefined>;

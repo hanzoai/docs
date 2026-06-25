@@ -5,7 +5,7 @@ import {
   NavigationPanel,
   NavigationPanelOverlay,
   NavigationPanelProps,
-} from '@fumadocs/base-ui/layouts/flux';
+} from '@hanzo/docs-base-ui/layouts/flux';
 import {
   AISearch,
   AISearchInput,
@@ -16,10 +16,10 @@ import {
   useHotKey,
 } from '@/components/ai/search';
 import { MessageCircleIcon } from 'lucide-react';
-import { buttonVariants } from '@fumadocs/base-ui/components/ui/button';
+import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
 import { cn } from '@/lib/cn';
 import { AnimatePresence, motion } from 'motion/react';
-import { useSidebar } from '@fumadocs/base-ui/components/sidebar/base';
+import { useSidebar } from '@hanzo/docs-base-ui/components/sidebar/base';
 import { useEffect, useState } from 'react';
 
 export function LayoutClient(props: DocsLayoutProps) {
