@@ -26,7 +26,7 @@ let cachedInstance: TwoslashInstance | undefined;
 
 // This is highly inspired by https://github.com/shikijs/shiki/blob/main/packages/vitepress-twoslash
 /**
- * This transformer **must** be used with the `rehype-code` plugin of Fumadocs.
+ * This transformer **must** be used with the `rehype-code` plugin of Hanzo Docs.
  */
 export function transformerTwoslash(_options: TransformerTwoslashOptions = {}): ShikiTransformer {
   const ignoreClass = 'nd-copy-ignore';

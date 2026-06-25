@@ -2,7 +2,7 @@ import { defineConfig, defineDocs } from '@hanzo/docs-mdx/config';
 import { metaSchema, pageSchema } from '@hanzo/docs-core/source/schema';
 
 // You can customize Zod schemas for frontmatter and `meta.json` here
-// see https://fumadocs.dev/docs/mdx/collections
+// see https://docs.hanzo.ai/docs/mdx/collections
 export const docs = defineDocs({
   dir: 'content/docs',
   docs: {

@@ -6,7 +6,7 @@ import browserCollections from 'collections/browser';
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from '@hanzo/docs-ui/layouts/docs/page';
 import defaultMdxComponents from '@hanzo/docs-ui/mdx';
 import { baseOptions } from '@/lib/layout.shared';
-import { useFumadocsLoader } from '@hanzo/docs-core/source/client';
+import { useHanzoDocsLoader } from '@hanzo/docs-core/source/client';
 import { Suspense } from 'react';
 
 export const Route = createFileRoute('/$lang/docs/$')({
@@ -58,7 +58,7 @@ const clientLoader = browserCollections.docs.createClientLoader({
 
 function Page() {
   const { lang } = Route.useParams();
-  const data = useFumadocsLoader(Route.useLoaderData());
+  const data = useHanzoDocsLoader(Route.useLoaderData());
 
   return (
     <DocsLayout {...baseOptions(lang)} tree={data.pageTree}>

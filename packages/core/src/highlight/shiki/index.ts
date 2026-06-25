@@ -15,7 +15,7 @@ interface InitOptions {
 }
 
 /**
- * A factory for Fumadocs to manage Shiki instances.
+ * A factory for Hanzo Docs to manage Shiki instances.
  */
 export interface ShikiFactory {
   init: (options?: InitOptions) => Awaitable<HighlighterCore>;

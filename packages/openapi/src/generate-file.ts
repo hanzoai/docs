@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { generateDocument, type PagesToTextOptions, toText } from './utils/pages/to-text';
 import type { DereferencedDocument } from '@/utils/document/dereference';
 import type { OpenAPIServer } from '@/server';
-import { createGetUrl, getSlugs, PathUtils } from 'fumadocs-core/source';
+import { createGetUrl, getSlugs, PathUtils } from '@hanzo/docs-core/source';
 import { createAutoPreset, type SchemaToPagesOptions } from '@/utils/pages/preset-auto';
 import { fromSchema, type OutputGroup, type OutputEntry } from '@/utils/pages/builder';
 import type { DistributiveOmit } from './types';
@@ -103,7 +103,7 @@ export async function generateFiles(options: Config): Promise<void> {
 
     await generateFiles(subOptions);
     const targets = options.input._getWatchPaths();
-    console.log(`[Fumadocs OpenAPI] watching ${targets.join(', ')}`);
+    console.log(`[Hanzo Docs OpenAPI] watching ${targets.join(', ')}`);
     watch(targets, {
       ignoreInitial: true,
     }).on('all', () => generateFiles(subOptions));

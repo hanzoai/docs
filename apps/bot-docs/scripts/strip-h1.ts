@@ -1,6 +1,6 @@
 /**
  * Strip duplicate H1 headings from MDX files.
- * fumadocs renders title from frontmatter, so body H1s are redundant.
+ * Hanzo Docs renders title from frontmatter, so body H1s are redundant.
  */
 import { readdir, readFile, writeFile } from 'fs/promises';
 import { join } from 'path';

@@ -9,7 +9,7 @@ const framework: Framework = {
     return useRouter().path;
   },
   useParams() {
-    console.warn('[Fumadocs] useParams() is not supported on Waku');
+    console.warn('[Hanzo Docs] useParams() is not supported on Waku');
     return useMemo(() => ({}), []);
   },
   useRouter() {

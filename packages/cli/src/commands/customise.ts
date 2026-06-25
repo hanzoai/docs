@@ -4,7 +4,7 @@ import type { Target } from '@/commands/add';
 import { UIRegistries } from '@/commands/shared';
 import { LoadedConfig } from '@/config';
 import { RegistryConnector } from 'fuma-cli/registry/connector';
-import { FumadocsComponentInstaller } from '@/registry/installer';
+import { HanzoDocsComponentInstaller } from '@/registry/installer';
 
 interface TargetInfo {
   targets: Target[];
@@ -20,9 +20,9 @@ interface SlotPrintInfo {
 }
 
 export async function customise(config: LoadedConfig, connector: RegistryConnector) {
-  intro(picocolors.bgBlack(picocolors.whiteBright('Customize Fumadocs UI')));
+  intro(picocolors.bgBlack(picocolors.whiteBright('Customize Hanzo Docs UI')));
 
-  const installer = new FumadocsComponentInstaller(connector, config);
+  const installer = new HanzoDocsComponentInstaller(connector, config);
   const subRegistry = UIRegistries[config.uiLibrary];
   const info = await connector.fetchRegistryInfo(subRegistry);
 

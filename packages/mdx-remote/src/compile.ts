@@ -7,8 +7,8 @@ import type { TOCItemType } from '@hanzo/docs-core/toc';
 import { executeMdx, type MdxContent } from '@/render';
 import { pathToFileURL } from 'node:url';
 
-export type FumadocsPresetOptions = Omit<CompileOptions, 'remarkPlugins' | 'rehypePlugins'> & {
-  preset?: 'fumadocs';
+export type HanzoDocsPresetOptions = Omit<CompileOptions, 'remarkPlugins' | 'rehypePlugins'> & {
+  preset?: 'Hanzo Docs';
   remarkPlugins?: ResolvePlugins;
   rehypePlugins?: ResolvePlugins;
 
@@ -29,7 +29,7 @@ export type FumadocsPresetOptions = Omit<CompileOptions, 'remarkPlugins' | 'rehy
   remarkImageOptions?: Plugins.RemarkImageOptions | false;
 };
 
-export type CompilerOptions = (CompileOptions & { preset: 'minimal' }) | FumadocsPresetOptions;
+export type CompilerOptions = (CompileOptions & { preset: 'minimal' }) | HanzoDocsPresetOptions;
 
 export interface CompileMDXOptions {
   source: string;
@@ -143,7 +143,7 @@ function getCompileOptions({
   remarkNpmOptions,
   imageDir = './public',
   ...options
-}: FumadocsPresetOptions = {}): CompileOptions {
+}: HanzoDocsPresetOptions = {}): CompileOptions {
   function getPlugin<K extends keyof typeof Plugins>(name: K): (typeof Plugins)[K] | null {
     return name in Plugins ? Plugins[name] : null;
   }

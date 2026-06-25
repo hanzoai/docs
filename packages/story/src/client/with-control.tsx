@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/utils/cn';
-import { useStf, StfProvider, useDataEngine, useListener } from '@fumari/stf';
+import { useStf, StfProvider, useDataEngine, useListener } from '@hanzo/docs-stf';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './components/select';
 import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
 import { AlertCircle } from 'lucide-react';

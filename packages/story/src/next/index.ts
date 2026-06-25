@@ -28,7 +28,7 @@ export function createNextStory(createOptions: NextStoryOptions = {}) {
         [filter]: {
           loaders: [
             {
-              loader: '@fumadocs/story/webpack/story',
+              loader: '@hanzo/docs-story/webpack/story',
               options: loaderOptions as unknown as TurbopackLoaderOptions,
             },
           ],
@@ -47,7 +47,7 @@ export function createNextStory(createOptions: NextStoryOptions = {}) {
           enforce: 'pre',
           use: [
             {
-              loader: '@fumadocs/story/webpack/story',
+              loader: '@hanzo/docs-story/webpack/story',
               options: loaderOptions,
             },
           ],

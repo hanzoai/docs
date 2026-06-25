@@ -1,0 +1,37 @@
+---
+title: Architecture
+description: One substrate, one component library, brands as values.
+icon: Layers
+---
+
+Hanzo GUI is the **substrate** for one unified design system shared across every
+Hanzo, Lux, and Zoo surface — web, native (React Native / Expo), and desktop
+(Tauri). This page is a short orientation; the **binding standard is
+[HIP-0504: Unified Cross-Platform Design System](https://hips.hanzo.ai/HIPs/hip-0504-unified-design-system)**,
+which is the single source of truth. Don't restate its rules here — link to them.
+
+## The shape, in one diagram
+
+```text
+@hanzo/gui ──┬── @hanzo/gui-web3        substrate: generic + crypto domain (shared, never brand-forked)
+             ▼
+@hanzo/ui ───┴── @hanzo/ui-web3         components composed from the substrate
+             ▼
+@luxfi/ui  = @hanzo/ui(+web3) + lux theme + lux-only compositions
+@zooai/ui  = @hanzo/ui(+web3) + zoo theme + zoo-only compositions
+             ▼
+Lux apps → @luxfi/ui   Zoo apps → @zooai/ui   Hanzo apps → @hanzo/ui   (one import each)
+```
+
+## Why it's built this way
+
+- **Substrate** (`@hanzo/gui`) = *how* to render anywhere. **Components**
+  (`@hanzo/ui`) = *what* the parts are. **Brand** (`@luxfi/ui`, `@zooai/ui`) =
+  *values* (theme tokens), not component forks.
+- A component is defined **once**, themed many times, rendered everywhere. An app
+  imports **one** package — never `@hanzo/gui` directly.
+- Cross-platform capability splits by **domain** (`@hanzo/gui-web3` for
+  wallet/chain/crypto), never by brand — Lux and Zoo share it.
+
+For the normative rules, conformance criteria, the migration phases (Phase
+0/1/2), and the visual-regression gate, see **HIP-0504**.

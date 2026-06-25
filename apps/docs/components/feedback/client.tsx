@@ -26,7 +26,7 @@ import {
   type PageFeedback,
 } from './schema';
 import { z } from 'zod/mini';
-import { usePathname } from 'fumadocs-core/framework';
+import { usePathname } from '@hanzo/docs-core/framework';
 
 const rateButtonVariants = cva(
   'inline-flex items-center gap-2 px-3 py-2 rounded-full font-medium border text-sm [&_svg]:size-4 disabled:cursor-not-allowed',

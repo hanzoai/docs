@@ -9,16 +9,16 @@ import {
   type FC,
   type ReactNode,
 } from 'react';
-import { Heading } from 'fumadocs-ui/components/heading';
-import { remarkGfm } from 'fumadocs-core/mdx-plugins/remark-gfm';
-import defaultMdxComponents from 'fumadocs-ui/mdx';
+import { Heading } from '@hanzo/docs-ui/components/heading';
+import { remarkGfm } from '@hanzo/docs-core/mdx-plugins/remark-gfm';
+import defaultMdxComponents from '@hanzo/docs-ui/mdx';
 import { remark } from 'remark';
 import remarkRehype from 'remark-rehype';
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime';
 import * as JsxRuntime from 'react/jsx-runtime';
 import { APIPage, type ApiPageProps } from './api-page';
 import type { APIPlaygroundProps, CreateAPIPageOptions } from './base';
-import { defaultShikiFactory } from 'fumadocs-core/highlight/shiki/full';
+import { defaultShikiFactory } from '@hanzo/docs-core/highlight/shiki/full';
 import { compile } from '@fumari/json-schema-ts';
 import { ClientCodeBlock, ClientCodeBlockProvider } from './components/codeblock';
 import { slug } from 'github-slugger';
