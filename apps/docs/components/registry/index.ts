@@ -1,16 +1,12 @@
-import { type Registry } from '@hanzo/docs-cli/build';
+import { type CompileOptions, type Registry } from '@hanzo/docs-cli/build';
 import * as radixUi from '../../../../packages/radix-ui/registry';
-import { fileURLToPath } from 'node:url';
+import * as baseUi from '../../../../packages/base-ui/registry';
+import * as sanity from '../../../../packages/sanity/registry';
 import * as path from 'node:path';
-import { resolveFromRemote } from '@hanzo/docs-cli/build';
 
 const baseDir = path.join(import.meta.dirname, '../../');
 
-export const registry: Registry = {
-  dir: baseDir,
-  name: 'hanzo-docs',
-  packageJson: './package.json',
-  tsconfigPath: './tsconfig.json',
+export const compileOptions: Partial<CompileOptions> = {
   onUnknownFile(absolutePath) {
     const filePath = path.relative(baseDir, absolutePath);
 
@@ -55,8 +51,10 @@ export const registry: Registry = {
       }
     }
 
+    // map dep imports to actual components
     if (ref.type === 'dependency' && ref.dep === 'fumadocs-ui') {
-      const match = /@hanzo\/docs-ui\/components\/ui\/(.*)/.exec(ref.specifier);
+      const match = /fumadocs-ui\/components\/ui\/(.*)/.exec(ref.specifier);
+
       if (match) {
         return {
           type: 'file',
@@ -194,6 +192,16 @@ export const registry: Registry = {
           type: 'route',
           path: 'app/api/chat/route.ts',
           target: 'app/api/chat/route.ts',
+        },
+        {
+          type: 'route-handler',
+          route: 'api/inkeep',
+          path: 'lib/inkeep/route.ts',
+        },
+        {
+          type: 'lib',
+          path: 'lib/inkeep/inkeep-qa-schema.ts',
+          target: '<dir>/ai/inkeep-qa-schema.ts',
         },
       ],
     },
