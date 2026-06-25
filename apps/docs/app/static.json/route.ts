@@ -1,6 +1,6 @@
 import { source } from '@/lib/source';
-import type { OramaDocument } from 'fumadocs-core/search/orama-cloud';
-import { getBreadcrumbItems } from 'fumadocs-core/breadcrumb';
+import type { OramaDocument } from '@hanzo/docs-core/search/orama-cloud';
+import { getBreadcrumbItems } from '@hanzo/docs-core/breadcrumb';
 import { getSection } from '@/lib/source/navigation';
 
 export const revalidate = false;

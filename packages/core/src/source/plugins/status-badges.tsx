@@ -26,8 +26,8 @@ export type Node = Item | Folder | Separator;
  *
  * @example
  * ```tsx
- * import { loader } from 'fumadocs-core/source';
- * import { statusBadgesPlugin } from 'fumadocs-core/source/status-badges';
+ * import { loader } from '@hanzo/docs-core/source';
+ * import { statusBadgesPlugin } from '@hanzo/docs-core/source/status-badges';
  *
  * export const source = loader({
  *   plugins: [

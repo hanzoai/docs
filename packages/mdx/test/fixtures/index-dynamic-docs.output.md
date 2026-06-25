@@ -1,9 +1,9 @@
 ```ts title="server.ts"
 // @ts-nocheck
-import { server } from 'fumadocs-mdx/runtime/server';
+import { server } from '@hanzo/docs-mdx/runtime/server';
 import type * as Config from './config';
 
-const create = server<typeof Config, import("fumadocs-mdx/runtime/types").InternalTypeConfig & {
+const create = server<typeof Config, import("@hanzo/docs-mdx/runtime/types").InternalTypeConfig & {
   DocData: {
   }
 }>({"doc":{"passthroughs":["extractedReferences"]}});
@@ -12,11 +12,11 @@ const create = server<typeof Config, import("fumadocs-mdx/runtime/types").Intern
 ```ts title="dynamic.ts"
 // @ts-nocheck
 import { default as __fd_glob_0 } from "./generate-index-docs/meta.json?collection=docs"
-import { dynamic } from 'fumadocs-mdx/runtime/dynamic';
+import { dynamic } from '@hanzo/docs-mdx/runtime/dynamic';
 import path from 'node:path';
 import * as Config from './config';
 
-const create = await dynamic<typeof Config, import("fumadocs-mdx/runtime/types").InternalTypeConfig & {
+const create = await dynamic<typeof Config, import("@hanzo/docs-mdx/runtime/types").InternalTypeConfig & {
   DocData: {
   }
 }>(Config, {"configPath":"packages/mdx/test/fixtures/config.ts","environment":"test","outDir":"packages/mdx/test/fixtures"}, {"doc":{"passthroughs":["extractedReferences"]}});
@@ -26,10 +26,10 @@ export const docs = await create.docs("docs", "packages/mdx/test/fixtures/genera
 
 ```ts title="browser.ts"
 // @ts-nocheck
-import { browser } from 'fumadocs-mdx/runtime/browser';
+import { browser } from '@hanzo/docs-mdx/runtime/browser';
 import type * as Config from './config';
 
-const create = browser<typeof Config, import("fumadocs-mdx/runtime/types").InternalTypeConfig & {
+const create = browser<typeof Config, import("@hanzo/docs-mdx/runtime/types").InternalTypeConfig & {
   DocData: {
   }
 }>();

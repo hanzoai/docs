@@ -1,1 +1,1 @@
-export * from 'fumadocs-core/page-tree';
+export * from '@hanzo/docs-core/page-tree';

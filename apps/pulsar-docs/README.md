@@ -2,7 +2,7 @@
 
 Documentation site for [Pulsar](https://github.com/luxfi/pulsar) — threshold ML-DSA-65, the NIST MPTC submission package by Lux Industries.
 
-Built with [Hanzo Docs](https://docs.hanzo.ai) (fumadocs-based).
+Built with [Hanzo Docs](https://docs.hanzo.ai).
 
 ## Development
 

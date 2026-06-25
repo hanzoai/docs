@@ -1,4 +1,4 @@
-import { loader, type MetaData, type Source, type VirtualFile } from 'fumadocs-core/source';
+import { loader, type MetaData, type Source, type VirtualFile } from '@hanzo/docs-core/source';
 import { getPosts } from '@/lib/query';
 import type { Post } from '@/lib/types';
 import type { StructuredData } from '@hanzo/docs/core/mdx-plugins';

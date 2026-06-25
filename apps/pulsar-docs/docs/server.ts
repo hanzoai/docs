@@ -20,10 +20,10 @@ import { default as __fd_glob_3 } from "../content/docs/protocol/meta.json?colle
 import { default as __fd_glob_2 } from "../content/docs/reference/meta.json?collection=docs"
 import { default as __fd_glob_1 } from "../content/docs/proofs/meta.json?collection=docs"
 import { default as __fd_glob_0 } from "../content/docs/meta.json?collection=docs"
-import { server } from 'fumadocs-mdx/runtime/server';
+import { server } from '@hanzo/docs-mdx/runtime/server';
 import type * as Config from '../source.config';
 
-const create = server<typeof Config, import("fumadocs-mdx/runtime/types").InternalTypeConfig & {
+const create = server<typeof Config, import("@hanzo/docs-mdx/runtime/types").InternalTypeConfig & {
   DocData: {
   }
 }>({"doc":{"passthroughs":["extractedReferences"]}});

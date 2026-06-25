@@ -1,1 +1,1 @@
-export * from 'fumadocs-core/dynamic-link';
+export * from '@hanzo/docs-core/dynamic-link';

@@ -1,6 +1,6 @@
 import { defineConfig } from 'waku/config';
 import tailwindcss from '@tailwindcss/vite';
-import { getConfig } from '@fumadocs/vite';
+import { getConfig } from '@hanzo/docs-vite';
 
 export default defineConfig({
   distDir: 'dist/waku',

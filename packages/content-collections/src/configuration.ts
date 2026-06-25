@@ -5,8 +5,8 @@
  */
 import type { Context, Meta } from '@content-collections/core';
 import { compileMDX as baseCompileMDX, type Options as MDXOptions } from '@content-collections/mdx';
-import type { StructuredData } from 'fumadocs-core/mdx-plugins';
-import * as Plugins from 'fumadocs-core/mdx-plugins';
+import type { StructuredData } from '@hanzo/docs-core/mdx-plugins';
+import * as Plugins from '@hanzo/docs-core/mdx-plugins';
 import { z, z as Zod } from 'zod';
 import { resolvePlugin, resolvePlugins, type ResolvePlugins } from '@/resolve-plugins';
 

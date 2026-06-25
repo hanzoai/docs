@@ -1,5 +1,5 @@
 'use client';
-import * as Primitive from 'fumadocs-core/toc';
+import * as Primitive from '@hanzo/docs-core/toc';
 import {
   type ComponentProps,
   type ReactNode,

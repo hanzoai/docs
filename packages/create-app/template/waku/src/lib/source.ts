@@ -1,10 +1,10 @@
-import { type InferPageType, loader } from 'fumadocs-core/source';
-import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
+import { type InferPageType, loader } from '@hanzo/docs-core/source';
+import { lucideIconsPlugin } from '@hanzo/docs-core/source/lucide-icons';
 import { docs } from 'collections/server';
 import { docsContentRoute, docsImageRoute, docsRoute } from './shared';
 
 export const source = loader({
-  source: docs.toFumadocsSource(),
+  source: docs.toHanzoDocsSource(),
   baseUrl: docsRoute,
   plugins: [lucideIconsPlugin()],
 });

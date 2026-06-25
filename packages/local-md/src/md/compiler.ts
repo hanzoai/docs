@@ -1,14 +1,14 @@
-import { remarkGfm } from 'fumadocs-core/mdx-plugins/remark-gfm';
+import { remarkGfm } from '@hanzo/docs-core/mdx-plugins/remark-gfm';
 import { plugin, plugins } from './utils';
-import { remarkHeading, type RemarkHeadingOptions } from 'fumadocs-core/mdx-plugins/remark-heading';
-import { remarkNpm, type RemarkNpmOptions } from 'fumadocs-core/mdx-plugins/remark-npm';
+import { remarkHeading, type RemarkHeadingOptions } from '@hanzo/docs-core/mdx-plugins/remark-heading';
+import { remarkNpm, type RemarkNpmOptions } from '@hanzo/docs-core/mdx-plugins/remark-npm';
 import {
   remarkCodeTab,
   type RemarkCodeTabOptions,
-} from 'fumadocs-core/mdx-plugins/remark-code-tab';
-import { rehypeCode, type RehypeCodeOptions } from 'fumadocs-core/mdx-plugins/rehype-code';
-import { rehypeToc, type RehypeTocOptions } from 'fumadocs-core/mdx-plugins/rehype-toc';
-import { remarkStructure, type StructureOptions } from 'fumadocs-core/mdx-plugins/remark-structure';
+} from '@hanzo/docs-core/mdx-plugins/remark-code-tab';
+import { rehypeCode, type RehypeCodeOptions } from '@hanzo/docs-core/mdx-plugins/rehype-code';
+import { rehypeToc, type RehypeTocOptions } from '@hanzo/docs-core/mdx-plugins/rehype-toc';
+import { remarkStructure, type StructureOptions } from '@hanzo/docs-core/mdx-plugins/remark-structure';
 import { Compatible, VFile } from 'vfile';
 import type { Root } from 'hast';
 import * as Mdx from '@mdx-js/mdx';
