@@ -78,7 +78,7 @@ function _createMdxContent(props) {
       }), _jsx(_components.tbody, {
         children: _jsxs(_components.tr, {
           children: [_jsx(_components.td, {
-            children: "Fuma"
+            children: "Hanzo"
           }), _jsx(_components.td, {
             children: "Love anime"
           })]

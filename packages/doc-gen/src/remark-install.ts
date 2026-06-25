@@ -42,7 +42,7 @@ export type RemarkInstallOptions = {
  * </Tabs>
  * ```
  *
- * @deprecated Use `remarkNpm` from `fumadocs-core/mdx-plugins` instead, it's a drop-in replacement.
+ * @deprecated Use `remarkNpm` from `@hanzo/docs-core/mdx-plugins` instead, it's a drop-in replacement.
  */
 export function remarkInstall({
   Tab = 'Tab',

@@ -1,6 +1,6 @@
 import { openapi, hasSpecs } from '@/lib/openapi';
 import { defaultShikiOptions } from '@/lib/shiki';
-import { createAPIPage } from 'fumadocs-openapi/ui';
+import { createAPIPage } from '@hanzo/docs-openapi/ui';
 
 export const APIPage = hasSpecs
   ? createAPIPage(openapi, {

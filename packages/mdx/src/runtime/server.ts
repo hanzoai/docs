@@ -1,10 +1,10 @@
-import type { MetaData, PageData, Source, VirtualFile } from 'fumadocs-core/source';
+import type { MetaData, PageData, Source, VirtualFile } from '@hanzo/docs-core/source';
 import * as path from 'node:path';
 import type { DocCollection, DocsCollection, MetaCollection } from '../config';
 import type { StandardSchemaV1 } from '@standard-schema/spec';
 import type { CompiledMDXProperties } from '../loaders/mdx/build-mdx';
 import type { InternalTypeConfig, DocData, DocMethods, FileInfo, MetaMethods } from './types';
-import type { StructuredData } from 'fumadocs-core/mdx-plugins/remark-structure';
+import type { StructuredData } from '@hanzo/docs-core/mdx-plugins/remark-structure';
 
 export type MetaCollectionEntry<Data> = Data & MetaMethods;
 
@@ -14,7 +14,7 @@ export type DocCollectionEntry<
   TC extends InternalTypeConfig = InternalTypeConfig,
 > = DocData & DocMethods & Frontmatter & TC['DocData'][Name];
 
-interface ToFumadocsSourceOptions {
+interface ToHanzoDocsSourceOptions {
   /** base directory for virtual file paths */
   baseDir?: string;
 }
@@ -246,7 +246,7 @@ export function createSource<
 >(
   pages: Page[],
   metas: Meta[],
-  options?: ToFumadocsSourceOptions,
+  options?: ToHanzoDocsSourceOptions,
 ): Source<{
   pageData: Page;
   metaData: Meta;

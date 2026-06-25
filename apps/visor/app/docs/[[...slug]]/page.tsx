@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
 import { type ComponentProps, type FC, type ReactNode } from 'react';
-import { Callout } from '@fumadocs/base-ui/components/callout';
-import { TypeTable } from '@fumadocs/base-ui/components/type-table';
+import { Callout } from '@hanzo/docs-base-ui/components/callout';
+import { TypeTable } from '@hanzo/docs-base-ui/components/type-table';
 import { createMetadata } from '@/lib/metadata';
 import { source } from '@/lib/source';
-import { Card, Cards } from '@fumadocs/base-ui/components/card';
-import Link from 'fumadocs-core/link';
-import { findSiblings } from 'fumadocs-core/page-tree';
-import { DocsBody, DocsPage, PageLastUpdate } from '@fumadocs/base-ui/layouts/docs/page';
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+import Link from '@hanzo/docs-core/link';
+import { findSiblings } from '@hanzo/docs-core/page-tree';
+import { DocsBody, DocsPage, PageLastUpdate } from '@hanzo/docs-base-ui/layouts/docs/page';
 import { notFound } from 'next/navigation';
 import { getMDXComponents } from '@/mdx-components';
 

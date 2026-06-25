@@ -1,1 +1,1 @@
-export * from 'fumadocs-mdx/runtime/browser';
+export * from '@hanzo/docs-mdx/runtime/browser';

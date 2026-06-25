@@ -5,10 +5,10 @@ import {
   defineDocs,
   frontmatterSchema,
   metaSchema
-} from "fumadocs-mdx/config";
+} from "@hanzo/docs-mdx/config";
 import { z } from "zod";
-import jsonSchema from "fumadocs-mdx/plugins/json-schema";
-import lastModified from "fumadocs-mdx/plugins/last-modified";
+import jsonSchema from "@hanzo/docs-mdx/plugins/json-schema";
+import lastModified from "@hanzo/docs-mdx/plugins/last-modified";
 var docs = defineDocs({
   docs: {
     schema: frontmatterSchema.extend({
@@ -20,9 +20,9 @@ var docs = defineDocs({
     },
     async: true,
     async mdxOptions(environment) {
-      const { rehypeCodeDefaultOptions } = await import("fumadocs-core/mdx-plugins/rehype-code");
-      const { remarkStructureDefaultOptions } = await import("fumadocs-core/mdx-plugins/remark-structure");
-      const { remarkSteps } = await import("fumadocs-core/mdx-plugins/remark-steps");
+      const { rehypeCodeDefaultOptions } = await import("@hanzo/docs-core/mdx-plugins/rehype-code");
+      const { remarkStructureDefaultOptions } = await import("@hanzo/docs-core/mdx-plugins/remark-structure");
+      const { remarkSteps } = await import("@hanzo/docs-core/mdx-plugins/remark-steps");
       return applyMdxPreset({
         remarkStructureOptions: {
           types: [...remarkStructureDefaultOptions.types, "code"]

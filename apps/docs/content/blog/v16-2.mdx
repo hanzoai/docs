@@ -1,17 +1,17 @@
 ---
-title: Fumadocs 16.2
+title: Hanzo Docs 16.2
 description: UI Refactor
-author: Fuma Nama
+author: Hanzo Nama
 date: 2025-11-29
 ---
 
-We are pleased to announce the release of Fumadocs 16.2, introducing a better layout system for Fumadocs UI.
+We are pleased to announce the release of Hanzo Docs 16.2, introducing a better layout system for Hanzo Docs UI.
 
 ## The New Layout System
 
 Handling layouts in documentation frameworks can present significant challenges.
 
-As a solution, Fumadocs UI implemented a [Grid System](/docs/ui/layouts/docs#the-layout-system) that is composable, flexible, cohesive and predictable.
+As a solution, Hanzo Docs UI implemented a [Grid System](/docs/ui/layouts/docs#the-layout-system) that is composable, flexible, cohesive and predictable.
 See the linked docs for more details.
 
 In short, the layout consists of a grid container, and layout components using `position: sticky`:
@@ -48,7 +48,7 @@ Layout components are also responsible to declare their heights via CSS variable
 }
 ```
 
-For user-land customizations, we recommend the Fumadocs CLI customize command, or hooking the relevant grid areas like:
+For user-land customizations, we recommend the Hanzo Docs CLI customize command, or hooking the relevant grid areas like:
 
 ```css
 .custom-component {
@@ -59,7 +59,7 @@ For user-land customizations, we recommend the Fumadocs CLI customize command, o
 
 ### Why the Change?
 
-Previously, Fumadocs UI relied on `position: fixed` and mathematical computations (inspired by Vitepress). The older method often lacked composability and difficult for beginners to manage.
+Previously, Hanzo Docs UI relied on `position: fixed` and mathematical computations (inspired by Vitepress). The older method often lacked composability and difficult for beginners to manage.
 
 The new system fixed most of the flaws, allowing easier visualizations, while reducing the complexity of previous solutions.
 
@@ -67,53 +67,53 @@ The new system fixed most of the flaws, allowing easier visualizations, while re
 
 ### Global Styles
 
-While Fumadocs 16.2 preserves compatibility in several areas, notably:
+While Hanzo Docs 16.2 preserves compatibility in several areas, notably:
 
 - The `--fd-layout-width` CSS variable continues to function as expected.
 - All ID and data attributes remain unchanged.
 
 However, the shift to the new grid system may impact existing customizations, particularly those dependent on the prior fixed-position logic. We recommend reviewing your implementation carefully and testing thoroughly.
 
-If you have already installed layout components via Fumadocs CLI, replace `preset.css` with `preset-legacy.css` to keep legacy styles & avoid unexpected breakages:
+If you have already installed layout components via Hanzo Docs CLI, replace `preset.css` with `preset-legacy.css` to keep legacy styles & avoid unexpected breakages:
 
 ```css title="global.css"
 /* [!code --] */
-@import 'fumadocs-ui/css/preset.css';
+@import '@hanzo/docs-ui/css/preset.css';
 /* [!code ++] */
-@import 'fumadocs-ui/css/preset-legacy.css';
+@import '@hanzo/docs-ui/css/preset-legacy.css';
 ```
 
 ### No Longer Exposing Internal Components
 
 Layout components such as Root Toggle, Language Toggle, and Theme Toggle are no longer directly exposed.
-This decision enables Fumadocs UI to iterate these elements without introducing unexpected breaking changes to usage outside of API surfaces.
+This decision enables Hanzo Docs UI to iterate these elements without introducing unexpected breaking changes to usage outside of API surfaces.
 
-**Migration Steps:** Override the relevant layout components with your own implementations, or utilize the Fumadocs CLI commands (`add` or `customize`) to install them locally.
+**Migration Steps:** Override the relevant layout components with your own implementations, or utilize the Hanzo Docs CLI commands (`add` or `customize`) to install them locally.
 
 ### Removal of Internal Contexts
 
 The following context modules are made private:
 
-- `fumadocs-ui/contexts/sidebar`
-- `fumadocs-ui/contexts/layout`
+- `@hanzo/docs-ui/contexts/sidebar`
+- `@hanzo/docs-ui/contexts/layout`
 
-If you have already installed `<DocsLayout />` via Fumadocs CLI, import the legacy contexts instead:
+If you have already installed `<DocsLayout />` via Hanzo Docs CLI, import the legacy contexts instead:
 
 ```ts
 // [!code --:2]
-import {} from 'fumadocs-ui/contexts/sidebar';
-import {} from 'fumadocs-ui/contexts/layout';
+import {} from '@hanzo/docs-ui/contexts/sidebar';
+import {} from '@hanzo/docs-ui/contexts/layout';
 
 // [!code ++:2]
-import {} from 'fumadocs-ui/legacy/sidebar';
-import {} from 'fumadocs-ui/legacy/layout';
+import {} from '@hanzo/docs-ui/legacy/sidebar';
+import {} from '@hanzo/docs-ui/legacy/layout';
 ```
 
 And wrap your app under the legacy `<SidebarProvider />`:
 
 ```tsx
 import type { ReactNode } from 'react';
-import { SidebarProvider } from 'fumadocs-ui/legacy/sidebar';
+import { SidebarProvider } from '@hanzo/docs-ui/legacy/sidebar';
 
 export function RootLayout({ children }: { children: ReactNode }) {
   return <SidebarProvider>{children}</SidebarProvider>;
@@ -123,13 +123,13 @@ export function RootLayout({ children }: { children: ReactNode }) {
 <Callout title="What if I still use built-in layouts?">
 
 The legacy contexts are made exclusively for layout components installed locally. If you still
-import layout components (e.g. `<DocsLayout />`) from `fumadocs-ui`, migrate your usages as follows:
+import layout components (e.g. `<DocsLayout />`) from `@hanzo/docs-ui`, migrate your usages as follows:
 
 ```tsx
 // [!code --]
-import { useSidebar } from 'fumadocs-ui/contexts/sidebar';
+import { useSidebar } from '@hanzo/docs-ui/contexts/sidebar';
 // [!code ++]
-import { useSidebar } from 'fumadocs-ui/components/sidebar/base';
+import { useSidebar } from '@hanzo/docs-ui/components/sidebar/base';
 ```
 
 Ensure the contexts are only accessed within `<DocsLayout />`.
@@ -148,12 +148,12 @@ Make sure to import the appropriate page layout based on your docs layout:
 
 ```ts
 // For docs layout
-import { DocsPage } from 'fumadocs-ui/layouts/docs/page';
+import { DocsPage } from '@hanzo/docs-ui/layouts/docs/page';
 // For notebook layout
-import { DocsPage } from 'fumadocs-ui/layouts/notebook/page';
+import { DocsPage } from '@hanzo/docs-ui/layouts/notebook/page';
 ```
 
-**Migration Steps:** Update your imports accordingly. Although the default `fumadocs-ui/page` will redirect to the correct layout, we strongly advise explicit imports for clarity and future-proofing.
+**Migration Steps:** Update your imports accordingly. Although the default `@hanzo/docs-ui/page` will redirect to the correct layout, we strongly advise explicit imports for clarity and future-proofing.
 
 ### Removal of Unused Styles
 
@@ -163,4 +163,4 @@ Styles related to the abandoned `container` utility, and `--spacing-fd-container
 
 ## Conclusion
 
-Fumadocs 16.2 aims to offer greater flexibility for developers. Welcome to share your thoughts about the new design on GitHub Discussion!
+Hanzo Docs 16.2 aims to offer greater flexibility for developers. Welcome to share your thoughts about the new design on GitHub Discussion!

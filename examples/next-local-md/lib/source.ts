@@ -1,7 +1,7 @@
-import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
+import { lucideIconsPlugin } from '@hanzo/docs-core/source/lucide-icons';
 import { docsContentRoute, docsImageRoute, docsRoute } from './shared';
-import { localMd } from '@fumadocs/local-md';
-import { dynamicLoader } from 'fumadocs-core/source/dynamic';
+import { localMd } from '@hanzo/docs-local-md';
+import { dynamicLoader } from '@hanzo/docs-core/source/dynamic';
 
 const docs = localMd({
   dir: 'content/docs',
@@ -11,7 +11,7 @@ if (process.env.NODE_ENV === 'development') {
   void docs.devServer();
 }
 
-// See https://fumadocs.dev/docs/headless/source-api for more info
+// See https://docs.hanzo.ai/docs/headless/source-api for more info
 export const docsLoader = dynamicLoader(docs.dynamicSource(), {
   baseUrl: docsRoute,
   plugins: [lucideIconsPlugin()],

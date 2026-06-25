@@ -1,5 +1,5 @@
 import { CodeBlock, type CodeBlockProps, Pre } from './codeblock';
-import { highlight, type HighlightOptions } from 'fumadocs-core/highlight';
+import { highlight, type HighlightOptions } from '@hanzo/docs-core/highlight';
 import { cn } from '@/utils/cn';
 
 export type ServerCodeBlockProps = HighlightOptions & {

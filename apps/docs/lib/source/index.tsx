@@ -1,12 +1,12 @@
-import { type LoaderPlugin, loader } from 'fumadocs-core/source';
+import { type LoaderPlugin, loader } from '@hanzo/docs-core/source';
 import { blog as blogPosts, docs } from 'collections/server';
-import { toFumadocsSource } from 'fumadocs-mdx/runtime/server';
-import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
+import { toHanzoDocsSource } from '@hanzo/docs-mdx/runtime/server';
+import { lucideIconsPlugin } from '@hanzo/docs-core/source/lucide-icons';
 import { openapi } from '@/lib/openapi';
 
 export const source = loader(
   {
-    docs: docs.toFumadocsSource(),
+    docs: docs.toHanzoDocsSource(),
     openapi: await openapi.staticSource({
       baseDir: 'openapi/(generated)',
       meta: {
@@ -44,7 +44,7 @@ function pageTreeCodeTitles(): LoaderPlugin {
   };
 }
 
-export const blog = loader(toFumadocsSource(blogPosts, []), {
+export const blog = loader(toHanzoDocsSource(blogPosts, []), {
   baseUrl: '/blog',
 });
 

@@ -4,10 +4,10 @@ import { useI18n } from '@/contexts/i18n';
 import { cn } from '@/utils/cn';
 import { isActive } from '@/utils/urls';
 import { useFooterItems } from '@/utils/use-footer-items';
-import { usePathname } from 'fumadocs-core/framework';
-import type * as PageTree from 'fumadocs-core/page-tree';
+import { usePathname } from '@hanzo/docs-core/framework';
+import type * as PageTree from '@hanzo/docs-core/page-tree';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import Link from 'fumadocs-core/link';
+import Link from '@hanzo/docs-core/link';
 import { type ComponentProps, useMemo } from 'react';
 
 type Item = Pick<PageTree.Item, 'name' | 'description' | 'url'>;

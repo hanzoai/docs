@@ -1,2 +1,2 @@
-export * from 'fumadocs-core/link';
-export { default } from 'fumadocs-core/link';
+export * from '@hanzo/docs-core/link';
+export { default } from '@hanzo/docs-core/link';

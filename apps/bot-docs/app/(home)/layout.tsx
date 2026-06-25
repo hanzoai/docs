@@ -4,7 +4,7 @@ import { baseOptions, linkItems, logo, GithubIcon } from '@/lib/layout.shared';
 import { AISearchPanel, AISearchTrigger } from '@/components/ai/search';
 import { MessageCircleIcon } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { buttonVariants } from '@fumadocs/base-ui/components/ui/button';
+import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (

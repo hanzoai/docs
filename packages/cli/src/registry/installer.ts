@@ -6,7 +6,7 @@ import { box, confirm, isCancel, log, outro, spinner, SpinnerResult } from '@cla
 import picocolors from 'picocolors';
 import { detectPackageManager } from 'fuma-cli/detect';
 
-export class FumadocsComponentInstaller extends ComponentInstaller {
+export class HanzoDocsComponentInstaller extends ComponentInstaller {
   private interactive: {
     name: string;
     spin: SpinnerResult;

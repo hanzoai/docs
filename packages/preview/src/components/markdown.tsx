@@ -12,8 +12,8 @@ import {
   useDeferredValue,
 } from 'react';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
-import { DynamicCodeBlock } from 'fumadocs-ui/components/dynamic-codeblock';
-import defaultMdxComponents from 'fumadocs-ui/mdx';
+import { DynamicCodeBlock } from '@hanzo/docs-ui/components/dynamic-codeblock';
+import defaultMdxComponents from '@hanzo/docs-ui/mdx';
 import { visit } from 'unist-util-visit';
 import type { ElementContent, Root, RootContent } from 'hast';
 

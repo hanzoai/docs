@@ -2,8 +2,8 @@ import type { NoReference } from '@/utils/schema';
 import type { Document, OperationObject } from '@/types';
 import Slugger from 'github-slugger';
 import { idToTitle } from '@/utils/id-to-title';
-import type { TOCItemType } from 'fumadocs-core/toc';
-import type { StructuredData } from 'fumadocs-core/mdx-plugins';
+import type { TOCItemType } from '@hanzo/docs-core/toc';
+import type { StructuredData } from '@hanzo/docs-core/mdx-plugins';
 import type { ApiPageProps } from '@/ui';
 
 export function toStaticData(

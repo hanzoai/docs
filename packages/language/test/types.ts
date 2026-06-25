@@ -1,7 +1,7 @@
 import { storyTranslations } from '@hanzo/docs-story/i18n';
-import { defineI18n } from 'fumadocs-core/i18n';
-import { openapiTranslations } from 'fumadocs-openapi/i18n';
-import { uiTranslations } from 'fumadocs-ui/i18n';
+import { defineI18n } from '@hanzo/docs-core/i18n';
+import { openapiTranslations } from '@hanzo/docs-openapi/i18n';
+import { uiTranslations } from '@hanzo/docs-ui/i18n';
 import { zhTW } from '../src/zh-tw';
 
 const i18n = defineI18n({

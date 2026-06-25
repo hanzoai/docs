@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Tab, Tabs } from '@hanzo/docs-ui/components/tabs';
 import { cn } from '@/lib/cn';
 import { buttonVariants } from '@/components/ui/button';
 

@@ -33,7 +33,7 @@ async function replaceImports(context: TemplatePluginContext) {
   const content = await readFile(path, 'utf-8');
   const replaced = content
     .replaceAll('next/og', '@takumi-rs/image-response')
-    .replaceAll('fumadocs-ui/og', 'fumadocs-ui/og/takumi')
+    .replaceAll('@hanzo/docs-ui/og', '@hanzo/docs-ui/og/takumi')
     .replace('height: 630,', "height: 630,\n      format: 'webp',");
 
   await writeFile(path, replaced);

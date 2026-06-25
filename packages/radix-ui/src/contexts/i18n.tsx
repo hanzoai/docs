@@ -1,7 +1,7 @@
 'use client';
 import { createContext, type ReactNode, use, useMemo, useRef } from 'react';
-import { usePathname, useRouter } from 'fumadocs-core/framework';
-import { renderTranslation, TranslationValue, type TranslationObject } from 'fumadocs-core/i18n';
+import { usePathname, useRouter } from '@hanzo/docs-core/framework';
+import { renderTranslation, TranslationValue, type TranslationObject } from '@hanzo/docs-core/i18n';
 import { defaultTranslations, type Translations } from '@/i18n';
 
 interface LocaleItem {

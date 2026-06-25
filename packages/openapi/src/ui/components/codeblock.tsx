@@ -2,10 +2,10 @@
 import {
   DynamicCodeBlock,
   type DynamicCodeblockProps,
-} from 'fumadocs-ui/components/dynamic-codeblock.core';
+} from '@hanzo/docs-ui/components/dynamic-codeblock.core';
 import { useApiContext } from '../contexts/api';
 import { createContext, type ReactNode, use } from 'react';
-import type { ShikiFactory } from 'fumadocs-core/highlight/shiki';
+import type { ShikiFactory } from '@hanzo/docs-core/highlight/shiki';
 
 const CodeBlockContext = createContext<ShikiFactory | null>(null);
 

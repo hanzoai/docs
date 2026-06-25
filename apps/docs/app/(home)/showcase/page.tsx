@@ -12,16 +12,16 @@ import ArkType from '@/public/showcases/arktype.png';
 import AssistantUI from '@/public/showcases/assistant-ui.png';
 import VisionUI from '@/public/showcases/vision-ui.png';
 import Design from './design.png';
-import Link from 'fumadocs-core/link';
+import Link from '@hanzo/docs-core/link';
 import MixSpace from '@/public/showcases/mix-space.png';
 import TurboStarter from '@/public/showcases/turbostarter.png';
 import HexaasBlog from '@/public/showcases/hexaas-blog.png';
 
 export const metadata = createMetadata({
   title: 'Showcase',
-  description: 'Some cool websites using Fumadocs',
+  description: 'Some cool websites using Hanzo Docs',
   openGraph: {
-    url: 'https://fumadocs.dev/showcase',
+    url: 'https://docs.hanzo.ai/showcase',
   },
 });
 
@@ -328,7 +328,7 @@ export default function Showcase() {
       <div className="relative overflow-hidden border border-dashed p-6">
         <h1 className="mb-4 text-xl font-medium">The docs framework designed with care.</h1>
         <p className="text-fd-muted-foreground">
-          A list of beautiful open-source projects with their docs powered by Fumadocs.
+          A list of beautiful open-source projects with their docs powered by Hanzo Docs.
         </p>
         <div className="mt-6">
           <a
@@ -368,7 +368,7 @@ export default function Showcase() {
         </svg>
         <div>
           <h2 className="text-sm font-medium mb-2">
-            Fumadocs powers the docs of Vercel open source SDKs.
+            Hanzo Docs powers the docs of Vercel open source SDKs.
           </h2>
           <div className="flex items-center gap-2 -mx-1.5">
             {vercel.map((item) => (
@@ -407,7 +407,7 @@ export default function Showcase() {
           </Link>
         </div>
       </div>
-      <h2 className="text-xl font-medium mt-12 px-4">Fumadocs can power your blog, too.</h2>
+      <h2 className="text-xl font-medium mt-12 px-4">Hanzo Docs can power your blog, too.</h2>
       <div className="mt-6 grid gap-2.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {blogs.map((showcase) => (
           <ShowcaseItem key={showcase.url} {...showcase} />

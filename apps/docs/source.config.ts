@@ -1,12 +1,12 @@
-import { applyMdxPreset, defineCollections, defineConfig, defineDocs } from 'fumadocs-mdx/config';
+import { applyMdxPreset, defineCollections, defineConfig, defineDocs } from '@hanzo/docs-mdx/config';
 import { z } from 'zod';
 import type { ElementContent } from 'hast';
-import jsonSchema from 'fumadocs-mdx/plugins/json-schema';
-import lastModified from 'fumadocs-mdx/plugins/last-modified';
+import jsonSchema from '@hanzo/docs-mdx/plugins/json-schema';
+import lastModified from '@hanzo/docs-mdx/plugins/last-modified';
 import type { ShikiTransformer } from 'shiki';
 import type { RemarkAutoTypeTableOptions } from '@hanzo/docs-typescript';
 import { shikiConfig } from './lib/shiki';
-import { metaSchema, pageSchema } from 'fumadocs-core/source/schema';
+import { metaSchema, pageSchema } from '@hanzo/docs-core/source/schema';
 import { visit } from 'unist-util-visit';
 import type { Transformer } from 'unified';
 import type { Root } from 'mdast';
@@ -52,10 +52,10 @@ export const docs = defineDocs({
     },
     async: true,
     async mdxOptions(environment) {
-      const { rehypeCodeDefaultOptions } = await import('fumadocs-core/mdx-plugins/rehype-code');
-      const { remarkSteps } = await import('fumadocs-core/mdx-plugins/remark-steps');
+      const { rehypeCodeDefaultOptions } = await import('@hanzo/docs-core/mdx-plugins/rehype-code');
+      const { remarkSteps } = await import('@hanzo/docs-core/mdx-plugins/remark-steps');
       const { remarkFeedbackBlock } =
-        await import('fumadocs-core/mdx-plugins/remark-feedback-block');
+        await import('@hanzo/docs-core/mdx-plugins/remark-feedback-block');
       const { transformerTwoslash } = await import('@hanzo/docs-twoslash');
       const { createFileSystemTypesCache } = await import('@hanzo/docs-twoslash/cache-fs');
       const { default: remarkMath } = await import('remark-math');
@@ -161,8 +161,8 @@ export const blog = defineCollections({
   }),
   async: true,
   async mdxOptions(environment) {
-    const { rehypeCodeDefaultOptions } = await import('fumadocs-core/mdx-plugins/rehype-code');
-    const { remarkSteps } = await import('fumadocs-core/mdx-plugins/remark-steps');
+    const { rehypeCodeDefaultOptions } = await import('@hanzo/docs-core/mdx-plugins/rehype-code');
+    const { remarkSteps } = await import('@hanzo/docs-core/mdx-plugins/remark-steps');
 
     return applyMdxPreset({
       rehypeCodeOptions: isLint
@@ -232,7 +232,7 @@ function remarkPassthroughUnknownJsx(): Transformer<Root, Root> {
     // Upstream docs use components from various platforms (Mintlify, Docusaurus,
     // GitBook, etc.) with incompatible APIs. Rather than maintaining a
     // whitelist and risking API mismatches (e.g. Mintlify <Tab title="..."> vs
-    // fumadocs <Tab value="...">), we strip all custom components and render
+    // Hanzo Docs <Tab value="...">), we strip all custom components and render
     // just their children. First-party docs are unaffected by this plugin.
     visit(tree, ['mdxJsxFlowElement', 'mdxJsxTextElement'], (node: any) => {
       if (!node.name) return; // already a fragment

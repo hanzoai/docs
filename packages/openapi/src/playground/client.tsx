@@ -19,10 +19,10 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from 'fumadocs-ui/components/ui/collapsible';
+} from '@hanzo/docs-ui/components/ui/collapsible';
 import { ChevronDown, LoaderCircle } from 'lucide-react';
 import { encodeRequestData } from '@/requests/media/encode';
-import { buttonVariants } from 'fumadocs-ui/components/ui/button';
+import { buttonVariants } from '@hanzo/docs-ui/components/ui/button';
 import { cn } from '@/utils/cn';
 import { anyFields, SchemaProvider, SchemaScope, useResolvedSchema } from '@/playground/schema';
 import {
@@ -44,8 +44,8 @@ import {
   useFieldValue,
   useListener,
   useStf,
-} from '@fumari/stf';
-import { arrayStartsWith, objectGet, objectSet, stringifyFieldKey } from '@fumari/stf/lib/utils';
+} from '@hanzo/docs-stf';
+import { arrayStartsWith, objectGet, objectSet, stringifyFieldKey } from '@hanzo/docs-stf/lib/utils';
 import { FieldInput, FieldSet, JsonInput, ObjectInput } from './components/inputs';
 import type { Document, HttpMethods, ParameterObject } from '@/types';
 import { useTranslations } from '@/ui/client/i18n';
@@ -53,7 +53,7 @@ import { useOperationContext } from '@/ui/operation/client';
 import { OAuthDialog, OAuthDialogContent, OAuthDialogTrigger } from './components/oauth-dialog';
 import { dereferenceSwallow } from '@/utils/schema/dereference';
 import { useAuth } from './auth';
-import { useOnChange } from 'fumadocs-core/utils/use-on-change';
+import { useOnChange } from '@hanzo/docs-core/utils/use-on-change';
 import { Spinner } from './components/spinner';
 
 export interface FormValues extends Record<string, unknown> {
@@ -105,7 +105,7 @@ export interface PlaygroundClientOptions {
    * render the parameter inputs of API endpoint.
    *
    * for updating values, use:
-   * - the `Custom.useController()` from `fumadocs-openapi/playground/client`.
+   * - the `Custom.useController()` from `@hanzo/docs-openapi/playground/client`.
    *
    * Recommended types packages: `json-schema-typed`, `openapi-types`.
    */

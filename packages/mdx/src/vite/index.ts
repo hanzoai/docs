@@ -57,7 +57,7 @@ export default async function mdx(
   );
 
   return {
-    name: 'fumadocs-mdx',
+    name: '@hanzo/docs-mdx',
     // needed, otherwise other plugins will be executed before our `transform`.
     enforce: 'pre',
     config(config) {
@@ -65,9 +65,9 @@ export default async function mdx(
 
       return mergeConfig(config, {
         resolve: {
-          noExternal: ['fumadocs-core', '@fumadocs/base-ui', 'fumadocs-openapi', '@fumadocs/base-ui'],
+          noExternal: ['@hanzo/docs-core', '@hanzo/docs-base-ui', '@hanzo/docs-openapi', '@hanzo/docs-base-ui'],
           // only dedupe for public, non-transitive libs
-          dedupe: ['fumadocs-core', '@fumadocs/base-ui', 'fumadocs-openapi', '@fumadocs/base-ui'],
+          dedupe: ['@hanzo/docs-core', '@hanzo/docs-base-ui', '@hanzo/docs-openapi', '@hanzo/docs-base-ui'],
         },
       } satisfies UserConfig);
     },
@@ -98,12 +98,12 @@ export default async function mdx(
     },
   };
   const mdxPlugin: Plugin = {
-    name: 'fumadocs-mdx:mdx',
+    name: '@hanzo/docs-mdx:mdx',
   };
 
   return [
     {
-      name: 'fumadocs-mdx',
+      name: '@hanzo/docs-mdx',
       async config(config) {
         const root = config.root ?? process.cwd();
         const options = applyDefaults(root, pluginOptions);
@@ -145,7 +145,7 @@ export default async function mdx(
         if ('_fumadocs_skipViteConfig' in config && config._fumadocs_skipViteConfig) return;
         if (!options.updateViteConfig) return;
 
-        const { getConfig } = await import('@fumadocs/vite');
+        const { getConfig } = await import('@hanzo/docs-vite');
         return getConfig({ root });
       },
       async buildStart() {

@@ -1,14 +1,14 @@
 // @ts-nocheck
-import { dynamic } from 'fumadocs-mdx/runtime/dynamic';
+import { dynamic } from '@hanzo/docs-mdx/runtime/dynamic';
 import * as Config from '../source.config';
 
-const create = await dynamic<typeof Config, import("fumadocs-mdx/runtime/types").InternalTypeConfig & {
+const create = await dynamic<typeof Config, import("@hanzo/docs-mdx/runtime/types").InternalTypeConfig & {
   DocData: {
     docs: {
       /**
        * extracted references (e.g. hrefs, paths), useful for analyzing relationships between pages.
        */
-      extractedReferences: import("fumadocs-mdx").ExtractedReference[];
+      extractedReferences: import("@hanzo/docs-mdx").ExtractedReference[];
     },
   }
 } & {
