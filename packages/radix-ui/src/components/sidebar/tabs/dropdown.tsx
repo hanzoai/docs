@@ -1,8 +1,8 @@
 'use client';
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { type ComponentProps, type ReactNode, useMemo, useState } from 'react';
-import Link from 'fumadocs-core/link';
-import { usePathname } from 'fumadocs-core/framework';
+import Link from '@hanzo/docs-core/link';
+import { usePathname } from '@hanzo/docs-core/framework';
 import { cn } from '@/utils/cn';
 import { useSidebar } from '@/components/sidebar/base';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';

@@ -1,6 +1,6 @@
 import { getConfigRuntime } from '@/config/load-runtime';
 import { getSource } from '@/lib/source';
-import { generate as DefaultImage } from 'fumadocs-ui/og/takumi';
+import { generate as DefaultImage } from '@hanzo/docs-ui/og/takumi';
 import { ApiContext } from 'waku/router';
 import { ImageResponse } from '@takumi-rs/image-response';
 

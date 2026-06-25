@@ -7,7 +7,7 @@ async function init() {
   const out = await crawlFrameworkPkgs({
     root: '../vite-data',
     isFrameworkPkgByName(pkgName) {
-      if (pkgName.startsWith('@fumadocs/') || pkgName.startsWith('fumadocs-')) return true;
+      if (pkgName.startsWith('@hanzo/docs-')) return true;
     },
   });
 

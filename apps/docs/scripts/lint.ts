@@ -1,5 +1,5 @@
 import { type FileObject, printErrors, scanURLs, validateFiles } from 'next-validate-link';
-import { InferPageType } from 'fumadocs-core/source';
+import { InferPageType } from '@hanzo/docs-core/source';
 import { blog, source } from '@/lib/source';
 
 type AnySource = typeof blog | typeof source;

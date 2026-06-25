@@ -7,7 +7,7 @@ export async function findConfigPath(): Promise<string | null> {
   const dir = process.env.ROOT_DIR ?? process.cwd();
   const files = fs.readdirSync(dir);
   for (const file of files) {
-    if (/^fumadocs\.config\.(js|jsx|ts|tsx)$/.test(file)) {
+    if (/^hanzo-docs\.config\.(js|jsx|ts|tsx)$/.test(file)) {
       return path.resolve(dir, file);
     }
   }

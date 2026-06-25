@@ -1,9 +1,9 @@
-import * as Plugins from 'fumadocs-core/mdx-plugins';
+import * as Plugins from '@hanzo/docs-core/mdx-plugins';
 import { type CompileOptions, createProcessor } from '@mdx-js/mdx';
 import type { MDXComponents } from 'mdx/types';
 import { parseFrontmatter, pluginOption, type ResolvePlugins } from './utils';
 import type { Compatible, VFile } from 'vfile';
-import type { TableOfContents } from 'fumadocs-core/toc';
+import type { TableOfContents } from '@hanzo/docs-core/toc';
 import { executeMdx, type MdxContent } from '@/render';
 import { pathToFileURL } from 'node:url';
 

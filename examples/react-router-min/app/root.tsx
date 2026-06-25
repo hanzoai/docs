@@ -6,7 +6,7 @@ import {
   Scripts,
   ScrollRestoration,
 } from 'react-router';
-import { RootProvider } from 'fumadocs-ui/provider/react-router';
+import { RootProvider } from '@hanzo/docs-ui/provider/react-router';
 import type { Route } from './+types/root';
 import './app.css';
 

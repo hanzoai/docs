@@ -32,7 +32,7 @@ export interface RehypeTocOptions {
 declare module 'vfile' {
   interface DataMap {
     /**
-     * [Fumadocs: rehype-toc] output data.
+     * [Hanzo Docs: rehype-toc] output data.
      */
     rehypeToc?: RehypeTOCItemType[];
   }

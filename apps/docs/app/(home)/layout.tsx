@@ -1,4 +1,4 @@
-import { HomeLayout } from '@fumadocs/base-ui/layouts/home';
+import { HomeLayout } from '@hanzo/docs-base-ui/layouts/home';
 import { baseOptions, linkItems } from '@/components/layouts/shared';
 import { TryHanzoDropdown } from '@/components/try-hanzo-dropdown';
 import { Footer } from '@/components/footer';

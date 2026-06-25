@@ -34,7 +34,7 @@ const LayoutContext = createContext<{
 export function useHomeLayout() {
   const context = use(LayoutContext);
   if (!context)
-    throw new Error('Please use this component under <HomeLayout /> (`fumadocs-ui/layouts/home`).');
+    throw new Error('Please use this component under <HomeLayout /> (`@hanzo/docs-ui/layouts/home`).');
   return context;
 }
 

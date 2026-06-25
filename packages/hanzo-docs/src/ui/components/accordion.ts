@@ -1,1 +1,1 @@
-export * from '@fumadocs/base-ui/components/accordion';
+export * from '@hanzo/docs-base-ui/components/accordion';

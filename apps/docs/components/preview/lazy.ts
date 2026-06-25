@@ -3,20 +3,20 @@ import dynamic from 'next/dynamic';
 
 export const DynamicCodeBlock = dynamic(() => import('./dynamic-codeblock'));
 export const Banner = dynamic(() =>
-  import('@fumadocs/base-ui/components/banner').then((res) => res.Banner),
+  import('@hanzo/docs-base-ui/components/banner').then((res) => res.Banner),
 );
 export const InlineTOC = dynamic(() =>
-  import('@fumadocs/base-ui/components/inline-toc').then((res) => res.InlineTOC),
+  import('@hanzo/docs-base-ui/components/inline-toc').then((res) => res.InlineTOC),
 );
 
-export const File = dynamic(() => import('@fumadocs/base-ui/components/files').then((res) => res.File));
-export const Files = dynamic(() => import('@fumadocs/base-ui/components/files').then((res) => res.Files));
+export const File = dynamic(() => import('@hanzo/docs-base-ui/components/files').then((res) => res.File));
+export const Files = dynamic(() => import('@hanzo/docs-base-ui/components/files').then((res) => res.Files));
 export const Folder = dynamic(() =>
-  import('@fumadocs/base-ui/components/files').then((res) => res.Folder),
+  import('@hanzo/docs-base-ui/components/files').then((res) => res.Folder),
 );
 
 export const ImageZoom = dynamic(() =>
-  import('@fumadocs/base-ui/components/image-zoom').then((res) => res.ImageZoom),
+  import('@hanzo/docs-base-ui/components/image-zoom').then((res) => res.ImageZoom),
 );
 
 export const GraphView = dynamic(() =>

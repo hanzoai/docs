@@ -1,6 +1,6 @@
 import type { FileCollectionStore } from 'fuma-content/collections/runtime/file-store';
 import type { MDXStoreLazyData, MDXStoreData } from 'fuma-content/collections/mdx/runtime';
-import type { MetaData, PageData, Source } from 'fumadocs-core/source';
+import type { MetaData, PageData, Source } from '@hanzo/docs-core/source';
 
 type ToPageData<T> =
   T extends MDXStoreData<infer Frontmatter>
@@ -9,7 +9,7 @@ type ToPageData<T> =
       ? Frontmatter & T
       : never;
 
-export function toFumadocsSource<
+export function toHanzoDocsSource<
   Mdx extends MDXStoreData<PageData> | MDXStoreLazyData<PageData, unknown> = MDXStoreData<
     PageData,
     unknown
@@ -49,8 +49,8 @@ export function docsStore<
   Meta extends { data: MetaData } = { data: MetaData },
 >(mdxStore: FileCollectionStore<Mdx>, metaStore: FileCollectionStore<Meta>) {
   return {
-    toFumadocsSource() {
-      return toFumadocsSource(mdxStore, metaStore);
+    toHanzoDocsSource() {
+      return toHanzoDocsSource(mdxStore, metaStore);
     },
   };
 }

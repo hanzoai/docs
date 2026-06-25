@@ -1,9 +1,9 @@
-import defaultMdxComponents from 'fumadocs-ui/mdx';
-import { Files, File, Folder } from 'fumadocs-ui/components/files';
-import { Tabs, Tab, TabsContent, TabsList, TabsTrigger } from 'fumadocs-ui/components/tabs';
-import { Steps, Step } from 'fumadocs-ui/components/steps';
+import defaultMdxComponents from '@hanzo/docs-ui/mdx';
+import { Files, File, Folder } from '@hanzo/docs-ui/components/files';
+import { Tabs, Tab, TabsContent, TabsList, TabsTrigger } from '@hanzo/docs-ui/components/tabs';
+import { Steps, Step } from '@hanzo/docs-ui/components/steps';
 import type { MDXComponents } from 'mdx/types';
-import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Accordion, Accordions } from '@hanzo/docs-ui/components/accordion';
 import * as icons from 'lucide-react';
 
 export function getMDXComponents(components?: MDXComponents): MDXComponents {

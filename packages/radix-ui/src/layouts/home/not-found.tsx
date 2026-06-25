@@ -1,6 +1,6 @@
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/utils/cn';
-import Link from 'fumadocs-core/link';
+import Link from '@hanzo/docs-core/link';
 import { HomeIcon } from 'lucide-react';
 import { I18nLabel } from '@/contexts/i18n';
 

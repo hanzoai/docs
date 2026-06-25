@@ -8,15 +8,15 @@ const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../src');
 
 // in shadcn cli, the order of files matters when writing import paths on consumer's codebase
 export const registry: Registry = {
-  name: 'fumadocs/base-ui',
+  name: 'hanzo/base-ui',
   dir,
   tsconfigPath: '../tsconfig.json',
   packageJson: '../package.json',
   env: {
-    ui: '@fumadocs/base-ui',
+    ui: '@hanzo/docs-base-ui',
   },
   onResolve(ref) {
-    return resolveExternal(ref, 'fumadocs-ui', dir) ?? ref;
+    return resolveExternal(ref, '@hanzo/docs-ui', dir) ?? ref;
   },
   components: [
     ...commonComponents,
@@ -348,8 +348,8 @@ export const registry: Registry = {
     },
   ],
   dependencies: {
-    'fumadocs-core': null,
-    '@fumadocs/base-ui': null,
+    '@hanzo/docs-core': null,
+    '@hanzo/docs-base-ui': null,
     react: null,
   },
 };

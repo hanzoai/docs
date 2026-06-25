@@ -1,1 +1,1 @@
-export * from 'fumadocs-mdx/runtime/dynamic';
+export * from '@hanzo/docs-mdx/runtime/dynamic';

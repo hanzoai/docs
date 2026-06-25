@@ -1,7 +1,7 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from '@tanstack/react-router';
 import appCss from '@/styles/app.css?url';
-import { RootProvider } from 'fumadocs-ui/provider/tanstack';
-import { DevClient } from '@fumadocs/local-md/dev/react-client';
+import { RootProvider } from '@hanzo/docs-ui/provider/tanstack';
+import { DevClient } from '@hanzo/docs-local-md/dev/react-client';
 
 export const Route = createRootRoute({
   head: () => ({
@@ -14,7 +14,7 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'Fumadocs on TanStack Start',
+        title: 'Hanzo Docs on TanStack Start',
       },
     ],
     links: [{ rel: 'stylesheet', href: appCss }],

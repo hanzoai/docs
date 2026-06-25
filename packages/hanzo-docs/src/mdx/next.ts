@@ -1,1 +1,1 @@
-export * from 'fumadocs-mdx/next';
+export * from '@hanzo/docs-mdx/next';

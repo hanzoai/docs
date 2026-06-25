@@ -1,6 +1,6 @@
 // source.config.ts
-import { defineConfig, defineDocs } from "fumadocs-mdx/config";
-import { metaSchema, pageSchema } from "fumadocs-core/source/schema";
+import { defineConfig, defineDocs } from "@hanzo/docs-mdx/config";
+import { metaSchema, pageSchema } from "@hanzo/docs-core/source/schema";
 var docs = defineDocs({
   dir: "content/docs",
   docs: {

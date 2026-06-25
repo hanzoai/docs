@@ -1,13 +1,13 @@
-import type { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
-import type { Callout } from 'fumadocs-ui/components/callout';
-import type { File, Folder } from 'fumadocs-ui/components/files';
-import type { InlineTOC } from 'fumadocs-ui/components/inline-toc';
-import type { TypeTable } from 'fumadocs-ui/components/type-table';
-import type { Card } from 'fumadocs-ui/components/card';
-import type { DocsLayoutProps } from 'fumadocs-ui/layouts/docs';
+import type { Accordion, Accordions } from '@hanzo/docs-ui/components/accordion';
+import type { Callout } from '@hanzo/docs-ui/components/callout';
+import type { File, Folder } from '@hanzo/docs-ui/components/files';
+import type { InlineTOC } from '@hanzo/docs-ui/components/inline-toc';
+import type { TypeTable } from '@hanzo/docs-ui/components/type-table';
+import type { Card } from '@hanzo/docs-ui/components/card';
+import type { DocsLayoutProps } from '@hanzo/docs-ui/layouts/docs';
 import type { ComponentProps, ComponentPropsWithoutRef } from 'react';
 import type { AutoTypeTable } from '@hanzo/docs-typescript/ui';
-import type { RootProviderProps } from 'fumadocs-ui/provider/base';
+import type { RootProviderProps } from '@hanzo/docs-ui/provider/base';
 
 export type AccordionsProps = Omit<
   ComponentPropsWithoutRef<typeof Accordions>,
@@ -67,4 +67,4 @@ export type AutoTypeTableProps = Omit<
 
 export type SearchProps = Required<RootProviderProps>['search'];
 
-export type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
+export type { BaseLayoutProps } from '@hanzo/docs-ui/layouts/shared';

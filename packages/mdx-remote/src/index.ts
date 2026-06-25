@@ -1,4 +1,4 @@
-import type { TOCItemType } from 'fumadocs-core/toc';
+import type { TOCItemType } from '@hanzo/docs-core/toc';
 import type { MdxContent } from '@/render';
 
 export * from './compile';

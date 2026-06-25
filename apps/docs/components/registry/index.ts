@@ -35,25 +35,25 @@ export const compileOptions: Partial<CompileOptions> = {
       file = path.relative(radixUi.registry.dir, ref.file);
       if (file.startsWith('contexts/') || file.startsWith('utils/use-')) {
         return {
-          dep: 'fumadocs-ui',
+          dep: '@hanzo/docs-ui',
           type: 'dependency',
-          specifier: `fumadocs-ui/${removeExtname(file)}`,
+          specifier: `@hanzo/docs-ui/${removeExtname(file)}`,
         };
       }
 
       file = path.relative(baseUi.registry.dir, ref.file);
       if (file.startsWith('contexts/') || file.startsWith('utils/use-')) {
         return {
-          dep: '@fumadocs/base-ui',
+          dep: '@hanzo/docs-base-ui',
           type: 'dependency',
-          specifier: `@fumadocs/base-ui/${removeExtname(file)}`,
+          specifier: `@hanzo/docs-base-ui/${removeExtname(file)}`,
         };
       }
     }
 
     // map dep imports to actual components
-    if (ref.type === 'dependency' && ref.dep === 'fumadocs-ui') {
-      const match = /fumadocs-ui\/components\/ui\/(.*)/.exec(ref.specifier);
+    if (ref.type === 'dependency' && ref.dep === '@hanzo/docs-ui') {
+      const match = /@hanzo/docs-ui\/components\/ui\/(.*)/.exec(ref.specifier);
 
       if (match) {
         return {
@@ -69,7 +69,7 @@ export const compileOptions: Partial<CompileOptions> = {
 
 export const registry: Registry = {
   dir: baseDir,
-  name: 'fumadocs',
+  name: 'Hanzo Docs',
   subRegistries: [radixUi.registry, baseUi.registry, sanity.registry],
 
   components: [
@@ -228,8 +228,8 @@ export const registry: Registry = {
     },
   ],
   dependencies: {
-    'fumadocs-core': null,
-    'fumadocs-ui': null,
+    '@hanzo/docs-core': null,
+    '@hanzo/docs-ui': null,
     'lucide-react': null,
     next: null,
     react: null,

@@ -1,4 +1,4 @@
-import type { LoaderConfig, LoaderOutput, Page } from 'fumadocs-core/source';
+import type { LoaderConfig, LoaderOutput, Page } from '@hanzo/docs-core/source';
 import { type ComponentProps, type FC, useEffectEvent } from 'react';
 import defaultMdxComponents from '@/mdx';
 

@@ -8,9 +8,9 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const packageDirs = {
-  'fumadocs-core': 'packages/core',
-  'fumadocs-mdx': 'packages/mdx',
-  'fumadocs-ui': 'packages/radix-ui',
+  '@hanzo/docs-core': 'packages/core',
+  '@hanzo/docs-mdx': 'packages/mdx',
+  '@hanzo/docs-ui': 'packages/radix-ui',
 };
 
 const stackblitzPath = join(root, 'examples/stackblitz/package.json');

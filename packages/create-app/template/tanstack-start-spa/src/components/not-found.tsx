@@ -1,6 +1,6 @@
 import { baseOptions } from '@/lib/layout.shared';
-import { HomeLayout } from 'fumadocs-ui/layouts/home';
-import { DefaultNotFound } from 'fumadocs-ui/layouts/home/not-found';
+import { HomeLayout } from '@hanzo/docs-ui/layouts/home';
+import { DefaultNotFound } from '@hanzo/docs-ui/layouts/home/not-found';
 
 export function NotFound() {
   return (

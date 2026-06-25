@@ -1,6 +1,6 @@
 import { RenderContext } from '@/types';
 import { processDocument } from '@/utils/process-document';
-import { defaultShikiFactory } from 'fumadocs-core/highlight/shiki/full';
+import { defaultShikiFactory } from '@hanzo/docs-core/highlight/shiki/full';
 import Slugger from 'github-slugger';
 
 export async function renderContextFrom(input: string): Promise<RenderContext> {

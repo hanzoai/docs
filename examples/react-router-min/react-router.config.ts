@@ -1,6 +1,6 @@
 import type { Config } from '@react-router/dev/config';
 import { glob } from 'node:fs/promises';
-import { createGetUrl, getSlugs } from 'fumadocs-core/source';
+import { createGetUrl, getSlugs } from '@hanzo/docs-core/source';
 
 const getUrl = createGetUrl('/docs');
 

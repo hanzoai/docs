@@ -1,7 +1,7 @@
-import { flexsearchFromSource } from 'fumadocs-core/search/flexsearch';
+import { flexsearchFromSource } from '@hanzo/docs-core/search/flexsearch';
 import { getSource, Source } from '@/lib/source';
 import { revalidable } from '@/lib/revalidable';
-import { structure } from 'fumadocs-core/mdx-plugins/remark-structure';
+import { structure } from '@hanzo/docs-core/mdx-plugins/remark-structure';
 import { getConfigRuntime } from '@/config/load-runtime';
 
 const getServer = revalidable({

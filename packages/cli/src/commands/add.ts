@@ -3,7 +3,7 @@ import picocolors from 'picocolors';
 import { UIRegistries } from '@/commands/shared';
 import { RegistryConnector } from 'fuma-cli/registry/connector';
 import { LoadedConfig } from '@/config';
-import { FumadocsComponentInstaller } from '@/registry/installer';
+import { HanzoDocsComponentInstaller } from '@/registry/installer';
 
 interface AddOption {
   label: string;
@@ -18,7 +18,7 @@ export interface Target {
 
 export async function add(input: string[], connector: RegistryConnector, config: LoadedConfig) {
   let targets: Target[];
-  const installer = new FumadocsComponentInstaller(connector, config);
+  const installer = new HanzoDocsComponentInstaller(connector, config);
   const subRegistry = UIRegistries[config.uiLibrary];
 
   if (input.length === 0) {
@@ -40,7 +40,7 @@ export async function add(input: string[], connector: RegistryConnector, config:
       message: 'Select components to install',
       options: [
         ...(await scan(undefined, 'common')),
-        ...(await scan('fumadocs/sanity', 'sanity')),
+        ...(await scan('hanzo/sanity', 'sanity')),
         ...(await scan(subRegistry, 'ui')),
       ].sort((a, b) => a.label.localeCompare(b.label)),
     });

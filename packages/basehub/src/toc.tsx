@@ -1,5 +1,5 @@
 import type { RichTextNode, RichTextTocNode } from 'basehub/api-transaction';
-import type { TOCItemType } from 'fumadocs-core/toc';
+import type { TOCItemType } from '@hanzo/docs-core/toc';
 import type { ReactNode } from 'react';
 
 export interface ParseTOCOptions {

@@ -1,1 +1,1 @@
-export * from 'fumadocs-core/mdx-plugins/rehype-code';
+export * from '@hanzo/docs-core/mdx-plugins/rehype-code';

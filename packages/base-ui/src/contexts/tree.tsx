@@ -1,8 +1,8 @@
 'use client';
-import type * as PageTree from 'fumadocs-core/page-tree';
-import { usePathname } from 'fumadocs-core/framework';
+import type * as PageTree from '@hanzo/docs-core/page-tree';
+import { usePathname } from '@hanzo/docs-core/framework';
 import { type ReactNode, useMemo, useRef, createContext, use } from 'react';
-import { searchPath } from 'fumadocs-core/breadcrumb';
+import { searchPath } from '@hanzo/docs-core/breadcrumb';
 
 type MakeRequired<O, K extends keyof O> = Omit<O, K> & Pick<Required<O>, K>;
 

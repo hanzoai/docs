@@ -1,1 +1,1 @@
-export * from 'fumadocs-core/framework/waku';
+export * from '@hanzo/docs-core/framework/waku';

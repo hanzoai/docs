@@ -1,1 +1,1 @@
-export * from 'fumadocs-mdx/runtime/types';
+export * from '@hanzo/docs-mdx/runtime/types';

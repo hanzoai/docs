@@ -3,7 +3,7 @@ import { useTranslations } from '@/contexts/i18n';
 import { cn } from '@/utils/cn';
 import { type ComponentProps, useCallback, useEffect, useRef, useState } from 'react';
 import { mergeRefs } from '@/utils/merge-refs';
-import * as Primitive from 'fumadocs-core/toc';
+import * as Primitive from '@hanzo/docs-core/toc';
 import { useTOCItems } from '.';
 
 export type TOCItemsProps = ComponentProps<'div'>;

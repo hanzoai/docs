@@ -23,18 +23,18 @@ export interface RemarkCodeTabOptions {
 declare module 'mdast' {
   export interface CodeData {
     /**
-     * [Fumadocs: remark-code-tab] the associated tab value
+     * [Hanzo Docs: remark-code-tab] the associated tab value
      */
     tab?: string;
     /**
-     * [Fumadocs: remark-code-tab] the associated tab group ID
+     * [Hanzo Docs: remark-code-tab] the associated tab group ID
      */
     tabGroup?: string;
   }
 
   export interface Data {
     /**
-     * [Fumadocs: remark-code-tab] internal
+     * [Hanzo Docs: remark-code-tab] internal
      */
     _code_tab_visited?: true;
   }

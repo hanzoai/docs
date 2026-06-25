@@ -1,5 +1,5 @@
 import type { I18nProviderProps, Translations } from '@/contexts/i18n';
-import type { I18nConfig } from 'fumadocs-core/i18n';
+import type { I18nConfig } from '@hanzo/docs-core/i18n';
 
 export type Translations = {
   displayName: string;
@@ -148,7 +148,7 @@ export function i18nProvider(
 
 export interface I18nUIConfig<Languages extends string> extends I18nConfig<Languages> {
   /**
-   * get i18n config for Fumadocs UI `<RootProvider i18n={config} />`.
+   * get i18n config for Hanzo Docs UI `<RootProvider i18n={config} />`.
    */
   provider: (locale?: Languages | (string & {})) => I18nProviderProps;
 }

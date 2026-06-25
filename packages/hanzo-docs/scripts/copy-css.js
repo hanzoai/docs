@@ -9,8 +9,8 @@ const root = join(__dirname, '..');
 const twoslashStylesSource = join(root, 'node_modules/@hanzo/docs-twoslash/styles');
 const twoslashDistDest = join(root, 'dist/twoslash');
 
-// Copy openapi CSS from fumadocs-openapi
-const openapiCssSource = join(root, 'node_modules/fumadocs-openapi/css');
+// Copy openapi CSS from @hanzo/docs-openapi
+const openapiCssSource = join(root, 'node_modules/@hanzo/docs-openapi/css');
 const openapiCssDest = join(root, 'dist/openapi/css');
 
 try {

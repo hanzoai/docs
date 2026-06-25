@@ -1,4 +1,4 @@
-import type { Source, VirtualFile } from 'fumadocs-core/source';
+import type { Source, VirtualFile } from '@hanzo/docs-core/source';
 import type { BaseDocsData, BaseMetaData } from '@/types';
 
 export function createMDXSource<Docs extends BaseDocsData, Meta extends BaseMetaData>(

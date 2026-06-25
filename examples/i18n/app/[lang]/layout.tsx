@@ -1,8 +1,8 @@
-import 'fumadocs-ui/style.css';
-import { RootProvider } from 'fumadocs-ui/provider/next';
+import '@hanzo/docs-ui/style.css';
+import { RootProvider } from '@hanzo/docs-ui/provider/next';
 import { Inter } from 'next/font/google';
 import { translations } from '@/lib/layout.shared';
-import { i18nProvider } from 'fumadocs-ui/i18n';
+import { i18nProvider } from '@hanzo/docs-ui/i18n';
 
 const inter = Inter({
   subsets: ['latin'],

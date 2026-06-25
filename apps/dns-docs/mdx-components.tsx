@@ -1,10 +1,10 @@
 import type { MDXComponents } from 'mdx/types';
-import defaultMdxComponents from '@fumadocs/base-ui/mdx';
-import { Tab, Tabs } from '@fumadocs/base-ui/components/tabs';
-import { Callout } from '@fumadocs/base-ui/components/callout';
-import { Step, Steps } from '@fumadocs/base-ui/components/steps';
-import { File, Folder, Files } from '@fumadocs/base-ui/components/files';
-import { Accordion, Accordions } from '@fumadocs/base-ui/components/accordion';
+import defaultMdxComponents from '@hanzo/docs-base-ui/mdx';
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs';
+import { Callout } from '@hanzo/docs-base-ui/components/callout';
+import { Step, Steps } from '@hanzo/docs-base-ui/components/steps';
+import { File, Folder, Files } from '@hanzo/docs-base-ui/components/files';
+import { Accordion, Accordions } from '@hanzo/docs-base-ui/components/accordion';
 
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
   return {
