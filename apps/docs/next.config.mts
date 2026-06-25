@@ -2,6 +2,9 @@ import createBundleAnalyzer from '@next/bundle-analyzer';
 import { createMDX } from '@hanzo/docs/mdx/next';
 import type { NextConfig } from 'next';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const withAnalyzer = createBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
@@ -179,7 +182,6 @@ const config: NextConfig = {
   },
 };
 
-const withStory = createNextStory();
 const withMDX = createMDX();
 
 // Type assertion needed due to version mismatch between @hanzo/docs-mdx (next@16) and docs app (next@15)
