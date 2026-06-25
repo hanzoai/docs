@@ -2,6 +2,9 @@ import createBundleAnalyzer from '@next/bundle-analyzer';
 import { createMDX } from '@hanzo/docs/mdx/next';
 import type { NextConfig } from 'next';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const withAnalyzer = createBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
@@ -47,7 +50,7 @@ const config: NextConfig = {
     // Upstream project docs (content/docs/projects/) are cloned verbatim //
     // from other repos and import packages that don't exist here.        //
     // Three categories:                                                  //
-    //   a) fumadocs-* -> @hanzo/docs-* (same library, forked)            //
+    //   a) upstream doc-framework imports -> @hanzo/docs-* (forked lib)   //
     //   b) other doc platforms -> empty stub module                       //
     //   c) absolute path imports -> false (empty object)                 //
     // ------------------------------------------------------------------ //
@@ -59,15 +62,7 @@ const config: NextConfig = {
       '@hanzo/mdx:collections/browser': path.resolve(__dirname, 'docs/browser.ts'),
       '@hanzo/mdx:collections/dynamic': path.resolve(__dirname, 'docs/dynamic.ts'),
 
-      // (a) fumadocs -> @hanzo/docs equivalents (real components/APIs)
-
-      '@hanzo/docs-ui': '@hanzo/docs-base-ui',
-      '@hanzo/docs-core': '@hanzo/docs-core',
-      '@hanzo/docs-mdx': '@hanzo/docs-mdx',
-      '@hanzo/docs-core': '@hanzo/docs-core',
-      '@hanzo/docs-mdx': '@hanzo/docs-mdx',
-
-      // (b) Other doc-platform packages -> no-op stub
+      // Other doc-platform packages -> no-op stub
       '@docusaurus': emptyProjectModule,
       '@theme/Tabs': emptyProjectModule,
       '@theme/TabItem': emptyProjectModule,
@@ -94,7 +89,7 @@ const config: NextConfig = {
     // ------------------------------------------------------------------ //
     const aliasedPrefixes = [
       // Already handled by aliases above – skip to avoid double-processing
-      'fumadocs-', '@hanzo/', '@docusaurus', '@theme', 'nextra', '@mintlify',
+      '@hanzo/docs-', '@hanzo/', '@docusaurus', '@theme', 'nextra', '@mintlify',
       '/snippets', '/src/components', '@site',
       // Core dependencies that must always resolve normally
       'react', 'next', 'node:', 'webpack',
@@ -172,8 +167,7 @@ const config: NextConfig = {
   ],
   typescript: {
 
-    // Upstream project docs import @hanzo/docs-ui which is aliased to @hanzo/docs-base-ui
-    // at webpack level, but TS type-checker doesn't see webpack aliases.
+    // Some fork packages emit types the consuming app doesn't type-check against.
     ignoreBuildErrors: true,
   },
   images: {
@@ -188,7 +182,6 @@ const config: NextConfig = {
   },
 };
 
-const withStory = createNextStory();
 const withMDX = createMDX();
 
 // Type assertion needed due to version mismatch between @hanzo/docs-mdx (next@16) and docs app (next@15)

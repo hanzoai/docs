@@ -211,14 +211,26 @@ export function toWebpack(loader: Loader): WebpackLoader {
         ),
       );
 
-      const fallback = [
-        `export const frontmatter = {};`,
-        `export const toc = [];`,
-        `export const structuredData = { headings: [], contents: [] };`,
-        `export default function ErrorPage() {`,
-        `  return null;`,
-        `}`,
-      ].join('\n');
+      // The fallback must match the failing module's type. `.json` meta files
+      // are webpack `type: 'json'` modules — emitting JS (`export const …`)
+      // there makes webpack JSON-parse JS and crash the whole build. Meta
+      // files (json/yaml) fall back to an empty meta object in their own
+      // module shape; only MDX pages get the React error-page fallback.
+      let fallback: string;
+      if (filePath.endsWith('.json')) {
+        fallback = '{}';
+      } else if (filePath.endsWith('.yaml') || filePath.endsWith('.yml')) {
+        fallback = 'export default {};';
+      } else {
+        fallback = [
+          `export const frontmatter = {};`,
+          `export const toc = [];`,
+          `export const structuredData = { headings: [], contents: [] };`,
+          `export default function ErrorPage() {`,
+          `  return null;`,
+          `}`,
+        ].join('\n');
+      }
 
       callback(undefined, fallback);
     }

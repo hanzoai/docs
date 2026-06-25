@@ -453,19 +453,15 @@ export function createPageTreeBuilder(
 
     const { title, description, icon, access, accessOrgs } = page.data;
     let item: PageTree.Item = {
-      $id: this.generateId(path),
+      $id: generateId(path),
       type: 'page',
       name: title ?? pathToName(basename(path, extname(path))),
       description,
       icon,
-      url: this.ctx.getUrl(page.slugs, this.ctx.locale),
+      url: getUrl(page.slugs, ctx.locale),
       access: access && access !== 'public' ? access : undefined,
       accessOrgs: accessOrgs && accessOrgs.length > 0 ? accessOrgs : undefined,
-      $ref: !this.ctx.noRef
-        ? {
-            file: path,
-          }
-        : undefined,
+      $ref: !noRef ? path : undefined,
     };
     for (const transformer of transformers) {
       if (!transformer.file) continue;

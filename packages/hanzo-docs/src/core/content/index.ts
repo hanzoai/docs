@@ -1,1 +1,2 @@
-export * from '@hanzo/docs-core/content';
+export * from './github';
+export * from './toc';

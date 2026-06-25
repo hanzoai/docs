@@ -1,5 +1,5 @@
-const owner = 'fuma-nama';
-const repo = 'fumadocs';
+const owner = 'hanzoai';
+const repo = 'docs';
 const versionPattern = /^16\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 
 interface GitObjectRef {
@@ -55,14 +55,14 @@ export async function GET(request: Request): Promise<Response> {
   if (!versionPattern.test(version)) {
     return Response.json(
       {
-        error: 'Only fumadocs-ui versions around 16.x.x are supported',
+        error: 'Only @hanzo/docs-ui versions around 16.x.x are supported',
         received: version,
       },
       { status: 400 },
     );
   }
 
-  const tag = `fumadocs-ui@${version}`;
+  const tag = `@hanzo/docs-ui@${version}`;
 
   try {
     const commitSha = await resolveTagCommitSha(tag);
@@ -143,7 +143,7 @@ async function resolveTagCommitSha(tag: string): Promise<string | null> {
 async function githubRequest<T>(path: string, options?: GitHubRequestOptions): Promise<T | null> {
   const headers = new Headers({
     Accept: 'application/vnd.github+json',
-    'User-Agent': 'fumadocs-docs-route',
+    'User-Agent': 'hanzo-docs-route',
     'X-GitHub-Api-Version': '2022-11-28',
   });
 

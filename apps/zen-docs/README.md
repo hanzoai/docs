@@ -2,7 +2,7 @@
 
 Documentation site for [Zen LM](https://zenlm.org) - frontier AI models for code, reasoning, and multimodal understanding.
 
-Built with [Hanzo Docs](https://docs.hanzo.ai) (fumadocs-based).
+Built with [Hanzo Docs](https://docs.hanzo.ai).
 
 ## Development
 

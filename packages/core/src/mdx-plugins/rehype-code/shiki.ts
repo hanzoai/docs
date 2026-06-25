@@ -108,7 +108,7 @@ export type RehypeShikiCoreOptions = CodeOptionsThemes<BuiltinTheme> &
 
 declare module 'shiki' {
   interface ShikiTransformerContextMeta {
-    /** [Fumadocs: rehype-code] run async tasks after process */
+    /** [Hanzo Docs: rehype-code] run async tasks after process */
     _fd_postprocess?: ((ctx: { highlighter: HighlighterCore }) => Promise<void>)[];
   }
 }

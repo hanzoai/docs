@@ -12,7 +12,7 @@ import {
   type MetaData,
   type Source,
   type VirtualFile,
-} from 'fumadocs-core/source';
+} from '@hanzo/docs-core/source';
 import {
   getPageProps,
   type OperationOutput,
@@ -25,8 +25,8 @@ import path from 'node:path';
 import type { DereferencedDocument } from '@/utils/document/dereference';
 import type { ApiPageProps } from '@/ui/api-page';
 import type { ClientApiPageProps } from '@/ui/create-client';
-import type { StructuredData } from 'fumadocs-core/mdx-plugins/remark-structure';
-import type { TOCItemType } from 'fumadocs-core/toc';
+import type { StructuredData } from '@hanzo/docs-core/mdx-plugins/remark-structure';
+import type { TOCItemType } from '@hanzo/docs-core/toc';
 import type { SchemaToPagesOptions } from '@/utils/pages/preset-auto';
 import { MethodLabel } from '@/ui/components/method-label';
 
@@ -60,21 +60,21 @@ export interface OpenAPIServer {
   readonly options: OpenAPIOptions;
 
   /**
-   * Generate virtual pages for Fumadocs Source API
+   * Generate virtual pages for Hanzo Docs Source API
    */
   staticSource: (
     options?: OpenAPISourceOptions,
   ) => Promise<Source<{ metaData: MetaData; pageData: OpenAPIPageData }>>;
 
   /**
-   * Generate virtual pages for Fumadocs Source API (note: please disable cache to allow built-in revalidation)
+   * Generate virtual pages for Hanzo Docs Source API (note: please disable cache to allow built-in revalidation)
    */
   dynamicSource: (
     options?: OpenAPISourceOptions,
   ) => DynamicSource<{ metaData: MetaData; pageData: OpenAPIPageData }>;
 
   /**
-   * Fumadocs Source API integration, pass this to `plugins` array in `loader()`.
+   * Hanzo Docs Source API integration, pass this to `plugins` array in `loader()`.
    */
   loaderPlugin: () => LoaderPlugin;
 
@@ -233,7 +233,7 @@ export function createOpenAPI(options: OpenAPIOptions = {}): OpenAPIServer {
       if (document in schemas) return schemas[document];
 
       console.warn(
-        `[Fumadocs OpenAPI] the document "${document}" is not listed in the input array, this may not be expected.`,
+        `[Hanzo Docs OpenAPI] the document "${document}" is not listed in the input array, this may not be expected.`,
       );
       // do not cache unlisted documents
       return processDocument(document);
@@ -275,11 +275,11 @@ export interface InternalOpenAPIMeta {
 }
 
 /**
- * Fumadocs Source API integration, pass this to `plugins` array in `loader()`.
+ * Hanzo Docs Source API integration, pass this to `plugins` array in `loader()`.
  */
 export function openapiPlugin(): LoaderPlugin {
   return {
-    name: 'fumadocs:openapi',
+    name: 'Hanzo Docs:openapi',
     enforce: 'pre',
     transformPageTree: {
       file(node, filePath) {
@@ -321,7 +321,7 @@ export function openapiPlugin(): LoaderPlugin {
 }
 
 /**
- * Generate virtual pages for Fumadocs Source API
+ * Generate virtual pages for Hanzo Docs Source API
  */
 export async function openapiSource(server: OpenAPIServer, options: OpenAPISourceOptions = {}) {
   return server.staticSource(options);

@@ -1,5 +1,5 @@
 import type { Route } from './+types/docs';
-import { DocsLayout } from 'fumadocs-ui/layouts/docs';
+import { DocsLayout } from '@hanzo/docs-ui/layouts/docs';
 import {
   DocsBody,
   DocsDescription,
@@ -7,12 +7,12 @@ import {
   DocsTitle,
   MarkdownCopyButton,
   ViewOptionsPopover,
-} from 'fumadocs-ui/layouts/docs/page';
+} from '@hanzo/docs-ui/layouts/docs/page';
 import { getPageMarkdownUrl, source } from '@/lib/source';
 import browserCollections from 'collections/browser';
 import { baseOptions } from '@/lib/layout.shared';
 import { gitConfig } from '@/lib/shared';
-import { useFumadocsLoader } from 'fumadocs-core/source/client';
+import { useHanzoDocsLoader } from '@hanzo/docs-core/source/client';
 import { useMDXComponents } from '@/components/mdx';
 
 export async function loader({ params }: Route.LoaderArgs) {
@@ -61,7 +61,7 @@ const clientLoader = browserCollections.docs.createClientLoader({
 });
 
 export default function Page({ loaderData }: Route.ComponentProps) {
-  const { pageTree, path, markdownUrl } = useFumadocsLoader(loaderData);
+  const { pageTree, path, markdownUrl } = useHanzoDocsLoader(loaderData);
 
   return (
     <DocsLayout {...baseOptions()} tree={pageTree}>

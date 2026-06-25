@@ -1,4 +1,4 @@
-import { RootProvider } from 'fumadocs-ui/provider/next';
+import { RootProvider } from '@hanzo/docs-ui/provider/next';
 import './global.css';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 

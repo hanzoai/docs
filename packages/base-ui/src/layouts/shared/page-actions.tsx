@@ -10,7 +10,7 @@ import { usePathname } from '@hanzo/docs-core/framework';
 const cache = new Map<string, Promise<string>>();
 
 /**
- * see https://fumadocs.dev/docs/integrations/llms#page-actions to customize.
+ * see https://docs.hanzo.ai/docs/integrations/llms#page-actions to customize.
  */
 export function MarkdownCopyButton({
   markdownUrl,
@@ -62,7 +62,7 @@ export function MarkdownCopyButton({
   );
 }
 /**
- * see https://fumadocs.dev/docs/integrations/llms#page-actions to customize.
+ * see https://docs.hanzo.ai/docs/integrations/llms#page-actions to customize.
  */
 export function ViewOptionsPopover({
   markdownUrl,

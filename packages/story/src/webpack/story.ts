@@ -28,7 +28,7 @@ const loader: LoaderDefinitionFunction<StoryLoaderOptions> = function (source) {
 
     try {
       const transformed = transformStoryFile(
-        '@fumadocs/story/next/client',
+        '@hanzo/docs-story/next/client',
         source,
         this.resourcePath,
         await projectPromise!,

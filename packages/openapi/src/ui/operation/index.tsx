@@ -28,7 +28,7 @@ import { RequestTabs } from './request-tabs';
 import { cn } from '@/utils/cn';
 import { getExampleRequests } from './get-example-requests';
 import { SelectTabs, SelectTabTrigger, SelectTab } from '../components/select-tab';
-import { Callout } from 'fumadocs-ui/components/callout';
+import { Callout } from '@hanzo/docs-ui/components/callout';
 import { AnchorSection } from '@/utils/auto-anchor.client';
 import { Heading } from '@/ui/components/heading';
 

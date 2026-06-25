@@ -1,4 +1,4 @@
-import { createOpenAPI } from 'fumadocs-openapi/server';
+import { createOpenAPI } from '@hanzo/docs-openapi/server';
 
 export const openapi = createOpenAPI({
   input: ['./scalar.yaml'],

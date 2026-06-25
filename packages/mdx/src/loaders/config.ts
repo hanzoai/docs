@@ -1,3 +1,4 @@
+import { loadConfig } from '../config/load-from-file';
 import type { Core } from '../core';
 import fs from 'node:fs/promises';
 

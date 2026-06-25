@@ -3,7 +3,7 @@ import type {
   PortableTextBlock,
   PortableTextTypeComponent,
 } from '@portabletext/react';
-import { Tab, Tabs, TabsList, TabsTrigger } from 'fumadocs-ui/components/tabs';
+import { Tab, Tabs, TabsList, TabsTrigger } from '@hanzo/docs-ui/components/tabs';
 
 export interface TabValue {
   _key?: string;

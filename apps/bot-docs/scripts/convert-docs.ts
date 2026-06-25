@@ -1,5 +1,5 @@
 /**
- * Convert OpenClaw/Bot docs from Mintlify .md → fumadocs .mdx
+ * Convert OpenClaw/Bot docs from Mintlify .md → Hanzo Docs .mdx
  *
  * - Copies all .md files preserving directory structure
  * - Converts frontmatter (summary → description, removes read_when)
@@ -138,7 +138,7 @@ function convertFrontmatter(content: string): string {
     const headingMatch = body.match(/^#\s+(.+)$/m);
     if (headingMatch) {
       title = headingMatch[1];
-      // Remove the heading from body since fumadocs uses frontmatter title
+      // Remove the heading from body since Hanzo Docs uses frontmatter title
       body = body.replace(/^#\s+.+\n+/, '');
     }
   }
@@ -308,7 +308,7 @@ async function createMetaFiles() {
 }
 
 async function main() {
-  console.log('Converting OpenClaw docs → Hanzo Bot fumadocs MDX\n');
+  console.log('Converting OpenClaw docs → Hanzo Bot Hanzo Docs MDX\n');
   console.log(`Source: ${SRC}`);
   console.log(`Dest:   ${DEST}\n`);
 

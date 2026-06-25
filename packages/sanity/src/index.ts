@@ -1,6 +1,6 @@
-import type { StructuredData } from 'fumadocs-core/mdx-plugins/remark-structure';
-import type { DynamicSource, MetaData } from 'fumadocs-core/source';
-import type { TOCItemType } from 'fumadocs-core/toc';
+import type { StructuredData } from '@hanzo/docs-core/mdx-plugins/remark-structure';
+import type { DynamicSource, MetaData } from '@hanzo/docs-core/source';
+import type { TOCItemType } from '@hanzo/docs-core/toc';
 import type { DefinedFetchType } from 'next-sanity/live';
 import type { ReactNode } from 'react';
 import type { PortableTextBlock } from '@portabletext/react';
@@ -17,7 +17,7 @@ interface BaseSanityOptions<Doc extends BaseDoc> {
   /** document name for docs pages */
   docType: string;
 
-  /** generate [virtual file path](https://fumadocs.dev/docs/headless/source-api/source#static-source) from document */
+  /** generate [virtual file path](https://docs.hanzo.ai/docs/headless/source-api/source#static-source) from document */
   generatePath?: (doc: ShallowDoc<Doc>) => string;
 
   /** base directory for the virutal file paths */

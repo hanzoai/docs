@@ -1,25 +1,8 @@
 'use client';
-import { createContext, type ReactNode, useContext, useMemo, useRef } from 'react';
+import { createContext, type ReactNode, use, useMemo, useRef } from 'react';
 import { usePathname, useRouter } from '@hanzo/docs-core/framework';
-
-export interface Translations {
-  search: string;
-  searchNoResult: string;
-
-  toc: string;
-  tocNoHeadings: string;
-
-  lastUpdate: string;
-  chooseLanguage: string;
-  nextPage: string;
-  previousPage: string;
-  chooseTheme: string;
-  editOnGithub: string;
-}
-
-export type TranslationsOption = {
-  [key: string]: string | TranslationsOption;
-};
+import { renderTranslation, TranslationValue, type TranslationObject } from '@hanzo/docs-core/i18n';
+import { defaultTranslations, type Translations } from '@/i18n';
 
 interface LocaleItem {
   name: string;

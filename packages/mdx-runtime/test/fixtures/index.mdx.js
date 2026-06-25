@@ -116,7 +116,7 @@ function _createMdxContent(props) {
       }, this), _jsxDEV(_components.tbody, {
         children: _jsxDEV(_components.tr, {
           children: [_jsxDEV(_components.td, {
-            children: "Fuma"
+            children: "Hanzo"
           }, undefined, false, {
             fileName: "<source.js>",
             lineNumber: 10,
