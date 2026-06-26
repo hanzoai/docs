@@ -1,71 +1,217 @@
 ---
 title: Hanzo Base
-description: Open-source backend-as-a-service with REST API, auth, realtime, file storage, cloud functions, and plugin system
+description: Backend-as-a-service with an auto-generated REST API, IAM-native auth, realtime, file storage, durable tasks, and per-tenant encrypted storage
 ---
 
 # Hanzo Base
 
-Hanzo Base is an open-source backend-as-a-service (BaaS) that ships as a single Go binary with zero dependencies. It provides a full REST API auto-generated from your schema, authentication, realtime subscriptions, file storage, cloud functions, and an extensible plugin system.
+Hanzo Base is a backend-as-a-service that ships as a single Go binary. Define a collection schema and get a full REST API automatically — records CRUD, realtime subscriptions, file storage, a durable task queue, and a per-user key-value store — with authentication delegated natively to [Hanzo IAM](/docs/services/iam).
 
-**Production:** `https://base.hanzo.ai`
-**Admin UI:** `https://base.hanzo.ai/_/`
-**Source:** [github.com/hanzoai/base](https://github.com/hanzoai/base)
+| | |
+|---|---|
+| **Production** | `https://base.hanzo.ai` |
+| **API prefix** | `/v1` |
+| **Admin UI** | `https://base.hanzo.ai/_/` |
+| **Auth** | Hanzo IAM (OIDC / JWKS) — no local passwords |
+| **Source** | [github.com/hanzoai/base](https://github.com/hanzoai/base) |
+
+<Callout>
+Hanzo Base serves its API under `/v1`, not `/api`. Authentication is **IAM-native**: the built-in local password/OAuth flows are removed, and Hanzo IAM is the only token authority. Clients run the OIDC PKCE flow against IAM and present the resulting JWT as a bearer token.
+</Callout>
 
 ## Features
 
-- **Database**: SQLite for local dev, PostgreSQL for production. Full REST API auto-generated from schema.
-- **Authentication**: Email/password, OAuth2, and Hanzo IAM integration with fine-grained access control.
-- **Realtime**: Subscribe to database changes over SSE with optimistic update support.
-- **File Storage**: Upload files directly to collections. Local filesystem or S3-compatible storage (Hanzo S3).
-- **Cloud Functions**: Server-side JavaScript hooks, custom routes, and scheduled tasks.
-- **Admin UI**: Built-in dashboard at `/_/` for managing collections, users, settings, and logs.
-- **Plugin System**: Extend Base with custom Go plugins for routes, hooks, middleware, and data providers.
+- **Auto-generated REST API**: Full CRUD for every collection under `/v1/collections/{name}/records`
+- **IAM-native auth**: Tokens issued by [Hanzo IAM](/docs/services/iam) and validated against its JWKS — users are not stored in Base
+- **Realtime**: Subscribe to record changes over SSE (`/v1/realtime`) or WebSocket (`/v1/realtime/ws`)
+- **File storage**: Upload files to records; stored on local disk or [Hanzo S3](/docs/services/s3)
+- **Durable tasks & workflows**: A built-in task queue at `/v1/tasks`
+- **Per-user private KV**: A scoped key-value store at `/v1/private`
+- **Raw SQL over HTTP**: `/v1/sql` for superusers
+- **Per-tenant encrypted storage**: One encrypted SQLite database per organization, with WAL replication to object storage
+- **Admin dashboard**: A React UI at `/_/` for collections, settings, logs, and backups
 
-## Architecture
+## Storage model
+
+Base uses **SQLite by default** — pure-Go, embedded, zero external dependencies — which makes local development instant. Each organization gets its own database file, encrypted at rest with a key derived from [Hanzo KMS](/docs/services/kms); the write-ahead log is streamed (age-encrypted) to S3/GCS for durability.
+
+For production multi-instance deployments that need a shared writer (e.g. leader-elected cron), Base runs on **PostgreSQL** via `pgx`. SQLite remains the default everywhere else.
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                        HANZO BASE                             │
-├──────────────────────────────────────────────────────────────┤
-│                                                               │
-│  ┌───────────┐  ┌──────────┐  ┌──────────┐  ┌────────────┐  │
-│  │  REST API │  │  Auth    │  │ Realtime │  │  Admin UI  │  │
-│  │  (CRUD)   │  │  (OIDC)  │  │  (SSE)   │  │  (/_/)     │  │
-│  └─────┬─────┘  └────┬─────┘  └────┬─────┘  └──────┬─────┘  │
-│        │              │              │               │        │
-│  ┌─────▼──────────────▼──────────────▼───────────────▼─────┐  │
-│  │                    Core Engine                            │  │
-│  │  Collections · Hooks · Middleware · Plugin Registry       │  │
-│  └─────────────────────────┬─────────────────────────────────┘  │
-│                            │                                  │
-│  ┌─────────────────────────▼─────────────────────────────────┐  │
-│  │                   Storage Layer                            │  │
-│  │  SQLite (dev) │ PostgreSQL (prod) │ S3 (files)            │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                                                               │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │                   Plugin System                            │  │
-│  │  Routes · Hooks · Middleware · Migrations · Cron Jobs      │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                                                               │
-└──────────────────────────────────────────────────────────────┘
+Local dev / single node   →  SQLite (encrypted, per-org)
+Production multi-instance  →  PostgreSQL (pgx)
 ```
 
-## Quick Start
+## Authentication
 
-### Local Development
+Base does not authenticate users itself — it trusts [Hanzo IAM](/docs/services/iam). The flow:
+
+<Steps>
+
+### Discover the auth provider
 
 ```bash
-# Download the binary
-curl -fsSL https://base.hanzo.ai/install.sh | sh
-
-# Start in development mode (SQLite)
-base serve --dev
+curl https://base.hanzo.ai/v1/collections/users/auth-methods
 ```
 
-The admin UI is available at `http://localhost:8090/_/`.
+Returns the single configured `iam` OAuth2/PKCE provider with its authorize URL and PKCE challenge.
 
-### Docker
+### Run the OIDC PKCE flow against IAM
+
+Redirect the user through `https://hanzo.id/v1/iam/oauth/authorize`, then exchange the code at IAM's token endpoint. See [Hanzo IAM](/docs/services/iam) for the full flow.
+
+### Call Base with the IAM-issued JWT
+
+```bash
+curl https://base.hanzo.ai/v1/collections/posts/records \
+  -H "Authorization: Bearer $IAM_JWT"
+```
+
+Base validates the bearer against IAM's JWKS and evaluates your collection access rules using the token's claims (`sub`, `email`, `owner`, `isAdmin`).
+
+</Steps>
+
+A token can be rotated without re-running the full flow:
+
+```bash
+curl -X POST https://base.hanzo.ai/v1/collections/users/auth-refresh \
+  -H "Authorization: Bearer $IAM_JWT"
+```
+
+## Collections & the REST API
+
+Collections are Base's core data model (`base`, `auth`, or `view` type). Define a schema once and every record operation is exposed automatically.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/v1/collections/{name}/records` | List/search (filter, sort, page, expand, fields) |
+| `GET` | `/v1/collections/{name}/records/{id}` | Get one record |
+| `POST` | `/v1/collections/{name}/records` | Create a record |
+| `PATCH` | `/v1/collections/{name}/records/{id}` | Update a record |
+| `DELETE` | `/v1/collections/{name}/records/{id}` | Delete a record |
+| `POST` | `/v1/batch` | Batched transactional writes |
+
+### Create a record
+
+```bash
+curl -X POST https://base.hanzo.ai/v1/collections/posts/records \
+  -H "Authorization: Bearer $IAM_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{ "title": "Hello", "body": "World", "published": true }'
+```
+
+### Filter, sort, paginate
+
+```bash
+curl "https://base.hanzo.ai/v1/collections/posts/records?filter=(published=true%26%26author.name~'jin')&sort=-created&page=1&perPage=20" \
+  -H "Authorization: Bearer $IAM_JWT"
+```
+
+### Manage collections (superuser)
+
+```bash
+# Create a collection
+curl -X POST https://base.hanzo.ai/v1/collections \
+  -H "Authorization: Bearer $IAM_ADMIN_JWT" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "posts",
+    "type": "base",
+    "fields": [
+      { "name": "title", "type": "text", "required": true },
+      { "name": "body", "type": "editor" },
+      { "name": "published", "type": "bool" }
+    ]
+  }'
+```
+
+## Realtime
+
+Subscribe to record changes over Server-Sent Events. Base also offers a WebSocket transport at `/v1/realtime/ws`.
+
+```typescript
+import PocketBase from '@hanzoai/js-sdk' // wire-compatible client
+
+const base = new PocketBase('https://base.hanzo.ai') // targets /v1 automatically
+base.authStore.save(iamJwt, null) // attach the IAM-issued JWT
+
+base.collection('posts').subscribe('*', (e) => {
+  console.log(e.action, e.record) // 'create' | 'update' | 'delete'
+})
+```
+
+Under the hood: open `GET /v1/realtime` (the server returns a `clientId`), then `POST /v1/realtime` with `{ clientId, subscriptions: ["posts", "posts/RECORD_ID"] }`. Subscriptions are gated by each collection's list/view rules.
+
+## File Storage
+
+Upload files directly to record fields. Files are served from local disk in development and from [Hanzo S3](/docs/services/s3) in production.
+
+```bash
+# Upload (multipart)
+curl -X POST https://base.hanzo.ai/v1/collections/posts/records \
+  -H "Authorization: Bearer $IAM_JWT" \
+  -F "title=My Post" \
+  -F "cover=@image.jpg"
+
+# Download
+curl "https://base.hanzo.ai/v1/files/posts/RECORD_ID/image.jpg?thumb=100x100"
+```
+
+Protected files use a short-lived token from `POST /v1/files/token`.
+
+## Beyond CRUD
+
+Hanzo Base adds first-class endpoints on top of the record API:
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /v1/sql` | Run a parameterized SQL query (superuser) |
+| `/v1/tasks` | Durable task & workflow queue (claim, start, complete, fail, signal) |
+| `/v1/private` | Per-user private key-value store |
+| `/v1/backups` | Create, download, and restore database backups (superuser) |
+| `/v1/crons` | List and trigger scheduled jobs (superuser) |
+| `/v1/logs` | Request logs (superuser) |
+
+## Access Control
+
+Collection access is governed by filter-expression rules evaluated against the IAM token claims:
+
+```json
+{
+  "listRule": "@request.auth.id != ''",
+  "viewRule": "@request.auth.id != '' || published = true",
+  "createRule": "@request.auth.id != ''",
+  "updateRule": "@request.auth.id = author",
+  "deleteRule": "@request.auth.id = author || @request.auth.isAdmin = true"
+}
+```
+
+A request is treated as **superuser** when its IAM token carries an admin claim (`isAdmin`/`isGlobalAdmin`, or an `owner` of `built-in`/`superuser`). The platform superuser (`z@hanzo.ai`) is seeded in [Hanzo IAM](/docs/services/iam), not in Base — Base simply honors the admin claim on the token.
+
+## Extending Base
+
+Base embeds multiple in-process runtimes for custom logic — JavaScript (goja), WASM (wazero), Python, and Starlark — plus Go extension via `core.App`:
+
+```go
+// Go: register a custom route
+app.OnServe().BindFunc(func(se *core.ServeEvent) error {
+    se.Router.GET("/v1/custom/stats", func(e *core.RequestEvent) error {
+        return e.JSON(200, map[string]string{"status": "ok"})
+    })
+    return se.Next()
+})
+```
+
+## SDKs
+
+| Language | Package |
+|----------|---------|
+| JavaScript / TypeScript | `@hanzoai/js-sdk` |
+| Dart / Flutter | `@hanzoai/dart-sdk` |
+
+The wire protocol is PocketBase-compatible for record CRUD and realtime, so existing PocketBase clients work for data operations — only the auth step differs (IAM PKCE instead of local password).
+
+## Self-Hosting
 
 ```yaml
 # compose.yml
@@ -74,6 +220,8 @@ services:
     image: ghcr.io/hanzoai/base:latest
     ports:
       - "8090:8090"
+    environment:
+      IAM_ENDPOINT: https://hanzo.id
     volumes:
       - base-data:/app/data
     restart: unless-stopped
@@ -82,269 +230,21 @@ volumes:
   base-data:
 ```
 
-### Production (Kubernetes)
-
-```bash
-kubectl apply -k infra/k8s/base/
-```
-
-Production deployments use PostgreSQL via Hanzo SQL and S3 storage via Hanzo S3.
-
-## Collections
-
-Collections are Base's core data model. Define a schema and get a full REST API automatically.
-
-### Create a Collection
-
-```bash
-curl -X POST https://base.hanzo.ai/api/collections \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "posts",
-    "type": "base",
-    "schema": [
-      {"name": "title", "type": "text", "required": true},
-      {"name": "body", "type": "editor"},
-      {"name": "published", "type": "bool", "default": false},
-      {"name": "author", "type": "relation", "options": {"collectionId": "users"}}
-    ]
-  }'
-```
-
-### Auto-Generated REST API
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/collections/{name}/records` | List records with filtering, sorting, pagination |
-| `GET` | `/api/collections/{name}/records/{id}` | Get single record |
-| `POST` | `/api/collections/{name}/records` | Create record |
-| `PATCH` | `/api/collections/{name}/records/{id}` | Update record |
-| `DELETE` | `/api/collections/{name}/records/{id}` | Delete record |
-
-### Filtering
-
-```bash
-# Filter with expressions
-curl "https://base.hanzo.ai/api/collections/posts/records?filter=(published=true&&author.name~'john')"
-```
-
-## Authentication
-
-Base supports multiple auth methods:
-
-| Method | Description |
-|--------|-------------|
-| **Email/Password** | Built-in with verification emails |
-| **OAuth2** | Google, GitHub, Apple, Discord, and more |
-| **Hanzo IAM** | Enterprise SSO via `hanzo.id` OIDC integration |
-| **API Keys** | For service-to-service communication |
-
-### Hanzo IAM Integration
-
-```bash
-# Configure IAM as OAuth2 provider
-curl -X PATCH https://base.hanzo.ai/api/settings \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -d '{
-    "meta": {
-      "appName": "My App"
-    },
-    "iam": {
-      "enabled": true,
-      "clientId": "app-myapp",
-      "clientSecret": "...",
-      "authUrl": "https://hanzo.id/oauth/authorize",
-      "tokenUrl": "https://hanzo.id/oauth/token",
-      "userInfoUrl": "https://hanzo.id/oauth/userinfo"
-    }
-  }'
-```
-
-## Realtime
-
-Subscribe to collection changes via Server-Sent Events:
-
-```typescript
-import Base from '@hanzo/base-sdk'
-
-const base = new Base('https://base.hanzo.ai')
-
-// Subscribe to changes
-base.collection('posts').subscribe('*', (e) => {
-  console.log(e.action) // 'create' | 'update' | 'delete'
-  console.log(e.record)
-})
-
-// Subscribe to specific record
-base.collection('posts').subscribe('RECORD_ID', (e) => {
-  console.log('Record updated:', e.record)
-})
-```
-
-## File Storage
-
-Upload files directly to collection records:
-
-```bash
-curl -X POST https://base.hanzo.ai/api/collections/posts/records \
-  -H "Authorization: Bearer $TOKEN" \
-  -F "title=My Post" \
-  -F "cover=@image.jpg"
-```
-
-Files are stored in the configured storage backend (local filesystem for dev, Hanzo S3 for production).
-
-## Cloud Functions
-
-Server-side JavaScript for custom logic:
-
-### Hooks
-
-```javascript
-// pb_hooks/posts.pb.js
-
-// Before create hook
-onRecordBeforeCreateRequest((e) => {
-  const record = e.record
-  record.set('slug', slugify(record.get('title')))
-}, 'posts')
-
-// After create hook
-onRecordAfterCreateRequest((e) => {
-  // Send notification, update search index, etc.
-  $app.logger().info('Post created', 'id', e.record.id)
-}, 'posts')
-```
-
-### Custom Routes
-
-```javascript
-// pb_hooks/api.pb.js
-
-routerAdd('GET', '/api/custom/stats', (e) => {
-  const posts = $app.dao().findRecordsByFilter('posts', 'published = true')
-  return e.json(200, { total: posts.length })
-})
-```
-
-### Scheduled Tasks (Cron)
-
-```javascript
-// pb_hooks/cron.pb.js
-
-cronAdd('cleanup', '0 0 * * *', () => {
-  // Daily cleanup
-  $app.dao().deleteRecordsByFilter('logs', 'created < @now - 30d')
-})
-```
-
-## Plugin System
-
-Base's plugin system allows extending the core with custom Go code.
-
-### Plugin Interface
-
-```go
-package myplugin
-
-import "github.com/hanzoai/base/core"
-
-func Register(app core.App) error {
-    // Add custom routes
-    app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
-        e.Router.GET("/api/custom", func(c echo.Context) error {
-            return c.JSON(200, map[string]string{"status": "ok"})
-        })
-        return nil
-    })
-
-    // Add hooks
-    app.OnRecordBeforeCreateRequest("posts").Add(func(e *core.RecordCreateEvent) error {
-        // Custom validation, transformation, etc.
-        return nil
-    })
-
-    // Add migrations
-    app.OnBeforeBootstrap().Add(func(e *core.BootstrapEvent) error {
-        // Run custom migrations
-        return nil
-    })
-
-    return nil
-}
-```
-
-### Built-in Plugins
-
-| Plugin | Description |
-|--------|-------------|
-| **IAM Auth** | Hanzo IAM OIDC authentication provider |
-| **S3 Storage** | Hanzo S3 file storage backend |
-| **Search** | Hanzo Search integration for full-text search |
-| **ORM** | Hanzo ORM for advanced database operations |
-| **Analytics** | Event tracking to Hanzo Insights |
-
-### Creating a Plugin
-
-1. Create a Go module that imports `github.com/hanzoai/base/core`
-2. Implement the `Register(app core.App) error` function
-3. Add routes, hooks, middleware, or migrations
-4. Build with `go build -buildmode=plugin`
-5. Place in `pb_plugins/` directory
-
-```go
-// main.go
-package main
-
-import (
-    "github.com/hanzoai/base/core"
-    "github.com/hanzoai/base/plugins/myplugin"
-)
-
-func main() {
-    app := core.NewBaseApp()
-    myplugin.Register(app)
-    app.Start()
-}
-```
-
-## Access Control
-
-Base provides collection-level access rules using filter expressions:
-
-```json
-{
-  "listRule": "@request.auth.id != ''",
-  "viewRule": "@request.auth.id != '' || published = true",
-  "createRule": "@request.auth.id != '' && @request.auth.role = 'editor'",
-  "updateRule": "@request.auth.id = author",
-  "deleteRule": "@request.auth.id = author || @request.auth.role = 'admin'"
-}
-```
-
-## SDK Libraries
-
-| Language | Package |
-|----------|---------|
-| **JavaScript** | `@hanzo/base-sdk` |
-| **Go** | `github.com/hanzoai/base/sdk` |
-| **Python** | `hanzoai-base` |
-| **Dart/Flutter** | `hanzo_base` |
+The admin UI is available at `http://localhost:8090/_/`. The API base path defaults to `/v1` and can be moved with `BASE_API_PREFIX` for multi-app gateways.
 
 ## Related Services
 
 <Cards>
   <Card title="Hanzo IAM" href="/docs/services/iam">
-    Identity and access management for SSO integration
+    The identity provider Base delegates all authentication to
   </Card>
-  <Card title="Hanzo ORM" href="/docs/services/orm">
-    Shared ORM for advanced database operations
+  <Card title="Hanzo KMS" href="/docs/services/kms">
+    Per-tenant database encryption keys
   </Card>
   <Card title="Hanzo S3" href="/docs/services/s3">
-    S3-compatible object storage for file uploads
+    Object storage backend for file uploads
   </Card>
-  <Card title="Hanzo Search" href="/docs/services/search">
-    Full-text search integration for collections
+  <Card title="Hanzo PaaS" href="/docs/services/platform">
+    Deploy and operate Base on your clusters
   </Card>
 </Cards>

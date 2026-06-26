@@ -265,12 +265,9 @@ tls:
 # Ingress (dual endpoints)
 ingress:
   enabled: true
-  className: nginx
+  className: hanzo
   hosts:
     - host: mpc.hanzo.ai
-      annotations:
-        cert-manager.io/cluster-issuer: letsencrypt-prod
-    - host: mpc.lux.network
       annotations:
         cert-manager.io/cluster-issuer: letsencrypt-prod
 
@@ -627,7 +624,7 @@ If a node is permanently lost but the cluster still has `t` healthy nodes:
 4. Old shares from the lost node are automatically invalidated
 
 ```bash
-curl -X POST https://mpc.hanzo.ai/api/reshare \
+curl -X POST https://mpc.hanzo.ai/v1/wallets/$WALLET_ID/reshare \
   -H "Authorization: Bearer $HANZO_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

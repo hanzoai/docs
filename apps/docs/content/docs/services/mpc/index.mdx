@@ -1,317 +1,204 @@
 ---
 title: Hanzo MPC
-description: Enterprise-grade multi-party computation for digital asset custody with blockchain-native consensus, dual-certificate post-quantum finality, 8 cryptographic protocols, and configurable t-of-n thresholds.
+description: Threshold multi-party signing for digital asset custody — distributed key generation, t-of-n signing, and proactive share refresh with post-quantum consensus.
 ---
 
 # Hanzo MPC
 
-Hanzo MPC is a self-sovereign wallet infrastructure for enterprise digital asset custody. It eliminates single points of failure by splitting private keys into shares distributed across independent nodes, requiring a configurable threshold of cooperating parties to produce valid signatures.
+Hanzo MPC is wallet infrastructure for enterprise digital asset custody. Private keys are never assembled in one place — they are split into shares held by independent nodes, and a configurable threshold of nodes must cooperate to produce a valid signature. Think of it as a self-hosted alternative to Fireblocks: you own the infrastructure, control the key shares, and operate under your own policies.
 
-MPC nodes form their own **private BFT blockchain** for cluster state management, with **dual-certificate finality** combining Ed25519 (classical) and ML-DSA-65 (post-quantum, FIPS 204) signatures. Think of it as a self-hosted alternative to Fireblocks -- you own the infrastructure, control the key shares, and operate under your own security policies.
+| | |
+|---|---|
+| **Custody API** | `https://mpc.hanzo.ai` |
+| **API prefix** | `/v1` |
+| **Auth** | Hanzo IAM (OIDC) bearer tokens |
+| **Default threshold** | t-of-n, default t = ⌊n/2⌋ + 1 |
+| **Source** | [github.com/hanzoai/mpc](https://github.com/hanzoai/mpc) |
 
 ## Key Properties
 
-- **No single point of failure**: No individual node ever holds a complete private key
-- **Blockchain-native consensus**: MPC nodes are validators on their own private BFT chain
-- **Dual-certificate finality**: Ed25519 + ML-DSA-65 (NIST Level 3) -- quantum-safe state management
-- **Configurable thresholds**: Any t-of-n scheme (2-of-3, 3-of-5, 5-of-9, etc.)
-- **Identifiable aborts**: Malicious participants are detected and attributed
-- **Proactive share refresh**: Rotate key shares without changing the public key or address
-- **Multi-chain**: 16+ blockchain networks from a single key management plane
-- **8 cryptographic protocols**: From production ECDSA to post-quantum lattice signatures
-- **17 zero-knowledge proof systems**: Comprehensive verification at every protocol stage
-- **Encrypted at rest**: AES-256-GCM for all stored key shares
-- **KMS-first key management**: Identity and consensus keys stored in KMS/HSM when configured
+- **No single point of failure** — no node ever holds a complete private key
+- **Distributed key generation (DKG)** — keys are generated collaboratively; no dealer ever sees the whole key
+- **Configurable thresholds** — any t-of-n scheme (2-of-3, 3-of-5, 5-of-9, …)
+- **Proactive share refresh** — rotate shares without changing the public key or any derived address
+- **Identifiable aborts** — a deviating participant is detected and attributed
+- **Multi-chain** — one key plane derives addresses for Bitcoin, Ethereum/EVM, Solana, and more
+- **Encrypted at rest** — key shares are stored AES-256-GCM encrypted; the encryption key is supplied by [Hanzo KMS](/docs/services/kms)/HSM, never plaintext config
+- **Post-quantum consensus** — cluster state is managed by a private BFT chain with dual-certificate finality (Ed25519 + ML-DSA-65, FIPS 204)
+
+## Supported Protocols
+
+Hanzo MPC builds on the `luxfi/threshold` engine. Four threshold schemes are in production:
+
+| Protocol | Type | Curve | Best for |
+|----------|------|-------|----------|
+| **CGGMP21** | Threshold ECDSA | secp256k1 | Bitcoin, Ethereum, EVM chains |
+| **FROST** | Threshold Schnorr | secp256k1 (BIP-340), Ristretto255 | Bitcoin Taproot, Ed25519/sr25519 chains |
+| **LSS** | Linear secret sharing | secp256k1 | Dynamic resharing, blinded signing |
+| **BLS** | Threshold aggregate | BLS12-381 | Validator keys, aggregate signatures |
+
+Key types accepted by the API: `secp256k1`, `ed25519`, `sr25519`, `bls`.
+
+## Authentication
+
+The custody API trusts tokens issued by [Hanzo IAM](/docs/services/iam). Present an IAM-issued JWT as a bearer token:
+
+```bash
+curl -H "Authorization: Bearer $IAM_ACCESS_TOKEN" \
+  https://mpc.hanzo.ai/v1/info
+```
+
+Services that already hold an external OIDC token can exchange it for an MPC session token (issuer must be on the allowlist):
+
+```bash
+curl -X POST https://mpc.hanzo.ai/v1/auth/oidc \
+  -H "Content-Type: application/json" \
+  -d '{ "token": "<external-oidc-access-token>" }'
+```
+
+Roles (`owner`, `admin`, `signer`, `viewer`) gate each route; signing additionally requires `mpc:sign`. Long-lived API keys are also supported for machine callers — store them in [Hanzo KMS](/docs/services/kms), never inline.
 
 ## Quick Start
 
-### Create a Wallet
+Signing is a three-step flow: create a wallet (DKG), open a signing session, then sign.
+
+<Steps>
+
+### Create a wallet (DKG)
 
 ```bash
-curl -X POST https://mpc.hanzo.ai/api/wallets \
-  -H "Authorization: Bearer $HANZO_TOKEN" \
+curl -X POST https://mpc.hanzo.ai/v1/mpc/wallets \
+  -H "Authorization: Bearer $IAM_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "protocol": "cggmp21",
-    "curve": "secp256k1",
-    "threshold": 2,
-    "parties": 3,
-    "label": "eth-hot-wallet"
-  }'
+  -d '{ "protocol": "cggmp21" }'
 ```
 
 Response:
 
 ```json
 {
-  "wallet_id": "w_3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "walletId": "w_3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
   "protocol": "cggmp21",
-  "curve": "secp256k1",
-  "threshold": 2,
-  "parties": 3,
-  "public_key": "04a1b2c3d4e5f6...",
-  "addresses": {
-    "ethereum": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
-    "bitcoin": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
-  },
-  "created_at": "2026-02-23T10:30:00Z"
+  "threshold": "2-of-3",
+  "status": "active",
+  "createdAt": "2026-06-26T10:30:00Z"
 }
 ```
 
-### Sign a Transaction
+### Open a signing session
 
 ```bash
-curl -X POST https://mpc.hanzo.ai/api/sign \
-  -H "Authorization: Bearer $HANZO_TOKEN" \
+curl -X POST https://mpc.hanzo.ai/v1/mpc/wallets/$WALLET_ID/sessions \
+  -H "Authorization: Bearer $IAM_ACCESS_TOKEN"
+```
+
+Returns a `sessionId`. Signing consumes a session, which makes each signature an explicit, auditable authorization.
+
+### Sign
+
+```bash
+curl -X POST https://mpc.hanzo.ai/v1/mpc/sign \
+  -H "Authorization: Bearer $IAM_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "wallet_id": "w_3fa85f64-5717-4562-b3fc-2c963f66afa6",
-    "message": "0xdeadbeef...",
+    "walletId": "'$WALLET_ID'",
+    "sessionId": "'$SESSION_ID'",
+    "message": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "encoding": "hex"
   }'
 ```
 
-Response:
+Response (ECDSA):
+
+```json
+{ "signature": "0x...", "r": "0x1a2b3c...", "s": "0x4d5e6f..." }
+```
+
+</Steps>
+
+## Core Endpoints
+
+All under `https://mpc.hanzo.ai/v1`.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/v1/mpc/wallets` | Create a wallet (DKG); `{ "protocol": "cggmp21" \| "frost" }` |
+| `GET` | `/v1/wallets/{id}/addresses` | Derived chain addresses for a wallet |
+| `POST` | `/v1/mpc/wallets/{id}/sessions` | Open a signing session |
+| `GET` | `/v1/mpc/wallets/{id}/sessions` | List sessions |
+| `POST` | `/v1/mpc/sign` | Threshold-sign a message (requires `sessionId`) |
+| `POST` | `/v1/wallets/{id}/reshare` | Proactive share refresh / change t-of-n |
+| `GET` | `/v1/status` · `/v1/info` | Cluster status and capabilities |
+| `GET` | `/healthz` | Liveness (no auth) |
+
+A single wallet derives addresses for many chains:
+
+```bash
+curl https://mpc.hanzo.ai/v1/wallets/$WALLET_ID/addresses \
+  -H "Authorization: Bearer $IAM_ACCESS_TOKEN"
+```
 
 ```json
 {
-  "signature": {
-    "r": "0x1a2b3c...",
-    "s": "0x4d5e6f...",
-    "v": 27
-  },
-  "signers": [1, 3],
-  "protocol": "cggmp21",
-  "duration_ms": 45
+  "ethereum": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
+  "bitcoin": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+  "solana": "7nYBzS3Yz5mY8Qm4iXqz1bWmHnf8QpHq3xWv6Yc9aBcD"
 }
 ```
 
-### Reshare Key Shares
+## Proactive Share Refresh
 
-Rotate shares without changing the public key or any on-chain addresses:
+Rotate the key shares without changing the public key or any on-chain address. Old shares become useless after a refresh, so a share compromised in a past epoch cannot be combined with current shares.
 
 ```bash
-curl -X POST https://mpc.hanzo.ai/api/reshare \
-  -H "Authorization: Bearer $HANZO_TOKEN" \
+curl -X POST https://mpc.hanzo.ai/v1/wallets/$WALLET_ID/reshare \
+  -H "Authorization: Bearer $IAM_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "wallet_id": "w_3fa85f64-5717-4562-b3fc-2c963f66afa6",
-    "new_threshold": 3,
-    "new_parties": 5
-  }'
+  -d '{ "new_threshold": 3, "new_participants": ["node-0","node-1","node-2","node-3","node-4"] }'
 ```
 
-## Supported Protocols
+## In-cluster Go client (NATS)
 
-Hanzo MPC ships 8 cryptographic protocols, each optimized for different use cases:
+Inside the cluster, the canonical interface is an asynchronous Go client over NATS — every keygen/sign/reshare request is Ed25519-signed by an initiator key and answered with a result event:
 
-| Protocol | Type | Curve | Best For |
-|----------|------|-------|----------|
-| **CGGMP21** | Threshold ECDSA | secp256k1, P-256 | Bitcoin, Ethereum, EVM chains |
-| **FROST** | Threshold Schnorr/EdDSA | Ed25519, Ristretto | Solana, Polkadot, Cosmos |
-| **LSSS** | Linear secret sharing | Any | Dynamic resharing, key rotation |
-| **TFHE** | Threshold FHE | Lattice | Encrypted computation on shares |
-| **Corona** | Post-quantum lattice | Module-LWE | Future-proof custody |
-| **Quasar** | Hybrid BLS + PQ | BLS12-381 + Dilithium | Ethereum 2.0, PQ hedge |
-| **BLS** | Aggregate signatures | BLS12-381 | Validator keys, aggregate sigs |
-| **Doerner** | Optimized 2-of-2 | secp256k1 | High-frequency 2-party signing |
+```go
+import (
+    "github.com/luxfi/mpc/pkg/client"
+    "github.com/luxfi/mpc/pkg/event"
+)
 
-See the [Protocols deep dive](/docs/services/mpc/protocols) for detailed specifications.
+mpc := client.NewMPCClient(client.Options{NatsConn: nc, KeyPath: "./event_initiator.key"})
 
-## Multi-Chain Support
-
-A single MPC wallet can derive addresses for any supported chain:
-
-| Chain | Curve | Protocol | Notes |
-|-------|-------|----------|-------|
-| Bitcoin | secp256k1 | CGGMP21 | Legacy, SegWit, Native SegWit |
-| Bitcoin Taproot | secp256k1 (BIP-340) | FROST | Schnorr signatures |
-| Ethereum | secp256k1 | CGGMP21 | EIP-155 replay protection |
-| All EVM chains | secp256k1 | CGGMP21 | Polygon, Arbitrum, BNB, etc. |
-| Solana | Ed25519 | FROST | SPL token support |
-| TON | Ed25519 | FROST | |
-| Cardano | Ed25519 | FROST | Byron and Shelley |
-| NEAR | Ed25519 | FROST | |
-| Polkadot | Sr25519 | FROST | Substrate chains |
-| Cosmos | secp256k1 | CGGMP21 | IBC-compatible |
-| Lux Network | secp256k1 | CGGMP21 | X/P/C chains |
-| XRPL | secp256k1 | CGGMP21 | |
-| BNB Chain | secp256k1 | CGGMP21 | BSC and BNB Beacon |
-| Polygon | secp256k1 | CGGMP21 | PoS and zkEVM |
-| Arbitrum | secp256k1 | CGGMP21 | L2 rollup |
-| Ethereum 2.0 | BLS12-381 | BLS / Quasar | Validator signing |
-
-## Performance
-
-Real benchmarks from production clusters:
-
-### FROST Key Generation
-
-| Parties | Time | Notes |
-|---------|------|-------|
-| 3 | 22 ms | Typical hot wallet |
-| 10 | 38 ms | Team custody |
-| 20 | 332 ms | Institutional |
-| 30 | 535 ms | Large consortium |
-| 50 | 1.85 s | DAO governance |
-
-### FROST Signing
-
-| Signers | Time | Notes |
-|---------|------|-------|
-| 3 | 25 ms | Standard threshold |
-| 5 | 21 ms | Batch-optimized |
-
-Signing is **O(t)** -- it depends only on the threshold, not the total number of parties. A 3-of-100 wallet signs just as fast as a 3-of-3.
-
-### Cryptographic Primitives
-
-| Operation | Throughput |
-|-----------|-----------|
-| Scalar multiplication | 23 us/op |
-| Lagrange interpolation | O(n^2) |
-| Polynomial evaluation | O(n * t) |
-| Keygen communication | O(n^2) rounds |
-
-## Architecture
-
-```
-                    ┌──────────────────────────────────┐
-                    │         Client / KMS              │
-                    │  (REST API + Bearer Auth)          │
-                    └──────────────┬───────────────────┘
-                                   │
-                    ┌──────────────▼───────────────────┐
-                    │       MPC Coordinator             │
-                    │  - Protocol orchestration          │
-                    │  - IAM token validation            │
-                    │  - Audit logging                   │
-                    └──────────────┬───────────────────┘
-                                   │ NATS JetStream
-                    ┌──────────────▼─────────────────────────┐
-                    │     MPC Nodes (StatefulSet / Validators) │
-                    │                                          │
-                    │  ┌────────┐ ┌────────┐  ...  ┌────────┐ │
-                    │  │ Node 0 │ │ Node 1 │       │ Node N │ │
-                    │  │ share₀ │ │ share₁ │       │ shareₙ │ │
-                    │  │ Ed25519│ │ Ed25519│       │ Ed25519│ │
-                    │  │ ML-DSA │ │ ML-DSA │       │ ML-DSA │ │
-                    │  └────┬───┘ └────┬───┘       └────┬───┘ │
-                    │       │          │                │      │
-                    │  ┌────▼──────────▼────────────────▼───┐ │
-                    │  │  Private BFT Blockchain (ConsensusKV)│ │
-                    │  │  Dual-cert: Ed25519 + ML-DSA-65      │ │
-                    │  │  t-of-n threshold finality            │ │
-                    │  └────────────────────────────────────┘ │
-                    │       │                                   │
-                    │  ┌────▼──────────────────────────────┐   │
-                    │  │    BadgerDB (encrypted)             │   │
-                    │  │    AES-256-GCM per node             │   │
-                    │  └────────────────────────────────────┘   │
-                    └──────────────────────────────────────────┘
+mpc.OnWalletCreationResult(func(e event.KeygenResultEvent) {
+    // e.ECDSAPubKey (CGGMP21), e.EDDSAPubKey (FROST), …
+})
+mpc.CreateWallet(walletID)
 ```
 
-### Components
-
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| Coordinator | Go | Protocol orchestration, API gateway |
-| MPC Nodes | Go + Rust (crypto) | Key share storage, protocol execution, consensus validators |
-| ConsensusKV | Private BFT chain | Cluster state (peers, keys, wallets) with dual-cert finality |
-| Message Bus | NATS JetStream | Inter-node messaging + consensus transport |
-| Storage | BadgerDB | Encrypted key share persistence |
-| Auth | Hanzo IAM (hanzo.id) | Bearer token validation, RBAC |
-| Identity | Ed25519 + ML-DSA-65 | Dual post-quantum node identity, stored in KMS/HSM |
-
-### State Management Backends
-
-All cluster state flows through an abstract KV interface. Three backends are available:
-
-| Backend | Config | Transport | Finality | Use Case |
-|---------|--------|-----------|----------|----------|
-| `consensus` | `kv_backend: consensus` | NATS + Private BFT | Dual-cert threshold (<100ms) | **Production** (default) |
-| `nats` | `kv_backend: nats` | NATS JetStream KV | JetStream replication | Development/staging |
-| `consul` | `kv_backend: consul` | Consul HTTP | Raft | Legacy/parity testing |
-
-See the [Consensus deep dive](/docs/services/mpc/consensus) for how the private blockchain works.
-
-## Authentication
-
-All API requests require a Bearer token issued by Hanzo IAM:
-
-```bash
-# Obtain token from Hanzo IAM
-TOKEN=$(curl -s https://hanzo.id/v1/iam/login \
-  -d '{"username":"admin@example.com","password":"..."}' | jq -r .token)
-
-# Use with MPC API
-curl -H "Authorization: Bearer $TOKEN" \
-  https://mpc.hanzo.ai/api/wallets
-```
-
-See [Hanzo IAM](/docs/services/iam) for full authentication documentation.
+The REST custody API above is a facade over this same backend.
 
 ## Security Model
 
-### Key Share Isolation
-
-- Each node runs in its own Kubernetes pod with dedicated persistent volume
-- Shares are encrypted at rest with AES-256-GCM using node-specific keys
-- Node-to-node communication uses mTLS via Consul Connect
-- No single node ever holds enough information to reconstruct a private key
-
-### Zero-Knowledge Proofs
-
-17 ZK proof systems verify correctness at every protocol stage:
-
-- Schnorr proofs of discrete log knowledge
-- Paillier encryption correctness proofs
-- Range proofs for secret share values
-- Commitment consistency proofs
-- Feldman VSS verification
-- Pedersen commitment proofs
-
-### Identifiable Aborts
-
-If any participant deviates from the protocol, the system:
-
-1. Detects the deviation through ZK verification
-2. Identifies the specific malicious party
-3. Aborts the operation with a signed blame proof
-4. Logs the incident to the audit trail
-
-### Proactive Share Refresh
-
-Key shares can be refreshed on a schedule or on-demand without changing the underlying key:
-
-- Old shares become useless after refresh
-- Compromised shares from a past epoch cannot be combined with current shares
-- The public key and all derived addresses remain unchanged
-
-## Endpoints
-
-| Environment | URL | Backend | Threshold |
-|-------------|-----|---------|-----------|
-| Production (managed) | `https://mpc.hanzo.ai` | consensus | 3-of-5 |
-| Production (decentralized) | `https://mpc.lux.network` | consensus | 3-of-5 |
-| Staging | `https://stg.mpc.hanzo.ai` | nats | 2-of-3 |
+- **Key share isolation** — each node runs in its own pod with a dedicated encrypted volume; no node holds enough to reconstruct a key.
+- **Encrypted shares** — shares are AES-256-GCM encrypted in an embedded key-value store; the encryption key comes from an HSM or [Hanzo KMS](/docs/services/kms) (`kms.hanzo.ai`). In production, plaintext-password backends are rejected outright.
+- **Signed messaging** — every inter-node and initiator message is Ed25519-signed and verified before processing.
+- **Zero-knowledge proofs** verify correctness at each protocol stage; a deviating party is identified and an operation aborts with a signed blame proof.
+- **Post-quantum cluster state** — peers, keys, and wallets live in a private BFT chain with dual-certificate (Ed25519 + ML-DSA-65) threshold finality.
 
 ## Next Steps
 
 <Cards>
-  <Card title="Consensus" href="/docs/services/mpc/consensus">
-    How the private BFT blockchain and dual-certificate finality work
+  <Card title="API Reference" href="/docs/services/mpc/api">
+    Complete REST API: wallets, sessions, signing, resharing
   </Card>
   <Card title="Protocols" href="/docs/services/mpc/protocols">
-    Deep dive into all 8 cryptographic protocols
+    CGGMP21, FROST, LSS, and BLS threshold schemes
   </Card>
-  <Card title="API Reference" href="/docs/services/mpc/api">
-    Complete REST API documentation
-  </Card>
-  <Card title="Deployment" href="/docs/services/mpc/deployment">
-    Helm charts, Docker, and Kubernetes setup
+  <Card title="Consensus" href="/docs/services/mpc/consensus">
+    The private BFT chain and dual-certificate finality
   </Card>
   <Card title="KMS Integration" href="/docs/services/kms">
-    Use MPC as a signing backend for Hanzo KMS
+    Use MPC as a threshold signing backend for Hanzo KMS
   </Card>
 </Cards>

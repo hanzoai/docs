@@ -34,7 +34,7 @@ A block is finalized **only** when both signature types reach the t-of-n thresho
 | Security level | NIST Level 3 (192-bit classical equivalent) |
 | Package | `github.com/luxfi/crypto/mldsa` |
 
-The same ML-DSA implementation is used by the [Lux Network](/docs/services/lux) mainnet precompiles for on-chain post-quantum signature verification.
+ML-DSA is the NIST-standardized (FIPS 204) post-quantum digital signature scheme used for on-chain and consensus signature verification.
 
 ## Consensus Protocol
 
@@ -214,18 +214,12 @@ identity:
 | **External dependency** | None (self-sovereign) | Consul servers | NATS servers |
 | **Post-quantum** | ML-DSA-65 dual-cert | No | No |
 | **Finality model** | Dual-cert threshold | Raft leader commit | JetStream ack |
-| **Latency** | <100ms (typical) | ~50ms | ~10ms |
+| **Latency** | &lt;100ms (typical) | ~50ms | ~10ms |
 | **Trust model** | Same as MPC threshold | Trust Consul cluster | Trust NATS cluster |
 | **State integrity** | Blockchain (hash chain) | Raft log | Stream sequence |
 
 The key advantage: ConsensusKV uses the **same trust model** as MPC signing. If you trust 3-of-5 nodes to sign transactions, you can trust 3-of-5 nodes to finalize state -- no additional infrastructure needed.
 
-## Lux Network Integration
+## Post-quantum cryptography
 
-ConsensusKV uses the same post-quantum crypto library as the Lux Network:
-
-- **ML-DSA precompile**: `lux/precompile/mldsa/` -- on-chain PQ signature verification
-- **Quasar consensus**: `lux/consensus/protocol/quasar/` -- dual BLS+Corona threshold finality
-- **Shared crypto**: `github.com/luxfi/crypto/mldsa` -- ML-DSA-44/65/87 implementation
-
-The MPC private chain can optionally register as a **Lux subnet** (M-Chain or T-Chain) for network-level integration and cross-chain state anchoring.
+ConsensusKV's dual-certificate finality combines a classical Ed25519 certificate with a post-quantum ML-DSA-65 certificate, so cluster state stays verifiable even against a quantum adversary. The ML-DSA implementation supports the FIPS 204 parameter sets (ML-DSA-44/65/87); the cluster uses ML-DSA-65 (NIST Level 3) by default.
