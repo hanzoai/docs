@@ -5,44 +5,37 @@ description: Platform REST and tRPC API for managing organizations, clusters, co
 
 Hanzo Platform exposes two API surfaces: **tRPC** for the dashboard and **REST** for external integrations. Both share the same authentication and authorization layer.
 
-## Base URL
+## Base URLs
 
-```
-https://app.platform.hanzo.ai/api
-```
+| Surface | Base | Auth | Use |
+|---------|------|------|-----|
+| **Canonical control** | `https://platform.hanzo.ai/v1` | `Authorization: Bearer <service-token>` | Container redeploy, observe/drift (machine) |
+| **Build pipeline** | `https://platform.hanzo.ai/api` | `x-api-key: <key>` | Build/deploy applications via tRPC-over-OpenAPI |
 
-All endpoints are relative to this base URL.
-
-## API Surfaces
-
-| Surface | Protocol | Use Case |
-|---------|----------|----------|
-| **tRPC** | HTTP POST with JSON | Dashboard, SDK, programmatic access |
-| **REST** | Standard HTTP methods | External integrations, webhooks, CI/CD |
-
-The tRPC API uses procedure calls (e.g., `organization.all`, `cluster.create`). The REST API uses standard resource paths (e.g., `GET /clusters`, `POST /containers`).
+The `/v1` surface is the canonical Hanzo control plane. The `/api` surface is the Dokploy-derived build pipeline, where each endpoint is a tRPC procedure exposed over HTTP as `<router>.<procedure>` (e.g. `application.create`, `domain.create`).
 
 ## Authentication
 
-All requests require a Bearer token in the `Authorization` header:
+The build-pipeline surface accepts an API key (machine) or an IAM bearer token (interactive):
 
 ```bash
-curl https://app.platform.hanzo.ai/api/organization.all \
-  -H "Authorization: Bearer YOUR_TOKEN"
+curl https://platform.hanzo.ai/api/organization.all \
+  -H "x-api-key: $PLATFORM_API_KEY"
 ```
 
-See [Authentication](/docs/services/platform/api/authentication) for details on obtaining tokens.
+The canonical `/v1` surface uses a service token: `Authorization: Bearer $PAAS_SERVICE_TOKEN`. Both credential types come from [Hanzo KMS](/docs/services/kms). See [Authentication](/docs/services/platform/api/authentication) for details.
 
 ## tRPC Procedures
 
-The platform exposes 16 tRPC routers:
+The build pipeline exposes these tRPC routers:
 
 | Router | Description |
 |--------|-------------|
 | `organization` | Organization CRUD |
 | `orgTeam` | Team member management |
 | `cluster` | Cluster lifecycle |
-| `container` | Container deployments |
+| `application` | Application deployments (the unit a container maps to) |
+| `compose` | Multi-service compose/stack units |
 | `project` | Project management |
 | `environment` | Environment configuration |
 | `build` | Build pipelines |
@@ -61,7 +54,7 @@ The platform exposes 16 tRPC routers:
 tRPC requests use HTTP POST with a JSON body:
 
 ```bash
-curl -X POST https://app.platform.hanzo.ai/api/cluster.create \
+curl -X POST https://platform.hanzo.ai/api/cluster.create \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
