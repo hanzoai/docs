@@ -1,0 +1,79 @@
+---
+title: Open-Source Payouts
+description: How Hanzo Cloud attributes usage to the open-source packages it runs and pays their authors — the 25% commitment, the attribution pipeline, and how to participate, with an honest line between live and roadmap.
+---
+
+# Open-Source Payouts
+
+The AI stack runs on open source that almost nobody pays for. Hanzo Cloud's
+commitment, written into the billing code and not just a blog post:
+
+> **75% of attributable cloud revenue stays with the platform; 25% is pooled for
+> the open-source developers whose packages the cloud actually ran.**
+
+This page explains how attribution works, how to participate, and exactly what is
+live versus roadmap.
+
+## How attribution works
+
+| Step | What happens | Status |
+|------|--------------|--------|
+| **Build** | Every image the build system produces gets a Software Bill of Materials (`syft` → CycloneDX): the exact dependency graph of what shipped. | **Built** (ingestion currently opt-in) |
+| **Attribute** | A `git blame` engine maps each dependency to its authors line by line, producing per-author contribution percentages. | **Built** |
+| **Meter** | The cloud already meters usage per organization for billing; that usage is the cost basis. | **Live** |
+| **Split** | Usage is allocated across the dependency graph, weighted by contribution; 25% of the attributable amount is reserved for contributors. | **Built** (25% pool is in code) |
+| **Pay** | Contributors receive their share. | **Credits live; crypto/fiat roadmap** |
+
+The 25% figure is not marketing copy — it is the configured platform/contributor
+split in the payout engine (75/25) and in the revenue-share config.
+
+## How to participate
+
+> **Status, plainly.** The attribution engine, the 25% split, the metering, the
+> payout model, and a contributor API **all exist today**. What is being switched
+> on is the connective tissue: SBOM ingestion, the scheduled payout run, and the
+> external (crypto/fiat) payout rails. The first payouts go to the dependencies
+> Hanzo Cloud itself runs on, as the reference implementation, paid in credits.
+
+The contributor flow (preview):
+
+1. **Register a contributor identity** tied to your Git login and choose a payout
+   method (credits today; crypto and fiat are being wired).
+2. **Your packages are matched** against the SBOMs of what the cloud builds and
+   runs; the `git blame` engine computes your contribution share per package.
+3. **Payouts are calculated** from metered usage × dependency weight × your share,
+   against the 25% pool, with a small minimum per payout.
+4. **Check your earnings** and reconcile them against the SBOM that produced them.
+
+A Hanzo Commerce contributor API backs these operations (register, submit/inspect
+SBOM attribution, calculate payouts, read earnings). It is being prepared for
+public self-serve use alongside the onboarding flow below.
+
+## Link your repo (roadmap, and the headline)
+
+The end state is fully self-serve:
+
+> **Connect a GitHub repository, verify you own it, choose how you want to be
+> paid, and receive a share whenever Hanzo Cloud runs software that depends on
+> yours.**
+
+This onboarding flow — repo linking with ownership verification — is the piece we
+are building next. Until it ships, attribution covers a curated set of
+dependencies (starting with Hanzo's own), and payouts are issued in credits. When
+self-serve launches, you will be able to verify your earnings directly against the
+published SBOMs.
+
+## Payout methods
+
+| Method | Status |
+|--------|--------|
+| Hanzo credits (non-expiring) | **Live** — the first payout rail. |
+| Crypto (to a verified address) | **Roadmap** — the underlying rail that pays an arbitrary recipient exists; wiring it to contributor payouts is in progress. |
+| Fiat | **Roadmap** — external fiat disbursement is not yet implemented. |
+
+## Related
+
+- **[Proof of AI](/docs/proof-of-ai)** — how the cloud verifies the work it bills.
+- **[Node Operator](/docs/proof-of-ai/node-operator)** — earn by running compute.
+- **[Commerce](/docs/commerce)** — the billing system that meters usage and issues
+  payouts.
