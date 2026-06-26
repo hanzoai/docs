@@ -1,65 +1,50 @@
 ---
 title: Authentication
-description: OAuth2 via Hanzo ID, API tokens, and bearer authentication
+description: IAM tokens, API keys, and service tokens for the Hanzo PaaS API
 ---
 
-All API requests to Hanzo Platform require authentication. The platform supports OAuth2 via Hanzo ID and long-lived API tokens.
+Hanzo PaaS has three credential types, matched to its two API surfaces. Machine credentials are stored in [Hanzo KMS](/docs/services/kms) and read at runtime — never hard-coded.
 
-## Authentication Methods
-
-| Method | Lifetime | Use Case |
-|--------|----------|----------|
-| **OAuth2 Access Token** | 1 hour | Dashboard sessions, user-facing apps |
-| **API Token** | Until revoked | CI/CD, scripts, server-to-server |
-
-Both methods use the same `Authorization: Bearer <token>` header.
+| Credential | Header | Surface | Use |
+|------------|--------|---------|-----|
+| **IAM token** | `Authorization: Bearer <jwt>` | `/api` | Interactive / user access via SSO |
+| **API key** | `x-api-key: <key>` | `/api` | Machine access to the build pipeline; org-scoped |
+| **Service token** | `Authorization: Bearer <token>` | `/v1` | Container redeploy and observe (M2M) |
 
 ## OAuth2 via Hanzo ID
 
-Hanzo Platform uses [Hanzo ID](https://hanzo.id) as its identity provider. The OAuth2 Authorization Code flow is used for user authentication.
-
-### Authorization Code Flow
+Interactive access uses the [Hanzo ID](https://hanzo.id) OAuth2 Authorization Code flow.
 
 <Steps>
 
 ### Redirect to Hanzo ID
 
 ```
-https://hanzo.id/oauth/authorize?
-  client_id=YOUR_CLIENT_ID&
+https://hanzo.id/v1/iam/oauth/authorize?
+  client_id=hanzo-platform&
   redirect_uri=https://yourapp.com/callback&
   response_type=code&
   scope=openid profile email&
   state=RANDOM_STATE
 ```
 
-### User authenticates
-
-The user logs in at Hanzo ID and approves access.
-
 ### Handle the callback
 
-Hanzo ID redirects to your `redirect_uri` with an authorization code:
+Hanzo ID redirects back with `?code=...&state=...`.
 
-```
-https://yourapp.com/callback?code=AUTH_CODE&state=RANDOM_STATE
-```
-
-### Exchange code for tokens
+### Exchange the code for tokens
 
 ```bash
-curl -X POST https://hanzo.id/oauth/token \
+curl -X POST https://hanzo.id/v1/iam/oauth/token \
   -H "Content-Type: application/json" \
   -d '{
-    "client_id": "YOUR_CLIENT_ID",
-    "client_secret": "YOUR_CLIENT_SECRET",
-    "code": "AUTH_CODE",
+    "client_id": "hanzo-platform",
+    "client_secret": "'$CLIENT_SECRET'",
+    "code": "'$AUTH_CODE'",
     "redirect_uri": "https://yourapp.com/callback",
     "grant_type": "authorization_code"
   }'
 ```
-
-**Response:**
 
 ```json
 {
@@ -72,89 +57,43 @@ curl -X POST https://hanzo.id/oauth/token \
 
 </Steps>
 
-### Refreshing Tokens
+Refresh with `grant_type=refresh_token`. See [Hanzo IAM](/docs/services/iam) for the full flow.
 
-Access tokens expire after 1 hour. Use the refresh token to obtain a new access token:
+## API keys (build pipeline)
 
-```bash
-curl -X POST https://hanzo.id/oauth/token \
-  -H "Content-Type: application/json" \
-  -d '{
-    "client_id": "YOUR_CLIENT_ID",
-    "client_secret": "YOUR_CLIENT_SECRET",
-    "refresh_token": "YOUR_REFRESH_TOKEN",
-    "grant_type": "refresh_token"
-  }'
-```
-
-## API Tokens
-
-API tokens are long-lived credentials for programmatic access. They do not expire unless revoked.
-
-### Creating a Token
-
-<Tabs items={["Dashboard", "CLI"]}>
-  <Tab value="Dashboard">
-    Go to **Settings > API Tokens > Create Token**. Name the token and select its scope. The token is shown once -- copy it immediately.
-  </Tab>
-  <Tab value="CLI">
-    ```bash
-    hanzo token create --name "CI Pipeline" --scope "deploy:*"
-    # Output: tk_abc123def456...
-    ```
-  </Tab>
-</Tabs>
+API keys authenticate machine callers to the `/api` build-pipeline surface. Create one in the Studio under **Settings → API Keys** — the key is scoped to the organization you create it under and shown once.
 
 <Callout type="warn">
-API tokens are shown only once at creation time. Store them securely. If lost, revoke the old token and create a new one.
+Store API keys in [Hanzo KMS](/docs/services/kms) immediately. They are shown only at creation. If lost, revoke and create a new one.
 </Callout>
 
-### Using a Token
-
 ```bash
-curl https://app.platform.hanzo.ai/api/cluster.all \
-  -H "Authorization: Bearer tk_abc123def456"
+curl https://platform.hanzo.ai/api/application.all \
+  -H "x-api-key: $PLATFORM_API_KEY"
 ```
 
-### Revoking a Token
+## Service tokens (`/v1` surface)
+
+The canonical `/v1` control surface (container redeploy, `/v1/apps` observe) uses a service token presented as a bearer:
 
 ```bash
-# Via CLI
-hanzo token revoke tk_abc123def456
-
-# Via API
-curl -X POST https://app.platform.hanzo.ai/api/user.revokeToken \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ "tokenId": "tk_abc123def456" }'
+curl -fsS -X POST \
+  "https://platform.hanzo.ai/v1/org/$ORG_ID/project/$PROJECT_ID/env/$ENV_ID/container/$CONTAINER_ID/redeploy" \
+  -H "Authorization: Bearer $PAAS_SERVICE_TOKEN"
 ```
 
-## Token Scopes
+The service token is issued out-of-band and stored in KMS (e.g. `kms.hanzo.ai/v1/kms/orgs/hanzo/secrets/paas/SERVICE_TOKEN`). It is a pure machine-to-machine credential with no user session.
 
-Tokens can be scoped to limit access:
-
-| Scope | Access |
-|-------|--------|
-| `*` | Full access (default) |
-| `read:*` | Read-only across all resources |
-| `deploy:*` | Deploy to any cluster |
-| `deploy:cluster_abc` | Deploy to a specific cluster |
-| `admin:*` | Administrative operations |
-
-## Request Examples
+## Request examples
 
 ```bash
-# List organizations
-curl https://app.platform.hanzo.ai/api/organization.all \
-  -H "Authorization: Bearer YOUR_TOKEN"
+# List organizations (build pipeline, API key)
+curl https://platform.hanzo.ai/api/organization.all \
+  -H "x-api-key: $PLATFORM_API_KEY"
 
-# Create a container
-curl -X POST https://app.platform.hanzo.ai/api/container.create \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+# Register an application
+curl -X POST https://platform.hanzo.ai/api/application.create \
+  -H "x-api-key: $PLATFORM_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "name": "web",
-    "image": "ghcr.io/myorg/myapp:latest",
-    "clusterId": "cluster_abc123"
-  }'
+  -d '{ "name": "web", "environmentId": "'$ENV_ID'" }'
 ```

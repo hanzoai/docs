@@ -5,229 +5,217 @@ description: Identity and Access Management for the Hanzo AI Platform
 
 # Hanzo IAM
 
-Hanzo IAM (Identity and Access Management) provides unified authentication and authorization across all Hanzo services. It supports OAuth2, OIDC, SAML, Kerberos/SPNEGO, LDAP, Web3, and MPC authentication.
+Hanzo IAM is the identity provider for the Hanzo platform, served at **`hanzo.id`**. It is a standards-compliant OpenID Connect (OIDC) and OAuth 2.0 authorization server that issues the JWTs every other Hanzo service trusts. It supports password, social OAuth2, Web3 wallet, WebAuthn/passkey, LDAP, SAML, device-code, and MFA authentication.
+
+| | |
+|---|---|
+| **Issuer** | `https://hanzo.id` |
+| **API prefix** | `/v1/iam` |
+| **Discovery** | `https://hanzo.id/.well-known/openid-configuration` |
+| **JWKS** | `https://hanzo.id/v1/iam/.well-known/jwks` |
+| **Source** | [github.com/hanzoai/iam](https://github.com/hanzoai/iam) |
+
+<Callout>
+Every Hanzo IAM endpoint lives under the single canonical prefix `/v1/iam`. The standard discovery path `/.well-known/openid-configuration` is served as a back-compatible alias so off-the-shelf OIDC clients work out of the box.
+</Callout>
 
 ## Features
 
-- **OAuth2/OIDC**: Standard OpenID Connect flows with regex/wildcard scope support
-- **Kerberos/SPNEGO**: Enterprise SSO via Kerberos authentication with per-organization realm configuration
-- **LDAP**: Directory integration with configurable attribute filtering per organization
-- **SAML**: SAML 2.0 service provider and identity provider
+- **OAuth2 / OIDC**: Authorization Code (+ PKCE), Client Credentials, Refresh Token, Device Code, and Token Exchange grants
+- **Per-host white-label**: one deployment serves many domains, each with its own issuer, branding, and JWKS
 - **Web3 Authentication**: MetaMask, WalletConnect, Coinbase, Rainbow
-- **MPC Authentication**: Multi-party computation for secure key recovery
-- **Multi-tenancy**: Organizations, applications, and user isolation
-- **SSO**: Single sign-on across all Hanzo services
-- **RBAC**: Role-based access control
-- **MFA**: TOTP, WebAuthn, SMS, Email verification
+- **WebAuthn / Passkeys**: FIDO2 passwordless authentication with hardware keys or biometrics
+- **LDAP & SAML**: Directory integration and SAML 2.0 SP/IdP
+- **MFA**: TOTP, WebAuthn, SMS, and email verification
+- **Post-quantum tokens**: JWT signing with `MLDSA65` (ML-DSA-65, FIPS 204) in addition to `RS256`/`ES256`
+- **Multi-tenancy**: Organizations, applications, and user isolation with RBAC
 
-## Endpoints
+## OIDC Endpoints
 
-| Environment | URL |
-|-------------|-----|
-| Production | `https://iam.hanzo.ai` |
-| Staging | `https://stg.iam.hanzo.ai` |
+All endpoints are under `https://hanzo.id/v1/iam`.
 
-## Quick Start
+| Endpoint | Path |
+|----------|------|
+| Discovery | `GET /.well-known/openid-configuration` (alias) · `GET /v1/iam/.well-known/openid-configuration` |
+| JWKS | `GET /v1/iam/.well-known/jwks` |
+| Authorize | `GET /v1/iam/oauth/authorize` |
+| Token | `POST /v1/iam/oauth/token` |
+| Userinfo | `GET /v1/iam/oauth/userinfo` |
+| Logout / end-session | `GET,POST /v1/iam/oauth/logout` |
+| Introspect (RFC 7662) | `POST /v1/iam/oauth/introspect` |
+| Revoke (RFC 7009) | `POST /v1/iam/oauth/revoke` |
+| Device code | `POST /v1/iam/oauth/device` |
+| Dynamic client registration | `POST /v1/iam/oauth/register` |
 
-### 1. Register Your Application
+## Applications: the `<org>-<app>` convention
 
-Create an application in Hanzo IAM to get client credentials:
+Every consumer of Hanzo IAM registers an **application**, and the application's name follows one rule:
+
+```
+app slug = <org>-<app>
+```
+
+For example: `hanzo-brain`, `hanzo-cloud`, `hanzo-chat`, `acme-verify`. The organization that owns the data goes in the `organization` field; the app name is namespaced with the org so it stays globally unique. Your application's `client_id` and the `aud` (audience) claim of issued tokens both default to this `<org>-<app>` slug.
+
+### Register an application
 
 ```bash
-curl -X POST https://iam.hanzo.ai/api/add-application \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
+curl -X POST https://hanzo.id/v1/iam/add-application \
+  -H "Authorization: Bearer $IAM_ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "owner": "admin",
-    "name": "my-app",
-    "displayName": "My Application",
+    "name": "hanzo-brain",
+    "displayName": "Hanzo Brain",
     "organization": "hanzo",
-    "redirectUris": ["https://myapp.com/callback"],
-    "enablePassword": true,
-    "enableSignUp": true,
-    "enableWebAuthn": true
+    "cert": "cert-built-in",
+    "tokenFormat": "JWT",
+    "grantTypes": ["authorization_code", "refresh_token"],
+    "redirectUris": ["https://brain.hanzo.ai/callback"]
   }'
 ```
 
-### 2. Implement OAuth2 Flow
+`clientId` and `clientSecret` are generated automatically if omitted. Store the returned `clientSecret` in [Hanzo KMS](/docs/services/kms) — never in source or plaintext config.
 
-```typescript
-// Redirect to authorization
-const authUrl = new URL('https://iam.hanzo.ai/oauth/authorize')
-authUrl.searchParams.set('client_id', CLIENT_ID)
-authUrl.searchParams.set('redirect_uri', REDIRECT_URI)
-authUrl.searchParams.set('response_type', 'code')
-authUrl.searchParams.set('scope', 'openid profile email')
-authUrl.searchParams.set('state', generateState())
+<Callout type="info">
+For idempotent, declarative provisioning (CI/CD, operators), use `POST /v1/iam/admin/applications/upsert` with an `Authorization: Bootstrap <token>` header instead of a session/admin JWT.
+</Callout>
 
-window.location.href = authUrl.toString()
+## Authorization Code + PKCE Flow
+
+This is the recommended flow for web apps, SPAs, and mobile clients.
+
+<Steps>
+
+### Discover
+
+```bash
+curl https://hanzo.id/.well-known/openid-configuration
 ```
 
-### 3. Exchange Code for Token
+The `issuer` and every endpoint come back scoped to the requesting host (`hanzo.id`).
+
+### Redirect to authorize
+
+```
+https://hanzo.id/v1/iam/oauth/authorize
+  ?response_type=code
+  &client_id=hanzo-brain
+  &redirect_uri=https://brain.hanzo.ai/callback
+  &scope=openid%20profile%20email
+  &state=RANDOM_STATE
+  &code_challenge=<S256(verifier)>
+  &code_challenge_method=S256
+```
+
+The user authenticates on the branded login page and is redirected back with `?code=...&state=...`.
+
+### Exchange the code for tokens
+
+```bash
+curl -X POST https://hanzo.id/v1/iam/oauth/token \
+  -d grant_type=authorization_code \
+  -d code=$AUTH_CODE \
+  -d redirect_uri=https://brain.hanzo.ai/callback \
+  -d client_id=hanzo-brain \
+  -d client_secret=$CLIENT_SECRET \
+  -d code_verifier=$PKCE_VERIFIER
+```
+
+Response:
+
+```json
+{
+  "access_token": "eyJhbGciOiJSUzI1NiIs...",
+  "id_token": "eyJhbGciOiJSUzI1NiIs...",
+  "refresh_token": "eyJhbGciOiJSUzI1NiIs...",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}
+```
+
+### Get user info
+
+```bash
+curl https://hanzo.id/v1/iam/oauth/userinfo \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+</Steps>
+
+## Validating tokens in a resource server
+
+Any Hanzo service validates a `hanzo.id` token **offline**: fetch the JWKS once, then verify each request locally.
+
+1. Fetch the signing keys from `https://hanzo.id/v1/iam/.well-known/jwks` (cache by `kid`).
+2. Verify the JWT signature (`RS256` by default).
+3. Require `iss == https://hanzo.id`.
+4. Require `aud == <org>-<app>` (your own `client_id`).
+5. Read `sub` (the user ID) and `owner` (the user's organization) to scope data.
 
 ```typescript
-const response = await fetch('https://iam.hanzo.ai/oauth/token', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    grant_type: 'authorization_code',
-    client_id: CLIENT_ID,
-    client_secret: CLIENT_SECRET,
-    code: authorizationCode,
-    redirect_uri: REDIRECT_URI
+import { createRemoteJWKSet, jwtVerify } from 'jose'
+
+const JWKS = createRemoteJWKSet(new URL('https://hanzo.id/v1/iam/.well-known/jwks'))
+
+export async function verify(token: string) {
+  const { payload } = await jwtVerify(token, JWKS, {
+    issuer: 'https://hanzo.id',
+    audience: 'hanzo-brain', // your <org>-<app> client_id
   })
-})
-
-const { access_token, refresh_token, id_token } = await response.json()
+  return { userId: payload.sub, org: payload.owner as string }
+}
 ```
 
-### 4. Get User Info
+The Hanzo Gateway performs this validation at the edge and injects trusted `X-Org-Id`, `X-User-Id`, and `X-User-Email` headers (stripping any client-supplied identity headers) for upstream services.
 
-```typescript
-const userInfo = await fetch('https://iam.hanzo.ai/oauth/userinfo', {
-  headers: { 'Authorization': `Bearer ${access_token}` }
-}).then(r => r.json())
+## White-labeling by domain
 
-// userInfo contains: sub, name, email, picture, etc.
-```
+Hanzo IAM is multi-tenant white-label by design. A single deployment serves many domains:
 
-## Organizations
+- **Per-host issuer** — the issuer, authorization endpoint, and JWKS are derived per request from `X-Forwarded-Host` (set by [Hanzo Ingress](/docs/services/ingress)). Each domain returns its own discovery document.
+- **Per-app branding** — logo, title, favicon, theme color, and custom CSS are configured on each organization and application, and resolved on the login page by `client_id` (or by org in the path, `/login/{org}`).
 
-Hanzo IAM supports multi-tenant organizations:
-
-| Organization | Domain | Theme Color |
-|--------------|--------|-------------|
-| hanzo | hanzo.ai | #fd4444 (Red) |
-| zoo | zoo.ngo | #10b981 (Green) |
-| lux | lux.network | #8b5cf6 (Purple) |
-| pars | pars.ai | #3b82f6 (Blue) |
-
-## Applications
-
-Pre-configured applications:
-
-| Application | Organization | Description |
-|-------------|--------------|-------------|
-| app-hanzo | hanzo | Main Hanzo AI Platform |
-| app-cloud | hanzo | Hanzo Cloud Console |
-| app-commerce | hanzo | Hanzo Commerce Platform |
-| app-console | hanzo | Hanzo Observability Console |
-| app-platform | hanzo | Hanzo PaaS Platform |
-| app-zoo | zoo | Zoo Labs Foundation |
-| app-lux | lux | Lux Network |
-| app-pars | pars | Pars AI Platform |
-| app-sign | hanzo | Document Signing |
-| app-dataroom | hanzo | Secure Document Sharing |
-| app-captable | hanzo | Equity Management |
+This is how `hanzo.id` presents Hanzo branding while the same engine can serve entirely separate, independently-branded identity surfaces for other tenants.
 
 ## Authentication Methods
 
-### Password Authentication
+| Method | Notes |
+|--------|-------|
+| **Password** | `argon2id` hashing |
+| **OAuth2 social** | GitHub, Google, Microsoft, Apple, Discord, X |
+| **Web3 wallets** | MetaMask, WalletConnect, Coinbase, Rainbow |
+| **WebAuthn / Passkeys** | FIDO2 hardware keys and biometrics |
+| **LDAP** | Per-organization directory integration |
+| **SAML 2.0** | Service provider and identity provider |
+| **Device code** | CLIs and input-constrained devices |
+| **MFA** | TOTP, WebAuthn, SMS, email |
 
-Standard username/password with argon2id hashing.
-
-### OAuth2 Providers
-
-- GitHub
-- Google
-- Microsoft
-- Apple
-- Discord
-- Twitter/X
-
-### Web3 Wallets
-
-- MetaMask
-- WalletConnect
-- Coinbase Wallet
-- Rainbow
-
-### WebAuthn/Passkeys
-
-FIDO2 passwordless authentication with hardware keys or biometrics.
-
-## API Reference
-
-See the [IAM API documentation](/docs/services/iam/api) for the complete API reference.
-
-## SDK Integration
-
-### JavaScript/TypeScript
+## SDK
 
 ```typescript
-import { HanzoAuth } from '@hanzo/auth'
+import { signIn } from '@hanzo/iam/browser'
 
-const auth = new HanzoAuth({
-  clientId: 'your-client-id',
-  redirectUri: 'https://yourapp.com/callback',
-  organization: 'hanzo'
+await signIn({
+  iamUrl: 'https://hanzo.id',
+  clientId: 'hanzo-brain', // your <org>-<app> slug
+  redirectUri: 'https://brain.hanzo.ai/callback',
 })
-
-// Login
-await auth.login()
-
-// Get current user
-const user = await auth.getUser()
-
-// Logout
-await auth.logout()
 ```
-
-### Python
-
-```python
-from hanzoai.auth import HanzoAuth
-
-auth = HanzoAuth(
-    client_id="your-client-id",
-    client_secret="your-client-secret",
-    organization="hanzo"
-)
-
-# Get access token (client credentials)
-token = auth.get_access_token()
-
-# Verify token
-claims = auth.verify_token(token)
-```
-
-## OIDC Flows
-
-Hanzo IAM supports the full OpenID Connect specification. Choose the right flow for your application:
-
-| Application Type | Flow | Guide |
-|-----------------|------|-------|
-| Web app (server-side) | Authorization Code | [OIDC Flows](/docs/services/iam/how-to-connect/oidc-flows) |
-| SPA / Mobile | Authorization Code + PKCE | [OIDC Flows](/docs/services/iam/how-to-connect/oidc-flows#authorization-code--pkce) |
-| Service / API | Client Credentials | [OIDC Flows](/docs/services/iam/how-to-connect/oidc-flows#client-credentials-flow) |
-| CLI / IoT | Device Code | [OIDC Flows](/docs/services/iam/how-to-connect/oidc-flows#device-code-flow) |
-
-**Discovery URL:** `https://hanzo.id/.well-known/openid-configuration`
-
-All Hanzo services authenticate via IAM using the `owner` claim in the JWT to scope data to the correct organization.
 
 ## Next Steps
 
 <Cards>
   <Card title="Configuration" href="/docs/services/iam/configuration">
-    Canonical `IAM_*` environment variable contract for consumer services
-  </Card>
-  <Card title="OIDC Flows" href="/docs/services/iam/how-to-connect/oidc-flows">
-    Step-by-step guide to authorization code, PKCE, client credentials, and device code flows
-  </Card>
-  <Card title="OIDC Discovery" href="/docs/services/iam/how-to-connect/oidc-client">
-    Discovery endpoints and OIDC client configuration
-  </Card>
-  <Card title="WebAuthn / FIDO2" href="/docs/services/iam/how-to-connect/webauthn">
-    Passwordless authentication with hardware keys and biometrics
-  </Card>
-  <Card title="SAML" href="/docs/services/iam/how-to-connect/saml/overview">
-    SAML 2.0 service provider and identity provider
-  </Card>
-  <Card title="MCP Auth" href="/docs/services/iam/mcp-auth/overview">
-    Model Context Protocol authentication for AI agents
+    The canonical `IAM_*` environment variable contract for consumer services
   </Card>
   <Card title="KMS Integration" href="/docs/services/iam/kms-integration">
-    How IAM uses KMS for secret management
+    How IAM stores and reads its own secrets from Hanzo KMS
+  </Card>
+  <Card title="MPC Auth" href="/docs/services/iam/mpc">
+    Multi-party computation authentication for secure key recovery
+  </Card>
+  <Card title="Hanzo KMS" href="/docs/services/kms">
+    Secret management for client secrets and signing keys
   </Card>
 </Cards>

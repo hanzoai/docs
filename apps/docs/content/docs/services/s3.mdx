@@ -7,268 +7,147 @@ description: S3-compatible object storage for AI infrastructure
 
 Hanzo S3 is a high-performance, S3-compatible object storage service built for AI workloads. It provides durable, scalable storage for model artifacts, training datasets, media assets, event streams, and application data across the Hanzo platform.
 
-**Console:** `s3.hanzo.ai`
-**S3 API:** `s3.hanzo.ai` / `api.s3.hanzo.ai`
-**Server:** [github.com/hanzoai/s3](https://github.com/hanzoai/s3)
-**Console:** [github.com/hanzos3/console](https://github.com/hanzos3/console)
-**CLI:** [github.com/hanzos3/cli](https://github.com/hanzos3/cli)
+Hanzo S3 is built on [SeaweedFS](https://github.com/seaweedfs/seaweedfs) (Apache-2.0) and exposes the **AWS S3 API** with Signature V4 authentication. Any S3 client, SDK, or tool works unmodified — point it at the endpoint and use your access key and secret key.
+
+| | |
+|---|---|
+| **S3 API** | `https://s3.hanzo.ai` |
+| **Console** | `https://s3.hanzo.ai` (web admin) |
+| **Protocol** | AWS S3 (SigV4), path-style and virtual-host style |
+| **Region** | `us-east-1` (default; cosmetic — set it on your client) |
+| **Source** | [github.com/hanzoai/s3](https://github.com/hanzoai/s3) |
 
 ## Features
 
-- **S3 API Compatible**: Drop-in replacement for Amazon S3 -- works with any S3 client, SDK, or tool
-- **Object Versioning**: Track and restore previous versions of any object
-- **Lifecycle Management**: Automated expiration, transition, and tiering rules
-- **Erasure Coding**: Configurable data redundancy across drives and nodes
-- **Server-Side Encryption**: SSE-S3 and SSE-KMS for data at rest and in transit
-- **OIDC SSO**: Single sign-on via `hanzo.id` for console access
-- **Bucket Policies**: Fine-grained S3-compatible IAM policy documents
-- **Multi-Tenancy**: Isolated namespaces and access boundaries for teams and services
-- **Event Notifications**: Webhook and queue notifications on object mutations
-- **High Throughput**: Designed to saturate NVMe and modern network hardware
+- **S3 API Compatible**: Drop-in replacement for Amazon S3 — works with `aws` CLI, `mc`, `boto3`, `@aws-sdk/client-s3`, and any other S3 SDK
+- **Buckets & Objects**: Full create/list/delete, put/get/head/copy/delete, and `ListObjects` v1 + v2 + versions
+- **Multipart Uploads**: Create, upload-part, copy-part, complete, abort, and list — for large objects
+- **Presigned URLs**: Time-limited GET/PUT URLs for browser and client-side transfers
+- **POST-Policy Uploads**: Direct browser form uploads with policy constraints
+- **Versioning**: Track and restore previous versions of any object
+- **Object Lock**: Retention and legal-hold for compliance (WORM)
+- **Lifecycle Rules**: Automated expiration and tiering
+- **Server-Side Encryption**: SSE-S3 and SSE-KMS (keys managed by [Hanzo KMS](/docs/services/kms))
+- **Bucket Policies, ACLs, CORS, Tagging**: Standard S3 access and metadata controls
+- **Advanced IAM (optional)**: OIDC/JWT identity providers, STS role assumption, and AWS-style policy documents
 
 ## Architecture
 
+Hanzo S3 runs the SeaweedFS storage stack behind the S3 gateway:
+
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  Clients                                                        │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐   │
-│  │ s3 CLI   │  │ AWS SDKs │  │ Hanzo    │  │ Console      │   │
-│  │          │  │ boto3    │  │ S3 SDKs  │  │ s3.hanzo.ai  │   │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └──────┬───────┘   │
-│       │              │              │               │           │
-└───────┼──────────────┼──────────────┼───────────────┼───────────┘
-        │              │              │               │
-        ▼              ▼              ▼               ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  s3.hanzo.ai / api.s3.hanzo.ai                                  │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │  Hanzo S3 Server                                        │    │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  │    │
-│  │  │ S3 API   │ │ IAM /    │ │ Erasure  │ │ Lifecycle│  │    │
-│  │  │ Handler  │ │ Policies │ │ Coding   │ │ Manager  │  │    │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘  │    │
-│  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐  │    │
-│  │  │ SSE-KMS  │ │ Version  │ │ Event    │ │ Console  │  │    │
-│  │  │ Encrypt  │ │ Control  │ │ Notify   │ │ UI :9001 │  │    │
-│  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘  │    │
-│  └─────────────────────────────────────────────────────────┘    │
-│                              │                                   │
-│                    ┌─────────┴─────────┐                        │
-│                    │  Persistent Data   │                        │
-│                    │  (NVMe / Block)    │                        │
-│                    └───────────────────┘                        │
-└─────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│  Clients                                                       │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐  │
+│  │ aws CLI  │  │ mc       │  │ boto3 /  │  │ Console      │  │
+│  │          │  │          │  │ aws-sdk  │  │ s3.hanzo.ai  │  │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └──────┬───────┘  │
+└───────┼─────────────┼─────────────┼───────────────┼──────────┘
+        │             │             │               │
+        ▼             ▼             ▼               ▼
+┌───────────────────────────────────────────────────────────────┐
+│  s3.hanzo.ai — S3 Gateway (SigV4 auth, S3 → Filer translation) │
+└───────────────┬───────────────────────────────────────────────┘
+                │
+   ┌────────────┼─────────────────────────┐
+   ▼            ▼                          ▼
+┌────────┐  ┌────────┐               ┌──────────────────┐
+│ Master │  │ Filer  │               │ Volume servers   │
+│ (topo) │  │ (meta) │               │ (object data)    │
+└────────┘  └────────┘               └──────────────────┘
 ```
+
+| Component | Role |
+|-----------|------|
+| **S3 Gateway** | Translates S3 API calls to Filer operations, enforces SigV4 auth |
+| **Master** | Cluster topology and volume assignment |
+| **Filer** | Object metadata, directory tree, bucket configuration |
+| **Volume servers** | Durable object data storage (Haystack-style needle storage) |
+
+## Credentials
+
+Hanzo S3 authenticates with an **access key + secret key** using AWS Signature V4 — exactly like Amazon S3. Each identity is granted a set of actions (`Admin`, `Read`, `Write`, `List`, `Tagging`), optionally scoped to specific buckets.
+
+Store your S3 credentials in [Hanzo KMS](/docs/services/kms) and inject them at runtime — never hard-code them:
+
+```bash
+# Pull credentials from KMS (machine-identity auth), then use any S3 client
+export AWS_ACCESS_KEY_ID=$(hanzo kms secret get --env prod --path /s3 ACCESS_KEY)
+export AWS_SECRET_ACCESS_KEY=$(hanzo kms secret get --env prod --path /s3 SECRET_KEY)
+```
+
+In Kubernetes, sync the keys into a Secret with a [KMSSecret CRD](/docs/services/kms/kmssecret-crd) instead of embedding them in manifests.
 
 ## Quick Start
 
-### Install the CLI
+Any S3 client works. The examples below use the host `s3.hanzo.ai` with credentials from the environment.
+
+### MinIO Client (`mc`)
 
 ```bash
-# macOS
-brew install hanzos3/tap/s3
+mc alias set hanzo https://s3.hanzo.ai "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"
 
-# Linux (amd64)
-curl -fsSL https://dl.hanzo.ai/s3/cli/linux-amd64/s3 -o /usr/local/bin/s3
-chmod +x /usr/local/bin/s3
-
-# From source
-go install github.com/hanzos3/cli/cmd/s3@latest
+mc mb hanzo/my-models                       # create a bucket
+mc cp ./model.safetensors hanzo/my-models/  # upload
+mc ls hanzo/my-models/                       # list
+mc cp hanzo/my-models/model.safetensors ./  # download
+mc mirror ./training-data/ hanzo/datasets/  # recursive sync
 ```
 
-### Configure
+### AWS CLI
+
+The AWS CLI works against Hanzo S3 with `--endpoint-url`. Set any region (it is not used for routing).
 
 ```bash
-# Add Hanzo S3 as an alias
-s3 alias set hanzo https://s3.hanzo.ai $HANZO_S3_ACCESS_KEY $HANZO_S3_SECRET_KEY
-
-# Verify connectivity
-s3 admin info hanzo
+aws --endpoint-url https://s3.hanzo.ai --region us-east-1 s3 mb s3://my-models
+aws --endpoint-url https://s3.hanzo.ai --region us-east-1 s3 cp ./model.safetensors s3://my-models/
+aws --endpoint-url https://s3.hanzo.ai --region us-east-1 s3 ls s3://my-models/
+aws --endpoint-url https://s3.hanzo.ai --region us-east-1 s3 sync ./run-042/ s3://datasets/run-042/
 ```
 
-### Basic Operations
-
-```bash
-# Create a bucket
-s3 mb hanzo/my-models
-
-# Upload a model artifact
-s3 cp ./model.safetensors hanzo/my-models/v1/
-
-# List objects
-s3 ls hanzo/my-models/
-
-# Download
-s3 cp hanzo/my-models/v1/model.safetensors ./local-copy.safetensors
-
-# Recursive sync
-s3 mirror ./training-data/ hanzo/datasets/run-042/
-
-# Remove an object
-s3 rm hanzo/my-models/v1/model.safetensors
-
-# Set bucket policy (public read)
-s3 anonymous set download hanzo/public-assets
-```
-
-### Python SDK
+### Python (boto3)
 
 ```python
-from hanzos3 import S3Client
-
-client = S3Client(
-    endpoint="s3.hanzo.ai",
-    access_key="your-access-key",
-    secret_key="your-secret-key",
-    secure=True,
-)
-
-# Create a bucket
-client.make_bucket("my-models")
-
-# Upload a file
-client.fput_object("my-models", "v1/model.safetensors", "./model.safetensors")
-
-# Download a file
-client.fget_object("my-models", "v1/model.safetensors", "./downloaded.safetensors")
-
-# List objects
-for obj in client.list_objects("my-models", prefix="v1/", recursive=True):
-    print(f"{obj.object_name}  {obj.size} bytes")
-
-# Presigned URL (7 days)
-from datetime import timedelta
-url = client.presigned_get_object("my-models", "v1/model.safetensors", expires=timedelta(days=7))
-print(url)
-```
-
-Install:
-
-```bash
-pip install hanzos3
-```
-
-### Go SDK
-
-```go
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-
-    "github.com/hanzos3/go-sdk"
-)
-
-func main() {
-    client, err := hanzos3.New("s3.hanzo.ai", &hanzos3.Options{
-        Creds:  hanzos3.NewStaticV4("access-key", "secret-key", ""),
-        Secure: true,
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    ctx := context.Background()
-
-    // Create bucket
-    err = client.MakeBucket(ctx, "my-models", hanzos3.MakeBucketOptions{})
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Upload
-    _, err = client.FPutObject(ctx, "my-models", "v1/model.safetensors",
-        "./model.safetensors", hanzos3.PutObjectOptions{})
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // List
-    for obj := range client.ListObjects(ctx, "my-models", hanzos3.ListObjectsOptions{
-        Prefix:    "v1/",
-        Recursive: true,
-    }) {
-        if obj.Err != nil {
-            log.Fatal(obj.Err)
-        }
-        fmt.Printf("%s  %d bytes\n", obj.Key, obj.Size)
-    }
-}
-```
-
-Install:
-
-```bash
-go get github.com/hanzos3/go-sdk
-```
-
-### JavaScript / TypeScript SDK
-
-```typescript
-import * as HanzoS3 from '@hanzos3/js-sdk'
-
-const client = new HanzoS3.Client({
-  endPoint: 's3.hanzo.ai',
-  port: 443,
-  useSSL: true,
-  accessKey: 'your-access-key',
-  secretKey: 'your-secret-key',
-})
-
-// Create bucket
-await client.makeBucket('my-models')
-
-// Upload
-await client.fPutObject('my-models', 'v1/model.safetensors', './model.safetensors')
-
-// List
-const stream = client.listObjects('my-models', 'v1/', true)
-stream.on('data', (obj) => {
-  console.log(`${obj.name}  ${obj.size} bytes`)
-})
-stream.on('error', (err) => console.error(err))
-
-// Presigned download URL
-const url = await client.presignedGetObject('my-models', 'v1/model.safetensors', 7 * 24 * 60 * 60)
-console.log(url)
-```
-
-Install:
-
-```bash
-npm install @hanzos3/js-sdk
-```
-
-### AWS SDK Compatibility
-
-Any standard AWS S3 SDK works with Hanzo S3. Override the endpoint:
-
-```python
-# Python (boto3)
 import boto3
+from datetime import timedelta
 
 s3 = boto3.client(
     "s3",
     endpoint_url="https://s3.hanzo.ai",
-    aws_access_key_id="your-access-key",
-    aws_secret_access_key="your-secret-key",
+    aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
+    aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
+    region_name="us-east-1",
 )
 
-s3.put_object(Bucket="my-models", Key="v1/model.safetensors", Body=open("model.safetensors", "rb"))
+# Create a bucket and upload
+s3.create_bucket(Bucket="my-models")
+s3.upload_file("model.safetensors", "my-models", "v1/model.safetensors")
+
+# List objects
+for obj in s3.list_objects_v2(Bucket="my-models", Prefix="v1/").get("Contents", []):
+    print(obj["Key"], obj["Size"])
+
+# Presigned download URL (1 hour)
+url = s3.generate_presigned_url(
+    "get_object",
+    Params={"Bucket": "my-models", "Key": "v1/model.safetensors"},
+    ExpiresIn=3600,
+)
+print(url)
 ```
 
+### JavaScript / TypeScript (`@aws-sdk/client-s3`)
+
 ```typescript
-// TypeScript (@aws-sdk/client-s3)
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
+import { readFileSync } from 'node:fs'
 
 const client = new S3Client({
   endpoint: 'https://s3.hanzo.ai',
   region: 'us-east-1',
   credentials: {
-    accessKeyId: 'your-access-key',
-    secretAccessKey: 'your-secret-key',
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
   },
   forcePathStyle: true,
 })
@@ -278,115 +157,34 @@ await client.send(new PutObjectCommand({
   Key: 'v1/model.safetensors',
   Body: readFileSync('model.safetensors'),
 }))
+
+const out = await client.send(new ListObjectsV2Command({ Bucket: 'my-models', Prefix: 'v1/' }))
+for (const obj of out.Contents ?? []) console.log(obj.Key, obj.Size)
 ```
 
-## Platform Buckets
+## Multipart Uploads
 
-The Hanzo platform uses the following preconfigured buckets for internal services:
-
-| Bucket | Purpose |
-|--------|---------|
-| `chat` | Chat message history and attachments |
-| `commerce` | Product media, invoices, and transaction artifacts |
-| `deploy` | Deployment artifacts and build outputs |
-| `hanzo` | Core platform assets and configuration |
-| `hanzo-events` | Event stream uploads (analytics, audit logs) |
-| `hanzo-media` | User-uploaded media (images, video, documents) |
-| `lux` | Lux blockchain snapshots and state data |
-| `pars` | Pars network artifacts |
-| `zen` | Zen model weights and checkpoints |
-| `zoo` | Zoo research datasets and experiment outputs |
-
-You can create additional buckets for your own projects at any time.
-
-## Console
-
-The Hanzo S3 web console is available at [s3.hanzo.ai](https://s3.hanzo.ai):
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Hanzo S3                                    z@hanzo.ai  ▾  │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│  Buckets (10)                          + Create Bucket       │
-│  ─────────────────────────────────────────────────────────  │
-│  Name             Objects    Size       Created              │
-│  ─────────────────────────────────────────────────────────  │
-│  chat             12,847     3.2 GB     2025-11-01           │
-│  commerce          4,231     1.8 GB     2025-11-01           │
-│  deploy            8,912     24.1 GB    2025-11-01           │
-│  hanzo            15,003     8.7 GB     2025-11-01           │
-│  hanzo-events    142,500     12.4 GB    2025-11-01           │
-│  hanzo-media      28,744     45.2 GB    2025-11-01           │
-│  lux               2,100     67.3 GB    2025-12-15           │
-│  pars                450     2.1 GB     2025-12-15           │
-│  zen               1,205     312.8 GB   2026-01-10           │
-│  zoo               3,891     89.4 GB    2026-01-10           │
-│                                                              │
-│  Total: 219,883 objects, 567.0 GB                           │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
-```
-
-Sign in with your Hanzo account via OIDC SSO (powered by `hanzo.id`).
-
-## OIDC Integration
-
-Hanzo S3 console authentication is integrated with `hanzo.id` via OpenID Connect:
-
-- **Provider:** `hanzo.id` (Hanzo IAM)
-- **IAM App:** `app-storage`
-- **Client ID:** Configured in K8s secret
-- **Scopes:** `openid`, `profile`, `email`
-- **Flow:** Authorization Code with PKCE
-
-Users with a Hanzo account can sign in to the console at `s3.hanzo.ai` without creating separate S3 credentials. Access policies are managed through bucket policies and IAM service accounts.
-
-### Service Accounts
-
-For programmatic access (CI/CD, applications, agents), create service accounts:
+Large objects upload in parts. High-level SDK helpers (`aws s3 cp`, `boto3 upload_file`, `mc cp`) use multipart automatically. To drive it explicitly:
 
 ```bash
-# Create a service account with read/write to specific buckets
-s3 admin user svcacct add hanzo my-user \
-  --access-key "svc-myapp-key" \
-  --secret-key "svc-myapp-secret" \
-  --policy /path/to/policy.json
+# The AWS CLI automatically switches to multipart above the threshold
+aws --endpoint-url https://s3.hanzo.ai s3 cp ./checkpoint-70b.safetensors s3://my-models/ \
+  --expected-size 140000000000
 ```
 
-Example policy (`policy.json`):
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": ["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
-      "Resource": [
-        "arn:aws:s3:::my-models",
-        "arn:aws:s3:::my-models/*"
-      ]
-    }
-  ]
-}
-```
+The underlying operations — `CreateMultipartUpload`, `UploadPart`, `CompleteMultipartUpload`, `AbortMultipartUpload`, `ListParts`, `ListMultipartUploads` — are all available via the S3 API for clients that manage parts directly.
 
 ## Bucket Policies
 
-Apply fine-grained access control with S3-compatible policy documents:
+Hanzo S3 supports standard S3 policy documents via `PutBucketPolicy`:
 
 ```bash
-# Set a bucket policy
-s3 anonymous set-json /path/to/policy.json hanzo/my-models
-
-# View current policy
-s3 anonymous get-json hanzo/my-models
+aws --endpoint-url https://s3.hanzo.ai s3api put-bucket-policy \
+  --bucket public-assets \
+  --policy file://policy.json
 ```
 
-### Common Policies
-
-**Public read-only:**
+**Public read-only** (`policy.json`):
 
 ```json
 {
@@ -402,124 +200,105 @@ s3 anonymous get-json hanzo/my-models
 }
 ```
 
-**Restrict to specific IP range:**
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": ["s3:GetObject", "s3:PutObject"],
-      "Resource": ["arn:aws:s3:::internal-data/*"],
-      "Condition": {
-        "IpAddress": {"aws:SourceIp": "10.0.0.0/8"}
-      }
-    }
-  ]
-}
-```
-
-## Object Lifecycle
-
-Automate object management with lifecycle rules:
-
-```bash
-# Set lifecycle rule: expire objects after 90 days
-s3 ilm rule add hanzo/logs --expiry-days 90
-
-# Transition to lower tier after 30 days
-s3 ilm rule add hanzo/archives --transition-days 30 --storage-class GLACIER
-
-# List lifecycle rules
-s3 ilm rule ls hanzo/logs
-```
-
 ## Versioning
-
-Enable versioning to preserve every revision of an object:
 
 ```bash
 # Enable versioning
-s3 version enable hanzo/my-models
+aws --endpoint-url https://s3.hanzo.ai s3api put-bucket-versioning \
+  --bucket my-models --versioning-configuration Status=Enabled
 
-# List object versions
-s3 ls --versions hanzo/my-models/v1/model.safetensors
+# List versions
+aws --endpoint-url https://s3.hanzo.ai s3api list-object-versions --bucket my-models
 
-# Restore a previous version
-s3 cp --version-id "abc123" hanzo/my-models/v1/model.safetensors ./restored.safetensors
+# Get a specific version
+aws --endpoint-url https://s3.hanzo.ai s3api get-object \
+  --bucket my-models --key v1/model.safetensors --version-id "<id>" restored.safetensors
 ```
 
 ## Encryption
 
-All data at rest is encrypted by default. Choose the encryption method:
+All data is encrypted at rest. Choose the key management model per bucket:
 
 | Method | Description |
 |--------|-------------|
 | **SSE-S3** | Server-managed keys (default) |
-| **SSE-KMS** | Keys managed by Hanzo KMS (`kms.hanzo.ai`) |
+| **SSE-KMS** | Keys managed by [Hanzo KMS](/docs/services/kms) (`kms.hanzo.ai`) |
 
 ```bash
-# Enable SSE-KMS on a bucket
-s3 encrypt set sse-kms hanzo-kms-key hanzo/sensitive-data
+aws --endpoint-url https://s3.hanzo.ai s3api put-bucket-encryption \
+  --bucket sensitive-data \
+  --server-side-encryption-configuration '{
+    "Rules": [{ "ApplyServerSideEncryptionByDefault": { "SSEAlgorithm": "aws:kms" } }]
+  }'
 ```
 
-## Event Notifications
-
-Receive notifications when objects are created, accessed, or deleted:
+## Object Lock & Lifecycle
 
 ```bash
-# Add webhook notification for object creation
-s3 event add hanzo/uploads arn:hanzo:sqs::my-queue \
-  --event put --suffix .safetensors
+# Lifecycle: expire objects after 90 days
+aws --endpoint-url https://s3.hanzo.ai s3api put-bucket-lifecycle-configuration \
+  --bucket logs --lifecycle-configuration file://lifecycle.json
 
-# List configured events
-s3 event ls hanzo/uploads
+# Object Lock retention (WORM) is set at bucket creation and per-object
+aws --endpoint-url https://s3.hanzo.ai s3api put-object-retention \
+  --bucket archives --key 2026/report.pdf \
+  --retention '{ "Mode": "COMPLIANCE", "RetainUntilDate": "2027-01-01T00:00:00Z" }'
 ```
 
-## SDKs
+## Console
 
-| Language | Package | Repository |
-|----------|---------|------------|
-| Python | `hanzos3` | [github.com/hanzos3/py-sdk](https://github.com/hanzos3/py-sdk) |
-| Go | `github.com/hanzos3/go-sdk` | [github.com/hanzos3/go-sdk](https://github.com/hanzos3/go-sdk) |
-| JavaScript | `@hanzos3/js-sdk` | [github.com/hanzos3/js-sdk](https://github.com/hanzos3/js-sdk) |
-| Java | `io.hanzo.s3` | [github.com/hanzos3/java-sdk](https://github.com/hanzos3/java-sdk) |
-| Rust | `hanzos3` | [github.com/hanzos3/rust-sdk](https://github.com/hanzos3/rust-sdk) |
-| .NET | `HanzoS3` | [github.com/hanzos3/dotnet-sdk](https://github.com/hanzos3/dotnet-sdk) |
-| C++ | `hanzos3-cpp` | [github.com/hanzos3/cpp-sdk](https://github.com/hanzos3/cpp-sdk) |
+The Hanzo S3 web admin console is available at [s3.hanzo.ai](https://s3.hanzo.ai). It provides a file browser, bucket management, and cluster status. The console is protected by an administrator login configured at deployment.
 
-All standard AWS S3 SDKs (`boto3`, `@aws-sdk/client-s3`, `aws-sdk-go`) also work by setting the endpoint to `https://s3.hanzo.ai`.
+For day-to-day object operations, use the S3 API (CLI/SDK) rather than the console.
 
-## Docker
+## Self-Hosting
 
-Run a standalone Hanzo S3 server:
+Run a standalone Hanzo S3 server (SeaweedFS in S3 mode):
 
 ```bash
-docker run -p 9000:9000 -p 9001:9001 \
-  -e "HANZO_S3_ROOT_USER=admin" \
-  -e "HANZO_S3_ROOT_PASSWORD=changeme-strong-password" \
+# Single-node server with the S3 gateway enabled
+docker run -p 8333:8333 -p 8888:8888 -p 9333:9333 \
   -v /data:/data \
-  ghcr.io/hanzoai/storage:latest server /data --console-address :9001
+  ghcr.io/hanzoai/s3:latest \
+  server -dir=/data -s3 -filer
 ```
 
-- **Port 9000**: S3 API
-- **Port 9001**: Web console
+| Port | Service |
+|------|---------|
+| `8333` | S3 API gateway |
+| `8888` | Filer (metadata + web UI) |
+| `9333` | Master (topology) |
+| `8080` | Volume server |
+| `23646` | Web admin console |
+
+Provide credentials with an identity config file (`-config`) or the `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` environment variables. The public hostnames `s3.hanzo.ai` are wired at the ingress layer (`-domainName` / `S3_EXTERNAL_URL`), not baked into the binary.
+
+## SDK Compatibility
+
+Hanzo S3 has no bespoke SDK — and needs none. Every standard AWS S3 SDK works by setting the endpoint to `https://s3.hanzo.ai`:
+
+| Language | Package |
+|----------|---------|
+| Python | `boto3`, `aioboto3` |
+| JavaScript / TypeScript | `@aws-sdk/client-s3` |
+| Go | `github.com/aws/aws-sdk-go-v2` |
+| Java | `software.amazon.awssdk:s3` |
+| Rust | `aws-sdk-s3` |
+| CLI | `aws`, `mc` (MinIO Client), `rclone` |
 
 ## Related Services
 
 <Cards>
-  <Card title="KV" href="/docs/services/kv">
-    Key-value store for caching and session data
-  </Card>
-  <Card title="DB" href="/docs/services/db">
-    Serverless PostgreSQL for structured data
-  </Card>
-  <Card title="Gateway" href="/docs/services/gateway">
-    API gateway routing and rate limiting
-  </Card>
   <Card title="KMS" href="/docs/services/kms">
-    Key management for SSE-KMS encryption
+    Key management for SSE-KMS encryption and S3 credential storage
+  </Card>
+  <Card title="Base" href="/docs/services/base">
+    Backend-as-a-service that uses Hanzo S3 for file storage
+  </Card>
+  <Card title="IAM" href="/docs/services/iam">
+    Identity provider for advanced OIDC-based S3 access
+  </Card>
+  <Card title="PaaS" href="/docs/services/platform">
+    Deploy and operate Hanzo S3 on your clusters
   </Card>
 </Cards>
