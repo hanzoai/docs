@@ -25,7 +25,6 @@ Every Hanzo service retrieves its secrets from KMS rather than storing them in e
 │    /bootnode    /studio                                          │
 │    /app         /bot-hub                                         │
 │    /crawl       /auto                                            │
-│    /lux-chat                                                     │
 └──────────┬──────────────────────────────────┬────────────────────┘
            │                                  │
    Universal Auth                    Machine Identity
@@ -48,7 +47,7 @@ Every Hanzo service retrieves its secrets from KMS rather than storing them in e
 │  pricing-secrets    search-secrets    vector-secrets  │
 │  bootnode-secrets   studio-secrets   bot-hub-secrets  │
 │  hanzo-app-secrets  crawl-secrets    auto-secrets     │
-│  lux-chat-secrets   iam-secrets                      │
+│  iam-secrets                      │
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -91,7 +90,7 @@ metadata:
     app.kubernetes.io/component: secrets
     app.kubernetes.io/part-of: hanzo-platform
 spec:
-  hostAPI: http://kms.hanzo.svc.cluster.local/api
+  hostAPI: http://kms.hanzo.svc.cluster.local
   resyncInterval: 60
   authentication:
     universalAuth:
@@ -113,7 +112,7 @@ spec:
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `hostAPI` | Yes | KMS API URL. Use in-cluster address `http://kms.hanzo.svc.cluster.local/api` |
+| `hostAPI` | Yes | KMS API URL. Use in-cluster address `http://kms.hanzo.svc.cluster.local` |
 | `resyncInterval` | Yes | How often (seconds) to re-fetch secrets. Default: `60` |
 | `authentication.universalAuth.credentialsRef` | Yes | K8s Secret containing `clientId` and `clientSecret` |
 | `authentication.universalAuth.secretsScope.projectSlug` | Yes | KMS project slug |
@@ -146,7 +145,6 @@ Every service in the Hanzo platform uses this pattern. Here is the full list:
 | Hanzo App | `/app` | `hanzo-app-secrets` | Universal Auth |
 | Crawl | `/crawl` | `crawl-secrets` | Universal Auth |
 | Auto | `/auto` | `auto-secrets` | Universal Auth |
-| Lux Chat | `/lux-chat` | `lux-chat-secrets` | Universal Auth |
 
 ## Example: Adding Secrets for a New Service
 
@@ -167,7 +165,7 @@ metadata:
     app.kubernetes.io/component: secrets
     app.kubernetes.io/part-of: hanzo-platform
 spec:
-  hostAPI: http://kms.hanzo.svc.cluster.local/api
+  hostAPI: http://kms.hanzo.svc.cluster.local
   resyncInterval: 60
   authentication:
     universalAuth:

@@ -1,57 +1,45 @@
 ---
 title: KMS Integration
-description: How Hanzo IAM uses KMS for secure secret management
+description: How Hanzo IAM stores and reads its secrets from Hanzo KMS
 ---
 
 # KMS Integration
 
-Hanzo IAM stores all sensitive configuration — OAuth client secrets, social provider credentials, admin passwords — in [Hanzo KMS](/docs/services/kms). No secrets are hardcoded in deployment manifests or environment variables.
+Hanzo IAM keeps all sensitive configuration — OAuth client secrets, social-provider credentials, and admin passwords — in [Hanzo KMS](/docs/services/kms). Nothing sensitive is hard-coded in manifests or environment variables.
 
-## Architecture
+## How it works
+
+IAM authenticates to KMS with a **machine identity** and reads its secrets through two complementary paths:
+
+1. **Direct fetch at startup** — IAM logs in to KMS (`POST /v1/kms/auth/login`) with its machine-identity `clientId`/`clientSecret` and reads the secrets it needs.
+2. **KMSSecret CRD** — the kms-operator keeps an `iam-secrets` Kubernetes Secret continuously in sync as a fallback for workloads that consume secrets as env vars.
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                    Hanzo KMS (kms.hanzo.ai)                  │
-│                                                              │
-│  Project: hanzo-iam                                          │
-│  Environment: prod                                           │
-│  Secrets: 23 entries (client secrets, OAuth, admin creds)    │
-│                                                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │  Machine Identity: iam-service                          │ │
-│  │  Auth: Universal Auth (clientId + clientSecret)         │ │
-│  │  Role: Viewer on hanzo-iam project                      │ │
-│  └─────────────────────────────────────────────────────────┘ │
-└──────────────┬───────────────────────────┬───────────────────┘
-               │                           │
-     Direct SDK fetch            KMSSecret CRD (backup)
-     (startup time)              (kms-operator sync)
-               │                           │
-               ▼                           ▼
-┌──────────────────────┐    ┌──────────────────────────┐
-│     IAM Pod          │    │   iam-secrets K8s Secret  │
-│  (reads from KMS     │    │   (auto-synced every 60s) │
-│   via kms-go SDK)    │    │                           │
-└──────────────────────┘    └──────────────────────────┘
+┌──────────────────────────────────────────────┐
+│            Hanzo KMS (kms.hanzo.ai)           │
+│   org: hanzo-iam     env: production          │
+│   machine identity: iam-service (read-only)   │
+└───────────────┬───────────────────┬───────────┘
+        direct login          KMSSecret CRD
+        (startup)             (operator sync)
+                │                   │
+                ▼                   ▼
+        ┌──────────────┐   ┌──────────────────┐
+        │   IAM pod    │   │ iam-secrets (K8s) │
+        └──────────────┘   └──────────────────┘
 ```
 
-IAM uses **two complementary mechanisms**:
+## Machine identity
 
-1. **Direct SDK fetch** — At startup, IAM uses the `kms-go` SDK to pull secrets directly from KMS. This is the primary path.
-2. **KMSSecret CRD** — The kms-operator syncs secrets to a `iam-secrets` K8s Secret every 60 seconds as a backup/fallback.
-
-## Machine Identity Setup
-
-IAM authenticates to KMS using a **Machine Identity** with Universal Auth credentials:
+IAM uses a dedicated, least-privilege machine identity so its secrets are isolated from other services:
 
 | Field | Value |
 |-------|-------|
-| Identity name | `iam-service` |
-| Auth method | Universal Auth |
-| Project access | `hanzo-iam` (Viewer) |
-| Credential mount | `/etc/kms/auth/clientId`, `/etc/kms/auth/clientSecret` |
+| Identity | `iam-service` |
+| Access | read-only on the `hanzo-iam` org |
+| Credential | `clientId` / `clientSecret`, mounted from a K8s Secret |
 
-The credentials are stored in a K8s Secret and mounted as files:
+The credentials live in a Kubernetes Secret — only the references, never the values, are committed:
 
 ```yaml
 apiVersion: v1
@@ -61,58 +49,23 @@ metadata:
   namespace: hanzo
 type: Opaque
 stringData:
-  clientId: ""      # KMS Machine Identity Client ID
-  clientSecret: ""  # KMS Machine Identity Client Secret
+  clientId: ""      # populated out-of-band from KMS/IAM, never committed
+  clientSecret: ""
 ```
 
-## Secrets Inventory
+## What IAM stores in KMS
 
-The `hanzo-iam` KMS project contains 23 secrets:
+IAM's secrets are organized under its `hanzo-iam` org in KMS:
 
-### Application Client Secrets
+| Category | Examples |
+|----------|----------|
+| **Application client secrets** | One per registered `<org>-<app>` application (e.g. `hanzo-cloud`, `hanzo-chat`, `hanzo-platform`) |
+| **Social provider credentials** | GitHub, Google, Microsoft, Apple OAuth client IDs and secrets |
+| **Admin credentials** | The seeded organization administrator password |
 
-Every IAM-registered application has its OAuth client secret stored in KMS:
+Each application's OAuth `clientSecret` is stored under a key named for its `<org>-<app>` slug — never inlined into `init_data.json` or a manifest.
 
-| KMS Key | Application |
-|---------|-------------|
-| `IAM_APP_HANZO_CLIENT_SECRET` | app-hanzo (hanzo.ai) |
-| `IAM_APP_CLOUD_CLIENT_SECRET` | app-cloud (cloud.hanzo.ai) |
-| `IAM_APP_COMMERCE_CLIENT_SECRET` | app-commerce (api.hanzo.ai) |
-| `IAM_APP_CONSOLE_CLIENT_SECRET` | app-console (console.hanzo.ai) |
-| `IAM_APP_CHAT_CLIENT_SECRET` | app-chat (hanzo.chat) |
-| `IAM_APP_PLATFORM_CLIENT_SECRET` | app-platform (platform.hanzo.ai) |
-| `IAM_APP_ZOO_CLIENT_SECRET` | app-zoo (zoo.ngo) |
-| `IAM_APP_LUX_CLIENT_SECRET` | app-lux (lux.network) |
-| `IAM_APP_PARS_CLIENT_SECRET` | app-pars (pars.ai) |
-| `IAM_APP_HANZOBOT_CLIENT_SECRET` | app-hanzobot (app.hanzo.bot) |
-| `IAM_APP_BOOTNODE_CLIENT_SECRET` | app-bootnode |
-| `IAM_APP_HANZO_WEB3_CLIENT_SECRET` | app-hanzo-web3 |
-| `IAM_APP_LUX_WEB3_CLIENT_SECRET` | app-lux-web3 |
-| `IAM_APP_ZOO_WEB3_CLIENT_SECRET` | app-zoo-web3 |
-| `IAM_APP_TEAM_CLIENT_SECRET` | app-team |
-| `IAM_APP_ADNEXUS_CLIENT_SECRET` | app-adnexus |
-| `IAM_APP_ZT_CONSOLE_CLIENT_SECRET` | app-zt-console |
-
-### Social Provider Credentials
-
-| KMS Key | Provider |
-|---------|----------|
-| `IAM_GITHUB_CLIENT_ID` | GitHub OAuth |
-| `IAM_GITHUB_CLIENT_SECRET` | GitHub OAuth |
-| `IAM_GOOGLE_CLIENT_ID` | Google OAuth |
-| `IAM_GOOGLE_CLIENT_SECRET` | Google OAuth |
-
-### Admin Credentials
-
-| KMS Key | Purpose |
-|---------|---------|
-| `IAM_ADMIN_PASSWORD` | Built-in admin account |
-| `IAM_Z_HANZO_PASSWORD` | Hanzo org admin |
-| `IAM_Z_LUX_PASSWORD` | Lux org admin |
-
-## KMSSecret CRD Configuration
-
-The backup sync uses the KMSSecret custom resource:
+## Syncing IAM's secrets to Kubernetes
 
 ```yaml
 apiVersion: secrets.lux.network/v1alpha1
@@ -121,7 +74,7 @@ metadata:
   name: iam-kms-sync
   namespace: hanzo
 spec:
-  hostAPI: http://kms.hanzo.svc.cluster.local/api
+  hostAPI: https://kms.hanzo.ai
   resyncInterval: 60
   authentication:
     universalAuth:
@@ -129,101 +82,52 @@ spec:
         secretName: iam-kms-auth
         secretNamespace: hanzo
       secretsScope:
-        projectSlug: hanzo-iam
-        envSlug: prod
+        projectSlug: hanzo-iam      # IAM's own org
+        envSlug: production
         secretsPath: /
+        keys:
+          - IAM_ADMIN_PASSWORD
+          - HANZO_CLOUD_CLIENT_SECRET
+          - GITHUB_CLIENT_SECRET
   managedSecretReference:
     secretName: iam-secrets
     secretNamespace: hanzo
     secretType: Opaque
+    creationPolicy: Orphan
 ```
 
-Key fields:
+## How other services consume an IAM secret
 
-| Field | Description |
-|-------|-------------|
-| `hostAPI` | KMS internal endpoint (in-cluster, no TLS needed) |
-| `resyncInterval` | Sync frequency in seconds |
-| `credentialsRef` | K8s secret containing Universal Auth credentials |
-| `secretsScope` | KMS project, environment, and path to sync |
-| `managedSecretReference` | Target K8s Secret to write synced values into |
-
-## Adding a New Application Secret
-
-When registering a new application in IAM:
-
-1. **Create the secret in KMS** at `kms.hanzo.ai` under the `hanzo-iam` project:
-   ```
-   Key: IAM_APP_MYAPP_CLIENT_SECRET
-   Value: <generated-secret>
-   Environment: prod
-   ```
-
-2. **Reference it in IAM's init_data.json** (or update via API):
-   ```json
-   {
-     "name": "app-myapp",
-     "clientSecret": "${IAM_APP_MYAPP_CLIENT_SECRET}"
-   }
-   ```
-
-3. **The KMSSecret CRD** auto-syncs the new secret to the `iam-secrets` K8s Secret within 60 seconds.
-
-## How Other Services Consume IAM Secrets
-
-Each service that authenticates via IAM OIDC stores its own copy of the client secret in KMS. For example, Hanzo Chat stores `OPENID_CLIENT_SECRET` under the `/chat` path in the shared `secrets-639-c` project:
-
-```yaml
-# chat/kms-secrets.yaml
-apiVersion: secrets.lux.network/v1alpha1
-kind: KMSSecret
-metadata:
-  name: chat-kms-sync
-spec:
-  authentication:
-    universalAuth:
-      credentialsRef:
-        secretName: universal-auth-credentials
-      secretsScope:
-        projectSlug: secrets-639-c
-        envSlug: prod
-        secretsPath: /chat
-  managedSecretReference:
-    secretName: chat-secrets
-```
-
-The deployment then references the synced K8s Secret:
+A service that authenticates via IAM OIDC stores its own `client_secret` in KMS and syncs it the same way. For example, an app reads its OIDC client secret from a synced Secret:
 
 ```yaml
 env:
-  - name: OPENID_CLIENT_SECRET
+  - name: OIDC_CLIENT_SECRET
     valueFrom:
       secretKeyRef:
-        name: chat-secrets
-        key: OPENID_CLIENT_SECRET
+        name: app-secrets
+        key: OIDC_CLIENT_SECRET
 ```
 
-This pattern is consistent across all services — see [KMS Service Integration](/docs/services/kms/service-integration) for the full list.
+See [KMS Service Integration](/docs/services/kms/service-integration) for the full pattern.
 
-## Security Model
+## Security model
 
-- **No plaintext secrets in manifests** — All K8s Secrets are populated by KMS, never checked into git
-- **Least-privilege access** — IAM's Machine Identity has Viewer (read-only) access to its own project only
-- **Separate projects** — IAM secrets (`hanzo-iam`) are isolated from service secrets (`secrets-639-c`)
-- **In-cluster communication** — KMS API is accessed via `kms.hanzo.svc.cluster.local`, never exposed externally for secret sync
-- **60-second resync** — Rotated secrets propagate to K8s within one minute
-- **Audit trail** — All secret reads/writes are logged in KMS audit log
+- **No plaintext secrets in git** — Kubernetes Secrets are populated from KMS, never committed.
+- **Least privilege** — IAM's machine identity is read-only and scoped to its own org.
+- **Isolation** — IAM's secrets live in a separate KMS org from service secrets.
+- **Audit trail** — every read and write is logged in KMS.
 
 ## Next Steps
 
 <Cards>
   <Card title="KMS Overview" href="/docs/services/kms">
-    Hanzo KMS architecture and features
+    Hanzo KMS architecture and the secret API
   </Card>
   <Card title="KMS Service Integration" href="/docs/services/kms/service-integration">
-    How all Hanzo services consume secrets from KMS
+    How every Hanzo service consumes secrets from KMS
   </Card>
-  <Card title="IAM Applications" href="/docs/services/iam/application">
-    Register and configure IAM applications
+  <Card title="Machine Identities" href="/docs/services/kms/universal-auth">
+    Service-to-KMS authentication
   </Card>
 </Cards>
