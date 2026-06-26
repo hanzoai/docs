@@ -1,0 +1,68 @@
+---
+title: Proof of AI
+description: How Hanzo verifies AI computation on-chain, how node operators get paid, and how the cloud pays the open-source developers it runs on.
+index: true
+---
+
+# Proof of AI
+
+Proof of AI (PoAI) is how Hanzo makes AI computation **verifiable** instead of
+asking you to trust a black box. It underpins two things:
+
+- **Verifiable inference** — a result anyone can re-check.
+- **An open-source payout** — a commitment that 25% of attributable cloud
+  revenue flows back to the developers whose code the cloud runs.
+
+This section documents what works today and what is on the roadmap. We label
+both, because verifiability is the entire point.
+
+## What PoAI proves, and how
+
+Floating-point AI is non-deterministic — the same model and input can yield
+slightly different numbers on different hardware. You cannot reach consensus on a
+number that changes every run. PoAI removes the non-determinism:
+
+- **Integer-only inference.** Models run in `int8` with `int32` accumulation,
+  arithmetic right-shift scaling, saturating outputs, and frozen lookup tables
+  instead of `exp()`/`rsqrt()`. The forward pass is **bit-for-bit identical**
+  across CPU, Metal, CUDA, and AMD.
+- **Verification by recomputation.** The integer transformer is a registered EVM
+  precompile at `0x0300...0003`. Every validator re-runs the identical
+  computation during block execution; a mismatched output is rejected. No
+  committee, no trusted hardware, no proof to forge.
+
+### Live today
+
+- A deterministic `int8` transformer (`gemm_i8` keystone) implemented
+  byte-identically in Go, Rust, and C++, with GPU kernels (Metal/CUDA/HIP) that
+  pass the same known-answer tests.
+- A **registered** on-chain inference precompile at `0x0300...0003`, shared by
+  the Lux, Zoo, and Hanzo EVMs.
+- Cross-language golden-token tests gating CI.
+
+### Roadmap
+
+- **Production-size models.** The precompile runs a small reference model today;
+  a Qwen3-0.6B / zen-nano port is in progress. The model line is small,
+  fully-verifiable models plus sampled verification of large ones.
+- **Cryptographic proofs.** zkML proofs and TEE confidential execution are
+  designed and stubbed for a later release. Today's guarantee is determinism you
+  can re-run.
+- **Hardware attestation for large models.** AMD SEV-SNP attestation is
+  implemented end-to-end; Intel TDX and NVIDIA GPU confidential compute are
+  scaffolded. See [Node Operator](/docs/proof-of-ai/node-operator).
+
+## A note on consensus
+
+Hanzo and Lux chains can run Quasar, a post-quantum threshold-certificate
+consensus. Quasar finalizes the inference precompile's output the same way it
+finalizes any chain state — it does **not** itself inspect model output.
+"Verifiable inference" comes from the deterministic precompile, not from
+consensus.
+
+## In this section
+
+- **[Node Operator](/docs/proof-of-ai/node-operator)** — run Hanzo Node, receive
+  work, get paid, and the trust/attestation requirements.
+- **[Open-Source Payouts](/docs/proof-of-ai/oss-payouts)** — how the cloud
+  attributes usage to your dependencies and pays their authors.

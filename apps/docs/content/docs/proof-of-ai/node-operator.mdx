@@ -1,0 +1,91 @@
+---
+title: Node Operator Guide
+description: Run Hanzo Node, advertise capabilities, receive work, and get paid — plus the trust and TEE attestation requirements, with an honest line between what works today and what is roadmap.
+---
+
+# Node Operator Guide
+
+Hanzo Node ([`github.com/hanzoai/node`](https://github.com/hanzoai/node)) lets a
+machine join the network with a cryptographic identity, advertise what it can do,
+receive work peer-to-peer, and get paid. This guide describes the model and is
+explicit about what is live versus roadmap.
+
+> **Status, plainly.** Today a node enrolls, advertises **tool and agent
+> offerings**, receives requests over a peer-to-peer network, runs them, and
+> settles payment in stablecoins via **x402**. A fully hardware-metered, TEE-
+> attested GPU marketplace with on-chain DEX settlement is the **direction**,
+> built on the primitives below — not a shortcut around them.
+
+## What a node does today
+
+| Capability | Status | Notes |
+|------------|--------|-------|
+| Enroll with a cryptographic identity | **Live** | Ed25519 node identity + registration-code enrollment; resolvable via an on-chain identity registry. |
+| Advertise offerings | **Live** | You advertise **tools/agents** you provide. Hardware (GPU/CPU/RAM) advertisement is roadmap. |
+| Receive work over peer-to-peer | **Live** | Paid-work requests arrive as invoice requests over the network. |
+| Run the work | **Live** | The node executes the requested tool/agent and returns the result. |
+| Get paid | **Live (x402)** | Settlement uses the x402 stablecoin protocol via a payment facilitator. |
+| Proof-of-correct-work | **Roadmap** | There is no attestation that the computation was correct yet (see Trust). |
+| Hardware-metered billing | **Roadmap** | Pricing is per-call today, not per-token / per-FLOP. |
+| On-chain compute DEX settlement | **Roadmap** | Order-book/DEX settlement is not in the shipped build. |
+
+## Running a node
+
+The node is a Rust binary. Because exact flags evolve, follow the canonical
+`README` in [`hanzoai/node`](https://github.com/hanzoai/node); the model is:
+
+1. **Build/install** the node binary from the repository.
+2. **Initialize identity.** On first run the node generates its keypair and
+   completes registration-code enrollment, establishing the node's identity.
+3. **Configure a wallet.** Settlement is in stablecoins over x402, so the node
+   needs a receiving wallet/payment address.
+4. **Publish offerings.** Declare the tools/agents you provide and their price
+   (per-use, or free). These become discoverable to requesters.
+5. **Stay online.** The node listens for invoice requests, runs accepted work,
+   returns results, and settles payment.
+
+## Getting paid
+
+- **Rail:** stablecoin settlement via **x402**. A requester pays the invoice; the
+  facilitator settles to your receiving address after the work runs.
+- **Pricing:** per-invocation today (a flat price per tool call, or free). Token-
+  and FLOP-based metering is roadmap.
+- **What is not wired yet:** raw on-chain transfer paths and the queue-driven
+  auto-fulfillment loop are still being completed; treat large-scale unattended
+  settlement as roadmap and reconcile payouts you receive.
+
+## Trust and TEE attestation
+
+Two different trust models apply depending on where the work runs.
+
+**On-chain verifiable inference — no special hardware required.**
+Small models that run inside the inference precompile (`0x0300...0003`) are
+trustless by **recomputation**: every validator re-runs the identical integer
+computation. You do not need a TEE for this path. See
+[Proof of AI](/docs/proof-of-ai).
+
+**Off-chain compute on operator hardware — attestation is the anchor.**
+For models too large to recompute on-chain, the trust anchor is a hardware
+attestation proving your machine ran a genuine, unmodified workload.
+
+| Attestation | Status |
+|-------------|--------|
+| **AMD SEV-SNP** | **Supported** — implemented end-to-end (full certificate-chain verification against AMD's key service). This is the day-one attestation target for confidential operators. |
+| Intel TDX | Roadmap (scaffolded, not finished). |
+| NVIDIA GPU confidential compute (H100/H200/Blackwell) | Roadmap (scaffolded, not finished). |
+
+On-chain attestation precompiles exist at `0x0301` (GPU), `0x0302` (TPM), and
+`0x0303` (compute) as the verification sink for these as they harden.
+
+> **Operator posture today.** Because attested GPU compute is not finished, the
+> production posture for sensitive workloads is **vetted operators plus SEV-SNP
+> where available**, with the on-chain recomputation path used wherever a model
+> is small enough to verify directly. Do not assume your off-chain results are
+> independently attested yet.
+
+## Roadmap summary
+
+- Hardware capability advertisement and per-token/FLOP metering.
+- Proof-of-correct-work for off-chain compute (attestation-bound).
+- Finished TDX and NVIDIA GPU confidential-compute attestation.
+- On-chain marketplace/DEX settlement for compute orders.
