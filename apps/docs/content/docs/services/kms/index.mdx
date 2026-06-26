@@ -1,373 +1,171 @@
 ---
 title: Hanzo KMS
-description: Key Management Service for secrets, API keys, and encryption
+description: Key Management Service for secrets, machine-identity access, and threshold signing keys
 ---
 
 # Hanzo KMS
 
-Hanzo KMS is an open-source Key Management Service for managing secrets, API keys, certificates, and encryption keys across infrastructure. It provides enterprise-grade secret management with MPC signer integration.
+Hanzo KMS is the key management service for the Hanzo platform. It stores secrets and API keys, hands them to workloads through short-lived machine-identity tokens, syncs them into Kubernetes, and manages threshold signing keys backed by [Hanzo MPC](/docs/services/mpc).
 
-## Features
+| | |
+|---|---|
+| **API** | `https://kms.hanzo.ai` |
+| **API prefix** | `/v1/kms` |
+| **Auth** | Machine-identity login → bearer JWT (verified against [Hanzo IAM](/docs/services/iam)) |
+| **K8s sync** | `KMSSecret` CRD via the kms-operator |
+| **Source** | [github.com/hanzoai/kms](https://github.com/hanzoai/kms) |
 
-- **Secrets Management**: Store and manage secrets, API keys, certificates
-- **Environment Sync**: Sync secrets across development, staging, production
-- **MPC Integration**: Threshold signatures via Hanzo MPC Signer
-- **Dynamic Secrets**: Auto-rotating database credentials (PostgreSQL, MySQL, MongoDB, Redis, ClickHouse)
-- **PAM Discovery**: Automated discovery of privileged accounts and resources with Active Directory support
-- **Certificate Management**: PKI certificate lifecycle with metadata, Sectigo/DigiCert CA integration
-- **Secret Versioning**: Full history and rollback
-- **Audit Logging**: Complete access audit trail
-- **RBAC**: Role-based access control with granular project permissions
-- **Sub-Organizations**: Hierarchical organization management with membership delegation
-- **Kubernetes Operator**: Native K8s secret injection
+<Callout>
+Hanzo KMS exposes a single surface under `/v1/kms`. Secrets are addressed by **org / path / name** with the environment as a query parameter. There is no plaintext-secret-in-config anywhere — workloads authenticate with a machine identity and read values at runtime.
+</Callout>
 
-## Architecture
+## Authentication
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                            HANZO KMS                                     │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                          │
-│  ┌────────────────────────────────────────────────────────────────┐     │
-│  │                    KMS Control Plane                            │     │
-│  │  ┌──────────┬─────────────┬──────────────┬─────────────────┐   │     │
-│  │  │ Policy   │ Approvals   │  Audit Log   │  Key Registry   │   │     │
-│  │  └────┬─────┴──────┬──────┴───────┬──────┴───────┬─────────┘   │     │
-│  └───────┼────────────┼──────────────┼──────────────┼─────────────┘     │
-│          │            │              │              │                    │
-│  ┌───────▼────────────▼──────────────▼──────────────▼─────────────┐     │
-│  │                   Unified Signing API                           │     │
-│  └───────┬────────────┬──────────────┬──────────────┬─────────────┘     │
-│          │            │              │              │                    │
-│  ┌───────▼───┐  ┌─────▼─────┐  ┌─────▼─────┐  ┌─────▼─────┐             │
-│  │    HSM    │  │    MPC    │  │  Software │  │   AWS/    │             │
-│  │  Signer   │  │  Signer   │  │  Signer   │  │   GCP     │             │
-│  └───────────┘  └───────────┘  └───────────┘  └───────────┘             │
-│                       │                                                  │
-│                       ▼                                                  │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │              Hanzo MPC Cluster (Private BFT Chain)               │    │
-│  │   ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐       │    │
-│  │   │ Node 0 │ │ Node 1 │ │ Node 2 │ │ Node 3 │ │ Node 4 │       │    │
-│  │   │ share₀ │ │ share₁ │ │ share₂ │ │ share₃ │ │ share₄ │       │    │
-│  │   │Ed25519 │ │Ed25519 │ │Ed25519 │ │Ed25519 │ │Ed25519 │       │    │
-│  │   │ML-DSA  │ │ML-DSA  │ │ML-DSA  │ │ML-DSA  │ │ML-DSA  │       │    │
-│  │   └────────┘ └────────┘ └────────┘ └────────┘ └────────┘       │    │
-│  │         Dual-cert finality: Ed25519 + ML-DSA-65 (3-of-5)        │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                          │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-## Endpoints
-
-| Environment | URL |
-|-------------|-----|
-| Production | `https://kms.hanzo.ai` |
-| Staging | `https://stg.kms.hanzo.ai` |
-
-## Quick Start
-
-### 1. Development Setup
+KMS uses **machine identities**: a non-human `clientId` + `clientSecret` minted in [Hanzo IAM](/docs/services/iam). Exchange them for a short-lived access token, then send that token as a bearer on every request.
 
 ```bash
-cd ~/work/hanzo/kms
-
-# Copy environment
-cp .env.dev.example .env
-
-# Start with Docker Compose
-docker compose -f docker-compose.dev.yml up
-
-# Or run separately
-cd backend && npm run dev
-cd frontend && npm run dev
+# Log in (clientId/clientSecret come from a K8s Secret or your secret store — never inline them)
+ACCESS_TOKEN=$(curl -sS -X POST https://kms.hanzo.ai/v1/kms/auth/login \
+  -H 'Content-Type: application/json' \
+  -d "{\"clientId\":\"$KMS_CLIENT_ID\",\"clientSecret\":\"$KMS_CLIENT_SECRET\"}" \
+  | jq -r .accessToken)
 ```
 
-### 2. Create a Secret
+Response:
 
-```typescript
-
-const kms = new HanzoKMS({
-  apiKey: process.env.HANZO_KMS_TOKEN
-})
-
-// Create a secret
-await kms.secrets.create({
-  environment: 'production',
-  path: '/api-keys',
-  key: 'STRIPE_SECRET',
-  value: 'sk_live_xxx'
-})
+```json
+{ "accessToken": "<RS256 JWT>", "expiresIn": 86400, "tokenType": "Bearer" }
 ```
 
-### 3. Retrieve Secrets
+The token is a standard JWT whose signature, issuer, and audience are validated against IAM's JWKS. Its `owner` claim is the organization it can act on — a token can only read secrets under its own `{org}`.
 
-```typescript
-// Get single secret
-const secret = await kms.secrets.get({
-  environment: 'production',
-  path: '/api-keys',
-  key: 'STRIPE_SECRET'
-})
+## Secret hierarchy
 
-// Get all secrets in path
-const secrets = await kms.secrets.list({
-  environment: 'production',
-  path: '/api-keys'
-})
+A secret is addressed by four coordinates:
+
+```
+org   /  path        /  name              ? env
+hanzo /  providers   /  OPENAI_API_KEY    ? env=production
 ```
 
-## Secret Types
+- **org** — the organization slug; must match the token's `owner` claim.
+- **path** — a folder within the org (e.g. `/`, `/providers`, `/db`).
+- **name** — the exact secret key.
+- **env** — a query parameter; defaults to `default` when omitted.
 
-### Static Secrets
+<Callout type="info">
+KMS reads are **exact-name** — there is no "list all secrets in a folder" endpoint. Enumerate the keys your workload needs (the `KMSSecret` CRD does exactly this).
+</Callout>
 
-Standard key-value secrets:
+## Reading & writing secrets
 
-```typescript
-await kms.secrets.create({
-  key: 'DATABASE_URL',
-  value: 'postgres://user:pass@host:5432/db',
-  type: 'static'
-})
-```
+All routes are under `https://kms.hanzo.ai/v1/kms/orgs/{org}/secrets`.
 
-### Dynamic Secrets
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/v1/kms/orgs/{org}/secrets/{path}/{name}?env=` | Read a secret value + version |
+| `POST` | `/v1/kms/orgs/{org}/secrets` | Create/upsert (`{path,name,env,value}`) → `{ok,version}` |
+| `PATCH` | `/v1/kms/orgs/{org}/secrets/{path}/{name}` | Update (optimistic concurrency — see below) |
+| `DELETE` | `/v1/kms/orgs/{org}/secrets/{path}/{name}?env=` | Delete |
 
-Auto-rotating credentials:
-
-```typescript
-// PostgreSQL dynamic secret
-await kms.dynamicSecrets.create({
-  name: 'postgres-readonly',
-  type: 'postgresql',
-  config: {
-    host: 'db.example.com',
-    port: 5432,
-    database: 'myapp',
-    adminUsername: 'admin',
-    adminPassword: 'xxx'
-  },
-  ttl: '1h',
-  maxTtl: '24h'
-})
-
-// Lease a credential
-const lease = await kms.dynamicSecrets.lease('postgres-readonly')
-console.log(lease.username, lease.password) // Auto-generated, auto-rotated
-```
-
-### Signing Keys (MPC)
-
-Create keys backed by MPC threshold signatures:
-
-```typescript
-// Create MPC-backed signing key
-const key = await kms.keys.create({
-  name: 'ethereum-hot-wallet',
-  keyType: 'secp256k1',
-  signer: 'mpc',
-  scheme: '2-of-3',
-  policy: {
-    maxDailyTransactions: 100,
-    maxTransactionValue: '10000000000000000000' // 10 ETH
-  }
-})
-
-console.log('Address:', key.ethAddress)
-
-// Sign transaction
-const signature = await kms.keys.sign(key.id, {
-  chain: 'ethereum',
-  transaction: {
-    to: '0x...',
-    value: '1000000000000000000'
-  }
-})
-```
-
-## Environment Management
-
-### Sync Environments
+### Read
 
 ```bash
-# CLI: Pull secrets to .env
-hanzo-kms pull --env production --output .env
-
-# CLI: Push secrets from .env
-hanzo-kms push --env staging --input .env
+curl -sS "https://kms.hanzo.ai/v1/kms/orgs/hanzo/secrets/providers/OPENAI_API_KEY?env=production" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
-### Environment Inheritance
-
-```
-production
-    └── staging (inherits, can override)
-           └── development (inherits, can override)
+```json
+{ "secret": { "value": "<secret value>" }, "version": 3 }
 ```
 
-## Kubernetes Integration
+A root-path secret omits the folder segment: `…/secrets/STRIPE_SECRET_KEY?env=production`.
 
-### Install Operator
+### Create
 
 ```bash
-helm repo add hanzo https://charts.hanzo.ai
-helm install hanzo-kms-operator hanzo/kms-operator
+curl -sS -X POST "https://kms.hanzo.ai/v1/kms/orgs/hanzo/secrets" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "path": "/providers", "name": "OPENAI_API_KEY", "env": "production", "value": "<new value>" }'
 ```
 
-### Inject Secrets
+```json
+{ "ok": true, "version": 1 }
+```
+
+### Update (optimistic concurrency)
+
+Updates require the current version, supplied either as an `If-Match` header or `version` in the body. A missing precondition returns `428 Precondition Required`; a stale version returns `409 Conflict` with the current version.
+
+```bash
+curl -sS -X PATCH "https://kms.hanzo.ai/v1/kms/orgs/hanzo/secrets/providers/OPENAI_API_KEY?env=production" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "If-Match: 3" \
+  -H "Content-Type: application/json" \
+  -d '{ "value": "<rotated value>" }'
+```
+
+## Threshold signing keys
+
+When KMS is wired to an [MPC](/docs/services/mpc) vault, it manages distributed signing keys whose private material is never assembled in one place:
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/v1/kms/keys/generate` | Distributed key generation (DKG) for a validator/signing key set |
+| `GET` | `/v1/kms/keys` · `/v1/kms/keys/{id}` | List / inspect key sets |
+| `POST` | `/v1/kms/keys/{id}/sign` | Threshold sign (e.g. `bls`) |
+| `POST` | `/v1/kms/keys/{id}/rotate` | Reshare / rotate shares |
+
+These operations require an admin or MPC-scoped token. See [Hanzo MPC](/docs/services/mpc) for the underlying threshold scheme.
+
+## Kubernetes integration
+
+In a cluster, you never call the API directly — you declare a `KMSSecret` and the **kms-operator** logs in with a machine identity, reads the named keys, and writes a Kubernetes `Secret` you reference as normal:
 
 ```yaml
-apiVersion: secrets.hanzo.ai/v1
-kind: HanzoSecret
+apiVersion: secrets.lux.network/v1alpha1
+kind: KMSSecret
 metadata:
-  name: api-secrets
+  name: app-kms-sync
+  namespace: hanzo
 spec:
-  environment: production
-  path: /api-keys
-  target:
-    name: api-secrets
-    type: kubernetes.io/Opaque
+  hostAPI: https://kms.hanzo.ai
+  resyncInterval: 60
+  authentication:
+    universalAuth:
+      credentialsRef:
+        secretName: app-kms-auth        # K8s Secret holding clientId/clientSecret
+        secretNamespace: hanzo
+      secretsScope:
+        projectSlug: hanzo               # -> {org}
+        envSlug: production              # -> ?env=production
+        secretsPath: /providers          # -> {path}
+        keys:                            # enumerated; no list endpoint
+          - OPENAI_API_KEY
+          - ANTHROPIC_API_KEY
+  managedSecretReference:
+    secretName: app-secrets
+    secretNamespace: hanzo
+    secretType: Opaque
+    creationPolicy: Orphan
 ```
 
-## Access Control
-
-### Roles
-
-| Role | Permissions |
-|------|-------------|
-| Admin | Full access |
-| Developer | Read/write specific paths |
-| Viewer | Read-only access |
-| Machine | Programmatic access only |
-
-### Policies
-
-```typescript
-await kms.policies.create({
-  name: 'frontend-team',
-  rules: [
-    {
-      path: '/frontend/*',
-      permissions: ['read', 'write']
-    },
-    {
-      path: '/backend/*',
-      permissions: ['read']
-    }
-  ]
-})
-```
-
-## Audit Logging
-
-All secret access is logged:
-
-```typescript
-const logs = await kms.audit.list({
-  startTime: '2024-01-01',
-  endTime: '2024-01-31',
-  actions: ['read', 'write', 'delete']
-})
-
-for (const log of logs) {
-  console.log({
-    timestamp: log.timestamp,
-    user: log.userId,
-    action: log.action,
-    path: log.secretPath,
-    ip: log.ipAddress
-  })
-}
-```
-
-## MPC Signer Integration
-
-Hanzo KMS integrates with Hanzo MPC for threshold signatures. MPC nodes run their own private BFT blockchain (ConsensusKV) with dual-certificate finality -- Ed25519 (classical) and ML-DSA-65 (post-quantum, FIPS 204).
-
-```typescript
-// Configure MPC backend
-await kms.config.update({
-  mpc: {
-    endpoint: 'https://mpc.hanzo.ai',
-    threshold: '3-of-5',
-    kvBackend: 'consensus',     // Private BFT blockchain (default)
-    consensusChainId: 'm-chain',
-    nodeEndpoints: [
-      'https://mpc-node0.hanzo.ai',
-      'https://mpc-node1.hanzo.ai',
-      'https://mpc-node2.hanzo.ai',
-      'https://mpc-node3.hanzo.ai',
-      'https://mpc-node4.hanzo.ai'
-    ]
-  }
-})
-```
-
-### TFHE-KMS Bridge
-
-KMS includes a TFHE bridge for fully homomorphic encryption operations backed by MPC threshold decryption:
-
-```typescript
-// Create TFHE key via MPC DKG
-const tfheKey = await kms.keys.create({
-  name: 'encrypted-policy-key',
-  keyType: 'tfhe-uint64',
-  signer: 'mpc-tfhe',
-  scheme: '3-of-5'
-})
-
-// Encrypt data with public key (KMS-side, no MPC needed)
-const encrypted = await kms.tfhe.encrypt(tfheKey.id, { value: 1000000 })
-
-// Threshold decrypt (requires t-of-n MPC shares)
-const decrypted = await kms.tfhe.decrypt(tfheKey.id, encrypted.ciphertext)
-```
-
-### Endpoints
-
-| Endpoint | Backend | Description |
-|----------|---------|-------------|
-| `mpc.hanzo.ai` | Consensus | Managed MPC (3-of-5, dual-cert PQ finality) |
-| `mpc.lux.network` | Consensus | Decentralized MPC (same cluster, Lux subnet integration) |
-
-See [MPC Consensus](/docs/services/mpc/consensus) for details on the private blockchain and [MPC Authentication](/docs/services/iam/mpc) for auth integration.
-
-## API Reference
-
-### Secrets
-
-- `POST /api/v1/secrets` - Create secret
-- `GET /api/v1/secrets` - List secrets
-- `GET /api/v1/secrets/:id` - Get secret
-- `PATCH /api/v1/secrets/:id` - Update secret
-- `DELETE /api/v1/secrets/:id` - Delete secret
-
-### Keys
-
-- `POST /api/v1/keys` - Create signing key
-- `GET /api/v1/keys/:id` - Get key info
-- `POST /api/v1/keys/:id/sign` - Sign with key
-
-### Dynamic Secrets
-
-- `POST /api/v1/dynamic-secrets` - Create dynamic secret
-- `POST /api/v1/dynamic-secrets/:id/lease` - Get credential lease
-- `DELETE /api/v1/dynamic-secrets/:id/lease/:leaseId` - Revoke lease
+See the [KMSSecret CRD reference](/docs/services/kms/kmssecret-crd) for the full spec.
 
 ## Next Steps
 
 <Cards>
-  <Card title="Service Integration" href="/docs/services/kms/service-integration">
-    How all Hanzo services consume secrets from KMS
-  </Card>
-  <Card title="Universal Auth" href="/docs/services/kms/universal-auth">
-    Machine Identity authentication for services
+  <Card title="Machine Identities" href="/docs/services/kms/universal-auth">
+    How services authenticate to KMS and refresh tokens
   </Card>
   <Card title="KMSSecret CRD" href="/docs/services/kms/kmssecret-crd">
-    Kubernetes operator secret sync reference
+    Complete Kubernetes sync reference
   </Card>
-  <Card title="IAM Integration" href="/docs/services/iam/kms-integration">
-    How IAM uses KMS for secret management
+  <Card title="Service Integration" href="/docs/services/kms/service-integration">
+    The pattern every Hanzo service uses to consume secrets
+  </Card>
+  <Card title="Hanzo MPC" href="/docs/services/mpc">
+    Threshold signing backend for KMS-managed keys
   </Card>
 </Cards>

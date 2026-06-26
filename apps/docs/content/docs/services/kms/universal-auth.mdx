@@ -49,7 +49,7 @@ stringData:
   clientSecret: "<machine-identity-client-secret>"
 ```
 
-**Access scope**: `secrets-639-c` project, `prod` environment, all paths.
+**Access scope**: the shared services org, `production` environment, all paths.
 
 ### Dedicated Identity (IAM)
 
@@ -80,23 +80,25 @@ stringData:
 5. Copy the generated `clientId` and `clientSecret`
 6. Under **Projects**, grant access to the appropriate project with the required role (typically **Viewer** for read-only)
 
-### Via API
+### Via Hanzo IAM
+
+A machine identity is a client-credentials application in [Hanzo IAM](/docs/services/iam). Register it (which mints a `clientId`/`clientSecret`), then grant it read access to the appropriate KMS org. The credentials are what your workload exchanges for a token.
+
+### Exchange credentials for a token
+
+Once you have a `clientId`/`clientSecret`, log in to KMS:
 
 ```bash
-# Create identity
-curl -X POST https://kms.hanzo.ai/api/v1/identities \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -d '{"name": "my-service", "role": "member"}'
-
-# Enable Universal Auth
-curl -X POST https://kms.hanzo.ai/api/v1/auth/universal-auth/identities/$IDENTITY_ID \
-  -H "Authorization: Bearer $ADMIN_TOKEN"
-
-# Grant project access
-curl -X POST https://kms.hanzo.ai/api/v1/projects/$PROJECT_ID/identity-memberships \
-  -H "Authorization: Bearer $ADMIN_TOKEN" \
-  -d '{"identityId": "$IDENTITY_ID", "role": "viewer"}'
+curl -X POST https://kms.hanzo.ai/v1/kms/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"clientId\":\"$KMS_CLIENT_ID\",\"clientSecret\":\"$KMS_CLIENT_SECRET\"}"
 ```
+
+```json
+{ "accessToken": "<JWT>", "expiresIn": 86400, "tokenType": "Bearer" }
+```
+
+Use the returned `accessToken` as `Authorization: Bearer <accessToken>` on every secret read.
 
 ## Storing Credentials in K8s
 
@@ -125,7 +127,7 @@ spec:
 | Property | Value |
 |----------|-------|
 | Token type | JWT |
-| Default TTL | 7200 seconds (2 hours) |
+| Default TTL | 86400 seconds (24 hours) |
 | Max TTL | Configurable per identity |
 | Refresh | Automatic by kms-operator |
 | Revocation | Delete the Machine Identity or its Universal Auth config |

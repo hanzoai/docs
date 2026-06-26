@@ -1,435 +1,193 @@
 ---
-title: Hanzo Platform
-description: GitOps deployment platform for applications, databases, containers, and custom domains with IAM-integrated multi-org support.
+title: Hanzo PaaS
+description: The platform.hanzo.ai control plane — deploy and operate applications, containers, and custom domains across your clusters, with IAM-native multi-org access.
 ---
 
-# Hanzo Platform
+# Hanzo PaaS
 
-Hanzo Platform is a self-hosted Platform as a Service (PaaS) for deploying and
-managing applications, databases, and containers. It provides Git-based
-deployments, Docker orchestration, auto-scaling, SSL/TLS certificates, custom
-domains, environment variable management, and real-time monitoring -- all
-integrated with Hanzo IAM for multi-organization access control.
+Hanzo PaaS (`platform.hanzo.ai`) is the control plane for shipping software on Hanzo infrastructure. You register an application, point it at a Docker image or Git repo, attach a domain, and the platform builds, deploys, and operates it on your clusters — with deployment history, rolling updates, and drift detection. Authentication is delegated to [Hanzo IAM](/docs/services/iam) with per-organization isolation.
 
-**Studio:** `platform.hanzo.ai`
-**API:** `api.platform.hanzo.ai`
-**Sync:** `sync.platform.hanzo.ai`
-**Webhook:** `webhook.platform.hanzo.ai`
-**OAuth:** `oauth.platform.hanzo.ai`
-**Source:** [github.com/hanzoai/platform](https://github.com/hanzoai/platform)
+| | |
+|---|---|
+| **Studio** | `https://platform.hanzo.ai` |
+| **Canonical API** | `https://platform.hanzo.ai/v1` |
+| **Build pipeline API** | `https://platform.hanzo.ai/api` (tRPC + OpenAPI) |
+| **Auth** | Hanzo IAM (interactive) · API key / service token (machine) |
+| **Source** | [github.com/hanzoai/platform](https://github.com/hanzoai/platform) |
 
-## Features
+## The model
 
-- **Git-Based Deployments** -- Push to deploy from GitHub, GitLab, Gitea, or
-  Bitbucket. Automatic builds on push with configurable branch tracking.
-- **Docker Container Orchestration** -- Native Docker Compose support, Swarm
-  mode for multi-node clusters, and direct container management.
-- **Auto-Scaling** -- Horizontal scaling with configurable replicas, rolling
-  updates with zero downtime, and pod anti-affinity for high availability.
-- **SSL/TLS Certificates** -- Automatic certificate provisioning and renewal
-  via cert-manager with Let's Encrypt integration.
-- **Custom Domains** -- Map any domain to your application with automatic DNS
-  verification and TLS termination.
-- **Environment Variables** -- Secure environment variable management per
-  application with KMS integration for secrets.
-- **Managed Databases** -- One-click provisioning for PostgreSQL, MySQL,
-  MariaDB, MongoDB, and Redis with automated backups.
-- **Real-Time Monitoring** -- Live CPU, memory, storage, and network metrics
-  for every deployed resource.
-- **Multi-Org Support** -- Full IAM integration via Hanzo IAM (hanzo.id) with
-  per-organization project isolation and RBAC.
-- **Preview Deployments** -- Automatic per-PR preview environments with
-  unique URLs for review workflows.
-- **Rollbacks** -- One-click rollback to any previous deployment version with full context preservation and registry authentication.
-- **Volume Backups** -- Scheduled volume backups with S3 destination, retention policies, and success/error notifications.
-- **Notifications** -- Deploy status alerts via Slack, Discord, Telegram,
-  and email.
-- **AI Assistant** -- Built-in AI provider selection for deployment assistance.
-
-## Architecture
-
-Hanzo Platform runs as six coordinated services on Kubernetes:
+Hanzo PaaS organizes work into a simple hierarchy:
 
 ```
-                          platform.hanzo.ai
-                                 |
-                           +-----------+
-                           |  Ingress  |
-                           |  (nginx)  |
-                           +-----------+
-                          /    |    |    \
-                         /     |    |     \
-                 +------+ +----+  +----+ +-------+
-                 |Studio| |API |  |Sync| |Webhook|
-                 | (UI) | |    |  |    | | (Go)  |
-                 +------+ +----+  +----+ +-------+
-                   :4000   :4000  :4000    :8080
-                              |      |
-                    +---------+------+---------+
-                    |         |                |
-                +-------+ +-------+      +---------+
-                |MongoDB| | Redis |      | Storage |
-                |       | |       |      |(Hanzo S3)|
-                +-------+ +-------+      +---------+
+organization
+  └── project
+        └── environment            (e.g. production, staging)
+              ├── application       (a Docker image or Git source → one workload)
+              └── compose           (a multi-service docker-compose / stack unit)
 ```
 
-### Service Components
+| Object | What it is |
+|--------|------------|
+| **project** | A grouping of related services, owned by an organization |
+| **environment** | An isolated slice of a project (production, staging, preview) |
+| **application** | A single deployable unit. Its `appName` is the name of the live workload it drives. `sourceType` is one of `docker`, `git`, `github`, `gitlab`, `bitbucket`, `gitea`, or `drop`; `deployTarget` is `local`, `cloud`, or `k8s` |
+| **deployment** | One build/deploy run, with status and start/finish timestamps |
+| **domain** | A hostname mapped to an application or compose service, with automatic TLS |
 
-| Service | Image | Replicas | Port | Purpose |
-|---------|-------|----------|------|---------|
-| **Platform** (API) | `ghcr.io/hanzoai/paas-api` | 2 | 4000 | Core API server, deployment orchestration, RBAC |
-| **Studio** (UI) | `ghcr.io/hanzoai/paas-ui` | 2 | 4000 | Web dashboard (React, Hanzo-branded) |
-| **Monitor** | `ghcr.io/hanzoai/paas-monitor` | 1 | 4000 | Resource metrics collection and alerting |
-| **Sync** | `ghcr.io/hanzoai/paas-sync` | 2 | 4000 | Real-time WebSocket state synchronization |
-| **Webhook** | `ghcr.io/hanzoai/paas-webhook` | 1 | 8080 | Git provider webhook receiver (Go) |
-| **OAuth Proxy** | `ghcr.io/hanzoai/platform-oauth-proxy` | 1 | - | IAM OAuth2 proxy at oauth.platform.hanzo.ai |
+State is stored in [Hanzo Base](/docs/services/base) (embedded SQLite, replicated to object storage) — there is no external database to run.
 
-### Studio Branding
+## Authentication
 
-The Studio UI uses Hanzo's visual identity:
-- Pure black background (`#000000`)
-- Monochrome white Hanzo "H" logo
-- Hanzo red (`#fd4444`) accent color for interactive elements
+Two credential types, both retrieved from [Hanzo KMS](/docs/services/kms) — never hard-coded:
 
-### Data Stores
+| Credential | Header | Use |
+|------------|--------|-----|
+| **API key** | `x-api-key: <key>` | Machine access to the build-pipeline API (`/api/*`). Org-scoped; issued under **Settings → API Keys** |
+| **Service token** | `Authorization: Bearer <token>` | The canonical `/v1` container surface (redeploy, observe) |
+| **IAM token** | `Authorization: Bearer <iam-jwt>` | Interactive / user access, via [Hanzo IAM](/docs/services/iam) SSO |
 
-| Store | Purpose |
-|-------|---------|
-| **MongoDB** | Application state, project configs, deployment history |
-| **Redis** | Cache, real-time sync pub/sub, session state |
-| **Hanzo S3** | Build artifacts, backup storage, asset uploads |
+## Deploy
 
-## Quick Start
+### From the Studio
 
-### Deploy via Studio UI
+1. Sign in at [platform.hanzo.ai](https://platform.hanzo.ai) with your Hanzo IAM account.
+2. Create a project and an environment.
+3. Add an application — choose a Docker image or connect a Git repository.
+4. Attach a domain and deploy.
 
-1. Navigate to [platform.hanzo.ai](https://platform.hanzo.ai)
-2. Sign in with your Hanzo IAM account
-3. Create a new project
-4. Connect your Git repository (GitHub, GitLab, Gitea, or Bitbucket)
-5. Configure build settings and environment variables
-6. Deploy
+### Redeploy a running container (canonical `/v1`)
 
-### Deploy via API
-
-Create a project and deploy an application using the Platform API:
+The canonical, machine-driven redeploy performs a zero-downtime rolling restart of the live workload — it re-pulls the image and recreates pods. It takes a service token and no body:
 
 ```bash
-# Authenticate (get token from hanzo.id)
-export TOKEN="your-iam-access-token"
+# Service token comes from KMS — never inline a real value
+TOKEN=$(curl -sS -X POST https://kms.hanzo.ai/v1/kms/auth/login \
+  -H 'Content-Type: application/json' \
+  -d "{\"clientId\":\"$KMS_CLIENT_ID\",\"clientSecret\":\"$KMS_CLIENT_SECRET\"}" | jq -r .accessToken)
+PAAS_TOKEN=$(curl -sS "https://kms.hanzo.ai/v1/kms/orgs/hanzo/secrets/paas/SERVICE_TOKEN?env=production" \
+  -H "Authorization: Bearer $TOKEN" | jq -r .secret.value)
 
-# Create a project
-curl -X POST https://api.platform.hanzo.ai/api/project.create \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "my-app",
-    "description": "My application"
-  }'
-
-# Create an application in the project
-curl -X POST https://api.platform.hanzo.ai/api/application.create \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "web",
-    "projectId": "PROJECT_ID",
-    "sourceType": "github",
-    "repository": "https://github.com/org/repo",
-    "branch": "main",
-    "buildPath": "/",
-    "publishDirectory": "dist"
-  }'
-
-# Trigger a deployment
-curl -X POST https://api.platform.hanzo.ai/api/application.deploy \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "applicationId": "APP_ID"
-  }'
+curl -fsS -X POST \
+  "https://platform.hanzo.ai/v1/org/$ORG_ID/project/$PROJECT_ID/env/$ENV_ID/container/$APP_ID/redeploy" \
+  -H "Authorization: Bearer $PAAS_TOKEN"
+# → {"ok":true}
 ```
 
-### Via Unified Gateway
+### Build and deploy (pipeline `/api`)
 
-All Platform API endpoints are also accessible through the Hanzo API gateway:
+To register a new app and run a build through the deployment pipeline, use the OpenAPI surface with an API key. Procedures are `<router>.<procedure>`:
 
 ```bash
-curl -H "Authorization: Bearer hk-your-api-key" \
-  https://api.hanzo.ai/v1/platform/projects
+# 1. Register the application (does not deploy)
+curl -fsS -X POST https://platform.hanzo.ai/api/application.create \
+  -H "x-api-key: $PLATFORM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "web", "environmentId": "'$ENV_ID'" }'
+
+# 2. Attach a Docker image source, then deploy
+curl -fsS -X POST https://platform.hanzo.ai/api/application.deploy \
+  -H "x-api-key: $PLATFORM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "applicationId": "'$APP_ID'" }'
+
+# Rebuild an existing application
+curl -fsS -X POST https://platform.hanzo.ai/api/application.redeploy \
+  -H "x-api-key: $PLATFORM_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "applicationId": "'$APP_ID'", "title": "ship v1.3.0" }'
 ```
 
-## Deployment Workflow
+`application.deploy` and `application.redeploy` enqueue a build job; `application.start`, `application.stop`, and `application.reload` manage the running workload. See the [Containers API](/docs/services/platform/api/containers) for the full procedure set.
 
-### Git Push Workflow
+## Observe & drift
 
-```
-Developer pushes code
-        |
-        v
-  +----------+       +---------+       +----------+
-  | Git Host | ----> |Webhook  | ----> | Platform |
-  | (GitHub) |  POST | Service |       |   API    |
-  +----------+       +---------+       +----------+
-                                            |
-                                   +--------+--------+
-                                   |                 |
-                              Build Image      Run Migrations
-                                   |                 |
-                                   +--------+--------+
-                                            |
-                                     Rolling Deploy
-                                            |
-                                   Health Check Pass
-                                            |
-                                    Traffic Switched
-```
+The platform continuously reconciles three views of every app and computes drift:
 
-1. **Push**: Developer pushes to the configured branch
-2. **Webhook**: Git provider sends a webhook to `webhook.platform.hanzo.ai`
-3. **Build**: Platform builds a Docker image from source (Nixpacks, Dockerfile, or Buildpacks)
-4. **Deploy**: Rolling update with zero downtime -- new pods start before old ones terminate
-5. **Health Check**: Readiness probes confirm the new deployment is serving traffic
-6. **Notify**: Deployment status sent to configured notification channels
-
-### Build Methods
-
-| Method | Description |
-|--------|-------------|
-| **Nixpacks** | Auto-detected build packs for Node.js, Python, Go, Ruby, PHP, Rust, Java |
-| **Dockerfile** | Custom Dockerfile in repository root or specified path |
-| **Docker Compose** | Full `compose.yml` support for multi-container applications |
-| **Buildpacks** | Cloud Native Buildpacks (CNB) for standardized builds |
-
-### Deployment Strategies
-
-| Strategy | Description |
-|----------|-------------|
-| **Rolling Update** | Default. `maxSurge: 1, maxUnavailable: 0` for zero-downtime deploys |
-| **Recreate** | Stop existing pods before starting new ones (for stateful workloads) |
-| **Preview** | Per-PR ephemeral environments with unique URLs |
-
-## Custom Domains
-
-Add custom domains to any deployed application:
+| Tag | Meaning |
+|-----|---------|
+| `declared` | The version your operator/manifest declares |
+| `running` | The image actually live in the cluster |
+| `latest` | The newest released version available |
 
 ```bash
-# Add a domain
-curl -X POST https://api.platform.hanzo.ai/api/domain.create \
-  -H "Authorization: Bearer $TOKEN" \
+# List apps with drift, scoped to an org
+curl -fsS "https://platform.hanzo.ai/v1/apps?org=hanzo&drift=true" \
+  -H "Authorization: Bearer $PLATFORM_SERVICE_TOKEN"
+```
+
+```json
+{
+  "apps": [
+    { "org": "hanzo", "app": "docs", "env": "production",
+      "declared_tag": "v1.4.0", "running_tag": "v1.3.0", "latest_tag": "v1.4.0",
+      "health": "yellow", "drift": ["un-rolled"] }
+  ],
+  "summary": { "total": 1, "byDrift": { "un-rolled": 1 } }
+}
+```
+
+Drift is never stored — it is recomputed from declared/running/latest each time. `POST /v1/apps/sync` refreshes the observed columns from the cluster and release feeds.
+
+## Custom domains & TLS
+
+Attach a hostname to an application; TLS is provisioned automatically (Let's Encrypt) and a DNS record is created:
+
+```bash
+curl -fsS -X POST https://platform.hanzo.ai/api/domain.create \
+  -H "x-api-key: $PLATFORM_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "applicationId": "APP_ID",
+    "applicationId": "'$APP_ID'",
     "host": "app.example.com",
+    "https": true,
     "certificateType": "letsencrypt"
   }'
 ```
 
-### DNS Configuration
+Point your DNS at the platform ingress IP shown on the project's **Domains** tab.
 
-Point your domain to the Platform ingress:
-
-| Record Type | Name | Value |
-|-------------|------|-------|
-| A | `app.example.com` | `24.199.76.156` |
-| CNAME | `app.example.com` | `platform.hanzo.ai` |
-
-SSL/TLS certificates are automatically provisioned and renewed via
-cert-manager with Let's Encrypt. Wildcard certificates are supported using
-DNS-01 challenges.
-
-## Environment Variables
-
-Manage environment variables per application with support for secrets:
-
-```bash
-# Set environment variables
-curl -X POST https://api.platform.hanzo.ai/api/environment.create \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "applicationId": "APP_ID",
-    "variables": {
-      "DATABASE_URL": "postgresql://user:pass@db:5432/app",
-      "REDIS_URL": "redis://redis:6379",
-      "API_KEY": "secret-value"
-    }
-  }'
-```
-
-### KMS Integration
-
-For sensitive values, Platform integrates with [Hanzo KMS](/docs/services/kms)
-to sync secrets directly from KMS vaults:
-
-- Secrets are referenced by KMS path, never stored in Platform's database
-- Automatic rotation when KMS secrets are updated
-- Audit trail for all secret access via KMS logs
-
-### Variable Scoping
-
-| Scope | Description |
-|-------|-------------|
-| **Application** | Available only to a specific application |
-| **Project** | Shared across all applications in a project |
-| **Global** | Available to all projects in an organization |
-| **Build-time** | Injected during the build phase only |
-| **Runtime** | Injected at container start only |
-
-## Managed Databases
-
-Platform can provision and manage database instances:
-
-| Database | Versions | Backups | Replicas |
-|----------|----------|---------|----------|
-| PostgreSQL | 14, 15, 16 | Automated daily | Read replicas |
-| MySQL | 8.0, 8.4 | Automated daily | Read replicas |
-| MariaDB | 10.11, 11.x | Automated daily | Read replicas |
-| MongoDB | 6.0, 7.0 | Automated daily | Replica sets |
-| Redis | 7.x | Snapshot | Sentinel HA |
-
-### Automated Backups
-
-Backups are stored in Hanzo S3 and can be configured with:
-- Custom retention policies
-- Point-in-time recovery (PostgreSQL, MySQL)
-- Cross-region backup destinations
-- Backup encryption at rest
-
-## Monitoring
-
-Platform provides real-time resource monitoring for all deployed services.
-
-### Metrics Collected
-
-| Metric | Granularity | Retention |
-|--------|-------------|-----------|
-| CPU usage | Per container | 30 days |
-| Memory usage | Per container | 30 days |
-| Network I/O | Per container | 30 days |
-| Disk usage | Per volume | 30 days |
-| HTTP requests | Per application | 30 days |
-| Response times | Per application | 30 days |
-
-### Accessing Metrics
-
-View metrics in the Studio dashboard under **Monitoring**, or query via API:
-
-```bash
-curl https://api.platform.hanzo.ai/api/monitoring.stats \
-  -H "Authorization: Bearer $TOKEN" \
-  -G -d "applicationId=APP_ID" \
-     -d "period=24h"
-```
-
-### Alerts
-
-Configure alerts for resource thresholds:
-- CPU usage exceeds percentage
-- Memory usage exceeds limit
-- Container restart count
-- Health check failures
-- Deployment failures
-
-Notifications can be sent to Slack, Discord, Telegram, or email.
-
-## Authentication
-
-Platform uses Hanzo IAM (hanzo.id) for all authentication:
-
-| Provider | Method |
-|----------|--------|
-| **Hanzo IAM** | OAuth2/OIDC SSO via hanzo.id (primary) |
-| **GitHub** | Git provider OAuth for repository access |
-| **GitLab** | Git provider OAuth for repository access |
-| **Bitbucket** | Git provider OAuth for repository access |
-
-The OAuth proxy at `oauth.platform.hanzo.ai` handles the IAM authorization
-code exchange. The Studio login page uses `provider=hanzo` to initiate the
-Better Auth generic OAuth flow against hanzo.id.
-
-### IAM Application
-
-| Field | Value |
-|-------|-------|
-| App Name | `app-platform` |
-| Organization | `hanzo` |
-| IAM Endpoint | `https://hanzo.id` |
-
-## Self-Hosting
-
-### Docker Compose (Local Development)
+## Self-hosting
 
 ```bash
 git clone https://github.com/hanzoai/platform
 cd platform
-cp .env.example .env
-# Edit .env with your configuration
+cp .env.example .env   # set IAM endpoint, service token, etc.
 docker compose up -d
 ```
 
-### Kubernetes (Production)
-
-The recommended production deployment uses the K8s manifests in
-`universe/infra/k8s/paas/`:
-
-```bash
-kubectl apply -k infra/k8s/paas/
-```
-
-This creates:
-- Platform API (2 replicas, rolling update)
-- Studio UI (2 replicas, rolling update)
-- Monitor (1 replica)
-- Sync (2 replicas, rolling update)
-- Webhook (1 replica)
-- Ingress rules for all subdomains
-- RBAC service account (`hanzo-paas-sa`)
-- Pod disruption budgets
-
-### Required Secrets
-
-| Secret | Keys |
-|--------|------|
-| `mongodb` | `databaseURI`, `username`, `password` |
-| `redis` | `hostname`, `password` |
-| `storage` | `endpoint`, `port`, `accessKey`, `secretKey` |
-| `hanzo-paas` | `passPhrase`, `clusterAccessToken`, `masterToken`, `clusterSlug` |
+The platform runs as a Next.js application with an embedded SQLite database; for production it deploys to a cluster via the operator. It authenticates against [Hanzo IAM](/docs/services/iam) using the `hanzo-platform` application.
 
 ## API Reference
 
-The Platform API uses tRPC-style endpoints. Key resource groups:
-
-| Resource | Endpoints |
-|----------|-----------|
-| **Projects** | `project.create`, `project.list`, `project.delete` |
-| **Applications** | `application.create`, `application.deploy`, `application.stop` |
-| **Compose** | `compose.create`, `compose.deploy`, `compose.redeploy` |
-| **Domains** | `domain.create`, `domain.delete`, `domain.verify` |
-| **Certificates** | `certificate.create`, `certificate.renew` |
-| **Environment** | `environment.create`, `environment.update` |
-| **Databases** | `postgres.create`, `mysql.create`, `mongo.create`, `redis.create` |
-| **Monitoring** | `monitoring.stats`, `monitoring.logs` |
-| **Backups** | `backup.create`, `backup.restore`, `backup.list` |
-| **Deployments** | `deployment.list`, `deployment.cancel`, `deployment.rollback` |
-| **Servers** | `server.create`, `server.list`, `server.validate` |
-
-Full Swagger documentation is available at `platform.hanzo.ai/swagger`.
+<Cards>
+  <Card title="API Overview" href="/docs/services/platform/api">
+    The `/v1` control surface and the `/api` build pipeline
+  </Card>
+  <Card title="Authentication" href="/docs/services/platform/api/authentication">
+    API keys, service tokens, and IAM tokens
+  </Card>
+  <Card title="Containers API" href="/docs/services/platform/api/containers">
+    Create, deploy, redeploy, and operate applications
+  </Card>
+  <Card title="Clusters" href="/docs/services/platform/clusters">
+    Register and manage clusters and node pools
+  </Card>
+</Cards>
 
 ## Related Services
 
 <Cards>
-  <Card title="Hanzo PaaS" href="/docs/services/paas">
-    K8s-native fleet operations and per-org cluster management
-  </Card>
-  <Card title="Hanzo Console" href="/docs/services/console">
-    Observability, tracing, and monitoring for deployed applications
-  </Card>
   <Card title="Hanzo IAM" href="/docs/services/iam">
     Identity and access management with multi-org SSO
   </Card>
-  <Card title="Container Registry" href="/docs/services/registry">
-    Private Docker registry with IAM-based token authentication
+  <Card title="Hanzo KMS" href="/docs/services/kms">
+    Secrets and service tokens for deployments
+  </Card>
+  <Card title="Hanzo Base" href="/docs/services/base">
+    The embedded data store behind the control plane
+  </Card>
+  <Card title="Hanzo S3" href="/docs/services/s3">
+    Object storage for build artifacts and backups
   </Card>
 </Cards>
-

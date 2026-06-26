@@ -1,486 +1,214 @@
 ---
 title: API Reference
-description: Complete REST API reference for Hanzo MPC
+description: REST API reference for the Hanzo MPC custody service
 ---
 
 # API Reference
 
-All endpoints are served at `https://mpc.hanzo.ai` and require a Bearer token from Hanzo IAM.
+The Hanzo MPC custody API is served at `https://mpc.hanzo.ai` under the `/v1` prefix. Signing is session-based: create a wallet, open a session, then sign.
 
 ## Authentication
 
-Every request must include an `Authorization` header:
+Every request (except health) carries a bearer token issued by [Hanzo IAM](/docs/services/iam):
 
 ```
-Authorization: Bearer <token>
+Authorization: Bearer <iam-access-token>
 ```
 
-Obtain tokens from Hanzo IAM at `https://hanzo.id`. See [IAM documentation](/docs/services/iam) for details.
+A service holding an external OIDC token can exchange it for an MPC token (the issuer must be allow-listed):
+
+```bash
+curl -X POST https://mpc.hanzo.ai/v1/auth/oidc \
+  -H "Content-Type: application/json" \
+  -d '{ "token": "<external-oidc-access-token>" }'
+```
+
+Machine callers may instead present a long-lived API key via `X-API-Key`. Roles (`owner`, `admin`, `signer`, `viewer`) and per-route permissions (e.g. `mpc:sign`) gate access.
 
 ## Base URL
 
 | Environment | URL |
 |-------------|-----|
 | Production | `https://mpc.hanzo.ai` |
-| Staging | `https://stg.mpc.hanzo.ai` |
 
 ---
 
-## POST /api/wallets
+## POST /v1/mpc/wallets
 
-Create a new MPC wallet. This triggers a distributed key generation (DKG) ceremony across the configured number of parties.
+Create a wallet via distributed key generation (DKG) across the configured parties.
 
 ### Request
 
 ```bash
-curl -X POST https://mpc.hanzo.ai/api/wallets \
-  -H "Authorization: Bearer $HANZO_TOKEN" \
+curl -X POST https://mpc.hanzo.ai/v1/mpc/wallets \
+  -H "Authorization: Bearer $IAM_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "protocol": "cggmp21",
-    "curve": "secp256k1",
-    "threshold": 2,
-    "parties": 3,
-    "label": "eth-hot-wallet",
-    "metadata": {
-      "department": "treasury",
-      "owner": "ops@example.com"
-    }
-  }'
+  -d '{ "protocol": "cggmp21" }'
 ```
-
-### Request Body
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `protocol` | string | Yes | Cryptographic protocol. One of: `cggmp21`, `frost`, `lsss`, `tfhe`, `corona`, `quasar`, `bls`, `doerner` |
-| `curve` | string | Yes | Elliptic curve. One of: `secp256k1`, `ed25519`, `ristretto`, `bls12-381`, `p256`, `sr25519` |
-| `threshold` | integer | Yes | Minimum signers required (t) |
-| `parties` | integer | Yes | Total number of key share holders (n) |
-| `label` | string | No | Human-readable wallet label |
-| `metadata` | object | No | Arbitrary key-value metadata |
+| `protocol` | string | Yes | `cggmp21` (ECDSA) or `frost` (Schnorr) |
 
-### Protocol-Curve Compatibility
-
-| Protocol | Compatible Curves |
-|----------|------------------|
-| `cggmp21` | `secp256k1`, `p256` |
-| `frost` | `ed25519`, `ristretto`, `secp256k1` |
-| `lsss` | Any curve |
-| `tfhe` | Lattice (internal) |
-| `corona` | Module-LWE (internal) |
-| `quasar` | `bls12-381` |
-| `bls` | `bls12-381` |
-| `doerner` | `secp256k1` |
+For a wallet in a specific vault with an explicit key type, use `POST /v1/vaults/{vaultId}/wallets` with `{ "name", "key_type", "protocol" }`, where `protocol` is `cggmp21`, `frost`, `lss`, or `sr25519`.
 
 ### Response `201 Created`
 
 ```json
 {
-  "wallet_id": "w_3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "walletId": "w_3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "address": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
   "protocol": "cggmp21",
-  "curve": "secp256k1",
-  "threshold": 2,
-  "parties": 3,
-  "public_key": "04a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4",
-  "addresses": {
-    "ethereum": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
-    "bitcoin": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-    "bitcoin_legacy": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"
-  },
-  "label": "eth-hot-wallet",
-  "metadata": {
-    "department": "treasury",
-    "owner": "ops@example.com"
-  },
-  "keygen_duration_ms": 22,
-  "created_at": "2026-02-23T10:30:00Z"
+  "threshold": "2-of-3",
+  "isDefault": true,
+  "status": "active",
+  "createdAt": "2026-06-26T10:30:00Z"
 }
 ```
 
-### Response Fields
+---
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `wallet_id` | string | Unique wallet identifier (prefixed `w_`) |
-| `protocol` | string | Protocol used for DKG |
-| `curve` | string | Elliptic curve |
-| `threshold` | integer | Signing threshold (t) |
-| `parties` | integer | Total parties (n) |
-| `public_key` | string | Hex-encoded public key |
-| `addresses` | object | Derived chain addresses |
-| `label` | string | Wallet label |
-| `metadata` | object | Custom metadata |
-| `keygen_duration_ms` | integer | DKG ceremony duration |
-| `created_at` | string | ISO 8601 timestamp |
+## GET /v1/wallets/&#123;id&#125;/addresses
 
-### Errors
+Return the chain addresses derived from a wallet's public key.
 
-| Status | Code | Description |
-|--------|------|-------------|
-| 400 | `invalid_protocol` | Unsupported protocol name |
-| 400 | `invalid_curve` | Unsupported curve or incompatible with protocol |
-| 400 | `invalid_threshold` | Threshold must be `>= 1` and `≤ parties` |
-| 401 | `unauthorized` | Missing or invalid Bearer token |
-| 403 | `forbidden` | Token lacks `mpc:wallets:create` scope |
-| 500 | `keygen_failed` | DKG ceremony failed (check node health) |
+```bash
+curl https://mpc.hanzo.ai/v1/wallets/$WALLET_ID/addresses \
+  -H "Authorization: Bearer $IAM_ACCESS_TOKEN"
+```
+
+```json
+{
+  "ethereum": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
+  "bitcoin": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+  "solana": "7nYBzS3Yz5mY8Qm4iXqz1bWmHnf8QpHq3xWv6Yc9aBcD",
+  "xrp": "rPdvC6ccq8hCdPKSPJkPmyZ4Mi1oG2FFkT",
+  "ton": "EQByY8B0iZ0a..."
+}
+```
 
 ---
 
-## POST /api/sign
+## POST /v1/mpc/wallets/&#123;id&#125;/sessions
 
-Sign a message or transaction hash using the specified wallet. The coordinator selects `t` available nodes and runs the threshold signing protocol.
+Open a signing session. A session scopes and authorizes the signatures that follow, and is consumed atomically — which makes every signature an explicit, auditable action.
+
+```bash
+curl -X POST https://mpc.hanzo.ai/v1/mpc/wallets/$WALLET_ID/sessions \
+  -H "Authorization: Bearer $IAM_ACCESS_TOKEN"
+```
+
+```json
+{ "sessionId": "s_a1b2c3d4", "walletId": "w_3fa85f64-...", "expiresAt": "2026-06-26T10:45:00Z" }
+```
+
+List or revoke sessions with `GET /v1/mpc/wallets/{id}/sessions` and `DELETE /v1/mpc/wallets/{id}/sessions/{sessionId}`.
+
+---
+
+## POST /v1/mpc/sign
+
+Threshold-sign a message hash. The coordinator selects `t` available nodes and runs the signing protocol. Requires an open `sessionId`.
 
 ### Request
 
 ```bash
-curl -X POST https://mpc.hanzo.ai/api/sign \
-  -H "Authorization: Bearer $HANZO_TOKEN" \
+curl -X POST https://mpc.hanzo.ai/v1/mpc/sign \
+  -H "Authorization: Bearer $IAM_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "wallet_id": "w_3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "walletId": "w_3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "sessionId": "s_a1b2c3d4",
     "message": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "encoding": "hex"
   }'
 ```
 
-### Request Body
-
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `wallet_id` | string | Yes | Target wallet ID |
+| `walletId` | string | Yes | Target wallet |
+| `sessionId` | string | Yes | An open signing session |
 | `message` | string | Yes | Message or transaction hash to sign |
-| `encoding` | string | No | Message encoding: `hex` (default), `base64`, `utf8` |
-| `signers` | integer[] | No | Specific signer indices to use. If omitted, coordinator selects automatically |
-| `metadata` | object | No | Audit metadata (e.g., transaction context) |
+| `encoding` | string | No | `hex` (default) or `base64` |
 
 ### Response `200 OK`
 
 ```json
 {
-  "signature": {
-    "r": "0x1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b",
-    "s": "0x4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e",
-    "v": 27
-  },
-  "signers": [1, 3],
-  "wallet_id": "w_3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "protocol": "cggmp21",
-  "duration_ms": 45,
-  "timestamp": "2026-02-23T10:31:00Z"
+  "signature": "0x1a2b3c...4d5e6f...1b",
+  "r": "0x1a2b3c4d5e6f...",
+  "s": "0x4d5e6f1a2b3c..."
 }
 ```
 
-### Signature Format by Protocol
+### Signature format by protocol
 
-| Protocol | Signature Fields |
-|----------|-----------------|
-| CGGMP21 | `r`, `s`, `v` (ECDSA) |
-| FROST | `R`, `s` (Schnorr) |
-| BLS | `signature` (compressed G1 point) |
-| Quasar | `bls_signature`, `pq_signature` (dual) |
-| Doerner | `r`, `s`, `v` (ECDSA) |
+| Protocol | Fields |
+|----------|--------|
+| CGGMP21 | `r`, `s`, and a recovery byte (ECDSA) |
+| FROST | 64-byte Schnorr `signature` |
+| BLS | compressed G1 point `signature` |
 
-### Errors
-
-| Status | Code | Description |
-|--------|------|-------------|
-| 400 | `invalid_message` | Message is empty or malformed |
-| 400 | `invalid_encoding` | Unsupported encoding format |
-| 404 | `wallet_not_found` | Wallet ID does not exist |
-| 401 | `unauthorized` | Missing or invalid Bearer token |
-| 403 | `forbidden` | Token lacks `mpc:sign` scope |
-| 503 | `insufficient_signers` | Fewer than `t` nodes are available |
-| 500 | `signing_failed` | Protocol execution failed |
-| 500 | `identifiable_abort` | Malicious signer detected (includes blame proof) |
-
-### Identifiable Abort Response
-
-When a signer deviates from the protocol:
-
-```json
-{
-  "error": "identifiable_abort",
-  "blame": {
-    "party_index": 2,
-    "proof": "base64-encoded-blame-proof",
-    "reason": "invalid_commitment"
-  },
-  "timestamp": "2026-02-23T10:31:00Z"
-}
-```
+For settlement workflows with an explicit reason and policy check, use `POST /v1/mpc/settlement/sign` with `{ "walletId", "sessionId", "payload", "reason" }`.
 
 ---
 
-## POST /api/reshare
+## POST /v1/wallets/&#123;id&#125;/reshare
 
-Perform a proactive share refresh. This generates new shares for the same underlying key, optionally changing the threshold or party count. The public key and all derived addresses remain unchanged.
-
-### Request
+Proactive share refresh. Generates new shares for the same key, optionally changing the participant set or threshold. The public key and every derived address are unchanged.
 
 ```bash
-curl -X POST https://mpc.hanzo.ai/api/reshare \
-  -H "Authorization: Bearer $HANZO_TOKEN" \
+curl -X POST https://mpc.hanzo.ai/v1/wallets/$WALLET_ID/reshare \
+  -H "Authorization: Bearer $IAM_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "wallet_id": "w_3fa85f64-5717-4562-b3fc-2c963f66afa6",
-    "new_threshold": 3,
-    "new_parties": 5
-  }'
+  -d '{ "new_threshold": 3, "new_participants": ["node-0","node-1","node-2","node-3","node-4"] }'
 ```
-
-### Request Body
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `wallet_id` | string | Yes | Target wallet ID |
-| `new_threshold` | integer | No | New signing threshold. Defaults to current |
-| `new_parties` | integer | No | New total parties. Defaults to current |
-| `reason` | string | No | Audit reason (e.g., `scheduled_rotation`, `suspected_compromise`) |
-
-### Response `200 OK`
 
 ```json
-{
-  "wallet_id": "w_3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "previous": {
-    "threshold": 2,
-    "parties": 3,
-    "epoch": 1
-  },
-  "current": {
-    "threshold": 3,
-    "parties": 5,
-    "epoch": 2
-  },
-  "public_key": "04a1b2c3d4e5f6...",
-  "addresses_unchanged": true,
-  "reshare_duration_ms": 180,
-  "timestamp": "2026-02-23T10:32:00Z"
-}
-```
-
-### Errors
-
-| Status | Code | Description |
-|--------|------|-------------|
-| 400 | `invalid_threshold` | New threshold exceeds new party count |
-| 404 | `wallet_not_found` | Wallet ID does not exist |
-| 401 | `unauthorized` | Missing or invalid Bearer token |
-| 403 | `forbidden` | Token lacks `mpc:reshare` scope |
-| 409 | `reshare_in_progress` | Another reshare is already running for this wallet |
-| 500 | `reshare_failed` | Protocol execution failed |
-
----
-
-## GET /api/wallets
-
-List all wallets accessible to the authenticated user.
-
-### Request
-
-```bash
-curl https://mpc.hanzo.ai/api/wallets \
-  -H "Authorization: Bearer $HANZO_TOKEN"
-```
-
-### Query Parameters
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `limit` | integer | 20 | Results per page (max 100) |
-| `offset` | integer | 0 | Pagination offset |
-| `protocol` | string | - | Filter by protocol |
-| `label` | string | - | Filter by label (substring match) |
-
-### Response `200 OK`
-
-```json
-{
-  "wallets": [
-    {
-      "wallet_id": "w_3fa85f64-5717-4562-b3fc-2c963f66afa6",
-      "protocol": "cggmp21",
-      "curve": "secp256k1",
-      "threshold": 2,
-      "parties": 3,
-      "public_key": "04a1b2c3d4e5f6...",
-      "addresses": {
-        "ethereum": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
-        "bitcoin": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh"
-      },
-      "label": "eth-hot-wallet",
-      "epoch": 2,
-      "created_at": "2026-02-23T10:30:00Z",
-      "last_reshare": "2026-02-23T10:32:00Z"
-    }
-  ],
-  "total": 1,
-  "limit": 20,
-  "offset": 0
-}
+{ "walletId": "w_3fa85f64-...", "newThreshold": 3, "keyType": "secp256k1", "status": "completed" }
 ```
 
 ---
 
-## GET /api/wallets/:id
+## GET /v1/status · GET /v1/info
 
-Get detailed information about a specific wallet.
-
-### Request
+Cluster status and capabilities.
 
 ```bash
-curl https://mpc.hanzo.ai/api/wallets/w_3fa85f64-5717-4562-b3fc-2c963f66afa6 \
-  -H "Authorization: Bearer $HANZO_TOKEN"
+curl https://mpc.hanzo.ai/v1/status -H "Authorization: Bearer $IAM_ACCESS_TOKEN"
 ```
 
-### Response `200 OK`
+```json
+{ "status": "healthy", "nodes": { "total": 5, "healthy": 5 }, "threshold": "3-of-5", "transport": "nats" }
+```
+
+## GET /healthz
+
+Liveness probe, no authentication.
+
+```bash
+curl https://mpc.hanzo.ai/healthz
+```
 
 ```json
-{
-  "wallet_id": "w_3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "protocol": "cggmp21",
-  "curve": "secp256k1",
-  "threshold": 2,
-  "parties": 3,
-  "public_key": "04a1b2c3d4e5f6...",
-  "addresses": {
-    "ethereum": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
-    "bitcoin": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-    "bitcoin_legacy": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
-    "bitcoin_taproot": "bc1p...",
-    "solana": "7nYB...",
-    "cosmos": "cosmos1...",
-    "lux_c": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
-    "lux_x": "X-lux1...",
-    "lux_p": "P-lux1..."
-  },
-  "label": "eth-hot-wallet",
-  "metadata": {
-    "department": "treasury",
-    "owner": "ops@example.com"
-  },
-  "epoch": 2,
-  "node_status": [
-    {"index": 0, "healthy": true, "last_seen": "2026-02-23T10:35:00Z"},
-    {"index": 1, "healthy": true, "last_seen": "2026-02-23T10:35:00Z"},
-    {"index": 2, "healthy": true, "last_seen": "2026-02-23T10:35:00Z"}
-  ],
-  "signing_count": 142,
-  "last_signed": "2026-02-23T10:34:00Z",
-  "created_at": "2026-02-23T10:30:00Z",
-  "last_reshare": "2026-02-23T10:32:00Z"
-}
+{ "status": "ok", "node_id": "node-0", "connected_peers": 4, "threshold": 3 }
 ```
 
 ---
 
-## GET /health
-
-Health check endpoint. No authentication required.
-
-### Request
-
-```bash
-curl https://mpc.hanzo.ai/health
-```
-
-### Response `200 OK`
+## Error format
 
 ```json
-{
-  "status": "healthy",
-  "version": "1.4.0",
-  "nodes": {
-    "total": 3,
-    "healthy": 3,
-    "degraded": 0,
-    "offline": 0
-  },
-  "nats": "connected",
-  "consul": "connected",
-  "uptime_seconds": 864000,
-  "timestamp": "2026-02-23T10:35:00Z"
-}
+{ "error": "insufficient_signers", "message": "Fewer than t nodes are available", "request_id": "req_abc123" }
 ```
 
-### Status Values
+| Status | Code | Meaning |
+|--------|------|---------|
+| 400 | `invalid_protocol` / `invalid_encoding` | Bad request input |
+| 401 | `unauthorized` | Missing or invalid bearer token |
+| 403 | `forbidden` | Token lacks the required role/permission |
+| 404 | `wallet_not_found` | Unknown wallet |
+| 409 | `reshare_in_progress` | A reshare is already running for this wallet |
+| 503 | `insufficient_signers` | Fewer than `t` nodes available |
 
-| Status | Meaning |
-|--------|---------|
-| `healthy` | All nodes operational, messaging and discovery connected |
-| `degraded` | Some nodes offline but threshold still achievable |
-| `unhealthy` | Fewer healthy nodes than minimum threshold |
-
----
-
-## Error Response Format
-
-All errors follow a consistent structure:
-
-```json
-{
-  "error": "error_code",
-  "message": "Human-readable description of what went wrong",
-  "details": {},
-  "request_id": "req_abc123",
-  "timestamp": "2026-02-23T10:35:00Z"
-}
-```
-
-## Rate Limits
-
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| `POST /api/wallets` | 10 | per minute |
-| `POST /api/sign` | 100 | per minute |
-| `POST /api/reshare` | 5 | per minute |
-| `GET /api/wallets` | 60 | per minute |
-| `GET /health` | 300 | per minute |
-
-Rate limit headers are included in every response:
-
-```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 97
-X-RateLimit-Reset: 1708689360
-```
-
-## Pagination
-
-List endpoints support cursor-based pagination:
-
-```bash
-# First page
-curl "https://mpc.hanzo.ai/api/wallets?limit=10"
-
-# Next page
-curl "https://mpc.hanzo.ai/api/wallets?limit=10&offset=10"
-```
-
-## Webhook Notifications
-
-Configure webhooks to receive real-time events:
-
-```bash
-curl -X POST https://mpc.hanzo.ai/api/webhooks \
-  -H "Authorization: Bearer $HANZO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://example.com/webhooks/mpc",
-    "events": ["wallet.created", "sign.completed", "sign.failed", "reshare.completed"],
-    "secret": "whsec_your_webhook_secret"
-  }'
-```
-
-### Event Types
-
-| Event | Trigger |
-|-------|---------|
-| `wallet.created` | DKG ceremony completed |
-| `sign.completed` | Signature produced |
-| `sign.failed` | Signing failed or aborted |
-| `reshare.completed` | Share refresh completed |
-| `reshare.failed` | Share refresh failed |
-| `node.offline` | An MPC node became unreachable |
-| `node.recovered` | An offline node came back |
+When a signer deviates, signing aborts with an identifiable-abort error that names the offending party and includes a signed blame proof.

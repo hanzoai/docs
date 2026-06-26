@@ -23,15 +23,15 @@ They are populated from KMS at deploy time.
 |----------|----------|-------------|---------|
 | `IAM_ENDPOINT` | yes | IAM server URL. In-cluster: `http://iam:8000`. Public: `https://hanzo.id`. | `https://hanzo.id` |
 | `IAM_ISSUER` | optional | OIDC issuer URL used for token validation. Defaults to `IAM_ENDPOINT`. | `https://hanzo.id` |
-| `IAM_CLIENT_ID` | yes | OAuth client ID issued for this application. | `app-myapp` |
+| `IAM_CLIENT_ID` | yes | OAuth client ID issued for this application. | `hanzo-myapp` |
 | `IAM_CLIENT_SECRET` | yes | OAuth client secret. Must come from KMS, never plaintext. | `${IAM_APP_MYAPP_CLIENT_SECRET}` |
 | `IAM_ORG` | optional | Organization slug this app is scoped to. | `hanzo` |
-| `IAM_APP` | optional | Application name as registered in IAM. | `app-myapp` |
+| `IAM_APP` | optional | Application name as registered in IAM. | `hanzo-myapp` |
 | `IAM_CERT` | optional | PEM-encoded signing certificate (for offline JWT validation). | (PEM blob) |
-| `IAM_USERINFO_URL` | optional | Override for the OIDC userinfo URL. Defaults to `${IAM_ENDPOINT}/oauth/userinfo`. | `https://hanzo.id/oauth/userinfo` |
+| `IAM_USERINFO_URL` | optional | Override for the OIDC userinfo URL. Defaults to `${IAM_ENDPOINT}/v1/iam/oauth/userinfo`. | `https://hanzo.id/v1/iam/oauth/userinfo` |
 
 The `<org>-<app>` naming scheme is canonical for `IAM_APP` values: `hanzo-team`,
-`hanzo-tasks`, `lux-cloud`, `zoo-research`, etc.
+`hanzo-tasks`, `hanzo-cloud`, `hanzo-brain`, etc.
 
 ## RFC-compliant OAuth/OIDC endpoints
 
@@ -46,15 +46,15 @@ available for a non-OIDC endpoint.
 
 | Purpose | Path |
 |---------|------|
-| Authorization | `/oauth/authorize` |
-| Token | `/oauth/token` |
-| Introspection | `/oauth/introspect` |
-| Revocation | `/oauth/revoke` |
-| UserInfo | `/oauth/userinfo` |
-| Device authorization | `/oauth/device` |
-| End-session / logout | `/oauth/logout` |
-| Discovery | `/.well-known/openid-configuration` |
-| JSON Web Key Set | `/.well-known/jwks` |
+| Authorization | `/v1/iam/oauth/authorize` |
+| Token | `/v1/iam/oauth/token` |
+| Introspection | `/v1/iam/oauth/introspect` |
+| Revocation | `/v1/iam/oauth/revoke` |
+| UserInfo | `/v1/iam/oauth/userinfo` |
+| Device authorization | `/v1/iam/oauth/device` |
+| End-session / logout | `/v1/iam/oauth/logout` |
+| Discovery | `/.well-known/openid-configuration` (alias of `/v1/iam/.well-known/openid-configuration`) |
+| JSON Web Key Set | `/v1/iam/.well-known/jwks` |
 
 A consumer that reads `IAM_ENDPOINT` constructs every endpoint by
 concatenation — there are no other env vars for individual OAuth URLs.
@@ -67,9 +67,9 @@ key for an application's secret follows the convention
 
 | KMS key | Consumes |
 |---------|----------|
-| `IAM_APP_HANZO_CLIENT_SECRET` | app-hanzo |
-| `IAM_APP_CLOUD_CLIENT_SECRET` | app-cloud |
-| `IAM_APP_COMMERCE_CLIENT_SECRET` | app-commerce |
+| `IAM_APP_HANZO_CLIENT_SECRET` | hanzo-app |
+| `IAM_APP_CLOUD_CLIENT_SECRET` | hanzo-cloud |
+| `IAM_APP_COMMERCE_CLIENT_SECRET` | hanzo-commerce |
 
 The KMS operator syncs these into a service-scoped K8s `Secret`, and the
 consumer pod reads them as `IAM_CLIENT_SECRET` from that Secret. See
@@ -84,10 +84,10 @@ services:
     image: ghcr.io/hanzoai/myapp:v1.0.0
     environment:
       IAM_ENDPOINT: https://hanzo.id
-      IAM_CLIENT_ID: app-myapp
+      IAM_CLIENT_ID: hanzo-myapp
       IAM_CLIENT_SECRET: ${IAM_APP_MYAPP_CLIENT_SECRET}
       IAM_ORG: hanzo
-      IAM_APP: app-myapp
+      IAM_APP: hanzo-myapp
 ```
 
 ## Example: Kubernetes
@@ -105,7 +105,7 @@ spec:
             - name: IAM_ENDPOINT
               value: http://iam.hanzo.svc.cluster.local:8000
             - name: IAM_CLIENT_ID
-              value: app-myapp
+              value: hanzo-myapp
             - name: IAM_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
@@ -125,9 +125,9 @@ const iam = {
   issuer: process.env.IAM_ISSUER ?? process.env.IAM_ENDPOINT!,
 };
 
-const tokenUrl = `${iam.endpoint}/oauth/token`;
+const tokenUrl = `${iam.endpoint}/v1/iam/oauth/token`;
 const userInfoUrl =
-  process.env.IAM_USERINFO_URL ?? `${iam.endpoint}/oauth/userinfo`;
+  process.env.IAM_USERINFO_URL ?? `${iam.endpoint}/v1/iam/oauth/userinfo`;
 ```
 
 ```python
@@ -138,9 +138,9 @@ IAM_CLIENT_ID = os.environ["IAM_CLIENT_ID"]
 IAM_CLIENT_SECRET = os.environ["IAM_CLIENT_SECRET"]
 IAM_ISSUER = os.environ.get("IAM_ISSUER", IAM_ENDPOINT)
 
-TOKEN_URL = f"{IAM_ENDPOINT}/oauth/token"
+TOKEN_URL = f"{IAM_ENDPOINT}/v1/iam/oauth/token"
 USERINFO_URL = os.environ.get(
-    "IAM_USERINFO_URL", f"{IAM_ENDPOINT}/oauth/userinfo"
+    "IAM_USERINFO_URL", f"{IAM_ENDPOINT}/v1/iam/oauth/userinfo"
 )
 ```
 

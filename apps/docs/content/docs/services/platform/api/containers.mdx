@@ -1,281 +1,106 @@
 ---
 title: Containers API
-description: Deploy, manage, and monitor container workloads
+description: Deploy, redeploy, and operate container workloads
 ---
 
-The Containers API manages container deployments across your clusters. It supports Docker images from any registry and handles the full deployment lifecycle.
+A **container** is a deployable workload on Hanzo PaaS. There are two ways to act on one:
 
-## Endpoints
+- the canonical **`/v1` container surface** — a machine-driven, zero-downtime **redeploy** (rolling restart) of a running workload, authenticated with a service token;
+- the **`/api` build pipeline** — the Dokploy-derived tRPC procedures (`application.*`) that register sources and run builds, authenticated with an API key.
 
-| Procedure | Method | Description |
-|-----------|--------|-------------|
-| `container.all` | GET | List all containers in a project |
-| `container.one` | GET | Get container details |
-| `container.create` | POST | Create a new container deployment |
-| `container.update` | PATCH | Update container configuration |
-| `container.remove` | DELETE | Remove a container |
-| `container.deploy` | POST | Trigger a new deployment |
-| `container.restart` | POST | Restart running instances |
-| `container.stop` | POST | Stop a container |
-| `container.start` | POST | Start a stopped container |
-| `container.logs` | GET | Stream container logs |
+Under the hood a container maps to an `application` row whose `appName` is the live workload's name.
 
-## List Containers
-
-`GET /api/container.all?projectId=proj_abc123`
+## Redeploy a running container (`/v1`)
 
 ```bash
-curl "https://app.platform.hanzo.ai/api/container.all?projectId=proj_abc123" \
-  -H "Authorization: Bearer YOUR_TOKEN"
+curl -fsS -X POST \
+  "https://platform.hanzo.ai/v1/org/$ORG_ID/project/$PROJECT_ID/env/$ENV_ID/container/$CONTAINER_ID/redeploy" \
+  -H "Authorization: Bearer $PAAS_SERVICE_TOKEN"
 ```
-
-**Response:**
 
 ```json
-{
-  "result": {
-    "data": [
-      {
-        "id": "ctr_abc123",
-        "name": "web",
-        "image": "ghcr.io/myorg/web:v1.2.3",
-        "status": "running",
-        "replicas": 3,
-        "port": 3000,
-        "clusterId": "cluster_abc123",
-        "createdAt": "2025-09-01T10:00:00Z"
-      },
-      {
-        "id": "ctr_def456",
-        "name": "worker",
-        "image": "ghcr.io/myorg/worker:v1.2.3",
-        "status": "running",
-        "replicas": 1,
-        "port": null,
-        "clusterId": "cluster_abc123",
-        "createdAt": "2025-09-01T10:05:00Z"
-      }
-    ]
-  }
-}
+{ "ok": true }
 ```
 
-## Get Container
+This re-pulls the image and recreates pods with a rolling update — no new build. The service token comes from [Hanzo KMS](/docs/services/kms).
 
-`GET /api/container.one?containerId=ctr_abc123`
+## Build pipeline procedures (`/api`)
+
+Each procedure is an HTTP `POST` to `https://platform.hanzo.ai/api/<procedure>` with `x-api-key`.
+
+| Procedure | Purpose |
+|-----------|---------|
+| `application.create` | Register a new application (does not deploy) |
+| `application.one` | Get application details |
+| `application.all` | List applications in a project |
+| `application.update` | Update configuration |
+| `application.deploy` | Build & deploy (manual deployment) |
+| `application.redeploy` | Rebuild an existing application |
+| `application.start` · `application.stop` · `application.reload` | Lifecycle operations |
+| `application.remove` | Delete the application |
+
+### Create an application
+
+`name` and `environmentId` are required; `appName` is generated if omitted.
 
 ```bash
-curl "https://app.platform.hanzo.ai/api/container.one?containerId=ctr_abc123" \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-**Response:**
-
-```json
-{
-  "result": {
-    "data": {
-      "id": "ctr_abc123",
-      "name": "web",
-      "image": "ghcr.io/myorg/web:v1.2.3",
-      "status": "running",
-      "replicas": 3,
-      "port": 3000,
-      "clusterId": "cluster_abc123",
-      "env": [
-        { "key": "NODE_ENV", "value": "production" },
-        { "key": "DATABASE_URL", "value": "***" }
-      ],
-      "resources": {
-        "cpuLimit": "500m",
-        "memoryLimit": "512Mi"
-      },
-      "domains": ["app.example.com"],
-      "healthCheck": {
-        "path": "/health",
-        "port": 3000,
-        "interval": 30
-      },
-      "createdAt": "2025-09-01T10:00:00Z",
-      "lastDeployedAt": "2026-02-20T15:30:00Z"
-    }
-  }
-}
-```
-
-## Create Container
-
-`POST /api/container.create`
-
-```bash
-curl -X POST https://app.platform.hanzo.ai/api/container.create \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+curl -fsS -X POST https://platform.hanzo.ai/api/application.create \
+  -H "x-api-key: $PLATFORM_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "projectId": "proj_abc123",
-    "clusterId": "cluster_abc123",
     "name": "web",
-    "image": "ghcr.io/myorg/web:v1.2.3",
-    "port": 3000,
-    "replicas": 3,
-    "env": [
-      { "key": "NODE_ENV", "value": "production" }
-    ],
-    "resources": {
-      "cpuLimit": "500m",
-      "memoryLimit": "512Mi"
-    },
-    "healthCheck": {
-      "path": "/health",
-      "port": 3000,
-      "interval": 30
-    }
+    "environmentId": "'$ENV_ID'",
+    "description": "Public web app"
   }'
 ```
 
-**Parameters:**
+Attach a Docker image source with `application.saveDockerProvider` (or a Git source with `application.saveGithubProvider`), then deploy.
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `projectId` | string | Yes | Project ID |
-| `clusterId` | string | Yes | Target cluster |
-| `name` | string | Yes | Container name |
-| `image` | string | Yes | Docker image reference |
-| `port` | number | No | Exposed port |
-| `replicas` | number | No | Number of instances (default: 1) |
-| `env` | array | No | Environment variables |
-| `resources` | object | No | CPU and memory limits |
-| `healthCheck` | object | No | Health check configuration |
-
-**Response:** `201 Created`
-
-## Update Container
-
-`PATCH /api/container.update`
-
-Update configuration without triggering a new deployment. Use `container.deploy` to roll out changes.
+### Deploy & redeploy
 
 ```bash
-curl -X PATCH https://app.platform.hanzo.ai/api/container.update \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+# Build and deploy
+curl -fsS -X POST https://platform.hanzo.ai/api/application.deploy \
+  -H "x-api-key: $PLATFORM_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "containerId": "ctr_abc123",
-    "replicas": 5,
-    "env": [
-      { "key": "NODE_ENV", "value": "production" },
-      { "key": "LOG_LEVEL", "value": "info" }
-    ]
-  }'
-```
+  -d '{ "applicationId": "'$APP_ID'" }'
 
-## Deploy
-
-`POST /api/container.deploy`
-
-Trigger a new deployment with an updated image tag or configuration.
-
-```bash
-curl -X POST https://app.platform.hanzo.ai/api/container.deploy \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+# Rebuild an existing application
+curl -fsS -X POST https://platform.hanzo.ai/api/application.redeploy \
+  -H "x-api-key: $PLATFORM_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{
-    "containerId": "ctr_abc123",
-    "image": "ghcr.io/myorg/web:v1.3.0"
-  }'
+  -d '{ "applicationId": "'$APP_ID'", "title": "ship v1.3.0" }'
 ```
 
-**Response:**
+`application.deploy` and `application.redeploy` enqueue a build job and return after it is scheduled. Deployments roll out with a zero-downtime strategy by default.
 
-```json
-{
-  "result": {
-    "data": {
-      "deploymentId": "dep_xyz789",
-      "status": "in_progress",
-      "previousImage": "ghcr.io/myorg/web:v1.2.3",
-      "newImage": "ghcr.io/myorg/web:v1.3.0",
-      "triggeredAt": "2026-02-26T10:00:00Z"
-    }
-  }
-}
-```
-
-Deployments use a rolling update strategy by default. If the health check fails, the deployment is automatically rolled back.
-
-## Lifecycle Operations
-
-### Restart
+### Lifecycle
 
 ```bash
-curl -X POST https://app.platform.hanzo.ai/api/container.restart \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ "containerId": "ctr_abc123" }'
+# Stop / start / restart-in-place
+curl -fsS -X POST https://platform.hanzo.ai/api/application.stop  -H "x-api-key: $PLATFORM_API_KEY" -d '{"applicationId":"'$APP_ID'"}'
+curl -fsS -X POST https://platform.hanzo.ai/api/application.start -H "x-api-key: $PLATFORM_API_KEY" -d '{"applicationId":"'$APP_ID'"}'
+curl -fsS -X POST https://platform.hanzo.ai/api/application.reload -H "x-api-key: $PLATFORM_API_KEY" -d '{"applicationId":"'$APP_ID'","appName":"'$APP_NAME'"}'
 ```
 
-### Stop
+## Inspect & observe
+
+Use the [observe surface](/docs/services/platform) to see declared vs running vs latest image tags and drift:
 
 ```bash
-curl -X POST https://app.platform.hanzo.ai/api/container.stop \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ "containerId": "ctr_abc123" }'
+curl -fsS "https://platform.hanzo.ai/v1/apps?org=hanzo" \
+  -H "Authorization: Bearer $PLATFORM_SERVICE_TOKEN"
 ```
 
-### Start
-
-```bash
-curl -X POST https://app.platform.hanzo.ai/api/container.start \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ "containerId": "ctr_abc123" }'
-```
-
-## Logs
-
-`GET /api/container.logs?containerId=ctr_abc123`
-
-Stream logs from all replicas of a container.
-
-```bash
-curl "https://app.platform.hanzo.ai/api/container.logs?containerId=ctr_abc123&tail=100" \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-**Query parameters:**
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `containerId` | string | -- | Container ID |
-| `tail` | number | 100 | Number of recent lines |
-| `since` | string | -- | ISO 8601 timestamp |
-| `follow` | boolean | false | Stream logs in real time |
-
-## Delete Container
-
-`DELETE /api/container.remove`
-
-```bash
-curl -X DELETE https://app.platform.hanzo.ai/api/container.remove \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ "containerId": "ctr_abc123" }'
-```
-
-**Response:** `204 No Content`
-
-<Callout type="warn">
-Deleting a container stops all running instances and removes associated domains and volumes. This cannot be undone.
-</Callout>
-
-## Container Status Values
+## Application status values
 
 | Status | Description |
 |--------|-------------|
-| `creating` | Container is being provisioned |
-| `running` | All replicas are healthy |
-| `deploying` | A new deployment is rolling out |
-| `stopped` | Container is stopped |
-| `error` | One or more replicas have failed |
-| `deleting` | Container is being removed |
+| `idle` | Registered, not running |
+| `running` | Deployed and serving |
+| `done` | Last deployment completed |
+| `error` | A deployment or replica failed |
+
+<Callout type="warn">
+`application.remove` stops all instances and removes associated domains and volumes. This cannot be undone.
+</Callout>
