@@ -6,18 +6,18 @@ export const searchEndpoint =
   process.env.NEXT_PUBLIC_HANZO_SEARCH_ENDPOINT ??
   (searchBackend === 'meilisearch'
     ? 'https://search.hanzo.ai'
-    : 'https://cloud-api.hanzo.ai/api/search-docs');
+    : 'https://api.hanzo.ai/api/search-docs');
 
 export const searchIndex =
   process.env.NEXT_PUBLIC_HANZO_SEARCH_INDEX ?? 'app-docs-hanzo-ai-docs';
 
 export const indexEndpoint =
   process.env.HANZO_SEARCH_INDEX_ENDPOINT ??
-  'https://cloud-api.hanzo.ai/api/index-docs';
+  'https://api.hanzo.ai/api/index-docs';
 
 export const chatEndpoint =
   process.env.NEXT_PUBLIC_HANZO_CHAT_ENDPOINT ??
-  'https://cloud-api.hanzo.ai/api/chat-docs';
+  'https://api.hanzo.ai/api/chat-docs';
 
 export const publishableKey =
   process.env.NEXT_PUBLIC_HANZO_SEARCH_KEY ??
