@@ -18,7 +18,7 @@ export async function updateSearchIndexes(): Promise<void> {
   const defaultEndpoint =
     backend === 'meilisearch'
       ? 'https://search.hanzo.ai'
-      : 'https://api.cloud.hanzo.ai/api/index-docs';
+      : 'https://api.hanzo.ai/api/index-docs';
 
   await sync({
     endpoint: process.env.HANZO_SEARCH_INDEX_ENDPOINT ?? defaultEndpoint,

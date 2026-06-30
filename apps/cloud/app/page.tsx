@@ -165,13 +165,13 @@ export default function Page() {
                   <div className="size-3 rounded-full bg-green-500/80" />
                 </div>
                 <span className="ml-2 text-xs text-text-dim font-mono">
-                  api.cloud.hanzo.ai
+                  api.hanzo.ai
                 </span>
               </div>
               <pre className="overflow-x-auto p-6 text-sm font-mono leading-relaxed">
                 <code className="text-text-muted">
                   <span className="text-brand">curl</span>
-                  {' https://api.cloud.hanzo.ai/v1/chat/completions \\\n'}
+                  {' https://api.hanzo.ai/v1/chat/completions \\\n'}
                   {'  -H '}
                   <span className="text-green-400">
                     {'"Authorization: Bearer sk-hanzo-..."'}
@@ -266,7 +266,7 @@ export default function Page() {
                 {[
                   {
                     icon: GlobeIcon,
-                    path: 'api.cloud.hanzo.ai',
+                    path: 'api.hanzo.ai',
                     desc: 'Cloudflare Edge + TLS',
                   },
                   {
