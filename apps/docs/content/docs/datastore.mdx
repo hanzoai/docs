@@ -1,0 +1,62 @@
+---
+title: Hanzo Datastore
+description: Managed column-oriented analytics store — run sub-second SQL over billions of rows with a ClickHouse-compatible OLAP engine.
+---
+
+# Hanzo Datastore
+
+Hanzo Datastore is a managed, column-oriented analytics database for OLAP workloads. It runs sub-second aggregations over billions of rows using a ClickHouse-compatible engine, exposed over SQL, an HTTP interface, and the native binary protocol.
+
+## Provision a Datastore
+
+Each datastore is a logical resource scoped to your organization and provisioned through the control plane.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/datastore \
+  -H "Authorization: Bearer hk-..." \
+  -H "X-Org-Id: org_a1b2c3" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "events" }'
+```
+
+The response returns the SQL/HTTP endpoint and credentials.
+
+## Query
+
+Datastore speaks SQL over HTTP (port `8123`) and the ClickHouse native protocol (port `9000`), so ClickHouse clients and drivers connect directly.
+
+```bash
+# Create a table (MergeTree family)
+curl https://api.hanzo.ai/v1/datastore/events/query \
+  -H "Authorization: Bearer hk-..." \
+  -d 'CREATE TABLE hits (
+        ts DateTime, user_id UInt64, path String, ms UInt32
+      ) ENGINE = MergeTree ORDER BY (ts, user_id)'
+
+# Aggregate
+curl https://api.hanzo.ai/v1/datastore/events/query \
+  -H "Authorization: Bearer hk-..." \
+  -d "SELECT path, count() AS hits, avg(ms) AS mean_ms
+      FROM hits
+      WHERE ts > now() - INTERVAL 1 DAY
+      GROUP BY path ORDER BY hits DESC LIMIT 20"
+```
+
+## Features
+
+- MergeTree engine family with primary-key ordering, partitioning, and TTL
+- Real-time inserts with background merges — no batch load windows
+- Materialized views for incremental roll-ups and pre-aggregation
+- Columnar compression that routinely reaches 10x or better
+- Distributed queries and replication for horizontal scale
+- Reads cold data directly from [Storage](/docs/storage) (S3-compatible buckets)
+
+Datastore is built for append-heavy analytics — events, logs, metrics, and time series — not transactional workloads. For OLTP, use [SQL](/docs/sql).
+
+## Related
+
+- [Analytics engine reference](/docs/services/analytics) — the full SQL surface and table engines
+- [SQL](/docs/sql) — managed PostgreSQL for transactional data
+- [Storage](/docs/storage) — S3-compatible object storage for cold data
+- [API Keys](/docs/api-keys) — authenticate with `hk-` keys
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

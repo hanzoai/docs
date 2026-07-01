@@ -1,0 +1,58 @@
+---
+title: Hanzo Registry
+description: Container images and artifacts — a self-hosted, S3-backed OCI registry at registry.hanzo.ai, mirrored to ghcr.io/hanzoai.
+---
+
+# Hanzo Registry
+
+Hanzo Registry is a unified, OCI-compliant registry for container images and model artifacts. It is self-hosted and S3-backed at `registry.hanzo.ai`, with published platform images mirrored to `ghcr.io/hanzoai/*`.
+
+## Authenticate and Push
+
+Log in with your Hanzo API key, then push and pull with Docker, Podman, Buildah, or any OCI client.
+
+```bash
+# Log in (username `hanzo`, password is your hk- key)
+echo "$HANZO_API_KEY" | docker login registry.hanzo.ai -u hanzo --password-stdin
+
+# Tag and push
+docker tag my-app:latest registry.hanzo.ai/my-org/my-app:v1.0.0
+docker push registry.hanzo.ai/my-org/my-app:v1.0.0
+
+# Pull by immutable digest (recommended for production)
+docker pull registry.hanzo.ai/my-org/my-app@sha256:abc123...
+```
+
+Repositories are namespaced as `registry.hanzo.ai/<org>/<app>`. Semantic-version and Git-SHA tags are immutable by default.
+
+## Manage Repositories
+
+The OCI Distribution API and the Hanzo gateway both work with your `hk-` key.
+
+```bash
+# List tags for a repository
+curl -s -H "Authorization: Bearer hk-..." \
+  https://registry.hanzo.ai/v2/my-org/my-app/tags/list | jq .
+
+# View vulnerability scan results
+curl -s -H "Authorization: Bearer hk-..." \
+  https://api.hanzo.ai/v1/registry/my-org/my-app/v1.0.0/vulnerabilities | jq .
+```
+
+## Features
+
+- OCI-compliant — works with Docker, Podman, Buildah, ORAS, and any OCI client
+- Model artifact registry for SafeTensors, GGUF, ONNX, and LoRA adapters via ORAS
+- Multi-architecture manifests for `linux/amd64` and `linux/arm64`
+- Automated CVE scanning with configurable severity gates
+- Cosign / Notary v2 image signing, backed by [Hanzo KMS](https://kms.hanzo.ai)
+- Pull-through cache for Docker Hub and GHCR, with automatic garbage collection
+
+Blobs are stored on [Storage](/docs/storage) (Hanzo S3), so the registry inherits the same durability, encryption, and lifecycle management as all Hanzo storage.
+
+## Related
+
+- [Hanzo Registry service reference](/docs/services/registry) — tagging, model registry, and CI/CD
+- [Storage](/docs/storage) — the S3-compatible backend for registry blobs
+- [API Keys](/docs/api-keys) — authenticate `docker login` with `hk-` keys
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

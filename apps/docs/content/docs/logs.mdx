@@ -1,0 +1,59 @@
+---
+title: Logs
+description: Structured logs across all services — OpenTelemetry-compatible, correlated to traces by trace id.
+---
+
+# Logs
+
+Structured, queryable logs from every Hanzo service. Logs are OpenTelemetry-compatible, enriched with resource metadata, and correlated to [traces](/docs/traces) by `trace_id` so you can jump from a slow request to its exact log lines. Served by [Hanzo O11y](/docs/o11y), tenant-scoped by org.
+
+## Shipping logs
+
+Emit logs through the OTLP endpoint, or write structured JSON to stdout and let the collector pick them up. Include the active `trace_id` on each line to keep logs and traces linked.
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT=https://api.hanzo.ai/v1
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer hk-...,X-Org-Id=org_123"
+export OTEL_SERVICE_NAME=checkout-api
+```
+
+Log records are received at `POST /v1/logs` (OTLP over HTTP). Any JSON payload is indexed field-by-field, so `host`, `level`, and custom attributes are all filterable.
+
+## Querying logs
+
+Filter by service, level, and time window. The list response is the standard `{ data, meta }` envelope.
+
+```bash
+curl "https://api.hanzo.ai/v1/logs?service=checkout-api&level=error&limit=100" \
+  -H "Authorization: Bearer hk-..."
+```
+
+```json
+{
+  "data": [
+    {
+      "timestamp": "2026-06-28T18:04:11Z",
+      "service": "checkout-api",
+      "level": "error",
+      "traceId": "tr_abc123",
+      "body": { "msg": "connection timeout", "host": "db-01" }
+    }
+  ],
+  "meta": { "page": 1, "limit": 100, "totalItems": 3, "totalPages": 1 }
+}
+```
+
+## Levels and retention
+
+| Level | Usage | Retention |
+|-------|-------|-----------|
+| `error` | Failures requiring attention | 90 days |
+| `warn` | Degraded state, retries | 30 days |
+| `info` | Normal operations | 14 days |
+| `debug` | Verbose diagnostics | 3 days |
+
+## Related
+
+- [Traces](/docs/traces) — jump from a log line to its full request
+- [Metrics](/docs/metrics) — numeric series alongside your logs
+- [O11y](/docs/o11y) — alerting and dashboards over log streams

@@ -1,0 +1,73 @@
+---
+title: Hanzo SQL
+description: Managed PostgreSQL — provision databases, create copy-on-write branches, and scale reads with replicas over a single API and the standard Postgres wire protocol.
+---
+
+# Hanzo SQL
+
+Hanzo SQL is managed, serverless PostgreSQL 16. Provision a database in one call, connect with any Postgres client, and use instant branching, read replicas, connection pooling, and pgvector without running infrastructure.
+
+## Provision a Database
+
+Databases are scoped to your organization. Creating one returns a ready-to-use connection string.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/sql \
+  -H "Authorization: Bearer hk-..." \
+  -H "X-Org-Id: org_a1b2c3" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "app", "region": "us-east" }'
+```
+
+The response contains a pooled endpoint (recommended for applications) and a direct endpoint (for migrations, `LISTEN`/`NOTIFY`, and advisory locks).
+
+## Connect
+
+Any PostgreSQL driver or `psql` works — Hanzo SQL speaks the standard wire protocol over TLS.
+
+```bash
+psql "postgresql://user:password@db.hanzo.ai:6432/app?sslmode=require"
+```
+
+```python
+import asyncpg
+
+conn = await asyncpg.connect(
+    "postgresql://user:password@db.hanzo.ai:5432/app?sslmode=require"
+)
+rows = await conn.fetch("SELECT id, title FROM documents LIMIT 10")
+```
+
+## Branches and Replicas
+
+Branches are copy-on-write clones that share storage with the parent until data diverges — near-instant regardless of database size. Use them for development, CI, and schema previews.
+
+```bash
+# Branch the current state
+curl -X POST https://api.hanzo.ai/v1/sql/app/branches \
+  -H "Authorization: Bearer hk-..." \
+  -d '{ "name": "feature-auth" }'
+
+# Add a read replica
+curl -X POST https://api.hanzo.ai/v1/sql/app/replicas \
+  -H "Authorization: Bearer hk-..." \
+  -d '{ "name": "app-ro-1" }'
+```
+
+Point read-heavy traffic at the replica endpoint; typical replication lag is under 100 ms.
+
+## Features
+
+- PostgreSQL 16 with auto-scaling compute that scales to zero when idle
+- pgvector for storing and searching embeddings alongside relational data
+- Instant copy-on-write branches for dev, staging, and CI
+- Read replicas, PgBouncer connection pooling, and point-in-time recovery
+- Extensions: `pg_trgm`, `postgis`, `uuid-ossp`, `pg_stat_statements`, and more
+
+## Related
+
+- [Hanzo DB engine reference](/docs/services/db) — pooling modes, PITR, and pgvector indexing
+- [Vector](/docs/vector) — a dedicated vector database for embedding-first workloads
+- [DocDB](/docs/docdb) — MongoDB-compatible document storage
+- [API Keys](/docs/api-keys) — authenticate with `hk-` keys
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

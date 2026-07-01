@@ -1,0 +1,71 @@
+---
+title: Hanzo Vector
+description: Managed vector database for embeddings and semantic search — HNSW indexing, metadata filtering, and hybrid search, provisioned in one API call.
+---
+
+# Hanzo Vector
+
+Hanzo Vector is a managed vector database for embeddings and semantic search. Provision a collection through the control plane, then upsert and query high-dimensional vectors with HNSW indexing, metadata filtering, and hybrid (dense + sparse) search.
+
+## Provision a Collection
+
+A collection is a logical resource in the shared Hanzo Vector backend, scoped to your organization. Create one with a single call, specifying the embedding dimension and distance metric.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/vector \
+  -H "Authorization: Bearer hk-..." \
+  -H "X-Org-Id: org_a1b2c3" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "documents",
+    "dimensions": 1536,
+    "distance": "cosine"
+  }'
+```
+
+`dimensions` must match your embedding model — `1536` for `text-embedding-3-small`, `1024` for many open models. Supported distances: `cosine`, `euclidean`, `dot`.
+
+## Upsert and Search
+
+Insert points (a vector plus a JSON payload), then query for nearest neighbors with optional metadata filters.
+
+```bash
+# Upsert points
+curl -X PUT https://api.hanzo.ai/v1/vector/documents/points \
+  -H "Authorization: Bearer hk-..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "points": [
+      { "id": 1, "vector": [0.12, 0.04, "..."], "payload": { "category": "ai" } }
+    ]
+  }'
+
+# Search with a filter
+curl -X POST https://api.hanzo.ai/v1/vector/documents/points/search \
+  -H "Authorization: Bearer hk-..." \
+  -d '{
+    "vector": [0.11, 0.05, "..."],
+    "limit": 10,
+    "filter": { "must": [{ "key": "category", "match": { "value": "ai" } }] }
+  }'
+```
+
+Generate the vectors with [Embeddings](/docs/embeddings), then store them here. For full-text and hybrid keyword ranking, pair with [Search](/docs/search).
+
+## Features
+
+- HNSW approximate nearest-neighbor index with cosine, euclidean, and dot-product metrics
+- Payload storage and filtering — combine vector similarity with structured metadata, ranges, and geo
+- Sparse and multi-vector support for hybrid keyword + semantic ranking
+- Scalar quantization to cut the memory footprint of large collections
+- Snapshots for backup and migration
+
+The backend is API-compatible with Qdrant, so any Qdrant client works against your collection's endpoint.
+
+## Related
+
+- [Hanzo Vector service reference](/docs/services/vector) — full collection, points, and snapshot API
+- [Embeddings](/docs/embeddings) — generate the vectors you store here
+- [Search](/docs/search) — full-text and hybrid indexes
+- [API Keys](/docs/api-keys) — authenticate with `hk-` keys
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

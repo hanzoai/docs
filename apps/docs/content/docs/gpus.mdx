@@ -1,0 +1,75 @@
+---
+title: GPUs
+description: On-demand H100/A100 GPU compute — clusters, utilization, telemetry, and cost.
+---
+
+# GPUs
+
+On-demand accelerated compute for training, fine-tuning, and inference. Provision GPU clusters, watch live utilization, and meter spend from the [console](https://console.hanzo.ai) or the API.
+
+## On-Demand Accelerators
+
+Hanzo Cloud GPUs are real, hourly-metered accelerators reconciled by the [operator](/docs/pipelines) alongside the rest of your fleet.
+
+| Model | Memory | Typical use |
+|-------|--------|-------------|
+| **H100** / **H200** | 80–141 GB | Large-model training and low-latency inference |
+| **A100** | 40 / 80 GB | Training, fine-tuning, batched inference |
+| **L40S** / **L40** | 48 GB | Inference, rendering, mixed workloads |
+| **A6000** / **A5000** | 24–48 GB | Cost-efficient inference and dev |
+
+Capacity is grouped into **clusters** (a node pool of one GPU size) and scheduled into **pools**. GPUs bill by the hour and meter to your org's usage ledger.
+
+## Provision a Cluster
+
+Create a GPU cluster from **Compute → GPUs → Clusters** in the console, or through the control plane. GPU node sizes map to real accelerator counts:
+
+| Node size | GPUs / node |
+|-----------|-------------|
+| `gpu-h100x1-80gb` | 1× H100 |
+| `gpu-h100x8-640gb` | 8× H100 |
+| `gpu-a100x1-80gb` | 1× A100 |
+| `gpu-a100x8-640gb` | 8× A100 |
+| `gpu-l40sx1-48gb` | 1× L40S |
+
+Each cluster's nodes become your [machines](/docs/machines); the operator reconciles them into the running fleet.
+
+## Inventory & Telemetry
+
+List every GPU with live telemetry — model, cluster, region, utilization, memory, temperature, and power — through the PaaS control plane:
+
+```bash
+curl https://api.hanzo.ai/v1/paas/gpus \
+  -H "Authorization: Bearer hk-..."
+```
+
+```json
+{
+  "gpus": [
+    {
+      "id": "gpu-0",
+      "model": "H100",
+      "cluster": "train-sfo3",
+      "region": "sfo3",
+      "status": "online",
+      "utilization": 87,
+      "memoryUtil": 74,
+      "temperature": 61,
+      "power": 640
+    }
+  ]
+}
+```
+
+Fields the platform does not report render as `—` in the console rather than a fabricated value. Alerts and scheduling pools are available at `/v1/paas/gpus/alerts` and `/v1/paas/gpus/pools`.
+
+## Cost
+
+GPU spend is metered hourly into your org's cloud-usage ledger. Track it under **GPUs → Pricing** in the console. See [API Keys](/docs/api-keys) for auth and the [API Reference](/docs/api) for the full surface.
+
+## Related
+
+- [Machines](/docs/machines) — the cluster nodes your GPUs run on
+- [Pipelines](/docs/pipelines) — build and deploy onto GPU clusters
+- [Marketplace](/docs/marketplace) — browse models to run on your GPUs
+- [Edge](/docs/edge) — on-device inference when a cloud GPU is overkill
