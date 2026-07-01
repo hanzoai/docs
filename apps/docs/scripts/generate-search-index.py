@@ -4,7 +4,7 @@ Generate Meilisearch index documents from docs MDX source files.
 
 Reads all .mdx files under content/docs/, parses YAML frontmatter and
 markdown body, splits by heading sections, and outputs a JSON array
-matching the HanzoIndex schema used by the cloud-api /api/index-docs
+matching the HanzoIndex schema used by the cloud-api /v1/index-docs
 endpoint and the Meilisearch app-docs-hanzo-ai-docs index.
 
 Usage:
