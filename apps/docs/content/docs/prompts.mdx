@@ -1,0 +1,59 @@
+---
+title: Prompts
+description: Versioned prompts with labels and history — manage, ship, and roll back prompts through one API.
+---
+
+# Prompts
+
+Prompt management with immutable versions: every edit creates a new version, and **labels** like `production` or `latest` point at a specific version. Change what ships by moving a label, not by editing code. Part of the Hanzo Cloud surface, tenant-scoped by org.
+
+## Create a prompt
+
+`POST /v1/prompts` registers a new prompt (or a new version of an existing one). Labels and tags are attached at creation.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/prompts \
+  -H "Authorization: Bearer hk-..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "support-reply",
+    "type": "text",
+    "prompt": "You are a support agent for {{product}}. Answer concisely.",
+    "labels": ["production", "latest"],
+    "tags": ["support", "routing"]
+  }'
+```
+
+## Fetch, list, and roll back
+
+List prompt metadata, or fetch one by name to get its full version history. Because versions are immutable, rolling back is just re-pointing the `production` label at an earlier version.
+
+```bash
+# List prompts (name, versions, labels, tags)
+curl https://api.hanzo.ai/v1/prompts \
+  -H "Authorization: Bearer hk-..."
+
+# One prompt, with version history
+curl https://api.hanzo.ai/v1/prompts/support-reply \
+  -H "Authorization: Bearer hk-..."
+```
+
+```json
+{
+  "name": "support-reply",
+  "type": "text",
+  "versions": [1, 2, 3],
+  "labels": ["production", "latest"],
+  "tags": ["support", "routing"]
+}
+```
+
+## Metrics
+
+Usage and performance per prompt version — call volume, latency, and cost — are available at `GET /v1/prompts/metrics`, so you can confirm a new version is an improvement before moving the `production` label.
+
+## Related
+
+- [Experiments](/docs/experiments) — evaluate a prompt version against a dataset
+- [Traces](/docs/traces) — see prompts in the context of live requests
+- [LLM Gateway](/docs/llm) — where prompts are rendered and served

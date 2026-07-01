@@ -1,0 +1,58 @@
+---
+title: Marketplace
+description: Browse and deploy AI models and providers — real pricing and live availability.
+---
+
+# Marketplace
+
+Browse every model and provider available on Hanzo Cloud, compare real per-token pricing, and deploy one into your app in a click. The Marketplace is a storefront over the live model catalog — no fabricated listings, no stale prices.
+
+## Browse the Catalog
+
+Open **Apps → Marketplace** in the [console](https://console.hanzo.ai) to browse by category (chat, embeddings, vision, audio, rerank), filter by provider, and see live availability. Each listing shows the model's context window and its real input/output price per million tokens. "Try it" opens the [Playground](/docs/llm) with the model preloaded.
+
+## Catalog API
+
+The storefront is backed by the pricing catalog, which you can query directly:
+
+```bash
+curl https://api.hanzo.ai/v1/pricing/models \
+  -H "Authorization: Bearer hk-..."
+```
+
+```json
+{
+  "models": [
+    {
+      "id": "claude-sonnet-4-5-20250929",
+      "name": "Claude Sonnet 4.5",
+      "provider": "anthropic",
+      "context": 200000,
+      "input_per_mtok": 3.00,
+      "output_per_mtok": 15.00
+    }
+  ]
+}
+```
+
+Prices are the real per-million-token rates; a model with no published price renders as `—` in the console rather than a guess.
+
+## Deploy a Model
+
+Once you have picked a model, call it through the OpenAI-compatible [LLM Gateway](/docs/llm) with the same `hk-` key:
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer hk-..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-sonnet-4-5-20250929",
+    "messages": [{"role": "user", "content": "Hi"}]
+  }'
+```
+
+## Related
+
+- [LLM Gateway](/docs/llm) — call any model in the catalog
+- [AI Studio](/docs/ai-studio) — compose catalog models into apps
+- [GPUs](/docs/gpus) · [API Keys](/docs/api-keys) · [API Reference](/docs/api)

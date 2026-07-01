@@ -1,0 +1,65 @@
+---
+title: Metrics
+description: Product metrics, events, and sessions — OpenTelemetry- and Prometheus-compatible time series for your workloads.
+---
+
+# Metrics
+
+Metrics are the numeric time series behind your product: request rates, token throughput, latency histograms, custom counters, and events. They are OpenTelemetry- and Prometheus-compatible and served by [Hanzo O11y](/docs/o11y), tenant-scoped by org.
+
+## Emitting metrics
+
+Push metrics through the OTLP endpoint on the gateway, or expose a Prometheus `/metrics` endpoint and let O11y scrape it. Either way the same `hk-*` key authenticates and `X-Org-Id` scopes the series.
+
+```python
+from prometheus_client import Counter, Histogram
+
+inference_requests = Counter(
+    "inference_requests_total", "Total inference requests", ["model", "status"]
+)
+inference_latency = Histogram(
+    "inference_duration_seconds", "Inference latency", ["model"]
+)
+
+with inference_latency.labels(model="qwen3-4b").time():
+    result = run_inference(prompt)
+inference_requests.labels(model="qwen3-4b", status="ok").inc()
+```
+
+For OTLP, point your exporter at the gateway — metrics land at `POST /v1/metrics`:
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT=https://api.hanzo.ai/v1
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer hk-...,X-Org-Id=org_123"
+```
+
+## Querying with PromQL
+
+Query stored series with PromQL over REST:
+
+```bash
+curl "https://api.hanzo.ai/v1/metrics/query" \
+  -H "Authorization: Bearer hk-..." \
+  --data-urlencode 'query=rate(inference_requests_total[5m])'
+```
+
+Common expressions:
+
+```promql
+# 99th percentile latency
+histogram_quantile(0.99, rate(inference_duration_seconds_bucket[5m]))
+
+# Error-rate percentage
+100 * rate(inference_requests_total{status="error"}[5m])
+    / rate(inference_requests_total[5m])
+```
+
+## Events and sessions
+
+Alongside numeric series, O11y rolls up product **events** and per-user **sessions** so you can chart adoption next to reliability. User-level rollups (trace volume, tokens, and cost per `userId`) are available at `/v1/o11y/users`, and multi-turn runs are grouped as [sessions](/docs/sessions).
+
+## Related
+
+- [Logs](/docs/logs) and [Traces](/docs/traces) — the other two observability signals
+- [Sessions](/docs/sessions) — multi-turn runs derived from traces
+- [O11y](/docs/o11y) — dashboards, alerting, and SLOs over these metrics

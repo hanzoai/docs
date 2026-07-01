@@ -1,0 +1,62 @@
+---
+title: Hanzo DocDB
+description: Managed document database — a MongoDB-compatible store with BSON documents, aggregation pipelines, and secondary indexes, backed by PostgreSQL.
+---
+
+# Hanzo DocDB
+
+Hanzo DocDB is a managed document database that speaks the MongoDB wire protocol. Existing MongoDB drivers connect without changes, while your data is stored durably in PostgreSQL under the hood.
+
+## Provision a Database
+
+Each database is a logical resource scoped to your organization and created through the control plane.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/docdb \
+  -H "Authorization: Bearer hk-..." \
+  -H "X-Org-Id: org_a1b2c3" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "app" }'
+```
+
+The response returns a MongoDB connection string (`mongodb://...`).
+
+## Connect
+
+Any MongoDB driver works — DocDB implements the MongoDB 5.0+ wire protocol on port `27017`.
+
+```python
+from pymongo import MongoClient
+
+client = MongoClient("mongodb://user:password@docdb.hanzo.ai:27017/app?tls=true")
+db = client.app
+
+db.orders.insert_one({ "id": "ord_123", "total": 99.0, "items": ["sku_1"] })
+
+# Aggregation pipeline
+pipeline = [
+    { "$match": { "total": { "$gt": 50 } } },
+    { "$group": { "_id": None, "revenue": { "$sum": "$total" } } },
+]
+print(list(db.orders.aggregate(pipeline)))
+```
+
+`mongosh` and the official Node.js, Go, Java, and Rust drivers all connect the same way.
+
+## Features
+
+- MongoDB-compatible CRUD, query operators, and aggregation pipelines
+- Secondary, compound, and TTL indexes
+- BSON documents with standard `_id` semantics
+- Backed by PostgreSQL — durable storage, continuous backups, and point-in-time recovery
+- OpenTelemetry metrics and traces out of the box
+
+DocDB suits flexible, schema-light document data. For relational data and SQL, use [SQL](/docs/sql); for embeddings and similarity search, use [Vector](/docs/vector).
+
+## Related
+
+- [SQL](/docs/sql) — the managed PostgreSQL that backs DocDB storage
+- [Vector](/docs/vector) — embeddings and semantic search
+- [Search](/docs/search) — full-text and hybrid indexes over documents
+- [API Keys](/docs/api-keys) — authenticate with `hk-` keys
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

@@ -1,0 +1,105 @@
+---
+title: Billing
+description: Usage, credits, invoices, and payment methods for Hanzo Cloud -- usage-based metering, cloud credits, and on-chain HUSD top-up.
+---
+
+# Billing
+
+Billing is the one money surface for Hanzo Cloud. It tracks your **cloud-credit balance**, meters **usage** across every product, issues **invoices**, and stores your **payment methods**. Usage is metered by the gateway and priced by the commerce subsystem, so what you spend always reconciles with what you use.
+
+Billing lives at [billing.hanzo.ai](https://billing.hanzo.ai) and is served under `/v1/billing`, with pricing at `/v1/pricing`, on the API.
+
+## Cloud Credits
+
+Your organization spends from a **cloud-credit balance**. Every billable request checks the balance before it runs: the gateway estimates the cost, verifies you have sufficient funds, and only then executes -- so you never receive a result you cannot pay for. If the balance is too low, the request fails immediately with `402 Payment Required`.
+
+```bash
+# Check your organization's credit balance
+curl https://api.hanzo.ai/v1/billing/balance \
+  -H "Authorization: Bearer hk-..."
+```
+
+```json
+{
+  "currency": "USD",
+  "balance": 142.87,
+  "credits": 142.87,
+  "low_balance_threshold": 10.00
+}
+```
+
+Top up credits with a card through the billing portal, or on-chain with HUSD (see below).
+
+## Usage-Based Metering
+
+Most Hanzo products are **usage-based**: you pay for what you consume -- tokens for LLM calls, requests for APIs, storage for objects, compute-seconds for functions. The gateway meters each request and attributes it to your organization; the commerce subsystem applies the correct price from the pricing catalog.
+
+```bash
+# Metered usage for the current period, by product and model
+curl "https://api.hanzo.ai/v1/billing/usage?period=current" \
+  -H "Authorization: Bearer hk-..."
+```
+
+Prices are published in the pricing catalog, which the console's Plans & Pricing view reads live:
+
+```bash
+# Public model and plan pricing (no auth required)
+curl https://api.hanzo.ai/v1/pricing/models
+```
+
+See [Plans & Pricing](/docs/plans) for subscription tiers and per-unit rates.
+
+## Invoices
+
+At the close of each billing cycle, usage and subscription charges are rolled into an **invoice**. Invoices are itemized by product and immutable once issued.
+
+```bash
+# List invoices for your organization
+curl https://api.hanzo.ai/v1/billing/invoices \
+  -H "Authorization: Bearer hk-..."
+```
+
+Each invoice lists line items, the period covered, credits applied, and the amount due. The console's Cost view renders the same data with per-product breakdowns.
+
+## Payment Methods
+
+Saved **payment methods** fund credit top-ups and subscription renewals. For security, only non-sensitive fields are ever returned -- card brand, last four digits, and expiry. Full card numbers and processor tokens never leave the payment processor and are never exposed by the API.
+
+```bash
+# List saved payment methods (masked)
+curl https://api.hanzo.ai/v1/billing/payment-methods \
+  -H "Authorization: Bearer hk-..."
+```
+
+```json
+{
+  "payment_methods": [
+    { "id": "pm_...", "brand": "visa", "last4": "4242", "exp": "12/28", "default": true }
+  ]
+}
+```
+
+Adding or removing a method happens in the billing portal, where the card is captured directly by the processor.
+
+## HUSD On-Chain Top-Up
+
+Cloud credits can also be topped up on-chain with **HUSD**, the platform stablecoin, from a connected wallet on Hanzo Mainnet. The flow is verify-and-record: you send HUSD on-chain, the payment is verified against the chain, and the equivalent credit is applied to your balance. This gives crypto-native teams a card-free path to funding usage -- settling into the same credit balance every product spends from.
+
+## Putting It Together
+
+```
+Request → Gateway meters usage → Commerce prices it → Credits debited → Invoice at cycle close
+                                        ↑
+                        Top up: card (portal) or HUSD (on-chain)
+```
+
+Metering, pricing, credits, invoices, and payment methods are one connected system. The [Console](/docs/console) Cost view is the read surface; this API is the programmatic one.
+
+## Related
+
+- [Plans & Pricing](/docs/plans) -- subscription tiers and per-unit rates
+- [Referrals](/docs/referrals) -- earn cloud credits by referring developers
+- [API Keys](/docs/api-keys) -- credentials for calling the billing API
+- [Gateway](/docs/gateway) -- meters and prices every request
+- [Commerce](/docs/commerce) -- the subsystem that prices usage and issues invoices
+- [API](/docs/api) -- the full REST reference

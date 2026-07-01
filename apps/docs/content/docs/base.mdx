@@ -1,0 +1,63 @@
+---
+title: Hanzo Base
+description: Multi-tenant Hanzo Base — provision and manage tenant backend instances, each a single-binary BaaS with REST, auth, realtime, and file storage.
+---
+
+# Hanzo Base
+
+Hanzo Base is an open-source backend-as-a-service that ships as a single Go binary: a REST API auto-generated from your schema, authentication, realtime subscriptions, and file storage. This page covers provisioning and managing multi-tenant Base instances on Hanzo Cloud.
+
+## Provision a Tenant Instance
+
+Each instance is an isolated Base backend scoped to your organization, with its own collections, users, and admin UI.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/base \
+  -H "Authorization: Bearer hk-..." \
+  -H "X-Org-Id: org_a1b2c3" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "acme-app", "iam": true }'
+```
+
+The response returns the instance URL (for example `https://acme-app.base.hanzo.ai`) and its admin UI at `/_/`. With `"iam": true`, authentication is wired to [Hanzo IAM](/docs/services/iam) via OIDC — no separate user store to run.
+
+## Define Collections and Use the REST API
+
+Collections are Base's core data model: define a schema and get a full CRUD REST API automatically.
+
+```bash
+# Create a collection on the tenant instance
+curl -X POST https://acme-app.base.hanzo.ai/api/collections \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "posts",
+    "type": "base",
+    "schema": [
+      { "name": "title", "type": "text", "required": true },
+      { "name": "published", "type": "bool", "default": false }
+    ]
+  }'
+
+# The auto-generated API is immediately live
+curl "https://acme-app.base.hanzo.ai/api/collections/posts/records?filter=(published=true)"
+```
+
+## Features
+
+- Single-binary backend — SQLite-embedded for fast local dev, PostgreSQL in production
+- Auto-generated REST API from your collection schemas
+- Auth via email/password, OAuth2, and Hanzo IAM SSO
+- Realtime subscriptions over Server-Sent Events
+- File storage on local disk or [Storage](/docs/storage) (Hanzo S3)
+- Cloud functions: JavaScript hooks, custom routes, and cron jobs
+
+Each tenant instance is fully isolated, so one organization's data and users never mix with another's.
+
+## Related
+
+- [Hanzo Base service reference](/docs/services/base) — collections, hooks, plugins, and SDKs
+- [SQL](/docs/sql) — the managed PostgreSQL that backs production instances
+- [Storage](/docs/storage) — S3-compatible storage for uploaded files
+- [API Keys](/docs/api-keys) — authenticate with `hk-` keys
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

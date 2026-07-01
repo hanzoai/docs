@@ -1,0 +1,69 @@
+---
+title: Traces
+description: Distributed traces across all services — OpenTelemetry-compatible, correlated with logs, metrics, and scores.
+---
+
+# Traces
+
+A trace is one end-to-end request or agent run, broken into nested **observations** — spans, LLM generations, tool calls, and events. Traces are OpenTelemetry-compatible on the wire and served by [Hanzo O11y](/docs/o11y), tenant-scoped by org.
+
+## Ingesting traces
+
+Point any OpenTelemetry SDK or collector at the gateway. Tenancy travels in the export headers: the `hk-*` key authenticates and `X-Org-Id` scopes the data to your org.
+
+```bash
+export OTEL_EXPORTER_OTLP_ENDPOINT=https://api.hanzo.ai/v1
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer hk-...,X-Org-Id=org_123"
+export OTEL_SERVICE_NAME=checkout-api
+export OTEL_RESOURCE_ATTRIBUTES="deployment.environment=production"
+```
+
+Spans emitted from your service are received at `POST /v1/traces` (OTLP over HTTP) and stitched into traces automatically using W3C Trace Context propagation.
+
+## Reading traces
+
+Traces are queried over REST. List endpoints return `{ data, meta }` with `page`, `limit`, `totalItems`, and `totalPages`; the detail endpoint returns the full trace with its observations and scores inline.
+
+```bash
+# List recent traces
+curl "https://api.hanzo.ai/v1/o11y/traces?page=1&limit=50" \
+  -H "Authorization: Bearer hk-..."
+
+# Fetch one trace with its observations + scores
+curl https://api.hanzo.ai/v1/o11y/traces/tr_abc123 \
+  -H "Authorization: Bearer hk-..."
+```
+
+```json
+{
+  "id": "tr_abc123",
+  "name": "chat.completion",
+  "userId": "u_42",
+  "sessionId": "sess_9f",
+  "latency": 1.84,
+  "totalCost": 0.0021,
+  "tags": ["prod", "support"],
+  "observations": ["ob_1", "ob_2"],
+  "scores": ["sc_1"]
+}
+```
+
+## Anatomy of a trace
+
+Each trace carries request-level metadata and a list of observations. An observation is typed, so a flame graph can distinguish an LLM call from a retrieval step.
+
+| Field | Description |
+|-------|-------------|
+| `latency` | End-to-end duration in seconds |
+| `totalCost` | Total cost in USD across all generations |
+| `userId` | Attribution for [per-user analytics](/docs/o11y) |
+| `sessionId` | Groups the trace into a [session](/docs/sessions) |
+| `observations` | Child spans — `GENERATION`, `SPAN`, `EVENT`, `AGENT`, `TOOL`, `CHAIN`, `RETRIEVER` |
+| `scores` | Attached [evaluation scores](/docs/scores) |
+
+## Related
+
+- [Sessions](/docs/sessions) — traces grouped into multi-turn runs
+- [Scores](/docs/scores) — evaluations attached to traces and observations
+- [Logs](/docs/logs) and [Metrics](/docs/metrics) — the other two observability signals
+- [API Keys](/docs/api-keys) — creating the `hk-*` key these calls use

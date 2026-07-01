@@ -1,0 +1,60 @@
+---
+title: Score Configs
+description: Score definitions — data types, ranges, and categories that every score conforms to.
+---
+
+# Score Configs
+
+A score config is the schema for a [score](/docs/scores): its data type and its valid range or set of categories. Configs make scores consistent — a `helpfulness` numeric always runs 1–5, a `sentiment` categorical always uses the same labels. Served by [Hanzo O11y](/docs/o11y), tenant-scoped by org.
+
+## Data types
+
+| `dataType` | Constraint fields | Use for |
+|------------|-------------------|---------|
+| `NUMERIC` | `minValue`, `maxValue` | Ratings and rubric scores (1–5, 0.0–1.0) |
+| `CATEGORICAL` | `categories[]` | Labeled buckets (`good` / `neutral` / `bad`) |
+| `BOOLEAN` | `categories[]` (True/False) | Pass/fail checks |
+| `TEXT` | — | Free-text judgments |
+
+Each entry in `categories` is a `{ label, value }` pair, so a categorical score carries a human-readable label and a numeric code for aggregation.
+
+## Listing configs
+
+```bash
+curl "https://api.hanzo.ai/v1/o11y/score-configs?page=1&limit=50" \
+  -H "Authorization: Bearer hk-..."
+```
+
+```json
+{
+  "data": [
+    {
+      "id": "cfg_help",
+      "name": "helpfulness",
+      "dataType": "NUMERIC",
+      "minValue": 1,
+      "maxValue": 5,
+      "isArchived": false
+    },
+    {
+      "id": "cfg_sentiment",
+      "name": "sentiment",
+      "dataType": "CATEGORICAL",
+      "categories": [
+        { "label": "positive", "value": 1 },
+        { "label": "neutral", "value": 0 },
+        { "label": "negative", "value": -1 }
+      ],
+      "isArchived": false
+    }
+  ],
+  "meta": { "page": 1, "limit": 50, "totalItems": 2, "totalPages": 1 }
+}
+```
+
+Archived configs stay attached to historical scores but are hidden from new scoring. A config is referenced by a score through its `configId`, and by an [annotation queue](/docs/annotation-queues) through `scoreConfigIds`.
+
+## Related
+
+- [Scores](/docs/scores) — the values that conform to these configs
+- [Annotation Queues](/docs/annotation-queues) — queues score against a set of configs

@@ -1,0 +1,39 @@
+---
+title: Console
+description: The unified cloud console for Hanzo Cloud -- manage every product, key, and organization from one app at console.hanzo.ai.
+---
+
+# Console
+
+The Hanzo Console is the unified control surface for Hanzo Cloud -- the app you are looking at. It brings every cloud product into one place: identity, keys, secrets, models, billing, deployments, and dashboards, all scoped to your organization.
+
+## One App for Every Product
+
+The console renders from a single product catalog, so every Hanzo Cloud service is reachable from the same nav, overview, and command palette. Each product is a native module -- not a link-out -- backed by the real `/v1` API:
+
+- **AI** -- models, playground, providers, embeddings
+- **Security** -- [IAM](/docs/iam), [KMS](/docs/kms), [Authz](/docs/authz), [MPC](/docs/mpc), [Zero Trust](/docs/zero-trust)
+- **Observe** -- [dashboards](/docs/dashboards), cost, [billing](/docs/billing), status
+- **Deploy** -- projects, environments, functions, clusters
+
+## Sign-In and Scope
+
+The console signs in through Hanzo IAM at [hanzo.id](https://hanzo.id) as the `hanzo-cloud` application. Your session is scoped to an **organization**, and a global admin can switch scope to any org; the data re-scopes in place while brand identity stays fixed. See [IAM](/docs/iam) and [Organizations](/docs/organizations).
+
+## How It Ships
+
+The console is a single-page app embedded (`go:embed`) directly into the Hanzo Cloud binary and served at `console.hanzo.ai`. It is a pure client over the unified `/v1` backend -- it holds no database of its own; every view is real data from a service API.
+
+```bash
+# The console calls the same public API you can call directly
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer hk-..."
+```
+
+## Related
+
+- [IAM](/docs/iam) -- the identity and org scope behind every console view
+- [API Keys](/docs/api-keys) -- create keys from the console for the API
+- [Dashboards](/docs/dashboards) -- analytics and observability surfaces
+- [Billing](/docs/billing) -- balance, usage, and invoices
+- [API](/docs/api) -- the same `/v1` surface the console renders

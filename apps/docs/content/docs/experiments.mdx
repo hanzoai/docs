@@ -1,0 +1,59 @@
+---
+title: Experiments
+description: Dataset runs, comparisons, and experiment analytics — score a dataset against a model and compare runs.
+---
+
+# Experiments
+
+An experiment runs a [dataset](/docs/datasets) against a model — optionally with an LLM judge — and records a [score](/docs/scores) for every item. Run the same dataset against different models or prompts and compare the results side by side. Part of the Hanzo Cloud evaluation surface, tenant-scoped by org.
+
+## Run an experiment
+
+`POST /v1/evals/runs` is real orchestration: the cloud evaluation service runs each dataset item through the model, grades the output with the judge, and returns a run summary.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/evals/runs \
+  -H "Authorization: Bearer hk-..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "dataset": "support-qa",
+    "model": "qwen3-4b",
+    "runName": "qwen3-baseline",
+    "judge": {
+      "model": "claude-sonnet-4-5-20250929",
+      "criteria": "Is the answer correct and grounded in the expected output?"
+    }
+  }'
+```
+
+```json
+{
+  "dataset": "support-qa",
+  "model": "qwen3-4b",
+  "judgeModel": "claude-sonnet-4-5-20250929",
+  "runName": "qwen3-baseline",
+  "items": 40,
+  "scored": 40,
+  "avgScore": 0.82,
+  "results": [
+    { "itemId": "it_1", "traceId": "tr_abc123", "score": 1, "output": "..." }
+  ]
+}
+```
+
+## List and compare runs
+
+Each run (also called a dataset run) is retrievable so you can compare `avgScore` across models and prompt versions:
+
+```bash
+curl https://api.hanzo.ai/v1/evals/dataset-runs \
+  -H "Authorization: Bearer hk-..."
+```
+
+Every run also emits per-item traces, so a regression in `avgScore` links straight to the [traces](/docs/traces) and [scores](/docs/scores) that explain it.
+
+## Related
+
+- [Datasets](/docs/datasets) — the items an experiment runs against
+- [Scores](/docs/scores) — the graded results
+- [Traces](/docs/traces) — the per-item runs behind each score
