@@ -1,0 +1,61 @@
+---
+title: Hanzo Memory
+description: Your personal memory — a searchable, editable long-term memory service for agents and apps, built on semantic vector search.
+---
+
+# Hanzo Memory
+
+Hanzo Memory is a searchable, editable long-term memory in one place. Store facts and context as you go, then retrieve them by meaning — it powers personal recall for agents and applications through semantic vector search.
+
+## Remember
+
+Store a memory for a user. Each memory is scoped to a `userId` and can carry an importance score (`0`-`10`) and arbitrary metadata.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/remember \
+  -H "Authorization: Bearer hk-..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "u_alice",
+    "content": "Prefers dark mode and terse answers.",
+    "importance": 7,
+    "metadata": { "source": "chat" }
+  }'
+```
+
+## Search and Edit
+
+Retrieve memories by semantic similarity, then get, update, or delete them.
+
+```bash
+# Semantic search
+curl -X POST https://api.hanzo.ai/v1/memories/search \
+  -H "Authorization: Bearer hk-..." \
+  -d '{ "userId": "u_alice", "query": "UI preferences", "limit": 5 }'
+
+# Delete a memory (or all memories for a user)
+curl -X DELETE https://api.hanzo.ai/v1/memories \
+  -H "Authorization: Bearer hk-..." \
+  -d '{ "userId": "u_alice", "memoryId": "mem_123" }'
+```
+
+Results are ranked by relevance and importance, so the most useful context surfaces first.
+
+## Features
+
+- Semantic search over stored memories using vector embeddings
+- Multi-tenant isolation per `userId`
+- Importance scoring to weight what matters
+- Structured knowledge base of facts with confidence scores (`/v1/kb/facts/*`)
+- Optional PII stripping and LLM-based filtering before storage
+- Metadata on every memory for filtering and provenance
+
+Memory builds on the same embedding and vector primitives as the rest of the platform — see [Embeddings](/docs/embeddings) and [Vector](/docs/vector) to build custom retrieval on top.
+
+## Related
+
+- [Embeddings](/docs/embeddings) — the vectors behind semantic recall
+- [Vector](/docs/vector) — the managed vector database for custom RAG
+- [MCP](/docs/mcp) — expose memory to agents as a tool
+- [API Keys](/docs/api-keys) — authenticate with `hk-` keys
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

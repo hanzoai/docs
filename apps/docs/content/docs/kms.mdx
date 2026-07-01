@@ -1,0 +1,59 @@
+---
+title: KMS
+description: Encryption keys, secrets, and cryptographic operations for Hanzo Cloud -- the secrets control plane, Hanzo KMS.
+---
+
+# KMS
+
+Hanzo KMS is the secrets control plane for the platform. It stores and rotates secrets, manages encryption and signing keys, and is the one boundary every other service crosses to obtain sensitive material. Nothing else holds long-lived secrets in the clear.
+
+## What KMS Manages
+
+| Type | Description |
+|------|-------------|
+| **Secrets** | Static key-value secrets (API keys, tokens, connection strings), versioned with full history and rollback. |
+| **Dynamic secrets** | Short-lived, auto-rotating credentials for PostgreSQL, MySQL, MongoDB, Redis, and ClickHouse. |
+| **Encryption keys** | Symmetric and asymmetric keys for encrypt/decrypt and wrap/unwrap operations. |
+| **Signing keys** | Keys backed by [Hanzo MPC](/docs/mpc) threshold signatures for custody and validator signing. |
+| **Certificates** | PKI certificate lifecycle with CA integration. |
+
+KMS is zero-knowledge by design: values are encrypted at rest, access is governed by RBAC and policy, and every read and write is written to an immutable audit log.
+
+## Secrets and Cryptographic Operations
+
+Secrets and key operations are served under `/v1/kms` on the gateway, or directly at `kms.hanzo.ai`. Authenticate with an API key (`hk-...`).
+
+```bash
+# Read a secret from an environment path
+curl "https://api.hanzo.ai/v1/kms/secrets?environment=production&path=/api-keys" \
+  -H "Authorization: Bearer hk-..."
+```
+
+Keys never leave the boundary. For signing and threshold operations, KMS delegates to MPC and returns only the signature -- the private key material is split across independent nodes and never reconstructed.
+
+## Kubernetes Secret Sync
+
+For workloads on Kubernetes, the KMS operator syncs secrets into the cluster with the `KMSSecret` custom resource. Nothing is committed to git; the secret is pulled from KMS at reconcile time.
+
+```yaml
+apiVersion: secrets.hanzo.ai/v1alpha1
+kind: KMSSecret
+metadata:
+  name: hanzo-api-key
+spec:
+  secretStoreRef:
+    name: kms-hanzo
+  data:
+    - secretKey: HANZO_API_KEY
+      remoteRef:
+        secretPath: /prod/api-keys
+        secretKey: primary
+```
+
+## Related
+
+- [API Keys](/docs/api-keys) -- store and rotate `hk-` keys in KMS for production
+- [MPC](/docs/mpc) -- threshold signing backend for KMS-managed keys
+- [IAM](/docs/iam) -- identity that authorizes KMS access
+- [Zero Trust](/docs/zero-trust) -- private access to services that consume secrets
+- [Hanzo KMS](/docs/services/kms) -- full service reference and self-hosting guide

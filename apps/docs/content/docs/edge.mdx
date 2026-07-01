@@ -1,0 +1,62 @@
+---
+title: Edge
+description: Compute at the edge — on-device AI inference close to your users, offline and private.
+---
+
+# Edge
+
+Run AI inference at the edge — on the device, in the browser, or on embedded hardware — instead of round-tripping to the cloud. [Hanzo Edge](https://edge.hanzo.ai) executes Zen and any GGUF model locally with zero network latency and full data privacy.
+
+## On-Device Inference
+
+Edge runs quantized models on hardware you already have — Apple Silicon (Metal), NVIDIA (CUDA), x86/ARM CPUs, and WebAssembly in the browser. Data never leaves the device, and it works completely offline.
+
+```bash
+# Install
+curl -sSL https://edge.hanzo.ai/install.sh | sh
+
+# Run a model (auto-downloads from Hugging Face)
+hanzo-edge run --model zenlm/zen3-nano --prompt "Hello!"
+```
+
+| Model | Params | Quantized | Best for |
+|-------|--------|-----------|----------|
+| `zenlm/zen3-nano` | 600M | ~400 MB | Embedded, IoT |
+| `zenlm/zen-eco` | 4B | ~2.5 GB | Mobile, tablets |
+| `zenlm/zen4-mini` | 8B | ~5 GB | Desktop, laptop |
+
+## OpenAI-Compatible Server
+
+Edge ships an OpenAI-compatible server, so existing SDKs and tools work against a local endpoint with no code changes:
+
+```bash
+hanzo-edge serve --model zenlm/zen4-mini --port 8080
+```
+
+```bash
+curl http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen4-mini",
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "stream": true
+  }'
+```
+
+The same `/v1/chat/completions`, `/v1/completions`, and `/v1/models` routes are served locally as in the cloud [LLM Gateway](/docs/llm) — point at `localhost` for private, offline inference or at the gateway for scale.
+
+## Edge vs Cloud
+
+| | **Edge** | **Cloud** |
+|---|---|---|
+| Where | On-device | Hanzo [GPU](/docs/gpus) clusters |
+| Latency | Zero network | Network round-trip |
+| Privacy | Data stays local | Sent to the cloud |
+| Models | Quantized GGUF | Full precision, any size |
+
+Use Edge when privacy, offline capability, or minimal latency matter; use the cloud when you need full-precision or high-throughput serving.
+
+## Related
+
+- [GPUs](/docs/gpus) · [LLM Gateway](/docs/llm) · [Marketplace](/docs/marketplace)
+- Full reference: [edge.hanzo.ai](https://edge.hanzo.ai) and the [Edge service docs](/docs/services/edge)

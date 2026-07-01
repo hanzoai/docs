@@ -1,0 +1,49 @@
+---
+title: Annotation Queues
+description: Review queues for scoring traces and observations against a defined set of score configs.
+---
+
+# Annotation Queues
+
+An annotation queue is a named work list of [traces](/docs/traces) and observations for humans to review and score. Each queue is bound to a set of [score configs](/docs/score-configs), so every reviewer applies the same rubric. Served by [Hanzo O11y](/docs/o11y), tenant-scoped by org.
+
+## How it works
+
+1. A queue declares which score configs reviewers must fill in (`scoreConfigIds`).
+2. Traces or observations are added to the queue as **items**, each with a `status` and optional `assignee`.
+3. A reviewer opens an item, applies the rubric, and the result is written back as a [score](/docs/scores) with `source: ANNOTATION`.
+
+## API
+
+Queues and their items are read over the standard paginated surface.
+
+```bash
+# List queues
+curl "https://api.hanzo.ai/v1/o11y/annotation-queues" \
+  -H "Authorization: Bearer hk-..."
+
+# One queue
+curl https://api.hanzo.ai/v1/o11y/annotation-queues/aq_review \
+  -H "Authorization: Bearer hk-..."
+
+# Items assigned to a queue
+curl "https://api.hanzo.ai/v1/o11y/annotation-queues/aq_review/items?page=1&limit=50" \
+  -H "Authorization: Bearer hk-..."
+```
+
+```json
+{
+  "id": "aq_review",
+  "name": "Support quality review",
+  "scoreConfigIds": ["cfg_help", "cfg_sentiment"],
+  "items": [
+    { "id": "it_1", "traceId": "tr_abc123", "status": "pending", "assignee": "reviewer@acme.com" }
+  ]
+}
+```
+
+## Related
+
+- [Scores](/docs/scores) — what a completed review produces
+- [Score Configs](/docs/score-configs) — the rubric a queue enforces
+- [Traces](/docs/traces) — the items reviewers score

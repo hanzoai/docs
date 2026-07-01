@@ -1,0 +1,63 @@
+---
+title: Hanzo Storage
+description: S3-compatible object storage — durable, versioned buckets for models, datasets, and media that work with any S3 client or SDK.
+---
+
+# Hanzo Storage
+
+Hanzo Storage is a high-performance, S3-compatible object store (Hanzo S3). Provision a bucket, then read and write objects with any S3 client, SDK, or tool — no vendor lock-in.
+
+## Provision a Bucket
+
+Buckets are scoped to your organization and provisioned through the control plane.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/s3 \
+  -H "Authorization: Bearer hk-..." \
+  -H "X-Org-Id: org_a1b2c3" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "my-models", "versioning": true }'
+```
+
+The response returns the bucket name and S3 endpoint (`s3.hanzo.ai`). Generate access keys from the console or via the API to sign S3 requests.
+
+## Use Any S3 Client
+
+Because the S3 API is fully compatible, standard AWS SDKs and tools work by pointing at `https://s3.hanzo.ai`.
+
+```python
+import boto3
+
+s3 = boto3.client(
+    "s3",
+    endpoint_url="https://s3.hanzo.ai",
+    aws_access_key_id="your-access-key",
+    aws_secret_access_key="your-secret-key",
+)
+
+s3.upload_file("model.safetensors", "my-models", "v1/model.safetensors")
+
+for obj in s3.list_objects_v2(Bucket="my-models", Prefix="v1/").get("Contents", []):
+    print(obj["Key"], obj["Size"])
+```
+
+The `aws` CLI, `@aws-sdk/client-s3`, and `aws-sdk-go` all work the same way with the endpoint override.
+
+## Features
+
+- Drop-in Amazon S3 API — works with every S3 client and SDK
+- Object versioning and lifecycle rules (expiration, tiering)
+- Server-side encryption: SSE-S3 by default, SSE-KMS via [Hanzo KMS](https://kms.hanzo.ai)
+- Bucket policies and per-service access boundaries
+- Event notifications (webhook/queue) on object mutations
+- Presigned URLs for time-limited, credential-free access
+
+Hanzo Storage is the durable backing layer for model weights, training datasets, media, and event streams — and the blob store behind [Registry](/docs/registry).
+
+## Related
+
+- [Hanzo S3 service reference](/docs/services/s3) — CLI, SDKs, policies, and lifecycle rules
+- [Registry](/docs/registry) — container and model artifacts stored on Hanzo S3
+- [Datastore](/docs/datastore) — analytics that read cold data directly from buckets
+- [API Keys](/docs/api-keys) — authenticate with `hk-` keys
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

@@ -1,0 +1,65 @@
+---
+title: Pipelines
+description: CI/CD pipelines from commit to deploy — build, push, and reconcile your fleet.
+---
+
+# Pipelines
+
+Hanzo pipelines take a commit all the way to a running service: build the image, push it to the registry, and let the operator reconcile it onto your clusters. One configuration file, one control plane, every environment.
+
+## Commit to Deploy
+
+Every repo builds, tests, and deploys the same way:
+
+1. **Source** — a push (or PR) triggers the pipeline.
+2. **Build** — the change is built in-cluster with Kaniko (no Docker-in-Docker) on the ARC runner pool.
+3. **Registry** — the image is pushed to `registry.hanzo.ai/<org>/<app>`.
+4. **Deploy** — the operator reconciles your `Service` CR: bump the image tag, apply, and the running fleet converges.
+
+The console surfaces this as **Deploy → Pipelines**, alongside Projects, Environments, Builds, Registry, and Releases — all views over the same real inventory.
+
+## Configure with hanzo.yml
+
+A single root `hanzo.yml` declares what to build, test, and deploy; a short workflow imports the shared `hanzoai/ci` reusable pipeline:
+
+```yaml
+# hanzo.yml
+images:
+  - name: my-app
+    dockerfile: Dockerfile
+test:
+  - go test ./...
+deploy:
+  service: my-app
+  namespace: hanzo
+```
+
+```yaml
+# .github/workflows/cicd.yml
+jobs:
+  cicd:
+    uses: hanzoai/ci/.github/workflows/build.yml@v1
+    secrets: inherit
+```
+
+All build/test/deploy logic lives in `hanzoai/ci`, once — no per-repo build scripts.
+
+## Trigger & Watch via API
+
+List what is declared vs running (with drift and health) and trigger a redeploy through the PaaS control plane:
+
+```bash
+# Inventory: declared tag, running tag, drift, health, cluster
+curl https://api.hanzo.ai/v1/paas/apps \
+  -H "Authorization: Bearer hk-..."
+
+# Redeploy a service to its declared tag
+curl -X POST https://api.hanzo.ai/v1/paas/apps/my-app/redeploy \
+  -H "Authorization: Bearer hk-..."
+```
+
+## Related
+
+- [Machines](/docs/machines) · [GPUs](/docs/gpus) — where pipelines deploy to
+- [Functions](/docs/functions) — deploy event-driven code without a full pipeline
+- [API Keys](/docs/api-keys) · [API Reference](/docs/api)

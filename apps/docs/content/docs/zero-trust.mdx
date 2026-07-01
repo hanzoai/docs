@@ -1,0 +1,49 @@
+---
+title: Zero Trust
+description: Private service access for Hanzo Cloud -- routers, identities, policies, and sessions over an identity-based mTLS overlay.
+---
+
+# Zero Trust
+
+Hanzo Zero Trust provides private access to internal services without a VPN. Instead of exposing ports to the network, services join an identity-based overlay where every connection is mutually authenticated and authorized by policy. Nothing is reachable until identity and policy say so.
+
+## Routers, Identities, Policies, and Sessions
+
+The model has four primitives, and they map one-to-one to the console tabs:
+
+| Primitive | Purpose |
+|-----------|---------|
+| **Routers** | Entry points that expose a private service onto the overlay. A router has no public listening port; it dials out. |
+| **Identities** | Cryptographic identities for every workload, user, and device. Connections are mutually authenticated with mTLS. |
+| **Policies** | Rules that decide which identities may reach which services. Default-deny -- access is granted, never assumed. |
+| **Sessions** | Authenticated, time-bounded connections. Every session is attributable and auditable. |
+
+Certificates use post-quantum (lattice-based) signatures, so the overlay stays forward-secure.
+
+## How Access Works
+
+1. A service registers an **identity** and attaches to a **router** -- it never opens an inbound port.
+2. A client presents its own identity; the overlay establishes **mTLS** end to end.
+3. A **policy** check authorizes the specific identity-to-service pair.
+4. An authorized connection becomes a **session**, logged for audit.
+
+Because there is no listening port, the service is invisible to network scans -- a dark service reachable only over the overlay.
+
+## Managing Access via the API
+
+Routers, identities, policies, and sessions follow the standard `/v1/<service>` shape on the gateway. Authenticate with an API key (`hk-...`):
+
+```bash
+# List authorization policies
+curl https://api.hanzo.ai/v1/zero-trust/policies \
+  -H "Authorization: Bearer hk-..."
+```
+
+See the [API reference](/docs/api) for the exact request and response shapes, and [Hanzo Zero Trust](/docs/zt) for the overlay architecture.
+
+## Related
+
+- [IAM](/docs/iam) -- the identities and organizations Zero Trust policies reference
+- [KMS](/docs/kms) -- issues and stores the certificates and keys for identities
+- [MPC](/docs/mpc) -- threshold signing available for high-value identities
+- [API](/docs/api) -- the full REST reference

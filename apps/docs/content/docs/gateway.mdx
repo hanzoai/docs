@@ -1,0 +1,49 @@
+---
+title: Gateway
+description: The unified, gated, priced API gateway for Hanzo Cloud at api.hanzo.ai -- one entry point, one key, every service.
+---
+
+# Gateway
+
+The Hanzo Gateway is the single front door to the platform. Every request to `api.hanzo.ai` lands here: it authenticates the caller, enforces rate limits and quotas, meters usage for billing, and routes to the right backend. One base URL, one key, every service.
+
+## Gated and Priced
+
+"Gated" and "priced" are the gateway's job:
+
+- **Gated** -- the gateway rejects unauthenticated or over-quota requests before they reach a backend. Present an API key (`hk-...`) or an IAM bearer token. Rate limits and circuit breakers protect every downstream service.
+- **Priced** -- metered usage is attributed to your organization and priced by the commerce subsystem. See [Billing](/docs/billing) for credits, metering, and invoices.
+
+The gateway forwards your `Authorization` header unchanged and streams responses (SSE) without transformation, so OpenAI-compatible clients work as drop-in.
+
+## Traffic Path
+
+Requests flow through three layers before reaching a service:
+
+```
+Internet → Ingress (TLS, L7) → Gateway (auth, rate-limit, routing) → Cloud / service
+```
+
+Ingress terminates TLS and handles L7 routing; the gateway handles authentication, pricing, and per-endpoint routing; the backend service does the work. This is the canonical path for every product.
+
+## One Base URL
+
+All services are reached under a single base -- `https://api.hanzo.ai/v1` -- namespaced by service (`/v1/iam`, `/v1/kms`, `/v1/billing`, and so on), plus the OpenAI-compatible LLM surface at `/v1/chat/completions`.
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer hk-..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "anthropic-claude-haiku-4.5",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+```
+
+## Related
+
+- [API](/docs/api) -- the REST reference for every service behind the gateway
+- [API Keys](/docs/api-keys) -- the credentials the gateway checks
+- [Billing](/docs/billing) -- how metered usage is priced
+- [IAM](/docs/iam) -- the identity the gateway authenticates
+- [Hanzo Gateway](/docs/services/gateway) -- routing tables, clusters, and operations

@@ -1,0 +1,43 @@
+---
+title: Blockchain
+description: On-chain settlement and networks — chain, RPC, and block explorer.
+---
+
+# Blockchain
+
+On-chain settlement for compute and payouts, plus the chain, RPC, and explorer behind it. Metered cloud usage and payouts settle on Hanzo Mainnet, and every transfer is verifiable on-chain.
+
+## On-Chain Settlement
+
+Compute spend (GPUs, inference, storage) and payouts settle on-chain rather than in an opaque ledger. Balances are held in **HUSD**, and the chain is the source of truth for transfers — the console reads it, never the other way around. Top up cloud credit with HUSD from **Web3 → Wallets**.
+
+## RPC & Explorer
+
+Read chain state with standard EVM JSON-RPC. Copy the RPC URL from the console, then query balances, blocks, and transactions:
+
+```bash
+curl $RPC_URL \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "eth_getBalance",
+    "params": ["0xYourSettlementAddress", "latest"]
+  }'
+```
+
+```json
+{ "jsonrpc": "2.0", "id": 1, "result": "0x8ac7230489e80000" }
+```
+
+Every settlement transaction is browsable in the block explorer linked from the console, with the transfer, block, and receipt.
+
+## Networks
+
+Settlement runs on a Hanzo network; to provision your own chain, nodes, and RPC, see [Networks](/docs/networks).
+
+## Related
+
+- [Networks](/docs/networks) — provision chains, nodes, and RPC
+- [GPUs](/docs/gpus) — the compute that settlement pays for
+- [Marketplace](/docs/marketplace) · [API Keys](/docs/api-keys) · [API Reference](/docs/api)

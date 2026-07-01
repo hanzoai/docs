@@ -1,0 +1,58 @@
+---
+title: Hanzo KV
+description: Managed key-value store — a Redis/Valkey-compatible cache, queue, and pub/sub engine with sub-millisecond reads, provisioned in one API call.
+---
+
+# Hanzo KV
+
+Hanzo KV is a managed, Redis/Valkey-compatible key-value store for caching, queues, and pub/sub. It speaks the Redis wire protocol (RESP2/RESP3), so every existing Redis or Valkey client works unchanged.
+
+## Provision an Instance
+
+An instance is a logical namespace in the shared Hanzo KV backend, scoped to your organization.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/kv \
+  -H "Authorization: Bearer hk-..." \
+  -H "X-Org-Id: org_a1b2c3" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "cache", "eviction": "allkeys-lru" }'
+```
+
+The response returns the host, port, and password for the instance. TLS is enabled by default.
+
+## Connect
+
+Use `redis-cli` or any Redis/Valkey client.
+
+```bash
+redis-cli -h kv.hanzo.ai -p 6379 -a "$KV_PASSWORD" --tls
+> SET session:abc '{"user":"alice"}' EX 3600
+> GET session:abc
+```
+
+```python
+import redis
+
+kv = redis.Redis(host="kv.hanzo.ai", port=6379, password=KV_PASSWORD, ssl=True)
+kv.set("api:calls:today", 0)
+kv.incr("api:calls:today")
+```
+
+## Use Cases
+
+- **Cache** — sub-millisecond `GET`/`SET` with TTL-based expiration
+- **Queues** — lists (`LPUSH`/`BRPOP`) and streams with consumer groups
+- **Pub/Sub** — channel and pattern subscriptions for real-time fanout
+- **Rate limiting** — atomic counters and Lua scripts for atomic multi-step logic
+- **Leaderboards** — sorted sets with score-range queries
+
+Rich data structures (hashes, sets, sorted sets, bitmaps, HyperLogLog, geospatial), Lua scripting, persistence (RDB + AOF), and cluster mode are all supported.
+
+## Related
+
+- [Hanzo KV service reference](/docs/services/kv) — the full command set, ACLs, and clustering
+- [PubSub](/docs/pubsub) — durable, at-least-once messaging with JetStream
+- [SQL](/docs/sql) — managed PostgreSQL for persistent relational data
+- [API Keys](/docs/api-keys) — authenticate with `hk-` keys
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

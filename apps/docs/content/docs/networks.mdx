@@ -1,0 +1,50 @@
+---
+title: Networks
+description: Blockchain networks — chain, nodes, status, and RPC endpoints.
+---
+
+# Networks
+
+Provision and operate blockchain networks — a chain, its validator and RPC nodes, live status, and an RPC endpoint your apps can call. Networks are backed by Bootnode ("Web3 Backend in a Box"), which runs Lux-style sovereign L1/L2 networks locally or in the cloud.
+
+## Provision a Network
+
+Create a network from **Web3 → Networks** in the [console](https://console.hanzo.ai). Each network gives you:
+
+- a **chain** with its own chain ID and genesis,
+- **nodes** — validators plus public RPC nodes,
+- **status** — health and block height,
+- an **RPC endpoint** for wallets, tools, and contracts.
+
+Shared Hanzo networks and your own dedicated networks are reconciled by the same control plane.
+
+## Chain Access (RPC)
+
+Each network exposes a standard EVM JSON-RPC endpoint. Copy the RPC URL from **Networks → your network → RPC**, then call it like any Ethereum node:
+
+```bash
+curl $RPC_URL \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "eth_blockNumber",
+    "params": []
+  }'
+```
+
+```json
+{ "jsonrpc": "2.0", "id": 1, "result": "0x1a2b3c" }
+```
+
+The same endpoint serves `eth_chainId`, `eth_getBalance`, `eth_call`, `eth_sendRawTransaction`, and the rest of the JSON-RPC surface.
+
+## Nodes & Status
+
+The console lists each network's nodes with their health, current block height, and peer count. Add RPC capacity or validators from the same page; the control plane provisions and reconciles them.
+
+## Related
+
+- [Blockchain](/docs/blockchain) — on-chain settlement and the block explorer
+- [Machines](/docs/machines) — the nodes networks run on
+- [API Keys](/docs/api-keys) · [API Reference](/docs/api)
