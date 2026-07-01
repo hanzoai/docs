@@ -1,0 +1,36 @@
+---
+title: Dashboards
+description: Product analytics and observability dashboards for Hanzo Cloud -- usage, cost, latency, and health in one view.
+---
+
+# Dashboards
+
+Dashboards turn the telemetry every Hanzo service emits into product analytics and observability views: usage over time, cost by product and model, latency, error rates, and live health. They are the read surface over your platform's metrics.
+
+## Analytics and Observability
+
+Two families of dashboards share one home in the [Console](/docs/console):
+
+- **Product analytics** -- volume, active users, adoption, and cost trends per product, model, and organization.
+- **Observability** -- request traces, latency percentiles, error rates, and service health across your clusters.
+
+Every panel is scoped to your organization and reads real metrics. Usage is attributed the same way [Billing](/docs/billing) meters it, so what you see and what you are charged reconcile.
+
+## Reading Metrics via the API
+
+Aggregated metrics are available under `/v1` on the gateway, so you can pull the same numbers the dashboards render into your own tools. Authenticate with an API key (`hk-...`):
+
+```bash
+# Daily aggregated usage and cost
+curl "https://api.hanzo.ai/v1/analytics/usage?period=daily" \
+  -H "Authorization: Bearer hk-..."
+```
+
+For the exact metric endpoints and query parameters, see the [API reference](/docs/api).
+
+## Related
+
+- [Console](/docs/console) -- where dashboards live
+- [Billing](/docs/billing) -- cost and usage, metered from the same telemetry
+- [API](/docs/api) -- pull metrics programmatically
+- [Gateway](/docs/gateway) -- the entry point that emits request telemetry

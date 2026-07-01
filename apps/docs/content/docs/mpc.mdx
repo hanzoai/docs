@@ -1,0 +1,48 @@
+---
+title: MPC
+description: Threshold signing and multi-party computation for Hanzo Cloud -- split-key custody with post-quantum finality, powered by Hanzo MPC.
+---
+
+# MPC
+
+Hanzo MPC provides threshold signing and multi-party computation. A private key is split into shares held by independent parties; a valid signature is produced only when a threshold of them cooperate. No single machine ever holds the whole key.
+
+## Threshold Signing
+
+MPC replaces a single secret key with a configurable **t-of-n** scheme (2-of-3, 3-of-5, and so on). It backs digital-asset custody, validator signing, and policy-gated approvals, and it is the signing engine behind [KMS](/docs/kms) signing keys.
+
+- **No single point of failure** -- no node ever reconstructs the full key.
+- **Proactive share refresh** -- rotate shares without changing the public key or address.
+- **Identifiable aborts** -- a misbehaving party is detected and attributed.
+- **Multiple protocols** -- threshold ECDSA (CGGMP21), Schnorr/EdDSA (FROST), BLS, and post-quantum lattice schemes.
+
+## Consensus and Post-Quantum Finality
+
+MPC nodes form their own private BFT chain for cluster state, with **dual-certificate finality**: every state transition is sealed by both an Ed25519 (classical) and an ML-DSA-65 (post-quantum, FIPS 204) certificate. The managed cluster runs a 3-of-5 threshold.
+
+## Creating a Wallet and Signing
+
+Wallet and signing operations are served under `/v1/mpc` on the gateway. Authenticate with an API key (`hk-...`).
+
+```bash
+# Create a 2-of-3 secp256k1 wallet
+curl -X POST https://api.hanzo.ai/v1/mpc/wallets \
+  -H "Authorization: Bearer hk-..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "protocol": "cggmp21",
+    "curve": "secp256k1",
+    "threshold": 2,
+    "parties": 3,
+    "label": "eth-hot-wallet"
+  }'
+```
+
+Signing is O(t) -- it depends on the threshold, not the total party count -- so a 3-of-100 wallet signs as fast as a 3-of-3. For the full protocol matrix, resharing, and chain support, see [Hanzo MPC](/docs/services/mpc).
+
+## Related
+
+- [KMS](/docs/kms) -- uses MPC as its threshold signing backend
+- [IAM](/docs/iam) -- issues the tokens MPC validates
+- [Zero Trust](/docs/zero-trust) -- private service access for MPC nodes
+- [Hanzo MPC](/docs/services/mpc) -- protocols, consensus, and deployment

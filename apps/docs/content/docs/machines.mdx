@@ -1,0 +1,63 @@
+---
+title: Machines
+description: Compute machines and capacity across regions — the nodes of your clusters.
+---
+
+# Machines
+
+Machines are the compute nodes that back your workloads — the individual servers in your Kubernetes clusters, across regions. There is no separate machine pool to manage: machines are projected directly from your cluster node pools.
+
+## Machines Are Cluster Nodes
+
+Every machine belongs to a **cluster** — either shared Hanzo Cloud or your own dedicated DigitalOcean Kubernetes (DOKS). A cluster declares one or more node pools (a machine size and a count); the [operator](/docs/pipelines) reconciles those pools into running nodes, and the Machines page projects each node from its pool.
+
+GPU node pools additionally surface as [GPUs](/docs/gpus); everything else is general-purpose CPU and memory capacity.
+
+## Regions
+
+Clusters — and therefore machines — are placed in a region close to your users:
+
+| Region | Location |
+|--------|----------|
+| `nyc1`, `nyc3` | New York |
+| `sfo3` | San Francisco |
+| `ams3` | Amsterdam |
+| `fra1` | Frankfurt |
+
+## Inventory API
+
+List your clusters and their node pools — the source of truth for machine capacity — through the PaaS control plane. Replace `{org}` with your organization slug:
+
+```bash
+curl https://api.hanzo.ai/v1/paas/org/{org}/cluster \
+  -H "Authorization: Bearer hk-..."
+```
+
+```json
+{
+  "clusters": [
+    {
+      "id": "prod-sfo3",
+      "region": "sfo3",
+      "nodePools": [
+        { "size": "s-4vcpu-8gb", "count": 3 },
+        { "size": "gpu-h100x1-80gb", "count": 2 }
+      ]
+    }
+  ]
+}
+```
+
+To see what is actually running on those machines, list the deployed apps and their health:
+
+```bash
+curl https://api.hanzo.ai/v1/paas/apps \
+  -H "Authorization: Bearer hk-..."
+```
+
+## Related
+
+- [GPUs](/docs/gpus) — accelerated machines and their telemetry
+- [Pipelines](/docs/pipelines) — deploy workloads onto your machines
+- [Edge](/docs/edge) — run inference off-cluster, on-device
+- [API Keys](/docs/api-keys) · [API Reference](/docs/api)
