@@ -1,0 +1,65 @@
+---
+title: Agents
+description: Build, deploy, and run autonomous agents — personas with a model, tools, guardrails, and shared memory.
+---
+
+# Agents
+
+Build, deploy, and run autonomous agents: configured personas with a model, a tool list, guardrails, and shared memory. Agents are wired into [MCP](/docs/mcp) for tools, Hanzo Brain for memory, and the [LLM Gateway](/docs/llm) for inference. Tenant-scoped by org.
+
+## Quickstart
+
+Define an agent and run it with the SDK. The same `hk-*` key authenticates every call.
+
+```typescript
+import { Agent, Runtime } from '@hanzo/agents'
+
+const agent = new Agent({
+  name: 'researcher',
+  model: 'claude-sonnet-4-5-20250929',
+  brain: { org: 'startx' },              // shared memory
+  tools: ['search', 'fetch', 'brain.recall'],
+})
+
+const result = await Runtime.run(agent, 'Summarize Q3 customer feedback.')
+console.log(result.output)
+```
+
+```python
+from hanzo_agents import Agent, Runtime
+
+agent = Agent(
+    name="researcher",
+    model="claude-sonnet-4-5-20250929",
+    brain={"org": "startx"},
+    tools=["search", "fetch", "brain.recall"],
+)
+print(Runtime.run(agent, "Summarize Q3 customer feedback.").output)
+```
+
+## Run over the API
+
+Agents also run over REST through the gateway. Point the SDK at `https://api.hanzo.ai/v1` or call it directly:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents/runs \
+  -H "Authorization: Bearer hk-..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "agent": "researcher",
+    "input": "Summarize Q3 customer feedback."
+  }'
+```
+
+For the full REST shape — handoffs, guardrails, and orchestrators — see the [API reference](/docs/openapi).
+
+## Observability
+
+Every agent step emits OpenTelemetry spans and structured logs. Runs show up as [traces](/docs/traces) so you can inspect each tool call, generation, and handoff, and score outputs through the [evaluation surface](/docs/scores).
+
+## Related
+
+- [Agents platform](/docs/services/agents) — orchestrators, guardrails, and self-hosting
+- [MCP](/docs/mcp) — the tool surface agents call
+- [Traces](/docs/traces) — inspect and debug agent runs
+- [Prompts](/docs/prompts) — version the instructions agents use

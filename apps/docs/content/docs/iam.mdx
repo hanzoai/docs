@@ -1,0 +1,57 @@
+---
+title: IAM
+description: Organizations, users, and roles (RBAC) for Hanzo Cloud, powered by Hanzo IAM and the hanzo.id OIDC issuer.
+---
+
+# IAM
+
+Hanzo IAM is the identity control plane for Hanzo Cloud. It manages organizations, users, and roles (RBAC), and issues the tokens every other service trusts. All Hanzo apps sign in through a single OIDC issuer: [hanzo.id](https://hanzo.id).
+
+## Organizations, Users, and Roles
+
+IAM is multi-tenant. Every account belongs to one or more **organizations**, and every resource is scoped to an organization via the `owner` claim carried in the JWT. Within an org, **roles** grant permissions through role-based access control (RBAC).
+
+| Concept | Description |
+|---------|-------------|
+| **Organization** | Top-level tenant. Billing, projects, and data are all scoped to an org. |
+| **User** | A member of one or more orgs, authenticated by password, OAuth, passkey, or wallet. |
+| **Application** | An OAuth/OIDC client registered with IAM, named `<org>-<app>` (e.g. `hanzo-cloud`). |
+| **Role** | A named set of permissions assigned to users for RBAC. |
+
+IAM is built on Casdoor, extended for the Hanzo stack. It supports OAuth 2.0 / OIDC, SAML, LDAP, Kerberos/SPNEGO, Web3 wallets, WebAuthn/passkeys, MPC-based key recovery, and MFA.
+
+## Single Sign-On with hanzo.id
+
+Every Hanzo service redirects to `hanzo.id` for authentication. The issuer is fixed:
+
+```
+iss = https://hanzo.id
+```
+
+Fetch the OIDC discovery document to configure any standards-compliant client:
+
+```bash
+curl https://hanzo.id/.well-known/openid-configuration
+```
+
+See [Authentication](/docs/authentication) for the full OAuth 2.0 + PKCE flow, token validation, and the `owner` claim.
+
+## Managing Identity via the API
+
+Identity resources are served under `/v1/iam` on the gateway. Authenticate with an API key (`hk-...`) or an IAM bearer token; requests are scoped to the caller's organization.
+
+```bash
+# List users in your organization
+curl https://api.hanzo.ai/v1/iam/users \
+  -H "Authorization: Bearer hk-..."
+```
+
+Every request shares the same shape -- `https://api.hanzo.ai/v1/<service>/...` with a bearer token. For the complete IAM resource reference (organizations, applications, roles, permissions, providers), see [Hanzo IAM](/docs/services/iam) and the [API reference](/docs/api).
+
+## Related
+
+- [Authentication](/docs/authentication) -- OAuth 2.0 + OIDC login and session management
+- [Organizations](/docs/organizations) -- multi-org setup and switching
+- [API Keys](/docs/api-keys) -- machine credentials for server-side access
+- [KMS](/docs/kms) -- where IAM stores secrets and signing material
+- [MPC](/docs/mpc) -- threshold signing for secure key recovery

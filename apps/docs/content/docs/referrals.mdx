@@ -1,0 +1,54 @@
+---
+title: Referrals
+description: Your referral link, invite history, and cloud-credit earnings on Hanzo Cloud -- refer developers, earn credits and revenue share.
+---
+
+# Referrals
+
+Refer developers to Hanzo Cloud and earn. Every referral gives credits to both you and the person you invite, and higher tiers add revenue share on referred usage. Manage your link, track invites, and watch earnings from the Referrals tab in the [Console](/docs/console).
+
+## Link, Invites, and Earnings
+
+The Referrals surface has three parts:
+
+- **Referral link** -- your unique code, shareable as `https://hanzo.ai/signup?ref=YOUR_CODE`. It is generated automatically with your account.
+- **Invite history** -- everyone who signed up with your code, and whether each has completed a qualifying billable action.
+- **Cloud-credit earnings** -- credits earned per referral plus accrued revenue share, all settling into your [Billing](/docs/billing) balance.
+
+Credits land in the same balance every product spends from, so referral earnings directly offset usage.
+
+## Get Your Link and Stats
+
+Referral operations are served under `/v1` on the gateway. Authenticate with an API key (`hk-...`):
+
+```bash
+# Create (or fetch) your referral link
+curl -X POST https://api.hanzo.ai/v1/referrer \
+  -H "Authorization: Bearer hk-..." \
+  -H "Content-Type: application/json" \
+  -d '{ "channel": "blog" }'
+```
+
+```json
+{
+  "code": "zach42",
+  "url": "https://hanzo.ai/signup?ref=zach42",
+  "channel": "blog"
+}
+```
+
+Fetch your tier, invite counts, and earnings from your referrer profile:
+
+```bash
+curl https://api.hanzo.ai/v1/referrer/me \
+  -H "Authorization: Bearer hk-..."
+```
+
+A referral qualifies once the invited user completes at least one billable action, which guards against fake signups. For tiers, revenue-share rates, and payout rules, see [Hanzo Referral](/docs/services/referral).
+
+## Related
+
+- [Billing](/docs/billing) -- where referral credits and revenue share settle
+- [Console](/docs/console) -- the Referrals tab for link, invites, and earnings
+- [API Keys](/docs/api-keys) -- credentials for the referral API
+- [API](/docs/api) -- the full REST reference

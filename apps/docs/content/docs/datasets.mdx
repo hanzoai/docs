@@ -1,0 +1,53 @@
+---
+title: Datasets
+description: Curate evaluation datasets and items — the input/expected-output pairs your experiments run against.
+---
+
+# Datasets
+
+A dataset is a curated collection of **items** — each an input paired with an expected output — used to evaluate models and agents. Datasets are the fixed yardstick an [experiment](/docs/experiments) measures against. Part of the Hanzo Cloud evaluation surface, tenant-scoped by org.
+
+## Create a dataset
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/evals/datasets \
+  -H "Authorization: Bearer hk-..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "support-qa",
+    "description": "Golden answers for common support questions"
+  }'
+```
+
+## Add items
+
+Each item carries an `input` and an `expectedOutput`; `metadata` is free-form and travels with the item into every run.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/evals/dataset-items \
+  -H "Authorization: Bearer hk-..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "datasetName": "support-qa",
+    "input": "How do I rotate an API key?",
+    "expectedOutput": "Create a new key, deploy it, then revoke the old one.",
+    "metadata": { "topic": "api-keys" }
+  }'
+```
+
+Items are versioned by dataset, so a run always evaluates against a known snapshot. List datasets and items with the matching `GET` routes:
+
+```bash
+curl https://api.hanzo.ai/v1/evals/datasets \
+  -H "Authorization: Bearer hk-..."
+```
+
+## Run against a model
+
+A dataset becomes useful when you run it. Pass the dataset name to an [experiment](/docs/experiments) — `POST /v1/evals/runs` — to score every item against a model, optionally with an LLM judge.
+
+## Related
+
+- [Experiments](/docs/experiments) — dataset runs, comparisons, and analytics
+- [Scores](/docs/scores) — the per-item results a run produces
+- [Prompts](/docs/prompts) — version the prompt an experiment evaluates

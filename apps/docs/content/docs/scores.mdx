@@ -1,0 +1,58 @@
+---
+title: Scores
+description: Evaluation scores from feedback, graders, and review — attached to traces, observations, and sessions.
+---
+
+# Scores
+
+A score is a judgment attached to a [trace](/docs/traces), observation, or [session](/docs/sessions): a thumbs-up from a user, a grade from an automated evaluator, or a rating from a human reviewer. Scores are the measurable output of evaluation. Served by [Hanzo O11y](/docs/o11y), tenant-scoped by org.
+
+## Anatomy of a score
+
+Every score has a data type and a source, and points at what it grades. Its shape is governed by a [score config](/docs/score-configs) referenced through `configId`.
+
+| Field | Description |
+|-------|-------------|
+| `name` | The metric, e.g. `helpfulness`, `hallucination` |
+| `value` | Numeric value (also used for boolean 0/1 and category codes) |
+| `stringValue` | The category label or free-text value |
+| `dataType` | `NUMERIC`, `CATEGORICAL`, `BOOLEAN`, or `TEXT` |
+| `source` | `API` (feedback), `EVAL` (graders), `ANNOTATION` (review) |
+| `traceId` / `observationId` / `sessionId` | What the score is attached to |
+| `comment` | Optional reviewer note |
+
+## Listing scores
+
+```bash
+curl "https://api.hanzo.ai/v1/o11y/scores?page=1&limit=50" \
+  -H "Authorization: Bearer hk-..."
+```
+
+```json
+{
+  "data": [
+    {
+      "id": "sc_1",
+      "name": "helpfulness",
+      "value": 4,
+      "dataType": "NUMERIC",
+      "source": "ANNOTATION",
+      "traceId": "tr_abc123",
+      "configId": "cfg_help"
+    }
+  ],
+  "meta": { "page": 1, "limit": 50, "totalItems": 1, "totalPages": 1 }
+}
+```
+
+## Where scores come from
+
+- **`API`** — end-user feedback (thumbs up/down, star ratings) sent from your app.
+- **`EVAL`** — automated graders, including LLM-as-judge, produced by [experiment](/docs/experiments) runs.
+- **`ANNOTATION`** — human review through [annotation queues](/docs/annotation-queues).
+
+## Related
+
+- [Score Configs](/docs/score-configs) — the definitions scores conform to
+- [Annotation Queues](/docs/annotation-queues) — human review that emits scores
+- [Experiments](/docs/experiments) — graded dataset runs that emit scores

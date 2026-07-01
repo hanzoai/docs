@@ -1,0 +1,60 @@
+---
+title: Crawl
+description: Crawl and extract the web for your agents — a Firecrawl-compatible API.
+---
+
+# Crawl
+
+Turn any website into clean, LLM-ready markdown for your agents and pipelines. Hanzo Crawl scrapes single pages or crawls whole sites, and its API is **Firecrawl-compatible** — point an existing Firecrawl client at `api.hanzo.ai` and it just works.
+
+## Scrape a Page
+
+Fetch one URL and get back clean markdown (scripts, nav, and boilerplate stripped):
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/scrape \
+  -H "Authorization: Bearer hk-..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com",
+    "formats": ["markdown", "html"]
+  }'
+```
+
+```json
+{
+  "success": true,
+  "data": {
+    "markdown": "# Example Domain\n\nThis domain is for use in ...",
+    "metadata": { "title": "Example Domain", "statusCode": 200 }
+  }
+}
+```
+
+## Crawl a Site
+
+Start an asynchronous crawl over a site, then poll the job for results:
+
+```bash
+# Start the crawl → returns a job id
+curl -X POST https://api.hanzo.ai/v1/crawl \
+  -H "Authorization: Bearer hk-..." \
+  -H "Content-Type: application/json" \
+  -d '{ "url": "https://docs.example.com", "limit": 100 }'
+
+# Poll status + collected pages
+curl https://api.hanzo.ai/v1/crawl/JOB_ID \
+  -H "Authorization: Bearer hk-..."
+```
+
+Use `POST /v1/map` for a fast URL list of a site without fetching page bodies.
+
+## Feed Your Agents
+
+Crawl output is clean markdown, ready to embed or hand to a model — pair it with the [LLM Gateway](/docs/llm) for retrieval, or expose it to agents as an [MCP](/docs/mcp) tool. For structured text from uploaded files (PDF, DOCX, XLSX), use the extract service instead.
+
+## Related
+
+- [MCP](/docs/mcp) — give agents web access as a tool
+- [AI Studio](/docs/ai-studio) · [Marketplace](/docs/marketplace)
+- [API Keys](/docs/api-keys) · [API Reference](/docs/api)
