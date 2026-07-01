@@ -1,0 +1,52 @@
+---
+title: Sessions
+description: Traces grouped into multi-turn sessions — one conversation or agent run across many requests.
+---
+
+# Sessions
+
+A session groups every [trace](/docs/traces) that shares a `sessionId` — a multi-turn chat, a support thread, or a long-running agent run. Sessions turn a stream of individual requests into one reviewable timeline. Served by [Hanzo O11y](/docs/o11y), tenant-scoped by org.
+
+## Starting a session
+
+There is no "create session" call — a session comes into existence the moment a trace carries a `sessionId`. Set it as an OpenTelemetry attribute (or the trace field) and reuse the same value across turns.
+
+```python
+with tracer.start_as_current_span("chat.turn") as span:
+    span.set_attribute("session.id", "sess_9f")   # groups this trace into the session
+    span.set_attribute("user.id", "u_42")
+    respond(message)
+```
+
+## Reading sessions
+
+List sessions, then fetch one to get the session plus all of its traces inline. Both use the standard pagination envelope.
+
+```bash
+# List sessions
+curl "https://api.hanzo.ai/v1/o11y/sessions?page=1&limit=50" \
+  -H "Authorization: Bearer hk-..."
+
+# One session, with its traces
+curl https://api.hanzo.ai/v1/o11y/sessions/sess_9f \
+  -H "Authorization: Bearer hk-..."
+```
+
+```json
+{
+  "id": "sess_9f",
+  "createdAt": "2026-06-28T17:59:02Z",
+  "projectId": "proj_console",
+  "environment": "production",
+  "traces": [
+    { "id": "tr_abc123", "name": "chat.turn", "latency": 1.84 },
+    { "id": "tr_def456", "name": "chat.turn", "latency": 0.92 }
+  ]
+}
+```
+
+## Related
+
+- [Traces](/docs/traces) — the individual requests a session groups
+- [Scores](/docs/scores) — evaluations can be attached at the session level
+- [O11y](/docs/o11y) — the observability platform behind sessions

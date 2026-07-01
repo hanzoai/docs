@@ -1,0 +1,50 @@
+---
+title: Authz
+description: Fine-grained authorization policies and access checks for Hanzo Cloud -- model-based access control powered by Hanzo Authz.
+---
+
+# Authz
+
+Hanzo Authz answers one question, fast: is this subject allowed to perform this action on this resource? Where [IAM](/docs/iam) establishes **who** you are, Authz decides **what** you may do. It is a policy engine, not an identity store.
+
+## Policies and Models
+
+Authz is built on the Casbin engine and its PERM metamodel (Policy, Effect, Request, Matchers). The access-control model is a small configuration, so you can adopt or combine strategies without rewriting application code:
+
+| Model | Use for |
+|-------|---------|
+| **ACL** | Direct subject → resource → action rules. |
+| **RBAC** | Roles that group permissions; users inherit them through role assignment. |
+| **RBAC with domains** | Per-tenant role sets -- the right fit for multi-org Hanzo Cloud. |
+| **ABAC** | Attribute-based rules (e.g. `resource.owner == request.subject`). |
+| **RESTful** | Match HTTP paths (`/res/*`, `/res/:id`) and methods. |
+
+Effects compose: `deny-override` lets an explicit deny win over any allow, and rules can be prioritized like firewall rules.
+
+## Checking Access
+
+A check evaluates a `(subject, resource, action)` request against the active policy and returns an allow/deny decision. Checks are served under `/v1/authz` on the gateway.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/authz/check \
+  -H "Authorization: Bearer hk-..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subject": "user:alice",
+    "resource": "project:acme/models",
+    "action": "read"
+  }'
+```
+
+```json
+{ "allow": true }
+```
+
+Enforce the same decision at any layer -- gateway, service, or in-process -- so authorization is consistent everywhere. For the policy-management surface (add, remove, and list rules) and every request shape, see the [API reference](/docs/api).
+
+## Related
+
+- [IAM](/docs/iam) -- organizations, users, and roles that Authz policies reference
+- [Zero Trust](/docs/zero-trust) -- network-layer policy for private service access
+- [API Keys](/docs/api-keys) -- credentials for calling the Authz API
+- [API](/docs/api) -- the full REST reference
