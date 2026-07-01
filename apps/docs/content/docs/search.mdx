@@ -1,0 +1,69 @@
+---
+title: Hanzo Search
+description: Managed search — full-text and hybrid indexes with typo tolerance, faceted filtering, and sub-50ms queries, provisioned in one API call.
+---
+
+# Hanzo Search
+
+Hanzo Search is a managed, AI-powered search engine built in Rust. Provision an index, add JSON documents, and get sub-50ms search-as-you-type with typo tolerance, faceted filtering, and hybrid semantic + full-text ranking.
+
+## Provision an Index
+
+An index is a logical resource scoped to your organization. It is created on first write, or explicitly:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/search/indexes \
+  -H "Authorization: Bearer hk-..." \
+  -H "X-Org-Id: org_a1b2c3" \
+  -H "Content-Type: application/json" \
+  -d '{ "uid": "products", "primaryKey": "id" }'
+```
+
+## Index and Search
+
+Add documents as a JSON array (or NDJSON), then query.
+
+```bash
+# Add documents
+curl -X POST https://api.hanzo.ai/v1/search/indexes/products/documents \
+  -H "Authorization: Bearer hk-..." \
+  -H "Content-Type: application/json" \
+  -d '[
+    { "id": 1, "title": "Hanzo Agent SDK", "category": "AI", "price": 0 },
+    { "id": 2, "title": "Hanzo MCP Server", "category": "Infrastructure", "price": 49 }
+  ]'
+
+# Search with a filter
+curl -X POST https://api.hanzo.ai/v1/search/indexes/products/search \
+  -H "Authorization: Bearer hk-..." \
+  -d '{ "q": "agent", "filter": "category = AI AND price < 100", "limit": 10 }'
+```
+
+## Hybrid Search
+
+Configure an embedder on the index, then blend keyword and semantic ranking with `semanticRatio` (`0.0` = pure keyword, `1.0` = pure vector).
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/search/indexes/products/search \
+  -H "Authorization: Bearer hk-..." \
+  -d '{
+    "q": "tools for building AI agents",
+    "hybrid": { "semanticRatio": 0.5, "embedder": "default" }
+  }'
+```
+
+## Features
+
+- Search-as-you-type with typo tolerance and prefix matching
+- Faceted filtering, geo search, and custom ranking rules
+- Hybrid semantic + full-text search with built-in embedders
+- Synonyms, stop words, and per-tenant scoped API keys
+- Federated multi-index search in a single request
+
+## Related
+
+- [Hanzo Search service reference](/docs/services/search) — the full indexing, settings, and chat API
+- [Vector](/docs/vector) — dense-only similarity search for RAG pipelines
+- [Embeddings](/docs/embeddings) — generate the vectors that power hybrid search
+- [API Keys](/docs/api-keys) — authenticate with `hk-` keys
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

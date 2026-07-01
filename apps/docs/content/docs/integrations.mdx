@@ -1,0 +1,45 @@
+---
+title: Integrations
+description: Connect blob storage, Slack, Mixpanel, and Insights to your project.
+---
+
+# Integrations
+
+Connect external services to your project — object storage for data, Slack for alerts, and analytics sinks for events. Integrations are configured per project, and their credentials are stored in [Hanzo KMS](https://kms.hanzo.ai), never in plaintext.
+
+## Available Connections
+
+| Integration | What it does |
+|-------------|--------------|
+| **Blob Storage** | S3-compatible object storage for datasets, artifacts, and backups |
+| **Slack** | Send alerts and notifications to a channel |
+| **Mixpanel** | Forward product and usage events to Mixpanel |
+| **Insights** | Stream events into Hanzo Insights, the built-in product analytics |
+
+## Connect via Console
+
+Open **Integrations** in the [console](https://console.hanzo.ai), pick a connection, and provide its credentials (an S3 bucket + key, a Slack webhook, a Mixpanel token, or an Insights project). Credentials are written to KMS and referenced by the runtime — they are never returned to the browser.
+
+## Manage via API
+
+List and manage a project's connections over the API. The exact fields vary per connection type; see the [API Reference](/docs/api) for each schema:
+
+```bash
+curl https://api.hanzo.ai/v1/integrations \
+  -H "Authorization: Bearer hk-..."
+```
+
+```json
+{
+  "integrations": [
+    { "type": "blob-storage", "name": "artifacts", "status": "connected" },
+    { "type": "slack", "name": "alerts", "status": "connected" }
+  ]
+}
+```
+
+## Related
+
+- [Observability](/docs/o11y) — where Slack alerts and Insights events surface
+- [API Keys](/docs/api-keys) — auth for every integration call
+- [API Reference](/docs/api)
