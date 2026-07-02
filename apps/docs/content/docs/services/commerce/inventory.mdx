@@ -1,0 +1,124 @@
+---
+title: Inventory
+description: Track stock across locations with inventory items, levels, reservations, and availability checks.
+---
+
+# Inventory
+
+The Inventory API tracks the physical stock behind your catalog: how much of each item you have, where it lives, and how much is reserved for in-flight orders. It keeps *available* quantity accurate so you never oversell.
+
+**Base URL:** `https://api.hanzo.ai/v1/commerce/inventory`
+
+## Model
+
+```
+InventoryItem  ──< InventoryLevel >── StockLocation
+      │                   │
+      │                   └── stocked / reserved / available
+      └──< Reservation (holds quantity at a location for an order)
+```
+
+- **Inventory item** — a stock-kept unit, typically linked to a product variant.
+- **Stock location** — a warehouse, store, or fulfillment center.
+- **Inventory level** — the quantity of one item at one location, split into `stocked`, `reserved`, and computed `available` (`stocked − reserved`).
+- **Reservation** — a hold placed on `available` quantity when an order is placed, released or converted on fulfillment.
+
+## Inventory item object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Inventory item id (`iitem_...`) |
+| `sku` | string | Stock keeping unit |
+| `requires_shipping` | boolean | Whether the item ships physically |
+| `levels` | array | Per-location stock levels |
+| `reserved_quantity` | integer | Total reserved across all locations |
+| `stocked_quantity` | integer | Total on hand across all locations |
+
+## Manage stock levels
+
+```typescript
+import { HanzoCommerce } from '@hanzo/commerce'
+
+const commerce = new HanzoCommerce({ apiKey: process.env.HANZO_API_KEY })
+
+// Set the on-hand quantity for an item at a location
+await commerce.inventory.setLevel({
+  inventory_item_id: 'iitem_1',
+  location_id: 'sloc_warehouse_sf',
+  stocked_quantity: 500
+})
+```
+
+```bash
+# Read levels for an item across every location
+curl https://api.hanzo.ai/v1/commerce/inventory/iitem_1/levels \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+## Reservations
+
+Reservations hold `available` quantity so concurrent checkouts can't oversell. Create one when an order is placed; release it on cancellation or convert it on fulfillment.
+
+```typescript
+const reservation = await commerce.inventory.reserve({
+  inventory_item_id: 'iitem_1',
+  location_id: 'sloc_warehouse_sf',
+  quantity: 2,
+  order_id: 'order_123'
+})
+```
+
+## Check availability
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/commerce/inventory/availability \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "inventory_item_id": "iitem_1",
+    "location_ids": ["sloc_warehouse_sf", "sloc_store_nyc"],
+    "quantity": 2
+  }'
+# → { "available": true, "available_quantity": 498 }
+```
+
+<Callout type="info">
+`available = stocked − reserved`. Always check availability against the specific locations a [sales channel](/docs/services/commerce/storefront) can fulfill from — an item can be in stock globally but unavailable to a given storefront.
+</Callout>
+
+## Stock locations
+
+```typescript
+const sf = await commerce.inventory.createLocation({
+  name: 'San Francisco Warehouse',
+  address: { city: 'San Francisco', country_code: 'us' }
+})
+```
+
+## Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/inventory` | List inventory items |
+| `POST` | `/inventory` | Create an inventory item |
+| `GET` | `/inventory/:id/levels` | List levels for an item |
+| `POST` | `/inventory/levels` | Set/update a level at a location |
+| `POST` | `/inventory/availability` | Check availability across locations |
+| `POST` | `/inventory/reservations` | Reserve quantity for an order |
+| `DELETE` | `/inventory/reservations/:rid` | Release a reservation |
+| `GET` | `/inventory/locations` | List stock locations |
+| `POST` | `/inventory/locations` | Create a stock location |
+
+## Next steps
+
+<Cards>
+  <Card title="Products" href="/docs/services/commerce/products">
+    Link inventory items to product variants
+  </Card>
+  <Card title="Orders" href="/docs/services/commerce/orders">
+    Reservations are created and released along the order lifecycle
+  </Card>
+  <Card title="Store settings" href="/docs/services/commerce/storefront">
+    Control which locations each sales channel fulfills from
+  </Card>
+</Cards>
