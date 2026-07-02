@@ -1,0 +1,120 @@
+---
+title: Promotions
+description: Build discounts with flexible rules, promotion codes, and budgeted campaigns.
+---
+
+# Promotions
+
+The Promotions API discounts an amount or percentage off a cart's items, its shipping, or the entire order — governed by rules that decide *when* the discount applies and grouped into *campaigns* that cap spend and set a schedule.
+
+**Base URL:** `https://api.hanzo.ai/v1/commerce/promotions`
+
+## Promotion types
+
+| Type | Behavior |
+|------|----------|
+| `standard` | Applies a discount when the cart matches the rules |
+| `buyget` | "Buy X, get Y" — discounts target items when required items are present |
+
+## Application method
+
+Every promotion has an **application method** describing the discount:
+
+| Field | Values | Description |
+|-------|--------|-------------|
+| `type` | `fixed`, `percentage` | Fixed amount off, or a percentage |
+| `target_type` | `items`, `shipping_methods`, `order` | What the discount reduces |
+| `value` | number | Amount (minor units) or percent |
+| `allocation` | `each`, `across` | Apply per matching item, or spread across the target |
+
+```typescript
+import { HanzoCommerce } from '@hanzo/commerce'
+
+const commerce = new HanzoCommerce({ apiKey: process.env.HANZO_API_KEY })
+
+const promo = await commerce.promotions.create({
+  code: 'WELCOME10',
+  type: 'standard',
+  application_method: {
+    type: 'percentage',
+    target_type: 'items',
+    value: 10,
+    allocation: 'each'
+  }
+})
+```
+
+## Flexible rules
+
+Rules restrict when a promotion is applied by matching attributes of the cart, its items, or the customer. Combine multiple rules — all must pass.
+
+```json
+{
+  "rules": [
+    { "attribute": "customer.groups.id", "operator": "in", "values": ["cusgroup_vip"] },
+    { "attribute": "items.product.collection", "operator": "eq", "values": ["col_outerwear"] },
+    { "attribute": "currency_code", "operator": "eq", "values": ["usd"] }
+  ]
+}
+```
+
+Supported operators: `eq`, `ne`, `in`, `not_in`, `gt`, `gte`, `lt`, `lte`.
+
+<Callout type="info">
+Target a promotion at a [customer group](/docs/services/commerce/customers) with a `customer.groups.id` rule to run tiered or member-only pricing without touching individual customers.
+</Callout>
+
+## Promotion codes
+
+A promotion can be automatic (applies with no code) or gated behind a `code` the shopper enters. Generate many unique codes for a single promotion when you need per-recipient tracking.
+
+```bash
+# Apply a code to a cart
+curl -X POST https://api.hanzo.ai/v1/commerce/carts/cart_1/promotions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "code": "WELCOME10" }'
+```
+
+## Campaigns
+
+A campaign groups promotions under a shared schedule and budget. When the budget is spent or the window closes, its promotions stop applying automatically.
+
+```typescript
+const campaign = await commerce.promotions.createCampaign({
+  name: 'Spring Sale',
+  starts_at: '2026-03-01T00:00:00Z',
+  ends_at: '2026-03-31T23:59:59Z',
+  budget: { type: 'spend', limit: 100000, currency: 'USD' },
+  promotion_ids: [promo.id]
+})
+```
+
+Budget types: `spend` (cap total discount value) or `usage` (cap number of redemptions).
+
+## Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/promotions` | List promotions |
+| `POST` | `/promotions` | Create a promotion |
+| `GET` | `/promotions/:id` | Retrieve a promotion |
+| `PATCH` | `/promotions/:id` | Update a promotion or its rules |
+| `DELETE` | `/promotions/:id` | Delete a promotion |
+| `POST` | `/promotions/:id/rules` | Add rules |
+| `POST` | `/promotions/campaigns` | Create a campaign |
+| `PATCH` | `/promotions/campaigns/:cid` | Update a campaign budget/schedule |
+
+## Next steps
+
+<Cards>
+  <Card title="Customers" href="/docs/services/commerce/customers">
+    Scope promotions to customer groups
+  </Card>
+  <Card title="Orders" href="/docs/services/commerce/orders">
+    Promotion adjustments are recorded on order line items
+  </Card>
+  <Card title="Products" href="/docs/services/commerce/products">
+    Match promotions against product attributes and collections
+  </Card>
+</Cards>
