@@ -1,0 +1,103 @@
+---
+title: Store settings
+description: Configure your store — regions, currencies, sales channels, and publishable keys that power each storefront.
+---
+
+# Store settings
+
+Store settings define the commercial context every cart and order runs in: which **regions** you sell to, which **currencies** you price in, and which **sales channels** (storefronts) expose which products. One backend can drive many storefronts.
+
+**Base URL:** `https://api.hanzo.ai/v1/commerce/store`
+
+## Regions
+
+A region groups countries that share a currency, tax behavior, and set of payment and fulfillment options. Carts and orders always belong to a region, which fixes their currency and tax rules.
+
+```typescript
+import { HanzoCommerce } from '@hanzo/commerce'
+
+const commerce = new HanzoCommerce({ apiKey: process.env.HANZO_API_KEY })
+
+const region = await commerce.store.createRegion({
+  name: 'North America',
+  currency_code: 'usd',
+  countries: ['us', 'ca'],
+  automatic_taxes: true
+})
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Region id (`reg_...`) |
+| `currency_code` | string | ISO 4217 currency for all prices in the region |
+| `countries` | array | ISO country codes served |
+| `automatic_taxes` | boolean | Calculate tax at checkout |
+| `payment_providers` | array | Enabled payment providers |
+
+## Currencies
+
+Enable the currencies your store prices in. Each region pins exactly one currency; products carry a price per enabled currency.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/commerce/store/currencies \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "codes": ["usd", "eur", "gbp"], "default": "usd" }'
+```
+
+## Sales channels
+
+A sales channel is a storefront — web, mobile, marketplace, or point of sale. Products are published per channel, and each channel fulfills from a specific set of [stock locations](/docs/services/commerce/inventory), so a product can be sold on one channel and hidden on another.
+
+```typescript
+const web = await commerce.store.createSalesChannel({ name: 'Web Store' })
+
+// Publish products to the channel
+await commerce.store.publishProducts(web.id, {
+  product_ids: ['prod_1', 'prod_2']
+})
+```
+
+## Publishable API keys
+
+A publishable key is a client-safe key that scopes storefront requests to one or more sales channels. Use it in browser and mobile clients; use a secret `Bearer` key only on your server.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/commerce/store/publishable-keys \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "title": "Web Store", "sales_channel_ids": ["sc_web"] }'
+# → { "id": "pk_...", "token": "pk_live_..." }
+```
+
+<Callout type="info">
+Never ship a secret key to a browser. Publishable keys are scoped to sales channels and safe to embed in client code; secret keys authorize the full admin surface and belong only on your server or in [Hanzo KMS](/docs/services/kms).
+</Callout>
+
+## Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/store` | Retrieve store configuration |
+| `PATCH` | `/store` | Update store settings |
+| `GET` | `/store/regions` | List regions |
+| `POST` | `/store/regions` | Create a region |
+| `POST` | `/store/currencies` | Enable currencies |
+| `GET` | `/store/sales-channels` | List sales channels |
+| `POST` | `/store/sales-channels` | Create a sales channel |
+| `POST` | `/store/sales-channels/:id/products` | Publish products to a channel |
+| `POST` | `/store/publishable-keys` | Create a publishable key |
+
+## Next steps
+
+<Cards>
+  <Card title="Products" href="/docs/services/commerce/products">
+    Publish products to sales channels and price per currency
+  </Card>
+  <Card title="Inventory" href="/docs/services/commerce/inventory">
+    Map sales channels to fulfillment locations
+  </Card>
+  <Card title="KMS" href="/docs/services/kms">
+    Store secret commerce keys securely
+  </Card>
+</Cards>

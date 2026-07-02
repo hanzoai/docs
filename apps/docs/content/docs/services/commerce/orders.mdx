@@ -1,0 +1,164 @@
+---
+title: Orders
+description: Manage the full order lifecycle — orders, draft orders, fulfillments, returns, exchanges, and edits.
+---
+
+# Orders
+
+The Orders API manages the complete lifecycle of a purchase: from cart capture through fulfillment, and every post-purchase change — returns, exchanges, claims, and edits — with a versioned timeline so every mutation is auditable.
+
+**Base URL:** `https://api.hanzo.ai/v1/commerce/orders`
+
+## Order lifecycle
+
+```
+draft ──▶ pending ──▶ completed
+              │
+              ├──▶ canceled
+              │
+              ├──▶ return ──▶ refunded
+              ├──▶ exchange ──▶ new fulfillment
+              └──▶ edit ──▶ new version
+```
+
+An order moves through **pending** once payment is authorized, and **completed** once every fulfillment is delivered. Post-purchase operations (returns, exchanges, edits) create *order changes* that append a new version to the order's timeline rather than mutating history.
+
+## Order object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique order identifier (`order_...`) |
+| `status` | enum | `draft`, `pending`, `completed`, `canceled` |
+| `customer_id` | string | Customer who placed the order |
+| `email` | string | Contact email (guest or registered) |
+| `currency` | string | ISO 4217 currency code |
+| `items` | array | Line items with quantity, unit price, and adjustments |
+| `shipping_methods` | array | Selected shipping options with tax and promotion adjustments |
+| `payment_status` | enum | `not_paid`, `authorized`, `captured`, `partially_refunded`, `refunded` |
+| `fulfillment_status` | enum | `not_fulfilled`, `partially_fulfilled`, `fulfilled`, `delivered` |
+| `total` | number | Order grand total after tax and discounts |
+| `version` | integer | Current timeline version |
+
+## List and retrieve orders
+
+```bash
+# List orders (paginated, filterable by status/customer/date)
+curl "https://api.hanzo.ai/v1/commerce/orders?status=pending&limit=20" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+# Retrieve a single order
+curl https://api.hanzo.ai/v1/commerce/orders/order_123 \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+```typescript
+import { HanzoCommerce } from '@hanzo/commerce'
+
+const commerce = new HanzoCommerce({ apiKey: process.env.HANZO_API_KEY })
+
+const orders = await commerce.orders.list({ status: 'pending', limit: 20 })
+const order = await commerce.orders.retrieve('order_123')
+```
+
+## Draft orders
+
+Draft orders let a merchant build an order on behalf of a customer — quotes, phone sales, or B2B — then convert it to a live order when the customer confirms.
+
+```typescript
+const draft = await commerce.orders.createDraft({
+  email: 'buyer@example.com',
+  currency: 'USD',
+  items: [{ variant_id: 'variant_1', quantity: 2, unit_price: 2500 }],
+  shipping_methods: [{ option_id: 'so_standard' }]
+})
+
+// Convert the draft to a pending order once the customer confirms
+const order = await commerce.orders.completeDraft(draft.id)
+```
+
+## Fulfillments
+
+Create a fulfillment to ship all or part of an order. Each fulfillment tracks the items, shipping location, and delivery state.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/commerce/orders/order_123/fulfillments \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "location_id": "sloc_warehouse_sf",
+    "items": [{ "item_id": "item_1", "quantity": 1 }]
+  }'
+```
+
+Mark a fulfillment as shipped or delivered to advance the order's `fulfillment_status`:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/commerce/orders/order_123/fulfillments/ful_1/ship \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "tracking_numbers": ["1Z999AA10123456784"] }'
+```
+
+## Returns, exchanges, and claims
+
+Post-purchase changes are modeled as **order changes**. Each creates a new order version so the timeline is fully auditable.
+
+| Operation | Endpoint | Effect |
+|-----------|----------|--------|
+| Return | `POST /orders/:id/returns` | Customer sends items back; issues a refund on receipt |
+| Exchange | `POST /orders/:id/exchanges` | Return items and ship replacements in one flow |
+| Claim | `POST /orders/:id/claims` | Resolve damaged/incorrect items (refund or replace) |
+| Edit | `POST /orders/:id/edits` | Add, remove, or re-price items after purchase |
+
+```typescript
+// Request a return with a refund on receipt
+const ret = await commerce.orders.createReturn('order_123', {
+  items: [{ item_id: 'item_1', quantity: 1, reason: 'wrong_size' }],
+  refund_on_receive: true
+})
+```
+
+<Callout type="info">
+Every return, exchange, edit, and claim appends a new `version` to the order. Fetch `GET /orders/:id/changes` to render the full timeline of who changed what and when.
+</Callout>
+
+## Refunds
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/commerce/orders/order_123/refund \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "amount": 2500, "reason": "return_accepted" }'
+```
+
+## Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/orders` | List orders |
+| `GET` | `/orders/:id` | Retrieve an order |
+| `POST` | `/orders/draft` | Create a draft order |
+| `POST` | `/orders/:id/complete` | Complete a draft into a pending order |
+| `POST` | `/orders/:id/fulfillments` | Create a fulfillment |
+| `POST` | `/orders/:id/fulfillments/:fid/ship` | Mark shipped |
+| `POST` | `/orders/:id/returns` | Request a return |
+| `POST` | `/orders/:id/exchanges` | Create an exchange |
+| `POST` | `/orders/:id/claims` | File a claim |
+| `POST` | `/orders/:id/edits` | Edit order items |
+| `POST` | `/orders/:id/refund` | Refund all or part of an order |
+| `POST` | `/orders/:id/cancel` | Cancel an order |
+| `GET` | `/orders/:id/changes` | Retrieve the versioned change timeline |
+
+## Next steps
+
+<Cards>
+  <Card title="Customers" href="/docs/services/commerce/customers">
+    Attach orders to customers and customer groups
+  </Card>
+  <Card title="Inventory" href="/docs/services/commerce/inventory">
+    Reserve and deduct stock as orders are placed and fulfilled
+  </Card>
+  <Card title="Payments" href="/docs/services/commerce/payments">
+    Authorize, capture, and refund order payments
+  </Card>
+</Cards>

@@ -1,0 +1,111 @@
+---
+title: Customers
+description: Manage guest and registered customers, addresses, and customer groups for targeted pricing and promotions.
+---
+
+# Customers
+
+The Customers API stores and organizes the people who buy from your store — both guest and registered — and groups them so you can target pricing, promotions, and communications.
+
+**Base URL:** `https://api.hanzo.ai/v1/commerce/customers`
+
+## Customer object
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique customer identifier (`cus_...`) |
+| `email` | string | Contact email (unique per store) |
+| `first_name` | string | Given name |
+| `last_name` | string | Family name |
+| `has_account` | boolean | `true` for registered customers, `false` for guests |
+| `phone` | string | Optional phone number |
+| `addresses` | array | Saved shipping and billing addresses |
+| `groups` | array | Customer groups this customer belongs to |
+| `metadata` | object | Arbitrary key/value data you attach |
+
+## Guest vs. registered customers
+
+A **guest** is created automatically at checkout from the email provided. A **registered** customer has an authenticated account (`has_account: true`) and can sign in to view order history and manage saved addresses. Promote a guest to registered by attaching an identity from [Hanzo IAM](/docs/services/iam).
+
+```typescript
+import { HanzoCommerce } from '@hanzo/commerce'
+
+const commerce = new HanzoCommerce({ apiKey: process.env.HANZO_API_KEY })
+
+const customer = await commerce.customers.create({
+  email: 'buyer@example.com',
+  first_name: 'Ada',
+  last_name: 'Lovelace'
+})
+```
+
+## Addresses
+
+Customers can store multiple addresses; mark one shipping and one billing address as default.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/commerce/customers/cus_123/addresses \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "address_1": "1 Market St",
+    "city": "San Francisco",
+    "province": "CA",
+    "postal_code": "94105",
+    "country_code": "us",
+    "is_default_shipping": true
+  }'
+```
+
+## Customer groups
+
+Groups organize customers for use cases like wholesale tiers, VIP pricing, or region-specific offers. A [promotion](/docs/services/commerce/promotions) or price list can be scoped to one or more groups.
+
+```typescript
+// Create a group and add members
+const vip = await commerce.customers.createGroup({ name: 'VIP' })
+
+await commerce.customers.addToGroup(vip.id, {
+  customer_ids: ['cus_123', 'cus_456']
+})
+```
+
+```bash
+# List members of a group
+curl "https://api.hanzo.ai/v1/commerce/customers?group_id=cusgroup_vip" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+<Callout type="info">
+Customer groups are the join key between customers and pricing rules. Assigning a group-scoped price list or promotion applies automatically to every current and future member — no per-customer configuration.
+</Callout>
+
+## Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/customers` | List customers (filter by `group_id`, `email`, `has_account`) |
+| `POST` | `/customers` | Create a customer |
+| `GET` | `/customers/:id` | Retrieve a customer |
+| `PATCH` | `/customers/:id` | Update a customer |
+| `DELETE` | `/customers/:id` | Delete a customer |
+| `POST` | `/customers/:id/addresses` | Add an address |
+| `PATCH` | `/customers/:id/addresses/:aid` | Update an address |
+| `DELETE` | `/customers/:id/addresses/:aid` | Remove an address |
+| `POST` | `/customers/groups` | Create a customer group |
+| `POST` | `/customers/groups/:gid/customers` | Add customers to a group |
+| `DELETE` | `/customers/groups/:gid/customers/:id` | Remove a customer from a group |
+
+## Next steps
+
+<Cards>
+  <Card title="Promotions" href="/docs/services/commerce/promotions">
+    Target discounts at specific customer groups
+  </Card>
+  <Card title="Orders" href="/docs/services/commerce/orders">
+    View a customer's order history
+  </Card>
+  <Card title="IAM" href="/docs/services/iam">
+    Back registered customers with Hanzo identities
+  </Card>
+</Cards>
