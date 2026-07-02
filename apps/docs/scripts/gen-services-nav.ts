@@ -3,7 +3,7 @@
  * catalog, so docs' "All Services" taxonomy is DERIVED, never hand-maintained.
  *
  * ONE source of truth (the commerce-backed catalog, via @hanzo/products' snapshot),
- * ONE generator, checked in. The nav groups every EXISTING docs page under the 13
+ * ONE generator, checked in. The nav groups every EXISTING docs page under the 10
  * canonical console categories (the reconciled taxonomy). Docs-only pages (real MDX
  * that back no catalog product) are preserved under a trailing "More" group, so
  * nothing already documented is orphaned, and no nav entry ever points at a page
