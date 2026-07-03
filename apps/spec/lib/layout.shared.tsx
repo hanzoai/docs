@@ -1,4 +1,4 @@
-import { BookOpenIcon, ComponentIcon } from 'lucide-react';
+import { BookOpenIcon } from 'lucide-react';
 import type { BaseLayoutProps, LinkItemType } from '@hanzo/docs/ui/layouts/shared';
 
 export const linkItems: LinkItemType[] = [
@@ -6,12 +6,6 @@ export const linkItems: LinkItemType[] = [
     icon: <BookOpenIcon />,
     text: 'Docs',
     url: '/docs',
-    active: 'nested-url',
-  },
-  {
-    icon: <ComponentIcon />,
-    text: 'Components',
-    url: '/docs/components',
     active: 'nested-url',
   },
   {

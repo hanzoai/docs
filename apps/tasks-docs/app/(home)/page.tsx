@@ -230,7 +230,7 @@ export default function Page() {
             {[
               { name: 'Go', href: '/docs/getting-started' },
               { name: 'Python', href: '/docs/sdk/python' },
-              { name: 'REST API', href: '/docs/api' },
+              { name: 'REST API', href: '/docs/sdk/api' },
             ].map((sdk) => (
               <Link
                 key={sdk.name}
