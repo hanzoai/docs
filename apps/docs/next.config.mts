@@ -31,14 +31,9 @@ const config: NextConfig = {
   basePath: isGitHubPages ? '/docs' : undefined,
   assetPrefix: assetPrefix || undefined,
   reactStrictMode: true,
-  async redirects() {
-    return [
-      { source: '/api', destination: '/docs/openapi', permanent: true },
-      { source: '/api/:path*', destination: '/docs/openapi/:path*', permanent: true },
-      { source: '/tutorials', destination: '/docs/services', permanent: true },
-      { source: '/tutorials/:path*', destination: '/docs/services/:path*', permanent: true },
-    ];
-  },
+  // HTTP redirects live in public/_redirects (Cloudflare Pages). This site
+  // deploys as a static export (`out/`), which ignores next.config redirects(),
+  // so declaring them here would be dead config.
   experimental: {
     // Reduce peak memory during webpack compilation for large builds.
     webpackMemoryOptimizations: true,
