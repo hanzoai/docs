@@ -150,20 +150,6 @@ const config: NextConfig = {
       fullUrl: true,
     },
   },
-  // The @hanzo/docs-* UI packages ship compiled ESM with 'use client' banners;
-  // list them here so Next processes those client boundaries (otherwise their
-  // client components are inlined into the server bundle and their client hooks
-  // — e.g. useTranslations — resolve to undefined during prerender).
-  transpilePackages: [
-    '@hanzo/docs',
-    '@hanzo/docs-ui',
-    '@hanzo/docs-base-ui',
-    '@hanzo/docs-core',
-    '@hanzo/docs-openapi',
-    '@hanzo/docs-story',
-    '@hanzo/docs-twoslash',
-    '@hanzo/docs-typescript',
-  ],
   serverExternalPackages: [
     'ts-morph',
     'typescript',
