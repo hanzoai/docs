@@ -1,6 +1,6 @@
 ---
 title: API Reference
-description: Complete API reference for all Hanzo Cloud services. Generated from OpenAPI 3.1.0 specifications.
+description: The unified REST API reference for every Hanzo product — 38 services, one key, generated from OpenAPI 3.1 specs.
 icon: BookOpen
 ---
 
@@ -8,19 +8,26 @@ import { Cards, Card } from '@hanzo/docs-ui/components/card'
 
 # Hanzo API Reference
 
-Complete API documentation for every Hanzo service. All endpoints use a single API key and route through `api.hanzo.ai`.
+One platform, one credential. Every Hanzo product speaks REST over HTTPS, shares
+a single API key, and is documented here from its OpenAPI 3.1 specification —
+**38 services, 2,000+ endpoints**. Each reference links to its concept guide, and
+every guide links back here.
 
 ## Authentication
 
+All services accept the same bearer credential — a Hanzo IAM JWT or an `hk-` API
+key. Most products are reachable both on their own host and through the unified
+gateway at `api.hanzo.ai`.
+
 ```bash
-curl -H "Authorization: Bearer hk-your-api-key" https://api.hanzo.ai/v1/models
+curl -H "Authorization: Bearer $HANZO_API_KEY" https://api.hanzo.ai/v1/models
 ```
 
 Get your API key at [console.hanzo.ai](https://console.hanzo.ai).
 
 ## SDKs
 
-Use our official SDKs instead of raw HTTP:
+Prefer a typed client over raw HTTP:
 
 | Language | Package | Install |
 |----------|---------|---------|
@@ -34,35 +41,39 @@ Use our official SDKs instead of raw HTTP:
 
 ---
 
-## AI & Intelligence
+## AI & Models
 
 <Cards>
+  <Card title="AI — Inference" href="/docs/openapi/ai">
+    OpenAI- & Claude-compatible chat, completions, embeddings, images, audio, rerank
+  </Card>
   <Card title="Cloud" href="/docs/openapi/cloud">
-    LLM inference gateway — chat completions, embeddings, image generation, audio
+    Cloud API — model management, inference, usage tracking, RAG, accounts
   </Card>
   <Card title="Chat" href="/docs/openapi/chat">
-    Multi-model AI chat with conversation management and tool use
+    Multi-model AI chat with conversations, MCP tools, and file uploads
   </Card>
   <Card title="Search" href="/docs/openapi/search">
-    AI-powered search — indexing, query, and generative results
+    AI-powered search — indexing, semantic query, generative results
   </Card>
   <Card title="Bot" href="/docs/openapi/bot">
     AI assistant framework — skills, channels, webhook integrations
   </Card>
   <Card title="Nexus" href="/docs/openapi/nexus">
-    RAG pipeline — document ingestion, chunking, retrieval
+    RAG pipeline — document ingestion, chunking, embedding, retrieval
   </Card>
   <Card title="Vector" href="/docs/openapi/vector">
     Vector database — collections, embeddings, similarity search
   </Card>
   <Card title="ML" href="/docs/openapi/ml">
-    MLOps — model registry, training jobs, deployment
+    MLOps — pipelines, model registry, training jobs, deployment
   </Card>
-</Cards>
-
-## Automation
-
-<Cards>
+  <Card title="Engine" href="/docs/openapi/engine">
+    Inference engine — GPU clusters, model loading, quantization, scheduling
+  </Card>
+  <Card title="Evals" href="/docs/openapi/evals">
+    LLM evaluation — LLM-as-judge scoring, datasets, metrics, presets
+  </Card>
   <Card title="Flow" href="/docs/openapi/flow">
     Visual workflow builder — triggers, actions, branching logic
   </Card>
@@ -70,7 +81,56 @@ Use our official SDKs instead of raw HTTP:
     Event-driven automation — schedules, webhooks, task chains
   </Card>
   <Card title="Operative" href="/docs/openapi/operative">
-    Computer use agent — browser automation, desktop control
+    Computer-use agent — browser automation, desktop control, sessions
+  </Card>
+</Cards>
+
+## Compute & Deploy
+
+<Cards>
+  <Card title="App" href="/docs/openapi/app">
+    App projects & deployments — build and host sites/apps on hanzo.app
+  </Card>
+  <Card title="PaaS" href="/docs/openapi/paas">
+    Platform-as-a-Service — deployments, domains, managed databases
+  </Card>
+  <Card title="Platform" href="/docs/openapi/platform">
+    Application hosting — projects, Git-push deploy, scaling, logs
+  </Card>
+  <Card title="Edge" href="/docs/openapi/edge">
+    Edge functions — serverless compute at global locations
+  </Card>
+  <Card title="Registry" href="/docs/openapi/registry">
+    Container registry — Docker images, OCI artifacts, scanning
+  </Card>
+  <Card title="Visor" href="/docs/openapi/visor">
+    Cluster management — VM & Kubernetes monitoring, resource visualization
+  </Card>
+</Cards>
+
+## Data & Storage
+
+<Cards>
+  <Card title="DB" href="/docs/openapi/db">
+    Serverless PostgreSQL — projects, branches, pgvector, connection pooling
+  </Card>
+  <Card title="KV" href="/docs/openapi/kv">
+    Key-value store — Redis/Valkey-compatible, pub/sub, streams
+  </Card>
+  <Card title="S3" href="/docs/openapi/s3">
+    Object storage — S3-compatible buckets, objects, presigned URLs
+  </Card>
+  <Card title="Base" href="/docs/openapi/base">
+    Collections — schema-driven records store over IAM-native collections
+  </Card>
+  <Card title="MQ" href="/docs/openapi/mq">
+    Message queue — publish/subscribe subjects, durable delivery
+  </Card>
+  <Card title="Stream" href="/docs/openapi/stream">
+    Kafka-compatible streaming — topics, consumers, partitions
+  </Card>
+  <Card title="PubSub" href="/docs/openapi/pubsub">
+    Pub/sub messaging — JetStream subjects, durable consumers
   </Card>
 </Cards>
 
@@ -78,16 +138,19 @@ Use our official SDKs instead of raw HTTP:
 
 <Cards>
   <Card title="IAM" href="/docs/openapi/iam">
-    Identity — users, organizations, SSO, OIDC, OAuth2, SAML
+    Identity — users, organizations, SSO, OIDC, OAuth2, SAML, JWKS
   </Card>
   <Card title="DID" href="/docs/openapi/did">
-    Decentralized identity — W3C DIDs, verifiable credentials
-  </Card>
-  <Card title="Guard" href="/docs/openapi/guard">
-    AI safety — PII redaction, prompt injection detection, content filtering
+    Decentralized identity — W3C DIDs, profiles, verifiable credentials
   </Card>
   <Card title="KMS" href="/docs/openapi/kms">
-    Secrets management — encryption keys, certificates, secret sync
+    Secrets & keys — enveloped secrets, threshold-key ops, certificates, sync
+  </Card>
+  <Card title="Guard" href="/docs/openapi/guard">
+    AI safety — PII redaction, prompt-injection detection, content filtering
+  </Card>
+  <Card title="ZT" href="/docs/openapi/zt">
+    Zero-trust networking — tunnels, access policies, service mesh
   </Card>
 </Cards>
 
@@ -95,65 +158,24 @@ Use our official SDKs instead of raw HTTP:
 
 <Cards>
   <Card title="Commerce" href="/docs/openapi/commerce">
-    Headless commerce — products, orders, subscriptions, payments
+    Headless commerce — accounts, carts, orders, payments, subscriptions
+  </Card>
+  <Card title="Pricing" href="/docs/openapi/pricing">
+    Pricing API — model costs, subscription plans, GPU tiers
   </Card>
   <Card title="Console" href="/docs/openapi/console">
     LLM observability — tracing, prompt management, evaluations
   </Card>
   <Card title="Analytics" href="/docs/openapi/analytics">
-    Usage metrics — API calls, cost tracking, per-model analytics
-  </Card>
-  <Card title="Pricing" href="/docs/openapi/pricing">
-    Pricing API — model costs, subscription plans, GPU tiers
+    Usage analytics — requests, tokens, cost tracking, per-model metrics
   </Card>
 </Cards>
 
-## Infrastructure
+## Infrastructure & Observability
 
 <Cards>
   <Card title="Gateway" href="/docs/openapi/gateway">
-    API gateway — routing, rate limiting, circuit breakers
-  </Card>
-  <Card title="PaaS" href="/docs/openapi/paas">
-    Platform-as-a-Service — deployments, domains, databases
-  </Card>
-  <Card title="Platform" href="/docs/openapi/platform">
-    Application hosting — Git push deploy, scaling, logs
-  </Card>
-  <Card title="S3" href="/docs/openapi/s3">
-    Object storage — S3-compatible buckets, presigned URLs
-  </Card>
-  <Card title="DB" href="/docs/openapi/db">
-    Serverless PostgreSQL — branches, pgvector, connection pooling
-  </Card>
-  <Card title="KV" href="/docs/openapi/kv">
-    Key-value store — Redis/Valkey-compatible, pub/sub, streams
-  </Card>
-  <Card title="MQ" href="/docs/openapi/mq">
-    Job queue — background tasks, retries, dead-letter queues
-  </Card>
-  <Card title="Stream" href="/docs/openapi/stream">
-    Kafka-compatible streaming — topics, consumers, partitions
-  </Card>
-  <Card title="PubSub" href="/docs/openapi/pubsub">
-    Pub/sub messaging — JetStream, subjects, durable consumers
-  </Card>
-  <Card title="Edge" href="/docs/openapi/edge">
-    Edge functions — serverless compute at 300+ locations
-  </Card>
-  <Card title="Registry" href="/docs/openapi/registry">
-    Container registry — Docker images, OCI artifacts, scanning
-  </Card>
-  <Card title="Visor" href="/docs/openapi/visor">
-    Cluster management — Kubernetes monitoring, resource visualization
-  </Card>
-</Cards>
-
-## Operations
-
-<Cards>
-  <Card title="Engine" href="/docs/openapi/engine">
-    Inference engine — GPU scheduling, quantization, model loading
+    API gateway — unified routing, chat-completions proxy, rate limiting
   </Card>
   <Card title="O11y" href="/docs/openapi/o11y">
     Observability — metrics, logs, traces, alerts, dashboards
@@ -161,16 +183,29 @@ Use our official SDKs instead of raw HTTP:
   <Card title="DNS" href="/docs/openapi/dns">
     DNS management — zones, records, Cloudflare integration
   </Card>
-  <Card title="ZT" href="/docs/openapi/zt">
-    Zero-trust networking — tunnels, access policies, service mesh
-  </Card>
-
 </Cards>
+
+---
+
+## Conventions
+
+Every Hanzo API follows the same conventions, so a client written against one
+service works against all of them. The shared components live in
+[hanzoai/openapi/shared](https://github.com/hanzoai/openapi/tree/main/shared).
+
+| | |
+|---|---|
+| **Base URL** | Each product is reachable on its own host (e.g. `https://commerce.hanzo.ai`) and, for most, through the gateway at `https://api.hanzo.ai`. |
+| **Versioning** | All routes are namespaced under `/v1`. There is no `/v2`; changes are additive and backward-compatible. |
+| **Authentication** | HTTP `Bearer` — a Hanzo IAM JWT or an `hk-` API key. One credential across every service. See [auth.yaml](https://github.com/hanzoai/openapi/blob/main/shared/auth.yaml). |
+| **Errors** | A consistent JSON error envelope (`error.type`, `error.message`, `error.code`) with standard HTTP status codes. See [errors.yaml](https://github.com/hanzoai/openapi/blob/main/shared/errors.yaml). |
+| **Pagination** | Cursor-based (`limit` + `starting_after` / `ending_before`), returning `has_more` and `data`. See [pagination.yaml](https://github.com/hanzoai/openapi/blob/main/shared/pagination.yaml). |
+| **Identity headers** | The gateway resolves identity from the JWT and injects `X-Org-Id`, `X-User-Id`, `X-User-Email`; client-supplied identity headers are stripped. |
 
 ## Unified Spec
 
-The complete unified OpenAPI 3.1.0 specification covering all services is available as a single file:
+The complete OpenAPI 3.1 document covering every service in one file:
 
-- [hanzo.yaml](/docs/services) — All 35 services in one spec
+- [hanzo.yaml](https://github.com/hanzoai/openapi/blob/main/hanzo.yaml) — all 38 services, one spec
 
-All specs are also available in the [hanzoai/openapi](https://github.com/hanzoai/openapi) repository.
+Every individual spec lives in the [hanzoai/openapi](https://github.com/hanzoai/openapi) repository.
