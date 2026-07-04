@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import type { FeedbackBlockProps } from '@hanzo/docs-core/mdx-plugins/remark-feedback-block';
-import { Feedback as FeedbackInner, FeedbackBlock as FeedbackBlockInner } from './client';
+import { Feedback as FeedbackInner, FeedbackText as FeedbackBlockInner } from './client';
 import type { ActionResponse, BlockFeedback, PageFeedback } from './schema';
 
 async function mockPageAction(feedback: PageFeedback): Promise<ActionResponse> {
