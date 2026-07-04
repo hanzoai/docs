@@ -1,28 +1,48 @@
 ---
 title: GPUs
-description: On-demand H100/A100 GPU compute — clusters, utilization, telemetry, and cost.
+description: On-demand H100/H200/A100/L40S GPU compute — metered by the hour, provisioned from the console or API, billed to your org's cloud-usage ledger.
+index: true
+icon: Cpu
 ---
 
 # GPUs
 
-On-demand accelerated compute for training, fine-tuning, and inference. Provision GPU clusters, watch live utilization, and meter spend from the [console](https://console.hanzo.ai) or the API.
+On-demand accelerated compute for training, fine-tuning, and inference. Provision GPU
+clusters, watch live utilization, and meter spend from the
+[console](https://console.hanzo.ai) or the API. GPUs bill by the hour to the same
+per-org cloud-usage ledger as the rest of your fleet.
 
-## On-Demand Accelerators
+## How it works
 
-Hanzo Cloud GPUs are real, hourly-metered accelerators reconciled by the [operator](/docs/pipelines) alongside the rest of your fleet.
+Hanzo Cloud GPUs are **real accelerators resold and metered by the hour**. Capacity is
+sourced from cloud GPU providers — **DigitalOcean GPU Droplets** are the primary pool
+(H100, A100, L40S), with Paperspace and AWS as secondary pools for burst and specialized
+instances — and reconciled by the [operator](/docs/pipelines) alongside your
+[machines](/docs/machines). You get the accelerator; Hanzo handles provisioning,
+scheduling, telemetry, and a single unified bill.
+
+- **One key, one bill** — GPU-hours meter to your org's cloud-usage ledger through
+  [commerce billing](/docs/billing), priced through `api.hanzo.ai/v1/gpu`.
+- **No idle lock-in** — hourly metering starts when a node comes online and stops when
+  you tear the cluster down.
+- **Honest telemetry** — utilization, memory, temperature, and power come straight from
+  the machine; fields the provider does not report render as `—`, never a fabricated
+  value.
+
+## Accelerators
 
 | Model | Memory | Typical use |
 |-------|--------|-------------|
-| **H100** / **H200** | 80–141 GB | Large-model training and low-latency inference |
+| **H200** | 141 GB | Frontier-model training, long-context and low-latency inference |
+| **H100** | 80 GB | Large-model training and high-throughput inference |
 | **A100** | 40 / 80 GB | Training, fine-tuning, batched inference |
-| **L40S** / **L40** | 48 GB | Inference, rendering, mixed workloads |
-| **A6000** / **A5000** | 24–48 GB | Cost-efficient inference and dev |
+| **L40S** / **L40** | 48 GB | Inference, rendering, mixed media workloads |
+| **A6000** / **A5000** | 24–48 GB | Cost-efficient inference and development |
+| **A4000** | 16 GB | Entry-level inference and dev boxes |
 
-Capacity is grouped into **clusters** (a node pool of one GPU size) and scheduled into **pools**. GPUs bill by the hour and meter to your org's usage ledger.
-
-## Provision a Cluster
-
-Create a GPU cluster from **Compute → GPUs → Clusters** in the console, or through the control plane. GPU node sizes map to real accelerator counts:
+Accelerators are grouped into **clusters** (a node pool of one GPU size) and scheduled
+into **pools**. Node sizes map to real accelerator counts — a `gpu-h100x8-640gb` node
+genuinely holds eight H100s:
 
 | Node size | GPUs / node |
 |-----------|-------------|
@@ -32,14 +52,59 @@ Create a GPU cluster from **Compute → GPUs → Clusters** in the console, or t
 | `gpu-a100x8-640gb` | 8× A100 |
 | `gpu-l40sx1-48gb` | 1× L40S |
 
-Each cluster's nodes become your [machines](/docs/machines); the operator reconciles them into the running fleet.
+## Pricing
 
-## Inventory & Telemetry
+GPUs are metered **per GPU-hour**. Representative on-demand rates:
 
-List every GPU with live telemetry — model, cluster, region, utilization, memory, temperature, and power — through the PaaS control plane:
+| GPU | VRAM | On-demand |
+|-----|------|-----------|
+| **NVIDIA T4** | 16 GB | $0.50 / hr |
+| **NVIDIA A100 40GB** | 40 GB | $2.50 / hr |
+| **NVIDIA A100 80GB** | 80 GB | $3.80 / hr |
+| **NVIDIA H100** | 80 GB | $5.50 / hr |
+
+Live pricing is served from `GET /v1/gpu` and mirrored under **Compute → GPUs → Pricing**
+in the console. Sustained workloads qualify for reserved discounts (10% for a 1-month
+commitment, 20% for 3 months) — see
+[compute pricing](/docs/services/platform/pricing/compute) for the full rate card,
+regions, and reserved terms.
+
+<Callout title="Rates are the source of truth in the API">
+Prices shown here are representative. The billed rate is always the value returned by
+`GET /v1/gpu` at provision time, which already reflects any account-level pricing.
+</Callout>
+
+## Provision a cluster
+
+Create a GPU cluster from **Compute → GPUs → Clusters** in the
+[console](https://console.hanzo.ai/visor), or from the CLI / API.
 
 ```bash
-curl https://api.hanzo.ai/v1/paas/gpus \
+# Launch an 8× H100 training cluster
+hanzo vm launch \
+  --size gpu-h100x8-640gb \
+  --region sfo3 \
+  --name train-sfo3
+```
+
+```bash
+# Or straight against the control plane
+curl -X POST https://api.hanzo.ai/v1/visor/machines \
+  -H "Authorization: Bearer hk-..." \
+  -H "Content-Type: application/json" \
+  -d '{"size":"gpu-h100x1-80gb","region":"sfo3","name":"infer-0"}'
+```
+
+Each cluster's nodes become your [machines](/docs/machines); the operator reconciles them
+into the running fleet and starts metering when they report online.
+
+## Inventory & telemetry
+
+List every GPU with live telemetry — model, cluster, region, utilization, memory,
+temperature, and power — through the control plane:
+
+```bash
+curl https://api.hanzo.ai/v1/gpu \
   -H "Authorization: Bearer hk-..."
 ```
 
@@ -61,15 +126,32 @@ curl https://api.hanzo.ai/v1/paas/gpus \
 }
 ```
 
-Fields the platform does not report render as `—` in the console rather than a fabricated value. Alerts and scheduling pools are available at `/v1/paas/gpus/alerts` and `/v1/paas/gpus/pools`.
+Fields the platform does not report render as `—` in the console rather than a
+fabricated value. Alerts and scheduling pools are available at `/v1/gpu/alerts` and
+`/v1/gpu/pools`.
 
-## Cost
+## Billing
 
-GPU spend is metered hourly into your org's cloud-usage ledger. Track it under **GPUs → Pricing** in the console. See [API Keys](/docs/api-keys) for auth and the [API Reference](/docs/api) for the full surface.
+GPU-hours are metered into your org's cloud-usage ledger and settled through
+[commerce billing](/docs/billing). Billing is **prepaid**: top up credits at
+[console.hanzo.ai](https://console.hanzo.ai) and spend draws down as clusters run. When
+the balance is exhausted, new provisioning is refused with `402 Payment Required`
+("Add credits at console.hanzo.ai") — running clusters are never silently overdrawn.
+
+<Callout type="info" title="Card billing">
+Automatic **card billing** is being rolled out: attach a card in **Billing → Payment
+methods** and GPU-hours are charged to it as they accrue, so long-running clusters keep
+running without manual top-ups. Prepaid credits remain fully supported and are always
+drawn down first.
+</Callout>
+
+Track spend under **GPUs → Pricing** in the console, or pull usage from the
+[billing API](/docs/billing). See [API Keys](/docs/api-keys) for auth and the
+[API Reference](/docs/api) for the full surface.
 
 ## Related
 
 - [Machines](/docs/machines) — the cluster nodes your GPUs run on
 - [Pipelines](/docs/pipelines) — build and deploy onto GPU clusters
-- [Marketplace](/docs/marketplace) — browse models to run on your GPUs
+- [Billing](/docs/billing) — credits, invoices, and usage metering
 - [Edge](/docs/edge) — on-device inference when a cloud GPU is overkill
