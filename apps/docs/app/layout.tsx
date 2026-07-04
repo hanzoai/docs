@@ -24,7 +24,7 @@ const geist = Geist({
   subsets: ['latin'],
 });
 
-const mono = JetBrains_Mono({
+const mono = Geist_Mono({
   variable: '--font-mono',
   subsets: ['latin'],
 });
