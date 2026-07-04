@@ -52,10 +52,15 @@ const config: NextConfig = {
     config.resolve.alias = {
       ...config.resolve.alias,
 
-      // Virtual collection modules (internal)
+      // Virtual collection modules (internal). Both the namespaced specifier
+      // and the bare `collections/*` specifier resolve to the generated source
+      // (lib/source imports the bare form).
       '@hanzo/mdx:collections/server': path.resolve(__dirname, 'docs/server.ts'),
       '@hanzo/mdx:collections/browser': path.resolve(__dirname, 'docs/browser.ts'),
       '@hanzo/mdx:collections/dynamic': path.resolve(__dirname, 'docs/dynamic.ts'),
+      'collections/server': path.resolve(__dirname, 'docs/server.ts'),
+      'collections/browser': path.resolve(__dirname, 'docs/browser.ts'),
+      'collections/dynamic': path.resolve(__dirname, 'docs/dynamic.ts'),
 
       // Other doc-platform packages -> no-op stub
       '@docusaurus': emptyProjectModule,
