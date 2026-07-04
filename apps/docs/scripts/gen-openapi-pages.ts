@@ -27,7 +27,7 @@ const METHODS = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'];
 // resolved source-derived by checking for a matching guide on disk.
 const GUIDE_OVERRIDES: Record<string, string> = {
   ai: '/docs/llm',
-  app: '/docs/apps',
+  app: '/docs/services/paas',
   evals: '/docs/experiments',
 };
 
