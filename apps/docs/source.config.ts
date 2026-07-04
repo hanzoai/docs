@@ -15,26 +15,17 @@ const isLint = process.env.LINT === '1';
 
 const isExport = process.env.NEXT_EXPORT === '1';
 
-// Federated docs: DOCS_SECTION controls which MDX pages are built.
-// Each section deploys to its own CF Pages project; meta.json files are
-// always included so every build renders the complete sidebar tree.
-const section = process.env.DOCS_SECTION as 'core' | 'kms' | 'iam' | 'platform' | 'projects' | undefined;
-
-const sectionFilters: Record<string, string[]> = {
-  core:     ['**/*.mdx', '!**/projects/**', '!**/services/kms/**', '!**/services/iam/**', '!**/services/platform/**'],
-  kms:      ['**/services/kms/**/*.mdx'],
-  iam:      ['**/services/iam/**/*.mdx'],
-  platform: ['**/services/platform/**/*.mdx'],
-  projects: ['**/projects/**/*.mdx'],
-};
-
-function getDocsFiles(): string[] | undefined {
-  if (section && sectionFilters[section]) return sectionFilters[section];
-  // Default export build = core: exclude the federated sections (kms/iam/platform/
-  // projects). They deploy from their own DOCS_SECTION builds and carry foreign
-  // MDX refs (useTranslations, etc.) that don't resolve in the core app.
-  if (isExport) return sectionFilters.core;
-  return undefined;
+// One unified build. The whole doc set — core pages, every service (incl. iam,
+// kms, platform) and every synced OSS project — is compiled in a single pass and
+// deployed to a single CF Pages project (`hanzo-docs`). The previous federated
+// layout (one Pages project per DOCS_SECTION, stitched by an edge worker) is
+// retired: it left stale `*.pages.dev` origins that 530'd whole sections.
+// Foreign MDX from ported upstream docs is neutralised by next.config's
+// ProjectDocsFallback plugin + remarkPassthroughUnknownJsx (both cover
+// content/docs/projects/** and content/docs/services/**), so a single build is
+// safe. meta.json files are always included so the sidebar tree is complete.
+function getDocsFiles(): string[] {
+  return ['**/*.mdx'];
 }
 
 export const docs = defineDocs({
