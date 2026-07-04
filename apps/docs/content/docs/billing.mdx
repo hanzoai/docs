@@ -30,6 +30,17 @@ curl https://api.hanzo.ai/v1/billing/balance \
 
 Top up credits with a card through the billing portal, or on-chain with HUSD (see below).
 
+### Trial vs. Prepaid Credits
+
+Your balance is made of two kinds of credit, and they spend in a fixed order:
+
+- **Trial credits** -- every new account starts with **$5 in free trial credits**, no card required. They exist so you can build before you pay.
+- **Prepaid credits** -- what you add yourself by topping up (card or HUSD), plus any program awards such as the [Startup Program](/docs/startups) or [Referrals](/docs/referrals).
+
+**Trial credits always burn first.** Only once they are exhausted does metering start drawing down your prepaid balance. Both live in the one balance above, and every billable action -- an API call, a [deploy](/docs/deploy), a stored object, a compute-second -- draws from it. When your prepaid balance runs low you get a `402 Payment Required` until you top up.
+
+Watch it all in the console's **Usage** and **Billing** views, or at [billing.hanzo.ai](https://billing.hanzo.ai) -- both read the same live balance and metered usage as the API below.
+
 ## Usage-Based Metering
 
 Most Hanzo products are **usage-based**: you pay for what you consume -- tokens for LLM calls, requests for APIs, storage for objects, compute-seconds for functions. The gateway meters each request and attributes it to your organization; the commerce subsystem applies the correct price from the pricing catalog.
@@ -79,7 +90,7 @@ curl https://api.hanzo.ai/v1/billing/payment-methods \
 }
 ```
 
-Adding or removing a method happens in the billing portal, where the card is captured directly by the processor.
+Adding or removing a method happens in the billing portal, where the card is captured directly by the payment processor (Square).
 
 ## HUSD On-Chain Top-Up
 
@@ -97,8 +108,10 @@ Metering, pricing, credits, invoices, and payment methods are one connected syst
 
 ## Related
 
+- [Getting Started](/docs/getting-started) -- claim your $5 free credits and make your first call
+- [Startup Program](/docs/startups) -- up to $150,000 in credits for venture-backed startups
 - [Plans & Pricing](/docs/services/platform/pricing/plans) -- subscription tiers and per-unit rates
-- [Referrals](/docs/referrals) -- earn cloud credits by referring developers
+- [Referrals & Affiliates](/docs/referrals) -- earn cloud credits by referring developers
 - [API Keys](/docs/api-keys) -- credentials for calling the billing API
 - [Gateway](/docs/gateway) -- meters and prices every request
 - [Commerce](/docs/commerce) -- the subsystem that prices usage and issues invoices
