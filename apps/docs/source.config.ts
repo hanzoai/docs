@@ -59,6 +59,7 @@ export const docs = defineDocs({
       const { remarkSteps } = await import('@hanzo/docs-core/mdx-plugins/remark-steps');
       const { remarkFeedbackBlock } =
         await import('@hanzo/docs-core/mdx-plugins/remark-feedback-block');
+      const { remarkBlockId } = await import('@hanzo/docs-core/mdx-plugins/remark-block-id');
       const { transformerTwoslash } = await import('@hanzo/docs-twoslash');
       const { createFileSystemTypesCache } = await import('@hanzo/docs-twoslash/cache-fs');
       const { default: remarkMath } = await import('remark-math');
