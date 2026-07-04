@@ -18,7 +18,32 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
 const SPECS_DIR = path.join(APP_ROOT, 'openapi-specs');
 const OUT_DIR = path.join(APP_ROOT, 'content/docs/openapi');
+const SERVICES_DIR = path.join(APP_ROOT, 'content/docs/services');
 const METHODS = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'];
+
+// A handful of services expose their concept guide under a slug that differs
+// from the OpenAPI product slug (the inference/app/evals surfaces live at
+// top-level guide pages, not under /docs/services/<svc>). Everything else is
+// resolved source-derived by checking for a matching guide on disk.
+const GUIDE_OVERRIDES: Record<string, string> = {
+  ai: '/docs/llm',
+  app: '/docs/apps',
+  evals: '/docs/experiments',
+};
+
+// Resolve the human guide (concepts + examples) that pairs with an API
+// reference, so the two halves of the docs cross-link. Returns null when the
+// product has no prose guide yet (link is simply omitted — never fabricated).
+function guideHref(svc: string): string | null {
+  if (GUIDE_OVERRIDES[svc]) return GUIDE_OVERRIDES[svc];
+  if (
+    fs.existsSync(path.join(SERVICES_DIR, `${svc}.mdx`)) ||
+    fs.existsSync(path.join(SERVICES_DIR, svc, 'index.mdx'))
+  ) {
+    return `/docs/services/${svc}`;
+  }
+  return null;
+}
 
 // Inline code (inside backticks): only the GFM table pipe needs escaping.
 const codeEsc = (s: unknown): string =>
@@ -78,6 +103,9 @@ export async function genOpenapiPages(): Promise<void> {
     const title = info.title || `${svc} API`;
     const version = info.version || '';
     const desc = firstLine(info.description);
+    const summary = firstLine(info.summary);
+    const lead = summary || desc;
+    const guide = guideHref(svc);
     const servers = Array.isArray(spec.servers) ? spec.servers : [];
     const serverUrl = servers[0]?.url || 'https://api.hanzo.ai';
 
@@ -110,23 +138,34 @@ export async function genOpenapiPages(): Promise<void> {
     const L: string[] = [];
     L.push('---');
     L.push(`title: ${title}`);
-    L.push(`description: ${JSON.stringify(desc || `REST API reference for ${title}.`).slice(1, -1)}`);
+    L.push(`description: ${JSON.stringify(lead || `REST API reference for ${title}.`).slice(1, -1)}`);
     L.push('---');
     L.push('');
-    if (desc) L.push(desc);
+    if (lead) L.push(lead);
+    L.push('');
+    // Cross-link to the human guide (concepts + examples) and the index.
+    const nav: string[] = [];
+    if (guide) nav.push(`[Guide & examples →](${guide})`);
+    nav.push('[All API references →](/docs/openapi)');
+    L.push(`> **${title}** · ${nav.join(' · ')}`);
     L.push('');
     L.push('| | |');
     L.push('|---|---|');
     L.push(`| **Base URL** | \`${serverUrl}\` |`);
     if (version) L.push(`| **Version** | ${textEsc(version)} |`);
     L.push(`| **Operations** | ${total} |`);
+    if (guide) L.push(`| **Guide** | [${textEsc(title)} guide](${guide}) |`);
+    L.push('');
+    L.push('## Authentication');
     L.push('');
     if (authLines.length) {
-      L.push('## Authentication');
-      L.push('');
       for (const a of authLines) L.push(`- ${a}`);
-      L.push('');
+    } else {
+      L.push('- `BearerAuth` — HTTP bearer (Hanzo IAM JWT or `hk-` API key)');
     }
+    L.push('');
+    L.push('All Hanzo APIs share one bearer credential and common [error](https://github.com/hanzoai/openapi/blob/main/shared/errors.yaml) and [pagination](https://github.com/hanzoai/openapi/blob/main/shared/pagination.yaml) conventions. See [API conventions](/docs/openapi#conventions).');
+    L.push('');
     L.push('```bash');
     L.push(`curl -H "Authorization: Bearer $HANZO_API_KEY" ${serverUrl}`);
     L.push('```');
@@ -139,11 +178,19 @@ export async function genOpenapiPages(): Promise<void> {
       L.push('');
       L.push('| Method | Endpoint | Description |');
       L.push('|--------|----------|-------------|');
-      for (const [method, p, summary] of byTag.get(tag)!) {
-        L.push(`| \`${method}\` | \`${codeEsc(p)}\` | ${textEsc(summary)} |`);
+      for (const [method, p, opSummary] of byTag.get(tag)!) {
+        L.push(`| \`${method}\` | \`${codeEsc(p)}\` | ${textEsc(opSummary)} |`);
       }
       L.push('');
     }
+    L.push('---');
+    L.push('');
+    const footer: string[] = [];
+    if (guide) footer.push(`[${title} guide](${guide})`);
+    footer.push('[All Hanzo APIs](/docs/openapi)');
+    footer.push(`[OpenAPI spec](https://github.com/hanzoai/openapi/blob/main/${svc}/openapi.yaml)`);
+    L.push(footer.join(' · '));
+    L.push('');
     fs.writeFileSync(path.join(OUT_DIR, `${svc}.mdx`), L.join('\n'));
     services.push(svc);
   }
