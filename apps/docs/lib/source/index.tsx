@@ -6,7 +6,7 @@ import { openapi } from '@/lib/openapi';
 
 export const source = loader(
   {
-    docs: docs.toHanzoDocsSource(),
+    docs: docs.toSource(),
     openapi: await openapi.staticSource({
       baseDir: 'openapi/(generated)',
       meta: {
