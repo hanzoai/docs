@@ -31,6 +31,20 @@ const config: NextConfig = {
   basePath: isGitHubPages ? '/docs' : undefined,
   assetPrefix: assetPrefix || undefined,
   reactStrictMode: true,
+  // Turbopack is the Next 16 default and correctly compiles MDX bodies via the
+  // createMDX loader rules (the --webpack path emits empty bodies on Next 16).
+  // Turbopack ignores the webpack resolve.alias below, so the virtual content
+  // collection modules are aliased here too.
+  turbopack: {
+    resolveAlias: {
+      'collections/server': './docs/server.ts',
+      'collections/browser': './docs/browser.ts',
+      'collections/dynamic': './docs/dynamic.ts',
+      '@hanzo/mdx:collections/server': './docs/server.ts',
+      '@hanzo/mdx:collections/browser': './docs/browser.ts',
+      '@hanzo/mdx:collections/dynamic': './docs/dynamic.ts',
+    },
+  },
   // HTTP redirects live in public/_redirects (Cloudflare Pages). This site
   // deploys as a static export (`out/`), which ignores next.config redirects(),
   // so declaring them here would be dead config.
