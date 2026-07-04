@@ -125,7 +125,7 @@ export const docs = defineDocs({
             },
           },
         },
-        remarkImageOptions: isLint ? false : undefined,
+        remarkImageOptions: isLint ? false : { onError: 'ignore' },
         remarkNpmOptions: {
           persist: {
             id: 'package-manager',
