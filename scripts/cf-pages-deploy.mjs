@@ -58,7 +58,7 @@ async function createDeployment(hashes) {
 
   const formData = new FormData();
   formData.append('manifest', JSON.stringify(manifest));
-  formData.append('branch', 'dev');
+  formData.append('branch', process.env.CF_PAGES_BRANCH || 'main');
 
   console.log(`Creating deployment with ${Object.keys(manifest).length} files...`);
   const data = await apiCall(`${BASE_URL}/deployments`, {

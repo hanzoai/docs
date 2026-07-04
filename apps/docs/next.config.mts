@@ -34,7 +34,13 @@ const config: NextConfig = {
   // Turbopack is the Next 16 default and correctly compiles MDX bodies via the
   // createMDX loader rules (the --webpack path emits empty bodies on Next 16).
   // Turbopack ignores the webpack resolve.alias below, so the virtual content
-  // collection modules are aliased here too.
+  // collection modules are aliased here too — AND so are the upstream
+  // doc-platform imports (@theme/*, @docusaurus, nextra, @mintlify, @hanzo/icons)
+  // that ported OSS project/service docs reference. The webpack ProjectDocsFallback
+  // plugin below stubs those for the (unused) webpack path; Turbopack has no
+  // beforeResolve hook, so the unified build (which compiles ALL synced content,
+  // incl. iam/kms/platform/projects) needs them stubbed here or it fails to
+  // resolve foreign refs. Stub → the no-op empty module, rendering children only.
   turbopack: {
     resolveAlias: {
       'collections/server': './docs/server.ts',
@@ -43,6 +49,13 @@ const config: NextConfig = {
       '@hanzo/mdx:collections/server': './docs/server.ts',
       '@hanzo/mdx:collections/browser': './docs/browser.ts',
       '@hanzo/mdx:collections/dynamic': './docs/dynamic.ts',
+      '@docusaurus': './lib/empty-project-module.js',
+      '@theme': './lib/empty-project-module.js',
+      '@theme/Tabs': './lib/empty-project-module.js',
+      '@theme/TabItem': './lib/empty-project-module.js',
+      'nextra': './lib/empty-project-module.js',
+      '@mintlify': './lib/empty-project-module.js',
+      '@hanzo/icons': './lib/empty-project-module.js',
     },
   },
   // HTTP redirects live in public/_redirects (Cloudflare Pages). This site
