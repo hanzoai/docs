@@ -135,7 +135,7 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
                 return <DocsCategory url={url ?? page.url} />;
               },
               Installation,
-              Customisation,
+              Customization,
             })}
           />
         </MdxErrorBoundary>
