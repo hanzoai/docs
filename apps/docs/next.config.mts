@@ -164,6 +164,15 @@ const config: NextConfig = {
       fullUrl: true,
     },
   },
+  // Workspace UI packages are consumed as compiled dist; list them so Turbopack
+  // resolves their deep subpath exports (@hanzo/docs-base-ui/components/ui/*, etc.).
+  transpilePackages: [
+    '@hanzo/docs',
+    '@hanzo/docs-ui',
+    '@hanzo/docs-base-ui',
+    '@hanzo/docs-core',
+    '@hanzo/docs-openapi',
+  ],
   serverExternalPackages: [
     'ts-morph',
     'typescript',
