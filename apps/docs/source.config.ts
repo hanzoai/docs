@@ -30,7 +30,10 @@ const sectionFilters: Record<string, string[]> = {
 
 function getDocsFiles(): string[] | undefined {
   if (section && sectionFilters[section]) return sectionFilters[section];
-  if (isExport) return ['**/*.mdx', '!**/projects/**'];
+  // Default export build = core: exclude the federated sections (kms/iam/platform/
+  // projects). They deploy from their own DOCS_SECTION builds and carry foreign
+  // MDX refs (useTranslations, etc.) that don't resolve in the core app.
+  if (isExport) return sectionFilters.core;
   return undefined;
 }
 
