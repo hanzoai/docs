@@ -6,6 +6,9 @@ import { Scanner } from '@tailwindcss/oxide';
 export default defineConfig({
   format: 'esm',
   target: 'es2023',
+  alias: {
+    '@': path.resolve(import.meta.dirname, 'src'),
+  },
   entry: [
     './src/{index,i18n}.ts',
     './src/ui/index.tsx',
