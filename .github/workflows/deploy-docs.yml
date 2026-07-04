@@ -41,6 +41,11 @@ jobs:
         env:
           # One unified static export — core + every service + every OSS project.
           NEXT_EXPORT: '1'
+          # Use the committed project-docs + openapi snapshot; do NOT re-sync.
+          # The in-cluster sync-project-docs remote fetch is incomplete (no local
+          # sibling repos → only the org index), which would drop every
+          # /docs/projects/* page. The snapshot is checked in for determinism.
+          HANZO_DOCS_SYNC: '0'
           NODE_OPTIONS: '--max-old-space-size=16384'
         timeout-minutes: 60
 
