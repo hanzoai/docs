@@ -380,8 +380,6 @@ function FeedbackTextForm({
   onSendAction: (feedback: BlockFeedback) => Promise<ActionResponse>;
   onClose: () => void;
 }) {
-  const url = usePathname() ?? '/';
-  const blockId = `${url}-${id}`;
   const { previous, setPrevious } = useSubmissionStorage(blockId, (v) => {
     const result = blockFeedbackResult.safeParse(v);
     if (result.success) return result.data;
