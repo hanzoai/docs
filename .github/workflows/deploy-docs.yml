@@ -5,10 +5,6 @@ on:
     branches: [main, dev]
     paths:
       - 'apps/docs/**'
-      - '!apps/docs/content/docs/services/kms/**'
-      - '!apps/docs/content/docs/services/iam/**'
-      - '!apps/docs/content/docs/services/platform/**'
-      - '!apps/docs/content/docs/projects/**'
       - 'packages/**'
       - 'pnpm-lock.yaml'
       - '.github/workflows/deploy-docs.yml'
@@ -43,7 +39,8 @@ jobs:
 
       - run: pnpm build --filter=docs
         env:
-          DOCS_SECTION: core
+          # One unified static export — core + every service + every OSS project.
+          NEXT_EXPORT: '1'
           NODE_OPTIONS: '--max-old-space-size=16384'
         timeout-minutes: 60
 
@@ -85,6 +82,17 @@ jobs:
       - name: Deploy to Cloudflare Pages
         working-directory: apps/docs
         run: pnpm dlx wrangler pages deploy out --project-name=hanzo-docs --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ steps.kms.outputs.cf_token }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ steps.kms.outputs.cf_account }}
+
+      # The edge router (docs.hanzo.ai/*) now passes every path through to the
+      # single hanzo-docs Pages origin. Ship it with the content so the routing
+      # never lags a section split — the stale-origin 530s came from exactly
+      # that drift.
+      - name: Deploy docs-router worker
+        working-directory: workers/docs-router
+        run: pnpm dlx wrangler deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ steps.kms.outputs.cf_token }}
           CLOUDFLARE_ACCOUNT_ID: ${{ steps.kms.outputs.cf_account }}
