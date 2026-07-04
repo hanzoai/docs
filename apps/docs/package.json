@@ -3,7 +3,7 @@
   "version": "0.1.3",
   "private": true,
   "scripts": {
-    "build": "pnpm build:pre && next build && pnpm build:post",
+    "build": "pnpm build:pre && pnpm gen:collections && next build && pnpm build:post",
     "build:pre": "bun ./scripts/gen-services-nav.ts && bun ./scripts/pre-build.ts",
     "build:post": "bun ./scripts/post-build.ts",
     "gen:services": "bun ./scripts/gen-services-nav.ts",
@@ -11,7 +11,8 @@
     "clean": "rimraf .next",
     "dev": "next dev",
     "lint": "@hanzo/docs-mdx && bun ./scripts/lint.entry.ts",
-    "start": "next start"
+    "start": "next start",
+    "gen:collections": "node --input-type=module -e \"const m=await import('@hanzo/docs-mdx/next'); await m.postInstall({configPath:'source.config.ts',outDir:'docs'})\""
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.48",
