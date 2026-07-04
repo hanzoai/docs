@@ -6,6 +6,7 @@ import { useCopyButton } from '@/utils/use-copy-button';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { buttonVariants } from '@/components/ui/button';
 import { usePathname } from '@hanzo/docs-core/framework';
+import { useTranslations } from '@/contexts/i18n';
 
 const cache = new Map<string, Promise<string>>();
 
