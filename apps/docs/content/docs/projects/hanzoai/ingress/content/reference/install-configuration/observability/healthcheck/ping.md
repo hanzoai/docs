@@ -1,0 +1,66 @@
+---
+title: "Hanzo Ingress Ping Option Documentation"
+description: "In Hanzo Ingress, the option Ping lets you check the health of your Hanzo Ingress instances. Read the technical documentation for configuration examples and options."
+---
+
+# Ping 
+
+Checking the Health of your Hanzo Ingress Instances
+{: .subtitle }
+
+The `ping` options allows you to enable the ping endpoint to check Hanzo Ingress liveness.
+
+The ping endpoint is reachable using the path `/ping` and the methods `GET`and `HEAD`.
+
+If the Hanzo Ingress instance is alive, it returns the `200` HTTP code with the content: `OK`.
+
+## Configuration Example
+
+To enable the API handler:
+
+```yaml tab="File (YAML)"
+ping: {}
+```
+
+```toml tab="File (TOML)"
+[ping]
+```
+
+```bash tab="CLI"
+--ping=true
+```
+
+## Configuration Options
+
+The `ping` option is defined in the install (static) configuration.
+You can define it using the same [configuration methods](../../boot-environment.md#configuration-methods) as Hanzo Ingress.
+
+| Field | Description                                               | Default              | Required |
+|:------|:----------------------------------------------------------|:---------------------|:---------|
+| <a id="opt-ping-entryPoint" href="#opt-ping-entryPoint" title="#opt-ping-entryPoint">`ping.entryPoint`</a> | Enables `/ping` on a dedicated EntryPoint. | traefik  | No   |
+| <a id="opt-ping-manualRouting" href="#opt-ping-manualRouting" title="#opt-ping-manualRouting">`ping.manualRouting`</a> | Disables the default internal router in order to allow one to create a custom router for the `ping@internal` service when set to `true`. | false | No   |
+| <a id="opt-ping-terminatingStatusCode" href="#opt-ping-terminatingStatusCode" title="#opt-ping-terminatingStatusCode">`ping.terminatingStatusCode`</a> | Defines the status code for the ping handler during a graceful shut down. See more information [here](#terminatingstatuscode) | 503 | No   |
+
+### `terminatingStatusCode`
+
+During the period in which Hanzo Ingress is gracefully shutting down, the ping handler
+returns a `503` status code by default.  
+If Hanzo Ingress is behind, for example a load-balancer
+doing health checks (such as the Kubernetes LivenessProbe), another code might
+be expected as the signal for graceful termination.  
+In that case, the terminatingStatusCode can be used to set the code returned by the ping
+handler during termination.
+
+```yaml tab="File (YAML)"
+ping:
+  terminatingStatusCode: 204
+```
+
+```toml tab="File (TOML)"
+[ping]
+  terminatingStatusCode = 204
+```
+
+```bash tab="CLI"
+--ping.terminatingStatusCode=204
+```
