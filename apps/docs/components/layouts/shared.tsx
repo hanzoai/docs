@@ -18,6 +18,21 @@ export const linkItems: LinkItemType[] = [
     active: 'nested-url',
   },
   {
+    text: 'Research',
+    url: '/docs/research',
+    active: 'nested-url',
+  },
+  {
+    text: 'Blog',
+    url: '/blog',
+    active: 'nested-url',
+  },
+  {
+    text: 'HIPs',
+    url: 'https://hips.hanzo.ai',
+    external: true,
+  },
+  {
     text: 'Models',
     url: 'https://zenlm.org',
     external: true,
