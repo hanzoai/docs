@@ -2,22 +2,33 @@ import { type LoaderPlugin, loader } from '@hanzo/docs-core/source';
 import { blog as blogPosts, docs } from 'collections/server';
 import { createSource } from '@hanzo/docs-mdx/runtime/server';
 import { lucideIconsPlugin } from '@hanzo/docs-core/source/lucide-icons';
-import { openapi } from '@/lib/openapi';
+import { openapi, hasSpecs } from '@/lib/openapi';
 
-export const source = loader(
-  {
-    docs: docs.toSource(),
-    openapi: await openapi.staticSource({
+// In static-export mode `openapi` is intentionally null (lib/openapi skips the
+// dotted/deeply-nested API slugs that break Next export), so only wire the
+// OpenAPI source + loader plugin when specs are actually present.
+const openapiSource = hasSpecs
+  ? await openapi.staticSource({
       baseDir: 'openapi/(generated)',
       meta: {
         folderStyle: 'separator',
       },
       groupBy: 'tag',
-    }),
+    })
+  : undefined;
+
+export const source = loader(
+  {
+    docs: docs.toSource(),
+    ...(openapiSource ? { openapi: openapiSource } : {}),
   },
   {
     baseUrl: '/docs',
-    plugins: [pageTreeCodeTitles(), lucideIconsPlugin(), openapi.loaderPlugin()],
+    plugins: [
+      pageTreeCodeTitles(),
+      lucideIconsPlugin(),
+      ...(hasSpecs ? [openapi.loaderPlugin()] : []),
+    ],
   },
 );
 
