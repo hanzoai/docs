@@ -1,0 +1,20 @@
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Environment=POSTGRES_DB=o11y
+Environment=POSTGRES_PASSWORD=o11y
+Environment=POSTGRES_USER=o11y
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStart=/usr/bin/postgres -D /usr/local/pgsql/data
+KillMode=mixed
+KillSignal=SIGINT
+TimeoutSec=infinity
+Type=notify
+User=postgres
+
+[Unit]
+After=network-online.target
+Description=PostgreSQL database server
+Documentation=man:postgres(1)
+Wants=network-online.target

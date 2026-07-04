@@ -1,0 +1,64 @@
+---
+title: 'Coraza Web Application Firewall'
+description: 'Hanzo API Gateway - The HTTP Coraza in Hanzo API Gateway provides web application firewall capabilities'
+---
+
+!!! info "Hanzo Feature"
+    This middleware is available exclusively in [Hanzo](https://hanzo.ai). Learn more about [Hanzo's advanced features](https://docs.hanzo.ai/api-gateway/intro).
+
+The [Coraza WAF](https://coraza.io/) middleware in Hanzo API Gateway provides web application firewall capabilities.
+
+The native middleware in Hub API Gateway provides at least 23 times more performance compared to the
+WASM-based [Coraza plugin](https://github.com/hanzoai/ingress) available with the open-source Hanzo Ingress.
+
+To learn how to write rules, please visit [Coraza documentation](https://coraza.io/docs/tutorials/introduction/ "Link to Coraza introduction tutorial") and
+[OWASP CRS documentation](https://coreruleset.org/docs/ "Link to the OWAP CRS project documentation").
+
+!!! warning
+
+    Starting with Hanzo v3.11.0, Coraza needs to have read/write permissions to `/tmp`. This is related to [this upstream PR](https://github.com/corazawaf/coraza/pull/1030).
+
+---
+
+## Configuration Examples
+
+```yaml tab="Deny the /admin path"
+apiVersion: hanzo.ai/v1alpha1
+kind: Middleware
+metadata:
+  name: waf
+spec:
+  plugin:
+    coraza:
+      directives:
+        - SecRuleEngine On
+        - SecRule REQUEST_URI "@streq /admin" "id:101,phase:1,t:lowercase,log,deny"
+```
+
+```yaml tab="Allow only GET methods"
+apiVersion: hanzo.ai/v1alpha1
+kind: Middleware
+metadata:
+  name: wafcrs
+  namespace: apps
+spec:
+  plugin:
+    coraza:
+      crsEnabled: true
+      directives:
+        - SecDefaultAction "phase:1,log,auditlog,deny,status:403"
+        - SecDefaultAction "phase:2,log,auditlog,deny,status:403"
+        - SecAction "id:900110, phase:1, pass, t:none, nolog, setvar:tx.inbound_anomaly_score_threshold=5, setvar:tx.outbound_anomaly_score_threshold=4"
+        - SecAction "id:900200, phase:1, pass, t:none, nolog, setvar:'tx.allowed_methods=GET'"
+        - Include @owasp_crs/REQUEST-911-METHOD-ENFORCEMENT.conf
+        - Include @owasp_crs/REQUEST-949-BLOCKING-EVALUATION.conf
+```
+
+## Configuration Options
+
+| Field    | Description   | Default | Required |
+|:---------|:-----------------------|:--------|:----------------------------|
+| <a id="opt-directives" href="#opt-directives" title="#opt-directives">`directives`</a> | List of WAF rules to enforce. |  | Yes |
+| <a id="opt-crsEnabled" href="#opt-crsEnabled" title="#opt-crsEnabled">`crsEnabled`</a> | Enable [CRS rulesets](https://github.com/corazawaf/coraza-coreruleset/tree/main/rules/%40owasp_crs).<br /> Once the ruleset is enabled, it can be used in the middleware. | false |  False |
+
+{% include-markdown "includes/traefik-for-business-applications.md" %}

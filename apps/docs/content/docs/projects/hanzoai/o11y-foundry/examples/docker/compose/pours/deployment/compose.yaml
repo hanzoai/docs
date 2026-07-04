@@ -1,0 +1,183 @@
+name: signoz
+networks:
+  o11y-network:
+    name: o11y-network
+services:
+  o11y-ingester:
+    command:
+    - --config=/etc/otel-collector-config.yaml
+    depends_on:
+      o11y-telemetrystore-clickhouse-0-0:
+        condition: service_healthy
+      o11y-telemetrystore-migrator:
+        condition: service_completed_successfully
+    deploy:
+      replicas: 1
+    healthcheck:
+      interval: 30s
+      retries: 3
+      start_period: 30s
+      test:
+      - CMD
+      - wget
+      - --spider
+      - -q
+      - http://localhost:13133/health
+      timeout: 10s
+    image: ghcr.io/hanzoai/otel-collector:latest
+    networks:
+    - o11y-network
+    ports:
+    - 4317:4317
+    - 4318:4318
+    volumes:
+    - ./configs/ingester/ingester.yaml:/etc/otel-collector-config.yaml:ro
+  o11y-metastore-postgres-0:
+    container_name: o11y-metastore-postgres-0
+    environment:
+    - POSTGRES_USER=o11y
+    - POSTGRES_PASSWORD=o11y
+    - POSTGRES_DB=o11y
+    healthcheck:
+      interval: 30s
+      retries: 3
+      start_period: 30s
+      test:
+      - CMD-SHELL
+      - pg_isready -U o11y -d o11y
+      timeout: 10s
+    image: postgres:16
+    networks:
+    - o11y-network
+    volumes:
+    - o11y-metastore-0-data:/var/lib/postgresql/data
+  o11y-o11y:
+    depends_on:
+      o11y-metastore-postgres-0:
+        condition: service_healthy
+      o11y-telemetrystore-clickhouse-0-0:
+        condition: service_healthy
+    deploy:
+      restart_policy:
+        condition: on-failure
+    environment:
+    - HANZO_ALERTMANAGER_PROVIDER=o11y
+    - HANZO_TELEMETRYSTORE_CLICKHOUSE_DSN=tcp://o11y-telemetrystore-clickhouse-0-0:9000
+    - HANZO_SQLSTORE_SQLITE_PATH=/var/lib/ghcr.io/hanzoai/o11y.db
+    - DASHBOARDS_PATH=/root/config/dashboards
+    - STORAGE=clickhouse
+    - GODEBUG=netdns=go
+    - TELEMETRY_ENABLED=true
+    - DEPLOYMENT_TYPE=docker-standalone-amd
+    - DOT_METRICS_ENABLED=true
+    healthcheck:
+      interval: 30s
+      retries: 3
+      start_period: 60s
+      test:
+      - CMD
+      - wget
+      - --spider
+      - -q
+      - http://localhost:8080/api/v1/health
+      timeout: 10s
+    image: ghcr.io/hanzoai/o11y:latest
+    networks:
+    - o11y-network
+    ports:
+    - 8080:8080
+    volumes:
+    - o11y-o11y-0-data:/var/lib/o11y
+  o11y-telemetrykeeper-clickhousekeeper-0:
+    container_name: o11y-telemetrykeeper-clickhousekeeper-0
+    entrypoint:
+    - /usr/bin/clickhouse-keeper
+    - --config-file=/etc/clickhouse-keeper/keeper.yaml
+    healthcheck:
+      interval: 30s
+      retries: 3
+      start_period: 40s
+      test:
+      - CMD
+      - clickhouse-keeper-client
+      - -h
+      - localhost
+      - -p
+      - "9181"
+      - -q
+      - ls
+      timeout: 10s
+    image: clickhouse/clickhouse-keeper:25.5.6
+    networks:
+    - o11y-network
+    volumes:
+    - o11y-telemetrykeeper-0-data:/var/lib/clickhouse-keeper
+    - ./configs/telemetrykeeper/keeper-0.yaml:/etc/clickhouse-keeper/keeper.yaml:ro
+  o11y-telemetrystore-clickhouse-0-0:
+    container_name: o11y-telemetrystore-clickhouse-0-0
+    depends_on:
+      o11y-telemetrykeeper-clickhousekeeper-0:
+        condition: service_healthy
+      o11y-telemetrystore-clickhouse-user-scripts:
+        condition: service_completed_successfully
+    environment:
+    - CLICKHOUSE_SKIP_USER_SETUP=1
+    - CLICKHOUSE_CONFIG=/etc/clickhouse-server/config.yaml
+    healthcheck:
+      interval: 30s
+      retries: 3
+      start_period: 40s
+      test:
+      - CMD
+      - wget
+      - --spider
+      - -q
+      - http://localhost:8123/ping
+      timeout: 10s
+    image: ghcr.io/hanzoai/datastore:25.5.6
+    networks:
+    - o11y-network
+    volumes:
+    - o11y-telemetrystore-0-0-data:/var/lib/clickhouse
+    - o11y-telemetrystore-user-scripts:/var/lib/clickhouse/user_scripts:ro
+    - ./configs/telemetrystore/config.yaml:/etc/clickhouse-server/config.yaml:ro
+  o11y-telemetrystore-clickhouse-user-scripts:
+    command:
+    - bash
+    - -c
+    - |-
+      version="v0.0.1"
+      node_os=$$(uname -s | tr '[:upper:]' '[:lower:]')
+      node_arch=$$(uname -m | sed s/aarch64/arm64/ | sed s/x86_64/amd64/)
+      echo "Fetching histogram-binary for $${node_os}/$${node_arch}"
+      cd /tmp
+      wget -O histogram-quantile.tar.gz "https://github.com/Hanzo O11y/o11y/releases/download/histogram-quantile%2F$${version}/histogram-quantile_$${node_os}_$${node_arch}.tar.gz"
+      tar -xvzf histogram-quantile.tar.gz
+      mv histogram-quantile /var/lib/clickhouse/user_scripts/histogramQuantile
+    container_name: o11y-telemetrystore-clickhouse-user-scripts
+    image: ghcr.io/hanzoai/datastore:25.5.6
+    networks:
+    - o11y-network
+    volumes:
+    - o11y-telemetrystore-user-scripts:/var/lib/clickhouse/user_scripts
+  o11y-telemetrystore-migrator:
+    command:
+    - /o11y-otel-collector migrate bootstrap --clickhouse-dsn tcp://o11y-telemetrystore-clickhouse-0-0:9000
+    - /o11y-otel-collector migrate sync up --clickhouse-dsn tcp://o11y-telemetrystore-clickhouse-0-0:9000
+    - /o11y-otel-collector migrate async up --clickhouse-dsn tcp://o11y-telemetrystore-clickhouse-0-0:9000
+    container_name: o11y-telemetrystore-migrator
+    depends_on:
+      o11y-telemetrystore-clickhouse-0-0:
+        condition: service_healthy
+    entrypoint:
+    - /bin/sh
+    - -c
+    image: ghcr.io/hanzoai/otel-collector:latest
+    networks:
+    - o11y-network
+volumes:
+  o11y-metastore-0-data: null
+  o11y-o11y-0-data: null
+  o11y-telemetrykeeper-0-data: null
+  o11y-telemetrystore-0-0-data: null
+  o11y-telemetrystore-user-scripts: null
