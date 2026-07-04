@@ -182,7 +182,11 @@ const config: NextConfig = {
   },
 };
 
-const withMDX = createMDX();
+// Regenerate the content collection (docs/server.ts etc.) into the SAME dir the
+// resolve.alias below points at, so the build always uses a fresh, section-filtered
+// collection instead of a stale committed one (which referenced projects/* pages
+// excluded from the core build).
+const withMDX = createMDX({ outDir: 'docs' });
 
 // Type assertion needed due to version mismatch between @hanzo/docs-mdx (next@16) and docs app (next@15)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
