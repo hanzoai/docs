@@ -10,6 +10,7 @@ import { metaSchema, pageSchema } from '@hanzo/docs-core/source/schema';
 import { visit } from 'unist-util-visit';
 import type { Transformer } from 'unified';
 import type { Root } from 'mdast';
+import { remarkFixInternalLinks } from './lib/remark-fix-links';
 
 const isLint = process.env.LINT === '1';
 
@@ -66,11 +67,6 @@ export const docs = defineDocs({
         shiki: shikiConfig,
       };
       return applyMdxPreset({
-        remarkImageOptions: {
-          // Imported upstream docs may reference images that don't exist in
-          // this monorepo. Log a warning instead of failing the build.
-          onError: 'ignore',
-        },
         rehypeCodeOptions: isLint
           ? false
           : {
@@ -116,6 +112,11 @@ export const docs = defineDocs({
             },
           },
         },
+        // Ported upstream docs reference images that don't exist in this
+        // monorepo. `onError: 'ignore'` logs a warning instead of failing the
+        // page — WITHOUT it, a single missing image skips the whole page and it
+        // 404s. (Previously a duplicate remarkImageOptions key silently discarded
+        // this, skipping 400+ pages.)
         remarkImageOptions: isLint ? false : { onError: 'ignore' },
         remarkNpmOptions: {
           persist: {
@@ -125,6 +126,7 @@ export const docs = defineDocs({
         remarkPlugins: isLint
           ? [remarkElementIds]
           : [
+              remarkFixInternalLinks,
               remarkPassthroughUnknownJsx,
               remarkSteps,
               remarkMath,
