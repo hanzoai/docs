@@ -1,6 +1,6 @@
 import { type LoaderPlugin, loader } from '@hanzo/docs-core/source';
 import { blog as blogPosts, docs } from 'collections/server';
-import { toHanzoDocsSource } from '@hanzo/docs-mdx/runtime/server';
+import { createSource } from '@hanzo/docs-mdx/runtime/server';
 import { lucideIconsPlugin } from '@hanzo/docs-core/source/lucide-icons';
 import { openapi } from '@/lib/openapi';
 
@@ -44,7 +44,7 @@ function pageTreeCodeTitles(): LoaderPlugin {
   };
 }
 
-export const blog = loader(toHanzoDocsSource(blogPosts, []), {
+export const blog = loader(createSource(blogPosts, []), {
   baseUrl: '/blog',
 });
 
