@@ -2,6 +2,45 @@
 
 Fork of [Hanzo Docs](https://github.com/hanzoai/docs) with all packages renamed to `@hanzo/docs-*` namespace.
 
+## Canonical model — the one way to do docs
+
+Full ADR: `apps/docs/content/docs/contributing/docs-architecture.mdx` (rendered
+at docs.hanzo.ai/docs/contributing/docs-architecture). Summary:
+
+- **docs.hanzo.ai is the hub.** ONE Fumadocs build (`apps/docs`) → ONE CF Pages
+  project `hanzo-docs`. The federated per-section deploy is **retired** (stale
+  origins 530'd). Do not reintroduce per-section builds.
+- **One canonical home per doc.** Content enters the single build via exactly one
+  of three orthogonal mechanisms, chosen by *kind*:
+  1. **Authored** (first-party prose) → MDX under `content/docs/<section>/`.
+     Small/core sections live in-repo; team-owned sections live in a
+     `hanzo-docs/<team>` content repo mounted as a **git submodule** at
+     `content/docs/<team>/`. Exemplar: `hanzo-docs/studio-docs` → `content/docs/studio/`.
+  2. **Generated** (never hand-written, `.gitignore`d) → API reference from
+     `hanzoai/openapi` via `scripts/sync-openapi.sh` + `scripts/gen-openapi-pages.ts`
+     (source-derived: add a service spec, it appears next build); SDK reference
+     from the ZAP SDK generator into `content/docs/sdks/<lang>/`.
+  3. **Ported** (upstream OSS, mirrored with attribution, `.gitignore`d) →
+     `scripts/sync-project-docs.ts` into `content/docs/projects/<upstream>/`.
+     Port, don't re-author. Carry upstream LICENSE + NOTICE. GPL stays GPL.
+- **Repos:** `hanzo-docs/docs` = framework + hub (canonical; `hanzoai/docs`
+  redirects here). `hanzo-docs/<team>` = authored content only, NO framework.
+  `hanzoai/openapi` = the API source of truth. All docs live in the `hanzo-docs`
+  org: the hub at `hanzo-docs/docs`, each team's content at `hanzo-docs/<team>`.
+- **Standalone vs hub:** default is a hub section. Standalone deploy only if ALL
+  of: ≈150+ pages or fast OSS-upstream churn, independent versioning, direct
+  audience. Standalone runs its own copy of this framework; the hub links out,
+  never copies.
+- **Serving:** CF Pages `hanzo-docs` (token from KMS, never hard-coded) or
+  `ghcr.io/hanzoai/docs` behind hanzoai/ingress. No nginx/caddy.
+
+**Known dedup debt (rollout, not done):** the `apps/*-docs` legacy apps
+(base-docs, bootnode-docs, bot-docs, cloud, dev-docs, dns-docs, flow, gui-docs,
+insights-docs, platform, pulsar-docs, spec, tasks-docs, team, visor, zen-docs,
+zt-docs) predate the unified `content/docs/` model — migrate their content into
+`content/docs/<section>/` (or a `hanzo-docs/<team>` submodule) then archive the
+app.
+
 ## Branch Convention
 
 - **`main`** — Production branch. CF Pages deploys docs.hanzo.ai from here. All Hanzo work lands here.
