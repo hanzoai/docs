@@ -1,0 +1,142 @@
+---
+title: Docs Architecture (ADR)
+description: The one and only way Hanzo documentation is sourced, built, and joined into docs.hanzo.ai. Hub-and-spoke over a single unified build.
+icon: Network
+---
+
+import { Callout } from '@hanzo/docs-ui/components/callout';
+
+# Docs Architecture
+
+**Status:** Accepted · **Scope:** all Hanzo, Lux, Zoo, Zen documentation · **Supersedes:** federated per-section deploys (retired)
+
+This is the definitive model for how Hanzo docs are sourced, built, and served.
+One hub, one build, one canonical home per document. If a rule here conflicts
+with anything you find in a repo, this wins.
+
+## The decision
+
+<Callout type="info">
+**docs.hanzo.ai is the hub.** It is a single [Fumadocs](https://fumadocs.dev)
+build (`apps/docs` in `hanzoai/docs`) compiled in one pass and deployed to a
+single Cloudflare Pages project (`hanzo-docs`). Every doc renders here unless it
+qualifies for a standalone site, in which case the hub links out — it never
+copies.
+</Callout>
+
+Three things follow from "one and only one way":
+
+1. **One build.** All content — core guides, every service, every ported OSS
+   project — compiles in the single `apps/docs` pass. The previous federated
+   layout (one Pages project per section, stitched by an edge worker) is
+   **retired**: stale `*.pages.dev` origins 530'd whole sections. Do not
+   reintroduce per-section deploys.
+2. **One canonical home per doc.** Every page has exactly one source of truth.
+   No page is authored in two places. Duplication is a bug.
+3. **One join mechanism per source *kind*.** How content enters the build is
+   determined by *what kind of content it is* — authored, generated, or ported —
+   not by who owns it. Three kinds, three orthogonal mechanisms (below).
+
+## Repositories
+
+| Repo | Holds | Never holds |
+|------|-------|-------------|
+| **`hanzo-docs/docs`** | The framework (`@hanzo/docs-*` packages) **and** the hub app (`apps/docs`). Canonical — `hanzoai/docs` redirects here. | Team-owned content that wants its own release cadence. |
+| **`hanzo-docs/<team>`** | *Authored* content only — MDX + `meta.json` + `LICENSE`/`NOTICE`. No framework, no build config. | Any Next.js/Fumadocs wiring. It is content, not a site. |
+| **`hanzoai/openapi`** | The OpenAPI 3.1 spec for every service. Source of truth for **all** API reference. | Hand-written prose reference. |
+
+All docs live in the **`hanzo-docs`** org: the hub + framework at
+`hanzo-docs/docs`, each team's content at `hanzo-docs/<team>`. The API source of
+truth stays with the code, at `hanzoai/openapi`. A `hanzo-docs/<team>` repo (any
+but `docs`) that carries a framework `package.json` has drifted — fix it.
+
+## The three content mechanisms
+
+Content enters the unified build through exactly one of three paths, chosen by
+kind. They are orthogonal: a change to one never touches another.
+
+### 1. Authored — first-party content we write
+
+Prose guides, concepts, tutorials. Lives as MDX under `content/docs/`.
+
+- **Small / core sections** live directly in `hanzoai/docs` at
+  `apps/docs/content/docs/<section>/`. No repo sprawl for a handful of pages.
+- **Team-owned sections** live in their own `hanzo-docs/<team>` repo and are
+  mounted into the hub as a **git submodule** at
+  `apps/docs/content/docs/<team>/`. The hub pins a commit; the team owns the
+  content. The build globs `content/docs/**/*.mdx` and neither knows nor cares
+  that a directory is a submodule — the join is pure git, zero build code.
+
+Choose a submodule when a team needs its own release cadence, external
+contributors, or a large surface. Otherwise keep it in-hub. `hanzo-docs/studio-docs`
+mounted at `content/docs/studio/` is the reference exemplar.
+
+### 2. Generated — never hand-written
+
+API reference and SDK reference are **generated** from a machine-readable source
+and are `.gitignore`d build artifacts. Editing a generated page is forbidden;
+edit the source.
+
+- **API reference** ← `hanzoai/openapi`. `scripts/sync-openapi.sh` copies every
+  `<service>/openapi.yaml` into `openapi-specs/` (source-derived — no hardcoded
+  service list; adding a service to `hanzoai/openapi` makes it appear on the
+  next build). `scripts/gen-openapi-pages.ts` renders one static MDX page per
+  spec into `content/docs/openapi/<service>.mdx`, cross-linked to the matching
+  prose guide. **38 reference pages from 36 specs today, zero hand-authored.**
+- **SDK reference** ← the ZAP SDK generator (per language). Generated MDX lands
+  in `content/docs/sdks/<lang>/`. The slot exists (`python`, `typescript`, `go`,
+  `rust`, `c`); the generator writes into it. Do not hand-author SDK method
+  tables — regenerate them.
+
+### 3. Ported — upstream OSS docs, mirrored with attribution
+
+For forks (Studio←ComfyUI, Engine←mistral.rs, Flow←Langflow, …) we **port, we do
+not re-author**. `scripts/sync-project-docs.ts` mirrors upstream docs into
+`content/docs/projects/<upstream>/` (source-derived from the GitHub orgs;
+`.gitignore`d). Foreign JSX (Mintlify/Docusaurus/GitBook components) is
+neutralised so a single build stays safe. Every ported tree carries the
+upstream `LICENSE` and a `NOTICE` crediting the source. Respect the upstream
+license — GPL content stays GPL; attribution is not optional.
+
+<Callout type="warn">
+Authored vs ported is the sharpest line. `hanzo-docs/studio-docs` holds
+*our* Studio guides (first-party). The wholesale ComfyUI manual is *ported*
+into `content/docs/projects/comfyui/`. They never mix.
+</Callout>
+
+## Hub section vs standalone site
+
+Default is a hub section. A product earns a **standalone** deploy only when **all
+three** hold:
+
+1. **Large** — the surface is big enough that co-building it in the hub hurts
+   build time (≈150+ pages), **or** it tracks a fast-moving OSS upstream.
+2. **Independently versioned** — it ships docs on its own cadence, decoupled from
+   the platform.
+3. **Direct audience** — users land on it directly, not via the platform hub.
+
+When a product goes standalone it runs its **own copy of this same framework**
+(`@hanzo/create-docs`), and the hub shows a card that **links out**. The content
+still has exactly one home; it is **not** also aggregated into the hub. No
+duplication, ever. Everything else is a hub section.
+
+## Serving
+
+- **Primary:** static export → Cloudflare Pages project `hanzo-docs`
+  (`scripts/cf-pages-deploy.mjs`). The deploy token comes from KMS
+  (`kms.hanzo.ai`) at run time — never hard-coded.
+- **In-cluster option:** `ghcr.io/hanzoai/docs` behind **hanzoai/ingress**
+  (`k8s/docs-landing.yml`). No nginx, no caddy — the Hanzo ingress + static
+  plugin only.
+
+White-label by hostname via `@hanzo/docs-org` presets (Hanzo / Lux / Zoo / Zen).
+One framework, four brands, resolved at request time.
+
+## Adding docs — the decision in one paragraph
+
+Writing a guide for an existing product? Add MDX under its
+`content/docs/<section>/` (or its `hanzo-docs/<team>` submodule). Documenting an
+API? Don't — update `hanzoai/openapi` and it regenerates. Documenting an SDK?
+Don't — the ZAP generator emits it. Bringing a fork's upstream manual? Add the
+repo to `sync-project-docs` config; it mirrors with attribution. Nothing else is
+a supported way to add docs.
