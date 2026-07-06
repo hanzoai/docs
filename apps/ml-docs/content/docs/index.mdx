@@ -1,0 +1,47 @@
+---
+title: "Hanzo ML"
+description: "The multi-backend tensor and ML framework — the candle-derived core beneath Hanzo Engine, with the full quantization zoo and a write-once kernel DSL."
+---
+
+**Hanzo ML** is the tensor framework that powers [Hanzo Engine](/engine). It is candle-derived, runs on six backends, and ships the full GGUF quantization zoo plus `hanzo-kernel` — a DSL that lets you write a GPU kernel once and lower it to every backend.
+
+## The stack
+
+| Crate | What it is |
+|---|---|
+| `hanzo-ml` | the tensor framework: ops, autograd, device dispatch, quantization |
+| `hanzo-kernel` | write a GPU kernel once in Rust, lower to CUDA / ROCm / Vulkan / Metal / CPU |
+| `hanzo-kernels` | the hand-tuned CUDA quant kernels the DSL is migrating |
+| `hanzo-nn` | neural-network layers |
+| `hanzo-3d` | 3D representations (Mesh / GaussianSplat / SLAT) + glTF/PLY I/O + geometry |
+| `hanzo-flash-attn` | flash-attention-2 CUDA kernels |
+
+## The kernel DSL
+
+`hanzo-kernel` collapses the `backends × types × ops` product into a sum. One Rust source per operation, lowered everywhere — so a model that is coherent on Metal cannot silently collapse on CUDA, because there is one numeric behavior, not four.
+
+```rust
+use hanzo_kernel::prelude::*;
+
+#[kernel(targets(cuda, metal, vulkan, webgpu, cpu))]
+fn rms_norm<F: Float>(x: &Array<F>, w: &Array<F>, out: &mut Array<F>, #[comptime] n: usize) {
+    let row = ABSOLUTE_POS;
+    if row < out.len() / n {
+        let base = row * n;
+        let mut ss = F::new(0.0);
+        for i in 0..n { let v = x[base + i]; ss += v * v; }
+        let denom = (ss / F::cast_from(n) + F::new(1e-6)).sqrt();
+        for i in 0..n { out[base + i] = x[base + i] / denom * w[i]; }
+    }
+}
+```
+
+It also **auto-fuses**: composition is fusion. A chain of pointwise ops (or an arbitrary pointwise DAG) collapses into one kernel launch with zero materialized intermediates — the functor law `map g . map f == map (g . f)` made mechanical, with Reduce/Scan as the fences.
+
+## Quantization
+
+The full GGUF type set is supported across backends — Q2_K…Q6_K, the IQ i-quants, Q8_0, MXFP4/NVFP4, and the TQ ternary formats — with a `dp4a` integer-dot fast path on the decode hot loop.
+
+## API reference
+
+Rust crate docs are regenerated from source with `cargo doc` per release.

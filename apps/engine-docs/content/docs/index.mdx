@@ -1,0 +1,50 @@
+---
+title: "Hanzo Engine"
+description: "The multi-backend inference server — OpenAI, Anthropic, and MCP APIs over CUDA, ROCm, Metal, Vulkan, and CPU."
+---
+
+**Hanzo Engine** is Hanzo's inference server: one binary that serves text, vision, audio, image, and 3D generation across every GPU backend, speaking the OpenAI, Anthropic Messages, and MCP protocols from a single router.
+
+## What it serves
+
+| Surface | Path | Modality |
+|---|---|---|
+| Chat completions | `POST /v1/chat/completions` | text, vision, audio |
+| Anthropic messages | `POST /v1/messages` | text, vision |
+| Responses | `POST /v1/responses` | text, tools |
+| Embeddings | `POST /v1/embeddings` | text |
+| Image generation | `POST /v1/images/generations` | image |
+| Speech | `POST /v1/audio/speech` | TTS |
+| Model routing | `POST /v1/route` | picks a model per request |
+
+One router (`hanzo-server-core`) serves all three protocols — there is no separate per-protocol server.
+
+## Backends
+
+The same model runs on any backend, selected automatically by the hardware present:
+
+- **CUDA** — NVIDIA (incl. Blackwell / GB10, sm_120/121)
+- **ROCm/HIP** — AMD (gfx1151 / Strix Halo and up)
+- **Metal** — Apple Silicon
+- **Vulkan** — cross-vendor
+- **CPU** — the reference path and bit-exact oracle
+
+Decode reaches llama.cpp parity or better; prefill is within ~0.86× and closing via CUDA-graph capture and kernel fusion.
+
+## Architecture
+
+- **`hanzo-engine`** — the model implementations, quantization, KV cache, and backend dispatch.
+- **`hanzo-server-core`** — the axum router, the three protocol surfaces, and the OpenAPI spec.
+- **`hanzo-cli`** — the `hanzo` binary (`hanzo serve`, `hanzo run`, `hanzo bench`).
+- **`hanzo-router`** — the memory- and task-aware model router. See the [Router docs](/router).
+
+## Quick start
+
+```bash
+hanzo serve --format gguf -m ./models/Qwen3.6-35B-A3B-GGUF -f Qwen3.6-35B-A3B-UD-Q4_K_M.gguf
+# then: curl http://localhost:1234/v1/chat/completions -d '{"model":"local","messages":[{"role":"user","content":"hi"}]}'
+```
+
+## API reference
+
+The full HTTP API is generated from the live OpenAPI 3.1 spec the server emits at `/openapi.json`. Rust crate docs are regenerated from source with `cargo doc` per release (the previous auto-deployed rustdoc under the old `mistralrs` crate names is retired).
