@@ -1,0 +1,45 @@
+---
+title: "Hanzo Router"
+description: "The memory- and task-aware model router — picks the right model per request across local engines and cloud providers."
+---
+
+**Hanzo Router** is the seam that decides *which model* serves a request. Given the shape of an incoming request and the set of models available, it returns a decision: reuse a loaded model, load a local one that fits memory, fall out to a cloud provider, or report no fit.
+
+It is a pure function of its inputs — no engine state is mutated — and it is exposed live at `POST /v1/route`.
+
+## The decision
+
+```json
+POST /v1/route
+{
+  "prompt": "refactor this Rust function",
+  "approx_tokens": 1200,
+  "has_media": false,
+  "models": [
+    { "id": "qwen3.6-35b-a3b", "max_context": 262144, "est_bytes": 21000000000 },
+    { "id": "claude-sonnet-5", "cloud": true, "provider": "anthropic" }
+  ],
+  "running": ["qwen3.6-35b-a3b"],
+  "available_bytes": 120000000000,
+  "unified": true
+}
+```
+
+returns one of:
+
+| `route` | Meaning |
+|---|---|
+| `reuse` | serve from an already-loaded local model (no load cost) |
+| `load_local` | load a local model that fits available memory, then serve |
+| `cloud` | serve via a cloud provider |
+| `no_fit` | nothing usable — the caller errors |
+
+## How it decides
+
+1. **Classify** the request into a task — code, vision, long-context, or chat — from the prompt, its size, and whether it carries media.
+2. **Filter** the model registry to those that can serve the task (vision-capable if media is present, wide enough context if long).
+3. **Select** by the policy's preference order, preferring an already-running model, then a local model that fits the memory budget, then cloud.
+
+## Where it runs
+
+The router is a first-class crate (`hanzo-router`) in [Hanzo Engine](/engine) and is what `hanzo-node` uses to route across a fleet of local and cloud models. The classifier, policy, and registry are all values the caller assembles — the engine stays orthogonal to the routing policy.
