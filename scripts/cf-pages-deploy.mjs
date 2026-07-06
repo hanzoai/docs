@@ -7,9 +7,18 @@ import { createHash } from 'crypto';
 import { readdir, readFile, stat } from 'fs/promises';
 import { join, relative } from 'path';
 
-const ACCOUNT_ID = '94a3e3f299092abb1feda2a7481ea845';
-const PROJECT_NAME = 'hanzo-docs';
-const API_TOKEN = process.env.CLOUDFLARE_API_TOKEN || 'bBEtGaPXpGSmvC5w2WbpE2V7zx08VDWspCS-E30g';
+const ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || '94a3e3f299092abb1feda2a7481ea845';
+const PROJECT_NAME = process.env.CF_PAGES_PROJECT || 'hanzo-docs';
+// Never hard-code the token. CI injects CLOUDFLARE_API_TOKEN from KMS
+// (kms.hanzo.ai → the docs deploy service account). Fail fast if absent.
+const API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+if (!API_TOKEN) {
+  console.error(
+    'CLOUDFLARE_API_TOKEN is required. It is provisioned from KMS (kms.hanzo.ai) in CI; ' +
+      'for a local deploy export it from your KMS session. Refusing to run without it.',
+  );
+  process.exit(1);
+}
 const BASE_URL = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/pages/projects/${PROJECT_NAME}`;
 const BATCH_SIZE = 50; // files per upload batch
 const MAX_RETRIES = 3;
