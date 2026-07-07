@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bot-docs
+  namespace: hanzo
+  labels:
+    app: bot-docs
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bot-docs
+  template:
+    metadata:
+      labels:
+        app: bot-docs
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      containers:
+        - name: bot-docs
+          image: ghcr.io/hanzoai/bot-docs:latest
+          ports:
+            - containerPort: 80
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "10m"
+            limits:
+              memory: "64Mi"
+              cpu: "100m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bot-docs
+  namespace: hanzo
+spec:
+  selector:
+    app: bot-docs
+  ports:
+    - port: 80
+      targetPort: 80
