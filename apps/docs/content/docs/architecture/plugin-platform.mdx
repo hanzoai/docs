@@ -6,10 +6,12 @@ description: The architecture direction for Hanzo Cloud — plugins as the unit 
 # Consensus-Backed Plugin Platform
 
 <Callout type="warn">
-This page describes a **design direction**, not a shipped feature. The runtime it describes is specified in **HIP-0125 (Draft)** and is **not yet built**. It is published so the design can be reviewed. For what runs today, see the product pages under [Platform & Services](/docs/services); this page is about where the platform is headed and why.
+This page describes a **design direction**, not a shipped feature. The runtime it describes is specified in **HIP-0125 (Draft)**. Foundational pieces exist — the Quasar post-quantum BFT consensus engine is implemented, and the seven-voter placement ceremony has been built and tested — but they are deliberately kept **out of the live serving path**: placement does not yet decide where traffic goes, and there is no `cloud.Register` plugin runtime to deploy against. It is published so the design can be reviewed. For what runs today, see the product pages under [Platform & Services](/docs/services); this page is about where the platform is headed and why.
 </Callout>
 
-Hanzo Cloud today is many services, each its own repository, image, and deployment. The direction is to run them as **plugins** inside one cloud runtime, and to let a **small consensus control plane** decide where each plugin's write side lives. The goal is that a service author writes almost none of the hard parts — placement, failover, replication, high availability — and inherits them from the platform.
+Hanzo Cloud is **one Go binary**. Every subsystem — IAM, KMS, ingress, billing, MPC, observability, agents, and the rest — is compiled natively into it and served under a single `/v1` surface that maps to [hanzoai/openapi](https://github.com/hanzoai/openapi). Routing and ingress are themselves native subsystems, so the design point is that **the one binary is the front door** — not a stack of gateway and ingress tiers layered in front of it. This is already substantially shipped: the unified binary (HIP-0106) collapsed the former per-service fleet into this one process.
+
+What the plugin platform adds is the **next** step, and it is *not* a re-layering: the one binary stays one binary. Each native subsystem becomes a **placed plugin** so that nodes **specialize** — the same binary runs on every node, but each node runs a dynamic *subset* of the plugins rather than all of them — with a **small consensus control plane** deciding where each plugin's write side lives. The goal is that a subsystem author writes almost none of the hard parts — placement, failover, replication, high availability — and inherits them from the platform.
 
 The design rests on one principle: **consensus orders decisions, not bytes.**
 
@@ -26,13 +28,13 @@ func init() {
 
 A plugin is the unit the platform places and scales. The `cloud` binary loads a set of registered plugins; **nodes specialize** by running a dynamic subset of them rather than every node running everything. That makes the runtime one deployable artifact whose behavior on each node is data — the placement decision — rather than a per-service build.
 
-Existing subsystems — KMS, IAM, Base, Gateway, Commerce, tasks, pubsub — are exactly the kind of thing that becomes a plugin under this model. They are **not** plugins today; this is the target.
+Existing subsystems — KMS, IAM, ingress, billing, MPC, observability — are **already native parts of the one binary** today. What they are **not yet** is independently *placed*: right now every node that runs `cloud` runs all of them. The plugin model makes each subsystem a unit the control plane can place, so nodes specialize instead of every node running everything.
 
 ## Consensus orders decisions, not bytes
 
 The platform splits into two planes that are deliberately kept separate.
 
-**Control plane — a small, fixed quorum.** Five voter nodes run a post-quantum BFT consensus engine (the **Quasar** engine from Lux, with a post-quantum certificate profile). Its replicated log orders only tiny metadata:
+**Control plane — a small, fixed quorum.** Seven voter nodes run a post-quantum BFT consensus engine (the **Quasar** engine from Lux, with a post-quantum certificate profile), reaching agreement on a **five-of-seven** Byzantine quorum. Seven is the smallest voter set that tolerates two simultaneous faults ($N \ge 3f+1$, with a $2f+1 = 5$ quorum at $f = 2$). Its replicated log orders only tiny metadata:
 
 - cluster membership,
 - the **placement map** — which node holds the writer for each `(plugin, shard)`, and its followers,
@@ -48,10 +50,12 @@ The consequence is the important part:
 
 ## Scaling to N nodes
 
-The two planes scale independently:
+Dynamic scaling lives in the **data plane**, not the voter set. The two planes are sized by different rules, on purpose:
 
-- **5 voters** run the control plane. The quorum is small and fixed, so adding capacity never slows consensus.
-- **N data nodes** host plugin shards and each follow a read-only copy of the placement map. `N` grows without bound.
+- **7 voters** run the control plane, agreeing on a five-of-seven quorum. This set is **small and fixed by design** — BFT agreement cost grows with the number of voters (quadratic message complexity), so a fixed small quorum keeps decision latency constant no matter how large the fleet becomes. Seven is a *fault-tolerance* parameter (tolerates $f = 2$ at $N \ge 3f+1$), **not a capacity ceiling**; you don't add voters to handle more load.
+- **N data nodes** host plugin shards, serve or proxy requests, and each follow a read-only copy of the placement map. They carry **no consensus weight**, so `N` grows without bound — this is where planet-scale happens.
+
+So the fleet scales freely: you add data nodes, split plugins into per-tenant shards, and move writers — all dynamically, all in the data plane. The voter set stays fixed because it orders *decisions*, not *bytes*, and decisions are tiny. Changing the voter count (say, to tolerate more faults) is a deliberate, consensus-ordered reconfiguration, not an automatic response to load.
 
 Within that topology:
 
