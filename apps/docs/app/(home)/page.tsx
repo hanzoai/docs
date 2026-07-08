@@ -1,21 +1,19 @@
 import Link from 'next/link';
 import {
+  Activity,
   ArrowRight,
-  Bot,
-  Cloud,
   Code2,
   Database,
   FileJson2,
   Globe,
-  HardDrive,
-  MessageCircle,
-  Monitor,
-  Search,
+  LayoutGrid,
+  Package,
+  Server,
   Shield,
+  ShoppingCart,
   Sparkles,
   Terminal,
   Workflow,
-  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,93 +27,64 @@ import {
 } from '@/components/ui/card';
 import { CodeBlock } from '@/components/code-block';
 
-/* -- Ecosystem grid -- big clickable squares -------------------------------- */
+/* -- The eight movements -- category-first, mirrors the console shell -------- */
 
-const ecosystem = [
+const movements = [
   {
-    name: 'Hanzo Cloud',
-    desc: 'LLM gateway for 200+ models. Load balancing, caching, and observability.',
-    icon: Cloud,
-    href: '/docs/services/cloud',
-    tag: 'AI',
-  },
-  {
-    name: 'Hanzo Chat',
-    desc: 'Multi-model AI chat with MCP tools, file uploads, and 14 Zen models.',
-    icon: MessageCircle,
-    href: '/docs/chat',
-    tag: 'AI',
-  },
-  {
-    name: 'Hanzo Dev',
-    desc: 'AI coding agent with IDE integration, debugging, and MCP tools.',
-    icon: Terminal,
-    href: '/docs/dev',
-    tag: 'AI',
-  },
-  {
-    name: 'Hanzo Bot',
-    desc: '743+ skills, 35+ channel adapters. Deploy AI bots anywhere.',
-    icon: Bot,
-    href: '/docs/services/bot',
-    tag: 'AI',
-  },
-  {
-    name: 'Hanzo Flow',
-    desc: 'Visual workflow automation. Drag-and-drop AI pipelines.',
-    icon: Workflow,
-    href: '/docs/services/flow',
-    tag: 'Automation',
-  },
-  {
-    name: 'Hanzo Platform',
-    desc: 'PaaS with git push deploy. Docker containers, SSL, scaling.',
-    icon: Globe,
-    href: '/docs/services/paas',
-    tag: 'Infra',
-  },
-  {
-    name: 'Hanzo Console',
-    desc: 'Observability dashboard. Tracing, evals, and cost tracking.',
-    icon: Monitor,
-    href: '/docs/services/console',
-    tag: 'Ops',
-  },
-  {
-    name: 'Hanzo Space',
-    desc: 'S3-compatible object storage with CDN and versioning.',
-    icon: HardDrive,
-    href: '/docs/services/s3',
-    tag: 'Infra',
-  },
-  {
-    name: 'Hanzo Search',
-    desc: 'AI-powered search with generative UI and RAG.',
-    icon: Search,
-    href: '/docs/services/search',
-    tag: 'AI',
-  },
-  {
-    name: 'Hanzo Guard',
-    desc: 'AI safety, PII detection, and content moderation.',
+    name: 'Identity & Trust',
+    desc: 'Who you are, what you may touch, where secrets live. IAM, AuthZ, KMS, MPC, Zero-Trust.',
     icon: Shield,
-    href: '/docs/services/guard',
-    tag: 'Security',
+    href: '/docs/iam',
+    tag: 'Identity',
   },
   {
-    name: 'Hanzo IAM',
-    desc: 'Identity, SSO, OAuth2, SAML. Unified auth for everything.',
+    name: 'Intelligence',
+    desc: 'The mind of the cloud. Models, agents, MCP, embeddings, prompts, GPUs, functions.',
+    icon: Sparkles,
+    href: '/docs/llm',
+    tag: 'Intelligence',
+  },
+  {
+    name: 'Data',
+    desc: 'The stores everything writes to. SQL, Vector, KV, Search, Object, Base, DocDB.',
     icon: Database,
-    href: '/docs/services/iam',
+    href: '/docs/sql',
+    tag: 'Data',
+  },
+  {
+    name: 'Streams',
+    desc: 'Messaging, durable tasks, async orchestration. PubSub, Tasks, Pipelines, Crawl.',
+    icon: Workflow,
+    href: '/docs/pubsub',
+    tag: 'Streams',
+  },
+  {
+    name: 'Observability',
+    desc: 'See everything. Telemetry, metrics, logs, traces, sessions, evals, analytics.',
+    icon: Activity,
+    href: '/docs/o11y',
+    tag: 'Observe',
+  },
+  {
+    name: 'Commerce',
+    desc: 'The economy. Meter, price, bill, reward. Commerce, Billing, Marketplace, Referrals.',
+    icon: ShoppingCart,
+    href: '/docs/commerce',
+    tag: 'Commerce',
+  },
+  {
+    name: 'Platform',
+    desc: 'The cloud fabric. Deploy, provision, route, host. Gateway, Machines, Edge, Registry.',
+    icon: Server,
+    href: '/docs/gateway',
     tag: 'Platform',
   },
   {
-    name: 'Zen',
-    desc: '44 frontier models, 4B to 1T+. Open weights on HuggingFace.',
-    icon: Sparkles,
-    href: 'https://zenlm.org',
-    tag: 'Models',
-    external: true,
+    name: 'Applications',
+    desc: 'The user-facing surfaces. Chat, Studio, Dev, Integrations, Apps.',
+    icon: LayoutGrid,
+    href: '/docs/chat',
+    tag: 'Apps',
   },
 ];
 
@@ -123,28 +92,28 @@ const ecosystem = [
 
 const devLinks = [
   {
+    name: 'The Network',
+    desc: 'Run the whole cloud yourself',
+    href: '/docs/network',
+    icon: Globe,
+  },
+  {
     name: 'SDKs',
-    desc: 'Python, TypeScript, Go, Rust, C',
+    desc: 'Python, TypeScript, Go, Rust',
     href: '/docs/sdks',
     icon: Code2,
   },
   {
     name: 'API Reference',
-    desc: 'OpenAPI specs for all 33 services',
+    desc: 'REST for every capability',
     href: '/docs/openapi',
     icon: FileJson2,
   },
   {
-    name: 'MCP + ZAP',
-    desc: '260+ tools + zero-copy RPC protocol',
-    href: '/docs/mcp',
-    icon: Terminal,
-  },
-  {
-    name: 'Extensions',
-    desc: 'IDE, browser, and desktop extensions',
-    href: '/docs/projects/hanzoai/extension',
-    icon: Zap,
+    name: 'Architecture',
+    desc: 'One binary, one contract',
+    href: '/docs/architecture',
+    icon: Package,
   },
 ];
 
@@ -162,15 +131,16 @@ export default function Page() {
           className="relative mb-8 rounded-full border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-[#a3a3a3] backdrop-blur font-normal"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-white mr-2" />
-          One API &middot; 33 Services &middot; 200+ Models
+          One binary &middot; One contract &middot; 67 capabilities
         </Badge>
 
         <h1 className="relative text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05]">
-          <span className="text-white">Hanzo AI Cloud</span>
+          <span className="text-white">The AI cloud you<br className="hidden sm:block" /> can run yourself</span>
         </h1>
         <p className="relative mt-5 max-w-xl text-[#737373] text-lg md:text-xl leading-relaxed">
-          AI infrastructure for developers.
-          Build, deploy, and scale intelligent applications.
+          The same open-source binary we run in production — 67 capabilities across
+          eight movements. Run it on your own machine, GPU, or cluster.
+          The network is the cloud.
         </p>
 
         {/* -- Install command -- the main CTA ------------------------------ */}
@@ -199,16 +169,32 @@ export default function Page() {
 
         <div className="relative flex flex-row items-center gap-3 mt-8 flex-wrap justify-center">
           <Button asChild size="lg" className="rounded-full bg-white px-7 text-black hover:bg-neutral-200">
-            <Link href="/docs/services">
+            <Link href="/docs/getting-started">
               Get Started
               <ArrowRight className="size-4 ml-1" />
             </Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="rounded-full border-white/15 px-7 text-white hover:bg-white/5 bg-transparent">
-            <Link href="/docs/openapi">
-              API Reference
+            <Link href="/docs/network">
+              Run it yourself
             </Link>
           </Button>
+        </div>
+
+        {/* -- Breadth stats bar -------------------------------------------- */}
+        <div className="relative mt-14 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-px w-full max-w-4xl rounded-2xl overflow-hidden border border-white/[0.08] bg-white/[0.04]">
+          {[
+            { n: '67', label: 'Capabilities' },
+            { n: '8', label: 'Movements' },
+            { n: '157', label: 'Models' },
+            { n: '706', label: 'MCP connectors' },
+            { n: '6', label: 'SDK languages' },
+          ].map((s) => (
+            <div key={s.label} className="bg-[#0a0a0a] px-5 py-5 text-center">
+              <div className="text-2xl font-bold text-white tabular-nums">{s.n}</div>
+              <div className="mt-1 text-[11px] uppercase tracking-wider text-[#525252]">{s.label}</div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -220,7 +206,7 @@ export default function Page() {
             Quick Start
           </h2>
           <p className="text-[#737373] text-sm mb-8">
-            Install the CLI, log in, and start using every Hanzo service from your terminal.
+            Install the CLI, log in, and reach every capability from your terminal.
           </p>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <CodeBlock
@@ -257,16 +243,16 @@ print(response.choices[0].message.content)`}
           </div>
         </section>
 
-        {/* -- Ecosystem -- big clickable cards ----------------------------- */}
+        {/* -- The eight movements -- category-first ------------------------ */}
         <section>
           <h2 className="text-3xl font-bold tracking-tight mb-3">
-            Ecosystem
+            The eight movements
           </h2>
           <p className="text-[#737373] text-sm mb-8">
-            Everything you need to build with AI. Click any card to jump to its docs.
+            Every capability is named by its route and lives in exactly one movement. Click any to descend.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {ecosystem.map((item) => {
+            {movements.map((item) => {
               const isExternal = !!(item as { external?: boolean }).external;
               const linkProps = isExternal
                 ? { target: '_blank' as const, rel: 'noreferrer noopener' }
@@ -333,6 +319,82 @@ print(response.choices[0].message.content)`}
           </div>
         </section>
 
+        {/* -- Models & providers ------------------------------------------ */}
+        <section>
+          <h2 className="text-3xl font-bold tracking-tight mb-3">
+            Every model, one API
+          </h2>
+          <p className="text-[#737373] text-sm mb-8">
+            157 models across every major provider — call any of them with one credential, one request shape.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
+            {[
+              { name: 'Zen', spec: 'Open weights' },
+              { name: 'OpenAI', spec: 'GPT' },
+              { name: 'Anthropic', spec: 'Claude' },
+              { name: 'Qwen', spec: 'Open' },
+              { name: 'Llama', spec: 'Open' },
+              { name: 'DeepSeek', spec: 'Open' },
+              { name: 'Mistral', spec: 'Open' },
+              { name: 'Gemma', spec: 'Open' },
+            ].map((p) => (
+              <Card key={p.name} className="border-white/[0.06] bg-white/[0.02] shadow-none py-0 gap-0 rounded-lg">
+                <CardContent className="px-4 py-3 text-center">
+                  <div className="text-xs font-semibold text-white mb-1">{p.name}</div>
+                  <div className="text-[10px] text-[#525252]">{p.spec}</div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        {/* -- SDKs + connectors ------------------------------------------- */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card className="border-white/[0.08] bg-white/[0.02] shadow-none py-0 gap-0 rounded-2xl overflow-hidden">
+            <CardContent className="p-8">
+              <div className="flex items-center gap-3 mb-2">
+                <Code2 className="size-5 text-[#a3a3a3]" />
+                <CardTitle className="text-xl font-bold tracking-tight">SDKs in every language</CardTitle>
+              </div>
+              <CardDescription className="text-xs text-[#525252] mb-6">
+                Generated from one contract — the same <code className="font-mono">/v1</code> surface, typed for your stack.
+              </CardDescription>
+              <div className="flex flex-wrap gap-2">
+                {['Python', 'TypeScript', 'Go', 'Rust', 'C++', 'Dart'].map((l) => (
+                  <span key={l} className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-[#a3a3a3]">
+                    {l}
+                  </span>
+                ))}
+              </div>
+              <Link href="/docs/sdks" className="mt-6 inline-flex items-center gap-1 text-xs font-medium text-[#525252] hover:text-white transition-colors">
+                SDK reference <ArrowRight className="size-3" />
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="border-white/[0.08] bg-white/[0.02] shadow-none py-0 gap-0 rounded-2xl overflow-hidden">
+            <CardContent className="p-8">
+              <div className="flex items-center gap-3 mb-2">
+                <Workflow className="size-5 text-[#a3a3a3]" />
+                <CardTitle className="text-xl font-bold tracking-tight">706 tools, one MCP surface</CardTitle>
+              </div>
+              <CardDescription className="text-xs text-[#525252] mb-6">
+                706 connectors — Slack, GitHub, Notion, Stripe, and more — exposed as MCP tools any agent can call.
+              </CardDescription>
+              <div className="flex flex-wrap gap-2">
+                {['Slack', 'GitHub', 'Notion', 'Stripe', 'Google', 'Linear', '+700 more'].map((c) => (
+                  <span key={c} className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-[#a3a3a3]">
+                    {c}
+                  </span>
+                ))}
+              </div>
+              <Link href="/docs/mcp" className="mt-6 inline-flex items-center gap-1 text-xs font-medium text-[#525252] hover:text-white transition-colors">
+                MCP tools <ArrowRight className="size-3" />
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* -- What the CLI can do ----------------------------------------- */}
         <Card className="border-white/[0.08] bg-white/[0.02] shadow-none py-0 gap-0 rounded-2xl overflow-hidden">
           <CardContent className="p-8 md:p-10">
@@ -344,17 +406,17 @@ print(response.choices[0].message.content)`}
                 <CardTitle className="text-2xl font-bold tracking-tight">
                   The <code className="font-mono">hanzo</code> CLI
                 </CardTitle>
-                <CardDescription className="text-xs text-[#525252] mt-0.5">One tool for everything</CardDescription>
+                <CardDescription className="text-xs text-[#525252] mt-0.5">A ~15 MB Rust client for any live cloud — prod, laptop, or self-host</CardDescription>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {[
                 { cmd: 'hanzo chat', desc: 'Chat with any model interactively' },
-                { cmd: 'hanzo models list', desc: 'Browse 200+ available models' },
+                { cmd: 'hanzo models list', desc: 'Browse every available model' },
                 { cmd: 'hanzo keys create', desc: 'Create and manage API keys' },
                 { cmd: 'hanzo deploy', desc: 'Deploy apps with git push' },
                 { cmd: 'hanzo logs', desc: 'Stream logs from any service' },
-                { cmd: 'hanzo spaces', desc: 'Manage S3-compatible storage' },
+                { cmd: 'hanzo storage', desc: 'Manage S3-compatible storage' },
                 { cmd: 'hanzo secrets', desc: 'Manage secrets and env vars' },
                 { cmd: 'hanzo bot', desc: 'Deploy and manage AI bots' },
                 { cmd: 'hanzo flow', desc: 'Run workflow automations' },
@@ -445,7 +507,7 @@ print(response.choices[0].message.content)`}
               </a>
             </Button>
             <Button asChild variant="outline" size="lg" className="rounded-full border-white/15 px-8 text-white hover:bg-white/5 bg-transparent">
-              <Link href="/docs/services">
+              <Link href="/docs">
                 Browse Documentation
               </Link>
             </Button>
