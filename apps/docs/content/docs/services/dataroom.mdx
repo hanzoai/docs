@@ -5,16 +5,23 @@ description: Secure document sharing with analytics and access controls
 
 # Hanzo Dataroom
 
-Hanzo Dataroom is a secure document sharing platform with real-time analytics, granular access controls, and custom branding. Share pitch decks, fundraising materials, legal documents, and more with full visibility into how recipients engage.
+Hanzo Dataroom is an open-source secure document-sharing platform — a self-hostable fork of Papermark (AGPLv3) — with real-time analytics, granular access controls, and custom branding. Share pitch decks, fundraising materials, and legal documents through controlled links, and organize due-diligence material into structured data rooms with full visibility into how recipients engage. It runs as a standalone Next.js application at `dataroom.hanzo.ai` and signs in through Hanzo IAM.
 
 ## Features
 
-- **Secure Sharing**: Password protection, email verification, NDA agreements
-- **Real-Time Analytics**: Page-by-page view tracking, time spent, completion rates
-- **Custom Branding**: Per-team logos, colors, and custom domains
-- **Data Rooms**: Organized folder structures for due diligence and fundraising
-- **Access Controls**: Expiration dates, download restrictions, watermarking
-- **SAML SSO**: Enterprise single sign-on via BoxyHQ Jackson
+- **Shareable Links**: Per-link expiration, password protection, email verification, and allow/deny lists
+- **Watermarking**: Dynamic watermarks stamped with viewer information
+- **Screenshot Protection**: Discourage capture of sensitive material
+- **Custom Domains & Branding**: Per-team logos and colors, custom domains, and custom link metatags
+- **Data Rooms**: Multi-document collections with folders, viewer groups, and granular permissions
+- **Real-Time Analytics**: Page-by-page view tracking, time spent, downloads, and per-page reactions
+- **Conversations**: Comment threads on documents and data rooms
+- **AI Q&A**: Chat over documents and data rooms (optional; requires a model-provider key)
+- **File Requests**: Collect document uploads from visitors through a link
+- **Link Presets & Tags**: Reusable link configurations and labels across links, documents, and data rooms
+- **NDA & Agreements**: Require acceptance before viewing
+- **Enterprise SSO**: SAML via BoxyHQ Jackson, plus SCIM directory sync
+- **Passkeys**: WebAuthn authentication via Hanko
 - **Hanzo IAM SSO**: Single sign-on via Hanzo identity
 
 ## Endpoints
@@ -28,7 +35,7 @@ Hanzo Dataroom is a secure document sharing platform with real-time analytics, g
 
 ```
 +---------------------------------------------------------------+
-|                     HANZO DATAROOM                              |
+|                     HANZO DATAROOM                             |
 +---------------------------------------------------------------+
 |                                                                |
 |  +-----------------------+  +-------------------------------+  |
@@ -48,113 +55,38 @@ Hanzo Dataroom is a secure document sharing platform with real-time analytics, g
 +---------------------------------------------------------------+
 ```
 
-## Quick Start
+## How It Works
+
+The full workflow runs in the dashboard.
 
 ### 1. Upload a Document
 
-```typescript
-const formData = new FormData()
-formData.append('file', pdfFile)
-
-const response = await fetch('https://dataroom.hanzo.ai/api/documents', {
-  method: 'POST',
-  headers: { 'Authorization': `Bearer ${apiToken}` },
-  body: formData
-})
-
-const { id: documentId } = await response.json()
-```
+Upload a PDF (or other supported file) to your team's library. Uploads go to S3-compatible object storage or Vercel Blob, depending on the configured transport, with resumable upload support.
 
 ### 2. Create a Sharing Link
 
-```typescript
-const link = await fetch('https://dataroom.hanzo.ai/api/links', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${apiToken}`,
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    documentId,
-    name: 'Investor Deck - Series A',
-    password: 'optional-password',
-    expiresAt: '2026-04-01T00:00:00Z',
-    emailProtected: true,
-    allowDownload: false,
-    enableWatermark: true
-  })
-})
+Generate a link and attach controls — a name, optional password, expiration date, email verification, allow/deny lists, download permission, and watermarking. Share the resulting `/view/...` URL with recipients.
 
-// Share this URL with recipients
-console.log(link.url) // https://dataroom.hanzo.ai/view/abc123
-```
+### 3. Track Engagement
 
-### 3. View Analytics
-
-```typescript
-const analytics = await fetch(
-  `https://dataroom.hanzo.ai/api/links/${linkId}/analytics`,
-  { headers: { 'Authorization': `Bearer ${apiToken}` } }
-).then(r => r.json())
-
-// Per-viewer engagement data
-analytics.views.forEach(view => {
-  console.log(`${view.email}: ${view.totalDuration}s, ${view.completionRate}%`)
-  view.pages.forEach(page => {
-    console.log(`  Page ${page.number}: ${page.duration}s`)
-  })
-})
-```
+Watch views arrive in real time: who opened the link, how long they spent on each page, which pages they revisited, and what they downloaded.
 
 ## Data Rooms
 
-Organize documents into structured data rooms for due diligence, fundraising, or any multi-document workflow.
-
-### Create a Data Room
-
-```typescript
-const dataroom = await fetch('https://dataroom.hanzo.ai/api/datarooms', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${apiToken}`,
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    name: 'Series A Due Diligence',
-    folders: [
-      { name: 'Financials' },
-      { name: 'Legal' },
-      { name: 'Product' },
-      { name: 'Team' }
-    ]
-  })
-})
-```
-
-### Add Documents to Folders
-
-```typescript
-await fetch(`https://dataroom.hanzo.ai/api/datarooms/${dataroomId}/documents`, {
-  method: 'POST',
-  headers: { 'Authorization': `Bearer ${apiToken}` },
-  body: JSON.stringify({
-    documentId,
-    folderId: 'financials-folder-id'
-  })
-})
-```
+Organize documents into structured data rooms for due diligence, fundraising, or any multi-document workflow. Each data room supports nested folders, viewer groups, and permission groups so different recipients see different subsets, with an optional introduction page and per-room change notifications.
 
 ## Access Controls
 
 | Feature | Description |
 |---------|-------------|
-| Password Protection | Require password to view |
-| Email Verification | Require verified email |
-| NDA Agreement | Accept NDA before viewing |
+| Password Protection | Require a password to view |
+| Email Verification | Require a verified email |
+| NDA Agreement | Accept an NDA before viewing |
 | Expiration Date | Auto-expire links |
-| Download Restriction | Prevent PDF downloads |
+| Download Restriction | Prevent file downloads |
 | Watermarking | Dynamic watermarks with viewer info |
-| Allow List | Restrict to specific email domains |
+| Screenshot Protection | Discourage screen capture |
+| Allow / Deny Lists | Restrict to (or block) specific emails or domains |
 
 ## Analytics
 
@@ -174,30 +106,31 @@ Track engagement at the page level to understand which sections resonate:
 
 - Time spent per page
 - Page revisits
-- Scroll depth
-- Download attempts
+- Per-page reactions
+- Download activity
 
 ## Authentication
 
-Hanzo Dataroom supports multiple authentication methods:
+Hanzo Dataroom signs users in through Hanzo IAM and supports:
 
-- **Hanzo IAM**: SSO via `https://hanzo.id` (recommended)
-- **Google OAuth**: Sign in with Google
-- **LinkedIn OAuth**: Sign in with LinkedIn
+- **Hanzo IAM**: SSO via `https://hanzo.id` (default, recommended)
 - **Email Magic Link**: Passwordless email login
-- **Passkeys**: WebAuthn/FIDO2 authentication
-- **SAML SSO**: Enterprise SSO via BoxyHQ Jackson
+- **Passkeys**: WebAuthn/FIDO2 authentication via Hanko
+- **SAML SSO**: Enterprise SSO via BoxyHQ Jackson, with SCIM directory sync
+- **Google OAuth**: Optional legacy provider
 
 ### IAM Integration
 
 ```bash
 # Environment variables
-IAM_ENDPOINT=https://hanzo.id
+IAM_URL=https://hanzo.id
 IAM_CLIENT_ID=app-dataroom
 IAM_CLIENT_SECRET=<from-kms>
 ```
 
 ## Self-Hosting
+
+Hanzo Dataroom ships as a Next.js standalone application with an embedded SQLite database by default (single-replica), so a basic deployment needs only a persistent volume and object storage.
 
 ### Docker
 
@@ -205,9 +138,9 @@ IAM_CLIENT_SECRET=<from-kms>
 docker run -d \
   --name hanzo-dataroom \
   -p 3000:3000 \
-  -e DATABASE_URL=postgres://... \
+  -v dataroom-data:/app/data \
   -e NEXTAUTH_URL=https://dataroom.yourdomain.com \
-  -e IAM_ENDPOINT=https://hanzo.id \
+  -e IAM_URL=https://hanzo.id \
   -e IAM_CLIENT_ID=app-dataroom \
   ghcr.io/hanzoai/dataroom:latest
 ```
@@ -216,40 +149,26 @@ docker run -d \
 
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
+| `DATABASE_URL` | Database connection (embedded SQLite by default) |
 | `NEXTAUTH_URL` | Public URL of the application |
 | `NEXTAUTH_SECRET` | NextAuth encryption secret |
-| `IAM_ENDPOINT` | Hanzo IAM server URL |
+| `IAM_URL` | Hanzo IAM server URL |
 | `IAM_CLIENT_ID` | IAM application client ID |
 | `IAM_CLIENT_SECRET` | IAM application client secret |
-| `NEXT_PUBLIC_BASE_URL` | Public base URL |
+| `NEXT_PUBLIC_UPLOAD_TRANSPORT` | Storage backend — `s3` or `vercel` |
+| `S3_*` | S3-compatible object storage credentials |
 | `SMTP_HOST` | Email server host |
-| `STRIPE_SECRET_KEY` | Stripe billing key |
 
-## API Reference
+## Integrations & API
 
-### Documents
+Hanzo Dataroom is primarily a dashboard-driven product: documents are uploaded, links are created, and analytics are viewed in the app. Programmatic surfaces include:
 
-- `POST /api/documents` - Upload document
-- `GET /api/documents` - List documents
-- `GET /api/documents/:id` - Get document
-- `DELETE /api/documents/:id` - Delete document
+- **Next.js API routes** under `/api` (unversioned) — links, views, teams, verification, and file handling used by the app and its share pages.
+- **SAML SSO & SCIM** for enterprise identity and directory sync.
+- **Incoming webhooks** and **Slack notifications** for view and download events.
+- **AI Q&A** endpoints for chat over documents and data rooms.
 
-### Links
-
-- `POST /api/links` - Create sharing link
-- `GET /api/links` - List links
-- `GET /api/links/:id` - Get link details
-- `GET /api/links/:id/analytics` - Get link analytics
-- `PATCH /api/links/:id` - Update link settings
-- `DELETE /api/links/:id` - Delete link
-
-### Data Rooms
-
-- `POST /api/datarooms` - Create data room
-- `GET /api/datarooms` - List data rooms
-- `POST /api/datarooms/:id/documents` - Add document
-- `DELETE /api/datarooms/:id` - Delete data room
+Refer to your instance and the self-hosting configuration for the exact route set.
 
 ## Next Steps
 
