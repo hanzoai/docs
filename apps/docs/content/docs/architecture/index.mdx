@@ -1,0 +1,29 @@
+---
+title: Architecture
+description: How Hanzo Cloud is built today, and the plugin-platform direction it is evolving toward.
+index: true
+---
+
+# Architecture
+
+This section explains how Hanzo Cloud is put together — what runs today, and where the platform is headed. We keep the two clearly separated: the product pages elsewhere in these docs describe shipped behavior, while the platform direction here is design work being ratified through the [Hanzo Improvement Proposals (HIPs)](https://hips.hanzo.ai).
+
+## Today
+
+Hanzo Cloud is a family of services behind one front door. A single API key at `api.hanzo.ai` reaches every service — AI inference, identity, secrets, storage, commerce, and more — grouped into ten categories: AI, Compute, Data, Network, Security, Observe, Platform, Web3, Apps, and Commerce. See [Platform & Services](/docs/services) for the full catalog.
+
+Each product is its own repository and its own container image, deployed and reconciled independently. Some products run as standalone applications on their own domains — for example [Sign](/docs/services/sign) (`esign.hanzo.ai`), [Dataroom](/docs/services/dataroom) (`dataroom.hanzo.ai`), and [Cap Table](/docs/services/captable) (`captable.hanzo.ai`). They authenticate through Hanzo IAM, but each runs as its own application rather than inside a single shared runtime.
+
+## Direction
+
+The platform is converging on one model for running these services: a **consensus-backed plugin platform**, where each service is a *plugin* registered into a single cloud runtime, and a small consensus control plane decides where each plugin's writers live. This is a design direction — specified as a draft proposal, not yet a shipped runtime.
+
+<Cards>
+  <Card title="Consensus-Backed Plugin Platform" href="/docs/architecture/plugin-platform" description="The HIP-0125 direction: plugins as the unit, consensus over placement, ZAP-native authoring." />
+  <Card title="ZAP Protocol" href="/docs/zap" description="Zero-Copy App Proto — the high-performance transport plugins default to." />
+  <Card title="Hanzo Improvement Proposals" href="https://hips.hanzo.ai" description="Where platform architecture is specified and ratified." />
+</Cards>
+
+<Callout type="info">
+The plugin platform is described in **HIP-0125 (Draft)**. It builds on a set of related proposals — the in-process extension runtime (HIP-0105), the unified cloud binary (HIP-0106), streaming replication (HIP-0107), and the ZAP transport (HIP-0114). Draft proposals may change; nothing on the [plugin-platform page](/docs/architecture/plugin-platform) is a shipped user feature.
+</Callout>
