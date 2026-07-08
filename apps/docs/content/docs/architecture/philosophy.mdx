@@ -1,0 +1,127 @@
+---
+title: Engineering Philosophy
+description: The principles behind Hanzo V8 — one and one way, decomplect, ZAP-native, the language seam is the wire not FFI, one contract to N SDKs to thin CLIs.
+icon: Compass
+---
+
+import { Cards, Card } from '@hanzo/docs-ui/components/card'
+import { Callout } from '@hanzo/docs-ui/components/callout'
+
+# Engineering Philosophy
+
+Hanzo **V8 · Open Edition** is composed from a small set of decisions applied
+everywhere, so that no consumer ever needs to know or care which part is Go and
+which is Rust. This page is the *why* — the design pedagogy. The canonical,
+normative version lives in **[HIP-0127](https://hips.hanzo.ai)**.
+
+<Callout type="info">
+One rule ties the whole platform together: **one contract, many bindings, thin
+clients, and a wire — never FFI — between languages.**
+</Callout>
+
+## One and one way
+
+There is exactly one way to do everything, by construction. A capability is
+**one name = one `/v1/<name>` = one self-contained spec** — no `svc` suffix, no
+singular/plural twins, no facade. The [capability manifest](https://hips.hanzo.ai)
+(`capabilities.yaml`) is the single registry: every spec must appear there
+exactly once, in exactly one of the [eight movements](/docs). The build *fails*
+on an orphan spec, an unlisted spec, or a name in two places. Orthogonality is a
+build invariant, not a hope.
+
+The same rule governs distribution: one contract, one client core per stack, one
+distribution harness. Every SDK and CLI is **derived** from the contract — none
+is hand-forked.
+
+## Decomplect — values, not places
+
+Following Rich Hickey: a capability is named by its **value** (its `/v1` route),
+not by its **place** (which repo, language, or pod implements it). We *decomplect*
+— unbraid — the things that naive designs fuse together.
+
+<Cards>
+  <Card title="Values, not places" description="A capability is its route, not its host. Callers bind to /v1/<name>, never to a machine, a process, or a language." />
+  <Card title="One concern per binary" description="The Go/Rust boundary is a value boundary (ZAP frames), not a place boundary (FFI in one address space). Each box does one thing." />
+  <Card title="Easy ≠ simple" description="FFI is easy — one repo, one process — but complects two toolchains. The wire seam is simpler: independent, composable, language-free at the edge." />
+  <Card title="Compose, don't inherit" description="Capabilities are composed over a uniform wire, not extended through shared implementation. Orthogonal and independently complete." />
+</Cards>
+
+## One binary, one contract
+
+The application cloud is **one Go binary** (`cloud`, `CGO_ENABLED=0`, static),
+embedding the platform's subsystems and mounting them behind a single public
+surface: **`/v1/<capability>` over HTTP + ZAP**. That is the ONE contract every
+consumer speaks. Capabilities are grouped into the eight movements of the
+manifest; each is one name, one route, one spec.
+
+Keeping it pure Go with no cgo is what preserves the single static binary — the
+thing that makes [*"run the whole cloud anywhere"*](/docs/network) true.
+
+## The language seam is the wire, never FFI
+
+Hanzo is Go **and** Rust. The cloud is Go; the [engine](/docs/services/engine),
+the [`dev`](/docs/dev) agent, and the ML kernels are Rust. They compose over
+**[ZAP](/docs/zap)** — network or local socket — each a clean single-language
+binary. Go `cloud` and the Rust components **never link each other's code**; they
+exchange ZAP frames whose schema lives beside the product that implements it.
+
+Two naive urges, both rejected:
+
+<Cards>
+  <Card title="Don't fuse over FFI" description="cgo/uniffi in one process destroys the CGO_ENABLED=0 static binary and complects two toolchains. Rejected." />
+  <Card title="Don't split orgs by language" description="No hanzo-go / hanzo-rs. That leaks an implementation detail into the org and forces users to know which half a capability lives in. Rejected." />
+</Cards>
+
+Everything canonical lives under **`hanzoai/<product>`** — organized by
+capability, not by language. Users never know which language answered, because
+the org is product-first and the wire is uniform — **not** because the languages
+are fused.
+
+## One contract → N SDKs → thin CLIs
+
+Distribution is a single derivation tree. The one contract generates the language
+bindings and the wire types; the clients are thin frontends over a shared core.
+
+```
+hanzo.yaml            the ONE contract — /v1 over HTTP + ZAP
+   │  generate ↓
+ go-sdk · rust-sdk · js-sdk        language bindings (derived)
+ zap-spec                          the ZAP wire types
+   │
+ hanzo-client (Rust: ZAP bridge + hanzo.id auth + rust-sdk)
+   ├── hanzo   — the control CLI        → @hanzo/cli
+   └── dev     — the coding agent       → @hanzo/dev
+```
+
+- **The CLI is a client, never the server.** It speaks ZAP (or its SDK) to a
+  *live* cloud — production, a laptop, or a self-host — and never imports the
+  cloud. That coupling is the trap that bloats a client to hundreds of megabytes.
+- **One client core, two thin frontends.** [`hanzo`](/docs/cli) (the control CLI)
+  and [`dev`](/docs/dev) (the coding agent) share one Rust `hanzo-client`: one
+  auth stack, one ZAP client, one SDK. The result is a ~15 MB binary — small
+  enough to ship over npm.
+- **One harness, many channels.** Per-platform prebuilt binaries on GitHub
+  Releases fan out to `@hanzo/cli` / `@hanzo/dev` (npm), `hanzo.sh` (`curl | sh`),
+  Homebrew, and `go install`. One binary per tool, N channels.
+
+<Callout type="info">
+`.zap` and OpenAPI are two transports of the **same** `/v1` contract — both
+derived from the per-service spec, never hand-maintained separately. One
+contract → HTTP + ZAP + SDKs, all generated.
+</Callout>
+
+## Deploy: native PaaS, no second deployer
+
+Deploys go through the native PaaS (`hanzoai/platform`), which merge-patches the
+operator's `Service` resource; the operator reconciles the rollout. **No second
+deployer.** It is driven by the [`hanzo` CLI](/docs/cli) or the platform UI — the
+same one contract, all the way to production.
+
+## Read the specs
+
+<Cards>
+  <Card title="Architecture" href="/docs/architecture" description="How Hanzo Cloud is built today and the direction it is converging on." />
+  <Card title="The Network" href="/docs/network" description="The AI cloud you can run yourself — one binary, BYO GPU, the network is the cloud." />
+  <Card title="ZAP Protocol" href="/docs/zap" description="Zero-Copy App Proto — the wire the Go and Rust halves speak." />
+  <Card title="Hanzo Improvement Proposals" href="https://hips.hanzo.ai" description="HIP-0127 and the specs it ties together: the unified binary, ZAP, the SDKs, the CLI." />
+</Cards>

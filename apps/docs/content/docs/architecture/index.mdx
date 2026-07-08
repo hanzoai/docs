@@ -6,11 +6,24 @@ index: true
 
 # Architecture
 
-This section explains how Hanzo Cloud is put together — what runs today, and where the platform is headed. We keep the two clearly separated: the product pages elsewhere in these docs describe shipped behavior, while the platform direction here is design work being ratified through the [Hanzo Improvement Proposals (HIPs)](https://hips.hanzo.ai).
+This section explains how Hanzo Cloud is put together — what runs today, and where the platform is headed. We keep the two clearly separated: the product pages elsewhere in these docs describe shipped behavior, while the platform direction here is design work being ratified through the [Hanzo Improvement Proposals (HIPs)](https://hips.hanzo.ai). For the principles behind it all, see [Engineering Philosophy](/docs/architecture/philosophy).
 
 ## Today
 
-Hanzo Cloud is **one Go binary**. A single API key at `api.hanzo.ai` reaches every service — AI inference, identity, secrets, storage, commerce, and more — because those services are **native subsystems compiled into that one binary**, each served under `/v1` and mapped to [hanzoai/openapi](https://github.com/hanzoai/openapi). Ingress and routing are native subsystems too, so the binary is its own front door rather than sitting behind a separate gateway or ingress tier. The catalog is grouped into ten categories — AI, Compute, Data, Network, Security, Observe, Platform, Web3, Apps, and Commerce; see [Platform & Services](/docs/services) for the full list. This single-binary consolidation is the unified cloud binary (HIP-0106), already substantially shipped.
+Hanzo Cloud is **one Go binary**. A single API key at `api.hanzo.ai` reaches every capability — AI inference, identity, secrets, storage, commerce, and more — because those capabilities are **native subsystems compiled into that one binary** (`cloud`, `CGO_ENABLED=0`, static), each served under `/v1/<capability>` and mapped to [hanzoai/openapi](https://github.com/hanzoai/openapi). Ingress and routing are native subsystems too, so the binary is its own front door rather than sitting behind a separate gateway or ingress tier. This single-binary consolidation is the unified cloud binary (HIP-0106), already substantially shipped — and it is the same binary that powers [the network you can run yourself](/docs/network).
+
+The 67 capabilities are grouped into the **eight movements** of the capability manifest:
+
+<Cards>
+  <Card title="Identity & Trust" href="/docs/iam" description="Who you are, what you may touch, where secrets live." />
+  <Card title="Intelligence" href="/docs/llm" description="Models, agents, evaluation — the mind of the cloud." />
+  <Card title="Data" href="/docs/sql" description="The stores every capability writes to and reads from." />
+  <Card title="Streams" href="/docs/pubsub" description="Messaging, durable tasks, async orchestration." />
+  <Card title="Observability" href="/docs/o11y" description="See everything — telemetry, analytics, usage." />
+  <Card title="Commerce" href="/docs/commerce" description="The economy — meter, price, bill, reward." />
+  <Card title="Platform" href="/docs/gateway" description="The cloud fabric — deploy, provision, route, host." />
+  <Card title="Applications" href="/docs/chat" description="The user-facing surfaces built on all of the above." />
+</Cards>
 
 A few products still run as standalone applications on their own domains — for example [Sign](/docs/services/sign) (`esign.hanzo.ai`), [Dataroom](/docs/services/dataroom) (`dataroom.hanzo.ai`), and [Cap Table](/docs/services/captable) (`captable.hanzo.ai`) — authenticating through Hanzo IAM. These are the remaining standalone apps, being absorbed into the one runtime rather than the intended end state.
 
@@ -19,6 +32,8 @@ A few products still run as standalone applications on their own domains — for
 The platform is converging on one model for running these services: a **consensus-backed plugin platform**, where each service is a *plugin* registered into a single cloud runtime, and a small consensus control plane decides where each plugin's writers live. This is a design direction — specified as a draft proposal, not yet a shipped runtime.
 
 <Cards>
+  <Card title="Engineering Philosophy" href="/docs/architecture/philosophy" description="The principles behind V8: one and one way, decomplect, the language seam is the wire not FFI." />
+  <Card title="The Network" href="/docs/network" description="The AI cloud you can run yourself — one binary, BYO GPU, the network is the cloud." />
   <Card title="Consensus-Backed Plugin Platform" href="/docs/architecture/plugin-platform" description="The HIP-0125 direction: plugins as the unit, consensus over placement, ZAP-native authoring." />
   <Card title="ZAP Protocol" href="/docs/zap" description="Zero-Copy App Proto — the high-performance transport plugins default to." />
   <Card title="Hanzo Improvement Proposals" href="https://hips.hanzo.ai" description="Where platform architecture is specified and ratified." />
