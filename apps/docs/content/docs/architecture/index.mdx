@@ -10,9 +10,9 @@ This section explains how Hanzo Cloud is put together — what runs today, and w
 
 ## Today
 
-Hanzo Cloud is a family of services behind one front door. A single API key at `api.hanzo.ai` reaches every service — AI inference, identity, secrets, storage, commerce, and more — grouped into ten categories: AI, Compute, Data, Network, Security, Observe, Platform, Web3, Apps, and Commerce. See [Platform & Services](/docs/services) for the full catalog.
+Hanzo Cloud is **one Go binary**. A single API key at `api.hanzo.ai` reaches every service — AI inference, identity, secrets, storage, commerce, and more — because those services are **native subsystems compiled into that one binary**, each served under `/v1` and mapped to [hanzoai/openapi](https://github.com/hanzoai/openapi). Ingress and routing are native subsystems too, so the binary is its own front door rather than sitting behind a separate gateway or ingress tier. The catalog is grouped into ten categories — AI, Compute, Data, Network, Security, Observe, Platform, Web3, Apps, and Commerce; see [Platform & Services](/docs/services) for the full list. This single-binary consolidation is the unified cloud binary (HIP-0106), already substantially shipped.
 
-Each product is its own repository and its own container image, deployed and reconciled independently. Some products run as standalone applications on their own domains — for example [Sign](/docs/services/sign) (`esign.hanzo.ai`), [Dataroom](/docs/services/dataroom) (`dataroom.hanzo.ai`), and [Cap Table](/docs/services/captable) (`captable.hanzo.ai`). They authenticate through Hanzo IAM, but each runs as its own application rather than inside a single shared runtime.
+A few products still run as standalone applications on their own domains — for example [Sign](/docs/services/sign) (`esign.hanzo.ai`), [Dataroom](/docs/services/dataroom) (`dataroom.hanzo.ai`), and [Cap Table](/docs/services/captable) (`captable.hanzo.ai`) — authenticating through Hanzo IAM. These are the remaining standalone apps, being absorbed into the one runtime rather than the intended end state.
 
 ## Direction
 
