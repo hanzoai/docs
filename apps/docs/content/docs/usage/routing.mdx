@@ -1,0 +1,185 @@
+---
+title: Smart routing
+description: Send model "auto" to api.hanzo.ai and each prompt is routed to the model that fits the task and your SLO — for up to 90% lower AI spend.
+---
+
+import { Steps, Step } from '@hanzo/docs-base-ui/components/steps';
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# Smart routing
+
+Set `model: "auto"` on a Hanzo Cloud chat completion and each prompt is routed
+to the model that fits the task and your service-level objective — a local
+[zen](https://huggingface.co/zenlm) model, a cheap tier, or a frontier model.
+You are billed as whatever actually served the request, and every response
+carries an `X-Routed-Model` header so the choice is transparent.
+
+The value is cost. Most prompts in a real workload are easy and never need a
+frontier model. Routing the easy ones to on-device or open models — and
+reserving frontier models for the hardest prompts — can cut API spend
+**up to 90%**. The exact number depends on your prompt mix; see
+[Honest savings](#honest-savings) below.
+
+## Enable routing
+
+<Steps>
+<Step>
+### Cloud — toggle in the console
+
+On [console.hanzo.ai](https://console.hanzo.ai), open **AI Accounts**
+(`/ai-accounts`) and turn on **Smart routing**. That is all cloud users need —
+requests with `model: "auto"` start routing immediately.
+</Step>
+<Step>
+### Self-hosted — set `router.enabled`
+
+If you run the gateway yourself, enable the router in your config:
+
+```yaml title="hanzo.config.yaml"
+router:
+  enabled: true          # route model:"auto" requests
+  strategy: heuristic    # built-in heuristic (default) | zen-router
+```
+
+Restart the gateway to pick up the change.
+</Step>
+</Steps>
+
+## Send `model: "auto"`
+
+Point any OpenAI-compatible client at `api.hanzo.ai` and set the model to
+`auto`. Nothing else changes — same request shape, same response shape.
+
+<Tabs items={["curl", "JavaScript"]}>
+<TabsContent value="curl">
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "auto",
+    "messages": [
+      { "role": "user", "content": "Summarize this changelog in one line." }
+    ]
+  }' -i
+```
+
+The `-i` flag prints response headers so you can see the `X-Routed-Model`
+value the router picked.
+</TabsContent>
+<TabsContent value="JavaScript">
+```ts
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.hanzo.ai/v1',
+  apiKey: process.env.HANZO_API_KEY,
+});
+
+const res = await client.chat.completions.create({
+  model: 'auto',
+  messages: [
+    { role: 'user', content: 'Summarize this changelog in one line.' },
+  ],
+});
+
+// The model that actually served the request:
+console.log(res.model); // e.g. "zen-nano" | "zen-omni" | a frontier model
+```
+</TabsContent>
+</Tabs>
+
+## Steering with an SLO
+
+Routing is automatic, but you can steer it with an optional `slo` object. The
+router honors your bounds while still choosing the cheapest model that clears
+them:
+
+```json
+{
+  "model": "auto",
+  "slo": {
+    "max_latency_ms": 2000,
+    "min_quality": 0.85,
+    "max_cost_per_1k": 0.50
+  },
+  "messages": [ ... ]
+}
+```
+
+| Field             | Meaning                                                        |
+| ----------------- | ------------------------------------------------------------- |
+| `max_latency_ms`  | Upper bound on time-to-first-token; excludes slower models    |
+| `min_quality`     | Minimum quality score (0-1) the chosen model must meet         |
+| `max_cost_per_1k` | Cost ceiling in USD per 1K tokens; excludes pricier models     |
+
+Omit `slo` entirely to let the router balance cost and quality on its own.
+
+## The `X-Routed-Model` header
+
+Every routed response tells you what served it. Read the model id from either
+the `X-Routed-Model` response header or the `model` field in the JSON body —
+they always match. This makes routing fully auditable: log the header to see,
+per request, exactly which tier answered and what you were billed for.
+
+```http
+HTTP/1.1 200 OK
+X-Routed-Model: zen-nano
+Content-Type: application/json
+```
+
+## Per-surface toggles
+
+Smart routing is a Hanzo Cloud feature, so it is available everywhere Hanzo
+runs. Turn it on per surface:
+
+- **Console** — [console.hanzo.ai/ai-accounts](https://console.hanzo.ai/ai-accounts) → **Smart routing**
+- **hanzo.chat** — Settings → Model → **Auto (smart routing)**
+- **Hanzo Desktop** — Settings → Model → **Auto**
+- **hanzo.app** — Settings → Model → **Auto**
+- **Mobile** — Settings → Model → **Auto**
+
+Selecting **Auto** on any surface is equivalent to sending `model: "auto"` on
+the API.
+
+## Heuristic today, zen-router next
+
+Routing ships with a **built-in heuristic** — it scores each prompt's
+difficulty and matches it to a tier. It works out of the box with no model to
+host and no extra latency.
+
+For higher accuracy you can upgrade to the **trained zen-router**
+([zenlm/zen-router](https://huggingface.co/zenlm/zen-router)) by setting
+`router.strategy: zen-router` (self-hosted) or switching the strategy in the
+console (cloud). The request contract is identical — `model: "auto"`,
+`X-Routed-Model`, and the `slo` fields all stay the same — so you can move
+between strategies without touching client code.
+
+## Honest savings
+
+The savings are real but workload-dependent, so we frame them honestly:
+
+- On a worked mix of **70% simple** prompts routed to local/open models (~$0),
+  **20%** to a cheap tier, and **10%** to a frontier model, blended API spend
+  drops **~89%** versus sending everything to a single frontier model. Your
+  mix determines your number — we say "up to 90%," never a guarantee.
+- On the public **RouterBench** dataset, oracle routing reaches **0.909**
+  quality at roughly **13× lower cost** than the best single model — cited as a
+  replication smoke run, not a Hanzo-specific benchmark.
+- Full total-cost-of-ownership also improves from seat consolidation, overage
+  avoidance, and running on-device zen models where they suffice.
+
+We never publish fabricated benchmarks. For the methodology and full numbers:
+
+<Cards>
+  <Card
+    title="Read the paper"
+    description="hanzo-router — routing methodology and cost analysis"
+    href="https://papers.hanzo.ai/hanzo-router"
+  />
+  <Card
+    title="The model"
+    description="zenlm/zen-router on Hugging Face"
+    href="https://huggingface.co/zenlm/zen-router"
+  />
+</Cards>
