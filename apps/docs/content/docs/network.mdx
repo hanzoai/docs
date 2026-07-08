@@ -1,0 +1,145 @@
+---
+title: The Network
+description: The AI cloud you can run yourself. hanzo.network is hanzod nodes that spawn the same unified cloud binary we run in production — OSS AI cloud in one binary, BYO GPU or K8s, mine on any device, free for public and open-source workloads.
+icon: Globe
+---
+
+import { Cards, Card } from '@hanzo/docs-ui/components/card'
+import { Callout } from '@hanzo/docs-ui/components/callout'
+import { Steps, Step } from '@hanzo/docs-base-ui/components/steps'
+
+# The AI cloud you can run yourself
+
+Hanzo is **one Go binary**. The `cloud` binary — `CGO_ENABLED=0`, statically
+linked — embeds the whole platform: all 67 capabilities across the eight
+movements, mounted as subsystems, served behind one contract at
+`/v1/<capability>`. The same binary that answers `api.hanzo.ai` in production is
+the binary you run on your laptop with one command.
+
+`hanzo.network` is what happens when you point that binary at a chain instead of
+a single host. It is a network of **`hanzod` nodes** that spawn and power that
+same unified `cloud` binary. **The network is the cloud** — not a hosted service
+you rent, but a substrate anyone can join and run.
+
+```bash
+curl hanzo.sh | sh
+```
+
+<Callout type="info">
+This is the story specified in **[HIP-0127 — V8 · Open Edition](https://hips.hanzo.ai)**:
+one binary, one contract, a network that is the cloud. Nothing here is a hosted
+tier you are locked into — every capability is the same open-source binary,
+whether it runs on our nodes or yours.
+</Callout>
+
+## One binary, everywhere
+
+The naive way to ship a cloud is dozens of services, each its own image, each its
+own deploy. Hanzo rejects that. The application cloud is **one static Go binary**
+with no cgo, no cross-toolchain build, no runtime dependencies — which is exactly
+what makes *"`curl | sh`, run the whole cloud anywhere"* true.
+
+<Cards>
+  <Card title="On your machine" description="One binary, no dependencies. Runs the entire cloud locally for development or a single-tenant deployment." />
+  <Card title="On your GPU or K8s" description="Bring your own accelerator or cluster. The binary uses what you give it — no vendor hardware lock-in." />
+  <Card title="On the network" description="hanzod nodes spawn the same binary and coordinate over the chain. Join as a provider or a consumer." />
+</Cards>
+
+Because the surface is one uniform contract — `/v1/<capability>` over **HTTP +
+[ZAP](/docs/zap)** — a consumer never needs to know or care *which* node, *which*
+process, or *which* language answered. The route is the identity.
+
+## GitHub for compute
+
+Public and open-source workloads run **free on public nodes**. Think of it as
+GitHub for compute: your open work is hosted at no cost on the shared network,
+the same way open source is hosted for free today. Private and metered workloads
+are market-priced.
+
+<Cards>
+  <Card title="Public + OSS → free" description="Open-source and public workloads run at no cost on public hanzod nodes. Openness is the pricing tier." />
+  <Card title="Private → market-priced" description="Private workloads are metered and priced by the market of providers — you pay for what you use, to whoever runs it." />
+</Cards>
+
+## Mine on any device
+
+Any device can be a provider. A `hanzod` node contributes its compute to the
+network and is paid at market price for the work it does. Confidential workloads
+run inside **NVIDIA TEE / Confidential Compute** enclaves, so a provider serves
+work it cannot see and a consumer runs work a host cannot inspect.
+
+<Cards>
+  <Card title="Any device" description="Laptop, workstation, server, or datacenter GPU — if it runs the binary, it can mine." />
+  <Card title="Confidential by default" description="NVIDIA TEE/CC enclaves keep provider and consumer mutually blind. Trust the math, not the operator." />
+  <Card title="Market-priced" description="Providers are paid the going rate for the compute they contribute. The network clears the price." />
+</Cards>
+
+## The language seam is a wire, never FFI
+
+Hanzo is Go **and** Rust: the cloud is Go, while the [engine](/docs/services/engine),
+the [`dev`](/docs/dev) agent, and the ML kernels are Rust. They compose over
+**[ZAP](/docs/zap)** — a network or local socket — never over FFI. Each stays a
+clean single-language binary; they exchange ZAP frames, they never link each
+other's code.
+
+This is deliberate. FFI (cgo/uniffi) is *easy* — one process — but it *complects*
+two toolchains and destroys the single static binary. The wire seam is *simpler*:
+independent, composable, language-free at the boundary. **Don't fuse — bridge.**
+See [Architecture & Philosophy](/docs/architecture) for the full reasoning.
+
+## Run it yourself
+
+<Steps>
+
+<Step>
+
+### Install the binary
+
+```bash
+curl hanzo.sh | sh
+```
+
+One command installs the [`hanzo` CLI](/docs/cli) — a ~15 MB Rust binary that
+speaks to any live cloud, whether it is production, your laptop, or a self-host.
+
+</Step>
+
+<Step>
+
+### Log in
+
+```bash
+hanzo login
+```
+
+Authenticate with [Hanzo IAM](/docs/iam) — the same identity works against every
+cloud, everywhere.
+
+</Step>
+
+<Step>
+
+### Use every capability
+
+```bash
+hanzo chat "Explain the network"     # Intelligence
+hanzo deploy ./my-app                # Platform
+hanzo secrets set API_KEY=…          # Identity & Trust
+```
+
+The CLI is a **client, never the server** — it never imports the cloud. It talks
+ZAP (or its SDK) to a live cloud. Point it at prod, your laptop binary, or a
+customer self-host; the commands are identical.
+
+</Step>
+
+</Steps>
+
+## Learn more
+
+<Cards>
+  <Card title="Architecture & Philosophy" href="/docs/architecture" description="One binary, one contract, the ZAP wire — the engineering principles behind the network." />
+  <Card title="The hanzo CLI" href="/docs/cli" description="Install, log in, and drive every capability from one Rust binary." />
+  <Card title="ZAP Protocol" href="/docs/zap" description="Zero-Copy App Proto — the wire the Go and Rust halves speak." />
+  <Card title="HIP-0127" href="https://hips.hanzo.ai" description="V8 · Open Edition — the canonical specification for this model." />
+</Cards>
