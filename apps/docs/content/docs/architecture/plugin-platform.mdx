@@ -1,0 +1,102 @@
+---
+title: Consensus-Backed Plugin Platform
+description: The architecture direction for Hanzo Cloud — plugins as the unit of deployment, a small consensus control plane over placement, and ZAP-native authoring. Specified in HIP-0125 (Draft).
+---
+
+# Consensus-Backed Plugin Platform
+
+<Callout type="warn">
+This page describes a **design direction**, not a shipped feature. The runtime it describes is specified in **HIP-0125 (Draft)** and is **not yet built**. It is published so the design can be reviewed. For what runs today, see the product pages under [Platform & Services](/docs/services); this page is about where the platform is headed and why.
+</Callout>
+
+Hanzo Cloud today is many services, each its own repository, image, and deployment. The direction is to run them as **plugins** inside one cloud runtime, and to let a **small consensus control plane** decide where each plugin's write side lives. The goal is that a service author writes almost none of the hard parts — placement, failover, replication, high availability — and inherits them from the platform.
+
+The design rests on one principle: **consensus orders decisions, not bytes.**
+
+## The unit is a plugin
+
+In the proposed model (HIP-0105, *In-Process Extension Runtime Standard*), a service registers itself with a single call:
+
+```go
+// Proposed API (HIP-0105) — not yet available.
+func init() {
+    cloud.Register("kms", 500, mount)
+}
+```
+
+A plugin is the unit the platform places and scales. The `cloud` binary loads a set of registered plugins; **nodes specialize** by running a dynamic subset of them rather than every node running everything. That makes the runtime one deployable artifact whose behavior on each node is data — the placement decision — rather than a per-service build.
+
+Existing subsystems — KMS, IAM, Base, Gateway, Commerce, tasks, pubsub — are exactly the kind of thing that becomes a plugin under this model. They are **not** plugins today; this is the target.
+
+## Consensus orders decisions, not bytes
+
+The platform splits into two planes that are deliberately kept separate.
+
+**Control plane — a small, fixed quorum.** Five voter nodes run a post-quantum BFT consensus engine (the **Quasar** engine from Lux, with a post-quantum certificate profile). Its replicated log orders only tiny metadata:
+
+- cluster membership,
+- the **placement map** — which node holds the writer for each `(plugin, shard)`, and its followers,
+- **writer leases** with fencing epochs, so there is exactly one writer per shard per epoch.
+
+**Data plane — reuse what exists.** The bytes do not go through consensus. The data plane reuses the existing streaming replication (HIP-0107) that already backs the platform's storage — the S3 / ZapDB log-ship. The only change is the write fence: instead of asking "do I hold a Kubernetes lease?", a writer asks "does the control plane grant this shard's lease at the current epoch?"
+
+The consequence is the important part:
+
+<Callout type="info">
+**Consensus sits off the data path.** If the control-plane quorum is lost, placement and failover freeze — but serving does not stop. Every current writer keeps its lease and keeps writing; readers keep reading. Losing quorum degrades **failover**, not availability. This is the Chubby / etcd shape applied to the Hanzo runtime.
+</Callout>
+
+## Scaling to N nodes
+
+The two planes scale independently:
+
+- **5 voters** run the control plane. The quorum is small and fixed, so adding capacity never slows consensus.
+- **N data nodes** host plugin shards and each follow a read-only copy of the placement map. `N` grows without bound.
+
+Within that topology:
+
+- **Pinned writers** — each shard has one writer node, assigned by the placement map, so writes have a single owner and never conflict.
+- **Per-connection pinning** — a client's connection is routed to the node that currently owns the shard it is talking to, so reads and writes land on the right replica.
+- **Per-tenant sharding** — the write side can be split by tenant, down to a `(plugin, org)` shard, so a single busy organization gets its own writer. Fine per-tenant sharding is a **later stage** of the proposal; the earlier stages run one writer per plugin.
+
+## ZAP-native, easy plugin authoring
+
+The payoff is the developer experience. Under HIP-0105 and HIP-0114, a plugin author implements one small interface and calls `cloud.Register`. In return the platform supplies placement, per-tenant scale, replication, per-connection pinning, and high availability — none of which the author writes.
+
+```go
+// Proposed authoring model (HIP-0105 / HIP-0125) — illustrative, not yet available.
+// The author writes the handler; the platform supplies placement + replication + HA.
+func mount(deps cloud.Deps) http.Handler {
+    db := deps.OpenShard("kms")     // the placement-assigned shard for this node
+    return newHandler(db)           // ...just serve requests
+}
+
+func init() { cloud.Register("kms", 500, mount) }
+```
+
+The default wire is **ZAP** (Zero-Copy App Proto, HIP-0114) — the same high-performance, post-quantum transport documented in the [ZAP section](/docs/zap). Every plugin registered through `cloud.Register` speaks ZAP with no extra work, so cross-plugin and inter-node calls get zero-copy performance by default rather than as an opt-in.
+
+<Callout type="warn">
+The snippets above show the **proposed** shape of the API to illustrate the direction. They are not a tutorial for a runtime that exists today — there is no `cloud.Register` plugin runtime to deploy against yet. Treat them as design, pending ratification of HIP-0125.
+</Callout>
+
+## Where this is specified
+
+The plugin platform is defined across a set of Hanzo Improvement Proposals. Statuses are as of writing and may change — track them at [hips.hanzo.ai](https://hips.hanzo.ai) and [github.com/hanzoai/hips](https://github.com/hanzoai/hips).
+
+| HIP | Title | Status |
+|-----|-------|--------|
+| HIP-0125 | Consensus-Backed Plugin-Placement Platform | Draft |
+| HIP-0105 | In-Process Extension Runtime Standard | Draft |
+| HIP-0106 | Unified Hanzo Cloud Binary | Draft |
+| HIP-0107 | Streaming Replication over VFS | Draft |
+| HIP-0112 | Cloud Infrastructure Topology Standard | Active |
+| HIP-0114 | ZAP — Inter-VM Cognitive Transport | Draft |
+
+## Next Steps
+
+<Cards>
+  <Card title="Architecture Overview" href="/docs/architecture" description="How Hanzo Cloud is built today, and the direction it is evolving toward." />
+  <Card title="ZAP Protocol" href="/docs/zap" description="The zero-copy transport plugins default to." />
+  <Card title="Platform & Services" href="/docs/services" description="The services that run today, behind one api.hanzo.ai." />
+</Cards>

@@ -5,15 +5,21 @@ description: Document signing and e-signature platform
 
 # Hanzo Sign
 
-Hanzo Sign is a document signing platform for creating, sending, and managing legally binding electronic signatures. Built for teams that need secure, compliant e-signatures integrated with the Hanzo ecosystem.
+Hanzo Sign (also called Hanzo eSign) is an open-source document signing platform — an AGPLv3 alternative to DocuSign — for creating, sending, and managing legally binding electronic signatures. It runs as a standalone Next.js/React Router application at `esign.hanzo.ai`, integrates with Hanzo IAM for SSO, and can be self-hosted.
+
+Documents are signed cryptographically: the completed PDF is sealed with a signing certificate (a P12 certificate or Google Cloud HSM key), and every action is captured in an audit trail.
 
 ## Features
 
-- **PDF Signing**: Upload and sign PDF documents with legally binding e-signatures
-- **Templates**: Create reusable document templates with pre-defined signing fields
-- **Signing Fields**: Text, signature, initials, date, checkbox, dropdown, and more
-- **Teams & Organizations**: Multi-tenant workspace management
-- **Webhooks**: Real-time notifications for signing events
+- **PDF Signing**: Upload and sign PDF documents with legally binding, cryptographically sealed signatures
+- **Envelopes**: Group multiple documents and attachments into a single signing transaction
+- **Templates**: Create reusable document templates with pre-defined fields and bulk send
+- **Signing Fields**: Signature, initials, name, email, date, text, number, radio, checkbox, and dropdown fields
+- **Recipients & Signing Order**: Assign roles (signer, CC, viewer) and sequential signing workflows
+- **Direct Links**: Tokenized public signing links, no account required for signers
+- **Folders & Audit Trail**: Organize documents; every action recorded for compliance
+- **Teams & Organizations**: Multi-tenant workspaces with role-based access and invites
+- **Webhooks**: Real-time notifications for document lifecycle events
 - **Per-Org OIDC**: Organization-scoped SSO portals
 - **Hanzo IAM SSO**: Single sign-on via Hanzo identity
 
@@ -21,8 +27,9 @@ Hanzo Sign is a document signing platform for creating, sending, and managing le
 
 | Environment | URL |
 |-------------|-----|
-| Production | `https://sign.hanzo.ai` |
-| API | `https://sign.hanzo.ai/api/v1` |
+| Production | `https://esign.hanzo.ai` |
+| API (stable) | `https://eesign.hanzo.ai/api/v1` |
+| API (v2, tRPC) | `https://esign.hanzo.ai/api/v2` |
 
 ## Architecture
 
@@ -55,7 +62,7 @@ Hanzo Sign is a document signing platform for creating, sending, and managing le
 Upload a PDF and add recipients:
 
 ```typescript
-const response = await fetch('https://sign.hanzo.ai/api/v1/documents', {
+const response = await fetch('https://esign.hanzo.ai/api/v1/documents', {
   method: 'POST',
   headers: {
     'Authorization': `Bearer ${apiToken}`,
@@ -74,7 +81,7 @@ const response = await fetch('https://sign.hanzo.ai/api/v1/documents', {
 ### 2. Add Signing Fields
 
 ```typescript
-await fetch(`https://sign.hanzo.ai/api/v1/documents/${docId}/fields`, {
+await fetch(`https://esign.hanzo.ai/api/v1/documents/${docId}/fields`, {
   method: 'POST',
   headers: { 'Authorization': `Bearer ${apiToken}` },
   body: JSON.stringify({
@@ -90,7 +97,7 @@ await fetch(`https://sign.hanzo.ai/api/v1/documents/${docId}/fields`, {
 ### 3. Send for Signing
 
 ```typescript
-await fetch(`https://sign.hanzo.ai/api/v1/documents/${docId}/send`, {
+await fetch(`https://esign.hanzo.ai/api/v1/documents/${docId}/send`, {
   method: 'POST',
   headers: { 'Authorization': `Bearer ${apiToken}` }
 })
@@ -101,20 +108,23 @@ await fetch(`https://sign.hanzo.ai/api/v1/documents/${docId}/send`, {
 | Type | Description |
 |------|-------------|
 | `SIGNATURE` | Electronic signature |
+| `FREE_SIGNATURE` | Free-form drawn signature |
 | `INITIALS` | Signer initials |
-| `TEXT` | Free text input |
+| `NAME` | Signer name |
+| `EMAIL` | Signer email |
 | `DATE` | Date picker |
-| `CHECKBOX` | Boolean checkbox |
-| `DROPDOWN` | Select from options |
+| `TEXT` | Free text input |
 | `NUMBER` | Numeric input |
 | `RADIO` | Radio button group |
+| `CHECKBOX` | Boolean checkbox |
+| `DROPDOWN` | Select from options |
 
 ## Webhooks
 
 ### Configure Webhook
 
 ```typescript
-await fetch('https://sign.hanzo.ai/api/v1/webhooks', {
+await fetch('https://esign.hanzo.ai/api/v1/webhooks', {
   method: 'POST',
   headers: { 'Authorization': `Bearer ${apiToken}` },
   body: JSON.stringify({
@@ -145,14 +155,16 @@ Hanzo Sign supports multiple authentication methods:
 
 - **Hanzo IAM**: SSO via `https://hanzo.id` (recommended)
 - **Google OAuth**: Sign in with Google
-- **Email Magic Link**: Passwordless email login
-- **Passkeys**: WebAuthn/FIDO2 authentication
+- **Microsoft OAuth**: Sign in with Microsoft / Azure AD
+- **Generic OIDC**: Any OpenID Connect provider
+- **Email & Password**: Native accounts (signup can be disabled for closed deployments)
+- **Passkeys**: WebAuthn/FIDO2 authentication, plus optional 2FA
 
 ### IAM Integration
 
 ```bash
 # Environment variables
-IAM_ENDPOINT=https://hanzo.id
+IAM_URL=https://hanzo.id
 IAM_CLIENT_ID=app-sign
 IAM_CLIENT_SECRET=<from-kms>
 ```
@@ -166,9 +178,9 @@ docker run -d \
   --name hanzo-sign \
   -p 3000:3000 \
   -e DATABASE_URL=postgres://... \
-  -e IAM_ENDPOINT=https://hanzo.id \
+  -e IAM_URL=https://hanzo.id \
   -e IAM_CLIENT_ID=app-sign \
-  ghcr.io/hanzoai/sign:latest
+  ghcr.io/hanzoai/esign:latest
 ```
 
 ### Environment Variables
@@ -177,7 +189,7 @@ docker run -d \
 |----------|-------------|
 | `DATABASE_URL` | PostgreSQL connection string |
 | `NEXT_PUBLIC_WEBAPP_URL` | Public URL of the application |
-| `IAM_ENDPOINT` | Hanzo IAM server URL |
+| `IAM_URL` | Hanzo IAM server URL |
 | `IAM_CLIENT_ID` | IAM application client ID |
 | `IAM_CLIENT_SECRET` | IAM application client secret |
 | `NEXT_PRIVATE_ENCRYPTION_KEY` | Document encryption key |
@@ -186,6 +198,11 @@ docker run -d \
 | `NEXT_PRIVATE_SMTP_PORT` | SMTP server port |
 
 ## API Reference
+
+Hanzo Sign exposes two API surfaces:
+
+- **`/api/v1`** — the stable REST API (contract-based), authenticated with a Bearer API token. The endpoints below are on this surface.
+- **`/api/v2`** and **`/api/v2-beta`** — the current tRPC API with an auto-generated OpenAPI schema at `/api/v2/openapi.json`. This surface is evolving and covers newer capabilities (envelopes, folders, embedding).
 
 ### Documents
 
