@@ -3,8 +3,13 @@ import { HanzoDocsIcon } from '@/app/layout.client';
 
 export const linkItems: LinkItemType[] = [
   {
-    text: 'Platform',
-    url: '/docs/services',
+    text: 'Docs',
+    url: '/docs',
+    active: 'nested-url',
+  },
+  {
+    text: 'Network',
+    url: '/docs/network',
     active: 'nested-url',
   },
   {
