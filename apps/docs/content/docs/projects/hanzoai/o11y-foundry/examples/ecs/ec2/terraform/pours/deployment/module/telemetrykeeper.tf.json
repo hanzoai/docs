@@ -6,7 +6,7 @@
         "image": "amazon/aws-cli:2.27.32",
         "essential": false,
         "entryPoint": ["/bin/sh", "-c"],
-        "command": ["aws s3 cp s3://${var.config_bucket}/signoz/telemetrykeeper/clickhousekeeper/ /configs/telemetrykeeper/ --recursive"],
+        "command": ["aws s3 cp s3://${var.config_bucket}/o11y/telemetrykeeper/clickhousekeeper/ /configs/telemetrykeeper/ --recursive"],
         "mountPoints": [
           {
             "sourceVolume": "keeper-config",
@@ -18,7 +18,7 @@
         "memoryReservation": 102
       },
       {
-        "name": "signoz-telemetrykeeper-clickhousekeeper-0",
+        "name": "o11y-telemetrykeeper-clickhousekeeper-0",
         "image": "clickhouse/clickhouse-keeper:25.5.6",
         "essential": true,
         "entryPoint": ["/usr/bin/clickhouse-keeper", "--config-file=/etc/clickhouse-keeper/keeper.yaml"],
@@ -57,14 +57,14 @@
       "telemetrykeeper_configs": {
         "for_each": "${fileset(\"${path.module}/telemetrykeeper/clickhousekeeper\", \"**\")}",
         "bucket": "${var.config_bucket}",
-        "key": "signoz/telemetrykeeper/clickhousekeeper/${each.value}",
+        "key": "o11y/telemetrykeeper/clickhousekeeper/${each.value}",
         "source": "${path.module}/telemetrykeeper/clickhousekeeper/${each.value}",
         "etag": "${filemd5(\"${path.module}/telemetrykeeper/clickhousekeeper/${each.value}\")}"
       }
     },
     "aws_ecs_task_definition": {
       "telemetrykeeper": {
-        "family": "signoz-telemetrykeeper-clickhousekeeper-0",
+        "family": "o11y-telemetrykeeper-clickhousekeeper-0",
         "network_mode": "awsvpc",
         "requires_compatibilities": ["EC2"],
         "task_role_arn": "${var.task_role_arn}",
@@ -106,7 +106,7 @@
     },
     "aws_ecs_service": {
       "telemetrykeeper": {
-        "name": "signoz-telemetrykeeper-clickhousekeeper-0",
+        "name": "o11y-telemetrykeeper-clickhousekeeper-0",
         "cluster": "${var.ecs_cluster_id}",
         "task_definition": "${aws_ecs_task_definition.telemetrykeeper.arn}",
         "desired_count": 1,

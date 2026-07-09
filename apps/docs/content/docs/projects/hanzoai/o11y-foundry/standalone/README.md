@@ -7,11 +7,11 @@
 
 ## Overview
 
-An OpenTelemetry-native observability backend in a single Docker image. The standalone image bundles all SigNoz components into one container for development, demo, and testing environments.
+An OpenTelemetry-native observability backend in a single Docker image. The standalone image bundles all O11y components into one container for development, demo, and testing environments.
 
 **Included components:**
 
-- **SigNoz** - query engine and UI
+- **O11y** - query engine and UI
 - **OpenTelemetry Collector** - telemetry ingestion
 - **ClickHouse** - telemetry storage
 - **SQLite** - metadata storage
@@ -26,14 +26,14 @@ Applications can send telemetry using OpenTelemetry's standard defaults (OTLP gR
 ## Deploy
 
 ```bash
-docker run -d --name signoz --privileged \
+docker run -d --name o11y --privileged \
     -p 8080:8080 \
     -p 4317:4317 \
     -p 4318:4318 \
     signoz/signoz-standalone:latest
 ```
 
-Access SigNoz UI at `http://localhost:8080`.
+Access O11y UI at `http://localhost:8080`.
 
 Send telemetry to:
 
@@ -45,7 +45,7 @@ Send telemetry to:
 To customize the deployment, mount your own `casting.yaml` into the container:
 
 ```bash
-docker run -d --name signoz --privileged \
+docker run -d --name o11y --privileged \
     -p 8080:8080 \
     -p 4317:4317 \
     -p 4318:4318 \
@@ -58,12 +58,12 @@ See the default [casting.yaml](casting.yaml) for the full config structure.
 ## Persist Data
 
 ```bash
-docker run -d --name signoz --privileged \
+docker run -d --name o11y --privileged \
     -p 8080:8080 \
     -p 4317:4317 \
     -p 4318:4318 \
-    -v signoz-clickhouse:/var/lib/clickhouse \
-    -v signoz-data:/var/lib/signoz \
+    -v o11y-clickhouse:/var/lib/clickhouse \
+    -v o11y-data:/var/lib/o11y \
     signoz/signoz-standalone:latest
 ```
 
@@ -71,12 +71,12 @@ docker run -d --name signoz --privileged \
 
 ```bash
 # View logs for all services
-docker exec signoz journalctl -f
+docker exec o11y journalctl -f
 
 # View logs for a specific service
-docker exec signoz journalctl -u signoz-signoz.service -f
-docker exec signoz journalctl -u signoz-ingester.service -f
-docker exec signoz journalctl -u signoz-telemetrystore-clickhouse-0-0.service -f
+docker exec o11y journalctl -u o11y-o11y.service -f
+docker exec o11y journalctl -u o11y-ingester.service -f
+docker exec o11y journalctl -u o11y-telemetrystore-clickhouse-0-0.service -f
 ```
 
 ## Limitations

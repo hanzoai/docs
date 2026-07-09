@@ -8,7 +8,7 @@
 
 ## Overview
 
-Deploys SigNoz using Docker Compose with all Foundry defaults. This is the simplest way to run SigNoz locally or on a single node.
+Deploys O11y using Docker Compose with all Foundry defaults. This is the simplest way to run O11y locally or on a single node.
 
 ## Prerequisites
 
@@ -20,7 +20,7 @@ Deploys SigNoz using Docker Compose with all Foundry defaults. This is the simpl
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: signoz
+  name: o11y
 spec:
   deployment:
     flavor: compose
@@ -71,7 +71,7 @@ pours/deployment/
 docker ps
 
 # View logs for a specific service
-docker compose -f pours/deployment/compose.yaml logs -f signoz
+docker compose -f pours/deployment/compose.yaml logs -f o11y
 
 # Stop the stack
 cd pours/deployment && docker compose down

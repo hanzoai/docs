@@ -2,4 +2,4 @@
 
 | Flavor | Description |
 | --- | --- |
-| [stack](stack/) | Deploy SigNoz on Coolify as a stack |
+| [stack](stack/) | Deploy O11y on Coolify as a stack |

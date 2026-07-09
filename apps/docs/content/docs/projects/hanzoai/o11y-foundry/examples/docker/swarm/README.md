@@ -8,7 +8,7 @@
 
 ## Overview
 
-Deploys SigNoz on a Docker Swarm cluster. Foundry generates a Compose file and deploys it as a stack using `docker stack deploy`.
+Deploys O11y on a Docker Swarm cluster. Foundry generates a Compose file and deploys it as a stack using `docker stack deploy`.
 
 ## Prerequisites
 
@@ -20,7 +20,7 @@ Deploys SigNoz on a Docker Swarm cluster. Foundry generates a Compose file and d
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: signoz
+  name: o11y
 spec:
   deployment:
     flavor: swarm
@@ -40,7 +40,7 @@ Or step by step:
 foundryctl forge -f casting.yaml
 
 # Deploy manually
-docker stack deploy -c pours/deployment/compose.yaml signoz
+docker stack deploy -c pours/deployment/compose.yaml o11y
 ```
 
 ## Generated output
@@ -65,13 +65,13 @@ pours/deployment/
 
 ```bash
 # List services in the stack
-docker stack services signoz
+docker stack services o11y
 
 # View logs for a service
-docker service logs signoz_signoz -f
+docker service logs o11y_o11y -f
 
 # Remove the stack
-docker stack rm signoz
+docker stack rm o11y
 ```
 
 ## Customization

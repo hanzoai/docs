@@ -8,7 +8,7 @@
 
 ## Overview
 
-Generates per-component Dockerfiles, `railway.json` service definitions, and config files for deploying SigNoz on Railway. Deployment is manual via the Railway dashboard.
+Generates per-component Dockerfiles, `railway.json` service definitions, and config files for deploying O11y on Railway. Deployment is manual via the Railway dashboard.
 
 > [!NOTE]
 > `foundryctl cast` does not deploy to Railway automatically. It generates the files and prints instructions for manual deployment.
@@ -22,7 +22,7 @@ Generates per-component Dockerfiles, `railway.json` service definitions, and con
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: signoz
+  name: o11y
 spec:
   deployment:
     flavor: template
@@ -53,7 +53,7 @@ pours/deployment/
   metastore/
     Dockerfile
     railway.json
-  signoz/
+  o11y/
     Dockerfile
     railway.json
   ingester/
