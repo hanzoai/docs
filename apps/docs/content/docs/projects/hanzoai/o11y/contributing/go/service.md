@@ -191,7 +191,7 @@ A standalone service only has the `factory.Service` lifecycle i.e it does not se
         // ... dependencies ...
     ) user.Service {
         return &service{
-            settings: factory.NewScopedProviderSettings(providerSettings, "go.o11y.hanzo.ai/pkg/modules/user"),
+            settings: factory.NewScopedProviderSettings(providerSettings, "go.signoz.io/pkg/modules/user"),
             // ... dependencies ...
             stopC:    make(chan struct{}),
         }
@@ -221,7 +221,7 @@ The implementation (e.g. `pkg/tokenizer/opaquetokenizer/provider.go`) implements
 
 ## How to wire it up
 
-Wiring happens in `pkg/signoz/signoz.go`.
+Wiring happens in `pkg/o11y/o11y.go`.
 
 ### 1. Instantiate the service
 

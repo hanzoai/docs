@@ -42,7 +42,7 @@ This gives you full coverage over the generated output without Foundry needing t
 
 ### Docker Compose
 
-Set a memory limit on ClickHouse and add a custom environment variable to SigNoz:
+Set a memory limit on ClickHouse and add a custom environment variable to O11y:
 
 ```yaml
 spec:
@@ -53,7 +53,7 @@ spec:
           path: /services/clickhouse/mem_limit
           value: "4G"
         - op: add
-          path: /services/signoz/environment/-
+          path: /services/o11y/environment/-
           value: "CUSTOM_VAR=value"
 ```
 
@@ -64,7 +64,7 @@ Change the restart policy and add a memory limit on a service unit:
 ```yaml
 spec:
   patches:
-    - target: "signoz-ingester.service"
+    - target: "o11y-ingester.service"
       operations:
         - op: replace
           path: /Service/Restart

@@ -21,7 +21,7 @@
         "image": "amazon/aws-cli:2.27.32",
         "essential": false,
         "entryPoint": ["/bin/sh", "-c"],
-        "command": ["aws s3 cp s3://${var.config_bucket}/signoz/telemetrystore/clickhouse/ /configs/telemetrystore/ --recursive"],
+        "command": ["aws s3 cp s3://${var.config_bucket}/o11y/telemetrystore/clickhouse/ /configs/telemetrystore/ --recursive"],
         "mountPoints": [
           {
             "sourceVolume": "telemetrystore-clickhouse-config",
@@ -33,7 +33,7 @@
         "memoryReservation": 102
       },
       {
-        "name": "signoz-telemetrystore-clickhouse-0-0",
+        "name": "o11y-telemetrystore-clickhouse-0-0",
         "image": "clickhouse/clickhouse-server:25.5.6",
         "essential": true,
         "environment": [{"name":"CLICKHOUSE_SKIP_USER_SETUP","value":"1"}],
@@ -78,14 +78,14 @@
       "telemetrystore_configs": {
         "for_each": "${fileset(\"${path.module}/telemetrystore/clickhouse\", \"**\")}",
         "bucket": "${var.config_bucket}",
-        "key": "signoz/telemetrystore/clickhouse/${each.value}",
+        "key": "o11y/telemetrystore/clickhouse/${each.value}",
         "source": "${path.module}/telemetrystore/clickhouse/${each.value}",
         "etag": "${filemd5(\"${path.module}/telemetrystore/clickhouse/${each.value}\")}"
       }
     },
     "aws_ecs_task_definition": {
       "telemetrystore": {
-        "family": "signoz-telemetrystore-clickhouse-0-0",
+        "family": "o11y-telemetrystore-clickhouse-0-0",
         "network_mode": "awsvpc",
         "requires_compatibilities": ["EC2"],
         "task_role_arn": "${var.task_role_arn}",
@@ -134,7 +134,7 @@
     },
     "aws_ecs_service": {
       "telemetrystore": {
-        "name": "signoz-telemetrystore-clickhouse-0-0",
+        "name": "o11y-telemetrystore-clickhouse-0-0",
         "cluster": "${var.ecs_cluster_id}",
         "task_definition": "${aws_ecs_task_definition.telemetrystore.arn}",
         "desired_count": 1,

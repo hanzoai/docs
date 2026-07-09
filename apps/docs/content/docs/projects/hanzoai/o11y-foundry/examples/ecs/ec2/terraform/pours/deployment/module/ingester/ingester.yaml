@@ -1,5 +1,5 @@
 connectors:
-  signozmeter:
+  o11ymeter:
     dimensions:
     - name: service.name
     - name: deployment.environment
@@ -7,13 +7,13 @@ connectors:
     metrics_flush_interval: 1h
 exporters:
   clickhouselogsexporter:
-    dsn: tcp://telemetrystore-clickhouse.signoz.local:9000/signoz_logs
+    dsn: tcp://telemetrystore-clickhouse.o11y.local:9000/o11y_logs
     sending_queue:
       enabled: false
     timeout: 45s
     use_new_schema: true
   clickhousetraces:
-    datasource: tcp://telemetrystore-clickhouse.signoz.local:9000/signoz_traces
+    datasource: tcp://telemetrystore-clickhouse.o11y.local:9000/o11y_traces
     low_cardinal_exception_grouping: ${env:LOW_CARDINAL_EXCEPTION_GROUPING}
     sending_queue:
       enabled: false
@@ -22,23 +22,23 @@ exporters:
   metadataexporter:
     cache:
       provider: in_memory
-    dsn: tcp://telemetrystore-clickhouse.signoz.local:9000/signoz_metadata
+    dsn: tcp://telemetrystore-clickhouse.o11y.local:9000/o11y_metadata
     enabled: true
     timeout: 45s
-  signozclickhousemeter:
-    dsn: tcp://telemetrystore-clickhouse.signoz.local:9000/signoz_meter
+  o11yclickhousemeter:
+    dsn: tcp://telemetrystore-clickhouse.o11y.local:9000/o11y_meter
     sending_queue:
       enabled: false
     timeout: 45s
-  signozclickhousemetrics:
-    dsn: tcp://telemetrystore-clickhouse.signoz.local:9000/signoz_metrics
+  o11yclickhousemetrics:
+    dsn: tcp://telemetrystore-clickhouse.o11y.local:9000/o11y_metrics
     sending_queue:
       enabled: false
     timeout: 45s
 extensions:
   pprof:
     endpoint: 0.0.0.0:1777
-  signoz_health_check:
+  o11y_health_check:
     endpoint: 0.0.0.0:13133
 processors:
   batch:
@@ -49,7 +49,7 @@ processors:
     send_batch_max_size: 25000
     send_batch_size: 20000
     timeout: 5s
-  signozspanmetrics/delta:
+  o11yspanmetrics/delta:
     aggregation_temporality: AGGREGATION_TEMPORALITY_DELTA
     dimensions:
     - default: default
@@ -78,7 +78,7 @@ processors:
     - 20s
     - 40s
     - 60s
-    metrics_exporter: signozclickhousemetrics
+    metrics_exporter: o11yclickhousemetrics
     metrics_flush_interval: 60s
 receivers:
   otlp:
@@ -89,13 +89,13 @@ receivers:
         endpoint: 0.0.0.0:4318
 service:
   extensions:
-  - signoz_health_check
+  - o11y_health_check
   - pprof
   pipelines:
     logs:
       exporters:
       - clickhouselogsexporter
-      - signozmeter
+      - o11ymeter
       - metadataexporter
       processors:
       - batch
@@ -103,8 +103,8 @@ service:
       - otlp
     metrics:
       exporters:
-      - signozclickhousemetrics
-      - signozmeter
+      - o11yclickhousemetrics
+      - o11ymeter
       - metadataexporter
       processors:
       - batch
@@ -112,18 +112,18 @@ service:
       - otlp
     metrics/meter:
       exporters:
-      - signozclickhousemeter
+      - o11yclickhousemeter
       processors:
       - batch/meter
       receivers:
-      - signozmeter
+      - o11ymeter
     traces:
       exporters:
       - clickhousetraces
-      - signozmeter
+      - o11ymeter
       - metadataexporter
       processors:
-      - signozspanmetrics/delta
+      - o11yspanmetrics/delta
       - batch
       receivers:
       - otlp

@@ -6,7 +6,7 @@
         "image": "amazon/aws-cli:2.27.32",
         "essential": false,
         "entryPoint": ["/bin/sh", "-c"],
-        "command": ["aws s3 cp s3://${var.config_bucket}/signoz/ingester/ /configs/ingester/ --recursive"],
+        "command": ["aws s3 cp s3://${var.config_bucket}/o11y/ingester/ /configs/ingester/ --recursive"],
         "mountPoints": [
           {
             "sourceVolume": "ingester-config",
@@ -22,8 +22,8 @@
         "image": "signoz/signoz-otel-collector:latest",
         "essential": true,
         "entryPoint": ["/bin/sh", "-c"],
-        "command": ["/signoz-otel-collector migrate sync check && /signoz-otel-collector --config=/conf/ingester.yaml --manager-config=/conf/opamp.yaml --copy-path=/var/tmp/collector-config.yaml"],
-        "environment": [{"name":"SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN","value":"tcp://telemetrystore-clickhouse.signoz.local:9000"},{"name":"SIGNOZ_OTEL_COLLECTOR_TIMEOUT","value":"10m"}],
+        "command": ["/otel-collector migrate sync check && /otel-collector --config=/conf/ingester.yaml --manager-config=/conf/opamp.yaml --copy-path=/var/tmp/collector-config.yaml"],
+        "environment": [{"name":"O11Y_OTEL_COLLECTOR_CLICKHOUSE_DSN","value":"tcp://telemetrystore-clickhouse.o11y.local:9000"},{"name":"O11Y_OTEL_COLLECTOR_TIMEOUT","value":"10m"}],
         "portMappings": [
           {"name": "grpc", "containerPort": 4317, "protocol": "tcp", "appProtocol": "grpc"},
           {"name": "http", "containerPort": 4318, "protocol": "tcp", "appProtocol": "http"}
@@ -55,14 +55,14 @@
       "ingester_configs": {
         "for_each": "${fileset(\"${path.module}/ingester\", \"*.yaml\")}",
         "bucket": "${var.config_bucket}",
-        "key": "signoz/ingester/${each.value}",
+        "key": "o11y/ingester/${each.value}",
         "source": "${path.module}/ingester/${each.value}",
         "etag": "${filemd5(\"${path.module}/ingester/${each.value}\")}"
       }
     },
     "aws_ecs_task_definition": {
       "ingester": {
-        "family": "signoz-ingester",
+        "family": "o11y-ingester",
         "network_mode": "awsvpc",
         "requires_compatibilities": ["EC2"],
         "task_role_arn": "${var.task_role_arn}",
@@ -97,7 +97,7 @@
     },
     "aws_ecs_service": {
       "ingester": {
-        "name": "signoz-ingester",
+        "name": "o11y-ingester",
         "cluster": "${var.ecs_cluster_id}",
         "task_definition": "${aws_ecs_task_definition.ingester.arn}",
         "desired_count": 1,
@@ -116,7 +116,7 @@
           "registry_arn": "${aws_service_discovery_service.ingester.arn}"
         },
 "depends_on": [
-          "aws_ecs_service.signoz",
+          "aws_ecs_service.o11y",
           "aws_ecs_service.telemetrystore"
         ]
       }

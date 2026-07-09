@@ -8,7 +8,7 @@
 
 ## Overview
 
-Generates a `coolify.yaml` stack definition for deploying SigNoz on a Coolify-managed server. Deployment is manual via the Coolify dashboard.
+Generates a `coolify.yaml` stack definition for deploying O11y on a Coolify-managed server. Deployment is manual via the Coolify dashboard.
 
 > [!NOTE]
 > `foundryctl cast` does not deploy to Coolify automatically. It generates the files and prints instructions for manual deployment.
@@ -22,7 +22,7 @@ Generates a `coolify.yaml` stack definition for deploying SigNoz on a Coolify-ma
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: signoz
+  name: o11y
 spec:
   deployment:
     flavor: stack

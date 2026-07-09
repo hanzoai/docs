@@ -2,15 +2,17 @@
 WantedBy=multi-user.target
 
 [Service]
-ExecStart=/opt/ingester/bin/o11y-otel-collector --config=%Y/configs/ingester/ingester.yaml --manager-config=%Y/configs/ingester/opamp.yaml --copy-path=/var/lib/ingester/ingester.yaml
+Environment=O11Y_OTEL_COLLECTOR_CLICKHOUSE_DSN=tcp://localhost:9000
+Environment=O11Y_OTEL_COLLECTOR_TIMEOUT=10m
+ExecStart=/opt/ingester/bin/otel-collector --config=%Y/ingester/ingester.yaml --manager-config=%Y/ingester/opamp.yaml --copy-path=/var/lib/ingester/ingester.yaml
+ExecStartPre=/opt/ingester/bin/otel-collector migrate sync check
 Group=o11y
 KillMode=mixed
 Restart=on-failure
+RestartSec=5
 Type=simple
 User=o11y
 
 [Unit]
-After=o11y-telemetrystore-clickhouse-0-0 o11y-telemetrystore-migrator
-Description=Hanzo O11y OTel Collector
-Documentation=https://o11y.io/docs
-Requires=o11y-telemetrystore-migrator
+Description=O11y OTel Collector
+Documentation=https://signoz.io/docs
