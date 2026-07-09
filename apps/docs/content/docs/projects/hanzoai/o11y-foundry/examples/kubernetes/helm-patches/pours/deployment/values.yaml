@@ -1,6 +1,6 @@
 clickhouse:
   enabled: true
-  fullnameOverride: signoz-telemetrystore-clickhouse
+  fullnameOverride: o11y-telemetrystore-clickhouse
   image:
     repository: clickhouse/clickhouse-server
     tag: 25.5.6
@@ -20,12 +20,12 @@ clickhouse:
       memory: 4Gi
   zookeeper:
     enabled: true
-    fullnameOverride: signoz-telemetrykeeper-zookeeper
+    fullnameOverride: o11y-telemetrykeeper-zookeeper
     image:
-      repository: signoz/zookeeper
+      repository: o11y/zookeeper
       tag: 3.7.1
     replicaCount: 1
-fullnameOverride: signoz
+fullnameOverride: o11y
 otelCollector:
   enabled: true
   image:
@@ -53,24 +53,24 @@ otelCollector:
       memory: 2Gi
 postgresql:
   auth:
-    database: signoz
-    password: signoz
-    username: signoz
+    database: o11y
+    password: o11y
+    username: o11y
   enabled: true
-  fullnameOverride: signoz-metastore-postgres
+  fullnameOverride: o11y-metastore-postgres
   image:
     repository: postgres
     tag: 16
-signoz:
+o11y:
   env:
-    SIGNOZ_SQLSTORE_POSTGRES_DSN: postgres://signoz:signoz@signoz-metastore-postgres:5432/signoz?sslmode=disable
-    SIGNOZ_SQLSTORE_PROVIDER: postgres
-    SIGNOZ_TELEMETRYSTORE_CLICKHOUSE_DSN: tcp://signoz-telemetrystore-clickhouse:9000
-    SIGNOZ_TELEMETRYSTORE_PROVIDER: clickhouse
+    O11Y_SQLSTORE_POSTGRES_DSN: postgres://o11y:o11y@o11y-metastore-postgres:5432/o11y?sslmode=disable
+    O11Y_SQLSTORE_PROVIDER: postgres
+    O11Y_TELEMETRYSTORE_CLICKHOUSE_DSN: tcp://o11y-telemetrystore-clickhouse:9000
+    O11Y_TELEMETRYSTORE_PROVIDER: clickhouse
   image:
     repository: signoz/signoz
     tag: latest
-  name: signoz
+  name: o11y
   nodeSelector:
     node-role.kubernetes.io/observability: ""
   replicaCount: 1
@@ -90,7 +90,7 @@ signoz:
   - effect: NoSchedule
     key: dedicated
     operator: Equal
-    value: signoz
+    value: o11y
 telemetryStoreMigrator:
   enabled: true
-  name: signoz-telemetrystore-migrator
+  name: o11y-telemetrystore-migrator

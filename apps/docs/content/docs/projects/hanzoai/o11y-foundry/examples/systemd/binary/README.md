@@ -34,7 +34,7 @@ postgres --version
 ### 3. Install Hanzo O11y Binary
 
 ```bash
-curl -L https://github.com/Hanzo O11y/o11y/releases/latest/download/o11y_linux_$(uname -m | sed 's/x86_64/amd64/g' | sed 's/aarch64/arm64/g').tar.gz -o o11y.tar.gz
+curl -L https://github.com/hanzoai/o11y/releases/latest/download/o11y_linux_$(uname -m | sed 's/x86_64/amd64/g' | sed 's/aarch64/arm64/g').tar.gz -o o11y.tar.gz
 tar -xzf o11y.tar.gz
 
 sudo mkdir -p /opt/o11y /var/lib/o11y
@@ -44,11 +44,11 @@ sudo cp -r o11y_linux_*/* /opt/o11y/
 ### 4. Install Ingester Binary (Hanzo O11y OTel Collector)
 
 ```bash
-curl -L https://github.com/Hanzo O11y/o11y-otel-collector/releases/latest/download/o11y-otel-collector_linux_$(uname -m | sed 's/x86_64/amd64/g' | sed 's/aarch64/arm64/g').tar.gz -o o11y-otel-collector.tar.gz
-tar -xzf o11y-otel-collector.tar.gz
+curl -L https://github.com/hanzoai/otel-collector/releases/latest/download/otel-collector_linux_$(uname -m | sed 's/x86_64/amd64/g' | sed 's/aarch64/arm64/g').tar.gz -o otel-collector.tar.gz
+tar -xzf otel-collector.tar.gz
 
 sudo mkdir -p /opt/ingester /var/lib/ingester
-sudo cp -r o11y-otel-collector_linux_*/* /opt/ingester/
+sudo cp -r otel-collector_linux_*/* /opt/ingester/
 ```
 
 ### 5. Create o11y User
@@ -60,21 +60,21 @@ sudo chown -R o11y:o11y /opt/o11y /var/lib/o11y /opt/ingester /var/lib/ingester
 
 Also, make sure that "o11y" user is allowed to transverse to the pours directory.
 
-## Download SigNoz
+## Download O11y
 
-Download the SigNoz release tarball and extract it into `/opt/signoz`:
+Download the O11y release tarball and extract it into `/opt/o11y`:
 
 ```bash
 ARCH=$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/')
-sudo mkdir -p /opt/signoz
+sudo mkdir -p /opt/o11y
 curl -fsSL "https://github.com/SigNoz/signoz/releases/latest/download/signoz_linux_${ARCH}.tar.gz" \
-  | sudo tar -xz --strip-components=1 -C /opt/signoz
+  | sudo tar -xz --strip-components=1 -C /opt/o11y
 ```
 
 > [!IMPORTANT]
-> Extract the full tarball, do not move the `signoz` binary on its own. SigNoz resolves
+> Extract the full tarball, do not move the `o11y` binary on its own. O11y resolves
 > the web frontend and notification templates relative to the binary, so `bin/`, `web/`,
-> `templates/`, and `conf/` must stay together under `/opt/signoz`. Moving only the binary
+> `templates/`, and `conf/` must stay together under `/opt/o11y`. Moving only the binary
 > leaves the UI and alert/email templates unresolved.
 
 ## Configuration
@@ -118,12 +118,12 @@ systemctl status <name>-metastore-postgres.service
 
 ```text
 pours/deployment/
-  signoz-ingester.service
-  signoz-metastore-postgres.service
-  signoz-signoz.service
-  signoz-telemetrykeeper-clickhousekeeper-0.service
-  signoz-telemetrystore-clickhouse-0-0.service
-  signoz-telemetrystore-migrator.service
+  o11y-ingester.service
+  o11y-metastore-postgres.service
+  o11y-o11y.service
+  o11y-telemetrykeeper-clickhousekeeper-0.service
+  o11y-telemetrystore-clickhouse-0-0.service
+  o11y-telemetrystore-migrator.service
   configs/
     ingester/
       ingester.yaml
@@ -137,7 +137,7 @@ pours/deployment/
 
 ## After deployment
 
-Check service status (replace `signoz` with your `metadata.name`):
+Check service status (replace `o11y` with your `metadata.name`):
 
 ```bash
 journalctl -u <name>-o11y.service -f
@@ -146,13 +146,13 @@ journalctl -u <name>-o11y.service -f
 View logs for a specific service:
 
 ```bash
-journalctl -u signoz-signoz.service -f
+journalctl -u o11y-o11y.service -f
 ```
 
-View logs for all SigNoz services:
+View logs for all O11y services:
 
 ```bash
-journalctl -u 'signoz-*' -f
+journalctl -u 'o11y-*' -f
 ```
 
 | Name | Type | Description |
@@ -167,7 +167,7 @@ metadata:
   name: o11y
   annotations:
         foundry.o11y.hanzo.ai/o11y-binary-path: /opt/o11y/bin/o11y
-        foundry.o11y.hanzo.ai/ingester-binary-path: /opt/ingester/bin/o11y-otel-collector
+        foundry.o11y.hanzo.ai/ingester-binary-path: /opt/ingester/bin/otel-collector
         foundry.o11y.hanzo.ai/metastore-postgres-binary-path: /usr/bin/postgres
 spec:
   deployment:

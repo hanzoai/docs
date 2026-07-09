@@ -6,8 +6,8 @@
         "image": "signoz/signoz-otel-collector:latest",
         "essential": true,
         "entryPoint": ["/bin/sh", "-c"],
-        "command": ["/signoz-otel-collector migrate ready && /signoz-otel-collector migrate bootstrap && /signoz-otel-collector migrate sync up && /signoz-otel-collector migrate async up"],
-        "environment": [{"name":"SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN","value":"tcp://telemetrystore-clickhouse.signoz.local:9000"},{"name":"SIGNOZ_OTEL_COLLECTOR_TIMEOUT","value":"10m"}],
+        "command": ["/otel-collector migrate ready && /otel-collector migrate bootstrap && /otel-collector migrate sync up && /otel-collector migrate async up"],
+        "environment": [{"name":"O11Y_OTEL_COLLECTOR_CLICKHOUSE_DSN","value":"tcp://telemetrystore-clickhouse.o11y.local:9000"},{"name":"O11Y_OTEL_COLLECTOR_TIMEOUT","value":"10m"}],
         "cpu": 256,
         "memory": 512
       }
@@ -16,7 +16,7 @@
   "resource": {
     "aws_ecs_task_definition": {
       "telemetrystore_migrator": {
-        "family": "signoz-telemetrystore-migrator",
+        "family": "o11y-telemetrystore-migrator",
         "network_mode": "awsvpc",
         "requires_compatibilities": ["FARGATE"],
         "cpu": 256,

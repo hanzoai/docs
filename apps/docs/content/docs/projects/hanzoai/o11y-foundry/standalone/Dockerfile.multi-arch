@@ -1,12 +1,12 @@
 ARG DEBIAN_SHA="pass-a-valid-docker-sha-otherwise-this-will-fail"
 
 FROM debian@sha256:${DEBIAN_SHA}
-LABEL maintainer="signoz"
+LABEL maintainer="o11y"
 
 ARG OS="linux"
 ARG ARCH
 
-ARG SIGNOZ_VERSION=latest
+ARG O11Y_VERSION=latest
 ARG INGESTER_VERSION=latest
 ARG FOUNDRY_VERSION=latest
 
@@ -26,17 +26,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
           /lib/systemd/system/sysinit.target.wants/systemd-tmpfiles-setup* \
           /lib/systemd/system/systemd-update-utmp*
 
-# SigNoz
-RUN mkdir -p /opt/signoz && \
-    curl -fsSL "https://github.com/SigNoz/signoz/releases/${SIGNOZ_VERSION}/download/signoz_${OS}_${ARCH}.tar.gz" | \
-        tar -xz --strip-components=1 -C /opt/signoz && \
-    chmod +x /opt/signoz/bin/signoz
+# O11y
+RUN mkdir -p /opt/o11y && \
+    curl -fsSL "https://github.com/hanzoai/o11y/releases/${O11Y_VERSION}/download/o11y_${OS}_${ARCH}.tar.gz" | \
+        tar -xz --strip-components=1 -C /opt/o11y && \
+    chmod +x /opt/o11y/bin/o11y
 
 # OTel Collector (ingester)
 RUN mkdir -p /opt/ingester && \
-    curl -fsSL "https://github.com/SigNoz/signoz-otel-collector/releases/${INGESTER_VERSION}/download/signoz-otel-collector_${OS}_${ARCH}.tar.gz" | \
+    curl -fsSL "https://github.com/hanzoai/otel-collector/releases/${INGESTER_VERSION}/download/otel-collector_${OS}_${ARCH}.tar.gz" | \
         tar -xz --strip-components=1 -C /opt/ingester && \
-    chmod +x /opt/ingester/bin/signoz-otel-collector
+    chmod +x /opt/ingester/bin/otel-collector
 
 # Foundry
 RUN mkdir -p /usr/local/bin && \
@@ -59,16 +59,16 @@ RUN curl -fsSL 'https://packages.clickhouse.com/rpm/lts/repodata/repomd.xml.key'
 
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN useradd -r -m -d /opt/signoz -s /bin/false signoz && \
-    mkdir -p /var/lib/signoz /var/lib/ingester /etc/foundry /opt/signoz/web && \
-    chown signoz:signoz /var/lib/signoz /var/lib/ingester /opt/signoz
+RUN useradd -r -m -d /opt/o11y -s /bin/false o11y && \
+    mkdir -p /var/lib/o11y /var/lib/ingester /etc/foundry /opt/o11y/web && \
+    chown o11y:o11y /var/lib/o11y /var/lib/ingester /opt/o11y
 
 COPY docs/standalone/casting.yaml /etc/foundry/casting.yaml
 COPY docs/standalone/foundry-setup.service /etc/systemd/system/foundry-setup.service
 RUN mkdir -p /var/lib/foundry && systemctl enable foundry-setup.service
 
 EXPOSE 8080 4317 4318
-VOLUME ["/var/lib/clickhouse", "/var/lib/signoz"]
+VOLUME ["/var/lib/clickhouse", "/var/lib/o11y"]
 
 STOPSIGNAL SIGRTMIN+3
 CMD ["/sbin/init"]

@@ -16,14 +16,14 @@ For patch reference, see [Patches](../../../concepts/patches.md).
 
 - Kubernetes cluster (1.24+)
 - Helm 3.x
-- SigNoz Helm chart repo (`https://charts.signoz.io`)
+- O11y Helm chart repo (`https://charts.signoz.io`)
 
 ## Configuration
 
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: signoz
+  name: o11y
 spec:
   deployment:
     flavor: helm
@@ -42,11 +42,11 @@ spec:
               cpu: "4"
               memory: "8Gi"
 
-    # Resource limits on SigNoz
+    # Resource limits on O11y
     - target: "deployment/values.yaml"
       operations:
         - op: add
-          path: /signoz/resources
+          path: /o11y/resources
           value:
             requests:
               cpu: "500m"
@@ -59,14 +59,14 @@ spec:
     - target: "deployment/values.yaml"
       operations:
         - op: add
-          path: /signoz/tolerations
+          path: /o11y/tolerations
           value:
             - key: "dedicated"
               operator: "Equal"
-              value: "signoz"
+              value: "o11y"
               effect: "NoSchedule"
         - op: add
-          path: /signoz/nodeSelector
+          path: /o11y/nodeSelector
           value:
             node-role.kubernetes.io/observability: ""
 
@@ -104,7 +104,7 @@ Or step by step:
 
 ```bash
 foundryctl forge -f casting.yaml
-helm install signoz signoz/signoz -f pours/deployment/values.yaml -n signoz --create-namespace
+helm install o11y signoz/signoz -f pours/deployment/values.yaml -n o11y --create-namespace
 ```
 
 ## Generated output
@@ -118,11 +118,11 @@ pours/deployment/
 
 ### Resource limits
 
-Each component maps to a top-level key in the Helm chart values: `clickhouse`, `signoz`, `otelCollector`. Set `resources.requests` and `resources.limits` on each.
+Each component maps to a top-level key in the Helm chart values: `clickhouse`, `o11y`, `otelCollector`. Set `resources.requests` and `resources.limits` on each.
 
 ### Tolerations and nodeSelector
 
-Schedules SigNoz on nodes labeled `node-role.kubernetes.io/observability` with a `dedicated=signoz:NoSchedule` toleration.
+Schedules O11y on nodes labeled `node-role.kubernetes.io/observability` with a `dedicated=o11y:NoSchedule` toleration.
 
 ### Persistence
 

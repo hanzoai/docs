@@ -2,7 +2,7 @@ apiVersion: v1alpha1
 kind: Installation
 metadata:
   annotations:
-    foundry.o11y.io/ingester-binary-path: /opt/ingester/bin/o11y-otel-collector
+    foundry.o11y.io/ingester-binary-path: /opt/ingester/bin/otel-collector
     foundry.o11y.io/metastore-postgres-binary-path: /usr/bin/postgres
     foundry.o11y.io/o11y-binary-path: /opt/o11y/bin/o11y
   name: o11y
@@ -97,7 +97,7 @@ spec:
                   enabled: false
               metadataexporter:
                 enabled: true
-                dsn: tcp://localhost:9000/signoz_metadata
+                dsn: tcp://localhost:9000/o11y_metadata
                 timeout: 45s
                 cache:
                   provider: in_memory
@@ -149,7 +149,7 @@ spec:
           opamp.yaml: |
             server_endpoint: ws://localhost:4320/v1/opamp
       enabled: true
-      image: o11y/o11y-otel-collector:latest
+      image: o11y/otel-collector:latest
       version: latest
     status:
       addresses:
@@ -238,7 +238,7 @@ spec:
                   enabled: false
               metadataexporter:
                 enabled: true
-                dsn: tcp://localhost:9000/signoz_metadata
+                dsn: tcp://localhost:9000/o11y_metadata
                 timeout: 45s
                 cache:
                   provider: in_memory
@@ -290,7 +290,7 @@ spec:
           opamp.yaml: |
             server_endpoint: ws://localhost:4320/v1/opamp
       env:
-        SIGNOZ_OTEL_COLLECTOR_TIMEOUT: 10m
+        O11Y_OTEL_COLLECTOR_TIMEOUT: 10m
   metastore:
     kind: postgres
     spec:

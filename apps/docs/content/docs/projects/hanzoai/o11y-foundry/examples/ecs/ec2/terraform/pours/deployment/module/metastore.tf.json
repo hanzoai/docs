@@ -2,10 +2,10 @@
   "locals": {
     "containers": [
       {
-        "name": "signoz-metastore-postgres-0",
+        "name": "o11y-metastore-postgres-0",
         "image": "postgres:16",
         "essential": true,
-        "environment": [{"name":"POSTGRES_DB","value":"signoz"},{"name":"POSTGRES_PASSWORD","value":"signoz"},{"name":"POSTGRES_USER","value":"signoz"}],
+        "environment": [{"name":"POSTGRES_DB","value":"o11y"},{"name":"POSTGRES_PASSWORD","value":"o11y"},{"name":"POSTGRES_USER","value":"o11y"}],
         "portMappings": [
           {"name": "postgres", "containerPort": 5432, "protocol": "tcp"}
         ],
@@ -31,7 +31,7 @@
   "resource": {
     "aws_ecs_task_definition": {
       "metastore": {
-        "family": "signoz-metastore-postgres-0",
+        "family": "o11y-metastore-postgres-0",
         "network_mode": "awsvpc",
         "requires_compatibilities": ["EC2"],
         "task_role_arn": "${var.task_role_arn}",
@@ -65,7 +65,7 @@
     },
     "aws_ecs_service": {
       "metastore": {
-        "name": "signoz-metastore-postgres-0",
+        "name": "o11y-metastore-postgres-0",
         "cluster": "${var.ecs_cluster_id}",
         "task_definition": "${aws_ecs_task_definition.metastore.arn}",
         "desired_count": 1,
