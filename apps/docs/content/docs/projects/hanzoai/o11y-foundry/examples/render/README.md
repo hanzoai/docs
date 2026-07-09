@@ -2,4 +2,4 @@
 
 | Flavor | Description |
 | --- | --- |
-| [blueprint](blueprint/) | Deploy SigNoz on Render using a Blueprint spec |
+| [blueprint](blueprint/) | Deploy O11y on Render using a Blueprint spec |

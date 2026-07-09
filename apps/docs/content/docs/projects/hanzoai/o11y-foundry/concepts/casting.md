@@ -1,6 +1,6 @@
 # Casting
 
-A casting is one YAML file that describes a complete SigNoz deployment. Foundry reads it, merges your overrides with built-in defaults, and generates everything needed to run the stack.
+A casting is one YAML file that describes a complete O11y deployment. Foundry reads it, merges your overrides with built-in defaults, and generates everything needed to run the stack.
 
 The casting file is the single source of truth for your deployment. You define what you want; Foundry handles the rest.
 
@@ -23,7 +23,7 @@ spec:
     mode: <mode>
     flavor: <flavor>
     platform: <platform>       # only for cloud platforms
-  signoz:
+  o11y:
     spec: { ... }
   ingester:
     spec: { ... }
@@ -37,14 +37,14 @@ spec:
   patches: [ ... ]
 ```
 
-Replace `<deployment-name>` with an identifier for this deployment (for example, `signoz-prod`). This name is used as a prefix in generated service names.
+Replace `<deployment-name>` with an identifier for this deployment (for example, `o11y-prod`). This name is used as a prefix in generated service names.
 
 ## Metadata
 
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: signoz-prod
+  name: o11y-prod
   annotations: {}              # optional; required for some deployment modes
 ```
 
@@ -82,7 +82,7 @@ Each row below is a valid combination. Mixing values across rows is not supporte
 
 ## Moldings
 
-Moldings are the individual components of a SigNoz deployment. Foundry has defaults for all of them. Add a block under `spec` only when you want to change something.
+Moldings are the individual components of a O11y deployment. Foundry has defaults for all of them. Add a block under `spec` only when you want to change something.
 
 See [Moldings](moldings.md) for details on each component and how to configure them.
 
@@ -107,7 +107,7 @@ Docker Compose with all defaults:
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: signoz
+  name: o11y
 spec:
   deployment:
     mode: docker
@@ -119,12 +119,12 @@ With overrides for images and scaling:
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: signoz
+  name: o11y
 spec:
   deployment:
     mode: docker
     flavor: compose
-  signoz:
+  o11y:
     spec:
       image: signoz/signoz:v0.110.0
   telemetrystore:

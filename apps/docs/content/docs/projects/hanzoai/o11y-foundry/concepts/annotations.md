@@ -9,7 +9,7 @@ Annotations live in the casting file's metadata block:
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: signoz
+  name: o11y
   annotations:
     foundry.signoz.io/some-key: some-value
 spec:
@@ -45,7 +45,7 @@ Not all deployment modes require annotations. Most modes (Docker Compose, Docker
 
 | Casting | Required | Annotations |
 |---|---|---|
-| [Systemd (binary)](../examples/systemd/binary/) | Yes | Binary paths for SigNoz, ingester, and PostgreSQL |
+| [Systemd (binary)](../examples/systemd/binary/) | Yes | Binary paths for O11y, ingester, and PostgreSQL |
 | [ECS EC2 (Terraform)](../examples/ecs/ec2/terraform/) | Yes | AWS region, cluster ID, subnets, security groups, IAM roles, S3 bucket |
 | [Kubernetes (Helm)](../examples/kubernetes/helm/) | No | Optional chart repo and chart name overrides |
 

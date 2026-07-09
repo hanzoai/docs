@@ -2,4 +2,4 @@
 
 | Flavor | Description |
 | --- | --- |
-| [template](template/) | Deploy SigNoz on Railway using a template |
+| [template](template/) | Deploy O11y on Railway using a template |

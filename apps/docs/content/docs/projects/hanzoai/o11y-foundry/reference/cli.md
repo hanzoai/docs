@@ -1,6 +1,6 @@
 # CLI Reference
 
-`foundryctl` is the Foundry command-line tool for generating and deploying SigNoz.
+`foundryctl` is the Foundry command-line tool for generating and deploying O11y.
 
 ## Usage
 
@@ -46,7 +46,7 @@ After forging, a `casting.yaml.lock` file is written with checksums to track the
 
 ### cast
 
-Deploy SigNoz to your target environment. Runs `gauge` and `forge` automatically before deploying.
+Deploy O11y to your target environment. Runs `gauge` and `forge` automatically before deploying.
 
 ```bash
 foundryctl cast -f casting.yaml
