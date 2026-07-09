@@ -1,6 +1,6 @@
 # Getting Started
 
-Install `foundryctl` and deploy SigNoz in three steps.
+Install `foundryctl` and deploy O11y in three steps.
 
 ## 1. Install foundryctl
 
@@ -78,19 +78,19 @@ foundryctl --help
 
 ## 2. Create a casting
 
-A casting is a YAML file that describes your SigNoz deployment. Create a file called `casting.yaml`:
+A casting is a YAML file that describes your O11y deployment. Create a file called `casting.yaml`:
 
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: signoz
+  name: o11y
 spec:
   deployment:
     mode: docker
     flavor: compose
 ```
 
-This minimal casting deploys SigNoz using Docker Compose with all default settings.
+This minimal casting deploys O11y using Docker Compose with all default settings.
 
 > [!TIP]
 > Run `foundryctl gen examples` to generate working casting files for every supported deployment mode (Docker, Kubernetes, systemd, Render, and more).
@@ -101,17 +101,17 @@ This minimal casting deploys SigNoz using Docker Compose with all default settin
 ./bin/foundryctl cast -f casting.yaml
 ```
 
-Foundry validates your tools (`gauge`), generates deployment files (`forge`), and deploys SigNoz (`cast`) in one step.
+Foundry validates your tools (`gauge`), generates deployment files (`forge`), and deploys O11y (`cast`) in one step.
 
 ## Validate
 
-Check that SigNoz is running:
+Check that O11y is running:
 
 ```bash
 docker ps
 ```
 
-All containers should show `Up` status. Open `http://localhost:8080` to access the SigNoz UI.
+All containers should show `Up` status. Open `http://localhost:8080` to access the O11y UI.
 
 ## What's next
 

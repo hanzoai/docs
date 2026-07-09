@@ -1,4 +1,4 @@
-name: signoz
+name: o11y
 networks:
   o11y-network:
     name: o11y-network
@@ -151,7 +151,7 @@ services:
       node_arch=$$(uname -m | sed s/aarch64/arm64/ | sed s/x86_64/amd64/)
       echo "Fetching histogram-binary for $${node_os}/$${node_arch}"
       cd /tmp
-      wget -O histogram-quantile.tar.gz "https://github.com/Hanzo O11y/o11y/releases/download/histogram-quantile%2F$${version}/histogram-quantile_$${node_os}_$${node_arch}.tar.gz"
+      wget -O histogram-quantile.tar.gz "https://github.com/SigNoz/signoz/releases/download/histogram-quantile%2F$${version}/histogram-quantile_$${node_os}_$${node_arch}.tar.gz"
       tar -xvzf histogram-quantile.tar.gz
       mv histogram-quantile /var/lib/clickhouse/user_scripts/histogramQuantile
     container_name: o11y-telemetrystore-clickhouse-user-scripts
@@ -162,9 +162,9 @@ services:
     - o11y-telemetrystore-user-scripts:/var/lib/clickhouse/user_scripts
   o11y-telemetrystore-migrator:
     command:
-    - /o11y-otel-collector migrate bootstrap --clickhouse-dsn tcp://o11y-telemetrystore-clickhouse-0-0:9000
-    - /o11y-otel-collector migrate sync up --clickhouse-dsn tcp://o11y-telemetrystore-clickhouse-0-0:9000
-    - /o11y-otel-collector migrate async up --clickhouse-dsn tcp://o11y-telemetrystore-clickhouse-0-0:9000
+    - /otel-collector migrate bootstrap --clickhouse-dsn tcp://o11y-telemetrystore-clickhouse-0-0:9000
+    - /otel-collector migrate sync up --clickhouse-dsn tcp://o11y-telemetrystore-clickhouse-0-0:9000
+    - /otel-collector migrate async up --clickhouse-dsn tcp://o11y-telemetrystore-clickhouse-0-0:9000
     container_name: o11y-telemetrystore-migrator
     depends_on:
       o11y-telemetrystore-clickhouse-0-0:
