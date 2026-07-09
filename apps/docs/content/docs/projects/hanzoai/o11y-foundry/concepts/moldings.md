@@ -1,6 +1,6 @@
 # Moldings
 
-Moldings are the individual components that make up a SigNoz deployment. Each molding maps to a service (ClickHouse, PostgreSQL, OTel Collector, etc.) and generates the configuration and deployment files for that service.
+Moldings are the individual components that make up a O11y deployment. Each molding maps to a service (ClickHouse, PostgreSQL, OTel Collector, etc.) and generates the configuration and deployment files for that service.
 
 Foundry ships with sensible defaults for every molding. Override only what you need by adding a block under `spec` in your casting.
 
@@ -11,15 +11,15 @@ Foundry ships with sensible defaults for every molding. Override only what you n
 | `telemetrykeeper` | ClickHouse Keeper | Cluster coordination for ClickHouse |
 | `telemetrystore` | ClickHouse | Stores logs, traces, and metrics |
 | `metastore` | PostgreSQL or SQLite | Stores metadata (dashboards, alerts, users) |
-| `signoz` | SigNoz | UI and API server |
-| `ingester` | SigNoz OTel Collector | Receives, processes, and writes telemetry data |
+| `o11y` | O11y | UI and API server |
+| `ingester` | O11y OTel Collector | Receives, processes, and writes telemetry data |
 
 ### Processing order
 
 Foundry processes moldings in dependency order during forge:
 
 ```
-TelemetryKeeper -> TelemetryStore -> MetaStore -> SigNoz -> Ingester
+TelemetryKeeper -> TelemetryStore -> MetaStore -> O11y -> Ingester
 ```
 
 This ensures each component's configuration can reference its dependencies.

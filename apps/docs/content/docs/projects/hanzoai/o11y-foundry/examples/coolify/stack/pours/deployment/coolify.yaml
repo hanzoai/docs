@@ -3,23 +3,23 @@ services:
     command:
     - -c
     - |
-      /signoz-otel-collector migrate sync check &&
-      /signoz-otel-collector --config=/etc/otel-collector-config.yaml --manager-config=/etc/opamp-config.yaml --copy-path=/var/tmp/collector-config.yaml
+      /otel-collector migrate sync check &&
+      /otel-collector --config=/etc/otel-collector-config.yaml --manager-config=/etc/opamp-config.yaml --copy-path=/var/tmp/collector-config.yaml
     depends_on:
-      signoz-signoz-0:
+      o11y-o11y-0:
         condition: service_started
-      signoz-telemetrystore-clickhouse-0-0:
+      o11y-telemetrystore-clickhouse-0-0:
         condition: service_healthy
-      signoz-telemetrystore-migrator:
+      o11y-telemetrystore-migrator:
         condition: service_completed_successfully
     deploy:
       replicas: 1
     entrypoint:
     - /bin/sh
     environment:
-    - OTEL_RESOURCE_ATTRIBUTES=host.name=signoz-host,os.type=linux
+    - OTEL_RESOURCE_ATTRIBUTES=host.name=o11y-host,os.type=linux
     - LOW_CARDINAL_EXCEPTION_GROUPING=false
-    - SIGNOZ_OTEL_COLLECTOR_TIMEOUT=10m
+    - O11Y_OTEL_COLLECTOR_TIMEOUT=10m
     image: signoz/signoz-otel-collector:latest
     logging:
       options:
@@ -28,11 +28,11 @@ services:
     networks:
       default:
         aliases:
-        - signoz-ingester
+        - o11y-ingester
     volumes:
     - content: |
         connectors:
-          signozmeter:
+          o11ymeter:
             metrics_flush_interval: 1h
             dimensions:
               - name: service.name
@@ -54,8 +54,8 @@ services:
             send_batch_size: 20000
             send_batch_max_size: 25000
             timeout: 5s
-          signozspanmetrics/delta:
-            metrics_exporter: signozclickhousemetrics
+          o11yspanmetrics/delta:
+            metrics_exporter: o11yclickhousemetrics
             metrics_flush_interval: 60s
             latency_histogram_buckets:
               - 100us
@@ -87,36 +87,36 @@ services:
               - name: service.version
         exporters:
           clickhousetraces:
-            datasource: tcp://signoz-telemetrystore-clickhouse-0-0:9000/signoz_traces
+            datasource: tcp://o11y-telemetrystore-clickhouse-0-0:9000/o11y_traces
             low_cardinal_exception_grouping: ${env:LOW_CARDINAL_EXCEPTION_GROUPING}
             use_new_schema: true
             timeout: 45s
             sending_queue:
               enabled: false
-          signozclickhousemetrics:
-            dsn: tcp://signoz-telemetrystore-clickhouse-0-0:9000/signoz_metrics
+          o11yclickhousemetrics:
+            dsn: tcp://o11y-telemetrystore-clickhouse-0-0:9000/o11y_metrics
             timeout: 45s
             sending_queue:
               enabled: false
           clickhouselogsexporter:
-            dsn: tcp://signoz-telemetrystore-clickhouse-0-0:9000/signoz_logs
+            dsn: tcp://o11y-telemetrystore-clickhouse-0-0:9000/o11y_logs
             use_new_schema: true
             timeout: 45s
             sending_queue:
               enabled: false
-          signozclickhousemeter:
-            dsn: tcp://signoz-telemetrystore-clickhouse-0-0:9000/signoz_meter
+          o11yclickhousemeter:
+            dsn: tcp://o11y-telemetrystore-clickhouse-0-0:9000/o11y_meter
             timeout: 45s
             sending_queue:
               enabled: false
           metadataexporter:
             enabled: true
-            dsn: tcp://signoz-telemetrystore-clickhouse-0-0:9000/signoz_metadata
+            dsn: tcp://o11y-telemetrystore-clickhouse-0-0:9000/o11y_metadata
             timeout: 45s
             cache:
               provider: in_memory
         extensions:
-          signoz_health_check:
+          o11y_health_check:
             endpoint: "0.0.0.0:13133"
           pprof:
             endpoint: "0.0.0.0:1777"
@@ -125,18 +125,18 @@ services:
             logs:
               encoding: json
           extensions:
-            - signoz_health_check
+            - o11y_health_check
             - pprof
           pipelines:
             traces:
               receivers:
                 - otlp
               processors:
-                - signozspanmetrics/delta
+                - o11yspanmetrics/delta
                 - batch
               exporters:
                 - clickhousetraces
-                - signozmeter
+                - o11ymeter
                 - metadataexporter
             metrics:
               receivers:
@@ -144,8 +144,8 @@ services:
               processors:
                 - batch
               exporters:
-                - signozclickhousemetrics
-                - signozmeter
+                - o11yclickhousemetrics
+                - o11ymeter
                 - metadataexporter
             logs:
               receivers:
@@ -154,34 +154,34 @@ services:
                 - batch
               exporters:
                 - clickhouselogsexporter
-                - signozmeter
+                - o11ymeter
                 - metadataexporter
             metrics/meter:
               receivers:
-                - signozmeter
+                - o11ymeter
               processors:
                 - batch/meter
               exporters:
-                - signozclickhousemeter
+                - o11yclickhousemeter
       source: ./configs/ingester/ingester.yaml
       target: /etc/otel-collector-config.yaml
       type: bind
     - content: |
-        server_endpoint: ws://signoz-signoz-0:4320/v1/opamp
+        server_endpoint: ws://o11y-o11y-0:4320/v1/opamp
       source: ./configs/ingester/opamp.yaml
       target: /etc/opamp-config.yaml
       type: bind
-  signoz-metastore-postgres-0:
+  o11y-metastore-postgres-0:
     environment:
-    - POSTGRES_USER=signoz
-    - POSTGRES_PASSWORD=signoz
-    - POSTGRES_DB=signoz
+    - POSTGRES_USER=o11y
+    - POSTGRES_PASSWORD=o11y
+    - POSTGRES_DB=o11y
     healthcheck:
       interval: 30s
       retries: 3
       test:
       - CMD-SHELL
-      - pg_isready -U signoz -d signoz
+      - pg_isready -U o11y -d o11y
       timeout: 5s
     image: postgres:16
     logging:
@@ -189,23 +189,23 @@ services:
         max-file: "3"
         max-size: 50m
     volumes:
-    - source: signoz-metastore-0-data
+    - source: o11y-metastore-0-data
       target: /var/lib/postgresql/data
       type: volume
-  signoz-signoz-0:
-    container_name: signoz-signoz-0
+  o11y-o11y-0:
+    container_name: o11y-o11y-0
     depends_on:
-      signoz-metastore-postgres-0:
+      o11y-metastore-postgres-0:
         condition: service_healthy
-      signoz-telemetrystore-clickhouse-0-0:
+      o11y-telemetrystore-clickhouse-0-0:
         condition: service_healthy
-      signoz-telemetrystore-migrator:
+      o11y-telemetrystore-migrator:
         condition: service_completed_successfully
     environment:
-    - SIGNOZ_SQLSTORE_POSTGRES_DSN=postgres://signoz:signoz@signoz-metastore-postgres-0:5432/signoz?sslmode=disable
-    - SIGNOZ_SQLSTORE_PROVIDER=postgres
-    - SIGNOZ_TELEMETRYSTORE_CLICKHOUSE_DSN=tcp://signoz-telemetrystore-clickhouse-0-0:9000
-    - SIGNOZ_TELEMETRYSTORE_PROVIDER=clickhouse
+    - O11Y_SQLSTORE_POSTGRES_DSN=postgres://o11y:o11y@o11y-metastore-postgres-0:5432/o11y?sslmode=disable
+    - O11Y_SQLSTORE_PROVIDER=postgres
+    - O11Y_TELEMETRYSTORE_CLICKHOUSE_DSN=tcp://o11y-telemetrystore-clickhouse-0-0:9000
+    - O11Y_TELEMETRYSTORE_PROVIDER=clickhouse
     healthcheck:
       interval: 30s
       retries: 3
@@ -222,10 +222,10 @@ services:
         max-file: "3"
         max-size: 50m
     volumes:
-    - source: signoz-signoz-0-data
-      target: /var/lib/signoz/
+    - source: o11y-o11y-0-data
+      target: /var/lib/o11y/
       type: volume
-  signoz-telemetrykeeper-clickhousekeeper-0:
+  o11y-telemetrykeeper-clickhousekeeper-0:
     entrypoint:
     - /usr/bin/clickhouse-keeper
     - --config-file=/etc/clickhouse-keeper/keeper.yaml
@@ -249,7 +249,7 @@ services:
         max-file: "3"
         max-size: 50m
     volumes:
-    - source: signoz-telemetrykeeper-0-data
+    - source: o11y-telemetrykeeper-0-data
       target: /var/lib/clickhouse-keeper
       type: volume
     - content: |
@@ -269,7 +269,7 @@ services:
           log_storage_path: /var/lib/clickhouse/coordination/log
           raft_configuration:
             server:
-            - hostname: signoz-telemetrykeeper-clickhousekeeper-0
+            - hostname: o11y-telemetrykeeper-clickhousekeeper-0
               port: 9234
               id: 0
           server_id: 0
@@ -278,11 +278,11 @@ services:
       source: ./configs/telemetrykeeper/keeper-0.yaml
       target: /etc/clickhouse-keeper/keeper.yaml
       type: bind
-  signoz-telemetrystore-clickhouse-0-0:
+  o11y-telemetrystore-clickhouse-0-0:
     depends_on:
-      signoz-telemetrykeeper-clickhousekeeper-0:
+      o11y-telemetrykeeper-clickhousekeeper-0:
         condition: service_healthy
-      signoz-telemetrystore-clickhouse-user-scripts:
+      o11y-telemetrystore-clickhouse-user-scripts:
         condition: service_completed_successfully
     environment:
     - CLICKHOUSE_SKIP_USER_SETUP=1
@@ -303,11 +303,11 @@ services:
         max-file: "3"
         max-size: 50m
     volumes:
-    - source: signoz-telemetrystore-0-0-data
+    - source: o11y-telemetrystore-0-0-data
       target: /var/lib/clickhouse/
       type: volume
     - read_only: true
-      source: signoz-telemetrystore-user-scripts
+      source: o11y-telemetrystore-user-scripts
       target: /var/lib/clickhouse/user_scripts
       type: volume
     - content: |
@@ -353,11 +353,11 @@ services:
           cluster:
             shard:
             - replica:
-                  - host: signoz-telemetrystore-clickhouse-0-0
+                  - host: o11y-telemetrystore-clickhouse-0-0
                     port: 9000
         zookeeper:
           node:
-            - host: signoz-telemetrykeeper-clickhousekeeper-0
+            - host: o11y-telemetrykeeper-clickhousekeeper-0
               port: 9181
         query_log:
             flush_interval_milliseconds: 30000
@@ -427,7 +427,7 @@ services:
       source: ./configs/telemetrystore/functions.yaml
       target: /etc/clickhouse-server/functions.yaml
       type: bind
-  signoz-telemetrystore-clickhouse-user-scripts:
+  o11y-telemetrystore-clickhouse-user-scripts:
     command:
     - bash
     - -c
@@ -448,22 +448,22 @@ services:
         max-size: 50m
     restart: "no"
     volumes:
-    - source: signoz-telemetrystore-user-scripts
+    - source: o11y-telemetrystore-user-scripts
       target: /var/lib/clickhouse/user_scripts
       type: volume
-  signoz-telemetrystore-migrator:
+  o11y-telemetrystore-migrator:
     command:
-    - /signoz-otel-collector migrate bootstrap --clickhouse-dsn tcp://signoz-telemetrystore-clickhouse-0-0:9000
-    - /signoz-otel-collector migrate sync up --clickhouse-dsn tcp://signoz-telemetrystore-clickhouse-0-0:9000
-    - /signoz-otel-collector migrate async up --clickhouse-dsn tcp://signoz-telemetrystore-clickhouse-0-0:9000
+    - /otel-collector migrate bootstrap --clickhouse-dsn tcp://o11y-telemetrystore-clickhouse-0-0:9000
+    - /otel-collector migrate sync up --clickhouse-dsn tcp://o11y-telemetrystore-clickhouse-0-0:9000
+    - /otel-collector migrate async up --clickhouse-dsn tcp://o11y-telemetrystore-clickhouse-0-0:9000
     depends_on:
-      signoz-telemetrystore-clickhouse-0-0:
+      o11y-telemetrystore-clickhouse-0-0:
         condition: service_healthy
     entrypoint:
     - /bin/sh
     - -c
     environment:
-    - SIGNOZ_OTEL_COLLECTOR_TIMEOUT=10m
+    - O11Y_OTEL_COLLECTOR_TIMEOUT=10m
     exclude_from_hc: true
     image: signoz/signoz-otel-collector:latest
     logging:
@@ -472,13 +472,13 @@ services:
         max-size: 50m
     restart: on-failure
 volumes:
-  signoz-metastore-0-data:
-    name: signoz-metastore-0-data
-  signoz-signoz-0-data:
-    name: signoz-signoz-0-data
-  signoz-telemetrykeeper-0-data:
-    name: signoz-telemetrykeeper-0-data
-  signoz-telemetrystore-0-0-data:
-    name: signoz-telemetrystore-0-0-data
-  signoz-telemetrystore-user-scripts:
-    name: signoz-telemetrystore-user-scripts
+  o11y-metastore-0-data:
+    name: o11y-metastore-0-data
+  o11y-o11y-0-data:
+    name: o11y-o11y-0-data
+  o11y-telemetrykeeper-0-data:
+    name: o11y-telemetrykeeper-0-data
+  o11y-telemetrystore-0-0-data:
+    name: o11y-telemetrystore-0-0-data
+  o11y-telemetrystore-user-scripts:
+    name: o11y-telemetrystore-user-scripts

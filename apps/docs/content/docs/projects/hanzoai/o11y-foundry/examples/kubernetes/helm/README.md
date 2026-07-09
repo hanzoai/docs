@@ -8,20 +8,20 @@
 
 ## Overview
 
-Generates a `values.yaml` for the SigNoz Helm chart. Foundry translates the casting spec into Helm values so you can deploy with a single `helm install`.
+Generates a `values.yaml` for the O11y Helm chart. Foundry translates the casting spec into Helm values so you can deploy with a single `helm install`.
 
 ## Prerequisites
 
 - Kubernetes cluster (1.24+)
 - Helm 3.x
-- SigNoz Helm chart repo (`https://charts.signoz.io`)
+- O11y Helm chart repo (`https://charts.signoz.io`)
 
 ## Configuration
 
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: signoz
+  name: o11y
 spec:
   deployment:
     flavor: helm
@@ -40,11 +40,11 @@ Or step by step:
 # Generate values.yaml
 foundryctl forge -f casting.yaml
 
-# Add the SigNoz Helm repo
-helm repo add signoz https://charts.signoz.io
+# Add the O11y Helm repo
+helm repo add o11y https://charts.signoz.io
 
 # Install with Helm
-helm install signoz signoz/signoz -f pours/deployment/values.yaml -n signoz --create-namespace
+helm install o11y signoz/signoz -f pours/deployment/values.yaml -n o11y --create-namespace
 ```
 
 > [!NOTE]
@@ -61,13 +61,13 @@ pours/deployment/
 
 ```bash
 # Check pod status
-kubectl get pods -n signoz
+kubectl get pods -n o11y
 
-# Port-forward the SigNoz UI
-kubectl port-forward svc/signoz -n signoz 8080:8080
+# Port-forward the O11y UI
+kubectl port-forward svc/o11y -n o11y 8080:8080
 ```
 
-Open `http://localhost:8080` to access the SigNoz UI.
+Open `http://localhost:8080` to access the O11y UI.
 
 ## Customization
 
@@ -81,7 +81,7 @@ Optional annotations to override the default Helm chart source. These are not re
 | --- | --- | --- |
 | `foundry.signoz.io/kubernetes-helm-casting-chart` | `signoz/signoz` | Helm chart reference |
 | `foundry.signoz.io/kubernetes-helm-casting-repo-url` | `https://charts.signoz.io` | Helm chart repository URL |
-| `foundry.signoz.io/kubernetes-helm-casting-repo-name` | `signoz` | Helm chart repository name |
+| `foundry.signoz.io/kubernetes-helm-casting-repo-name` | `o11y` | Helm chart repository name |
 | `foundry.signoz.io/kubernetes-helm-casting-forge-chart` | - | Set to `true` to download and bundle the chart locally during forge |
 
 Example with a custom chart repo:
@@ -89,10 +89,10 @@ Example with a custom chart repo:
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: signoz
+  name: o11y
   annotations:
     foundry.signoz.io/kubernetes-helm-casting-repo-url: https://my-registry.example.com/charts
-    foundry.signoz.io/kubernetes-helm-casting-chart: my-registry/signoz
+    foundry.signoz.io/kubernetes-helm-casting-chart: my-registry/o11y
 spec:
   deployment:
     flavor: helm

@@ -11,7 +11,7 @@ metadata:
   annotations: <map>          # optional
 spec:
   deployment: <deployment>    # required
-  signoz: <molding>
+  o11y: <molding>
   ingester: <molding>
   telemetrystore: <molding>
   telemetrykeeper: <molding>
@@ -21,7 +21,7 @@ spec:
 
 ## Deployment
 
-Defines where and how SigNoz is deployed.
+Defines where and how O11y is deployed.
 
 ```yaml
 spec:
@@ -49,7 +49,7 @@ Each row is a valid combination. Mixing values across rows is not supported.
 
 ## Molding spec
 
-Each molding (`signoz`, `ingester`, `telemetrystore`, `telemetrykeeper`) accepts a `spec` block:
+Each molding (`o11y`, `ingester`, `telemetrystore`, `telemetrykeeper`) accepts a `spec` block:
 
 ```yaml
 <molding>:
@@ -123,16 +123,16 @@ Required when using `mode: systemd`, `flavor: binary`.
 
 | Annotation | Description |
 | --- | --- |
-| `foundry.signoz.io/signoz-binary-path` | Path to the SigNoz binary |
+| `foundry.signoz.io/signoz-binary-path` | Path to the O11y binary |
 | `foundry.signoz.io/ingester-binary-path` | Path to the OTel Collector binary |
 | `foundry.signoz.io/metastore-postgres-binary-path` | Path to the PostgreSQL binary |
 
 ```yaml
 metadata:
-  name: signoz
+  name: o11y
   annotations:
-    foundry.signoz.io/signoz-binary-path: /opt/signoz/bin/signoz
-    foundry.signoz.io/ingester-binary-path: /opt/ingester/bin/signoz-otel-collector
+    foundry.signoz.io/signoz-binary-path: /opt/o11y/bin/o11y
+    foundry.signoz.io/ingester-binary-path: /opt/ingester/bin/otel-collector
     foundry.signoz.io/metastore-postgres-binary-path: /usr/bin/postgres
 ```
 
@@ -144,7 +144,7 @@ Optional. Override the default Helm chart source when using `mode: kubernetes`, 
 | --- | --- | --- |
 | `foundry.signoz.io/kubernetes-helm-casting-chart` | `signoz/signoz` | Helm chart reference |
 | `foundry.signoz.io/kubernetes-helm-casting-repo-url` | `https://charts.signoz.io` | Helm chart repository URL |
-| `foundry.signoz.io/kubernetes-helm-casting-repo-name` | `signoz` | Helm chart repository name |
+| `foundry.signoz.io/kubernetes-helm-casting-repo-name` | `o11y` | Helm chart repository name |
 | `foundry.signoz.io/kubernetes-helm-casting-forge-chart` | - | Set to `true` to download and bundle the chart locally during forge |
 
 ### ECS annotations

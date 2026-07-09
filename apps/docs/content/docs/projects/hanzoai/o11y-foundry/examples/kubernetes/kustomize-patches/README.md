@@ -23,7 +23,7 @@ For patch reference, see [Patches](../../../concepts/patches.md).
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: signoz
+  name: o11y
 spec:
   deployment:
     flavor: kustomize
@@ -55,8 +55,8 @@ spec:
               cpu: "4"
               memory: "8Gi"
 
-    # Resource limits on SigNoz
-    - target: "deployment/signoz/statefulset.yaml"
+    # Resource limits on O11y
+    - target: "deployment/o11y/statefulset.yaml"
       operations:
         - op: replace
           path: /spec/template/spec/containers/0/resources
@@ -69,14 +69,14 @@ spec:
               cpu: "1"
 
     # Tolerations and nodeSelector for dedicated nodes
-    - target: "deployment/signoz/statefulset.yaml"
+    - target: "deployment/o11y/statefulset.yaml"
       operations:
         - op: add
           path: /spec/template/spec/tolerations
           value:
             - key: "dedicated"
               operator: "Equal"
-              value: "signoz"
+              value: "o11y"
               effect: "NoSchedule"
         - op: add
           path: /spec/template/spec/nodeSelector
@@ -84,7 +84,7 @@ spec:
             node-role.kubernetes.io/observability: ""
 
     # LoadBalancer with AWS NLB
-    - target: "deployment/signoz/service.yaml"
+    - target: "deployment/o11y/service.yaml"
       operations:
         - op: replace
           path: /spec/type
@@ -152,8 +152,8 @@ Sets CPU and memory requests/limits per component. The JSON Patch path varies by
 
 ### Tolerations and nodeSelector
 
-Schedules SigNoz on nodes labeled `node-role.kubernetes.io/observability` with a `dedicated=signoz:NoSchedule` toleration.
+Schedules O11y on nodes labeled `node-role.kubernetes.io/observability` with a `dedicated=o11y:NoSchedule` toleration.
 
 ### LoadBalancer with AWS NLB
 
-Changes the SigNoz Service to `LoadBalancer` with `service.beta.kubernetes.io/aws-load-balancer-type: nlb`.
+Changes the O11y Service to `LoadBalancer` with `service.beta.kubernetes.io/aws-load-balancer-type: nlb`.

@@ -10,17 +10,17 @@ configs:
   telemetrystore-functions:
     file: telemetrystore/clickhouse/functions.yaml
 networks:
-  signoz-network:
+  o11y-network:
     attachable: true
     driver: overlay
-    name: signoz-network
+    name: o11y-network
 services:
   ingester:
     command:
     - -c
     - |
-      /signoz-otel-collector migrate sync check &&
-      /signoz-otel-collector --config=/etc/otel-collector-config.yaml --manager-config=/etc/opamp-config.yaml --copy-path=/var/tmp/collector-config.yaml
+      /otel-collector migrate sync check &&
+      /otel-collector --config=/etc/otel-collector-config.yaml --manager-config=/etc/opamp-config.yaml --copy-path=/var/tmp/collector-config.yaml
     configs:
     - source: ingester-config
       target: /etc/otel-collector-config.yaml
@@ -31,46 +31,46 @@ services:
     entrypoint:
     - /bin/sh
     environment:
-    - SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN=tcp://signoz-telemetrystore-clickhouse-0-0:9000
-    - SIGNOZ_OTEL_COLLECTOR_TIMEOUT=10m
+    - O11Y_OTEL_COLLECTOR_CLICKHOUSE_DSN=tcp://o11y-telemetrystore-clickhouse-0-0:9000
+    - O11Y_OTEL_COLLECTOR_TIMEOUT=10m
     image: signoz/signoz-otel-collector:latest
     networks:
-      signoz-network:
+      o11y-network:
         aliases:
-        - signoz-ingester
+        - o11y-ingester
     ports:
     - 4317:4317
     - 4318:4318
-  signoz-metastore-postgres-0:
+  o11y-metastore-postgres-0:
     deploy:
       restart_policy:
         condition: on-failure
     environment:
-    - POSTGRES_DB=signoz
-    - POSTGRES_PASSWORD=signoz
-    - POSTGRES_USER=signoz
+    - POSTGRES_DB=o11y
+    - POSTGRES_PASSWORD=o11y
+    - POSTGRES_USER=o11y
     healthcheck:
       interval: 30s
       retries: 3
       start_period: 30s
       test:
       - CMD-SHELL
-      - pg_isready -U signoz -d signoz
+      - pg_isready -U o11y -d o11y
       timeout: 10s
     image: postgres:16
     networks:
-    - signoz-network
+    - o11y-network
     volumes:
-    - signoz-metastore-postgres-0-data:/var/lib/postgresql/data
-  signoz-signoz-0:
+    - o11y-metastore-postgres-0-data:/var/lib/postgresql/data
+  o11y-o11y-0:
     deploy:
       restart_policy:
         condition: on-failure
     environment:
-    - SIGNOZ_SQLSTORE_POSTGRES_DSN=postgres://signoz:signoz@signoz-metastore-postgres-0:5432/signoz?sslmode=disable
-    - SIGNOZ_SQLSTORE_PROVIDER=postgres
-    - SIGNOZ_TELEMETRYSTORE_CLICKHOUSE_DSN=tcp://signoz-telemetrystore-clickhouse-0-0:9000
-    - SIGNOZ_TELEMETRYSTORE_PROVIDER=clickhouse
+    - O11Y_SQLSTORE_POSTGRES_DSN=postgres://o11y:o11y@o11y-metastore-postgres-0:5432/o11y?sslmode=disable
+    - O11Y_SQLSTORE_PROVIDER=postgres
+    - O11Y_TELEMETRYSTORE_CLICKHOUSE_DSN=tcp://o11y-telemetrystore-clickhouse-0-0:9000
+    - O11Y_TELEMETRYSTORE_PROVIDER=clickhouse
     healthcheck:
       interval: 30s
       retries: 3
@@ -84,10 +84,10 @@ services:
       timeout: 10s
     image: signoz/signoz:latest
     networks:
-    - signoz-network
+    - o11y-network
     ports:
     - 8080:8080
-  signoz-telemetrykeeper-clickhousekeeper-0:
+  o11y-telemetrykeeper-clickhousekeeper-0:
     configs:
     - source: telemetrykeeper-0
       target: /etc/clickhouse-keeper/keeper.yaml
@@ -113,10 +113,10 @@ services:
       timeout: 10s
     image: clickhouse/clickhouse-keeper:25.5.6
     networks:
-    - signoz-network
+    - o11y-network
     volumes:
-    - signoz-telemetrykeeper-0-data:/var/lib/clickhouse-keeper
-  signoz-telemetrystore-clickhouse-0-0:
+    - o11y-telemetrykeeper-0-data:/var/lib/clickhouse-keeper
+  o11y-telemetrystore-clickhouse-0-0:
     configs:
     - source: telemetrystore-config-0-0
       target: /etc/clickhouse-server/config.yaml
@@ -139,14 +139,14 @@ services:
       - -q
       - http://localhost:8123/ping
       timeout: 10s
-    hostname: signoz-telemetrystore-clickhouse-0-0
+    hostname: o11y-telemetrystore-clickhouse-0-0
     image: clickhouse/clickhouse-server:25.5.6
     networks:
-    - signoz-network
+    - o11y-network
     volumes:
-    - signoz-telemetrystore-0-0-data:/var/lib/clickhouse
-    - signoz-telemetrystore-user-scripts:/var/lib/clickhouse/user_scripts:ro
-  signoz-telemetrystore-clickhouse-user-scripts:
+    - o11y-telemetrystore-0-0-data:/var/lib/clickhouse
+    - o11y-telemetrystore-user-scripts:/var/lib/clickhouse/user_scripts:ro
+  o11y-telemetrystore-clickhouse-user-scripts:
     command:
     - bash
     - -c
@@ -165,17 +165,17 @@ services:
         condition: none
     image: clickhouse/clickhouse-server:25.5.6
     networks:
-    - signoz-network
+    - o11y-network
     volumes:
-    - signoz-telemetrystore-user-scripts:/var/lib/clickhouse/user_scripts
-  signoz-telemetrystore-migrator:
+    - o11y-telemetrystore-user-scripts:/var/lib/clickhouse/user_scripts
+  o11y-telemetrystore-migrator:
     command:
     - -c
     - |
-      /signoz-otel-collector migrate ready &&
-      /signoz-otel-collector migrate bootstrap &&
-      /signoz-otel-collector migrate sync up &&
-      /signoz-otel-collector migrate async up
+      /otel-collector migrate ready &&
+      /otel-collector migrate bootstrap &&
+      /otel-collector migrate sync up &&
+      /otel-collector migrate async up
     deploy:
       replicas: 1
       restart_policy:
@@ -184,14 +184,14 @@ services:
     entrypoint:
     - /bin/sh
     environment:
-    - SIGNOZ_OTEL_COLLECTOR_CLICKHOUSE_DSN=tcp://signoz-telemetrystore-clickhouse-0-0:9000
-    - SIGNOZ_OTEL_COLLECTOR_TIMEOUT=10m
+    - O11Y_OTEL_COLLECTOR_CLICKHOUSE_DSN=tcp://o11y-telemetrystore-clickhouse-0-0:9000
+    - O11Y_OTEL_COLLECTOR_TIMEOUT=10m
     image: signoz/signoz-otel-collector:latest
     networks:
-    - signoz-network
+    - o11y-network
 version: "3"
 volumes:
-  signoz-metastore-postgres-0-data: null
-  signoz-telemetrykeeper-0-data: null
-  signoz-telemetrystore-0-0-data: null
-  signoz-telemetrystore-user-scripts: null
+  o11y-metastore-postgres-0-data: null
+  o11y-telemetrykeeper-0-data: null
+  o11y-telemetrystore-0-0-data: null
+  o11y-telemetrystore-user-scripts: null

@@ -1,6 +1,6 @@
 # Ledger
 
-Foundryctl maintains an anonymous usage ledger to help the SigNoz team understand how the tool is used, identify common errors, and prioritize improvements. **No personally identifiable information (PII) is collected.**
+Foundryctl maintains an anonymous usage ledger to help the O11y team understand how the tool is used, identify common errors, and prioritize improvements. **No personally identifiable information (PII) is collected.**
 
 ## What is collected
 

@@ -8,13 +8,13 @@
 
 ## Overview
 
-Deploys SigNoz on AWS ECS (EC2 launch type) using Terraform. Each component runs as a separate ECS service with AWS Cloud Map for service discovery.
+Deploys O11y on AWS ECS (EC2 launch type) using Terraform. Each component runs as a separate ECS service with AWS Cloud Map for service discovery.
 
 Components:
 - ClickHouse Keeper (telemetry keeper)
 - ClickHouse (telemetry store)
 - PostgreSQL (metadata store)
-- SigNoz (UI + API server on port 8080)
+- O11y (UI + API server on port 8080)
 - OTel Collector (ingester)
 - Schema migrator (Fargate one-shot task)
 
@@ -31,14 +31,14 @@ Components:
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: signoz
+  name: o11y
   annotations:
     foundry.signoz.io/ecs/region: us-east-1
     foundry.signoz.io/ecs/cluster-id: arn:aws:ecs:us-east-1:123456789012:cluster/my-cluster
     foundry.signoz.io/ecs/subnet-ids: subnet-abc123,subnet-def456
     foundry.signoz.io/ecs/security-group-ids: sg-abc123
     foundry.signoz.io/ecs/vpc-id: vpc-abc123
-    foundry.signoz.io/ecs/config-bucket: my-signoz-configs
+    foundry.signoz.io/ecs/config-bucket: my-o11y-configs
     foundry.signoz.io/ecs/task-role-arn: arn:aws:iam::123456789012:role/ecs-task-role
     foundry.signoz.io/ecs/task-execution-role-arn: arn:aws:iam::123456789012:role/ecs-execution-role
     foundry.signoz.io/ecs/capacity-provider: my-capacity-provider
@@ -87,7 +87,7 @@ pours/deployment/
     telemetrystore.tf.json
     telemetrystore_migrator.tf.json
     metastore.tf.json
-    signoz.tf.json
+    o11y.tf.json
     ingester.tf.json
     telemetrykeeper/
       clickhousekeeper/
@@ -109,7 +109,7 @@ Verify the ECS services are running:
 aws ecs list-services --cluster my-cluster --region us-east-1
 aws ecs describe-services \
   --cluster my-cluster \
-  --services signoz-signoz signoz-ingester signoz-telemetrystore-clickhouse \
+  --services o11y-o11y o11y-ingester o11y-telemetrystore-clickhouse \
   --region us-east-1
 ```
 
@@ -119,7 +119,7 @@ Check that Cloud Map service discovery is healthy:
 aws servicediscovery list-services --region us-east-1
 ```
 
-Access the SigNoz UI by setting up an ALB pointing to the SigNoz service on port 8080.
+Access the O11y UI by setting up an ALB pointing to the O11y service on port 8080.
 
 ## Customization
 
@@ -128,7 +128,7 @@ The module ships with sensible defaults for CPU and memory. To override them, us
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: signoz
+  name: o11y
   annotations:
     # ... (same annotations as above)
 spec:
@@ -137,7 +137,7 @@ spec:
     mode: ec2
     flavor: terraform
   patches:
-  - target: "deployment/module/signoz.tf.json"
+  - target: "deployment/module/o11y.tf.json"
     type: jsonpatch
     operations:
       - op: replace
@@ -222,8 +222,8 @@ The module creates the following AWS resources:
 | --- | --- |
 | `namespace_id` | Cloud Map private DNS namespace ID |
 | `namespace_name` | Cloud Map private DNS namespace name |
-| `signoz_service_arn` | SigNoz ECS service ARN (target for ALB on port 8080) |
-| `signoz_service_name` | SigNoz ECS service name |
+| `o11y_service_arn` | O11y ECS service ARN (target for ALB on port 8080) |
+| `o11y_service_name` | O11y ECS service name |
 | `ingester_service_arn` | Ingester ECS service ARN (target for NLB on port 4317/4318) |
 | `ingester_service_name` | Ingester ECS service name |
 | `telemetrystore_service_name` | ClickHouse ECS service name |
@@ -239,7 +239,7 @@ Components communicate via Cloud Map DNS within the `{name}.local` namespace:
 | ClickHouse Keeper | `telemetrykeeper-clickhousekeeper.{name}.local` | 9181 (client), 9234 (raft) |
 | ClickHouse | `telemetrystore-clickhouse.{name}.local` | 9000 (native), 8123 (HTTP) |
 | PostgreSQL | `metastore-postgresql.{name}.local` | 5432 |
-| SigNoz | `signoz.{name}.local` | 8080 (API), 4320 (OpAMP) |
+| O11y | `o11y.{name}.local` | 8080 (API), 4320 (OpAMP) |
 | Ingester | `ingester.{name}.local` | 4317 (gRPC), 4318 (HTTP) |
 
 ### IAM requirements
@@ -258,9 +258,9 @@ ECS services use `awsvpc` networking. Security groups must allow:
 | From | To | Port | Purpose |
 | --- | --- | --- | --- |
 | Ingester | ClickHouse | 9000 | Telemetry writes |
-| SigNoz | ClickHouse | 9000 | Query reads |
-| SigNoz | PostgreSQL | 5432 | Metadata |
-| SigNoz | Ingester | 4320 | OpAMP management |
+| O11y | ClickHouse | 9000 | Query reads |
+| O11y | PostgreSQL | 5432 | Metadata |
+| O11y | Ingester | 4320 | OpAMP management |
 | ClickHouse | ClickHouse Keeper | 9181 | Coordination |
-| External | SigNoz | 8080 | UI/API access (via ALB) |
+| External | O11y | 8080 | UI/API access (via ALB) |
 | External | Ingester | 4317, 4318 | Telemetry ingestion (via NLB) |
