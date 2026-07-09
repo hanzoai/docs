@@ -8,7 +8,7 @@
 
 ## Overview
 
-Generates a Render Blueprint (`render.yaml`) and supporting Dockerfiles for deploying SigNoz on the Render cloud platform. Deployment is manual via Render's Infrastructure as Code flow.
+Generates a Render Blueprint (`render.yaml`) and supporting Dockerfiles for deploying O11y on the Render cloud platform. Deployment is manual via Render's Infrastructure as Code flow.
 
 > [!NOTE]
 > `foundryctl cast` does not deploy to Render automatically. It generates the files and prints instructions for manual deployment.
@@ -22,7 +22,7 @@ Generates a Render Blueprint (`render.yaml`) and supporting Dockerfiles for depl
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: signoz
+  name: o11y
 spec:
   deployment:
     flavor: blueprint

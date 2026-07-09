@@ -39,7 +39,7 @@ services:
 - dockerContext: configs/ingester
   dockerfilePath: configs/ingester/Dockerfile
   envVars:
-  - key: SIGNOZ_OTEL_COLLECTOR_TIMEOUT
+  - key: O11Y_OTEL_COLLECTOR_TIMEOUT
     value: 10m
   - fromService:
       name: o11y-telemetrystore-clickhouse-0-0
@@ -74,9 +74,9 @@ services:
   runtime: image
   type: web
 - dockerCommand: |
-    /bin/sh -c /o11y-otel-collector migrate bootstrap --clickhouse-dsn=$CLICKHOUSE_DSN
-      && /o11y-otel-collector migrate sync up --clickhouse-dsn=$CLICKHOUSE_DSN
-      && /o11y-otel-collector migrate async up --clickhouse-dsn=$CLICKHOUSE_DSN
+    /bin/sh -c /otel-collector migrate bootstrap --clickhouse-dsn=$CLICKHOUSE_DSN
+      && /otel-collector migrate sync up --clickhouse-dsn=$CLICKHOUSE_DSN
+      && /otel-collector migrate async up --clickhouse-dsn=$CLICKHOUSE_DSN
   envVars:
   - key: CLICKHOUSE_DSN
     value: tcp://o11y-telemetrystore-clickhouse-0-0:9000
@@ -89,7 +89,7 @@ services:
     url: ghcr.io/hanzoai/otel-collector:latest
   name: o11y-schema-migrator
   plan: standard
-  preDeployCommand: /o11y-otel-collector migrate ready --clickhouse-dsn=${CLICKHOUSE_DSN}
+  preDeployCommand: /otel-collector migrate ready --clickhouse-dsn=${CLICKHOUSE_DSN}
     --timeout 60s
   runtime: image
   type: worker

@@ -3,24 +3,24 @@ kind: StatefulSet
 metadata:
   labels:
     app.kubernetes.io/component: metastore
-    app.kubernetes.io/instance: signoz
+    app.kubernetes.io/instance: o11y
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: signoz-metastore
-  name: signoz-metastore
+    app.kubernetes.io/name: o11y-metastore
+  name: o11y-metastore
 spec:
   replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/component: metastore
-      app.kubernetes.io/instance: signoz
-      app.kubernetes.io/name: signoz-metastore
-  serviceName: signoz-metastore
+      app.kubernetes.io/instance: o11y
+      app.kubernetes.io/name: o11y-metastore
+  serviceName: o11y-metastore
   template:
     metadata:
       labels:
         app.kubernetes.io/component: metastore
-        app.kubernetes.io/instance: signoz
-        app.kubernetes.io/name: signoz-metastore
+        app.kubernetes.io/instance: o11y
+        app.kubernetes.io/name: o11y-metastore
     spec:
       containers:
       - env:
@@ -31,11 +31,11 @@ spec:
         - name: PGDATA
           value: /var/lib/postgresql/data
         - name: POSTGRES_DB
-          value: signoz
+          value: o11y
         - name: POSTGRES_PASSWORD
-          value: signoz
+          value: o11y
         - name: POSTGRES_USER
-          value: signoz
+          value: o11y
         image: postgres:16
         imagePullPolicy: IfNotPresent
         livenessProbe:
@@ -73,7 +73,7 @@ spec:
         volumeMounts:
         - mountPath: /var/lib/postgresql
           name: pgdata
-      serviceAccountName: signoz-metastore
+      serviceAccountName: o11y-metastore
   volumeClaimTemplates:
   - apiVersion: v1
     kind: PersistentVolumeClaim

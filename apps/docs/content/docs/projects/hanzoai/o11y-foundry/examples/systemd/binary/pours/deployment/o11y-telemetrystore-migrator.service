@@ -2,14 +2,17 @@
 WantedBy=multi-user.target
 
 [Service]
-ExecStart=/bin/bash -c '/opt/ingester/bin/o11y-otel-collector migrate bootstrap --clickhouse-dsn=tcp://localhost:9000 && /opt/ingester/bin/o11y-otel-collector migrate sync up --clickhouse-dsn=tcp://localhost:9000 && /opt/ingester/bin/o11y-otel-collector migrate async up --clickhouse-dsn=tcp://localhost:9000'
+Environment=O11Y_OTEL_COLLECTOR_CLICKHOUSE_DSN=tcp://localhost:9000
+Environment=O11Y_OTEL_COLLECTOR_TIMEOUT=10m
+ExecStart=/bin/bash -c '/opt/ingester/bin/otel-collector migrate bootstrap && /opt/ingester/bin/otel-collector migrate sync up && /opt/ingester/bin/otel-collector migrate async up'
+ExecStartPre=/opt/ingester/bin/otel-collector migrate ready
 Group=o11y
 RemainAfterExit=yes
+Restart=on-failure
+RestartSec=5
 Type=oneshot
 User=o11y
 
 [Unit]
-After=o11y-telemetrystore-clickhouse-0-0
-Description=Hanzo O11y Schema Migrator
-Documentation=https://o11y.io/docs
-Requires=o11y-telemetrystore-clickhouse-0-0
+Description=O11y TelemetryStore Migrator
+Documentation=https://signoz.io/docs
