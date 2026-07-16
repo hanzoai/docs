@@ -1,0 +1,68 @@
+---
+title: Analytics SDKs
+description: "@hanzo/analytics, @hanzo/insights, @hanzo/capture, and @hanzo/flags — which JavaScript package to use, and the one-import setup for every Hanzo app."
+---
+
+# Analytics SDKs
+
+Four packages, one rule of thumb: **apps use `@hanzo/analytics`** (the
+one-import umbrella); the rest are the underlying engines you can use directly
+when you need only one of them.
+
+| Package | What it is | Use it when |
+| --- | --- | --- |
+| [`@hanzo/analytics`](https://www.npmjs.com/package/@hanzo/analytics) | One import that initializes **everything**: behavioral analytics + feature flags (Insights) and privacy-first page views, with per-org keys built in. | Any Hanzo/Lux/Zoo/Pars app. Default choice. |
+| [`@hanzo/insights`](https://www.npmjs.com/package/@hanzo/insights) | The full behavioral SDK for [insights.hanzo.ai](/docs/insights): capture, identify, autocapture, session replay, flags. | You need the full analytics API surface directly. |
+| [`@hanzo/capture`](https://www.npmjs.com/package/@hanzo/capture) | Tiny batched product-analytics client for Cloud (`/v1/analytics` + `/v1/tracker`) with UTM/referrer attribution and a shared event vocabulary. | Lightweight product events into Hanzo Cloud (the console uses this). |
+| [`@hanzo/flags`](https://www.npmjs.com/package/@hanzo/flags) | Zero-dep client for the [native flags engine](/docs/flags) (`/v1/flags`). | Flags/experiments only — no analytics payload. |
+
+## One-import setup
+
+```bash
+npm install @hanzo/analytics
+```
+
+```ts
+import { init } from "@hanzo/analytics"
+
+init({ app: "hanzo-blog", org: "hanzo" })  // org resolves the Insights key
+```
+
+React:
+
+```tsx
+import { useAnalytics } from "@hanzo/analytics/react"
+
+const analytics = useAnalytics()
+analytics.capture("cta_clicked", { placement: "hero" })
+```
+
+Server (Node):
+
+```ts
+import { serverAnalytics } from "@hanzo/analytics/server"
+```
+
+Options: `autocapture`, `sessionRecording`, `capturePageview`,
+`capturePageleave`, `persistence`, `debug`, plus `insightsKey`/`insightsHost`/
+`analyticsHost` overrides.
+
+## Feature flags in every language
+
+The flag engine has a client per language — exact usage for each lives in
+[hanzoai/flags](https://github.com/hanzoai/flags) and the
+[Feature Flags docs](/docs/flags):
+
+- **TypeScript** — `@hanzo/flags` (npm)
+- **Go** — `github.com/hanzoai/flags/go`
+- **Python** — `hanzo-flags` (PyPI)
+- **Rust** — `hanzo-flags-client` (HTTP) or the embedded `hanzo-flags` evaluator crate
+- **C/C++** — the evaluator's C ABI (`hanzo_flags_evaluate`)
+
+## Where events go
+
+- **Behavioral events** (`capture`, autocapture, replay) →
+  [insights.hanzo.ai](/docs/insights) → [Hanzo Datastore](/docs/datastore).
+- **Product events** (`@hanzo/capture`) → Hanzo Cloud `/v1/analytics` +
+  `/v1/tracker`, surfaced in the admin cockpit.
+- **Flags** are evaluated, not stored — reads hit the in-process engine.
