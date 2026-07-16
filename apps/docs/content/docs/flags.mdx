@@ -1,0 +1,160 @@
+---
+title: Feature Flags
+description: Native feature flags, percentage rollouts, and A/B experiments — a stateless Rust evaluator embedded in Hanzo Cloud with per-project SQLite definitions and PostHog-compatible semantics.
+---
+
+# Feature Flags
+
+Hanzo's flag engine is **native to Hanzo Cloud**: flag definitions live in a
+per-organization, per-project SQLite store (encrypted at rest), and evaluation
+runs **in-process** through an embedded Rust evaluator over FFI. There is no
+external flags service, no KV dependency, and no network hop on the hot path —
+every Cloud replica evaluates from its own in-memory copy of the definitions,
+so the endpoint scales horizontally with your traffic.
+
+Semantics are **PostHog-compatible** (identical rollout hash, property
+operators, variants, and payload shapes), so existing SDKs and integrations
+port 1:1.
+
+## Concepts
+
+| Concept | What it does |
+| --- | --- |
+| **Flag** | A key (e.g. `checkout-exp`) with `active`, condition groups, and optional variants/payloads. |
+| **Condition group** | ALL property filters must match AND the rollout hash must clear `rollout_percentage`. A flag matches on its FIRST matching group. |
+| **Rollout** | `sha1("{key}.{distinct_id}")`-based bucketing — deterministic and sticky per user, no storage. |
+| **Variants** | Multivariate A/B splits with cumulative percentages; a matching group may pin a variant. |
+| **Payloads** | Arbitrary JSON attached to `true` or to each variant — remote config rides the flag. |
+| **Project scope** | Definitions are stored per `(org, project)`; pass `X-Project-Id` to scope, omit for the org default. |
+
+## Evaluate flags
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/flags \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "distinct_id": "user-42",
+    "person_properties": { "plan": "pro", "country": "DE" },
+    "groups": { "0": { "key": "acme", "properties": { "tier": "enterprise" } } }
+  }'
+```
+
+```json
+{
+  "featureFlags": { "checkout-exp": "treatment", "new-nav": true },
+  "featureFlagPayloads": { "checkout-exp": { "cta": "Buy now" } },
+  "errorsWhileComputingFlags": false
+}
+```
+
+`POST /v1/flags/decide` is an alias for PostHog `/decide`-style consumers.
+
+## Manage definitions
+
+```bash
+# Create / update a flag (PUT is upsert; the body is the definition JSON)
+curl -X PUT https://api.hanzo.ai/v1/flags/defs/checkout-exp \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "active": true,
+    "filters": {
+      "groups": [
+        { "properties": [{ "key": "plan", "value": "pro", "operator": "exact", "type": "person" }],
+          "rollout_percentage": 50 }
+      ],
+      "multivariate": { "variants": [
+        { "key": "control",   "rollout_percentage": 50 },
+        { "key": "treatment", "rollout_percentage": 50 }
+      ]},
+      "payloads": { "treatment": { "cta": "Buy now" } }
+    }
+  }'
+
+# List / read / delete
+curl https://api.hanzo.ai/v1/flags/defs
+curl https://api.hanzo.ai/v1/flags/defs/checkout-exp
+curl -X DELETE https://api.hanzo.ai/v1/flags/defs/checkout-exp
+
+# Change audit
+curl https://api.hanzo.ai/v1/flags/activity
+```
+
+Every write is versioned and logged to the flag activity feed.
+
+### Property operators
+
+`exact`, `is_not`, `icontains`, `not_icontains`, `regex`, `not_regex`, `gt`,
+`gte`, `lt`, `lte`, `is_set`, `is_not_set`, `is_date_before`, `is_date_after`,
+`is_date_exact`, `in`, `not_in`, plus the semver family (`semver_gt`,
+`semver_gte`, `semver_lt`, `semver_lte`, `semver_eq`, `semver_neq`,
+`semver_tilde`, `semver_caret`, `semver_wildcard`) and relative dates
+(`-3d`, `-2w`, `-1m`, `-1y`).
+
+## JavaScript SDK — `@hanzo/flags`
+
+```bash
+npm install @hanzo/flags
+```
+
+```ts
+import { HanzoFlags } from "@hanzo/flags"
+
+const flags = new HanzoFlags({
+  host: "https://api.hanzo.ai",
+  token: process.env.HANZO_API_KEY, // omit in-browser (gateway session)
+  project: "web",                    // optional X-Project-Id scope
+})
+
+await flags.load({ distinctId: user.id, personProperties: { plan: "pro" } })
+
+flags.isEnabled("new-nav")          // true | false
+flags.getVariant("checkout-exp")    // "control" | "treatment" | null
+flags.getPayload("checkout-exp")    // { cta: "Buy now" }
+```
+
+Results cache for a 15s TTL (configurable) and degrade fail-safe: on a network
+error the previous values are kept. For one-shot server-side evaluation use
+`evaluateFlags(config, ctx)`.
+
+For product analytics + flags in one import, use
+[`@hanzo/analytics`](/docs/analytics); the full behavioral SDK
+[`@hanzo/insights`](/docs/insights) also evaluates flags against the Insights
+evaluator.
+
+## Platform switchboard (operators)
+
+Platform-level launch switches — waitlist intake, public signup, invite gating,
+gateway limits — are the same engine evaluated from a reserved platform scope,
+managed from **admin.hanzo.ai**:
+
+```bash
+GET  /v1/admin/flags          # the switchboard: every switch + live value + source
+PUT  /v1/admin/flags/:key     # flip one (SuperAdmin; body = definition JSON)
+```
+
+A flip applies immediately on the serving pod and converges everywhere within
+one TTL (default 15s) — **no redeploy**. A switch with no stored definition
+falls back to its env var, then its literal default, so a fresh deployment
+behaves exactly as configured until an operator first flips it.
+
+## Architecture
+
+```
+┌────────────── Hanzo Cloud (per replica) ───────────────┐
+│  /v1/flags ──► featureflags (Go)                       │
+│                 │  definitions: SQLite per (org, proj) │
+│                 │  encrypted at rest (cek/KMS)         │
+│                 ▼                                      │
+│            hanzo-flags (Rust, FFI)                     │
+│            pure in-memory evaluation                   │
+└────────────────────────────────────────────────────────┘
+```
+
+- **Stateless**: definitions replicate with the store; evaluation needs no
+  coordination — scale by adding replicas.
+- **Fast**: one SQLite read (cached) + one in-process FFI call per request.
+- **Isolated**: each org's definitions live in a physically separate database
+  file; project scoping is a separate file under the org.
+- **Auditable**: every definition change is versioned with actor + timestamp.
