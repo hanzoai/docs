@@ -1,0 +1,86 @@
+---
+title: Insights
+description: Hanzo Insights — product analytics at insights.hanzo.ai. Event capture, person profiles, session replay, funnels, and the behavioral-analytics pipeline into Hanzo Datastore.
+---
+
+# Hanzo Insights
+
+**insights.hanzo.ai** is Hanzo's product-analytics platform: event capture,
+person/group profiles, autocapture, session replay, funnels, trends, and
+experiment analysis. Sign-in is Hanzo IAM (OIDC) — your `hanzo.id` account.
+
+## Send events
+
+The ingest edge accepts PostHog-compatible payloads:
+
+```bash
+curl -X POST https://insights.hanzo.ai/v1/e \
+  -H "Content-Type: application/json" \
+  -d '{
+    "api_key": "<project token>",
+    "event": "signup_completed",
+    "distinct_id": "user-42",
+    "properties": { "plan": "pro", "source": "landing" }
+  }'
+```
+
+Session-replay snapshots ingest at `/v1/s` and AI/LLM events at `/v1/ai` —
+the ingest surface is `/v1/*` on `insights.hanzo.ai` (or the dedicated
+`insights-app.hanzo.ai`, which serves ingest only). Events are enriched with person data and land in
+[Hanzo Datastore](/docs/datastore) (ClickHouse) for querying.
+
+## Browser SDK — `@hanzo/insights`
+
+The full behavioral SDK (autocapture, session replay, feature-flag
+evaluation against the Insights evaluator):
+
+```bash
+npm install @hanzo/insights
+```
+
+```ts
+import insights from "@hanzo/insights"
+
+insights.init("<project token>", { api_host: "https://insights.hanzo.ai" })
+insights.capture("signup_completed", { plan: "pro" })
+insights.identify("user-42", { email: "a@example.com" })
+```
+
+For most Hanzo apps the one-import umbrella
+[`@hanzo/analytics`](/docs/analytics) is the recommended entry point — it
+initializes Insights plus page-view analytics with per-org keys in one call.
+
+## Pipeline architecture
+
+```
+client ──HTTPS──► ingress ──► capture (Rust) ──► Kafka ──► plugin (Node)
+                                                             │  person &
+                                                             │  group enrichment
+                                                             ▼
+                                                      Hanzo Datastore
+                                                       (ClickHouse)
+```
+
+- **capture** — the stateless Rust ingest edge: token validation, rate
+  limits, overflow handling; producing to Kafka. Scale horizontally for
+  ingest throughput.
+- **plugin** — the enrichment pipeline: person/group resolution, property
+  updates, event schema enforcement; consuming Kafka, writing Datastore.
+- **web / worker** — the application (dashboards, saved insights, HanzoQL)
+  and its task runner.
+
+### Configuration surface
+
+The whole stack declares **one** shared-state URL: `KV_URL`
+(`kv://…` — [Hanzo KV](/docs/kv), which speaks the Redis wire protocol).
+There is no `REDIS_URL` anywhere. KV is **optional**: with `KV_URL` unset,
+services run on the embedded Base/SQLite adapter (per-pod) and cross-pod
+pub/sub degrades to process-local delivery — the durable backends are
+Datastore for analytics and Base/SQLite for per-org state.
+
+## Feature flags
+
+Insights ships a PostHog-compatible `/flags` + `/decide` evaluator used by
+`@hanzo/insights`. For Hanzo-native applications, the
+[Cloud flags engine](/docs/flags) (`/v1/flags`) is the canonical flag surface —
+same semantics, embedded in Cloud, managed per org/project.
