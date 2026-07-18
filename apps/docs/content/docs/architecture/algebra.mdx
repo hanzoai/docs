@@ -1,0 +1,74 @@
+---
+title: The Platform Algebra
+description: The whole cloud is a small set of primitives — Principal, Tenant, Resource, Policy, Ledger, Meter, Schedule, Bus, Gateway, Store, Money — and every product is a composition of them. Declare a schema, attach a policy, and persistence, tenancy, audit, and metering come free.
+icon: Sigma
+---
+
+import { Cards, Card } from '@hanzo/docs-ui/components/card'
+import { Callout } from '@hanzo/docs-ui/components/callout'
+
+# The Platform Algebra
+
+The platform is an algebra. The [eight movements](/docs) list 67 capabilities, but they are not 67 unrelated services stacked side by side. They are **compositions of a small set of primitives** — a fixed vocabulary of generators — and almost everything a product does is one of those primitives applied to its own data.
+
+This is the structural companion to the [Engineering Philosophy](/docs/architecture/philosophy). Philosophy is the *why* — one contract, decomplect, the wire not FFI. This page is the *what*: the primitives everything decomposes into, and the way a product is assembled from them.
+
+<Callout type="info">
+A product is a **composition of primitives, not a new stack.** It declares its own resources and rules; persistence, tenancy, audit, and metering are inherited from the platform, not rewritten each time.
+</Callout>
+
+## The primitives
+
+Eleven primitives generate the platform. Each is one idea, named for what it is. Each is composed by many products; no product owns one outright.
+
+| Primitive | What it is | Composed by |
+|-----------|------------|-------------|
+| **Principal** | An authenticated identity — a person, an org member, a service, or an agent. | [IAM](/docs/iam), [Identity](/docs/services/identity), [API Keys](/docs/api-keys) |
+| **Tenant** | The organization boundary every record is scoped to. | [Organizations](/docs/organizations) — and every capability, "tenant-scoped by org" |
+| **Resource** | A typed record with a declared **schema**; CRUD, validation, and serialization fall out of the shape. | [ORM](/docs/services/orm) (`Model[T]`), [Base](/docs/base), [SQL](/docs/sql), [DocDB](/docs/docdb) |
+| **Policy** | A rule deciding who may do what to which resource. | [Authz](/docs/authz), [Guard](/docs/services/guard), [Zero-Trust](/docs/zero-trust) |
+| **Ledger** | An append-only record of facts — what happened, immutable. | [Traces](/docs/traces), [Logs](/docs/logs), [O11y](/docs/o11y) |
+| **Meter** | A count of usage, for limits and billing. | [Usage](/docs/usage), [Analytics](/docs/analytics), [Billing](/docs/billing) |
+| **Schedule** | Deferred and recurring execution — run this later, or on a cadence. | [Tasks](/docs/tasks), [Pipelines](/docs/pipelines) |
+| **Bus** | Asynchronous delivery between components. | [PubSub](/docs/pubsub), [Stream](/docs/services/stream), [MQ](/docs/services/mq) |
+| **Gateway** | The one front door; every capability is reached at `/v1/<name>`. | [Gateway](/docs/gateway), [Ingress](/docs/services/ingress) |
+| **Store** | Durable bytes and blobs. | [Storage](/docs/storage), [KV](/docs/kv), [Vector](/docs/vector), [Datastore](/docs/datastore) |
+| **Money** | Value movement — charges, payouts, balances, rewards. | [Commerce](/docs/commerce), [Billing](/docs/billing), [Referrals](/docs/referrals), [Marketplace](/docs/marketplace) |
+
+## How a product is assembled
+
+A product is not a fresh vertical slice of infrastructure. It makes four moves against the primitives, and inherits the rest.
+
+| The move | You write | You inherit |
+|----------|-----------|-------------|
+| **Declare a Resource** | the schema — your `Model[T]` | persistence + validation ([ORM](/docs/services/orm)), and tenancy: every row scoped to its Tenant |
+| **Attach a Policy** | who may touch it | authorization at the boundary ([Authz](/docs/authz)) |
+| **Write Ledger facts** | what happened | audit + observability ([O11y](/docs/o11y)) |
+| **Count with a Meter** | the unit that matters | metering + billing ([Billing](/docs/billing)) |
+| **Expose a Gateway surface** | the handler | routing, auth, and generated SDKs at `/v1/<name>` |
+
+Persistence, tenancy, audit, and metering are therefore **not per-product code** — they are what you get for standing on the primitives. And the primitives themselves stand on exactly two things: **one ORM** and **one wire** — every product is a set of `Model[T]` resources served over [ZAP](/docs/zap). One ORM, one wire, one contract: the [philosophy's](/docs/architecture/philosophy) "one and one way" expressed as structure.
+
+<Callout type="info">
+**The proof: a Principal on ORM + ZAP.** Hanzo IAM is being rebuilt exactly this way — a clean-room identity service where a Principal is a `Model[T]` on the shared [ORM](/docs/services/orm), served over [ZAP](/docs/zap), with no bespoke persistence, tenancy, or audit layer of its own. It is the first product to drop an inherited third-party stack and stand entirely on the primitives — the demonstration that the algebra composes a real service, not just a diagram.
+</Callout>
+
+## Two things named "agent"
+
+The naming law behind the algebra: **say what it is.** No compound words; an academic noun for a primitive, a concrete noun for a product. Because the vocabulary is small, the names have to be exact — and the clearest test is the pair that is deliberately *not* merged:
+
+<Cards>
+  <Card title="Engine — the agent runtime" href="/docs/services/engine" description="The singular. One engine executes one agent's turn — inference, tools, quantization. It runs agents; it is not the set of them." />
+  <Card title="Agents — the open-source set" href="/docs/services/agents" description="The plural. The library of specialist agents and orchestrators you compose. A collection, not a runtime." />
+</Cards>
+
+Same word, two referents, kept apart: the [Engine](/docs/services/engine) is the runtime that *runs* an agent; [Agents](/docs/agents) is the open-source *set* you compose. Collapsing them would fuse a place (the runtime) with a value (the set) — the exact braid the platform decomplects.
+
+## Read on
+
+<Cards>
+  <Card title="Engineering Philosophy" href="/docs/architecture/philosophy" description="The principles behind the algebra: one and one way, decomplect, the language seam is the wire not FFI." />
+  <Card title="Architecture" href="/docs/architecture" description="How the one binary is built today, and the direction it is converging on." />
+  <Card title="Consensus-Backed Plugin Platform" href="/docs/architecture/plugin-platform" description="The runtime direction — how compositions of primitives get placed and scaled." />
+  <Card title="Platform & Services" href="/docs/services" description="The capabilities the primitives compose into, behind one api.hanzo.ai." />
+</Cards>
