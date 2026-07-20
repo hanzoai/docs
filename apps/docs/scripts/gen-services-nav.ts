@@ -9,8 +9,11 @@
  * nothing already documented is orphaned, and no nav entry ever points at a page
  * that does not exist.
  *
- * Wired into `build:pre`. Guarded: if `@hanzo/products` is not yet installed it
- * keeps the committed meta.json and exits 0 — it never breaks the build.
+ * Wired into `build:pre`. Guarded: unless the catalog resolves AND exports the
+ * generator API, it keeps the committed meta.json and exits 0 — it never breaks
+ * the build. The guard checks the API, not just that the import resolved: the
+ * `@hanzo/products` name resolves on the public registry to an unrelated
+ * package, so "imported" does not imply "is the catalog".
  *
  * Run manually:  bun ./scripts/gen-services-nav.ts   (or `pnpm gen:services`)
  */
@@ -29,6 +32,18 @@ try {
   process.exit(0)
 }
 const { SNAPSHOT, docsServicesMeta, docsCoverage } = products
+
+if (
+  !Array.isArray(SNAPSHOT) ||
+  typeof docsServicesMeta !== "function" ||
+  typeof docsCoverage !== "function"
+) {
+  console.warn(
+    "[gen-services-nav] resolved @hanzo/products exports no catalog API " +
+      "(SNAPSHOT/docsServicesMeta/docsCoverage) — keeping committed meta.json",
+  )
+  process.exit(0)
+}
 
 // Existing docs slugs = top-level *.mdx (minus the index landing) + nested service dirs.
 const existing: string[] = []
