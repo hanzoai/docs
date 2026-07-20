@@ -219,16 +219,16 @@ paths:
         '200': { description: 'Sizes — Visor authoritative catalog, verbatim', content: { application/json: { schema: {} } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
-  /v1/bots:
+  /v1/compute/bots:
     get:
       tags: [Bots]
-      summary: List the org's bots
+      summary: List the org's bot machines
       operationId: listBots
       responses:
         '200': { description: Bots, content: { application/json: { schema: { type: object, properties: { bots: { type: array, items: { $ref: '#/components/schemas/BotView' } } } } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
-  /v1/bots/launch:
+  /v1/compute/bots/launch:
     post:
       tags: [Bots]
       summary: Launch a bot (machine + agent binding), or dryRun for a quote
@@ -244,10 +244,10 @@ paths:
         '400': { description: size / name is required }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
-  /v1/bots/{id}:
+  /v1/compute/bots/{id}:
     get:
       tags: [Bots]
-      summary: Get one bot by id
+      summary: Get one bot machine by id
       operationId: getBot
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
@@ -265,7 +265,7 @@ paths:
         '204': { description: Terminated }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
-  /v1/bots/{id}/{action}:
+  /v1/compute/bots/{id}/{action}:
     post:
       tags: [Bots]
       summary: Act on a bot (stop, pause, or message)
