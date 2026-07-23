@@ -34,14 +34,21 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Extend swap for large build
+      - name: Extend swap for large build (best-effort)
+        # NEVER block the deploy: the containerized scale-set runner can't sudo a
+        # swapfile (fallocate → exit 255), which was hard-failing the whole build
+        # and freezing docs.hanzo.ai on stale content. The build already caps the
+        # Node heap at 16 GB below, so swap is a bonus, not a requirement.
+        continue-on-error: true
         run: |
           sudo swapoff /swapfile 2>/dev/null || true
-          sudo rm -f /swapfile
-          sudo fallocate -l 12G /swapfile
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
+          sudo rm -f /swapfile 2>/dev/null || true
+          sudo fallocate -l 12G /swapfile 2>/dev/null \
+            || sudo dd if=/dev/zero of=/swapfile bs=1M count=12288 2>/dev/null || true
+          sudo chmod 600 /swapfile 2>/dev/null || true
+          sudo mkswap /swapfile 2>/dev/null || true
+          sudo swapon /swapfile 2>/dev/null || true
+          free -h 2>/dev/null || true
 
       - run: pnpm build --filter=docs
         env:
