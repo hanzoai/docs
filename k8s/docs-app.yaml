@@ -1,0 +1,50 @@
+# docs.hanzo.ai — the ONE canonical serve: a hanzo-operator App CR.
+#
+# WHY AN App CR (not a hand-rolled Deployment/Service/Ingress):
+#   The hanzoai/ingress controller only routes ingresses the operator
+#   reconciles (analytics, bot-docs, team-docs all work this way). A
+#   hand-applied ingress for docs.hanzo.ai was NEVER admitted — the
+#   controller fell through to the default *.hanzo.ai cert and 404'd every
+#   path. Modeled exactly on the working `bot-docs` App; the only deltas are
+#   the image, containerPort (our static server listens on 3000, not 80),
+#   and the host.
+#
+# The operator reconciles this into Deployment + Service + Ingress with the
+# correct route registration and a per-host cert via letsencrypt-prod.
+#
+# CD: bump .spec.image.tag to the pushed commit SHA — the operator rolls it.
+# Immutable SHA tags only; never a floating :latest in the cluster.
+apiVersion: hanzo.ai/v1
+kind: App
+metadata:
+  name: docs
+  namespace: hanzo
+  labels:
+    app.kubernetes.io/name: docs
+    app.kubernetes.io/part-of: platform
+spec:
+  component: docs
+  partOf: platform
+  replicas: 2
+  image:
+    repository: ghcr.io/hanzo-docs/docs
+    tag: 0ab3ce4821309aeab98865f726bc071c7170305e
+    pullPolicy: IfNotPresent
+  imagePullSecrets:
+    - name: ghcr-secret
+  ports:
+    - name: http
+      containerPort: 3000
+      servicePort: 80
+  ingress:
+    enabled: true
+    hosts:
+      - docs.hanzo.ai
+    tls: true
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
