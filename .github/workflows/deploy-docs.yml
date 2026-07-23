@@ -16,6 +16,7 @@ jobs:
     permissions:
       contents: read
       deployments: write
+      packages: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -67,6 +68,23 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=16384'
         timeout-minutes: 60
 
+      # PaaS-native serve: package the export into hanzoai/static and push to GHCR.
+      # docs.hanzo.ai is served by the in-cluster docs-landing Deployment behind
+      # hanzoai/ingress — no Cloudflare. Built here on the self-hosted runner (docker
+      # is present; "no GitHub builders" = no GitHub-HOSTED runners, self-hosted is ok).
+      - name: Build + push native docs image (ghcr.io/hanzoai/docs)
+        run: |
+          cat > Dockerfile.serve <<'EOF'
+          FROM ghcr.io/hanzoai/static:v0.3.1
+          COPY apps/docs/out /public
+          EXPOSE 3000
+          ENTRYPOINT ["/static", "-port", "3000", "-root", "/public", "-404", "404.html"]
+          EOF
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker build -f Dockerfile.serve -t ghcr.io/hanzoai/docs:latest -t "ghcr.io/hanzoai/docs:${GITHUB_SHA}" .
+          docker push ghcr.io/hanzoai/docs:latest
+          docker push "ghcr.io/hanzoai/docs:${GITHUB_SHA}"
+
       - name: Fetch CF credentials from KMS
         id: kms
         env:
@@ -114,6 +132,9 @@ jobs:
       # never lags a section split — the stale-origin 530s came from exactly
       # that drift.
       - name: Deploy docs-router worker
+        # Being retired — docs.hanzo.ai is moving to the in-cluster native serve.
+        # The deploy token lacks Workers permission (auth 10000); never block on it.
+        continue-on-error: true
         working-directory: workers/docs-router
         run: pnpm dlx wrangler deploy
         env:
