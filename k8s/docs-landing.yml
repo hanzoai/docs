@@ -31,13 +31,19 @@ spec:
               memory: 128Mi
           livenessProbe:
             httpGet:
-              path: /health
+              # hanzoai/static serves files, not a /health endpoint — /health 404s
+              # and an httpGet probe treats 4xx as failure, so the pod was killed
+              # every ~90s. "/" always resolves (200, or 301->200), which passes.
+              path: /
               port: 3000
             initialDelaySeconds: 5
             periodSeconds: 30
           readinessProbe:
             httpGet:
-              path: /health
+              # hanzoai/static serves files, not a /health endpoint — /health 404s
+              # and an httpGet probe treats 4xx as failure, so the pod was killed
+              # every ~90s. "/" always resolves (200, or 301->200), which passes.
+              path: /
               port: 3000
             initialDelaySeconds: 3
             periodSeconds: 10
