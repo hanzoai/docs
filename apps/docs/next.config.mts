@@ -28,6 +28,13 @@ const emptyProjectModule = path.resolve(__dirname, 'lib/empty-project-module.js'
 
 const config: NextConfig = {
   output: process.env.NEXT_EXPORT === '1' ? 'export' : undefined,
+  // Directory-index export (docs/services/index.html), not flat siblings
+  // (docs/services.html). This is the ONE convention hanzoai/static serves:
+  // it resolves /docs/services -> docs/services/index.html in place. Without
+  // it the export writes docs.html AND a docs/ dir, so /docs opens the dir,
+  // finds no index.html, redirects to /docs/, and 404s. CF Pages tolerated
+  // flat .html via its own router; a plain file server does not. One way.
+  trailingSlash: true,
   basePath: isGitHubPages ? '/docs' : undefined,
   assetPrefix: assetPrefix || undefined,
   reactStrictMode: true,
