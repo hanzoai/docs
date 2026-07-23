@@ -1,0 +1,37 @@
+# Least-privilege CD: let the hanzo-docs ARC build runner patch ONLY the docs
+# App's image tag. The operator watches App CRs and reconciles the rollout, so
+# CI never touches Deployments/pods directly — it just declares the new tag.
+#
+# The runner pod's SA is ARC's default "no-permission" SA; this Role is the
+# only grant it gets, scoped to resourceName `docs` in ns hanzo (get+patch).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: docs-cd
+  namespace: hanzo
+rules:
+  - apiGroups: ["hanzo.ai"]
+    resources: ["apps"]
+    resourceNames: ["docs"]
+    verbs: ["get", "patch"]
+  # `kubectl rollout status` watches the Deployment collection with a field
+  # selector — list/watch are collection verbs that RBAC cannot restrict by
+  # resourceName, so this read-only grant covers deployments in ns hanzo.
+  # Mutation stays scoped to app/docs above; this is read-only.
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: docs-cd
+  namespace: hanzo
+subjects:
+  - kind: ServiceAccount
+    name: hanzo-docs-build-linux-amd64-gha-rs-no-permission
+    namespace: arc-system
+roleRef:
+  kind: Role
+  name: docs-cd
+  apiGroup: rbac.authorization.k8s.io

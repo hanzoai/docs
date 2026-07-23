@@ -68,6 +68,23 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=16384'
         timeout-minutes: 60
 
+      # TEST GATE — a broken export never reaches the cluster. This catches the
+      # exact failures that shipped before: an empty /out (bun missing → 404s)
+      # and the trailingSlash regression (/docs written as docs.html, not
+      # docs/index.html, which hanzoai/static 404s). Fail here == no deploy.
+      - name: Validate export
+        run: |
+          out=apps/docs/out
+          fail=0
+          for f in index.html docs/index.html docs/services/index.html; do
+            [ -s "$out/$f" ] || { echo "::error::missing or empty $out/$f"; fail=1; }
+          done
+          n=$(find "$out" -name '*.html' | wc -l)
+          echo "html pages exported: $n"
+          [ "$n" -ge 50 ] || { echo "::error::only $n html pages — export looks broken"; fail=1; }
+          grep -q 'href="/docs/' "$out/docs/index.html" 2>/dev/null || { echo "::error::/docs carries no nav — shell-only render"; fail=1; }
+          exit $fail
+
       # PaaS-native serve: package the export into hanzoai/static and push to GHCR.
       # docs.hanzo.ai is served by the in-cluster docs-landing Deployment behind
       # hanzoai/ingress — no Cloudflare. Built here on the self-hosted runner (docker
@@ -85,58 +102,27 @@ jobs:
           docker push ghcr.io/hanzo-docs/docs:latest
           docker push "ghcr.io/hanzo-docs/docs:${GITHUB_SHA}"
 
-      - name: Fetch CF credentials from KMS
-        id: kms
-        env:
-          KMS_CLIENT_ID: ${{ secrets.KMS_CLIENT_ID }}
-          KMS_CLIENT_SECRET: ${{ secrets.KMS_CLIENT_SECRET }}
-          KMS_ENDPOINT: ${{ vars.KMS_ENDPOINT || 'https://kms.hanzo.ai' }}
-          KMS_ORG: ${{ vars.KMS_ORG || 'hanzo' }}
-          KMS_SECRET_ENV: ${{ vars.KMS_SECRET_ENV || 'prod' }}
+      # DEPLOY (native, operator-driven). Declare the freshly-built immutable SHA
+      # tag to the docs App CR; hanzo-operator reconciles the rollout. CI never
+      # touches Deployments/pods, and no floating tag reaches the cluster. Auth is
+      # the runner pod's in-cluster ServiceAccount, scoped by k8s/docs-cd-rbac.yaml
+      # to get+patch ONLY app/docs in ns hanzo. docs.hanzo.ai is routed by the
+      # universe file-provider entry to the docs Service (see k8s/docs-app.yaml).
+      # This replaces the Cloudflare Pages + docs-router worker path entirely.
+      - name: Deploy — declare tag to operator
         run: |
-          # Canonical Hanzo KMS (/v1/kms): machine-identity login -> bearer,
-          # then read CF Pages deploy creds from org path deploy/<NAME>.
-          # Replaces the decommissioned Infisical /api routes (forwards-only).
-          token=$(curl -fsS "${KMS_ENDPOINT}/v1/kms/auth/login" \
-            -H 'Content-Type: application/json' \
-            -d "{\"clientId\":\"${KMS_CLIENT_ID}\",\"clientSecret\":\"${KMS_CLIENT_SECRET}\"}" \
-            | jq -r '.accessToken // empty')
-          if [ -z "${token}" ]; then
-            echo "::error::KMS login failed at ${KMS_ENDPOINT}/v1/kms/auth/login (check KMS_CLIENT_ID/KMS_CLIENT_SECRET)."
-            exit 1
-          fi
-          kms_get() {
-            curl -fsS "${KMS_ENDPOINT}/v1/kms/orgs/${KMS_ORG}/secrets/deploy/$1?env=${KMS_SECRET_ENV}" \
-              -H "Authorization: Bearer ${token}" | jq -r '.secret.value // empty'
-          }
-          cf_token=$(kms_get CLOUDFLARE_API_TOKEN)
-          cf_account=$(kms_get CLOUDFLARE_ACCOUNT_ID)
-          if [ -z "${cf_token}" ] || [ -z "${cf_account}" ]; then
-            echo "::error::CF credentials missing in KMS at ${KMS_ORG}/deploy (env ${KMS_SECRET_ENV})."
-            exit 1
-          fi
-          echo "::add-mask::${cf_token}"
-          echo "::add-mask::${cf_account}"
-          echo "cf_token=${cf_token}" >> "$GITHUB_OUTPUT"
-          echo "cf_account=${cf_account}" >> "$GITHUB_OUTPUT"
+          curl -sSLo ./kubectl "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          chmod +x ./kubectl
+          ./kubectl -n hanzo patch app docs --type=merge \
+            -p "{\"spec\":{\"image\":{\"tag\":\"${GITHUB_SHA}\"}}}"
+          ./kubectl -n hanzo rollout status deploy/docs --timeout=300s
 
-      - name: Deploy to Cloudflare Pages
-        working-directory: apps/docs
-        run: pnpm dlx wrangler pages deploy out --project-name=hanzo-docs --commit-dirty=true
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ steps.kms.outputs.cf_token }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ steps.kms.outputs.cf_account }}
-
-      # The edge router (docs.hanzo.ai/*) now passes every path through to the
-      # single hanzo-docs Pages origin. Ship it with the content so the routing
-      # never lags a section split — the stale-origin 530s came from exactly
-      # that drift.
-      - name: Deploy docs-router worker
-        # Being retired — docs.hanzo.ai is moving to the in-cluster native serve.
-        # The deploy token lacks Workers permission (auth 10000); never block on it.
+      # Re-index search (search.hanzo.ai) + the zen-coder-flash doc chat so both
+      # answer from the just-shipped content. Best-effort — never block a deploy.
+      - name: Re-index docs corpus
         continue-on-error: true
-        working-directory: workers/docs-router
-        run: pnpm dlx wrangler deploy
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ steps.kms.outputs.cf_token }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ steps.kms.outputs.cf_account }}
+        run: |
+          curl -fsS -X POST https://api.hanzo.ai/v1/index-docs \
+            -H 'Content-Type: application/json' \
+            -d "{\"site\":\"docs.hanzo.ai\",\"sha\":\"${GITHUB_SHA}\"}" \
+            && echo "re-indexed" || echo "re-index skipped (endpoint/auth not ready) — non-blocking"
