@@ -23,7 +23,7 @@ ENV NEXT_EXPORT=1 \
     NODE_OPTIONS=--max-old-space-size=24576
 RUN pnpm build --filter=docs
 
-FROM ghcr.io/hanzoai/static:v0.3.1
+FROM ghcr.io/hanzoai/static:0.4.1
 COPY --from=build /src/apps/docs/out /public
 EXPOSE 3000
 ENTRYPOINT ["/static", "-port", "3000", "-root", "/public", "-404", "404.html"]
