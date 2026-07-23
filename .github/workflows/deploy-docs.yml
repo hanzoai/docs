@@ -32,6 +32,11 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      # apps/docs `build:pre` runs `bun ./scripts/*.ts` (gen-services-nav, pre-build).
+      # The containerized scale-set runner has no bun, so the build died instantly at
+      # build:pre. The sibling deploys (bot-docs, etc.) already set bun up — match them.
+      - uses: oven-sh/setup-bun@v2
+
       - run: pnpm install --frozen-lockfile
 
       - name: Extend swap for large build (best-effort)
