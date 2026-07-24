@@ -5,7 +5,7 @@ import { Steps, Step } from '@hanzo/docs-ui/components/steps';
 import type { MDXComponents } from 'mdx/types';
 import { Accordion, Accordions } from '@hanzo/docs-ui/components/accordion';
 import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
-import { ModelsCatalog } from '@/components/models-catalog';
+import { ModelsCatalog } from '@/components/preview/lazy';
 import * as icons from 'lucide-react';
 
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
