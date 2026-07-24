@@ -79,7 +79,7 @@ export const handler = $routeHandler(
     const { context } = question ? await retrieve(question) : { context: '' };
 
     const result = streamText({
-      model: hanzo(process.env.HANZO_AI_MODEL ?? 'zen5'),
+      model: hanzo(process.env.HANZO_AI_MODEL ?? 'enso'),
       system:
         'You are the Hanzo documentation assistant. Answer using ONLY the Hanzo ' +
         'documentation context below. Cite every source you use by calling the ' +
