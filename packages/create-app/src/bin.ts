@@ -196,7 +196,7 @@ async function main(): Promise<void> {
             {
               value: 'llmgateway',
               label: 'LLMGateway',
-              hint: 'open-source LLM gateway, API key required',
+              hint: 'open-source AI gateway, API key required',
             },
             {
               value: 'hanzo',

@@ -20,8 +20,8 @@ export const hanzo = defineOrg({
     },
     {
       slug: 'llm',
-      name: 'LLM Gateway',
-      description: 'Unified proxy for 100+ LLM providers',
+      name: 'AI Gateway',
+      description: 'One API for every model',
       icon: 'brain',
       category: 'Infrastructure',
     },
@@ -77,16 +77,20 @@ export const hanzo = defineOrg({
     {
       slug: 'js-sdk',
       name: 'JS SDK',
-      description: 'TypeScript client library',
+      description: 'TypeScript client — @hanzo/ai + @hanzo/sdk',
       icon: 'code',
       category: 'SDKs',
+      external: true,
+      url: 'https://github.com/hanzo-js/sdk',
     },
     {
       slug: 'python-sdk',
       name: 'Python SDK',
-      description: 'Python client library',
+      description: 'pip install hanzo — flagship AI SDK',
       icon: 'code',
       category: 'SDKs',
+      external: true,
+      url: 'https://github.com/hanzoai/python-sdk',
     },
   ],
 });
