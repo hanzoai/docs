@@ -6,6 +6,7 @@
 // theme-aware via Fumadocs fd-* tokens.
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Copy, Check, Cpu, Sparkles, Zap, Box } from 'lucide-react';
+import { PROVIDER_ICONS, providerKey } from '@/components/provider-icons';
 
 const ENDPOINT = 'https://api.hanzo.ai/v1/models';
 
@@ -56,6 +57,17 @@ function initials(name: string): string {
   return name.replace(/[^\p{L}\p{N}]/gu, '').slice(0, 2).toUpperCase() || '?';
 }
 function ProviderChip({ name }: { name: string }) {
+  // Real brand logo (mono, currentColor) when we have one; monogram otherwise.
+  const svg = PROVIDER_ICONS[providerKey(name)];
+  if (svg) {
+    return (
+      <span
+        aria-hidden
+        className="inline-flex size-5 shrink-0 items-center justify-center text-fd-foreground [&>svg]:size-[18px]"
+        dangerouslySetInnerHTML={{ __html: svg }}
+      />
+    );
+  }
   const hue = hashHue(name.toLowerCase());
   return (
     <span
