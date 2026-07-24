@@ -27,9 +27,9 @@ import {
 } from '@/components/ui/card';
 import { CodeBlock } from '@/components/code-block';
 
-/* -- The eight movements -- category-first, mirrors the console shell -------- */
+/* -- The eight domains -- category-first, mirrors the console shell --------- */
 
-const movements = [
+const domains = [
   {
     name: 'Identity & Trust',
     desc: 'Who you are, what you may touch, where secrets live. IAM, AuthZ, KMS, MPC, Zero-Trust.',
@@ -138,9 +138,9 @@ export default function Page() {
           <span className="text-white">The AI cloud you<br className="hidden sm:block" /> can run yourself</span>
         </h1>
         <p className="relative mt-5 max-w-xl text-[#737373] text-lg md:text-xl leading-relaxed">
-          The same open-source binary we run in production — 67 capabilities across
-          eight movements. Run it on your own machine, GPU, or cluster.
-          The network is the cloud.
+          The same open-source binary we run in production — 67 capabilities, from
+          identity and inference to data, observability, and commerce. Run it on
+          your own machine, GPU, or cluster. The network is the cloud.
         </p>
 
         {/* -- Install command -- the main CTA ------------------------------ */}
@@ -182,10 +182,9 @@ export default function Page() {
         </div>
 
         {/* -- Breadth stats bar -------------------------------------------- */}
-        <div className="relative mt-14 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-px w-full max-w-4xl rounded-2xl overflow-hidden border border-white/[0.08] bg-white/[0.04]">
+        <div className="relative mt-14 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-px w-full max-w-4xl rounded-2xl overflow-hidden border border-white/[0.08] bg-white/[0.04]">
           {[
             { n: '67', label: 'Capabilities' },
-            { n: '8', label: 'Movements' },
             { n: '157', label: 'Models' },
             { n: '706', label: 'MCP connectors' },
             { n: '6', label: 'SDK languages' },
@@ -243,16 +242,16 @@ print(response.choices[0].message.content)`}
           </div>
         </section>
 
-        {/* -- The eight movements -- category-first ------------------------ */}
+        {/* -- Eight domains -- category-first ------------------------------ */}
         <section>
           <h2 className="text-3xl font-bold tracking-tight mb-3">
-            The eight movements
+            One binary. The whole platform.
           </h2>
           <p className="text-[#737373] text-sm mb-8">
-            Every capability is named by its route and lives in exactly one movement. Click any to descend.
+            Every capability is named by its route. Browse by domain — click any to descend.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {movements.map((item) => {
+            {domains.map((item) => {
               const isExternal = !!(item as { external?: boolean }).external;
               const linkProps = isExternal
                 ? { target: '_blank' as const, rel: 'noreferrer noopener' }
