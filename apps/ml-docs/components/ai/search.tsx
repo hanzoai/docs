@@ -16,18 +16,18 @@ import { cn } from '@/lib/cn';
 import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
 import Link from '@hanzo/docs-core/link';
 import { useChat, type UseChatHelpers } from '@ai-sdk/react';
-import type { ProvideLinksToolSchema } from '@/lib/chat/inkeep-qa-schema';
+import type { ProvideLinksToolSchema } from '@/lib/chat/qa-schema';
 import type { z } from 'zod';
 import { DefaultChatTransport } from 'ai';
 import { chatEndpoint, publishableKey } from '@/lib/hanzo/client';
 import { Markdown } from './markdown';
 import { Presence } from '@radix-ui/react-presence';
-import type { InkeepUIMessage } from '@/lib/inkeep/server';
+import type { HanzoUIMessage } from '@/lib/chat/qa-schema';
 
 const Context = createContext<{
   open: boolean;
   setOpen: (open: boolean) => void;
-  chat: UseChatHelpers<InkeepUIMessage>;
+  chat: UseChatHelpers<HanzoUIMessage>;
 } | null>(null);
 
 export function AISearchPanelHeader({ className, ...props }: ComponentProps<'div'>) {
@@ -261,7 +261,7 @@ const roleName: Record<string, string> = {
   assistant: 'hanzo-bot',
 };
 
-function Message({ message, ...props }: { message: InkeepUIMessage } & ComponentProps<'div'>) {
+function Message({ message, ...props }: { message: HanzoUIMessage } & ComponentProps<'div'>) {
   let markdown = '';
   let links: z.infer<typeof ProvideLinksToolSchema>['links'] = [];
 
@@ -315,7 +315,7 @@ const systemPrompt =
 
 export function AISearch({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const chat = useChat<InkeepUIMessage>({
+  const chat = useChat<HanzoUIMessage>({
     id: 'search',
     initialMessages: [{ id: 'system', role: 'system' as const, content: systemPrompt, parts: [] }],
     transport: new DefaultChatTransport({

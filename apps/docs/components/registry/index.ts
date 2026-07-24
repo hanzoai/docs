@@ -195,13 +195,13 @@ export const registry: Registry = {
         },
         {
           type: 'route-handler',
-          route: 'api/inkeep',
-          path: 'lib/inkeep/route.ts',
+          route: 'api/ai',
+          path: 'lib/ai/route.ts',
         },
         {
           type: 'lib',
-          path: 'lib/inkeep/inkeep-qa-schema.ts',
-          target: '<dir>/ai/inkeep-qa-schema.ts',
+          path: 'lib/ai/qa-schema.ts',
+          target: '<dir>/ai/qa-schema.ts',
         },
       ],
     },

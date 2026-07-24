@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
-const InkeepRecordTypes = z.enum([
+// Native Hanzo docs-AI tool schema (replaces the retired third-party
+// schema). The record types are generic source kinds the assistant may cite.
+const HanzoRecordTypes = z.enum([
   'documentation',
   'site',
   'discourse_post',
@@ -13,7 +15,7 @@ const InkeepRecordTypes = z.enum([
 ]);
 
 const LinkType = z.union([
-  InkeepRecordTypes,
+  HanzoRecordTypes,
   z.string(), // catch all
 ]);
 
