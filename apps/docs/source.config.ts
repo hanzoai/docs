@@ -216,7 +216,7 @@ function transformerEscape(): ShikiTransformer {
 // First-party Hanzo components that must survive the unknown-JSX strip in
 // services/ + projects/ docs. Only unique names no upstream doc platform ships,
 // so allowlisting them can't reintroduce an API collision from ported docs.
-const FIRST_PARTY_JSX = new Set(['ModelsCatalog']);
+const FIRST_PARTY_JSX = new Set(['ModelsCatalog', 'ConnectorsCatalog']);
 
 function remarkPassthroughUnknownJsx(): Transformer<Root, Root> {
   return (tree, file) => {

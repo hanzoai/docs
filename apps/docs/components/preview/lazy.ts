@@ -30,3 +30,8 @@ export const GraphView = dynamic(() =>
 export const ModelsCatalog = dynamic(() =>
   import('@/components/models-catalog').then((res) => res.ModelsCatalog),
 );
+
+// Unified connectors + MCP registry catalog (client-fetches the MCP registry).
+export const ConnectorsCatalog = dynamic(() =>
+  import('@/components/connectors-catalog').then((res) => res.ConnectorsCatalog),
+);

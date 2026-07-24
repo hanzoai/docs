@@ -185,8 +185,8 @@ export default function Page() {
         <div className="relative mt-14 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-px w-full max-w-4xl rounded-2xl overflow-hidden border border-white/[0.08] bg-white/[0.04]">
           {[
             { n: '67', label: 'Capabilities' },
-            { n: '157', label: 'Models' },
-            { n: '706', label: 'MCP connectors' },
+            { n: '436', label: 'Models' },
+            { n: '600+', label: 'MCP servers' },
             { n: '6', label: 'SDK languages' },
           ].map((s) => (
             <div key={s.label} className="bg-[#0a0a0a] px-5 py-5 text-center">
@@ -324,7 +324,7 @@ print(response.choices[0].message.content)`}
             Every model, one API
           </h2>
           <p className="text-[#737373] text-sm mb-8">
-            157 models across every major provider — call any of them with one credential, one request shape.
+            436 models across every major provider — call any of them with one credential, one request shape.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
             {[
@@ -375,10 +375,10 @@ print(response.choices[0].message.content)`}
             <CardContent className="p-8">
               <div className="flex items-center gap-3 mb-2">
                 <Workflow className="size-5 text-[#a3a3a3]" />
-                <CardTitle className="text-xl font-bold tracking-tight">706 tools, one MCP surface</CardTitle>
+                <CardTitle className="text-xl font-bold tracking-tight">Every tool, one MCP surface</CardTitle>
               </div>
               <CardDescription className="text-xs text-[#525252] mb-6">
-                706 connectors — Slack, GitHub, Notion, Stripe, and more — exposed as MCP tools any agent can call.
+                Native connectors + the open MCP registry — Slack, GitHub, Notion, Stripe, and more — exposed as MCP tools any agent can call.
               </CardDescription>
               <div className="flex flex-wrap gap-2">
                 {['Slack', 'GitHub', 'Notion', 'Stripe', 'Google', 'Linear', '+700 more'].map((c) => (
