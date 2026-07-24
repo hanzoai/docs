@@ -1,3 +1,6 @@
+// Brand tokens (monochrome --hanzo-*, --font-size-*, --z-*) load first so the
+// Fumadocs theme + Tailwind layers in global.css can override where they meet.
+import '@hanzo/brand/styles/variables.css';
 import './global.css';
 import type { Viewport } from 'next';
 import { baseUrl, createMetadata } from '@/lib/metadata';
