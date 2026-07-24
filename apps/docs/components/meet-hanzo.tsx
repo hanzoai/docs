@@ -13,6 +13,21 @@ import { MeetHanzoMenu } from '@hanzogui/shell';
  * `anchor` (56px) matches the Fumadocs nav row height so the panel drops
  * flush beneath the header.
  */
+// Keep the ecosystem menu's product items INSIDE the docs when we have a docs
+// page for them — instead of bouncing out to the hanzo.ai marketing home. Maps
+// the registry link id → its docs path; anything not listed keeps the canonical
+// ecosystem link. Passed to MeetHanzoMenu's `resolveHref` (opt-in; a no-op on
+// shell versions before that prop exists, so it's safe to ship ahead).
+const DOCS_HREFS: Record<string, string> = {
+  models: '/docs/services/models',
+  enso: '/docs/services/models',
+  agents: '/docs/agents',
+  mcp: '/docs/mcp',
+  gateway: '/docs/llm',
+  api: '/docs/api',
+  keys: '/docs/api-keys',
+};
+
 export function MeetHanzo() {
   const [open, setOpen] = useState(false);
   const panelId = 'meet-hanzo-menu';
@@ -37,6 +52,7 @@ export function MeetHanzo() {
         open={open}
         onClose={() => setOpen(false)}
         anchor={56}
+        resolveHref={(href, id) => DOCS_HREFS[id] ?? href}
       />
     </>
   );
