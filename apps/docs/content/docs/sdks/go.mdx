@@ -1,196 +1,92 @@
 ---
 title: Go SDK
-description: The official Hanzo Go SDK for building AI-powered Go applications.
+description: The Hanzo Go Cloud SDK — go get github.com/hanzoai/go-sdk. Functional options, minimal dependencies.
 ---
+
+import { Callout } from '@hanzo/docs-ui/components/callout'
 
 # Go SDK
 
-The `hanzoai-go` module provides an idiomatic Go client for the Hanzo AI Gateway with full type safety and streaming support.
+The Go **Cloud SDK** is a typed client for the entire Open AI Cloud (`/v1/*`) —
+functional-options API, minimal dependencies, context-aware. Generally available.
 
-## Installation
+## Install
 
 ```bash
-go get github.com/hanzoai/hanzoai-go
+go get github.com/hanzoai/go-sdk
 ```
 
-## Quick Start
+```go
+import (
+    "github.com/hanzoai/go-sdk"
+    "github.com/hanzoai/go-sdk/option"
+)
+```
+
+Set your key:
+
+```bash
+export HANZO_API_KEY="hk-..."   # from console.hanzo.ai
+```
+
+## Quick start
 
 ```go
 package main
 
 import (
-	"context"
-	"fmt"
+    "context"
+    "fmt"
 
-	"github.com/hanzoai/hanzoai-go"
-	"github.com/hanzoai/hanzoai-go/option"
+    "github.com/hanzoai/go-sdk"
+    "github.com/hanzoai/go-sdk/option"
 )
 
 func main() {
-	client := hanzoai.NewClient(
-		option.WithAPIKey("your-api-key"),
-	)
+    client := hanzoai.NewClient(
+        option.WithAPIKey("hk-your-key"), // or HANZO_API_KEY
+    )
 
-	response, err := client.Chat.Completions.New(
-		context.Background(),
-		hanzoai.ChatCompletionNewParams{
-			Model: "gpt-5",
-			Messages: []hanzoai.ChatCompletionMessageParamUnion{
-				hanzoai.UserMessage("Hello, world!"),
-			},
-		},
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(response.Choices[0].Message.Content)
+    resp, err := client.Chat.Completions.New(context.TODO(), hanzoai.ChatCompletionNewParams{
+        Model: hanzoai.F("zen-omni"),
+        Messages: hanzoai.F([]hanzoai.ChatCompletionMessageParamUnion{
+            hanzoai.UserMessage("Explain quantum computing"),
+        }),
+    })
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println(resp.Choices[0].Message.Content)
 }
 ```
 
 ## Streaming
 
 ```go
-stream := client.Chat.Completions.NewStreaming(
-	context.Background(),
-	hanzoai.ChatCompletionNewParams{
-		Model: "claude-sonnet-4-6",
-		Messages: []hanzoai.ChatCompletionMessageParamUnion{
-			hanzoai.UserMessage("Write a haiku about AI"),
-		},
-	},
-)
-
+stream := client.Chat.Completions.NewStreaming(ctx, hanzoai.ChatCompletionNewParams{
+    Model: hanzoai.F("zen-coder"),
+    Messages: hanzoai.F([]hanzoai.ChatCompletionMessageParamUnion{
+        hanzoai.UserMessage("Write a haiku about AI"),
+    }),
+})
 for stream.Next() {
-	chunk := stream.Current()
-	if len(chunk.Choices) > 0 && chunk.Choices[0].Delta.Content != "" {
-		fmt.Print(chunk.Choices[0].Delta.Content)
-	}
+    chunk := stream.Current()
+    if len(chunk.Choices) > 0 {
+        fmt.Print(chunk.Choices[0].Delta.Content)
+    }
 }
-
-if err := stream.Err(); err != nil {
-	panic(err)
-}
-```
-
-## Function Calling
-
-```go
-tools := []hanzoai.ChatCompletionToolParam{
-	{
-		Type: "function",
-		Function: hanzoai.FunctionDefinitionParam{
-			Name:        "get_weather",
-			Description: hanzoai.String("Get weather for a location"),
-			Parameters: hanzoai.FunctionParameters{
-				"type": "object",
-				"properties": map[string]any{
-					"location": map[string]any{
-						"type":        "string",
-						"description": "City name",
-					},
-				},
-				"required": []string{"location"},
-			},
-		},
-	},
-}
-
-response, err := client.Chat.Completions.New(
-	context.Background(),
-	hanzoai.ChatCompletionNewParams{
-		Model: "gpt-5",
-		Messages: []hanzoai.ChatCompletionMessageParamUnion{
-			hanzoai.UserMessage("What's the weather in Tokyo?"),
-		},
-		Tools: tools,
-	},
-)
-
-if err == nil && len(response.Choices[0].Message.ToolCalls) > 0 {
-	for _, call := range response.Choices[0].Message.ToolCalls {
-		fmt.Printf("Call %s(%s)\n", call.Function.Name, call.Function.Arguments)
-	}
+if stream.Err() != nil {
+    panic(stream.Err())
 }
 ```
 
-## Multiple Providers
-
-```go
-// Switch providers by changing the model name
-params := hanzoai.ChatCompletionNewParams{
-	Messages: []hanzoai.ChatCompletionMessageParamUnion{
-		hanzoai.UserMessage("Hello!"),
-	},
-}
-
-// OpenAI
-params.Model = "gpt-5"
-resp, _ := client.Chat.Completions.New(ctx, params)
-
-// Anthropic
-params.Model = "claude-sonnet-4-6"
-resp, _ = client.Chat.Completions.New(ctx, params)
-
-// Google
-params.Model = "gemini-2.0-flash"
-resp, _ = client.Chat.Completions.New(ctx, params)
-```
-
-## Configuration
-
-```go
-client := hanzoai.NewClient(
-	option.WithAPIKey("your-api-key"),
-	option.WithBaseURL("https://llm.hanzo.ai/v1"),  // default
-	option.WithMaxRetries(2),
-)
-```
-
-### Environment Variables
-
-```bash
-HANZO_API_KEY=your-api-key
-HANZO_BASE_URL=https://llm.hanzo.ai/v1  # optional
-```
-
-## Error Handling
-
-```go
-response, err := client.Chat.Completions.New(ctx, params)
-if err != nil {
-	var apiErr *hanzoai.Error
-	if errors.As(err, &apiErr) {
-		fmt.Printf("API error %d: %s\n", apiErr.StatusCode, apiErr.Message)
-	} else {
-		fmt.Printf("Network error: %v\n", err)
-	}
-	return
-}
-```
-
-## Hanzo ORM
-
-For server-side Go applications that need a database, Hanzo ORM provides a generics-based ORM with type-safe models:
-
-```go
-import "github.com/hanzoai/orm"
-
-type User struct {
-    orm.Model[User]
-    Name  string `json:"name"`
-    Email string `json:"email"`
-}
-
-func init() { orm.Register[User]("user") }
-```
-
-See the full [ORM documentation](/docs/services/orm) for models, queries, hooks, caching, and database drivers.
+<Callout title="Base URL">
+Point the client at any service with `option.WithBaseURL("https://api.hanzo.ai/v1")`
+— the default. One key works across every `/v1` service.
+</Callout>
 
 ## Resources
 
-- [GitHub Repository](https://github.com/hanzoai/go-sdk)
-- [pkg.go.dev](https://pkg.go.dev/github.com/hanzoai/hanzoai-go)
-- [AI Gateway Docs](/docs/llm)
-- [Hanzo ORM](/docs/services/orm) -- Generics-based ORM for Go
-- [ORM on pkg.go.dev](https://pkg.go.dev/github.com/hanzoai/orm)
+- **Cloud SDK** — [`go get github.com/hanzoai/go-sdk`](https://pkg.go.dev/github.com/hanzoai/go-sdk) · org [hanzo-go](https://github.com/hanzo-go)
+- **Umbrella** — [hanzoai/sdk](https://github.com/hanzoai/sdk)
+- **API reference** — [every `/v1` endpoint →](/reference)

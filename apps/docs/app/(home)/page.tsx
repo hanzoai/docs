@@ -99,14 +99,14 @@ const devLinks = [
   },
   {
     name: 'SDKs',
-    desc: 'Python, TypeScript, Go, Rust',
+    desc: 'Python, TypeScript, Go, Rust, C++, Swift, Kotlin',
     href: '/docs/sdks',
     icon: Code2,
   },
   {
     name: 'API Reference',
-    desc: 'REST for every capability',
-    href: '/docs/openapi',
+    desc: 'Every /v1 endpoint, live',
+    href: '/reference',
     icon: FileJson2,
   },
   {
@@ -187,7 +187,7 @@ export default function Page() {
             { n: '67', label: 'Capabilities' },
             { n: '436', label: 'Models' },
             { n: '600+', label: 'MCP servers' },
-            { n: '6', label: 'SDK languages' },
+            { n: '7', label: 'SDK languages' },
           ].map((s) => (
             <div key={s.label} className="bg-[#0a0a0a] px-5 py-5 text-center">
               <div className="text-2xl font-bold text-white tabular-nums">{s.n}</div>
