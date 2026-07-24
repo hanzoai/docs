@@ -20,6 +20,8 @@ export const metadata = createMetadata({
   description:
     'Documentation for Hanzo AI Cloud — 33 services, one API key, one gateway.',
   metadataBase: baseUrl,
+  // Hanzo Edit widget reads this to know which repo backs the docs (fork→edit→PR).
+  other: { 'hanzo:repo': 'hanzo-docs/docs' },
 });
 
 const geist = Geist({
@@ -51,6 +53,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </Body>
       {/* Hanzo Analytics (Umami) */}
       <script defer src="https://analytics.hanzo.ai/script.js" data-website-id="a323a8ae-c811-4061-9626-22caaffc612f" data-do-not-track="true" data-exclude-search="true" />
+      {/* Hanzo Edit — ever-present "improve this page" widget (repo in metadata.other). */}
+      <script async src="https://hanzo.app/edit.js" />
       {/* Hanzo Insights */}
       <script dangerouslySetInnerHTML={{
         __html: `
