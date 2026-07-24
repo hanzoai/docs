@@ -16,17 +16,17 @@ import { cn } from '@/lib/cn';
 import { buttonVariants } from '@hanzo/docs-ui/components/ui/button';
 import Link from '@hanzo/docs-core/link';
 import { useChat, type UseChatHelpers } from '@ai-sdk/react';
-import type { ProvideLinksToolSchema } from '@/lib/inkeep/inkeep-qa-schema';
+import type { ProvideLinksToolSchema } from '@/lib/ai/qa-schema';
 import type { z } from 'zod';
 import { DefaultChatTransport } from 'ai';
 import { Markdown } from '../markdown';
 import { Presence } from '@radix-ui/react-presence';
-import type { InkeepUIMessage } from '@/lib/inkeep/route';
+import type { HanzoUIMessage } from '@/lib/ai/route';
 
 const Context = createContext<{
   open: boolean;
   setOpen: (open: boolean) => void;
-  chat: UseChatHelpers<InkeepUIMessage>;
+  chat: UseChatHelpers<HanzoUIMessage>;
 } | null>(null);
 
 export function AISearchPanelHeader({ className, ...props }: ComponentProps<'div'>) {
@@ -44,8 +44,8 @@ export function AISearchPanelHeader({ className, ...props }: ComponentProps<'div
         <p className="text-sm font-medium mb-2">AI Chat</p>
         <p className="text-xs text-fd-muted-foreground">
           Powered by{' '}
-          <a href="https://inkeep.com" target="_blank" rel="noreferrer noopener">
-            Inkeep AI
+          <a href="https://hanzo.ai" target="_blank" rel="noreferrer noopener">
+            Hanzo AI
           </a>
         </p>
       </div>
@@ -260,7 +260,7 @@ const roleName: Record<string, string> = {
   assistant: 'Hanzo Docs',
 };
 
-function Message({ message, ...props }: { message: InkeepUIMessage } & ComponentProps<'div'>) {
+function Message({ message, ...props }: { message: HanzoUIMessage } & ComponentProps<'div'>) {
   let markdown = '';
   let links: z.infer<typeof ProvideLinksToolSchema>['links'] = [];
 
@@ -308,7 +308,7 @@ function Message({ message, ...props }: { message: InkeepUIMessage } & Component
 
 export function AISearch({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const chat = useChat<InkeepUIMessage>({
+  const chat = useChat<HanzoUIMessage>({
     id: 'search',
     transport: new DefaultChatTransport({
       api: '/api/chat',

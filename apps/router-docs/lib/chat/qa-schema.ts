@@ -1,6 +1,7 @@
+import type { UIMessage } from 'ai';
 import { z } from 'zod';
 
-const InkeepRecordTypes = z.enum([
+const HanzoRecordTypes = z.enum([
   'documentation',
   'site',
   'discourse_post',
@@ -13,7 +14,7 @@ const InkeepRecordTypes = z.enum([
 ]);
 
 const LinkType = z.union([
-  InkeepRecordTypes,
+  HanzoRecordTypes,
   z.string(), // catch all
 ]);
 
@@ -48,3 +49,5 @@ const AIAnnotationsToolSchema = z.looseObject({
 export const ProvideAIAnnotationsToolSchema = z.object({
   aiAnnotations: AIAnnotationsToolSchema,
 });
+
+export type HanzoUIMessage = UIMessage<never, { client: { location: string } }>;

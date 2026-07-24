@@ -7,13 +7,13 @@ import { SyntaxKind } from 'ts-morph';
 import { HanzoDocsComponentInstaller } from '@hanzo/docs-cli/registry/installer';
 import { HttpRegistryConnector } from 'fuma-cli/registry/connector';
 
-const envKey: Record<'openrouter' | 'llmgateway' | 'inkeep', string> = {
+const envKey: Record<'openrouter' | 'llmgateway' | 'hanzo', string> = {
   openrouter: 'OPENROUTER_API_KEY',
   llmgateway: 'LLM_GATEWAY_API_KEY',
-  inkeep: 'INKEEP_API_KEY',
+  hanzo: 'HANZO_API_KEY',
 };
 
-export function ai(provider: 'openrouter' | 'llmgateway' | 'inkeep'): TemplatePlugin {
+export function ai(provider: 'openrouter' | 'llmgateway' | 'hanzo'): TemplatePlugin {
   return {
     async afterWrite() {
       const config = await getDefaultConfig(this.dest);
