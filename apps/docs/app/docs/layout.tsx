@@ -8,7 +8,8 @@ import { cn } from '@/lib/cn';
 import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
 import { ProjectSwitcher } from '@/components/projects/project-switcher';
 import { AuthButtons } from '@/components/auth-buttons';
-import { TryHanzoDropdown } from '@/components/try-hanzo-dropdown';
+import { MeetHanzo } from '@/components/meet-hanzo';
+import { HanzoAppLauncher } from '@hanzogui/shell';
 import { Footer } from '@/components/footer';
 import 'katex/dist/katex.min.css';
 
@@ -25,7 +26,18 @@ export default function Layout({ children }: LayoutProps<'/docs'>) {
           {
             type: 'custom',
             on: 'nav',
-            children: <TryHanzoDropdown />,
+            children: <MeetHanzo />,
+          },
+          {
+            type: 'custom',
+            on: 'nav',
+            children: (
+              <HanzoAppLauncher
+                currentApp="docs"
+                quickSwitchKey={false}
+                label="Meet Hanzo apps"
+              />
+            ),
           },
           {
             type: 'custom',
