@@ -1,0 +1,69 @@
+---
+title: Kotlin SDK
+description: The Hanzo Kotlin Cloud SDK — native JVM/Android client via Gradle. Coming soon.
+---
+
+import { Callout } from '@hanzo/docs-ui/components/callout'
+
+# Kotlin SDK
+
+A native **Cloud SDK** for Kotlin — coroutines, kotlinx.serialization, first-class
+on the JVM and Android.
+
+<Callout title="Coming soon">
+The Kotlin package is in active development in the per-language org
+[hanzo-kt](https://github.com/hanzo-kt). Until it ships, reach the Open AI Cloud
+from Kotlin with any HTTP client (Ktor, OkHttp) against `https://api.hanzo.ai/v1`
+(OpenAI-compatible).
+</Callout>
+
+## Install (planned)
+
+Gradle (Kotlin DSL):
+
+```kotlin
+// build.gradle.kts
+dependencies {
+    implementation("ai.hanzo:sdk:latest.release")
+}
+```
+
+Maven:
+
+```xml
+<dependency>
+  <groupId>ai.hanzo</groupId>
+  <artifactId>sdk</artifactId>
+  <version>LATEST</version>
+</dependency>
+```
+
+## Quick start (planned)
+
+```kotlin
+import ai.hanzo.Hanzo
+
+val client = Hanzo(apiKey = System.getenv("HANZO_API_KEY"))
+
+val response = client.chat.completions.create(
+    model = "zen-omni",
+    messages = listOf(Message.user("Explain quantum computing")),
+)
+println(response.choices.first().message.content)
+```
+
+## Meanwhile — raw HTTP (Ktor)
+
+```kotlin
+val response = HttpClient().post("https://api.hanzo.ai/v1/chat/completions") {
+    header("Authorization", "Bearer $apiKey")
+    contentType(ContentType.Application.Json)
+    setBody("""{"model":"zen-omni","messages":[{"role":"user","content":"Hello"}]}""")
+}
+```
+
+## Resources
+
+- **Cloud SDK** — org [hanzo-kt](https://github.com/hanzo-kt) · [hanzo-kt/sdk](https://github.com/hanzo-kt/sdk)
+- **Umbrella** — [hanzoai/sdk](https://github.com/hanzoai/sdk)
+- **API reference** — [every `/v1` endpoint →](/reference)

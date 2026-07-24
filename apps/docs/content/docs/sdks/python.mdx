@@ -1,160 +1,146 @@
 ---
 title: Python SDK
-description: The official Hanzo Python SDK — OpenAI-compatible client for the AI Gateway.
+description: The flagship Hanzo Python SDK — pip install hanzo for AI + agents, pip install hanzoai for the full Cloud SDK.
 ---
+
+import { Cards, Card } from '@hanzo/docs-ui/components/card'
+import { Callout } from '@hanzo/docs-ui/components/callout'
 
 # Python SDK
 
-The `hanzoai` package is a drop-in replacement for the OpenAI Python SDK, routing requests through the Hanzo AI Gateway to access all models.
+Python is Hanzo's **flagship** — the most complete of every language. It ships in
+two lines you can install independently or together.
 
-## Installation
+<Cards>
+  <Card title="hanzo — AI / agents (flagship)">
+    `pip install hanzo`. Models, agents, tools, memory, MCP, and inference.
+    Source: [hanzoai/python-sdk](https://github.com/hanzoai/python-sdk).
+  </Card>
+  <Card title="hanzoai — Cloud SDK">
+    `pip install hanzoai`. The full, generated client for the entire Open AI
+    Cloud (`/v1/*`). OpenAI-compatible surface. Source: [hanzo-py/sdk](https://github.com/hanzo-py).
+  </Card>
+</Cards>
 
-```bash
+## Install
+
+```bash tab="AI / agents (flagship)"
+pip install hanzo
+```
+
+```bash tab="Cloud SDK"
 pip install hanzoai
 ```
 
-## Quick Start
+Both are generally available on PyPI. Set your key once:
+
+```bash
+export HANZO_API_KEY="hk-..."   # from console.hanzo.ai
+```
+
+## Quick start — Cloud SDK
+
+The `hanzoai` client is a typed client for every `/v1` endpoint, OpenAI-compatible
+for chat:
 
 ```python
 from hanzoai import Hanzo
 
-client = Hanzo(api_key="your-api-key")
+client = Hanzo(api_key="hk-your-key")  # or reads HANZO_API_KEY
 
 response = client.chat.completions.create(
-    model="gpt-5",
-    messages=[
-        {"role": "user", "content": "Hello, world!"}
-    ]
+    model="zen-omni",
+    messages=[{"role": "user", "content": "Explain quantum computing"}],
 )
-
 print(response.choices[0].message.content)
 ```
 
-## Streaming
+### Streaming
 
 ```python
 stream = client.chat.completions.create(
-    model="claude-sonnet-4-6",
-    messages=[
-        {"role": "user", "content": "Write a haiku about AI"}
-    ],
-    stream=True
+    model="zen-coder",
+    messages=[{"role": "user", "content": "Write a haiku about AI"}],
+    stream=True,
 )
-
 for chunk in stream:
     if chunk.choices[0].delta.content:
         print(chunk.choices[0].delta.content, end="")
 ```
 
-## Async
+### Async
 
 ```python
 import asyncio
 from hanzoai import AsyncHanzo
 
 async def main():
-    client = AsyncHanzo(api_key="your-api-key")
-
+    client = AsyncHanzo(api_key="hk-your-key")
     response = await client.chat.completions.create(
-        model="claude-sonnet-4-6",
-        messages=[{"role": "user", "content": "Hello!"}]
+        model="zen-omni",
+        messages=[{"role": "user", "content": "Hello!"}],
     )
     print(response.choices[0].message.content)
 
 asyncio.run(main())
 ```
 
-## Function Calling
+## Quick start — AI / agents (flagship)
+
+The `hanzo` library is the AI-first flagship — agents, tools, memory, and MCP on
+top of the same cloud:
 
 ```python
-import json
+from hanzo import Agent
 
-tools = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_weather",
-            "description": "Get the current weather for a location",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {"type": "string", "description": "City name"},
-                    "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]}
-                },
-                "required": ["location"]
-            }
-        }
-    }
-]
-
-response = client.chat.completions.create(
-    model="gpt-5",
-    messages=[{"role": "user", "content": "What's the weather in Tokyo?"}],
-    tools=tools,
-    tool_choice="auto"
-)
-
-# Handle tool calls
-message = response.choices[0].message
-if message.tool_calls:
-    for call in message.tool_calls:
-        args = json.loads(call.function.arguments)
-        print(f"Call {call.function.name}({args})")
+agent = Agent(model="zen-omni", tools=["search", "shell", "browser"])
+result = agent.run("Find the latest release and summarize the changelog.")
+print(result.output)
 ```
 
-## Multiple Providers
+<Callout title="Bundled tooling">
+`pip install "hanzo[all]"` also installs the `hanzo` CLI (login, dev, bot, kms,
+iam, storage) plus `hanzo-agent`, `hanzo-mcp`, and `hanzo-memory`.
+</Callout>
 
-Switch between providers by changing the model name:
+## Function calling
 
 ```python
-# OpenAI
-client.chat.completions.create(model="gpt-5", ...)
+tools = [{
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "Get the current weather for a location",
+        "parameters": {
+            "type": "object",
+            "properties": {"location": {"type": "string"}},
+            "required": ["location"],
+        },
+    },
+}]
 
-# Anthropic
-client.chat.completions.create(model="claude-sonnet-4-6", ...)
-
-# Google
-client.chat.completions.create(model="gemini-2.0-flash", ...)
-
-# Meta (via Groq, Together, etc.)
-client.chat.completions.create(model="groq/llama-4-maverick", ...)
+response = client.chat.completions.create(
+    model="zen-omni",
+    messages=[{"role": "user", "content": "Weather in Tokyo?"}],
+    tools=tools,
+    tool_choice="auto",
+)
 ```
 
 ## Configuration
 
 ```python
 client = Hanzo(
-    api_key="your-api-key",
-    base_url="https://llm.hanzo.ai/v1",  # default
+    api_key="hk-your-key",
+    base_url="https://api.hanzo.ai/v1",  # default
     timeout=60.0,
     max_retries=2,
 )
 ```
 
-### Environment Variables
-
-```bash
-HANZO_API_KEY=your-api-key
-HANZO_BASE_URL=https://llm.hanzo.ai/v1  # optional
-```
-
-## Hanzo CLI
-
-The Python SDK also includes the `hanzo` CLI for platform management:
-
-```bash
-pip install hanzo[all]   # includes CLI + all tools
-
-hanzo login              # authenticate with IAM
-hanzo dev                # launch Hanzo Dev (AI coding assistant)
-hanzo bot status         # check bot-gateway status
-hanzo kms list           # list KMS secrets
-hanzo iam users          # manage IAM users
-hanzo storage ls s3://   # S3-compatible storage
-```
-
 ## Resources
 
-- [GitHub Repository](https://github.com/hanzoai/python-sdk)
-- [PyPI Package](https://pypi.org/project/hanzoai/)
-- [AI Gateway Docs](/docs/llm)
+- **AI flagship** — [hanzoai/python-sdk](https://github.com/hanzoai/python-sdk) · [`hanzo` on PyPI](https://pypi.org/project/hanzo/)
+- **Cloud SDK** — [`hanzoai` on PyPI](https://pypi.org/project/hanzoai/) · org [hanzo-py](https://github.com/hanzo-py)
+- **Umbrella** — [hanzoai/sdk](https://github.com/hanzoai/sdk)
+- **API reference** — [every `/v1` endpoint →](/reference)
