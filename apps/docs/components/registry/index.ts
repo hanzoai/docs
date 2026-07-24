@@ -12,6 +12,11 @@ export const compileOptions: Partial<CompileOptions> = {
 
     // source object is external
     if (filePath.startsWith('lib/source/')) return false;
+
+    // Hanzo platform infra — the gateway client config (lib/hanzo/client) and
+    // the client-side chat hook (lib/hanzo/use-chat) are provided by the host
+    // app, not vendored into installable components (same as lib/source above).
+    if (filePath.startsWith('lib/hanzo/')) return false;
   },
   onParseReference(ref) {
     if (ref.type === 'unknown' && ref.specifier === 'hast') {
