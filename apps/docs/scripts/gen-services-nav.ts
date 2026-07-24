@@ -30,6 +30,15 @@ try {
 }
 const { SNAPSHOT, docsServicesMeta, docsCoverage } = products
 
+// Guard the DERIVED-nav contract, not just the import: an installed @hanzo/products
+// that predates the docs nav API (no SNAPSHOT / docsServicesMeta / docsCoverage)
+// must fall back to the committed meta.json and exit 0 — same "never break the
+// build" guarantee as a missing package.
+if (!SNAPSHOT || typeof docsServicesMeta !== "function" || typeof docsCoverage !== "function") {
+  console.warn("[gen-services-nav] @hanzo/products lacks the docs nav API — keeping committed meta.json")
+  process.exit(0)
+}
+
 // Existing docs slugs = top-level *.mdx (minus the index landing) + nested service dirs.
 const existing: string[] = []
 for (const name of readdirSync(servicesDir)) {
