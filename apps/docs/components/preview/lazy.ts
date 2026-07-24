@@ -22,3 +22,11 @@ export const ImageZoom = dynamic(() =>
 export const GraphView = dynamic(() =>
   import('@/components/graph-view').then((res) => res.GraphView),
 );
+
+// Local 'use client' component: a static import into the server-rendered
+// getMDXComponents (mdx.tsx) resolves to $undefined in this static-export MDX
+// pipeline (no client boundary). Wrapping in dynamic() forces a proper lazy
+// client island that hydrates — same reason GraphView above does it.
+export const ModelsCatalog = dynamic(() =>
+  import('@/components/models-catalog').then((res) => res.ModelsCatalog),
+);

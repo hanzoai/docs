@@ -213,6 +213,11 @@ function transformerEscape(): ShikiTransformer {
  *
  * Only applies to files inside content/docs/projects/.
  */
+// First-party Hanzo components that must survive the unknown-JSX strip in
+// services/ + projects/ docs. Only unique names no upstream doc platform ships,
+// so allowlisting them can't reintroduce an API collision from ported docs.
+const FIRST_PARTY_JSX = new Set(['ModelsCatalog']);
+
 function remarkPassthroughUnknownJsx(): Transformer<Root, Root> {
   return (tree, file) => {
     // Only transform upstream project docs — leave first-party docs alone
@@ -225,16 +230,20 @@ function remarkPassthroughUnknownJsx(): Transformer<Root, Root> {
       return;
     }
 
-    // Convert ALL PascalCase JSX elements to fragments in project docs.
+    // Convert unknown PascalCase JSX elements to fragments in project docs.
     // Upstream docs use components from various platforms (Mintlify, Docusaurus,
-    // GitBook, etc.) with incompatible APIs. Rather than maintaining a
-    // whitelist and risking API mismatches (e.g. Mintlify <Tab title="..."> vs
-    // Hanzo Docs <Tab value="...">), we strip all custom components and render
-    // just their children. First-party docs are unaffected by this plugin.
+    // GitBook, etc.) with incompatible APIs, so we strip them and render just
+    // their children. EXCEPTION: first-party Hanzo components with unique names
+    // that no upstream platform ships — these must pass through so first-party
+    // pages under services/ (e.g. the live <ModelsCatalog/>) actually render.
+    // Keep this list to genuinely-unambiguous first-party names to avoid the
+    // Mintlify <Tab title> vs Hanzo <Tab value> API-collision the strip guards.
     visit(tree, ['mdxJsxFlowElement', 'mdxJsxTextElement'], (node: any) => {
       if (!node.name) return; // already a fragment
       // Only target PascalCase names (custom components), not lowercase HTML
       if (!/^[A-Z]/.test(node.name)) return;
+      // First-party passthrough allowlist — never stripped.
+      if (FIRST_PARTY_JSX.has(node.name)) return;
 
       // Convert to JSX fragment: strips the unknown tag but keeps children
       node.name = null;
