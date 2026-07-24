@@ -1,182 +1,83 @@
 ---
-title: Hanzo Models
-description: Model registry and catalog for AI inference across 376+ models from 58+ providers
+title: Models
+description: The live Hanzo model catalog and pricing — every model served through api.hanzo.ai/v1, with context windows and per-token cost.
 ---
 
-# Hanzo Models
+# Models
 
-Hanzo Models is the centralized model registry and catalog for all AI models available through the Hanzo platform. It provides model discovery, capability metadata, pricing information, and version management.
+Every model below is served through one OpenAI-compatible endpoint — `https://api.hanzo.ai/v1` — with a single API key. The catalog is **live**: it's fetched from the gateway as you read, so context windows and prices are always current. Pick a model, copy its id, and pass it as `model` in any request.
 
-**Production:** `https://models.hanzo.ai`
-**API:** `https://api.hanzo.ai/v1/models`
-**Pricing:** `https://pricing.hanzo.ai/v1/models`
+<ModelsCatalog />
 
-## Overview
+## Using a model
 
-The model registry indexes 376+ models from 58+ providers, including 32 first-party Zen models. Every model served through `api.hanzo.ai` is registered here with standardized metadata.
-
-## Model Categories
-
-| Category | Count | Description |
-|----------|-------|-------------|
-| **Zen (First-Party)** | 32 | Hanzo-trained models running on Hanzo Engine |
-| **OpenAI** | 40+ | GPT-4o, GPT-5 nano/mini, o1, o3 series |
-| **Anthropic** | 15+ | Claude Haiku, Sonnet, Opus series |
-| **Meta** | 20+ | Llama 3.x, Llama 4 series |
-| **Google** | 15+ | Gemini 2.x, 3.x series |
-| **Mistral** | 10+ | Mistral, Mixtral series |
-| **Other Providers** | 200+ | Cohere, AI21, DeepSeek, Qwen, etc. |
-
-## Model ID Format
-
-All models follow the `{provider}-{model-name}` naming convention:
-
-```
-zen4-pro              # Zen 4 Pro (first-party)
-zen4-mini             # Zen 4 Mini (first-party)
-openai-gpt-5-nano     # OpenAI GPT-5 Nano
-anthropic-claude-sonnet-4-5  # Anthropic Claude Sonnet 4.5
-meta-llama-4-maverick-17b    # Meta Llama 4 Maverick 17B
-google-gemini-2.5-flash      # Google Gemini 2.5 Flash
-```
-
-## API
-
-### List Models
+Pass the model id straight into any OpenAI-compatible request:
 
 ```bash
-# OpenAI-compatible model listing
-curl https://api.hanzo.ai/v1/models \
-  -H "Authorization: Bearer $HANZO_API_KEY"
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen5",
+    "messages": [{ "role": "user", "content": "What is the meaning of life?" }]
+  }'
 ```
 
-Response:
+Swapping models is a one-string change — `zen5` (default), `zen5-coder` for code, `zen5-flash` for speed, or `enso` for the frontier reasoning tier:
+
+```typescript
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  baseURL: 'https://api.hanzo.ai/v1',
+  apiKey: process.env.HANZO_API_KEY,
+});
+
+const res = await client.chat.completions.create({
+  model: 'enso',
+  messages: [{ role: 'user', content: 'Explain quantum entanglement.' }],
+});
+```
+
+## Listing models programmatically
+
+The same catalog is available as an OpenAI-compatible listing — each entry carries its `context`, `pricing` (USD per 1M tokens), `features`, and `family`:
+
+```bash
+curl https://api.hanzo.ai/v1/models
+```
 
 ```json
 {
   "object": "list",
   "data": [
     {
-      "id": "zen4-pro",
-      "object": "model",
-      "created": 1740000000,
-      "owned_by": "hanzo",
-      "capabilities": {
-        "chat": true,
-        "completion": true,
-        "embedding": false,
-        "image": false,
-        "audio": false
-      },
-      "context_window": 128000,
-      "max_output_tokens": 32768,
-      "pricing": {
-        "input": 0.000003,
-        "output": 0.000015,
-        "unit": "per_token"
-      }
+      "id": "zen5",
+      "name": "Zen5 (Default)",
+      "context": 1000000,
+      "pricing": { "input": 4.176, "output": 13.2, "cacheRead": 0, "cacheWrite": null },
+      "features": ["chat", "tools", "vision"],
+      "provider": "Hanzo"
     }
-  ]
+  ],
+  "families": [ { "id": "enso", "name": "Enso", "models": ["enso", "enso-flash", "enso-ultra"] } ],
+  "summary": { "totalModels": 35 }
 }
 ```
 
-### Get Model Details
-
-```bash
-curl https://models.hanzo.ai/v1/models/zen4-pro
-```
-
-### Model Capabilities
-
-Each model exposes its capabilities:
-
-| Capability | Description |
-|-----------|-------------|
-| `chat` | Chat completions (multi-turn conversation) |
-| `completion` | Text completions (single prompt) |
-| `embedding` | Text embeddings (vector representations) |
-| `image` | Image generation or understanding |
-| `audio` | Speech-to-text or text-to-speech |
-| `vision` | Image/video understanding |
-| `tools` | Function calling / tool use |
-| `json_mode` | Structured JSON output |
-
-## Zen Models
-
-Zen models are Hanzo's first-party models trained and served on Hanzo Engine. They are optimized for the Hanzo platform with native tool use, MCP integration, and low-latency inference.
-
-| Model | Parameters | Context | Specialty |
-|-------|-----------|---------|-----------|
-| `zen4-pro` | 405B | 128K | General purpose, reasoning |
-| `zen4-mini` | 70B | 128K | Fast, cost-effective |
-| `zen4-nano` | 8B | 32K | Edge deployment, low latency |
-| `zen4-code` | 70B | 128K | Code generation and analysis |
-| `zen4-vision` | 70B | 128K | Multimodal (text + image) |
-
-Zen models are built on Qwen3+ architecture and fine-tuned on Hanzo's proprietary datasets.
-
-## Provider Routing
-
-When you send a request to `api.hanzo.ai`, the Gateway routes to the appropriate provider based on the model ID prefix:
-
-```
-Client -> api.hanzo.ai -> Gateway -> Provider
-                                      ├── zen-*     -> Hanzo Engine
-                                      ├── openai-*  -> OpenAI / DO AI
-                                      ├── anthropic-* -> Anthropic / DO AI
-                                      ├── meta-*    -> Meta / DO AI
-                                      ├── google-*  -> Google / DO AI
-                                      └── mistral-* -> Mistral / DO AI
-```
-
-## Pricing
-
-Model pricing is available through the [Pricing API](/docs/services/pricing):
-
-```bash
-curl https://pricing.hanzo.ai/v1/models
-```
-
-Prices are denominated in USD per token. Input and output tokens are priced separately. Prices sync from upstream providers every 6 hours.
-
-## Model Selection
-
-### By Use Case
-
-| Use Case | Recommended Model | Why |
-|----------|------------------|-----|
-| General chat | `zen4-pro` | Best quality/cost ratio |
-| Fast responses | `zen4-mini` | Low latency, good quality |
-| Code generation | `zen4-code` | Optimized for code tasks |
-| Image understanding | `zen4-vision` | Multimodal support |
-| Embeddings | `text-embedding-3-small` | High quality, low cost |
-| Budget | `zen4-nano` | Lowest cost per token |
-
-### By Provider Preference
-
-If you need a specific provider (compliance, licensing, etc.), use the provider prefix:
-
-```typescript
-// Use Anthropic specifically
-const response = await client.chat.completions.create({
-  model: 'anthropic-claude-sonnet-4-5-20250514',
-  messages: [{ role: 'user', content: 'Hello' }]
-})
-```
-
-## Related Services
+## Related
 
 <Cards>
   <Card title="Gateway" href="/docs/services/gateway">
-    API gateway that routes model requests to providers
+    The OpenAI-compatible router in front of every model
   </Card>
   <Card title="Engine" href="/docs/services/engine">
-    GPU inference engine serving Zen models
+    The GPU inference engine serving the Zen and Enso families
   </Card>
   <Card title="Pricing API" href="/docs/services/pricing">
-    Real-time pricing for all models
+    Programmatic pricing for models, cloud, GPUs, and plans
   </Card>
-  <Card title="Cloud" href="/docs/services/cloud">
-    Cloud platform with model management
+  <Card title="Chat" href="/docs/chat">
+    Try the models in the hosted chat UI
   </Card>
 </Cards>
