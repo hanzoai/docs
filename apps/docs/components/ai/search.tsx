@@ -15,18 +15,16 @@ import { Loader2, MessageCircleIcon, RefreshCw, Send, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { buttonVariants } from '@hanzo/docs-ui/components/ui/button';
 import Link from '@hanzo/docs-core/link';
-import { useChat, type UseChatHelpers } from '@ai-sdk/react';
 import type { ProvideLinksToolSchema } from '@/lib/ai/qa-schema';
 import type { z } from 'zod';
-import { DefaultChatTransport } from 'ai';
 import { Markdown } from '../markdown';
 import { Presence } from '@radix-ui/react-presence';
-import type { HanzoUIMessage } from '@/lib/ai/route';
+import { useHanzoChat, type ChatMessage, type HanzoChat } from '@/lib/hanzo/use-chat';
 
 const Context = createContext<{
   open: boolean;
   setOpen: (open: boolean) => void;
-  chat: UseChatHelpers<HanzoUIMessage>;
+  chat: HanzoChat;
 } | null>(null);
 
 export function AISearchPanelHeader({ className, ...props }: ComponentProps<'div'>) {
@@ -260,7 +258,7 @@ const roleName: Record<string, string> = {
   assistant: 'Hanzo Docs',
 };
 
-function Message({ message, ...props }: { message: HanzoUIMessage } & ComponentProps<'div'>) {
+function Message({ message, ...props }: { message: ChatMessage } & ComponentProps<'div'>) {
   let markdown = '';
   let links: z.infer<typeof ProvideLinksToolSchema>['links'] = [];
 
@@ -308,12 +306,7 @@ function Message({ message, ...props }: { message: HanzoUIMessage } & ComponentP
 
 export function AISearch({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const chat = useChat<HanzoUIMessage>({
-    id: 'search',
-    transport: new DefaultChatTransport({
-      api: '/api/chat',
-    }),
-  });
+  const chat = useHanzoChat();
 
   return (
     <Context value={useMemo(() => ({ chat, open, setOpen }), [chat, open])}>{children}</Context>
