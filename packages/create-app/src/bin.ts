@@ -39,7 +39,7 @@ const command = program
     new Option('--ai-chat <name>', 'configure AI chat').choices([
       'openrouter',
       'llmgateway',
-      'inkeep',
+      'hanzo',
     ]),
   )
   .addOption(
@@ -181,7 +181,7 @@ async function main(): Promise<void> {
         )
           return false;
 
-        return select<false | 'openrouter' | 'llmgateway' | 'inkeep'>({
+        return select<false | 'openrouter' | 'llmgateway' | 'hanzo'>({
           message: 'Configure AI Chat?',
           options: [
             {
@@ -199,9 +199,9 @@ async function main(): Promise<void> {
               hint: 'open-source LLM gateway, API key required',
             },
             {
-              value: 'inkeep',
-              label: 'Inkeep AI',
-              hint: 'API key required',
+              value: 'hanzo',
+              label: 'Hanzo AI',
+              hint: 'native — api.hanzo.ai, API key required',
             },
           ],
         });
