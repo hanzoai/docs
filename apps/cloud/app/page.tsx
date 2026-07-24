@@ -40,9 +40,9 @@ const buttonVariants = cva(
 const features = [
   {
     icon: BrainCircuitIcon,
-    title: 'LLM Gateway',
+    title: 'AI Gateway',
     description:
-      'Unified proxy for 100+ AI providers. OpenAI, Anthropic, Together, Deepseek, and more through a single API.',
+      'Unified API for 100+ AI providers. OpenAI, Anthropic, Together, Deepseek, and more through a single API.',
   },
   {
     icon: BarChart3Icon,
@@ -133,7 +133,7 @@ export default function Page() {
               <span className="text-text">AI at Scale</span>
             </h1>
             <p className="mx-auto mb-12 max-w-2xl text-lg text-text-muted md:text-xl">
-              Unified gateway to 100+ AI providers. Usage analytics,
+              One API for every model — 100+ AI providers. Usage analytics,
               team management, and API key provisioning — all in one platform.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4">

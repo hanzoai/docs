@@ -6,7 +6,7 @@
 |---------|-----------|----------------|-------------|
 | **IAM** | http://localhost:8000 | https://hanzo.id | Identity & Access Management |
 | **Cloud** | http://localhost:3000 | https://cloud.hanzo.ai | AI Platform Dashboard |
-| **Router** | http://localhost:4000 | https://api.hanzo.ai | LLM Gateway API |
+| **Router** | http://localhost:4000 | https://api.hanzo.ai | AI Gateway API |
 | **Chat** | http://localhost:3081 | https://hanzo.chat | AI Chat Interface |
 | **Services** | http://localhost:3333 | https://hanzo.services | Service Orchestration |
 
@@ -182,5 +182,5 @@ User → Service → Redirect to hanzo.id → OAuth → Service
 - hanzo.id is our identity domain (like clerk.com)
 - hanzo.services orchestrates all services
 - cloud.hanzo.ai manages AI configuration
-- api.hanzo.ai is the unified LLM gateway
+- api.hanzo.ai is the AI Gateway
 - hanzo.chat is one of many possible frontends
