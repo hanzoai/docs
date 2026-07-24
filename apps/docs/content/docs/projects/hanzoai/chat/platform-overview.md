@@ -27,7 +27,7 @@ open http://localhost:8000  # IAM Dashboard
 |---------|------|-------------|----------------|
 | **Cloud** | 3000 | AI Platform Dashboard | cloud.hanzo.ai |
 | **Chat** | 3081 | AI Chat Interface | hanzo.chat |
-| **Router** | 4000 | LLM Gateway (100+ providers) | api.hanzo.ai |
+| **Router** | 4000 | AI Gateway (100+ providers) | api.hanzo.ai |
 | **IAM** | 8000 | Identity & Access Management | hanzo.id |
 | **Services** | 3333 | Service Orchestration | hanzo.services |
 

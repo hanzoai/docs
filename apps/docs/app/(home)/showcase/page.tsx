@@ -95,7 +95,7 @@ const showcases: ShowcaseObject[] = [
   },
   {
     image: '/showcases/llm-gateway.png',
-    name: 'LLM Gateway',
+    name: 'AI Gateway',
     url: 'https://llmgateway.io',
   },
   {

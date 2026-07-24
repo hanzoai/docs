@@ -5,7 +5,7 @@ const billingFaqs = [
   },
   {
     q: 'What does the $5/mo Cloud plan include?',
-    a: 'A full Linux desktop VM running in Hanzo Cloud with access to 100+ AI models via the Hanzo LLM Gateway. Your bot is always on, backed up daily, and accessible from any device. All chat integrations are included.',
+    a: 'A full Linux desktop VM running in Hanzo Cloud with access to 100+ AI models via the Hanzo AI Gateway. Your bot is always on, backed up daily, and accessible from any device. All chat integrations are included.',
   },
   {
     q: 'Why is Cloud Pro $25/mo?',
