@@ -31,6 +31,10 @@ const config: NextConfig = {
   basePath: isGitHubPages ? '/docs' : undefined,
   assetPrefix: assetPrefix || undefined,
   reactStrictMode: true,
+  // Shared Hanzo shell chrome (header/mega-menu/footer) + brand tokens ship as
+  // ESM with 'use client' boundaries — transpile them through the app build so
+  // the client/server split and JSX runtime resolve correctly.
+  transpilePackages: ['@hanzogui/shell', '@hanzo/brand'],
   // Turbopack is the Next 16 default and correctly compiles MDX bodies via the
   // createMDX loader rules (the --webpack path emits empty bodies on Next 16).
   // Turbopack ignores the webpack resolve.alias below, so the virtual content
