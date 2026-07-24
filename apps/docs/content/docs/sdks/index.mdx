@@ -1,125 +1,164 @@
 ---
 title: SDKs
-description: Official Hanzo SDKs for Python, TypeScript, Go, Rust, and C/C++.
+description: Official Hanzo SDKs for every language — Python, TypeScript, Go, Rust, C++, Swift, Kotlin. Two lines per language — the full Cloud SDK and the AI/Agents library.
+icon: Code
 ---
 
 import { Cards, Card } from '@hanzo/docs-ui/components/card'
+import { Callout } from '@hanzo/docs-ui/components/callout'
 
 # Hanzo SDKs
 
-Official client libraries for every major language. All SDKs are OpenAI-compatible — switch from OpenAI to Hanzo by changing one line.
+**Hanzo AI — one API for every model, one SDK for every language.** Talk to the
+Open AI Cloud from the language you already work in. Every SDK is generated from
+the same OpenAPI 3.1 spec and shares one credential.
 
-## Available SDKs
+## Two libraries per language
+
+Each language has two first-class lines — install the one that fits the job, or
+both:
 
 <Cards>
-  <Card title="Python" href="/docs/sdks/python">
-    `hanzoai` — Drop-in OpenAI replacement. Sync + async. PyPI.
+  <Card title="Cloud SDK">
+    The full, generated client for the **entire** Open AI Cloud (`/v1/*`): AI,
+    agents, compute, data, network, security, platform, observe, web3, apps.
+    Idiomatic and typed for its ecosystem. Real code lives in `hanzo-<lang>/sdk`.
+  </Card>
+  <Card title="AI / Agents lib">
+    The hand-crafted, AI-first library — models, agents, tools, memory, MCP, and
+    inference. The flagship is Python (`pip install hanzo`); Node ships
+    `@hanzo/ai`.
+  </Card>
+</Cards>
+
+## Languages
+
+<Cards>
+  <Card title="Python — flagship" href="/docs/sdks/python">
+    `pip install hanzo` (AI) · `pip install hanzoai` (Cloud). Sync + async.
   </Card>
   <Card title="TypeScript" href="/docs/sdks/typescript">
-    `hanzoai` — Node.js, Deno, Bun, browsers. npm.
+    `npm i @hanzo/ai` (AI) · `npm i @hanzo/sdk` (Cloud). Node, Deno, Bun, browser.
   </Card>
   <Card title="Go" href="/docs/sdks/go">
-    `go-sdk` — Functional options, minimal deps. Go modules.
+    `go get github.com/hanzoai/go-sdk`. Functional options, minimal deps.
   </Card>
   <Card title="Rust" href="/docs/sdks/rust">
-    `hanzo-ai` — Async Tokio, post-quantum crypto, DID. crates.io.
+    `cargo add hanzo` — async Tokio client. Coming soon (git dependency today).
   </Card>
-  <Card title="C/C++" href="/docs/sdks/c">
-    `c-sdk` — Native library for embedded and game engines. CMake.
+  <Card title="C++" href="/docs/sdks/cpp">
+    `find_package(hanzo)` — native client via CMake. Coming soon.
+  </Card>
+  <Card title="Swift" href="/docs/sdks/swift">
+    SwiftPM — iOS/macOS client. Coming soon.
+  </Card>
+  <Card title="Kotlin" href="/docs/sdks/kotlin">
+    Gradle — JVM/Android client. Coming soon.
   </Card>
   <Card title="IAM SDK" href="/docs/sdks/iam">
     `@hanzo/iam` — TypeScript IAM client with React bindings.
   </Card>
 </Cards>
 
-## Quick Install
+## Install matrix
 
-```bash tab="Python"
+Only generally-available packages are shown as runnable installs. The rest are
+in active development — each links to its per-language org where the source
+already lives.
+
+| Language | Library | Install | Status |
+|----------|---------|---------|--------|
+| **Python** | AI / agents (flagship) | `pip install hanzo` | GA |
+| **Python** | Cloud SDK | `pip install hanzoai` | GA |
+| **TypeScript** | AI lib | `npm i @hanzo/ai` | GA |
+| **TypeScript** | Cloud SDK | `npm i @hanzo/sdk` | GA |
+| **Go** | Cloud SDK | `go get github.com/hanzoai/go-sdk` | GA |
+| **Rust** | Cloud SDK | `cargo add hanzo` | Coming soon |
+| **C++** | Cloud SDK | `find_package(hanzo)` | Coming soon |
+| **Swift** | Cloud SDK | Swift Package Manager | Coming soon |
+| **Kotlin** | Cloud SDK | Gradle / Maven | Coming soon |
+
+<Callout title="Wire-compatible today">
+Every language can already reach the Open AI Cloud through any OpenAI- or
+Anthropic-compatible client — just point the base URL at
+`https://api.hanzo.ai/v1` and use your Hanzo key. The native SDKs above add
+typed models, retries, streaming helpers, and the agents/MCP surface.
+</Callout>
+
+## Quick start
+
+```bash tab="Python (AI)"
+pip install hanzo
+```
+
+```bash tab="Python (Cloud)"
 pip install hanzoai
 ```
 
-```bash tab="TypeScript"
-npm install hanzoai
+```bash tab="TypeScript (AI)"
+npm i @hanzo/ai
+```
+
+```bash tab="TypeScript (Cloud)"
+npm i @hanzo/sdk
 ```
 
 ```bash tab="Go"
 go get github.com/hanzoai/go-sdk
 ```
 
-```bash tab="Rust"
-cargo add hanzo-ai
-```
-
-```bash tab="C++ (CMake)"
-FetchContent_Declare(hanzo-ai GIT_REPOSITORY https://github.com/hanzoai/c-sdk)
-```
-
-## Quick Start
-
-All SDKs follow the same pattern — create a client with your API key and call endpoints:
+Every client follows the same shape — construct with your key, call a `/v1`
+resource:
 
 ```python tab="Python"
 from hanzoai import Hanzo
 
 client = Hanzo(api_key="hk-your-key")
 response = client.chat.completions.create(
-    model="claude-sonnet-4-6",
-    messages=[{"role": "user", "content": "Hello"}]
+    model="zen-omni",
+    messages=[{"role": "user", "content": "Hello"}],
 )
+print(response.choices[0].message.content)
 ```
 
 ```typescript tab="TypeScript"
-import Hanzo from 'hanzoai';
+import Hanzo from '@hanzo/sdk';
 
 const client = new Hanzo({ apiKey: 'hk-your-key' });
 const response = await client.chat.completions.create({
-  model: 'claude-sonnet-4-6',
+  model: 'zen-omni',
   messages: [{ role: 'user', content: 'Hello' }],
 });
 ```
 
 ```go tab="Go"
-client := hanzoai.NewClient(
-    option.WithAPIKey("hk-your-key"),
-)
+client := hanzoai.NewClient(option.WithAPIKey("hk-your-key"))
 response, _ := client.Chat.Completions.New(ctx, hanzoai.ChatCompletionNewParams{
-    Model:    hanzoai.F("claude-sonnet-4-6"),
+    Model:    hanzoai.F("zen-omni"),
     Messages: hanzoai.F([]hanzoai.ChatCompletionMessageParamUnion{
         hanzoai.UserMessage("Hello"),
     }),
 })
 ```
 
-## SDK Feature Matrix
+## One key, one base URL
 
-| Feature | Python | TypeScript | Go | Rust | C/C++ |
-|---------|--------|------------|-----|------|-------|
-| Chat completions | Y | Y | Y | Y | Y |
-| Streaming | Y | Y | Y | Y | Y |
-| Function calling | Y | Y | Y | Y | Y |
-| Embeddings | Y | Y | Y | Y | Y |
-| Image generation | Y | Y | Y | Y | Y |
-| Audio | Y | Y | Y | Y | Y |
-| File uploads | Y | Y | Y | Y | Y |
-| Fine-tuning | Y | Y | Y | -- | -- |
-| Batches | Y | Y | Y | -- | -- |
-| Assistants/Threads | Y | Y | Y | -- | -- |
-| Async/await | Y | Y | Y | Y | -- |
-| Retries | Y | Y | Y | Y | Y |
-| Typed responses | Y | Y | Y | Y | -- |
-| MCP server | Y | Y | -- | Y | -- |
-| Post-quantum crypto | -- | -- | -- | Y | -- |
+```bash
+export HANZO_API_KEY="hk-..."   # from console.hanzo.ai
+# Base URL for every service: https://api.hanzo.ai/v1
+```
 
-## API Coverage
+Get your key at [console.hanzo.ai](https://console.hanzo.ai).
 
-All SDKs cover the same 187 API endpoints generated from a single OpenAPI specification. See the [full API Reference](/docs/openapi) for endpoint documentation.
+## Where the code lives
 
-## Source Code
-
-| SDK | Repository | Package |
-|-----|-----------|---------|
-| Python | [hanzoai/python-sdk](https://github.com/hanzoai/python-sdk) | [PyPI](https://pypi.org/project/hanzoai/) |
-| TypeScript | [hanzoai/js-sdk](https://github.com/hanzoai/js-sdk) | [npm](https://www.npmjs.com/package/hanzoai) |
-| Go | [hanzoai/go-sdk](https://github.com/hanzoai/go-sdk) | [pkg.go.dev](https://pkg.go.dev/github.com/hanzoai/go-sdk) |
-| Rust | [hanzoai/rust-sdk](https://github.com/hanzoai/rust-sdk) | [crates.io](https://crates.io/crates/hanzo-pqc) |
-| C/C++ | [hanzoai/c-sdk](https://github.com/hanzoai/c-sdk) | CMake |
+- **Umbrella** — [`hanzoai/sdk`](https://github.com/hanzoai/sdk): one install, every service, every language.
+- **Per-language orgs** — real code, idiomatic per ecosystem:
+  [hanzo-py](https://github.com/hanzo-py) ·
+  [hanzo-js](https://github.com/hanzo-js) ·
+  [hanzo-go](https://github.com/hanzo-go) ·
+  [hanzo-rs](https://github.com/hanzo-rs) ·
+  [hanzo-cpp](https://github.com/hanzo-cpp) ·
+  [hanzo-swift](https://github.com/hanzo-swift) ·
+  [hanzo-kt](https://github.com/hanzo-kt)
+- **Full API reference** — [every `/v1` endpoint →](/reference)

@@ -1,0 +1,69 @@
+---
+title: C++ SDK
+description: The Hanzo C++ Cloud SDK — native client via CMake. Coming soon.
+---
+
+import { Callout } from '@hanzo/docs-ui/components/callout'
+
+# C++ SDK
+
+A native **Cloud SDK** for C++ — header + compiled library, wired through CMake.
+Built for embedded targets, game engines, and high-performance services.
+
+<Callout title="Coming soon">
+`find_package(hanzo)` is in active development. The source lives in the
+per-language org [hanzo-cpp](https://github.com/hanzo-cpp). Until it ships, reach
+the Open AI Cloud from C++ with any HTTP client against `https://api.hanzo.ai/v1`
+(OpenAI-compatible).
+</Callout>
+
+## Install (planned)
+
+```cmake
+find_package(hanzo REQUIRED)
+target_link_libraries(my_app PRIVATE hanzo::hanzo)
+```
+
+Or via FetchContent from the org while it stabilizes:
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(
+  hanzo
+  GIT_REPOSITORY https://github.com/hanzo-cpp/sdk
+  GIT_TAG        main
+)
+FetchContent_MakeAvailable(hanzo)
+```
+
+## Quick start (planned)
+
+```cpp
+#include <hanzo/client.hpp>
+
+int main() {
+    hanzo::Client client{std::getenv("HANZO_API_KEY")};
+
+    auto response = client.chat().completions().create({
+        .model = "zen-omni",
+        .messages = {{"user", "Explain quantum computing"}},
+    });
+
+    std::cout << response.choices[0].message.content << "\n";
+}
+```
+
+## Meanwhile — raw HTTP
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"zen-omni","messages":[{"role":"user","content":"Hello"}]}'
+```
+
+## Resources
+
+- **Cloud SDK** — org [hanzo-cpp](https://github.com/hanzo-cpp) · [hanzo-cpp/sdk](https://github.com/hanzo-cpp/sdk)
+- **Umbrella** — [hanzoai/sdk](https://github.com/hanzoai/sdk)
+- **API reference** — [every `/v1` endpoint →](/reference)

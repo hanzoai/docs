@@ -32,8 +32,12 @@ for spec in "$OPENAPI_DIR"/*/openapi.yaml; do
 done
 
 # Also sync the unified umbrella spec (all products in one file) if present.
+# It powers BOTH the native per-service reference and the self-contained Scalar
+# reference at /reference (public/openapi/hanzo.yaml ships with the static export).
 if [ -f "$OPENAPI_DIR/hanzo.yaml" ]; then
   cp "$OPENAPI_DIR/hanzo.yaml" "$DOCS_DIR/openapi-specs/hanzo.yaml"
+  mkdir -p "$DOCS_DIR/public/openapi"
+  cp "$OPENAPI_DIR/hanzo.yaml" "$DOCS_DIR/public/openapi/hanzo.yaml"
 fi
 
 echo "Synced ${count} product specs ($(ls "$DOCS_DIR/openapi-specs/"*.yaml 2>/dev/null | wc -l | tr -d ' ') files total, incl. unified hanzo.yaml)"
