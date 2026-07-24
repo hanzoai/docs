@@ -40,6 +40,38 @@ function ctx(n: number | null | undefined): string {
   return String(n);
 }
 
+// Provider identity chip — a stable, self-contained monogram (no external logo
+// assets, so it works in a static export for all 59 providers uniformly). The
+// tint is derived deterministically from the name, so a provider always reads
+// the same color across sessions. currentColor-free HSL keeps it legible in
+// both themes.
+function hashHue(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h % 360;
+}
+function initials(name: string): string {
+  const words = name.replace(/[^\p{L}\p{N} ]/gu, ' ').trim().split(/\s+/);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  return name.replace(/[^\p{L}\p{N}]/gu, '').slice(0, 2).toUpperCase() || '?';
+}
+function ProviderChip({ name }: { name: string }) {
+  const hue = hashHue(name.toLowerCase());
+  return (
+    <span
+      aria-hidden
+      className="inline-flex size-5 shrink-0 items-center justify-center rounded text-[9px] font-semibold leading-none"
+      style={{
+        background: `hsl(${hue} 55% 92%)`,
+        color: `hsl(${hue} 60% 32%)`,
+        boxShadow: `inset 0 0 0 1px hsl(${hue} 45% 82%)`,
+      }}
+    >
+      {initials(name)}
+    </span>
+  );
+}
+
 function CopyId({ id }: { id: string }) {
   const [done, setDone] = useState(false);
   return (
@@ -179,11 +211,12 @@ export function ModelsCatalog() {
       </div>
 
       {groups.map((f) => {
+        const isProvider = f.id.startsWith('provider-');
         const Icon = FAMILY_ICON[f.icon ?? ''] ?? Box;
         return (
           <section key={f.id} className="mb-8">
             <div className="mb-1 flex items-center gap-2">
-              <Icon className="size-4 text-fd-primary" />
+              {isProvider ? <ProviderChip name={f.name} /> : <Icon className="size-4 text-fd-primary" />}
               <h3 className="m-0 text-base font-semibold text-fd-foreground">{f.name}</h3>
               <span className="text-xs text-fd-muted-foreground">({f.resolved.length})</span>
             </div>
