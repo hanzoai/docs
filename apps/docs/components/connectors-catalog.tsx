@@ -11,7 +11,7 @@
 // Rendered inline in the docs (never a link-out). Same lazy-island + fd-token
 // pattern as <ModelsCatalog/>.
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Plug, Boxes, ArrowUpRight, Github, Slack, Chrome, MessageCircle } from 'lucide-react';
+import { Search, Plug, Boxes, ArrowUpRight } from 'lucide-react';
 
 const MCP_REGISTRY = 'https://registry.modelcontextprotocol.io/v0/servers?limit=100';
 
@@ -26,7 +26,6 @@ const NATIVE: Native[] = [
   { id: 'discord', label: 'Discord', method: 'OAuth2', blurb: 'Servers, channels, messages.' },
   { id: 'x', label: 'X', method: 'OAuth2', blurb: 'Post, read, and search on X.' },
 ];
-const NATIVE_ICON: Record<string, typeof Github> = { github: Github, slack: Slack, google: Chrome, discord: MessageCircle };
 
 type McpServer = { name: string; title?: string; description?: string; remotes?: { type: string }[]; packages?: { registryType: string }[] };
 type RegItem = { server: McpServer };
@@ -94,11 +93,10 @@ export function ConnectorsCatalog() {
           </div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {nativeFiltered.map((c) => {
-              const Icon = NATIVE_ICON[c.id] ?? Plug;
               return (
                 <div key={c.id} className="rounded-lg border border-fd-border bg-fd-card p-3">
                   <div className="flex items-center gap-2">
-                    <Icon className="size-4 text-fd-foreground" />
+                    <Plug className="size-4 text-fd-foreground" />
                     <span className="font-medium text-fd-foreground">{c.label}</span>
                     <span className="ml-auto rounded border border-fd-border px-1.5 py-0.5 text-[10px] text-fd-muted-foreground">{c.method}</span>
                   </div>
