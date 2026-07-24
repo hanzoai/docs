@@ -65,7 +65,7 @@ function ModelRow({ m }: { m: Model }) {
   return (
     <tr className="border-t border-fd-border/60 hover:bg-fd-muted/40 transition-colors">
       <td className="py-2.5 pr-4 align-top">
-        <div className="font-medium text-fd-foreground">{m.fullName || m.name}</div>
+        <div className="font-medium text-fd-foreground">{m.fullName || m.name || m.id}</div>
         <CopyId id={m.id} />
         {m.tier ? (
           <span className="ml-2 rounded bg-fd-primary/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-fd-primary align-middle">
@@ -114,8 +114,18 @@ export function ModelsCatalog() {
       models.forEach((m) => claimed.add(m.id));
       return { ...f, resolved: models };
     });
+    // Everything not in a curated (Hanzo) family groups BY PROVIDER — OpenAI,
+    // Anthropic, Google, Qwen, … — sorted by model count, so the full 350+
+    // third-party catalog reads like OpenRouter instead of one wall of rows.
     const rest = cat.data.filter((m) => !claimed.has(m.id));
-    if (rest.length) fams.push({ id: 'other', name: 'More models', icon: 'Box', models: [], resolved: rest });
+    const byProvider = new Map<string, Model[]>();
+    for (const m of rest) {
+      const p = m.provider || m.owned_by || 'Other';
+      (byProvider.get(p) ?? byProvider.set(p, []).get(p)!).push(m);
+    }
+    [...byProvider.entries()]
+      .sort((a, b) => b[1].length - a[1].length)
+      .forEach(([p, models]) => fams.push({ id: `provider-${p}`, name: p, icon: 'Box', models: [], resolved: models }));
     const needle = q.trim().toLowerCase();
     if (!needle) return fams.filter((f) => f.resolved.length);
     return fams
