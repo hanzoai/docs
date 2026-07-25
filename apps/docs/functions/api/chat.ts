@@ -1,4 +1,4 @@
-// CF Pages Function — forwards chat requests to Hanzo AI Gateway.
+// CF Pages Function — forwards chat requests to Hanzo AI API.
 //
 // Two modes:
 // 1. Unauthenticated: Uses server-side HANZO_API_KEY. Gateway handles
@@ -61,7 +61,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     headers['X-Real-IP'] = clientIP;
   }
 
-  // Forward to AI Gateway with streaming
+  // Forward to AI API with streaming
   const response = await fetch(GATEWAY_URL, {
     method: 'POST',
     headers,
@@ -88,7 +88,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       JSON.stringify({
         error: response.status === 429
           ? 'Rate limit exceeded. Sign in at hanzo.id for higher limits.'
-          : `AI Gateway error: ${response.status}`,
+          : `AI API error: ${response.status}`,
         detail: text,
       }),
       { status: response.status, headers: respHeaders },

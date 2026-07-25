@@ -5,7 +5,7 @@ description: "Hanzo Stack provides the complete integrated development environme
 
 ## Overview
 
-Hanzo Stack provides the **complete integrated development environment** for running all Hanzo services locally. One command to start everything: AI Gateway, Chat, Console, Cloud, IAM, KMS, PostgreSQL, Redis, MongoDB, MinIO.
+Hanzo Stack provides the **complete integrated development environment** for running all Hanzo services locally. One command to start everything: AI API, Chat, Console, Cloud, IAM, KMS, PostgreSQL, Redis, MongoDB, MinIO.
 
 **NOTE**: The stack uses **three compose files** (production, development, core) and **git submodules** for all services, allowing each service to track its own repo while being orchestrated together.
 
@@ -17,7 +17,7 @@ Hanzo Stack provides the **complete integrated development environment** for run
 - **Full ecosystem**: All Hanzo services running locally
 - **Hot-reload**: Development mode with file watching
 - **Consistent**: Same compose config for all developers
-- **Offline-capable**: Local models via AI Gateway + Ollama
+- **Offline-capable**: Local models via AI API + Ollama
 
 ## When to use
 
@@ -52,7 +52,7 @@ Hanzo Stack provides the **complete integrated development environment** for run
 |------|---------|----------|
 | `compose.yml` | **Production** — optimized, no hot-reload | All services, release images |
 | `compose.dev.yml` | **Development** — hot-reload, source mounts | All services, volume mounts |
-| `compose.core.yml` | **Core** — minimal set for quick start | AI Gateway, Chat, PostgreSQL, Redis |
+| `compose.core.yml` | **Core** — minimal set for quick start | AI API, Chat, PostgreSQL, Redis |
 
 ```bash
 # Production mode
@@ -72,7 +72,7 @@ Each service is a git submodule tracking its own repo:
 ```
 experiments/stack/
 ├── services/
-│   ├── llm/          → github.com/hanzoai/llm (AI Gateway)
+│   ├── llm/          → github.com/hanzoai/llm (AI API)
 │   ├── chat/         → github.com/hanzoai/chat (Chat UI)
 │   ├── console/      → github.com/hanzoai/console (Console)
 │   ├── cloud/        → github.com/hanzoai/cloud (Cloud Dashboard)
@@ -104,7 +104,7 @@ cd services/chat && git pull origin main
 |---------|------|-----|-------------|
 | Search UI | 3000 | `http://localhost:3000` | AI-powered search |
 | Chat UI | 3081 | `http://localhost:3081` | Hanzo Chat |
-| AI Gateway | 4000 | `http://localhost:4000` | Unified LLM proxy |
+| AI API | 4000 | `http://localhost:4000` | Unified LLM proxy |
 | Payment API | 4242 | `http://localhost:4242` | Commerce API |
 | Admin UI | 5173 | `http://localhost:5173` | Admin dashboard |
 | Core API | 8000 | `http://localhost:8000` | Main API server |
@@ -146,7 +146,7 @@ make down         # Stop all services
 make restart      # Restart all services
 make status       # Show service status and health
 make logs         # Stream all logs
-make logs-llm     # Stream AI Gateway logs only
+make logs-llm     # Stream AI API logs only
 make logs-chat    # Stream Chat logs only
 make clean        # Remove volumes and data
 make pull         # Pull latest images
@@ -197,7 +197,7 @@ KMS_CLIENT_SECRET=...
 │  └────┬─────┘  └────┬─────┘  └───┬───┘ │
 │       │              │            │     │
 │  ┌────┴──────────────┴────────────┴───┐ │
-│  │        AI Gateway :4000          │ │
+│  │        AI API :4000          │ │
 │  └────────────────┬───────────────────┘ │
 │                   │                     │
 │  ┌────────────────┴───────────────────┐ │

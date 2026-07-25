@@ -279,7 +279,7 @@ export default function Page() {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
             { name: 'Platform', desc: 'Full PaaS for containers', href: 'https://platform.hanzo.ai' },
-            { name: 'AI Gateway', desc: '200+ AI models, one API', href: 'https://docs.hanzo.ai/docs/llm' },
+            { name: 'AI API', desc: '200+ AI models, one API', href: 'https://docs.hanzo.ai/docs/llm' },
             { name: 'Bot', desc: 'AI agent in a box', href: 'https://docs.hanzo.bot' },
             { name: 'MCP', desc: '260+ tools for agents', href: 'https://docs.hanzo.ai/docs/mcp' },
             { name: 'Commerce', desc: 'Payments and billing', href: 'https://docs.hanzo.ai/docs/commerce' },

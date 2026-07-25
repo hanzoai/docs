@@ -12,7 +12,7 @@ The Hanzo extension now includes full VS Code Chat Participant integration, maki
 ### 2. LLM Integration
 The chat participant supports multiple LLM providers:
 
-- **Hanzo AI Gateway** (default): Uses api.hanzo.ai
+- **Hanzo AI API** (default): Uses api.hanzo.ai
 - **LM Studio**: Local models via http://localhost:1234
 - **Ollama**: Local models via http://localhost:11434
 - **OpenAI**: Direct OpenAI API integration
@@ -47,7 +47,7 @@ Add to VS Code settings.json:
   // Choose LLM provider
   "hanzo.llm.provider": "hanzo", // or "lmstudio", "ollama", "openai", "anthropic"
   
-  // Hanzo AI Gateway (default)
+  // Hanzo AI API (default)
   "hanzo.llm.hanzo.apiKey": "your-api-key",
   
   // LM Studio (local)
