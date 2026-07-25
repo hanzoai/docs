@@ -13,14 +13,16 @@ import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
 One API for **200+ language models** from every major provider. OpenAI-compatible interface with load balancing, caching, rate limiting, fallbacks, and full observability.
 
 ```bash title="Quick Start"
-curl https://llm.hanzo.ai/v1/chat/completions \
+curl https://api.hanzo.ai/v1/chat/completions \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "claude-sonnet-4-5-20250929",
+    "model": "zen5",
     "messages": [{"role": "user", "content": "Hello"}]
   }'
 ```
+
+The AI API is on the same host as every other Hanzo service: `api.hanzo.ai`, one `hk-*` key, no second base URL. List model ids with `GET https://api.hanzo.ai/v1/models`.
 
 ## Why Hanzo AI API?
 
@@ -53,11 +55,11 @@ from openai import OpenAI
 
 client = OpenAI(
     api_key="your-hanzo-api-key",
-    base_url="https://llm.hanzo.ai/v1"
+    base_url="https://api.hanzo.ai/v1"
 )
 
 response = client.chat.completions.create(
-    model="claude-sonnet-4-5-20250929",
+    model="zen5",
     messages=[{"role": "user", "content": "Explain quantum computing"}]
 )
 print(response.choices[0].message.content)
@@ -70,11 +72,11 @@ import OpenAI from 'openai'
 
 const client = new OpenAI({
   apiKey: process.env.HANZO_API_KEY,
-  baseURL: 'https://llm.hanzo.ai/v1',
+  baseURL: 'https://api.hanzo.ai/v1',
 })
 
 const completion = await client.chat.completions.create({
-  model: 'claude-sonnet-4-5-20250929',
+  model: 'zen5',
   messages: [{ role: 'user', content: 'Explain quantum computing' }],
 })
 console.log(completion.choices[0].message.content)
@@ -97,7 +99,7 @@ console.log(completion.choices[0].message.content)
 model_list:
   - model_name: "default"
     litellm_params:
-      model: "anthropic/claude-sonnet-4-5-20250929"
+      model: "anthropic/zen5"
       api_key: "os.environ/ANTHROPIC_API_KEY"
 
   - model_name: "default"
@@ -118,6 +120,8 @@ router_settings:
 
 ## API Endpoints
 
+All relative to `https://api.hanzo.ai`.
+
 | Endpoint | Description |
 |----------|-------------|
 | `POST /v1/chat/completions` | Chat completions (streaming supported) |
@@ -125,8 +129,8 @@ router_settings:
 | `POST /v1/embeddings` | Text embeddings |
 | `POST /v1/images/generations` | Image generation |
 | `GET /v1/models` | List available models |
-| `POST /key/generate` | Create API keys with budgets |
-| `GET /key/info` | Key usage and budget info |
+
+API keys, budgets, and per-key usage are managed in the [Console](https://console.hanzo.ai) — see [API Keys](/docs/api-keys).
 
 ## Related
 

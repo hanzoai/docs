@@ -1,205 +1,40 @@
 ---
 title: Organizations API
-description: Create, read, update, and delete organizations
+description: Organizations are an identity concept — they live in Hanzo IAM at api.hanzo.ai/v1/iam.
 ---
 
-The Organizations API manages the top-level entity in Hanzo Platform. Every cluster, project, and team member belongs to an organization.
+An organization is the top-level tenant: every cluster, project, machine, secret, and team member belongs to one. It is an **identity** object, so it lives in [Hanzo IAM](/docs/services/iam) — not in a second directory owned by the deploy plane.
+
+All calls take an IAM bearer — see [Authentication](/docs/services/platform/api/authentication).
 
 ## Endpoints
 
-| Procedure | Method | Description |
-|-----------|--------|-------------|
-| `organization.all` | GET | List all organizations for the authenticated user |
-| `organization.one` | GET | Get a single organization by ID |
-| `organization.create` | POST | Create a new organization |
-| `organization.update` | PATCH | Update organization settings |
-| `organization.remove` | DELETE | Delete an organization |
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/iam/get-organizations?owner=admin` | List organizations visible to the caller |
+| `GET` | `/v1/iam/get-organization?id=<owner>/<name>` | One organization |
+| `POST` | `/v1/iam/add-organization` | Create an organization |
+| `POST` | `/v1/iam/update-organization?id=<owner>/<name>` | Update an organization |
+| `POST` | `/v1/iam/delete-organization` | Delete an organization |
 
-## List Organizations
-
-`GET /api/organization.all`
-
-Returns all organizations the authenticated user is a member of.
+These are administrative endpoints: a normal member bearer gets `403 forbidden`. Org membership and roles for ordinary users are managed in the [Console](https://console.hanzo.ai).
 
 ```bash
-curl https://platform.hanzo.ai/api/organization.all \
-  -H "Authorization: Bearer YOUR_TOKEN"
+curl -fsS "https://api.hanzo.ai/v1/iam/get-organizations?owner=admin" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-**Response:**
+## How the org reaches the rest of the API
+
+You never pass an org id by hand. The gateway strips every client-supplied identity header and re-mints `X-Org-Id` from the validated JWT's `owner` claim, so each request is scoped to exactly the org the token belongs to. A call with no org context answers:
 
 ```json
-{
-  "result": {
-    "data": [
-      {
-        "id": "org_abc123",
-        "name": "Acme Corp",
-        "description": "Production infrastructure",
-        "createdAt": "2025-01-15T10:00:00Z",
-        "memberCount": 12,
-        "clusterCount": 3
-      },
-      {
-        "id": "org_def456",
-        "name": "Staging",
-        "description": "Development and testing",
-        "createdAt": "2025-03-20T14:30:00Z",
-        "memberCount": 5,
-        "clusterCount": 1
-      }
-    ]
-  }
-}
+{ "status": 403, "error": "X-Org-Id required" }
 ```
 
-## Get Organization
+That is the signal to re-authenticate, not to add a header.
 
-`GET /api/organization.one?organizationId=org_abc123`
+## Related
 
-```bash
-curl "https://platform.hanzo.ai/api/organization.one?organizationId=org_abc123" \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-**Response:**
-
-```json
-{
-  "result": {
-    "data": {
-      "id": "org_abc123",
-      "name": "Acme Corp",
-      "description": "Production infrastructure",
-      "createdAt": "2025-01-15T10:00:00Z",
-      "memberCount": 12,
-      "clusterCount": 3,
-      "members": [
-        {
-          "userId": "user_abc",
-          "email": "alice@acme.com",
-          "role": "owner",
-          "joinedAt": "2025-01-15T10:00:00Z"
-        }
-      ]
-    }
-  }
-}
-```
-
-## Create Organization
-
-`POST /api/organization.create`
-
-```bash
-curl -X POST https://platform.hanzo.ai/api/organization.create \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Acme Corp",
-    "description": "Production infrastructure"
-  }'
-```
-
-**Parameters:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | Yes | Organization name (2-50 characters) |
-| `description` | string | No | Short description |
-
-**Response:** `201 Created`
-
-```json
-{
-  "result": {
-    "data": {
-      "id": "org_new789",
-      "name": "Acme Corp",
-      "description": "Production infrastructure",
-      "createdAt": "2026-02-26T10:00:00Z"
-    }
-  }
-}
-```
-
-The authenticated user is automatically assigned the **Owner** role.
-
-## Update Organization
-
-`PATCH /api/organization.update`
-
-```bash
-curl -X PATCH https://platform.hanzo.ai/api/organization.update \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "organizationId": "org_abc123",
-    "name": "Acme Corporation",
-    "description": "Updated description"
-  }'
-```
-
-**Parameters:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `organizationId` | string | Yes | Organization ID |
-| `name` | string | No | New name |
-| `description` | string | No | New description |
-
-Requires **Owner** or **Admin** role.
-
-## Delete Organization
-
-`DELETE /api/organization.remove`
-
-```bash
-curl -X DELETE https://platform.hanzo.ai/api/organization.remove \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "organizationId": "org_abc123"
-  }'
-```
-
-**Response:** `204 No Content`
-
-<Callout type="warn">
-Deleting an organization permanently removes all clusters, projects, environments, and data. This action cannot be undone. Requires the **Owner** role.
-</Callout>
-
-## Team Management
-
-Team members are managed via the `orgTeam` router:
-
-| Procedure | Method | Description |
-|-----------|--------|-------------|
-| `orgTeam.all` | GET | List all members of an organization |
-| `orgTeam.update` | PATCH | Change a member's role |
-| `orgTeam.remove` | DELETE | Remove a member |
-
-```bash
-# List members
-curl "https://platform.hanzo.ai/api/orgTeam.all?organizationId=org_abc123" \
-  -H "Authorization: Bearer YOUR_TOKEN"
-
-# Change role
-curl -X PATCH https://platform.hanzo.ai/api/orgTeam.update \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "organizationId": "org_abc123",
-    "userId": "user_def456",
-    "role": "admin"
-  }'
-
-# Remove member
-curl -X DELETE https://platform.hanzo.ai/api/orgTeam.remove \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "organizationId": "org_abc123",
-    "userId": "user_def456"
-  }'
-```
+- [Hanzo IAM](/docs/services/iam) — identity, SSO, and org membership
+- [Authentication](/docs/authentication) — the one OIDC integration path

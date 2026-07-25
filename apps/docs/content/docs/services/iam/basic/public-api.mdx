@@ -9,7 +9,7 @@ The Hanzo IAM web UI is a React [SPA](https://developer.mozilla.org/en-US/docs/G
 - Hanzo IAM SDKs (e.g. iam-go-sdk)
 - Your own applications and scripts
 
-**API reference:** [https://iam.hanzo.ai/swagger](https://iam.hanzo.ai/swagger). To regenerate the Swagger spec, see [Developer guide – Swagger](/docs/developer-guide/swagger#generate-swagger-files).
+**API reference:** [https://hanzo.id/swagger](https://hanzo.id/swagger). To regenerate the Swagger spec, see [Developer guide – Swagger](/docs/developer-guide/swagger#generate-swagger-files).
 
 ## Response language
 
@@ -17,7 +17,7 @@ Responses can be localized. Send the `Accept-Language` header to get error messa
 
 ```bash
 # Example: Get error messages in French
-curl -X GET https://iam.hanzo.ai/v1/iam/get-account \
+curl -X GET https://api.hanzo.ai/v1/iam/get-account \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Accept-Language: fr"
 
@@ -52,7 +52,7 @@ Use the access token obtained after a user signs in (e.g. from the OAuth code ex
 
 #### Getting the token
 
-The app receives the token at the end of the OAuth login flow (code + state). Issued tokens are also visible in the Hanzo IAM UI (**Tokens** page, e.g. `https://iam.hanzo.ai/tokens`).
+The app receives the token at the end of the OAuth login flow (code + state). Issued tokens are also visible in the Hanzo IAM UI (**Tokens** page, e.g. `https://hanzo.id/tokens`).
 
 Example (Go, iam-go-sdk):
 
@@ -97,7 +97,7 @@ func (c *ApiController) Signin() {
     /page?access_token=<The access token>
     ```
 
-    Demo site example: `https://iam.hanzo.ai/api/get-global-providers?access_token=eyJhbGciOiJSUzI1NiIs`
+    Demo site example: `https://api.hanzo.ai/v1/iam/get-global-providers?access_token=eyJhbGciOiJSUzI1NiIs`
 
 2. **Bearer header:**
 
@@ -111,7 +111,7 @@ Use this for **machine-to-machine** calls (no user). Permissions are those of th
 
 #### Getting credentials
 
-On the application edit page (e.g. `https://iam.hanzo.ai/applications/casbin/app-vue-python-example`) you’ll see **Client ID** and **Client Secret**.
+On the application edit page (e.g. `https://hanzo.id/applications/casbin/app-vue-python-example`) you’ll see **Client ID** and **Client Secret**.
 
 #### Use cases
 
@@ -189,12 +189,12 @@ Create a key pair on the user’s account settings page.
     /page?accessKey=<The user's access key>&accessSecret=<the user's access secret>"
     ```
 
-Example: `https://iam.hanzo.ai/api/get-global-providers?accessKey=...&accessSecret=...`
+Example: `https://api.hanzo.ai/v1/iam/get-global-providers?accessKey=...&accessSecret=...`
 
 ![User Api Key](/img/basic/user_api_key.png)
 
 ```bash
-curl --location 'http://iam.hanzo.ai/api/user?accessKey=b86db9dc-6bd7-4997-935c-af480dd2c796&accessSecret=79911517-fc36-4093-b115-65a9741f6b14'
+curl --location 'https://api.hanzo.ai/v1/iam/user?accessKey=b86db9dc-6bd7-4997-935c-af480dd2c796&accessSecret=79911517-fc36-4093-b115-65a9741f6b14'
 
 ### 4. Username and password
 
@@ -212,12 +212,12 @@ Username format: `<organization>/<username>`. API calls run as that user.
 
 ## SSO logout
 
-The `/api/sso-logout` endpoint logs a user out from all applications or only the current session, depending on `logoutAll`.
+The `/v1/iam/sso-logout` endpoint logs a user out from all applications or only the current session, depending on `logoutAll`.
 
 ### Endpoint
 
 ```http
-GET or POST /api/sso-logout?logoutAll=<true|false>
+GET or POST /v1/iam/sso-logout?logoutAll=<true|false>
 
 ### Parameters
 
@@ -247,15 +247,15 @@ The user must be authenticated. Use any of the [authentication methods](#how-to-
 
 ```bash
 # Full SSO logout (all sessions)
-curl -X POST https://iam.hanzo.ai/api/sso-logout \
+curl -X POST https://api.hanzo.ai/v1/iam/sso-logout \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 
 # Session-level logout (current session only)
-curl -X POST "https://iam.hanzo.ai/api/sso-logout?logoutAll=false" \
+curl -X POST "https://api.hanzo.ai/v1/iam/sso-logout?logoutAll=false" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 
 # Using session cookie
-curl -X POST https://iam.hanzo.ai/api/sso-logout \
+curl -X POST https://api.hanzo.ai/v1/iam/sso-logout \
   --cookie "iam_session_id=abc123def456"
 
 ### Response

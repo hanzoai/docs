@@ -18,8 +18,8 @@ Go to [hanzo.id](https://hanzo.id) and sign up with:
 
 Your Hanzo identity works everywhere: console, chat, platform, cloud, and all API services. One account, one login.
 
-<Callout title="$5 free to start -- no card required">
-Every new account gets **$5 in free trial credits**. That is enough to make your first API calls, run a chat, or try a deploy today -- no payment method needed. Trial credits burn first; you only add a card or crypto balance when you are ready to keep going. See [Credits & Billing](/docs/billing).
+<Callout title="One account, one balance">
+The same identity and the same prepaid balance cover every product -- AI calls, deploys, storage. Add a card or crypto balance when you are ready to make your first call. See [Credits & Billing](/docs/billing).
 </Callout>
 
 ## 2. Open the Console
@@ -58,19 +58,21 @@ The `hk-` prefix identifies it as a Hanzo API key. See [API Keys](/docs/api-keys
 
 ## 5. Make Your First API Call
 
-All Hanzo services are available through `api.hanzo.ai`. The AI API is at `llm.hanzo.ai`. Both accept the same `hk-*` API key.
+Every Hanzo service — AI, storage, identity, deploys — answers on **one host, `api.hanzo.ai`**, under `/v1/<service>`, with the same `hk-*` key. There is no second API host to configure.
 
 ### curl
 
 ```bash
-curl https://llm.hanzo.ai/v1/chat/completions \
+curl https://api.hanzo.ai/v1/chat/completions \
   -H "Authorization: Bearer hk-your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "claude-sonnet-4-5-20250929",
+    "model": "zen5",
     "messages": [{"role": "user", "content": "Hello from Hanzo!"}]
   }'
 ```
+
+Browse every model id with `curl https://api.hanzo.ai/v1/models` — the Zen family plus 400+ third-party models, all on the same key.
 
 ### Python
 
@@ -89,11 +91,11 @@ from openai import OpenAI
 
 client = OpenAI(
     api_key="hk-your-api-key",
-    base_url="https://llm.hanzo.ai/v1",
+    base_url="https://api.hanzo.ai/v1",
 )
 
 response = client.chat.completions.create(
-    model="claude-sonnet-4-5-20250929",
+    model="zen5",
     messages=[{"role": "user", "content": "Hello from Hanzo!"}],
 )
 print(response.choices[0].message.content)
@@ -116,26 +118,26 @@ import OpenAI from 'openai'
 
 const client = new OpenAI({
   apiKey: 'hk-your-api-key',
-  baseURL: 'https://llm.hanzo.ai/v1',
+  baseURL: 'https://api.hanzo.ai/v1',
 })
 
 const completion = await client.chat.completions.create({
-  model: 'claude-sonnet-4-5-20250929',
+  model: 'zen5',
   messages: [{ role: 'user', content: 'Hello from Hanzo!' }],
 })
 console.log(completion.choices[0].message.content)
 ```
 
-Prefer a UI? Open [chat.hanzo.ai](https://chat.hanzo.ai) and start chatting -- it spends from the same balance, so your $5 works there too.
+Prefer a UI? Open [chat.hanzo.ai](https://chat.hanzo.ai) and start chatting -- it spends from the same balance.
 
-## 6. Add Credits When You're Ready
+## 6. Add Credits
 
-Your $5 in trial credits burn down first as you make calls. When you want to keep going, top up a **prepaid balance** at [billing.hanzo.ai](https://billing.hanzo.ai):
+Top up a **prepaid balance** at [billing.hanzo.ai](https://billing.hanzo.ai):
 
 - **Card** -- pay by card through the billing portal (processed by Square).
 - **Crypto** -- top up on-chain with **HUSD**, the platform stablecoin, from a connected wallet.
 
-Trial credits always spend before your prepaid balance, and every product -- API calls, deploys, storage -- draws down the same balance. Watch usage in the console's [Usage & Billing](/docs/billing) views. For how metering, credits, and invoices fit together, see [Credits & Billing](/docs/billing).
+Every product -- API calls, deploys, storage -- draws down the same balance. Watch usage in the console's [Usage & Billing](/docs/billing) views. For how metering, credits, and invoices fit together, see [Credits & Billing](/docs/billing).
 
 Building a funded startup? You may qualify for **up to $150,000 in credits** through the [Startup Program](/docs/startups).
 

@@ -7,15 +7,15 @@ description: The one way to authenticate against Hanzo IAM — canonical OIDC en
 
 Hanzo uses one identity provider per brand, a standards-compliant OIDC provider. You integrate through exactly one library — [`@hanzo/iam`](https://www.npmjs.com/package/@hanzo/iam) — against one set of endpoints. There is no second way.
 
-| Brand | IAM origin (`serverUrl`) | Login UI |
-|-------|--------------------------|----------|
-| Hanzo | `https://iam.hanzo.ai` | `hanzo.id` |
-| Lux | `https://lux.id` | `lux.id` |
-| Zoo | `https://zoo.id` | `zoo.id` |
-| Bootnode | `https://id.bootno.de` | `id.bootno.de` |
-| Pars | `https://pars.id` | `pars.id` |
+| Brand | IAM origin (`serverUrl`) = issuer + login UI |
+|-------|----------------------------------------------|
+| Hanzo | `https://hanzo.id` |
+| Lux | `https://lux.id` |
+| Zoo | `https://zoo.id` |
+| Bootnode | `https://id.bootno.de` |
+| Pars | `https://pars.id` |
 
-The SDK is brand-agnostic. Select the brand with `serverUrl`; nothing else changes.
+One origin per brand — it is the OIDC `issuer`, the login UI, and the endpoint base, all the same host. The SDK is brand-agnostic: select the brand with `serverUrl`; nothing else changes.
 
 ## OIDC Endpoints
 
@@ -23,12 +23,16 @@ These `/v1/iam/oauth/*` paths are the only endpoints. There is no `/oauth/*`, no
 
 | Purpose | Path |
 |---------|------|
-| Discovery | `https://iam.hanzo.ai/.well-known/openid-configuration` |
-| Authorize | `https://iam.hanzo.ai/v1/iam/oauth/authorize` |
-| Token | `https://iam.hanzo.ai/v1/iam/oauth/token` |
-| UserInfo | `https://iam.hanzo.ai/v1/iam/oauth/userinfo` |
-| JWKS | `https://iam.hanzo.ai/v1/iam/.well-known/jwks` |
-| Logout | `https://iam.hanzo.ai/v1/iam/oauth/logout` |
+| Discovery | `https://hanzo.id/.well-known/openid-configuration` |
+| Authorize | `https://hanzo.id/v1/iam/oauth/authorize` |
+| Token | `https://hanzo.id/v1/iam/oauth/token` |
+| UserInfo | `https://hanzo.id/v1/iam/oauth/userinfo` |
+| JWKS | `https://hanzo.id/v1/iam/.well-known/jwks` |
+| Logout | `https://hanzo.id/v1/iam/oauth/logout` |
+
+<Callout title="Why these live on hanzo.id, not api.hanzo.ai">
+Every Hanzo **API** call goes to `api.hanzo.ai/v1/<service>` — one host, one key. OIDC is the one exception, and not by choice: the endpoint URLs must match the `issuer` the server publishes, because that is what clients validate the `iss` claim against. `curl https://hanzo.id/.well-known/openid-configuration` returns `"issuer": "https://hanzo.id"`, so `hanzo.id` is the answer. The IAM **management** API (`get-account`, `get-users`, …) is a normal API and lives at `api.hanzo.ai/v1/iam/*` like everything else.
+</Callout>
 
 Every flow uses **PKCE `S256`**, **`client_secret_basic`** for confidential clients, and scopes **`openid profile email`**. The flow is Authorization Code + PKCE; implicit grant is not supported.
 
@@ -60,7 +64,7 @@ Any backend validates a bearer token like this:
 import { validateToken } from '@hanzo/iam/server'
 
 const result = await validateToken(accessToken, {
-  serverUrl: process.env.IAM_ENDPOINT!, // https://iam.hanzo.ai
+  serverUrl: process.env.IAM_ENDPOINT!, // https://hanzo.id
   clientId: process.env.IAM_CLIENT_ID!,
 })
 
@@ -135,7 +139,7 @@ Register the redirect URI `https://<app-host>/api/auth/callback/iam`.
 import { IAM } from '@hanzo/iam/browser'
 
 const iam = new IAM({
-  serverUrl: 'https://iam.hanzo.ai',
+  serverUrl: 'https://hanzo.id',
   clientId: 'hanzo-myspa',
   redirectUri: `${location.origin}/auth/callback`,
 })
@@ -152,7 +156,7 @@ import { IamProvider, useIam } from '@hanzo/iam/react'
 
 function Root() {
   return (
-    <IamProvider serverUrl="https://iam.hanzo.ai" clientId="hanzo-myspa">
+    <IamProvider serverUrl="https://hanzo.id" clientId="hanzo-myspa">
       <App />
     </IamProvider>
   )
@@ -173,7 +177,7 @@ import passport from 'passport'
 import { createIamPassportStrategy } from '@hanzo/iam/passport'
 
 passport.use('iam', createIamPassportStrategy({
-  serverUrl: 'https://iam.hanzo.ai',
+  serverUrl: 'https://hanzo.id',
   clientId: 'hanzo-myservice',
   clientSecret: process.env.IAM_CLIENT_SECRET!,
   callbackUrl: 'https://myservice.hanzo.ai/v1/sso/oidc/callback',
