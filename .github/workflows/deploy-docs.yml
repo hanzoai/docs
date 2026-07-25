@@ -89,7 +89,7 @@ jobs:
       # docs.hanzo.ai is served by the in-cluster docs-landing Deployment behind
       # hanzoai/ingress — no Cloudflare. Built here on the self-hosted runner (docker
       # is present; "no GitHub builders" = no GitHub-HOSTED runners, self-hosted is ok).
-      - name: Build + push native docs image (ghcr.io/hanzo-docs/docs)
+      - name: Build + push native docs image (ghcr.io/hanzoai/docs)
         run: |
           cat > Dockerfile.serve <<'EOF'
           FROM ghcr.io/hanzoai/static:0.4.1
@@ -98,9 +98,11 @@ jobs:
           ENTRYPOINT ["/static", "-port", "3000", "-root", "/public"]
           EOF
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-          docker build -f Dockerfile.serve -t ghcr.io/hanzo-docs/docs:latest -t "ghcr.io/hanzo-docs/docs:${GITHUB_SHA}" .
-          docker push ghcr.io/hanzo-docs/docs:latest
-          docker push "ghcr.io/hanzo-docs/docs:${GITHUB_SHA}"
+          # ONE registry: ghcr.io/hanzoai/docs (public) — the SAME target the
+          # CR pulls and the platform-native /v1/runner build pushes. Immutable
+          # SHA tag only; never a floating :latest in the cluster.
+          docker build -f Dockerfile.serve -t "ghcr.io/hanzoai/docs:${GITHUB_SHA}" .
+          docker push "ghcr.io/hanzoai/docs:${GITHUB_SHA}"
 
       # DEPLOY (native, operator-driven). Declare the freshly-built immutable SHA
       # tag to the docs App CR; hanzo-operator reconciles the rollout. CI never
