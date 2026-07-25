@@ -8,6 +8,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { TreeContextProvider } from '@hanzo/docs/ui/contexts/tree';
 import { source } from '@/lib/source';
 import { NextProvider } from '@hanzo/docs/core/framework/next';
+import { Analytics } from '@hanzo/docs-analytics';
 
 export const metadata = createMetadata({
   title: {
@@ -38,15 +39,13 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${geist.variable} ${mono.variable}`} suppressHydrationWarning>
-      <head>
-        <script defer src="https://analytics.hanzo.ai/script.js" data-website-id="89cb4513-3384-491f-8eba-c393d51a16ef" data-do-not-track="true" data-exclude-search="true" />
-      </head>
       <Body>
         <NextProvider>
           <TreeContextProvider tree={source.getPageTree()}>
             <Provider>{children}</Provider>
           </TreeContextProvider>
         </NextProvider>
+        <Analytics product="engine-docs" />
       </Body>
     </html>
   );

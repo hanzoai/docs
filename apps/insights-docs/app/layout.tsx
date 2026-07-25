@@ -3,6 +3,7 @@ import type { Viewport } from 'next';
 import { baseUrl, createMetadata } from '@/lib/metadata';
 import { RootProvider } from '@hanzo/docs-base-ui/provider/next';
 import type { ReactNode } from 'react';
+import { Analytics } from '@hanzo/docs-analytics';
 
 export const metadata = createMetadata({
   title: {
@@ -25,7 +26,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className="antialiased">
         <RootProvider>{children}</RootProvider>
-        <script defer src="https://analytics.hanzo.ai/script.js" data-website-id="ebdee691-6316-4b97-ba48-bc6b914e2d20" data-do-not-track="true" data-exclude-search="true" />
+        <Analytics product="insights-docs" />
       </body>
     </html>
   );
