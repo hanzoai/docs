@@ -42,7 +42,7 @@ dev enhance "implement complete auth system"
 - Git history awareness
 
 ### 3. **Multi-Model Orchestration**
-- 200+ LLMs via Hanzo AI gateway
+- 200+ LLMs via Hanzo AI API
 - Automatic model selection per task
 - Consensus validation available
 - Local LLM support (Ollama, LM Studio)

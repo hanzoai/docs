@@ -44,7 +44,7 @@ const tiers = [
     badge: 'Most Popular',
     features: [
       'Full Linux desktop VM (Ubuntu)',
-      '100+ AI models included via Hanzo AI Gateway',
+      '100+ AI models included via Hanzo AI API',
       'Always-on — never goes to sleep',
       'All chat integrations',
       'Persistent memory, files & storage',
@@ -80,7 +80,7 @@ type CellValue = true | false | string;
 const comparisonRows: { feature: string; free: CellValue; cloud: CellValue; pro: CellValue }[] = [
   { feature: 'Self-hosted (Mac/Win/Linux)', free: true, cloud: false, pro: false },
   { feature: 'Cloud VM (always-on)', free: false, cloud: 'Linux (Ubuntu)', pro: 'macOS or Windows' },
-  { feature: 'AI models included', free: false, cloud: '100+ via AI Gateway', pro: '100+ with priority access' },
+  { feature: 'AI models included', free: false, cloud: '100+ via AI API', pro: '100+ with priority access' },
   { feature: 'Bring your own API keys', free: true, cloud: true, pro: true },
   { feature: 'Chat integrations', free: 'All', cloud: 'All', pro: 'All' },
   { feature: 'Browser automation', free: true, cloud: true, pro: 'Advanced (Playwright)' },

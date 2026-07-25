@@ -222,7 +222,7 @@ export default function PricingPage() {
           <h2 className="text-2xl font-bold text-fd-foreground">AI Models</h2>
         </div>
         <p className="text-sm text-fd-muted-foreground mb-6 max-w-[540px]">
-          100+ models available via Hanzo AI Gateway. Pricing per 1M tokens.
+          100+ models available via Hanzo AI API. Pricing per 1M tokens.
           Zen models at 3x inference cost. Third-party models at 1.2x pass-through.
         </p>
         <DynamicAiModels />

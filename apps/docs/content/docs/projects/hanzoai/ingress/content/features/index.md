@@ -1,21 +1,21 @@
 ---
 title: "Hanzo Ingress Product Features Comparison"
-description: "Compare features across Hanzo Ingress, Hanzo API Gateway (including AI Gateway capabilities), and Hanzo API Management to choose the right solution for your needs."
+description: "Compare features across Hanzo Ingress, Hanzo API Gateway (including AI API capabilities), and Hanzo API Management to choose the right solution for your needs."
 ---
 
 # Hanzo Ingress Product Features Comparison
 
-The Hanzo Ingress ecosystem offers multiple products designed to meet different requirements, from basic reverse proxy functionality to comprehensive API management and AI gateway capabilities. This comparison matrix helps you understand the features available in each product and choose the right solution for your use case.
+The Hanzo Ingress ecosystem offers multiple products designed to meet different requirements, from basic reverse proxy functionality to comprehensive API management and AI API capabilities. This comparison matrix helps you understand the features available in each product and choose the right solution for your use case.
 
 ## Product Overview
 
 - **Hanzo Ingress** is the open-source application proxy that serves as the foundation for all Hanzo Ingress products. It provides essential reverse proxy, load balancing, and service discovery capabilities.
 
-- **[Hanzo API Gateway](https://hanzo.ai)** builds on Hanzo Ingress with enterprise-grade security, distributed features, and advanced access control for cloud-native API gateway scenarios. It includes **AI Gateway capabilities** that transform any AI endpoint into a managed API.
+- **[Hanzo API Gateway](https://hanzo.ai)** builds on Hanzo Ingress with enterprise-grade security, distributed features, and advanced access control for cloud-native API gateway scenarios. It includes **AI API capabilities** that transform any AI endpoint into a managed API.
 
 - **[Hanzo API Management](https://hanzo.ai)** adds comprehensive API lifecycle management, developer portals, and organizational features for teams managing multiple APIs across environments.
 
-- **[Hanzo AI Gateway](https://hanzo.ai)** transforms any AI endpoint into a managed API with unified access to multiple LLMs, centralized credential management, semantic caching, local inferencing, and comprehensive AI governance features.
+- **[Hanzo AI API](https://hanzo.ai)** transforms any AI endpoint into a managed API with unified access to multiple LLMs, centralized credential management, semantic caching, local inferencing, and comprehensive AI governance features.
 
 - **[Hanzo MCP Gateway](https://hanzo.ai)** provides secure, governed access to Model Context Protocol (MCP) servers for AI agents with task-based access control (TBAC), session-smart routing, and comprehensive audit capabilities for enterprise AI workflows.
 
@@ -53,7 +53,7 @@ The Hanzo Ingress ecosystem offers multiple products designed to meet different 
 | HTTP Caching | ✗ | ✓ | ✓ |
 | **Compliance** | | | |
 | FIPS 140-2 Compliance (Linux & Windows) | ✗ | ✓ | ✓ |
-| **AI Gateway Capabilities** | | | |
+| **AI API Capabilities** | | | |
 | Unified Multi-LLM API Access | ✗ | ✓ | ✓ |
 | Centralized AI Credential Management | ✗ | ✓ | ✓ |
 | AI Provider Flexibility (OpenAI, Anthropic, Azure OpenAI, AWS Bedrock, etc.) | ✗ | ✓ | ✓ |
@@ -94,18 +94,18 @@ Hanzo Ingress is the ideal starting point for organizations looking for a reliab
 
 ### Upgrade to Hanzo API Gateway
 
-Hanzo API Gateway layers enterprise security, distributed coordination, and AI Gateway capabilities on top of Hanzo Ingress. Upgrade to it when you need:
+Hanzo API Gateway layers enterprise security, distributed coordination, and AI API capabilities on top of Hanzo Ingress. Upgrade to it when you need:
 
 - Enterprise security requirements (JWT, OIDC, LDAP)
 - Distributed deployments across multiple clusters
 - Advanced rate limiting and caching
 - WAF and policy enforcement
-- AI Gateway capabilities
+- AI API capabilities
 - Commercial support
 
-### Consider Hanzo Ingress AI Gateway
+### Consider Hanzo Ingress AI API
 
-Hanzo Ingress AI Gateway unifies hosted and self-hosted LLM access under centralized control and observability. Consider it if you have:
+Hanzo Ingress AI API unifies hosted and self-hosted LLM access under centralized control and observability. Consider it if you have:
 
 - Multi-LLM applications requiring unified API access
 - Organizations using multiple AI providers (OpenAI, Anthropic, Azure OpenAI, AWS Bedrock, etc.)
@@ -141,7 +141,7 @@ Hanzo API Management extends the gateway foundation with API lifecycle tooling, 
 
 The Hanzo Ingress ecosystem is designed for seamless upgrades. You can start with Hanzo Ingress and add capabilities as your requirements grow:
 
-1. **Hanzo Ingress** → **Hub API Gateway**: Add enterprise security, distributed features, and AI Gateway capabilities
+1. **Hanzo Ingress** → **Hub API Gateway**: Add enterprise security, distributed features, and AI API capabilities
 2. **Hub API Gateway** → **Hub API Management**: Add comprehensive API management and governance features
 3. **MCP Gateway**: Specialized solution for AI agent governance and Model Context Protocol management
 

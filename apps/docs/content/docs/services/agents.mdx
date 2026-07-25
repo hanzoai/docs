@@ -7,7 +7,7 @@ description: Multi-agent orchestration platform — 88 specialized agents, 15 wo
 
 > **API reference** · [Hanzo Agents API →](/docs/openapi/agents) — every endpoint, generated from the OpenAPI spec.
 
-Hanzo Agents is the multi-agent orchestration platform that ships with the Hanzo stack. It bundles specialist agents, workflow orchestrators, dev tools, and a control plane that coordinates them — all wired into [Hanzo MCP](/docs/mcp), [Hanzo Brain](/docs/services/brain), and [Hanzo AI Gateway](/docs/llm).
+Hanzo Agents is the multi-agent orchestration platform that ships with the Hanzo stack. It bundles specialist agents, workflow orchestrators, dev tools, and a control plane that coordinates them — all wired into [Hanzo MCP](/docs/mcp), [Hanzo Brain](/docs/services/brain), and [Hanzo AI API](/docs/llm).
 
 **Source:** [github.com/hanzoai/agents](https://github.com/hanzoai/agents)
 **Control plane:** Go binary (`hanzo-agents`)
@@ -23,7 +23,7 @@ Hanzo Agents is the multi-agent orchestration platform that ships with the Hanzo
 | Workflow orchestrators | 15 | Full-stack feature shipping, security hardening, ML pipelines, incident response |
 | Dev tools | 42 | API scaffolding, security scanning, test automation, infra setup |
 
-All are Hanzo-native — they prefer `@hanzo/ui` components, the Hanzo AI gateway, the Hanzo Cloud Platform, and use `hanzo-mcp` for filesystem, search, shell, and agent-to-agent dispatch.
+All are Hanzo-native — they prefer `@hanzo/ui` components, the Hanzo AI API, the Hanzo Cloud Platform, and use `hanzo-mcp` for filesystem, search, shell, and agent-to-agent dispatch.
 
 ## Architecture
 
@@ -43,7 +43,7 @@ All are Hanzo-native — they prefer `@hanzo/ui` components, the Hanzo AI gatewa
 │  └────┬─────────────────────────────────────────────────┬─────┘ │
 │       │                                                   │       │
 │  ┌────▼──────────┐   ┌──────────────┐   ┌──────────────▼─────┐ │
-│  │  hanzo-mcp    │   │ Hanzo Brain  │   │  Hanzo AI Gateway │ │
+│  │  hanzo-mcp    │   │ Hanzo Brain  │   │  Hanzo AI API │ │
 │  │  (file/sh/    │   │  (memory,    │   │  (100+ providers,  │ │
 │  │   search)     │   │   facts)     │   │   Zen MoDE)        │ │
 │  └───────────────┘   └──────────────┘   └────────────────────┘ │
@@ -237,7 +237,7 @@ hanzo-agents serve --org startx --otlp-endpoint http://localhost:4317
 
 - A Postgres database (or SQLite for dev)
 - A Hanzo Brain mounted at `/data/brain`
-- An AI Gateway URL (set `HANZO_LLM_URL`)
+- An AI API URL (set `HANZO_LLM_URL`)
 - IAM + KMS endpoints (default to `hanzo.id` + `kms.hanzo.ai`)
 
 See [Self-hosting Hanzo Platform](/docs/services/platform) for the K8s overlay.
