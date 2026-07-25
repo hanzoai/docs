@@ -8,6 +8,7 @@ import { Geist, Geist_Mono } from 'next/font/google';
 import { TreeContextProvider } from '@hanzo/docs/ui/contexts/tree';
 import { source } from '@/lib/source';
 import { NextProvider } from '@hanzo/docs/core/framework/next';
+import { Analytics } from '@hanzo/docs-analytics';
 
 export const metadata = createMetadata({
   title: {
@@ -44,8 +45,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <Provider>{children}</Provider>
           </TreeContextProvider>
         </NextProvider>
+        <Analytics product="platform-docs" />
       </Body>
-      <script defer src="https://analytics.hanzo.ai/script.js" data-website-id="c8d2ce3a-8591-4f63-8920-b6ce0393dd1a" data-do-not-track="true" data-exclude-search="true" />
     </html>
   );
 }
