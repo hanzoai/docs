@@ -265,7 +265,7 @@ export default function HomePage() {
             <OpenModelCard name="Zen" id="zen" hf="zenlm/zen-8b" size="8–32B" ctx="32K" arch="Dense" ollama="hf.co/zenlm/zen-8b" />
             <OpenModelCard name="Zen Pro" id="zen-pro" hf="zenlm/zen-pro-32b" size="32B" ctx="32K" arch="Dense" ollama="hf.co/zenlm/zen-pro-32b" />
             <OpenModelCard name="Zen Max" id="zen-max" hf="zenlm/zen-max" size="235B (22B active)" ctx="131K" arch="MoE" ollama="hf.co/zenlm/zen-max" />
-            <OpenModelCard name="Zen Coder" id="zen-coder" hf="zenlm/zen-coder" size="32B" ctx="131K" arch="Dense" ollama="hf.co/zenlm/zen-coder" />
+            <OpenModelCard name="Zen Coder" id="zen5-coder" hf="zenlm/zen5-coder" size="32B" ctx="131K" arch="Dense" ollama="hf.co/zenlm/zen5-coder" />
           </div>
         </div>
       </section>

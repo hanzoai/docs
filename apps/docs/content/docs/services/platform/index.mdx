@@ -1,21 +1,25 @@
 ---
 title: Hanzo PaaS
-description: The platform.hanzo.ai control plane — deploy and operate applications, containers, and custom domains across your clusters, with IAM-native multi-org access.
+description: Deploy and operate applications, containers, and custom domains across your clusters — Studio at platform.hanzo.ai, API at api.hanzo.ai/v1/platform, with IAM-native multi-org access.
 ---
 
 # Hanzo PaaS
 
 > **API reference** · [Hanzo Platform API →](/docs/openapi/platform) — every endpoint, generated from the OpenAPI spec.
 
-Hanzo PaaS (`platform.hanzo.ai`) is the control plane for shipping software on Hanzo infrastructure. You register an application, point it at a Docker image or Git repo, attach a domain, and the platform builds, deploys, and operates it on your clusters — with deployment history, rolling updates, and drift detection. Authentication is delegated to [Hanzo IAM](/docs/services/iam) with per-organization isolation.
+Hanzo PaaS is the control plane for shipping software on Hanzo infrastructure — Studio at `platform.hanzo.ai`, API at `api.hanzo.ai/v1/platform`. You register an application, point it at a Docker image or Git repo, attach a domain, and the platform builds, deploys, and operates it on your clusters — with deployment history, rolling updates, and drift detection. Authentication is delegated to [Hanzo IAM](/docs/services/iam) with per-organization isolation.
 
 | | |
 |---|---|
-| **Studio** | `https://platform.hanzo.ai` |
-| **Canonical API** | `https://platform.hanzo.ai/v1` |
-| **Build pipeline API** | `https://platform.hanzo.ai/api` (tRPC + OpenAPI) |
-| **Auth** | Hanzo IAM (interactive) · API key / service token (machine) |
+| **Studio** (browser UI) | `https://platform.hanzo.ai` |
+| **API** | `https://api.hanzo.ai/v1/platform` — the one Hanzo API host |
+| **Build** | `POST https://api.hanzo.ai/v1/runner` — the one build door |
+| **Auth** | Hanzo IAM bearer (interactive **and** machine); build token for fabric automation |
 | **Source** | [github.com/hanzoai/platform](https://github.com/hanzoai/platform) |
+
+<Callout>
+`platform.hanzo.ai` is the **Studio** — a browser UI, not an API host. Every programmatic call goes to `api.hanzo.ai/v1/platform/...`, the same host and the same key as AI, KMS, and analytics.
+</Callout>
 
 ## The model
 
@@ -45,9 +49,10 @@ Two credential types, both retrieved from [Hanzo KMS](/docs/services/kms) — ne
 
 | Credential | Header | Use |
 |------------|--------|-----|
-| **API key** | `x-api-key: <key>` | Machine access to the build-pipeline API (`/api/*`). Org-scoped; issued under **Settings → API Keys** |
-| **Service token** | `Authorization: Bearer <token>` | The canonical `/v1` container surface (redeploy, observe) |
-| **IAM token** | `Authorization: Bearer <iam-jwt>` | Interactive / user access, via [Hanzo IAM](/docs/services/iam) SSO |
+| **IAM token** | `Authorization: Bearer <iam-jwt>` | Everything. One login authorizes reads, deploys, and builds. Mint it with the machine-identity exchange below, or via [Hanzo IAM](/docs/services/iam) SSO. |
+| **Build token** | `Authorization: Bearer <build-token>` | Fabric automation only (git-push-to-deploy, self-release). Never held by a user. |
+
+There is no `x-api-key` header and no second credential type — one bearer, one host.
 
 ## Deploy
 
@@ -58,96 +63,75 @@ Two credential types, both retrieved from [Hanzo KMS](/docs/services/kms) — ne
 3. Add an application — choose a Docker image or connect a Git repository.
 4. Attach a domain and deploy.
 
-### Redeploy a running container (canonical `/v1`)
+### Get a bearer
 
-The canonical, machine-driven redeploy performs a zero-downtime rolling restart of the live workload — it re-pulls the image and recreates pods. It takes a service token and no body:
+The machine identity comes from [Hanzo KMS](/docs/services/kms); the exchange is the same one every Hanzo service uses.
 
 ```bash
-# Service token comes from KMS — never inline a real value
-TOKEN=$(curl -sS -X POST https://kms.hanzo.ai/v1/kms/auth/login \
+TOKEN=$(curl -sS -X POST https://api.hanzo.ai/v1/kms/auth/login \
   -H 'Content-Type: application/json' \
   -d "{\"clientId\":\"$KMS_CLIENT_ID\",\"clientSecret\":\"$KMS_CLIENT_SECRET\"}" | jq -r .accessToken)
-PAAS_TOKEN=$(curl -sS "https://kms.hanzo.ai/v1/kms/orgs/hanzo/secrets/paas/SERVICE_TOKEN?env=production" \
-  -H "Authorization: Bearer $TOKEN" | jq -r .secret.value)
+```
 
+### Projects and apps
+
+```bash
+# List projects in the caller's org
+curl -fsS https://api.hanzo.ai/v1/platform/projects \
+  -H "Authorization: Bearer $TOKEN"
+
+# Apps in a project
+curl -fsS https://api.hanzo.ai/v1/platform/projects/$PROJECT/apps \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` · `POST` | `/v1/platform/projects` | List / create projects |
+| `GET` · `DELETE` | `/v1/platform/projects/{project}` | Inspect / delete a project |
+| `GET` · `POST` | `/v1/platform/projects/{project}/apps` | List / create apps |
+| `GET` · `DELETE` | `/v1/platform/projects/{project}/apps/{app}` | Inspect / delete an app |
+| `POST` | `/v1/platform/projects/{project}/apps/{app}/deploy` | Roll the app forward |
+| `POST` | `/v1/platform/projects/{project}/apps/{app}/start` · `/stop` | Manage the running workload |
+| `GET` | `/v1/platform/projects/{project}/apps/{app}/deployments[/{id}[/logs]]` | Deployment history and logs |
+| `GET` · `POST` | `/v1/platform/sites` | Static sites |
+| `GET` | `/v1/platform/health` | Liveness — `{"k8s":true,"service":"platform","status":"ok"}` |
+
+### Redeploy
+
+```bash
 curl -fsS -X POST \
-  "https://platform.hanzo.ai/v1/org/$ORG_ID/project/$PROJECT_ID/env/$ENV_ID/container/$APP_ID/redeploy" \
-  -H "Authorization: Bearer $PAAS_TOKEN"
-# → {"ok":true}
+  "https://api.hanzo.ai/v1/platform/projects/$PROJECT/apps/$APP/deploy" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-### Build and deploy (pipeline `/api`)
+### Build an image
 
-To register a new app and run a build through the deployment pipeline, use the OpenAPI surface with an API key. Procedures are `<router>.<procedure>`:
+Builds run in-cluster on Hanzo's own BuildKit — never on a laptop, never on a third-party runner. One door:
 
 ```bash
-# 1. Register the application (does not deploy)
-curl -fsS -X POST https://platform.hanzo.ai/api/application.create \
-  -H "x-api-key: $PLATFORM_API_KEY" \
+curl -fsS -X POST https://api.hanzo.ai/v1/runner \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{ "name": "web", "environmentId": "'$ENV_ID'" }'
-
-# 2. Attach a Docker image source, then deploy
-curl -fsS -X POST https://platform.hanzo.ai/api/application.deploy \
-  -H "x-api-key: $PLATFORM_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{ "applicationId": "'$APP_ID'" }'
-
-# Rebuild an existing application
-curl -fsS -X POST https://platform.hanzo.ai/api/application.redeploy \
-  -H "x-api-key: $PLATFORM_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{ "applicationId": "'$APP_ID'", "title": "ship v1.3.0" }'
+  -d '{
+    "repo": "https://github.com/hanzoai/docs",
+    "sha": "'$SHA'",
+    "image": "ghcr.io/hanzoai/docs:v1.4.0"
+  }'
+# → 202 {"buildJobId":"…","status":"queued","runnerPool":"…","image":"…","target":"…"}
 ```
 
-`application.deploy` and `application.redeploy` enqueue a build job; `application.start`, `application.stop`, and `application.reload` manage the running workload. See the [Containers API](/docs/services/platform/api/containers) for the full procedure set.
+`repo` must be a full `https://` URL; `image` must push to a registry we own (`ghcr.io/{hanzoai,luxfi,zooai}/*`) whose namespace matches the caller's org. `sha` pins the commit — `ref` or `branch` are accepted, defaulting to `main`.
 
-## Observe & drift
-
-The platform continuously reconciles three views of every app and computes drift:
-
-| Tag | Meaning |
-|-----|---------|
-| `declared` | The version your operator/manifest declares |
-| `running` | The image actually live in the cluster |
-| `latest` | The newest released version available |
-
-```bash
-# List apps with drift, scoped to an org
-curl -fsS "https://platform.hanzo.ai/v1/apps?org=hanzo&drift=true" \
-  -H "Authorization: Bearer $PLATFORM_SERVICE_TOKEN"
-```
-
-```json
-{
-  "apps": [
-    { "org": "hanzo", "app": "docs", "env": "production",
-      "declared_tag": "v1.4.0", "running_tag": "v1.3.0", "latest_tag": "v1.4.0",
-      "health": "yellow", "drift": ["un-rolled"] }
-  ],
-  "summary": { "total": 1, "byDrift": { "un-rolled": 1 } }
-}
-```
-
-Drift is never stored — it is recomputed from declared/running/latest each time. `POST /v1/apps/sync` refreshes the observed columns from the cluster and release feeds.
+<Callout type="warn">
+Do not post to `platform.hanzo.ai/v1/*` or `platform.hanzo.ai/api/*`. The first returns `500 Service token is not configured on the server`; the second returns the Studio's HTML shell with a `404`. Neither is an API.
+</Callout>
 
 ## Custom domains & TLS
 
 Attach a hostname to an application; TLS is provisioned automatically (Let's Encrypt) and a DNS record is created:
 
-```bash
-curl -fsS -X POST https://platform.hanzo.ai/api/domain.create \
-  -H "x-api-key: $PLATFORM_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "applicationId": "'$APP_ID'",
-    "host": "app.example.com",
-    "https": true,
-    "certificateType": "letsencrypt"
-  }'
-```
-
-Point your DNS at the platform ingress IP shown on the project's **Domains** tab.
+Attach it in the Studio under the project's **Domains** tab, then point your DNS at the ingress IP shown there. Records themselves are managed through [Hanzo DNS](/docs/services/dns) at `api.hanzo.ai/v1/dns`.
 
 ## Self-hosting
 
@@ -164,10 +148,10 @@ The platform runs as a Next.js application with an embedded SQLite database; for
 
 <Cards>
   <Card title="API Overview" href="/docs/services/platform/api">
-    The `/v1` control surface and the `/api` build pipeline
+    The `/v1/platform` control surface and `/v1/runner` builds
   </Card>
   <Card title="Authentication" href="/docs/services/platform/api/authentication">
-    API keys, service tokens, and IAM tokens
+    IAM bearers and the fabric build token
   </Card>
   <Card title="Containers API" href="/docs/services/platform/api/containers">
     Create, deploy, redeploy, and operate applications

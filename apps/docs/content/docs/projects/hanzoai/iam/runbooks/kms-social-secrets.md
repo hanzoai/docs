@@ -12,7 +12,7 @@ project rather than introduce a new sync.
 
 | Attribute | Value |
 |---|---|
-| Hostname | `kms.hanzo.ai` |
+| Hostname | `api.hanzo.ai` (one API host; KMS is the `/v1/kms` prefix) |
 | Project slug | `hanzo-iam` |
 | Environment slug | `prod` (mainnet), `test` (testnet), `dev` (devnet) |
 | Path | `/` (existing IAM secrets are flat under root) |
@@ -47,19 +47,22 @@ export those values into your shell:
 
 ```bash
 export KMS_CLIENT_ID=$(kubectl --context=do-sfo3-hanzo-k8s -n hanzo \
-  get secret iam-kms-auth -o jsonpath='{.data.CLIENTID}' | base64 -d)
+  get secret iam-kms-auth -o jsonpath='{.data.clientId}' | base64 -d)
 export KMS_CLIENT_SECRET=$(kubectl --context=do-sfo3-hanzo-k8s -n hanzo \
-  get secret iam-kms-auth -o jsonpath='{.data.CLIENTSECRET}' | base64 -d)
+  get secret iam-kms-auth -o jsonpath='{.data.clientSecret}' | base64 -d)
 ```
 
-Mint a short-lived token (KMS Universal Auth is an OIDC-bearer scheme):
+Exchange the machine identity for a short-lived bearer (JSON body, not form-encoded):
 
 ```bash
-TOKEN=$(curl -sS -X POST https://kms.hanzo.ai/v1/auth/universal/login \
-  -d "clientId=$KMS_CLIENT_ID&clientSecret=$KMS_CLIENT_SECRET" \
+TOKEN=$(curl -sS -X POST https://api.hanzo.ai/v1/kms/auth/login \
+  -H 'Content-Type: application/json' \
+  -d "{\"clientId\":\"$KMS_CLIENT_ID\",\"clientSecret\":\"$KMS_CLIENT_SECRET\"}" \
   | jq -r .accessToken)
-test -n "$TOKEN" || { echo "auth failed"; exit 1; }
+test -n "$TOKEN" -a "$TOKEN" != null || { echo "auth failed"; exit 1; }
 ```
+
+Response: `{"accessToken":"<RS256 JWT>","expiresIn":604800,"tokenType":"Bearer"}`.
 
 ## Write the 12 secrets
 
@@ -82,24 +85,24 @@ declare -A SECRETS=(
   [IAM_GOOGLE_CLIENT_SECRET]="<phase-1-${ENV}-google-client-secret>"
 )
 for key in "${!SECRETS[@]}"; do
-  curl -sS -X PATCH "https://kms.hanzo.ai/api/v3/secrets/raw/$key" \
+  curl -sS -X POST "https://api.hanzo.ai/v1/kms/orgs/hanzo/secrets" \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
     -d "$(jq -n \
-        --arg project hanzo-iam \
+        --arg path "/hanzo-iam" \
+        --arg name "$key" \
         --arg env "$KMS_ENV" \
-        --arg path "/" \
         --arg val "${SECRETS[$key]}" \
-        '{projectSlug:$project, environment:$env, secretPath:$path, secretValue:$val}')"
+        '{path:$path, name:$name, env:$env, value:$val}')"
   echo
 done
 ```
 
-Verify by listing the path:
+Verify by listing the namespace (metadata only — values are never listed):
 
 ```bash
-curl -sS "https://kms.hanzo.ai/api/v3/secrets/list?projectSlug=hanzo-iam&environment=$KMS_ENV&secretPath=/" \
-  -H "Authorization: Bearer $TOKEN" | jq '.secrets[].secretKey' \
+curl -sS "https://api.hanzo.ai/v1/kms/orgs/hanzo/secrets?env=$KMS_ENV" \
+  -H "Authorization: Bearer $TOKEN" | jq -r '.secrets[].name' \
   | grep -E 'IAM_(GITHUB|GOOGLE)_CLIENT_(ID|SECRET)'
 ```
 
@@ -147,11 +150,13 @@ env:
 ## Rotation
 
 ```bash
-# 1. PATCH the new value into KMS
-curl -sS -X PATCH "https://kms.hanzo.ai/api/v3/secrets/raw/IAM_GITHUB_CLIENT_SECRET" \
+# 1. PATCH the new value into KMS (If-Match carries the current version;
+#    a missing precondition is 428, a stale one is 409)
+curl -sS -X PATCH "https://api.hanzo.ai/v1/kms/orgs/hanzo/secrets/hanzo-iam/IAM_GITHUB_CLIENT_SECRET?env=prod" \
   -H "Authorization: Bearer $TOKEN" \
+  -H "If-Match: $CURRENT_VERSION" \
   -H "Content-Type: application/json" \
-  -d '{"projectSlug":"hanzo-iam","environment":"prod","secretPath":"/","secretValue":"<new-secret>"}'
+  -d '{"value":"<new-secret>"}'
 
 # 2. KMSSecret reconciles within 60s; force-roll the Job to pick up:
 kubectl --context=do-sfo3-hanzo-k8s -n hanzo delete job iam-init-providers --ignore-not-found

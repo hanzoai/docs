@@ -24,7 +24,7 @@ export const families: ModelFamily[] = [
     name: 'Code',
     description: 'Specialized models for code generation, review, and debugging.',
     icon: 'Code',
-    models: ['zen4-coder', 'zen4-coder-flash', 'zen4-coder-pro', 'zen-coder', 'zen-coder-flash', 'zen-code'],
+    models: ['zen4-coder', 'zen4-coder-flash', 'zen4-coder-pro', 'zen5-coder', 'zen5-coder-flash', 'zen-code'],
   },
   {
     id: 'zen3',
@@ -76,7 +76,7 @@ export const families: ModelFamily[] = [
     name: 'Vision (Open Weights)',
     description: 'Vision-language and multimodal open-weight models.',
     icon: 'Eye',
-    models: ['zen-vl', 'zen-omni'],
+    models: ['zen-vl', 'zen5'],
   },
   {
     id: 'safety',

@@ -1,96 +1,72 @@
 ---
 title: Containers API
-description: Deploy, redeploy, and operate container workloads
+description: Deploy, redeploy, and operate container workloads through api.hanzo.ai/v1/platform.
 ---
 
-A **container** is a deployable workload on Hanzo PaaS. There are two ways to act on one:
+A **container** is a deployable workload on Hanzo PaaS — an *app* inside a *project*. Everything you do to one goes through the same host, the same bearer, and the same path shape:
 
-- the canonical **`/v1` container surface** — a machine-driven, zero-downtime **redeploy** (rolling restart) of a running workload, authenticated with a service token;
-- the **`/api` build pipeline** — the Dokploy-derived tRPC procedures (`application.*`) that register sources and run builds, authenticated with an API key.
+```
+https://api.hanzo.ai/v1/platform/projects/{project}/apps/{app}[/action]
+```
 
-Under the hood a container maps to an `application` row whose `appName` is the live workload's name.
+Get a bearer first — see [Authentication](/docs/services/platform/api/authentication):
 
-## Redeploy a running container (`/v1`)
+```bash
+TOKEN=$(curl -sS -X POST https://api.hanzo.ai/v1/kms/auth/login \
+  -H 'Content-Type: application/json' \
+  -d "{\"clientId\":\"$KMS_CLIENT_ID\",\"clientSecret\":\"$KMS_CLIENT_SECRET\"}" | jq -r .accessToken)
+```
+
+## Create an app
+
+```bash
+curl -fsS -X POST https://api.hanzo.ai/v1/platform/projects/$PROJECT/apps \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "name": "web", "description": "Public web app" }'
+```
+
+## Deploy
 
 ```bash
 curl -fsS -X POST \
-  "https://platform.hanzo.ai/v1/org/$ORG_ID/project/$PROJECT_ID/env/$ENV_ID/container/$CONTAINER_ID/redeploy" \
-  -H "Authorization: Bearer $PAAS_SERVICE_TOKEN"
+  "https://api.hanzo.ai/v1/platform/projects/$PROJECT/apps/web/deploy" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-```json
-{ "ok": true }
-```
-
-This re-pulls the image and recreates pods with a rolling update — no new build. The service token comes from [Hanzo KMS](/docs/services/kms).
-
-## Build pipeline procedures (`/api`)
-
-Each procedure is an HTTP `POST` to `https://platform.hanzo.ai/api/<procedure>` with `x-api-key`.
-
-| Procedure | Purpose |
-|-----------|---------|
-| `application.create` | Register a new application (does not deploy) |
-| `application.one` | Get application details |
-| `application.all` | List applications in a project |
-| `application.update` | Update configuration |
-| `application.deploy` | Build & deploy (manual deployment) |
-| `application.redeploy` | Rebuild an existing application |
-| `application.start` · `application.stop` · `application.reload` | Lifecycle operations |
-| `application.remove` | Delete the application |
-
-### Create an application
-
-`name` and `environmentId` are required; `appName` is generated if omitted.
+This rolls the workload forward with a zero-downtime rolling update — it re-pulls the image and recreates pods. It does **not** build. To produce a new image first, enqueue a build:
 
 ```bash
-curl -fsS -X POST https://platform.hanzo.ai/api/application.create \
-  -H "x-api-key: $PLATFORM_API_KEY" \
+curl -fsS -X POST https://api.hanzo.ai/v1/runner \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "web",
-    "environmentId": "'$ENV_ID'",
-    "description": "Public web app"
+    "repo": "https://github.com/hanzoai/docs",
+    "sha": "'$SHA'",
+    "image": "ghcr.io/hanzoai/docs:v1.4.0"
   }'
+# → 202 {"buildJobId":"…","status":"queued","runnerPool":"…","image":"…","target":"…"}
 ```
 
-Attach a Docker image source with `application.saveDockerProvider` (or a Git source with `application.saveGithubProvider`), then deploy.
+Builds run on Hanzo's own in-cluster BuildKit. `repo` must be a full `https://` URL, and `image` must push to a registry we own (`ghcr.io/{hanzoai,luxfi,zooai}/*`) in the caller's own org namespace — the server refuses anything else. Never build images locally.
 
-### Deploy & redeploy
+## Lifecycle
 
 ```bash
-# Build and deploy
-curl -fsS -X POST https://platform.hanzo.ai/api/application.deploy \
-  -H "x-api-key: $PLATFORM_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{ "applicationId": "'$APP_ID'" }'
-
-# Rebuild an existing application
-curl -fsS -X POST https://platform.hanzo.ai/api/application.redeploy \
-  -H "x-api-key: $PLATFORM_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{ "applicationId": "'$APP_ID'", "title": "ship v1.3.0" }'
+curl -fsS -X POST ".../apps/web/stop"  -H "Authorization: Bearer $TOKEN"
+curl -fsS -X POST ".../apps/web/start" -H "Authorization: Bearer $TOKEN"
 ```
 
-`application.deploy` and `application.redeploy` enqueue a build job and return after it is scheduled. Deployments roll out with a zero-downtime strategy by default.
+## Inspect
 
-### Lifecycle
-
-```bash
-# Stop / start / restart-in-place
-curl -fsS -X POST https://platform.hanzo.ai/api/application.stop  -H "x-api-key: $PLATFORM_API_KEY" -d '{"applicationId":"'$APP_ID'"}'
-curl -fsS -X POST https://platform.hanzo.ai/api/application.start -H "x-api-key: $PLATFORM_API_KEY" -d '{"applicationId":"'$APP_ID'"}'
-curl -fsS -X POST https://platform.hanzo.ai/api/application.reload -H "x-api-key: $PLATFORM_API_KEY" -d '{"applicationId":"'$APP_ID'","appName":"'$APP_NAME'"}'
-```
-
-## Inspect & observe
-
-Use the [observe surface](/docs/services/platform) to see declared vs running vs latest image tags and drift:
-
-```bash
-curl -fsS "https://platform.hanzo.ai/v1/apps?org=hanzo" \
-  -H "Authorization: Bearer $PLATFORM_SERVICE_TOKEN"
-```
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/v1/platform/projects/{project}/apps` | List apps |
+| `GET` | `/v1/platform/projects/{project}/apps/{app}` | One app |
+| `GET` | `/v1/platform/projects/{project}/apps/{app}/deployments` | Deployment history |
+| `GET` | `/v1/platform/projects/{project}/apps/{app}/deployments/{id}` | One deployment |
+| `GET` | `/v1/platform/projects/{project}/apps/{app}/deployments/{id}/logs` | Deployment logs |
+| `DELETE` | `/v1/platform/projects/{project}/apps/{app}` | Remove the app |
 
 ## Application status values
 
@@ -102,5 +78,5 @@ curl -fsS "https://platform.hanzo.ai/v1/apps?org=hanzo" \
 | `error` | A deployment or replica failed |
 
 <Callout type="warn">
-`application.remove` stops all instances and removes associated domains and volumes. This cannot be undone.
+`DELETE` stops all instances and removes associated domains and volumes. This cannot be undone.
 </Callout>

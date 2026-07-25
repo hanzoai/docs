@@ -184,7 +184,7 @@ export default function Page() {
                   <span className="text-blue-400">{'"model"'}</span>
                   {': '}
                   <span className="text-green-400">
-                    {'"claude-sonnet-4-5-20250929"'}
+                    {'"zen5"'}
                   </span>
                   {',\n'}
                   {'    '}
