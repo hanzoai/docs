@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="booting">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -16,8 +16,13 @@
         padding: 0;
         background: #0a0a0a;
       }
-      /* Avoid a flash of unstyled content before Scalar mounts. */
-      #app:empty::before {
+      /* Anti-FOUC placeholder shown only until Scalar renders.
+         Gated on html.booting — NOT on #app:empty — because Scalar mounts as a
+         SIBLING of #app, so #app stays :empty forever and an :empty-gated
+         placeholder becomes a permanent ghost pinned above the real reference
+         (146px on mobile). The script below clears .booting once anything
+         renders, so this can never outlive the load. */
+      html.booting #app::before {
         content: 'Loading the Hanzo API reference…';
         display: block;
         padding: 4rem 2rem;
@@ -25,15 +30,23 @@
         font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
         text-align: center;
       }
+      /* Scalar's bundled CSS asks for fonts.scalar.com, which our CSP blocks
+         (font-src 'self' data:), so it silently fell back to Inter/system and
+         the reference did not match the rest of docs. Pin the docs stack. */
+      body,
+      .scalar-app {
+        font-family: Geist, ui-sans-serif, system-ui, -apple-system, sans-serif;
+      }
     </style>
   </head>
   <body>
     <div id="app"></div>
 
     <!-- Full interactive reference for the unified Hanzo API (hanzo.yaml).
-         Self-contained: the Scalar bundle and the spec both ship with this
-         static export (no runtime CDN). Served by hanzoai/static at
-         docs.hanzo.ai/reference/. -->
+         The Scalar bundle and the spec ship with this static export; the only
+         external request Scalar attempts is its own webfont CDN, which our CSP
+         blocks by design (we pin Geist above instead). Served by hanzoai/static
+         at docs.hanzo.ai/reference/. -->
     <script
       id="api-reference"
       type="application/json"
@@ -53,5 +66,21 @@
         JSON.stringify(configuration);
     </script>
     <script src="/reference/scalar.standalone.js"></script>
+    <script id="booting-clear">
+      // Scalar mounts as a sibling of #app, so we cannot detect readiness via
+      // #app:empty. Clear on the first added node anywhere in body, with a load
+      // fallback so the placeholder can never persist.
+      (function () {
+        var done = function () {
+          document.documentElement.classList.remove('booting');
+          if (obs) obs.disconnect();
+        };
+        var obs = new MutationObserver(function (muts) {
+          for (var i = 0; i < muts.length; i++) if (muts[i].addedNodes.length) return done();
+        });
+        obs.observe(document.body, { childList: true, subtree: true });
+        window.addEventListener('load', function () { setTimeout(done, 1500); });
+      })();
+    </script>
   </body>
 </html>

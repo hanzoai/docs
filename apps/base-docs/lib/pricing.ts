@@ -40,7 +40,7 @@ export const COMPUTE_PLANS: ComputePlan[] = [
       '1 Base instance',
       'SSE realtime',
       'Email/password auth',
-      '$5 free credit',
+      'No monthly minimum',
     ],
   },
   {
