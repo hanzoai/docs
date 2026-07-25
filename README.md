@@ -98,7 +98,7 @@ pnpm types:check      # Type check
 ### Hanzo Docs (hanzoai.github.io/docs)
 
 Documentation for Hanzo AI infrastructure including:
-- AI Gateway
+- AI API
 - Agent SDK
 - MCP Tools
 - Chat Platform

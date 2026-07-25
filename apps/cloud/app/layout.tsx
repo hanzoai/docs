@@ -16,11 +16,11 @@ const mono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'Hanzo Cloud — AI Infrastructure Platform',
   description:
-    'Unified AI infrastructure platform. AI gateway, usage analytics, team management, and API key provisioning.',
+    'Unified AI infrastructure platform. AI API, usage analytics, team management, and API key provisioning.',
   openGraph: {
     title: 'Hanzo Cloud — AI Infrastructure Platform',
     description:
-      'Unified AI infrastructure platform with AI gateway, analytics, and team management.',
+      'Unified AI infrastructure platform with AI API, analytics, and team management.',
     url: 'https://cloud.hanzo.ai',
     siteName: 'Hanzo Cloud',
     type: 'website',

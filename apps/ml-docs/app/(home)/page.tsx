@@ -412,7 +412,7 @@ export default function Page() {
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
-            { name: 'AI Gateway', desc: '200+ AI models, one API', href: 'https://docs.hanzo.ai/docs/llm' },
+            { name: 'AI API', desc: '200+ AI models, one API', href: 'https://docs.hanzo.ai/docs/llm' },
             { name: 'Marketplace', desc: 'Buy & sell AI capacity', href: 'https://app.hanzo.bot' },
             { name: 'MCP', desc: '260+ tools for agents', href: 'https://docs.hanzo.ai/docs/mcp' },
             { name: 'Commerce', desc: 'Billing & on-chain settlement', href: 'https://docs.hanzo.ai/docs/commerce' },

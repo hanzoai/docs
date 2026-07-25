@@ -20,7 +20,7 @@ export const hanzo = defineOrg({
     },
     {
       slug: 'llm',
-      name: 'AI Gateway',
+      name: 'AI API',
       description: 'One API for every model',
       icon: 'brain',
       category: 'Infrastructure',

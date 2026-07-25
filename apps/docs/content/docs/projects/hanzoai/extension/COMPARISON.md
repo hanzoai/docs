@@ -13,7 +13,7 @@
 - **Parallel Processing**: Unlimited concurrent agents
 - **Full Codebase Context**: Entire repository indexed
 - **Persistent Memory**: Context maintained across sessions
-- **Multi-Model**: 200+ models via Hanzo AI gateway
+- **Multi-Model**: 200+ models via Hanzo AI API
 - **Coordinated Operations**: Automatic cross-file changes
 
 ---

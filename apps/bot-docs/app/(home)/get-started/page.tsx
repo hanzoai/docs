@@ -50,7 +50,7 @@ const plans = [
     badge: '14-day free trial',
     features: [
       'Full Linux desktop VM (Ubuntu)',
-      '100+ AI models via Hanzo AI Gateway',
+      '100+ AI models via Hanzo AI API',
       'Always-on with daily backups',
       'Web dashboard at app.hanzo.bot',
     ],

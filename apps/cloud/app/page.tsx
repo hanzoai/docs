@@ -40,7 +40,7 @@ const buttonVariants = cva(
 const features = [
   {
     icon: BrainCircuitIcon,
-    title: 'AI Gateway',
+    title: 'AI API',
     description:
       'Unified API for 100+ AI providers. OpenAI, Anthropic, Together, Deepseek, and more through a single API.',
   },
