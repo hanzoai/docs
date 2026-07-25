@@ -32,6 +32,16 @@ spec:
     pullPolicy: IfNotPresent
   imagePullSecrets:
     - name: ghcr-secret
+  # hanzoai/static ships a locked-down default CSP (default-src 'none') that
+  # blocks all client JS — including the docs' own interactivity and the Scalar
+  # API reference at /reference. HANZO_STATIC_CSP relaxes it to a secure docs
+  # policy (self + inline/eval for the OpenAPI renderer) while keeping
+  # frame-ancestors/object-src locked. Browsers receive both this and the
+  # ingress CSP and enforce the intersection, so this must stay permissive
+  # enough for Scalar to execute.
+  env:
+    - name: HANZO_STATIC_CSP
+      value: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://api.hanzo.ai https://analytics.hanzo.ai; worker-src 'self' blob:; child-src 'self' blob:; manifest-src 'self'"
   ports:
     - name: http
       containerPort: 3000
