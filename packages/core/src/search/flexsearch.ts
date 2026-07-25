@@ -8,6 +8,10 @@ import type { Awaitable } from '@/types';
 import type { I18nConfig } from '@/i18n';
 import { createDocument, search, type Doc } from './flexsearch/utils';
 
+// Re-exported so apps can wrap the default page->index builder (e.g. to attach
+// a `tag` for filtered client-side search) instead of reimplementing it.
+export { buildIndexDefault } from './server/build-index';
+
 export type Index = SharedIndex;
 export interface IndexWithLocale extends Index {
   locale: string;

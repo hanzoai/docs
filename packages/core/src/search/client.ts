@@ -147,6 +147,15 @@ export function useDocsSearch(
         client = oramaStaticClient(clientRest);
         break;
       }
+      case 'flexsearch-static': {
+        const res = (promiseMap[clientRest.type] ??=
+          import('./client/flexsearch-static')) as Promise<
+          typeof import('./client/flexsearch-static')
+        >;
+        const { flexsearchStaticClient } = use(res);
+        client = flexsearchStaticClient(clientRest);
+        break;
+      }
       case 'hanzo': {
         const res = (promiseMap[clientRest.type] ??= import('./client/hanzo')) as Promise<
           typeof import('./client/hanzo')
