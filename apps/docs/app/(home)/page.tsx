@@ -32,56 +32,56 @@ import { CodeBlock } from '@/components/code-block';
 const domains = [
   {
     name: 'Identity & Trust',
-    desc: 'Who you are, what you may touch, where secrets live. IAM, AuthZ, KMS, MPC, Zero-Trust.',
+    desc: 'Who someone is, what they may touch, and where secrets stay safe. IAM, AuthZ, KMS, MPC, Zero-Trust.',
     icon: Shield,
     href: '/docs/iam',
     tag: 'Identity',
   },
   {
     name: 'Intelligence',
-    desc: 'The mind of the cloud. Models, agents, MCP, embeddings, prompts, GPUs, functions.',
+    desc: 'The mind of the cloud — every model, agent, and tool you can call. Models, Agents, MCP, Embeddings, Prompts, GPUs, Functions.',
     icon: Sparkles,
     href: '/docs/llm',
     tag: 'Intelligence',
   },
   {
     name: 'Data',
-    desc: 'The stores everything writes to. SQL, Vector, KV, Search, Object, Base, DocDB.',
+    desc: 'Somewhere to put your data and read it back fast. SQL, Vector, KV, Search, Object, Base, DocDB.',
     icon: Database,
     href: '/docs/sql',
     tag: 'Data',
   },
   {
     name: 'Streams',
-    desc: 'Messaging, durable tasks, async orchestration. PubSub, Tasks, Pipelines, Crawl.',
+    desc: 'Move messages and run work in the background, reliably. PubSub, Tasks, Pipelines, Crawl.',
     icon: Workflow,
     href: '/docs/pubsub',
     tag: 'Streams',
   },
   {
     name: 'Observability',
-    desc: 'See everything. Telemetry, metrics, logs, traces, sessions, evals, analytics.',
+    desc: 'See exactly what your system is doing, live. Metrics, Logs, Traces, Sessions, Evals, Analytics.',
     icon: Activity,
     href: '/docs/o11y',
     tag: 'Observe',
   },
   {
     name: 'Commerce',
-    desc: 'The economy. Meter, price, bill, reward. Commerce, Billing, Marketplace, Referrals.',
+    desc: 'Turn usage into money — meter it, price it, bill it, reward it. Commerce, Billing, Marketplace, Referrals.',
     icon: ShoppingCart,
     href: '/docs/commerce',
     tag: 'Commerce',
   },
   {
     name: 'Platform',
-    desc: 'The cloud fabric. Deploy, provision, route, host. Gateway, Machines, Edge, Registry.',
+    desc: 'Ship your code and run it anywhere. Gateway, Machines, Edge, Registry.',
     icon: Server,
     href: '/docs/gateway',
     tag: 'Platform',
   },
   {
     name: 'Applications',
-    desc: 'The user-facing surfaces. Chat, Studio, Dev, Integrations, Apps.',
+    desc: 'The finished products people use every day. Chat, Studio, Dev, Integrations, Apps.',
     icon: LayoutGrid,
     href: '/docs/chat',
     tag: 'Apps',
@@ -138,9 +138,10 @@ export default function Page() {
           <span className="text-white">The AI cloud you<br className="hidden sm:block" /> can run yourself</span>
         </h1>
         <p className="relative mt-5 max-w-xl text-[#737373] text-lg md:text-xl leading-relaxed">
-          The same open-source binary we run in production — 67 capabilities, from
-          identity and inference to data, observability, and commerce. Run it on
-          your own machine, GPU, or cluster. The network is the cloud.
+          One open-source binary is the whole cloud — 67 capabilities behind one
+          API, from identity and inference to data, observability, and commerce.
+          The same binary we run in production runs on your laptop, your GPU, or
+          your own cluster. The network is the cloud.
         </p>
 
         {/* -- Install command -- the main CTA ------------------------------ */}
@@ -248,7 +249,7 @@ print(response.choices[0].message.content)`}
             One binary. The whole platform.
           </h2>
           <p className="text-[#737373] text-sm mb-8">
-            Every capability is named by its route. Browse by domain — click any to descend.
+            Every capability has one name and one route. Browse by domain — click any card to go deep.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {domains.map((item) => {
