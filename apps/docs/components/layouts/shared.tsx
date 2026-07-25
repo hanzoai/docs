@@ -2,26 +2,26 @@ import type { BaseLayoutProps, LinkItemType } from '@hanzo/docs/ui/layouts/share
 import { U } from '@hanzogui/shell';
 import { HanzoDocsIcon } from '@/app/layout.client';
 
-// Canonical ecosystem top-nav, sourced from the shell registry (`U`). One shape
-// across every Hanzo property: Models · Agents · Solutions · Developers ·
-// Pricing · Enterprise. "Developers" is docs itself, so it stays internal;
-// the rest resolve to their canonical hanzo.ai URLs. Doc-section navigation
-// (API, SDKs, sections) lives in the Fumadocs sidebar + the Meet-Hanzo menu.
+// Docs top-nav. This is a DOCS surface, so items that HAVE a docs home keep the
+// visitor IN the docs — Models → /docs/services/models, Agents → /docs/agents,
+// Pricing → /docs/services/pricing, Developers → /docs. Only genuinely
+// marketing-only concepts (Solutions, Enterprise) resolve out to hanzo.ai. This
+// fixes the top nav bouncing readers to the marketing site mid-docs.
 export const linkItems: LinkItemType[] = [
   {
     text: 'Models',
-    url: U.models,
-    external: true,
+    url: '/docs/services/models',
+    active: 'nested-url',
   },
   {
     text: 'Agents',
-    url: U.agents,
-    external: true,
+    url: '/docs/agents',
+    active: 'nested-url',
   },
   {
-    text: 'Solutions',
-    url: U.solutions,
-    external: true,
+    text: 'MCP',
+    url: '/docs/mcp',
+    active: 'nested-url',
   },
   {
     text: 'Developers',
@@ -30,8 +30,8 @@ export const linkItems: LinkItemType[] = [
   },
   {
     text: 'Pricing',
-    url: U.pricing,
-    external: true,
+    url: '/docs/services/pricing',
+    active: 'nested-url',
   },
   {
     text: 'Enterprise',
