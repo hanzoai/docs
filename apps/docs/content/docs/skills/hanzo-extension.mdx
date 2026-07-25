@@ -60,7 +60,6 @@ Hanzo Extensions is a **monorepo of browser and IDE extensions** providing AI-po
 5. Extracts token, closes tab
 ```
 
-**LLM endpoint**: `api.hanzo.ai/v1/chat/completions` (NOT `llm.hanzo.ai` which is Cloud UI)
 
 ### Auth Implementation
 
@@ -101,7 +100,7 @@ async function startAuth(): Promise<string> {
 ```typescript
 // /oauth/userinfo only returns `sub` — use /v1/iam/get-account for full profile
 async function getProfile(token: string) {
-  const res = await fetch("https://iam.hanzo.ai/v1/iam/get-account", {
+  const res = await fetch("https://api.hanzo.ai/v1/iam/get-account", {
     headers: { "Authorization": `Bearer ${token}` }
   })
   return res.json()  // { name, email, avatar, ... }
@@ -141,7 +140,6 @@ cd packages/jetbrains
 | Issue | Cause | Solution |
 |-------|-------|----------|
 | Code flow fails | Hanzo IAM empty grant_type bug | Use implicit flow (response_type=token) |
-| LLM returns 404 | Using llm.hanzo.ai | Use api.hanzo.ai/v1/chat/completions |
 | Safari build fails | Missing Xcode | Build on macOS with Xcode installed |
 | JetBrains build fails | Missing gradle wrapper | Commit gradle-wrapper.jar |
 

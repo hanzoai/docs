@@ -37,7 +37,7 @@ The easiest way to use Zen models:
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-model_id = "zenlm/zen-coder-flash"
+model_id = "zenlm/zen5-coder-flash"
 
 tokenizer = AutoTokenizer.from_pretrained(model_id)
 model = AutoModelForCausalLM.from_pretrained(
@@ -57,7 +57,7 @@ print(tokenizer.decode(outputs[0], skip_special_tokens=True))
 For high-throughput production serving:
 
 ```bash
-vllm serve zenlm/zen-coder-flash \
+vllm serve zenlm/zen5-coder-flash \
     --tensor-parallel-size 4 \
     --enable-auto-tool-choice
 ```
@@ -68,7 +68,7 @@ With EAGLE speculative decoding:
 
 ```bash
 python -m sglang.launch_server \
-    --model-path zenlm/zen-coder-flash \
+    --model-path zenlm/zen5-coder-flash \
     --tp-size 4 \
     --speculative-algorithm EAGLE
 ```
@@ -80,7 +80,7 @@ Optimized for M1/M2/M3 Macs:
 ```python
 from mlx_lm import load, generate
 
-model, tokenizer = load("zenlm/zen-coder-flash")
+model, tokenizer = load("zenlm/zen5-coder-flash")
 response = generate(model, tokenizer, prompt="Write a Rust function for quicksort", max_tokens=256)
 print(response)
 ```

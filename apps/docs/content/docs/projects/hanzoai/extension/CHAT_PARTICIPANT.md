@@ -64,7 +64,7 @@ Add to VS Code settings.json:
   
   // Anthropic
   "hanzo.llm.anthropic.apiKey": "sk-ant-...",
-  "hanzo.llm.anthropic.model": "claude-3-opus-20240229"
+  "hanzo.llm.anthropic.model": "zen5"
 }
 ```
 

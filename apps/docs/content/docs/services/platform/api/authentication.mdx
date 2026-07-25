@@ -3,13 +3,14 @@ title: Authentication
 description: IAM tokens, API keys, and service tokens for the Hanzo PaaS API
 ---
 
-Hanzo PaaS has three credential types, matched to its two API surfaces. Machine credentials are stored in [Hanzo KMS](/docs/services/kms) and read at runtime — never hard-coded.
+Hanzo PaaS has **one** API surface — `https://api.hanzo.ai/v1/platform` — and one credential shape: a bearer token. Machine credentials live in [Hanzo KMS](/docs/services/kms) and are read at runtime, never hard-coded.
 
-| Credential | Header | Surface | Use |
-|------------|--------|---------|-----|
-| **IAM token** | `Authorization: Bearer <jwt>` | `/api` | Interactive / user access via SSO |
-| **API key** | `x-api-key: <key>` | `/api` | Machine access to the build pipeline; org-scoped |
-| **Service token** | `Authorization: Bearer <token>` | `/v1` | Container redeploy and observe (M2M) |
+| Credential | Header | Use |
+|------------|--------|-----|
+| **IAM token** | `Authorization: Bearer <jwt>` | Everything — interactive SSO *and* machine access. An org-admin IAM login also authorizes `POST /v1/runner` builds. |
+| **Build token** | `Authorization: Bearer <build-token>` | Fabric automation only (git-push-to-deploy, self-release). Never held by a user. |
+
+There is no `x-api-key` header and no separate service token.
 
 ## OAuth2 via Hanzo ID
 
@@ -59,41 +60,32 @@ curl -X POST https://hanzo.id/v1/iam/oauth/token \
 
 Refresh with `grant_type=refresh_token`. See [Hanzo IAM](/docs/services/iam) for the full flow.
 
-## API keys (build pipeline)
+## Machine identity (no user present)
 
-API keys authenticate machine callers to the `/api` build-pipeline surface. Create one in the Studio under **Settings → API Keys** — the key is scoped to the organization you create it under and shown once.
-
-<Callout type="warn">
-Store API keys in [Hanzo KMS](/docs/services/kms) immediately. They are shown only at creation. If lost, revoke and create a new one.
-</Callout>
+A service exchanges its KMS machine identity for the same kind of bearer — no second credential type, no key file:
 
 ```bash
-curl https://platform.hanzo.ai/api/application.all \
-  -H "x-api-key: $PLATFORM_API_KEY"
+TOKEN=$(curl -sS -X POST https://api.hanzo.ai/v1/kms/auth/login \
+  -H 'Content-Type: application/json' \
+  -d "{\"clientId\":\"$KMS_CLIENT_ID\",\"clientSecret\":\"$KMS_CLIENT_SECRET\"}" | jq -r .accessToken)
 ```
 
-## Service tokens (`/v1` surface)
-
-The canonical `/v1` control surface (container redeploy, `/v1/apps` observe) uses a service token presented as a bearer:
-
-```bash
-curl -fsS -X POST \
-  "https://platform.hanzo.ai/v1/org/$ORG_ID/project/$PROJECT_ID/env/$ENV_ID/container/$CONTAINER_ID/redeploy" \
-  -H "Authorization: Bearer $PAAS_SERVICE_TOKEN"
-```
-
-The service token is issued out-of-band and stored in KMS (e.g. `kms.hanzo.ai/v1/kms/orgs/hanzo/secrets/paas/SERVICE_TOKEN`). It is a pure machine-to-machine credential with no user session.
+`clientId` / `clientSecret` come from a Kubernetes Secret or your secret store — never inline them. The response is `{"accessToken":"<RS256 JWT>","expiresIn":604800,"tokenType":"Bearer"}`.
 
 ## Request examples
 
 ```bash
-# List organizations (build pipeline, API key)
-curl https://platform.hanzo.ai/api/organization.all \
-  -H "x-api-key: $PLATFORM_API_KEY"
+# List projects
+curl -fsS https://api.hanzo.ai/v1/platform/projects \
+  -H "Authorization: Bearer $TOKEN"
 
-# Register an application
-curl -X POST https://platform.hanzo.ai/api/application.create \
-  -H "x-api-key: $PLATFORM_API_KEY" \
+# Create an application
+curl -fsS -X POST https://api.hanzo.ai/v1/platform/projects/$PROJECT/apps \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{ "name": "web", "environmentId": "'$ENV_ID'" }'
+  -d '{ "name": "web" }'
+
+# Roll it forward
+curl -fsS -X POST https://api.hanzo.ai/v1/platform/projects/$PROJECT/apps/web/deploy \
+  -H "Authorization: Bearer $TOKEN"
 ```

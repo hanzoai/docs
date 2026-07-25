@@ -1,277 +1,83 @@
 ---
-title: Virtual Machines API
-description: Launch, manage, and destroy Visor VMs via the API
+title: Machines API
+description: Launch, inspect, and destroy machines and GPUs through api.hanzo.ai/v1.
 ---
 
-The Virtual Machines API manages Visor VMs -- full Linux virtual machines with root access, persistent storage, and SSH connectivity.
+A **machine** is a compute unit — a Visor-provisioned VM, or a bring-your-own worker that dialed in with `hanzo link`. Both appear in the same list, distinguished by `provider`.
+
+All calls take an IAM bearer — see [Authentication](/docs/services/platform/api/authentication).
 
 ## Endpoints
 
-| Procedure | Method | Description |
-|-----------|--------|-------------|
-| `vm.all` | GET | List all VMs |
-| `vm.one` | GET | Get VM details |
-| `vm.launch` | POST | Launch a new VM |
-| `vm.start` | POST | Start a stopped VM |
-| `vm.stop` | POST | Stop a running VM |
-| `vm.restart` | POST | Restart a VM |
-| `vm.destroy` | DELETE | Permanently destroy a VM |
-| `vm.volumes` | GET | List attached volumes |
-| `vm.attachVolume` | POST | Attach a storage volume |
-| `vm.detachVolume` | POST | Detach a storage volume |
-| `vm.terminal` | GET | Open a web terminal session |
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/machines` | List every machine the org can see |
+| `POST` | `/v1/machines` | Launch a machine |
+| `GET` | `/v1/machines/{id}` | Machine detail |
+| `DELETE` | `/v1/machines/{id}` | Destroy a machine |
+| `GET` | `/v1/gpus` | Every GPU across the org's compute |
+| `GET` | `/v1/gpus/alerts` | GPU health alerts |
+| `GET` | `/v1/fleet` | The unified board — every compute source with its latest utilization |
+| `GET` | `/v1/fleet/workers` | BYO workers only |
+| `GET` | `/v1/fleet/jobs` | The org's GPU job queue |
+| `POST` | `/v1/fleet/jobs/{id}/cancel` | Cancel a queued or running job |
+| `GET` · `POST` | `/v1/fleet/samples` | Read back / self-report utilization samples |
 
-## List VMs
-
-`GET /api/vm.all?organizationId=org_abc123`
+## List machines
 
 ```bash
-curl "https://platform.hanzo.ai/api/vm.all?organizationId=org_abc123" \
-  -H "Authorization: Bearer YOUR_TOKEN"
+curl -fsS https://api.hanzo.ai/v1/machines \
+  -H "Authorization: Bearer $TOKEN"
 ```
-
-**Response:**
 
 ```json
 {
-  "result": {
-    "data": [
-      {
-        "id": "vm_abc123",
-        "name": "ml-training",
-        "plan": "power",
-        "region": "us-east",
-        "os": "ubuntu-22.04",
-        "ip": "203.0.113.50",
-        "status": "running",
-        "createdAt": "2026-01-10T10:00:00Z"
-      }
-    ]
-  }
-}
-```
-
-## Get VM
-
-`GET /api/vm.one?vmId=vm_abc123`
-
-```bash
-curl "https://platform.hanzo.ai/api/vm.one?vmId=vm_abc123" \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-**Response:**
-
-```json
-{
-  "result": {
-    "data": {
-      "id": "vm_abc123",
-      "name": "ml-training",
-      "plan": "power",
-      "region": "us-east",
-      "os": "ubuntu-22.04",
-      "ip": "203.0.113.50",
-      "privateIp": "10.0.1.50",
-      "status": "running",
-      "specs": {
-        "vcpu": 8,
-        "memoryGb": 16,
-        "diskGb": 320,
-        "diskType": "ssd"
-      },
-      "sshKeys": ["ssh-ed25519 AAAA..."],
-      "volumes": [
-        {
-          "id": "vol_xyz789",
-          "name": "training-data",
-          "sizeGb": 500,
-          "mountPath": "/mnt/data"
-        }
-      ],
-      "createdAt": "2026-01-10T10:00:00Z"
+  "machines": [
+    {
+      "id": "dbc",
+      "name": "dbc",
+      "region": "on-prem",
+      "type": "byo-gpu",
+      "status": "offline",
+      "provider": "byo"
     }
-  }
+  ]
 }
 ```
 
-## Launch VM
-
-`POST /api/vm.launch`
+## List GPUs
 
 ```bash
-curl -X POST https://platform.hanzo.ai/api/vm.launch \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "organizationId": "org_abc123",
-    "name": "ml-training",
-    "plan": "power",
-    "region": "us-east",
-    "os": "ubuntu-22.04",
-    "sshKeys": ["ssh-ed25519 AAAA..."],
-    "userData": "#!/bin/bash\napt-get update && apt-get install -y docker.io"
-  }'
+curl -fsS https://api.hanzo.ai/v1/gpus \
+  -H "Authorization: Bearer $TOKEN"
 ```
-
-**Parameters:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `organizationId` | string | Yes | Organization ID |
-| `name` | string | Yes | VM name |
-| `plan` | string | Yes | VM plan (nano, micro, small, medium, power, power-dedicated) |
-| `region` | string | Yes | Region code (us-east, us-west, eu-west, ap-south) |
-| `os` | string | Yes | OS image |
-| `sshKeys` | array | No | SSH public keys for root access |
-| `userData` | string | No | Cloud-init script (runs on first boot) |
-
-**Available OS images:**
-
-| Image | Description |
-|-------|-------------|
-| `ubuntu-22.04` | Ubuntu 22.04 LTS |
-| `ubuntu-24.04` | Ubuntu 24.04 LTS |
-| `debian-12` | Debian 12 Bookworm |
-| `rocky-9` | Rocky Linux 9 |
-| `fedora-40` | Fedora 40 |
-
-**Response:** `201 Created`
 
 ```json
 {
-  "result": {
-    "data": {
-      "id": "vm_new456",
-      "name": "ml-training",
-      "status": "provisioning",
-      "ip": null,
-      "createdAt": "2026-02-26T10:00:00Z"
+  "gpus": [
+    {
+      "id": "dbc#0",
+      "name": "dbc",
+      "model": "Apple M4 Max (Metal)",
+      "region": "on-prem",
+      "status": "offline"
     }
-  }
+  ]
 }
 ```
 
-The VM enters `provisioning` status. It transitions to `running` with an assigned IP within 30-90 seconds.
-
-## Stop VM
-
-`POST /api/vm.stop`
-
-Gracefully shuts down the VM. The VM retains its IP address and storage. You are not billed for compute while stopped, but storage charges continue.
+## Destroy a machine
 
 ```bash
-curl -X POST https://platform.hanzo.ai/api/vm.stop \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ "vmId": "vm_abc123" }'
-```
-
-## Start VM
-
-`POST /api/vm.start`
-
-Boots a stopped VM. The VM retains its previous IP and all attached volumes.
-
-```bash
-curl -X POST https://platform.hanzo.ai/api/vm.start \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ "vmId": "vm_abc123" }'
-```
-
-## Restart VM
-
-`POST /api/vm.restart`
-
-Performs a graceful reboot.
-
-```bash
-curl -X POST https://platform.hanzo.ai/api/vm.restart \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ "vmId": "vm_abc123" }'
-```
-
-## Destroy VM
-
-`DELETE /api/vm.destroy`
-
-Permanently destroys the VM and its boot disk. Attached volumes are detached but not deleted.
-
-```bash
-curl -X DELETE https://platform.hanzo.ai/api/vm.destroy \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ "vmId": "vm_abc123" }'
-```
-
-**Response:** `204 No Content`
-
-<Callout type="warn">
-Destroying a VM deletes its boot disk permanently. Attached volumes are preserved. Back up any data on the boot disk before destroying.
-</Callout>
-
-## Volume Management
-
-### List Volumes
-
-```bash
-curl "https://platform.hanzo.ai/api/vm.volumes?vmId=vm_abc123" \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-### Attach Volume
-
-```bash
-curl -X POST https://platform.hanzo.ai/api/vm.attachVolume \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "vmId": "vm_abc123",
-    "volumeId": "vol_xyz789",
-    "mountPath": "/mnt/data"
-  }'
-```
-
-The volume is attached as a block device. If `mountPath` is provided, the platform mounts it automatically (requires the Hanzo agent on the VM).
-
-### Detach Volume
-
-```bash
-curl -X POST https://platform.hanzo.ai/api/vm.detachVolume \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "vmId": "vm_abc123",
-    "volumeId": "vol_xyz789"
-  }'
+curl -fsS -X DELETE "https://api.hanzo.ai/v1/machines/$MACHINE_ID" \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 <Callout type="warn">
-Always unmount the filesystem inside the VM before detaching a volume to prevent data corruption.
+Destroying a machine is permanent. Detach or snapshot any volume you still need first.
 </Callout>
 
-## Web Terminal
+## Related
 
-`GET /api/vm.terminal?vmId=vm_abc123`
-
-Opens a WebSocket-based terminal session to the VM. Used by the dashboard for browser-based SSH.
-
-```bash
-# The dashboard uses this endpoint internally.
-# For direct SSH access, use the VM's public IP:
-ssh root@203.0.113.50
-```
-
-## VM Status Values
-
-| Status | Description |
-|--------|-------------|
-| `provisioning` | VM is being created |
-| `running` | VM is up and accepting connections |
-| `stopping` | Graceful shutdown in progress |
-| `stopped` | VM is off (storage preserved) |
-| `restarting` | Reboot in progress |
-| `destroying` | VM is being deleted |
-| `error` | Provisioning or operation failed |
+- [Clusters API](/docs/services/platform/api/clusters) — Kubernetes clusters and node pools
+- [Containers API](/docs/services/platform/api/containers) — the workloads that run on this compute

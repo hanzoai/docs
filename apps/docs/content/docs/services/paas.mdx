@@ -1,18 +1,19 @@
 ---
 title: Hanzo PaaS
-description: The platform.hanzo.ai control plane for deploying and operating services on Hanzo's Kubernetes clusters.
+description: The Hanzo control plane for deploying and operating services on Hanzo's Kubernetes clusters — Studio at platform.hanzo.ai, API at api.hanzo.ai/v1/platform.
 ---
 
 # Hanzo PaaS
 
 > **API reference** · [Hanzo PaaS API →](/docs/openapi/paas) — every endpoint, generated from the OpenAPI spec.
 
-Hanzo PaaS is the deployment and operations control plane for the Hanzo platform, served at **`platform.hanzo.ai`**. You register an application, point it at a container image or Git repository, attach a domain, and the platform builds, deploys, and operates it on Hanzo's Kubernetes clusters — with deployment history, rolling updates, and drift detection.
+Hanzo PaaS is the deployment and operations control plane for the Hanzo platform. The Studio (browser UI) is at **`platform.hanzo.ai`**; every programmatic call goes to **`api.hanzo.ai/v1/platform`**, the one Hanzo API host. You register an application, point it at a container image or Git repository, attach a domain, and the platform builds, deploys, and operates it on Hanzo's Kubernetes clusters — with deployment history, rolling updates, and drift detection.
 
 | | |
 |---|---|
-| **Control plane** | `https://platform.hanzo.ai` |
-| **Canonical API** | `https://platform.hanzo.ai/v1` |
+| **Studio** (browser UI) | `https://platform.hanzo.ai` |
+| **API** | `https://api.hanzo.ai/v1/platform` |
+| **Build** | `POST https://api.hanzo.ai/v1/runner` |
 | **Auth** | [Hanzo IAM](/docs/services/iam) (interactive) · API key / service token (machine) |
 | **Secrets** | [Hanzo KMS](/docs/services/kms) via `KMSSecret` CRDs — zero plaintext |
 | **Ingress** | Hanzo Ingress + cert-manager (automatic Let's Encrypt TLS) |
@@ -20,8 +21,8 @@ Hanzo PaaS is the deployment and operations control plane for the Hanzo platform
 ## How it fits together
 
 ```
-push image / git  ──▶  platform.hanzo.ai  ──▶  operator  ──▶  Kubernetes
-                        (declare + drive)       (reconcile)    (run + serve)
+push image / git  ──▶  api.hanzo.ai/v1  ──▶  operator  ──▶  Kubernetes
+                     (declare + drive)      (reconcile)    (run + serve)
                               ▲                                     │
                               └──────────  observe (drift)  ────────┘
 ```
@@ -34,7 +35,7 @@ Secrets are never embedded in manifests — workloads read them from [Hanzo KMS]
 
 ## Get started
 
-The full control-plane reference — the project/environment/application model, the `/v1` container redeploy, the build pipeline, clusters, domains, and the observe/drift board — lives in the Platform docs:
+The full control-plane reference — the project/application model, `/v1/platform` deploys, `/v1/runner` builds, clusters, and domains — lives in the Platform docs:
 
 <Cards>
   <Card title="Platform Overview" href="/docs/services/platform">

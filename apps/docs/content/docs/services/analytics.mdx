@@ -50,158 +50,180 @@ The Analytics dashboard is available at `console.hanzo.ai`:
 
 ## Metrics API
 
-Query usage and cost metrics programmatically:
+Every call is on the one Hanzo API host, `https://api.hanzo.ai/v1/analytics`, with your normal bearer.
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/v1/analytics/overview?range=` | One roll-up per lens for the range |
+| `GET` | `/v1/analytics/timeseries?range=` | Bucketed series (requests, tokens, spend) |
+| `GET` | `/v1/analytics/top?range=` | Leaderboards — top models, providers, pages |
+| `GET` | `/v1/analytics/health` | Datastore + per-lens availability |
+| `POST` | `/v1/analytics` | Capture one event |
+| `POST` | `/v1/analytics/batch` | Capture a batch of events |
+
+`range` accepts `24h`, `7d`, `30d`, … The org is never passed by hand: the gateway re-mints `X-Org-Id` from your validated token, and every response echoes the resolved `scope`.
+
+### Overview
 
 ```bash
-# Get usage summary for the last 7 days
-curl https://cloud.hanzo.ai/v1/analytics/usage \
-  -H "Authorization: Bearer $HANZO_TOKEN" \
-  -d '{
-    "start_date": "2025-06-01",
-    "end_date": "2025-06-07",
-    "group_by": ["model", "project"],
-    "metrics": ["requests", "tokens", "cost"]
-  }'
+curl -fsS "https://api.hanzo.ai/v1/analytics/overview?range=7d" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
 ```
-
-Response:
 
 ```json
 {
-  "data": [
-    {
-      "model": "claude-sonnet-4-5-20250929",
-      "project": "platform",
-      "requests": 142500,
-      "input_tokens": 285000000,
-      "output_tokens": 71250000,
-      "cost": 854.25
-    }
-  ],
-  "summary": {
-    "total_requests": 1200000,
-    "total_tokens": 847000000,
-    "total_cost": 2341.50
+  "range": "7d",
+  "start": "2026-07-18T22:21:04Z",
+  "end": "2026-07-25T22:21:04Z",
+  "interval": "day",
+  "scope": { "org": "hanzo" },
+  "llm": {
+    "available": true,
+    "requests": 8661,
+    "tokens": 130586947,
+    "promptTokens": 126558231,
+    "completionTokens": 4028716,
+    "spendCents": 206418,
+    "models": 115,
+    "providers": 7,
+    "errors": 212,
+    "errorRate": 0.024,
+    "source": "hanzo.cloud_usage"
+  },
+  "web": {
+    "available": true,
+    "pageviews": 4164,
+    "visitors": 1159,
+    "sessions": 875,
+    "source": "hanzo.events"
   }
 }
 ```
 
-## Cost Tracking
+Each lens carries `available` and the `source` table it read, so a zero is never ambiguous — you can tell "nothing happened" from "that lens is not wired up".
 
-### Budgets
-
-Set per-project spending limits with automatic enforcement:
+### Time series
 
 ```bash
-# Set a monthly budget
-curl -X POST https://cloud.hanzo.ai/v1/analytics/budgets \
-  -H "Authorization: Bearer $HANZO_TOKEN" \
-  -d '{
-    "project_id": "proj_abc123",
-    "monthly_limit": 5000.00,
-    "alert_thresholds": [0.50, 0.75, 0.90],
-    "action_on_exceed": "soft_limit"
-  }'
+curl -fsS "https://api.hanzo.ai/v1/analytics/timeseries?range=7d" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
 ```
 
-### Cost Breakdown
+```json
+{
+  "range": "7d",
+  "interval": "day",
+  "scope": { "org": "hanzo" },
+  "series": [
+    { "t": "2026-07-18T00:00:00Z", "requests": 399, "tokens": 57306163, "spendCents": 88746 },
+    { "t": "2026-07-19T00:00:00Z", "requests": 5165, "tokens": 11717502, "spendCents": 23348 }
+  ]
+}
+```
 
-| Dimension | Description |
-|-----------|-------------|
-| By model | Cost per LLM model (input/output tokens) |
-| By project | Cost per project/team |
-| By API key | Cost per individual API key |
-| By endpoint | Cost per service endpoint |
-| By time | Hourly, daily, weekly, monthly aggregation |
+### Leaderboards
+
+```bash
+curl -fsS "https://api.hanzo.ai/v1/analytics/top?range=7d" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+```json
+{
+  "range": "7d",
+  "scope": { "org": "hanzo" },
+  "models": {
+    "available": true,
+    "items": [
+      { "model": "zen5", "provider": "hanzo", "requests": 483, "tokens": 64757117, "spendCents": 98732, "pct": 48.2 }
+    ]
+  }
+}
+```
+
+### Health
+
+```bash
+curl -fsS https://api.hanzo.ai/v1/analytics/health
+```
+
+```json
+{
+  "datastore": true,
+  "lenses": {
+    "events": { "available": true, "table": "hanzo.events" },
+    "llm": { "available": true, "table": "hanzo.cloud_usage" }
+  },
+  "service": "analytics",
+  "status": "ok",
+  "warehouse": "hanzo"
+}
+```
+
+## Cost and budgets
+
+Spend is metered into the same balance every product draws from, so cost lives with billing rather than in a second budgeting system:
+
+- **Balance and itemized usage** — `GET /v1/billing/balance`, `GET /v1/billing/usage`
+- **Spend alerts** — `GET` · `POST /v1/billing/spend-alerts`
+- **Roll-ups by model, provider, and day** — the analytics endpoints above
+
+See [Credits & Billing](/docs/billing).
+
+### Cost breakdown dimensions
+
+| Dimension | Where |
+|-----------|-------|
+| By model | `/v1/analytics/top` → `models.items[].spendCents` |
+| By provider | `/v1/analytics/top` → `models.items[].provider` |
+| By time | `/v1/analytics/timeseries` → `series[].spendCents` |
+| By transaction | `/v1/billing/usage` → `usage[].metadata` |
 
 ## Operational Health
 
-Monitor service health with real-time metrics:
+Request rate, error rate, and latency for a running service come from the observability lens, not this one — see [Hanzo o11y](/docs/services/o11y):
+
+```bash
+curl -fsS "https://api.hanzo.ai/v1/o11y/metrics?product=cloud" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
 
 | Metric | Description | Alert Threshold |
 |--------|-------------|-----------------|
 | `error_rate` | Percentage of 4xx/5xx responses | > 1% |
 | `latency_p50` | Median response time | > 200ms |
 | `latency_p99` | 99th percentile response time | > 2000ms |
-| `saturation` | Queue depth / capacity ratio | > 0.8 |
 | `availability` | Successful requests / total requests | < 99.9% |
 
-## Alerting
-
-Configure alerts that trigger on metric thresholds:
-
-```bash
-# Create an alert rule
-curl -X POST https://cloud.hanzo.ai/v1/analytics/alerts \
-  -H "Authorization: Bearer $HANZO_TOKEN" \
-  -d '{
-    "name": "High error rate",
-    "metric": "error_rate",
-    "condition": "gt",
-    "threshold": 0.01,
-    "window": "5m",
-    "channels": [
-      {"type": "slack", "webhook": "https://hooks.slack.com/..."},
-      {"type": "pagerduty", "routing_key": "..."}
-    ]
-  }'
-```
-
-## Data Export
-
-Export analytics data for external BI tools:
-
-```bash
-# Export as CSV
-curl "https://cloud.hanzo.ai/v1/analytics/export?format=csv&range=30d" \
-  -H "Authorization: Bearer $HANZO_TOKEN" \
-  -o analytics-export.csv
-
-# Stream to webhook (real-time)
-curl -X POST https://cloud.hanzo.ai/v1/analytics/streams \
-  -H "Authorization: Bearer $HANZO_TOKEN" \
-  -d '{
-    "destination": "https://your-bi-tool.com/ingest",
-    "events": ["request.completed", "cost.updated"],
-    "format": "json"
-  }'
-```
-
 ## SDK Integration
+
+The analytics endpoints are plain REST on `api.hanzo.ai`, so any HTTP client works — no analytics-specific SDK to install.
 
 ### Python
 
 ```python
-from hanzoai import Hanzo
+import httpx, os
 
-client = Hanzo(api_key="your-key")
-
-# Get usage for current billing period
-usage = client.analytics.usage(
-    group_by=["model"],
-    metrics=["requests", "tokens", "cost"]
+r = httpx.get(
+    "https://api.hanzo.ai/v1/analytics/top",
+    params={"range": "7d"},
+    headers={"Authorization": f"Bearer {os.environ['HANZO_API_KEY']}"},
 )
-
-for row in usage.data:
-    print(f"{row.model}: {row.requests} requests, ${row.cost:.2f}")
+for row in r.json()["models"]["items"]:
+    print(f"{row['model']}: {row['requests']} requests, ${row['spendCents'] / 100:.2f}")
 ```
 
 ### TypeScript
 
 ```typescript
-import Hanzo from '@hanzo/ai'
-
-const client = new Hanzo({ apiKey: 'your-key' })
-
-const usage = await client.analytics.usage({
-  groupBy: ['model', 'project'],
-  metrics: ['requests', 'tokens', 'cost'],
-  range: '7d'
+const res = await fetch('https://api.hanzo.ai/v1/analytics/top?range=7d', {
+  headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` },
 })
+const { models } = await res.json()
 
-usage.data.forEach(row => {
-  console.log(`${row.model}: ${row.requests} requests, $${row.cost}`)
-})
+for (const row of models.items) {
+  console.log(`${row.model}: ${row.requests} requests, $${(row.spendCents / 100).toFixed(2)}`)
+}
 ```
 
 ## Related Services

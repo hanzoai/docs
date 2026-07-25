@@ -57,20 +57,7 @@ Widget keys are designed for client-side use. They have restricted scopes -- typ
    - **Rate limit** -- requests per minute cap
 7. Copy the key immediately -- it will not be shown again
 
-### Via the API
-
-```bash
-curl -X POST https://llm.hanzo.ai/key/generate \
-  -H "Authorization: Bearer hk-your-admin-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "key_alias": "ci-pipeline",
-    "max_budget": 100.0,
-    "budget_duration": "monthly",
-    "tpm_limit": 100000,
-    "rpm_limit": 600
-  }'
-```
+Key issuance, budgets, and revocation are console operations — there is no public key-minting endpoint, by design: a credential that can mint credentials is the one thing you never want reachable over HTTP with a bearer token.
 
 ## Using Keys
 
@@ -80,14 +67,17 @@ All Hanzo APIs accept keys via the `Authorization` header with the `Bearer` sche
 Authorization: Bearer hk-proj-abc123...
 ```
 
-This works uniformly across every endpoint:
+Every service answers on the one host, `api.hanzo.ai`, under `/v1/<service>` — the same key works across all of them:
 
-| Service | Base URL | Example |
-|---------|----------|---------|
-| API Gateway | `api.hanzo.ai` | `api.hanzo.ai/v1/models` |
-| AI API | `llm.hanzo.ai` | `llm.hanzo.ai/v1/chat/completions` |
+| Service | Path | Example |
+|---------|------|---------|
+| AI | `/v1/chat/completions`, `/v1/models`, `/v1/embeddings` | `api.hanzo.ai/v1/chat/completions` |
+| Search | `/v1/search` | `api.hanzo.ai/v1/search` |
+| Secrets | `/v1/kms` | `api.hanzo.ai/v1/kms/orgs/{org}/secrets` |
+| Deploys | `/v1/platform` | `api.hanzo.ai/v1/platform/projects` |
+| Analytics | `/v1/analytics` | `api.hanzo.ai/v1/analytics/overview` |
+| Observability | `/v1/o11y` | `api.hanzo.ai/v1/o11y/status?product=cloud` |
 | Tasks | `tasks-api.hanzo.ai` | gRPC with metadata header |
-| Search | `search.hanzo.ai` | `search.hanzo.ai/v1/search` |
 
 ### SDK Configuration
 
@@ -96,13 +86,13 @@ All official SDKs accept the API key as a constructor parameter:
 ```python
 # Python
 from openai import OpenAI
-client = OpenAI(api_key="hk-your-key", base_url="https://llm.hanzo.ai/v1")
+client = OpenAI(api_key="hk-your-key", base_url="https://api.hanzo.ai/v1")
 ```
 
 ```typescript
 // TypeScript
 import OpenAI from 'openai'
-const client = new OpenAI({ apiKey: 'hk-your-key', baseURL: 'https://llm.hanzo.ai/v1' })
+const client = new OpenAI({ apiKey: 'hk-your-key', baseURL: 'https://api.hanzo.ai/v1' })
 ```
 
 ```go
@@ -123,42 +113,53 @@ These keys operate across all projects within an organization. They are used for
 
 ## Key Information and Usage
 
-Check a key's budget and usage:
+Spend and usage for the calling credential come from the billing and analytics APIs — same host, same key:
 
 ```bash
-curl https://llm.hanzo.ai/key/info \
+# Current balance
+curl https://api.hanzo.ai/v1/billing/balance \
+  -H "Authorization: Bearer hk-your-key"
+
+# Itemized metered usage
+curl https://api.hanzo.ai/v1/billing/usage \
   -H "Authorization: Bearer hk-your-key"
 ```
 
-Response:
+```json
+{ "balance": 0, "holds": 0, "available": 0 }
+```
 
 ```json
 {
-  "key_alias": "prod-backend",
-  "max_budget": 500.0,
-  "spend": 127.43,
-  "budget_duration": "monthly",
-  "tpm_limit": 500000,
-  "rpm_limit": 3000,
-  "expires": "2026-12-31T00:00:00Z"
+  "count": 2000,
+  "usage": [
+    {
+      "amount": 24,
+      "createdAt": "2026-07-25T21:59:35Z",
+      "metadata": { "model": "zen-image" },
+      "transactionId": "use_daff3c10f561635114c7a78e8d0eea5d"
+    }
+  ]
 }
 ```
+
+For rolled-up request/token/spend counts across a range, use `GET /v1/analytics/overview?range=30d` — see [Analytics](/docs/services/analytics).
 
 ## Rotation Best Practices
 
 1. **Rotate regularly** -- Set key expiration at creation time. 90 days is a reasonable default for production keys.
-2. **Use KMS for production** -- Store keys in [Hanzo KMS](https://kms.hanzo.ai) and sync them to your runtime environment via KMSSecret CRDs. Never hardcode keys in source or commit them to git.
+2. **Use KMS for production** -- Store keys in [Hanzo KMS](/docs/services/kms) and sync them to your runtime environment via KMSSecret CRDs. Never hardcode keys in source or commit them to git.
 3. **Create before you revoke** -- Generate the replacement key, deploy it, verify it works, then revoke the old one. Zero-downtime rotation.
 4. **One key per service** -- Give each service or environment its own key. This limits blast radius and makes audit logs useful.
 5. **Set budgets** -- Every production key should have a monthly budget. This prevents runaway costs from bugs or abuse.
-6. **Monitor usage** -- Check `key/info` or the console dashboard regularly. Unusual spend patterns may indicate a leak.
+6. **Monitor usage** -- Check `/v1/billing/usage` or the console dashboard regularly. Unusual spend patterns may indicate a leak.
 
 ### KMS Integration
 
 For production deployments, use Hanzo KMS to manage API keys as secrets:
 
 ```yaml
-# KMSSecret CRD -- syncs secret from kms.hanzo.ai to K8s
+# KMSSecret CRD -- syncs a secret from Hanzo KMS into K8s
 apiVersion: secrets.hanzo.ai/v1alpha1
 kind: KMSSecret
 metadata:
@@ -175,16 +176,7 @@ spec:
 
 ## Revoking Keys
 
-Revoke a key immediately from the console or via the API:
-
-```bash
-curl -X POST https://llm.hanzo.ai/key/delete \
-  -H "Authorization: Bearer hk-your-admin-key" \
-  -H "Content-Type: application/json" \
-  -d '{"keys": ["hk-proj-abc123..."]}'
-```
-
-Revocation is immediate. Any in-flight request using the key will fail with `401 Unauthorized`.
+Revoke a key from the console: **Project → API Keys → Revoke**. Revocation is immediate — any in-flight request using the key fails with `401 Unauthorized`.
 
 ## Security Rules
 

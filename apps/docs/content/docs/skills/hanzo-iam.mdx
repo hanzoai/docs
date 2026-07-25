@@ -57,7 +57,7 @@ For **client-side OAuth flows** (login UI, token extraction, redirect handling),
 
 | Item | Value |
 |------|-------|
-| Admin UI | `https://iam.hanzo.ai` (internal) |
+| Admin UI | `https://hanzo.id` (internal) |
 | Login UI | `https://hanzo.id` (separate repo: hanzoai/id) |
 | API port | 8000 |
 | LDAP port | 389 (LDAPS: 636) |
@@ -162,11 +162,11 @@ cp conf/app.dev.conf conf/app.conf
 
 ```bash
 # Get all users in an organization
-curl -s "https://iam.hanzo.ai/v1/iam/get-users?owner=hanzo" \
+curl -s "https://api.hanzo.ai/v1/iam/get-users?owner=hanzo" \
   -H "Authorization: Bearer ${ADMIN_TOKEN}"
 
 # Create a new application
-curl -X POST "https://iam.hanzo.ai/v1/iam/add-application" \
+curl -X POST "https://api.hanzo.ai/v1/iam/add-application" \
   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{
@@ -181,7 +181,7 @@ curl -X POST "https://iam.hanzo.ai/v1/iam/add-application" \
   }'
 
 # Update user balance (billing integration)
-curl -X POST "https://iam.hanzo.ai/api/update-user" \
+curl -X POST "https://api.hanzo.ai/v1/iam/update-user" \
   -H "Authorization: Bearer ${ADMIN_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{
@@ -378,7 +378,7 @@ POSTGRES_PASSWORD=<generate-secure-password>
 POSTGRES_DB=iam
 
 # IAM server
-IAM_ORIGIN=https://iam.hanzo.ai
+IAM_ORIGIN=https://hanzo.id
 ENCRYPTION_KEY=<32-byte-hex-key>
 ENABLE_MULTI_TENANT=true
 ALLOWED_ORIGINS=hanzo.id,zoo.id,lux.id,pars.id,iam.hanzo.ai

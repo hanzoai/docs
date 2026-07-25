@@ -9,9 +9,10 @@ description: Full-stack observability platform — Prometheus metrics, Grafana d
 
 Hanzo O11y is the unified observability stack for the entire Hanzo platform. It collects metrics, logs, and distributed traces from every service, aggregates them into a single pane of glass, and drives alerting and SLO enforcement. Built on Prometheus, Grafana, and OpenTelemetry, O11y gives operators and developers real-time visibility into infrastructure health, application performance, and service mesh telemetry.
 
-**Endpoint:** `o11y.hanzo.ai`
-**Prometheus:** `o11y.hanzo.ai:9090`
-**Gateway:** `api.hanzo.ai/v1/o11y/*`
+**API:** `https://api.hanzo.ai/v1/o11y` — one host, one bearer, like every other Hanzo service.
+**Dashboards:** `o11y.hanzo.ai`, which 301-redirects to `console.hanzo.ai/o11y`.
+
+There is no separately-addressable Prometheus, Loki, or OTLP port on the public internet: `o11y.hanzo.ai:9090` and `:4317` are closed. Every read and every write goes through `/v1/o11y`.
 
 ## Features
 
@@ -86,37 +87,63 @@ Hanzo O11y is the unified observability stack for the entire Hanzo platform. It 
 ### Send Metrics via OTLP
 
 ```bash
-# Push metrics using the OpenTelemetry HTTP endpoint
-curl -X POST https://o11y.hanzo.ai/v1/metrics \
+# Ingest telemetry
+curl -X POST https://api.hanzo.ai/v1/o11y/ingestion \
   -H "Authorization: Bearer $HANZO_TOKEN" \
-  -H "Content-Type: application/x-protobuf" \
-  --data-binary @metrics.pb
+  -H "Content-Type: application/json" \
+  --data-binary @batch.json
+# → {"accepted":1,"dropped":0}
+```
 
-# Or query Prometheus directly
-curl "https://o11y.hanzo.ai:9090/api/v1/query?query=up" \
+### Read a service's health
+
+`product` names the service you are asking about, and is required:
+
+```bash
+curl -fsS "https://api.hanzo.ai/v1/o11y/status?product=cloud" \
   -H "Authorization: Bearer $HANZO_TOKEN"
 ```
 
-### Query Logs
-
-```bash
-curl "https://o11y.hanzo.ai/loki/api/v1/query_range" \
-  -H "Authorization: Bearer $HANZO_TOKEN" \
-  --data-urlencode 'query={service="gateway"} |= "error"' \
-  --data-urlencode 'start=1708560000' \
-  --data-urlencode 'end=1708646400' \
-  --data-urlencode 'limit=100'
+```json
+{ "product": "cloud", "up": true, "latencyMs": 12, "deployments": [], "checkedAt": "2026-07-25T21:56:23Z" }
 ```
 
-### Instrument Your Application
+### Query metrics, logs, and traces
 
 ```bash
-# Set environment variables for any OTLP-compatible application
-export OTEL_EXPORTER_OTLP_ENDPOINT=https://o11y.hanzo.ai:4317
-export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer $HANZO_TOKEN"
-export OTEL_SERVICE_NAME=my-service
-export OTEL_RESOURCE_ATTRIBUTES="deployment.environment=production"
+# Request/error/latency series for one product
+curl -fsS "https://api.hanzo.ai/v1/o11y/metrics?product=cloud" \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+
+# Recent log lines
+curl -fsS "https://api.hanzo.ai/v1/o11y/logs?product=cloud&limit=100" \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+
+# Traces
+curl -fsS "https://api.hanzo.ai/v1/o11y/traces" \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+
+# Raw PromQL
+curl -fsS "https://api.hanzo.ai/v1/o11y/query?query=up" \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+curl -fsS "https://api.hanzo.ai/v1/o11y/query_range?query=sum(up)&start=1&end=2&step=15" \
+  -H "Authorization: Bearer $HANZO_TOKEN"
 ```
+
+### Endpoints
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/v1/o11y/health` | Liveness |
+| `GET` | `/v1/o11y/status?product=` | Up/down, latency, live deployments |
+| `GET` | `/v1/o11y/metrics?product=` | Request, error, and latency series |
+| `GET` | `/v1/o11y/logs?product=` | Log lines with a cursor |
+| `GET` | `/v1/o11y/traces` | Trace list |
+| `GET` | `/v1/o11y/query` · `/v1/o11y/query_range` | PromQL instant / range |
+| `POST` | `/v1/o11y/ingestion` | Telemetry ingest |
+| `GET` | `/v1/o11y/sessions` · `/v1/o11y/annotation-queues` | Session replay, review queues |
+
+`/v1/o11y/vm/*` is fleet-wide platform infrastructure health and is restricted to platform administrators — a normal org bearer gets `403`.
 
 ## Metrics
 
@@ -187,8 +214,8 @@ inference_requests.labels(model="qwen3-4b", status="ok").inc()
 O11y aggregates logs from all Hanzo services via Loki. Logs are structured as JSON and enriched with K8s metadata (namespace, pod, container, node) automatically.
 
 ```bash
-# Push logs directly via the Loki API
-curl -X POST https://o11y.hanzo.ai/loki/api/v1/push \
+# Push logs through the one o11y door
+curl -X POST https://api.hanzo.ai/v1/o11y/ingestion \
   -H "Authorization: Bearer $HANZO_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -233,12 +260,8 @@ sum by (service) (rate({namespace="hanzo"} [5m]))
 O11y collects distributed traces via the OpenTelemetry Collector and stores them in Tempo. Traces automatically propagate across service boundaries using W3C Trace Context headers.
 
 ```bash
-# Query traces by service
-curl "https://o11y.hanzo.ai/tempo/api/search?service.name=gateway&limit=20" \
-  -H "Authorization: Bearer $HANZO_TOKEN"
-
-# Get a specific trace by ID
-curl "https://o11y.hanzo.ai/tempo/api/traces/abc123def456" \
+# Query traces
+curl -fsS "https://api.hanzo.ai/v1/o11y/traces" \
   -H "Authorization: Bearer $HANZO_TOKEN"
 ```
 
@@ -252,7 +275,7 @@ from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExport
 
 # Configure exporter
 exporter = OTLPSpanExporter(
-    endpoint="https://o11y.hanzo.ai:4317",
+    endpoint="https://api.hanzo.ai/v1/o11y/ingestion",
     headers={"Authorization": f"Bearer {HANZO_TOKEN}"}
 )
 
@@ -356,54 +379,35 @@ O11y ships with curated Grafana dashboards for every layer of the stack:
 
 ### Custom Dashboards
 
-Create dashboards via the Grafana API or UI at `o11y.hanzo.ai`:
+Build dashboards in the console at [console.hanzo.ai/o11y](https://console.hanzo.ai/o11y) (`o11y.hanzo.ai` redirects there). A dashboard is a saved set of `/v1/o11y` queries — the panel definition below is the shape the console stores:
 
-```bash
-# Import a dashboard from JSON
-curl -X POST https://o11y.hanzo.ai/api/dashboards/db \
-  -H "Authorization: Bearer $GRAFANA_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "dashboard": {
-      "title": "My Service Dashboard",
-      "panels": [
-        {
-          "title": "Request Rate",
-          "type": "timeseries",
-          "targets": [
-            {"expr": "rate(http_requests_total{service=\"my-service\"}[5m])"}
-          ]
-        }
-      ]
-    },
-    "overwrite": false
-  }'
+```json
+{
+  "dashboard": {
+    "title": "My Service Dashboard",
+    "panels": [
+      {
+        "title": "Request Rate",
+        "type": "timeseries",
+        "targets": [
+          { "expr": "rate(http_requests_total{service=\"my-service\"}[5m])" }
+        ]
+      }
+    ]
+  }
+}
 ```
 
 ## SLO Management
 
 Define Service Level Objectives and track error budgets:
 
+SLOs are defined in the console at [console.hanzo.ai/o11y](https://console.hanzo.ai/o11y). An SLO is a saved SLI query plus a target and a window; the live alert state it drives is readable over the API:
+
 ```bash
-# Create an SLO
-curl -X POST https://api.hanzo.ai/v1/o11y/slos \
-  -H "Authorization: Bearer $HANZO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Gateway Availability",
-    "description": "99.9% of requests return non-5xx in a 30-day window",
-    "sli": {
-      "type": "availability",
-      "good": "http_requests_total{service=\"gateway\",status!~\"5..\"}",
-      "total": "http_requests_total{service=\"gateway\"}"
-    },
-    "target": 0.999,
-    "window": "30d",
-    "alerts": {
-      "burn_rate_1h": 14.4,
-      "burn_rate_6h": 6.0
-    }
-  }'
+curl -fsS https://api.hanzo.ai/v1/o11y/alerts \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+# → {"status":"success","data":[]}
 ```
 
 | SLO | Target | SLI | Error Budget (30d) |
@@ -450,7 +454,7 @@ Sidecar proxies automatically emit RED metrics (Rate, Errors, Duration) for all 
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP collector endpoint | `https://o11y.hanzo.ai:4317` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP ingest endpoint | `https://api.hanzo.ai/v1/o11y/ingestion` |
 | `OTEL_EXPORTER_OTLP_HEADERS` | Auth headers for OTLP | - |
 | `OTEL_SERVICE_NAME` | Service name for telemetry | - |
 | `OTEL_RESOURCE_ATTRIBUTES` | Additional resource attributes | - |

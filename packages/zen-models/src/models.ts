@@ -1004,7 +1004,7 @@ export const zenNext: ZenModel = {
 // ---------------------------------------------------------------------------
 
 export const zenCoder: ZenModel = {
-  id: 'zen-coder',
+  id: 'zen5-coder',
   name: 'Zen Coder',
   fullName: 'Zen Coder — Code Generation',
   description: 'Baseline code model for generation and completions.',
@@ -1016,13 +1016,13 @@ export const zenCoder: ZenModel = {
   pricing: null,
   features: ['131K context', 'Multi-language'],
   status: 'available',
-  huggingface: 'https://huggingface.co/zenlm/zen-coder',
+  huggingface: 'https://huggingface.co/zenlm/zen5-coder',
   github: null,
   aliases: [],
 }
 
 export const zenCoderFlash: ZenModel = {
-  id: 'zen-coder-flash',
+  id: 'zen5-coder-flash',
   name: 'Zen Coder Flash',
   fullName: 'Zen Coder Flash — Fast Code',
   description: 'Fast code model for inline completions and suggestions.',
@@ -1034,7 +1034,7 @@ export const zenCoderFlash: ZenModel = {
   pricing: null,
   features: ['32K context', 'Low latency'],
   status: 'available',
-  huggingface: 'https://huggingface.co/zenlm/zen-coder-flash',
+  huggingface: 'https://huggingface.co/zenlm/zen5-coder-flash',
   github: null,
   aliases: [],
 }
@@ -1080,7 +1080,7 @@ export const zenVl: ZenModel = {
 }
 
 export const zenOmni: ZenModel = {
-  id: 'zen-omni',
+  id: 'zen5',
   name: 'Zen Omni',
   fullName: 'Zen Omni — Multimodal',
   description: 'Hypermodal model combining text, vision, audio, and code.',
@@ -1092,7 +1092,7 @@ export const zenOmni: ZenModel = {
   pricing: null,
   features: ['131K context', 'Multimodal'],
   status: 'available',
-  huggingface: 'https://huggingface.co/zenlm/zen-omni',
+  huggingface: 'https://huggingface.co/zenlm/zen5',
   github: null,
   aliases: [],
 }

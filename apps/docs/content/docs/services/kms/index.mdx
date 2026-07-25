@@ -11,7 +11,7 @@ Hanzo KMS is the key management service for the Hanzo platform. It stores secret
 
 | | |
 |---|---|
-| **API** | `https://kms.hanzo.ai` |
+| **API** | `https://api.hanzo.ai` — one host for every Hanzo service |
 | **API prefix** | `/v1/kms` |
 | **Auth** | Machine-identity login → bearer JWT (verified against [Hanzo IAM](/docs/services/iam)) |
 | **K8s sync** | `KMSSecret` CRD via the kms-operator |
@@ -27,7 +27,7 @@ KMS uses **machine identities**: a non-human `clientId` + `clientSecret` minted 
 
 ```bash
 # Log in (clientId/clientSecret come from a K8s Secret or your secret store — never inline them)
-ACCESS_TOKEN=$(curl -sS -X POST https://kms.hanzo.ai/v1/kms/auth/login \
+ACCESS_TOKEN=$(curl -sS -X POST https://api.hanzo.ai/v1/kms/auth/login \
   -H 'Content-Type: application/json' \
   -d "{\"clientId\":\"$KMS_CLIENT_ID\",\"clientSecret\":\"$KMS_CLIENT_SECRET\"}" \
   | jq -r .accessToken)
@@ -47,7 +47,7 @@ A secret is addressed by four coordinates:
 
 ```
 org   /  path        /  name              ? env
-hanzo /  providers   /  OPENAI_API_KEY    ? env=production
+hanzo /  providers   /  OPENAI_API_KEY    ? env=prod
 ```
 
 - **org** — the organization slug; must match the token's `owner` claim.
@@ -56,24 +56,29 @@ hanzo /  providers   /  OPENAI_API_KEY    ? env=production
 - **env** — a query parameter; defaults to `default` when omitted.
 
 <Callout type="info">
-KMS reads are **exact-name** — there is no "list all secrets in a folder" endpoint. Enumerate the keys your workload needs (the `KMSSecret` CRD does exactly this).
+Reads are **exact-name**: `GET …/secrets/{path}/{name}?env=` returns one value. `GET …/secrets?env=` lists a namespace's secret **metadata** (name, path, env, scheme) — never values. Enumerate the keys your workload needs; the `KMSSecret` CRD does exactly this.
 </Callout>
 
 ## Reading & writing secrets
 
-All routes are under `https://kms.hanzo.ai/v1/kms/orgs/{org}/secrets`.
+All routes are under `https://api.hanzo.ai/v1/kms/orgs/{org}/secrets`.
 
 | Method | Path | Purpose |
 |--------|------|---------|
+| `GET` | `/v1/kms/orgs/{org}/secrets?env=` | List secret metadata in the namespace (no values) |
 | `GET` | `/v1/kms/orgs/{org}/secrets/{path}/{name}?env=` | Read a secret value + version |
 | `POST` | `/v1/kms/orgs/{org}/secrets` | Create/upsert (`{path,name,env,value}`) → `{ok,version}` |
 | `PATCH` | `/v1/kms/orgs/{org}/secrets/{path}/{name}` | Update (optimistic concurrency — see below) |
 | `DELETE` | `/v1/kms/orgs/{org}/secrets/{path}/{name}?env=` | Delete |
 
+<Callout type="warn">
+`env` is **required** on every read and write. Omitting it silently buckets the secret into the `default` environment, where the workload looking for `env=prod` will never find it. Always pass it explicitly.
+</Callout>
+
 ### Read
 
 ```bash
-curl -sS "https://kms.hanzo.ai/v1/kms/orgs/hanzo/secrets/providers/OPENAI_API_KEY?env=production" \
+curl -sS "https://api.hanzo.ai/v1/kms/orgs/hanzo/secrets/providers/OPENAI_API_KEY?env=prod" \
   -H "Authorization: Bearer $ACCESS_TOKEN"
 ```
 
@@ -81,15 +86,15 @@ curl -sS "https://kms.hanzo.ai/v1/kms/orgs/hanzo/secrets/providers/OPENAI_API_KE
 { "secret": { "value": "<secret value>" }, "version": 3 }
 ```
 
-A root-path secret omits the folder segment: `…/secrets/STRIPE_SECRET_KEY?env=production`.
+A root-path secret omits the folder segment: `…/secrets/STRIPE_SECRET_KEY?env=prod`.
 
 ### Create
 
 ```bash
-curl -sS -X POST "https://kms.hanzo.ai/v1/kms/orgs/hanzo/secrets" \
+curl -sS -X POST "https://api.hanzo.ai/v1/kms/orgs/hanzo/secrets" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{ "path": "/providers", "name": "OPENAI_API_KEY", "env": "production", "value": "<new value>" }'
+  -d '{ "path": "/providers", "name": "OPENAI_API_KEY", "env": "prod", "value": "<new value>" }'
 ```
 
 ```json
@@ -101,7 +106,7 @@ curl -sS -X POST "https://kms.hanzo.ai/v1/kms/orgs/hanzo/secrets" \
 Updates require the current version, supplied either as an `If-Match` header or `version` in the body. A missing precondition returns `428 Precondition Required`; a stale version returns `409 Conflict` with the current version.
 
 ```bash
-curl -sS -X PATCH "https://kms.hanzo.ai/v1/kms/orgs/hanzo/secrets/providers/OPENAI_API_KEY?env=production" \
+curl -sS -X PATCH "https://api.hanzo.ai/v1/kms/orgs/hanzo/secrets/providers/OPENAI_API_KEY?env=prod" \
   -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "If-Match: 3" \
   -H "Content-Type: application/json" \
@@ -141,7 +146,7 @@ spec:
         secretNamespace: hanzo
       secretsScope:
         projectSlug: hanzo               # -> {org}
-        envSlug: production              # -> ?env=production
+        envSlug: production              # -> ?env=prod
         secretsPath: /providers          # -> {path}
         keys:                            # enumerated; no list endpoint
           - OPENAI_API_KEY

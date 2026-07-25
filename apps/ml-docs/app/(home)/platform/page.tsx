@@ -259,7 +259,7 @@ export default function PlatformPage() {
           <div className="flex flex-col items-center gap-0.5 text-fd-muted-foreground/40">
             <span className="text-[10px] font-mono">AI API</span>
             <span className="text-xs">|</span>
-            <span className="text-[10px] font-mono">llm.hanzo.ai</span>
+            <span className="text-[10px] font-mono">api.hanzo.ai/v1</span>
           </div>
         </div>
       </section>
