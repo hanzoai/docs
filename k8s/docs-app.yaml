@@ -27,8 +27,13 @@ spec:
   partOf: platform
   replicas: 2
   image:
-    repository: ghcr.io/hanzo-docs/docs
-    tag: 0ab3ce4821309aeab98865f726bc071c7170305e
+    # ONE registry for docs: ghcr.io/hanzoai/docs (public). This is where the
+    # platform-native fabric (POST /v1/runner → buildkit Job, see root Dockerfile)
+    # pushes AND where deploy-docs.yml pushes — CR pull source == CI push target,
+    # per the "Hanzo → ghcr.io/hanzoai/*" registry rule. NEVER ghcr.io/hanzo-docs/*
+    # (a private package the pods' ghcr-secret can't pull → ErrImagePull).
+    repository: ghcr.io/hanzoai/docs
+    tag: sha-40e315ec0
     pullPolicy: IfNotPresent
   imagePullSecrets:
     - name: ghcr-secret
