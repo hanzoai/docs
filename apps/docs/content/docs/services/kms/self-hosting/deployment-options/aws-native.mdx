@@ -206,12 +206,12 @@ For production deployments with many users or secrets, increase these values acc
   ```bash
   # Create the execution role
   aws iam create-role \
-    --role-name Hanzo KMSECSExecutionRole \
+    --role-name HanzoKMSECSExecutionRole \
     --assume-role-policy-document file://ecs-task-execution-trust-policy.json
 
   # Attach the managed policy
   aws iam attach-role-policy \
-    --role-name Hanzo KMSECSExecutionRole \
+    --role-name HanzoKMSECSExecutionRole \
     --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
   ```
 
@@ -262,13 +262,13 @@ For production deployments with many users or secrets, increase these values acc
   ```bash
   # Create the task role
   aws iam create-role \
-    --role-name Hanzo KMSTaskRole \
+    --role-name HanzoKMSTaskRole \
     --assume-role-policy-document file://ecs-task-execution-trust-policy.json
 
   # Create and attach the custom policy
   aws iam put-role-policy \
-    --role-name Hanzo KMSTaskRole \
-    --policy-name Hanzo KMSSecretsAccess \
+    --role-name HanzoKMSTaskRole \
+    --policy-name HanzoKMSSecretsAccess \
     --policy-document file://kms-task-policy.json
   ```
 
@@ -290,8 +290,8 @@ For production deployments with many users or secrets, increase these values acc
 
   **Verify:** Confirm roles are created:
   ```bash
-  aws iam get-role --role-name Hanzo KMSECSExecutionRole
-  aws iam get-role --role-name Hanzo KMSTaskRole
+  aws iam get-role --role-name HanzoKMSECSExecutionRole
+  aws iam get-role --role-name HanzoKMSTaskRole
   ```
 </Step>
 
@@ -314,8 +314,8 @@ For production deployments with many users or secrets, increase these values acc
     "requiresCompatibilities": ["FARGATE"],
     "cpu": "1024",
     "memory": "2048",
-    "executionRoleArn": "arn:aws:iam::<account-id>:role/Hanzo KMSECSExecutionRole",
-    "taskRoleArn": "arn:aws:iam::<account-id>:role/Hanzo KMSTaskRole",
+    "executionRoleArn": "arn:aws:iam::<account-id>:role/HanzoKMSECSExecutionRole",
+    "taskRoleArn": "arn:aws:iam::<account-id>:role/HanzoKMSTaskRole",
     "containerDefinitions": [
       {
         "name": "kms",
@@ -1028,7 +1028,7 @@ After completing the above steps, your Hanzo KMS instance should be running on A
         Default: production
         AllowedValues: [development, staging, production]
       
-      Hanzo KMSVersion:
+      HanzoKMSVersion:
         Type: String
         Default: v0.151.0
       
@@ -1126,7 +1126,7 @@ After completing the above steps, your Hanzo KMS instance should be running on A
           TaskRoleArn: !GetAtt ECSTaskRole.Arn
           ContainerDefinitions:
             - Name: kms
-              Image: !Sub kms/kms:${Hanzo KMSVersion}
+              Image: !Sub kms/kms:${HanzoKMSVersion}
               Essential: true
               PortMappings:
                 - ContainerPort: 8080
@@ -1364,7 +1364,7 @@ After completing the above steps, your Hanzo KMS instance should be running on A
     aws ecs describe-services --cluster kms-cluster --services kms-service --query 'services[0].enableExecuteCommand'
 
     # Check task role has SSM permissions
-    aws iam get-role-policy --role-name Hanzo KMSTaskRole --policy-name Hanzo KMSSecretsAccess
+    aws iam get-role-policy --role-name HanzoKMSTaskRole --policy-name HanzoKMSSecretsAccess
     ```
 
     **Check managed agent status:**

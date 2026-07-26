@@ -7,9 +7,9 @@ description: "How to use Hanzo KMS to inject, push, and manage secrets within Ku
 The Hanzo KMS Operator is a collection of Kubernetes controllers that streamline how secrets are managed between Hanzo KMS and your Kubernetes cluster. 
 It provides multiple Custom Resource Definitions (CRDs) which enable you to:
 
-- **Sync** secrets from Hanzo KMS into Kubernetes (`Hanzo KMSSecret`).
-- **Push** new secrets from Kubernetes to Hanzo KMS (`Hanzo KMSPushSecret`).
-- **Manage** dynamic secrets and automatically create time-bound leases (`Hanzo KMSDynamicSecret`).
+- **Sync** secrets from Hanzo KMS into Kubernetes (`KMSSecret`).
+- **Push** new secrets from Kubernetes to Hanzo KMS (`KMSPushSecret`).
+- **Manage** dynamic secrets and automatically create time-bound leases (`KMSDynamicSecret`).
 
 When these CRDs are configured, the Hanzo KMS Operator will continuously monitors for changes and performs necessary updates to keep your Kubernetes secrets up to date. 
 It can also automatically reload dependent Deployments resources whenever relevant secrets are updated.
@@ -179,9 +179,9 @@ controllerManager:
 
 Currently the operator supports the following CRD's. We are constantly expanding the functionality of the operator, and this list will be updated as new CRD's are added.
 
-1. [Hanzo KMSSecret](/integrations/platforms/kubernetes/kms-secret-crd): Sync secrets from Hanzo KMS to a Kubernetes secret.
-2. [Hanzo KMSPushSecret](/integrations/platforms/kubernetes/kms-push-secret-crd): Push secrets from a Kubernetes secret to Hanzo KMS.
-3. [Hanzo KMSDynamicSecret](/integrations/platforms/kubernetes/kms-dynamic-secret-crd): Sync dynamic secrets and create leases automatically in Kubernetes.
+1. [KMSSecret](/integrations/platforms/kubernetes/kms-secret-crd): Sync secrets from Hanzo KMS to a Kubernetes secret.
+2. [KMSPushSecret](/integrations/platforms/kubernetes/kms-push-secret-crd): Push secrets from a Kubernetes secret to Hanzo KMS.
+3. [KMSDynamicSecret](/integrations/platforms/kubernetes/kms-dynamic-secret-crd): Sync dynamic secrets and create leases automatically in Kubernetes.
 
 ## Metrics and Prometheus
 
@@ -256,7 +256,7 @@ The operator exposes standard controller-runtime metrics. For a complete list of
 - `controller_runtime_reconcile_errors_total` - Error count  
 - `controller_runtime_reconcile_time_seconds` - Reconciliation duration
 
-**Controllers:** `Hanzo KMSSecret`, `Hanzo KMSPushSecret`, `Hanzo KMSDynamicSecret`
+**Controllers:** `KMSSecret`, `KMSPushSecret`, `KMSDynamicSecret`
 
 ### Example Prometheus Setup
 
@@ -336,7 +336,7 @@ With the KMS Secrets Operator, you can use templating to dynamically generate se
 Please be aware that trying to reference non-existing keys will result in an error. Additionally, each template field is processed individually, which means one template field cannot reference another template field.
 
 <Note>
-  Please note that templating is currently only supported for the `Hanzo KMSPushSecret` and `Hanzo KMSSecret` CRDs.
+  Please note that templating is currently only supported for the `KMSPushSecret` and `KMSSecret` CRDs.
 </Note>
 
 ### Available helper functions
@@ -373,7 +373,7 @@ The KMS Secrets Operator integrates with the [Sprig library](https://github.com/
 
 ## Global configuration
 
-To configure global settings that will apply to all CRD instances (`Hanzo KMSSecret`, `Hanzo KMSPushSecret`, and `Hanzo KMSDynamicSecret`), you can define these configurations in a Kubernetes ConfigMap.
+To configure global settings that will apply to all CRD instances (`KMSSecret`, `KMSPushSecret`, and `KMSDynamicSecret`), you can define these configurations in a Kubernetes ConfigMap.
 For example, you can configure all CRD instances to fetch secrets from a single backend API without specifying the `hostAPI` parameter for each instance.
 
 ### Available global properties
@@ -418,7 +418,7 @@ kubectl apply -f kms-config.yaml
 
 If the operator is unable to fetch secrets from the API, it will not affect the managed Kubernetes secret.
 It will continue attempting to reconnect to the API indefinitely.
-The Hanzo KMSSecret resource uses the `status.conditions` field to report its current state and any errors encountered.
+The KMSSecret resource uses the `status.conditions` field to report its current state and any errors encountered.
 
 ```yaml
 $ kubectl get kmsSecrets
@@ -435,7 +435,7 @@ Status:
     Message:               Hanzo KMS controller has located the Hanzo KMS token in provided Kubernetes secret
     Reason:                OK
     Status:                True
-    Type:                  secrets.kms.hanzo.ai/LoadedHanzo KMSToken
+    Type:                  secrets.kms.hanzo.ai/LoadedHanzoKMSToken
     Last Transition Time:  2022-12-18T04:29:10Z
     Message:               Failed to update secret because: 400 Bad Request
     Reason:                Error
