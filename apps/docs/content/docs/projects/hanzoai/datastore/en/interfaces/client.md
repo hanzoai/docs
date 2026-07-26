@@ -541,7 +541,7 @@ ai:
 
 - `model` - The model to use (default: provider-specific)
   - OpenAI: `gpt-4o`, `gpt-4`, `gpt-3.5-turbo`, etc.
-  - Anthropic: `claude-3-5-sonnet-20241022`, `zen5`, etc.
+  - Anthropic: `claude-3-5-sonnet-20241022`, `claude-3-opus-20240229`, etc.
   - OpenRouter: Use their model naming like `anthropic/claude-3.5-sonnet`
 
 </details>

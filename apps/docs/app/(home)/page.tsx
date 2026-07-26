@@ -192,7 +192,7 @@ export default function Page() {
           ].map((s) => (
             <div key={s.label} className="bg-[#0a0a0a] px-5 py-5 text-center">
               <div className="text-2xl font-bold text-white tabular-nums">{s.n}</div>
-              <div className="mt-1 text-[11px] uppercase tracking-wider text-[#525252]">{s.label}</div>
+              <div className="mt-1 text-[11px] uppercase tracking-wider text-neutral-400">{s.label}</div>
             </div>
           ))}
         </div>
@@ -272,7 +272,7 @@ print(response.choices[0].message.content)`}
                       <div className="rounded-xl bg-white/[0.06] p-2">
                         <item.icon className="size-5 text-[#666] group-hover:text-white transition-colors" />
                       </div>
-                      <Badge variant="ghost" className="text-[10px] uppercase tracking-wider text-[#333] font-medium border-none px-0">
+                      <Badge variant="ghost" className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium border-none px-0">
                         {item.tag}
                       </Badge>
                     </div>
@@ -284,7 +284,7 @@ print(response.choices[0].message.content)`}
                     </CardDescription>
                   </CardHeader>
                   <CardFooter className="p-5 sm:p-6 pt-3">
-                    <span className="flex items-center gap-1 text-[10px] font-medium text-[#333] group-hover:text-white transition-colors">
+                    <span className="flex items-center gap-1 text-[10px] font-medium text-neutral-400 group-hover:text-white transition-colors">
                       {isExternal ? 'Visit' : 'View docs'} <ArrowRight className="size-3" />
                     </span>
                   </CardFooter>

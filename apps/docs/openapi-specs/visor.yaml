@@ -8,7 +8,7 @@ info:
     compute). Every resource is scoped to the caller's org from the validated IAM
     owner claim; a caller only ever reads or mutates their OWN tenant's compute.
     A Bot is a composition: a `kind=bot` machine plus an agent binding.
-  version: 1.0.0
+  version: 8.0.0
   contact:
     name: Hanzo AI
     url: https://hanzo.ai
@@ -219,16 +219,16 @@ paths:
         '200': { description: 'Sizes — Visor authoritative catalog, verbatim', content: { application/json: { schema: {} } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
-  /v1/compute/bots:
+  /v1/bots:
     get:
       tags: [Bots]
-      summary: List the org's bot machines
+      summary: List the org's bots
       operationId: listBots
       responses:
         '200': { description: Bots, content: { application/json: { schema: { type: object, properties: { bots: { type: array, items: { $ref: '#/components/schemas/BotView' } } } } } } }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
-  /v1/compute/bots/launch:
+  /v1/bots/launch:
     post:
       tags: [Bots]
       summary: Launch a bot (machine + agent binding), or dryRun for a quote
@@ -244,10 +244,10 @@ paths:
         '400': { description: size / name is required }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
-  /v1/compute/bots/{id}:
+  /v1/bots/{id}:
     get:
       tags: [Bots]
-      summary: Get one bot machine by id
+      summary: Get one bot by id
       operationId: getBot
       parameters:
         - { name: id, in: path, required: true, schema: { type: string } }
@@ -265,7 +265,7 @@ paths:
         '204': { description: Terminated }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
-  /v1/compute/bots/{id}/{action}:
+  /v1/bots/{id}/{action}:
     post:
       tags: [Bots]
       summary: Act on a bot (stop, pause, or message)

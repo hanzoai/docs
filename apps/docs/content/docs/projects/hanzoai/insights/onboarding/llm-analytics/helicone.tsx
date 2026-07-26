@@ -14,7 +14,7 @@ export const getHeliconeSteps = (ctx: OnboardingComponentsContext): StepDefiniti
                 <>
                     <CalloutBox type="fyi" icon="IconInfo" title="About Helicone">
                         <Markdown>
-                            Helicone is an open-source AI API that provides access to 100+ LLM providers through an
+                            Helicone is an open-source AI gateway that provides access to 100+ LLM providers through an
                             OpenAI-compatible interface. The Helicone API key handles authentication and routing to your
                             chosen model provider.
                         </Markdown>
