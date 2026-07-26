@@ -1,17 +1,17 @@
 ---
 title: "Hanzo Analytics - Privacy-Focused Web Analytics"
-description: "Hanzo Analytics is a privacy-focused web analytics platform -- an alternative to Google Analytics. Next.js 15 dashboard (port 3000) with Prisma ORM, PostgreSQL/ClickHouse storage, and a Go-based hi..."
+description: "Hanzo Analytics is a privacy-focused web analytics platform -- an alternative to Google Analytics. Next.js 15 dashboard (port 3000) with Prisma ORM, PostgreSQL/Datastore storage, and a Go-based hi..."
 ---
 
 ## Overview
 
-Hanzo Analytics is a **privacy-focused web analytics platform** -- an alternative to Google Analytics. Next.js 15 dashboard (port 3000) with Prisma ORM, PostgreSQL/ClickHouse storage, and a Go-based high-performance event collector. Includes anti-ad-blocker technology (encrypted tracker + WASM decryption). Live at `analytics.hanzo.ai`.
+Hanzo Analytics is a **privacy-focused web analytics platform** -- an alternative to Google Analytics. Next.js 15 dashboard (port 3000) with Prisma ORM, PostgreSQL/Hanzo Datastore storage, and a Go-based high-performance event collector. Includes anti-ad-blocker technology (encrypted tracker + WASM decryption). Live at `analytics.hanzo.ai`.
 
 ### Why Hanzo Analytics?
 
 - **Privacy-first**: No cookies required, GDPR/HIPAA compliant by design
 - **Anti-ad-blocker**: Encrypted tracker script + WASM decryptor defeats blockers
-- **Dual database**: PostgreSQL for metadata, optional ClickHouse for event scale
+- **Dual database**: PostgreSQL for metadata, optional Datastore for event scale
 - **Real-time**: Live visitor tracking, real-time dashboards
 - **Multi-tenant**: Teams, users, roles, shared dashboards
 - **Revenue tracking**: Built-in e-commerce revenue attribution
@@ -22,7 +22,7 @@ Hanzo Analytics is a **privacy-focused web analytics platform** -- an alternativ
 - **Dashboard**: Next.js 15 + React 19 + Chart.js + react-intl (i18n)
 - **ORM**: Prisma 6 with PostgreSQL adapter
 - **State**: Zustand + TanStack React Query
-- **Collector**: Go (Gin) + ClickHouse for high-throughput event ingestion
+- **Collector**: Go (Gin) + Datastore for high-throughput event ingestion
 - **Tracker**: Rollup-bundled JS, encrypted delivery via WASM
 - **Validation**: Zod
 - **Auth**: JWT (jsonwebtoken) + bcryptjs password hashing
@@ -48,8 +48,8 @@ Repo: `hanzoai/analytics` (Umami fork, v3.0.3).
 
 1. **PostgreSQL** (minimum v12.14) for metadata and event storage
 2. **Node.js 18.18+** for the dashboard application
-3. **Go 1.26+** for the collector service (optional, for ClickHouse pipeline)
-4. **ClickHouse** (optional) for high-volume event analytics
+3. **Go 1.26+** for the collector service (optional, for the Datastore pipeline)
+4. **Datastore** (optional) for high-volume event analytics
 
 ## Quick reference
 
@@ -60,9 +60,9 @@ Repo: `hanzoai/analytics` (Umami fork, v3.0.3).
 | Dev port | `3001` (Next.js dev) / `3000` (production) |
 | Image | `ghcr.io/hanzoai/analytics:latest` |
 | Package | `@hanzo/analytics` (v3.0.3) |
-| Database | PostgreSQL (required), ClickHouse (optional) |
+| Database | PostgreSQL (required), Datastore (optional) |
 | ORM | Prisma 6 |
-| Collector | Go + Gin + ClickHouse (`collector/`) |
+| Collector | Go + Gin + Datastore (`collector/`) |
 | Health check | `/api/heartbeat` |
 | Repo | `github.com/hanzoai/analytics` |
 | License | MIT |
@@ -149,7 +149,7 @@ pnpm start            # http://localhost:3000
 
                    ┌──────────────────────┐
                    │   collector (Go)     │
- High-volume ─────▶│   Gin HTTP server    │──── ClickHouse
+ High-volume ─────▶│   Gin HTTP server    │──── Datastore
  events            │   event.go           │     (event_data,
                    │   forward/           │      session_data)
                    │   writer/            │
@@ -199,7 +199,7 @@ pnpm start            # http://localhost:3000
 ```bash
 DATABASE_URL=postgresql://user:pass@localhost:5432/analytics   # Required
 APP_SECRET=random-secret-string                                # Required
-CLICKHOUSE_URL=http://localhost:8123                            # Optional
+DATASTORE_URL=http://localhost:8123                             # Optional
 ```
 
 ## Troubleshooting
@@ -209,7 +209,7 @@ CLICKHOUSE_URL=http://localhost:8123                            # Optional
 | Build fails on first run | Missing DATABASE_URL | Set `DATABASE_URL` in `.env` before `pnpm build` |
 | Default login not working | Changed by script | Default is `admin` / `analytics`, use `npm run change-password` |
 | Ad blocker blocks events | Tracker detected | Use encrypted tracker pipeline (enabled by default) |
-| High event volume slow | PostgreSQL bottleneck | Deploy Go collector with ClickHouse backend |
+| High event volume slow | PostgreSQL bottleneck | Deploy Go collector with Datastore backend |
 | Geo data missing | No GeoIP database | Run `pnpm build-geo` to download MaxMind DB |
 | Docker health check fails | Port not ready | Increase `retries` or wait for DB initialization |
 

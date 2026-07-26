@@ -16,7 +16,7 @@ Hanzo Insights is fully self-hostable. Deploy on your infrastructure for complet
 | **Insights Plugin** | Event processing | 2 CPU, 4GB RAM |
 | **Insights Worker** | Async jobs | 1 CPU, 2GB RAM |
 | **PostgreSQL** | Metadata storage | 2 CPU, 4GB RAM, 50GB disk |
-| **ClickHouse** | Event analytics | 4 CPU, 8GB RAM, 100GB+ disk |
+| **Datastore** | Event analytics | 4 CPU, 8GB RAM, 100GB+ disk |
 | **Redis** | Cache and queues | 1 CPU, 2GB RAM |
 | **Kafka/Stream** | Event streaming | 2 CPU, 4GB RAM |
 
@@ -31,14 +31,14 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgres://insights:password@postgres:5432/insights
-      CLICKHOUSE_HOST: clickhouse
+      DATASTORE_HOST: datastore
       REDIS_URL: redis://redis:6379
       KAFKA_HOSTS: stream:9092
       SECRET_KEY: your-secret-key
       SITE_URL: https://insights.yourdomain.com
     depends_on:
       - postgres
-      - clickhouse
+      - datastore
       - redis
       - stream
 
@@ -55,7 +55,7 @@ services:
     command: ./bin/plugin-server
     environment:
       DATABASE_URL: postgres://insights:password@postgres:5432/insights
-      CLICKHOUSE_HOST: clickhouse
+      DATASTORE_HOST: datastore
       KAFKA_HOSTS: stream:9092
       REDIS_URL: redis://redis:6379
 
@@ -64,7 +64,7 @@ services:
     command: ./bin/worker
     environment:
       DATABASE_URL: postgres://insights:password@postgres:5432/insights
-      CLICKHOUSE_HOST: clickhouse
+      DATASTORE_HOST: datastore
       REDIS_URL: redis://redis:6379
 
   postgres:
@@ -76,10 +76,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  clickhouse:
-    image: clickhouse/clickhouse-server:24.3
+  datastore:
+    image: ghcr.io/hanzoai/datastore:26.6.1.1
     volumes:
-      - clickhouse_data:/var/lib/clickhouse
+      - datastore_data:/var/lib/clickhouse
 
   redis:
     image: redis:7-alpine
@@ -99,7 +99,7 @@ services:
 
 volumes:
   postgres_data:
-  clickhouse_data:
+  datastore_data:
   redis_data:
 ```
 
@@ -145,7 +145,7 @@ spec:
 | Variable | Description |
 |----------|-------------|
 | `DATABASE_URL` | PostgreSQL connection string |
-| `CLICKHOUSE_HOST` | ClickHouse hostname |
+| `DATASTORE_HOST` | Datastore hostname |
 | `REDIS_URL` | Redis connection string |
 | `KAFKA_HOSTS` | Kafka broker addresses (comma-separated) |
 | `SECRET_KEY` | Django secret key for session encryption |
