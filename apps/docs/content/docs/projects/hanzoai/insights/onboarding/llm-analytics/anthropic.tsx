@@ -156,7 +156,7 @@ export const getAnthropicSteps = (ctx: OnboardingComponentsContext): StepDefinit
                                 file: 'Python',
                                 code: dedent`
                                     response = client.messages.create(
-                                        model="zen5",
+                                        model="claude-3-opus-20240229",
                                         messages=[
                                             {
                                                 "role": "user",
