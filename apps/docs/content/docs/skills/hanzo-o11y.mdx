@@ -1,17 +1,17 @@
 ---
 title: "Hanzo O11y - Full-Stack Observability Platform"
-description: "Hanzo O11y is a full-stack observability platform for logs, metrics, and traces. Go 1.25 backend (Gin/gorilla-mux) with a React 18 + Vite frontend. Uses ClickHouse as the telemetry datastore and Op..."
+description: "Hanzo O11y is a full-stack observability platform for logs, metrics, and traces. Go 1.25 backend (Gin/gorilla-mux) with a React 18 + Vite frontend. Uses Hanzo Datastore as the telemetry store and Op..."
 ---
 
 ## Overview
 
-Hanzo O11y is a **full-stack observability platform** for logs, metrics, and traces. Go 1.25 backend (Gin/gorilla-mux) with a React 18 + Vite frontend. Uses **ClickHouse** as the telemetry datastore and **OpenTelemetry** for ingestion. Fork of SigNoz. Live at `o11y.hanzo.ai`.
+Hanzo O11y is a **full-stack observability platform** for logs, metrics, and traces. Go 1.25 backend (Gin/gorilla-mux) with a React 18 + Vite frontend. Uses **Hanzo Datastore** (Hanzo's Apache-2.0 ClickHouse fork) as the telemetry store and **OpenTelemetry** for ingestion. Fork of SigNoz. Live at `o11y.hanzo.ai`.
 
 ### Why Hanzo O11y?
 
 - **Single pane of glass**: Logs, metrics, traces, and LLM observability in one UI
 - **OpenTelemetry native**: No vendor lock-in, standard instrumentation
-- **ClickHouse backend**: Columnar storage optimized for observability queries (50% less resources than Elastic)
+- **Datastore backend**: Columnar storage optimized for observability queries (50% less resources than Elastic)
 - **Self-hostable**: Docker Compose or Helm, community or enterprise edition
 - **LLM Observability**: Track LLM calls, token usage, costs, prompt/response analysis
 - **Built-in alerting**: Alert on any telemetry signal (logs, metrics, traces)
@@ -20,7 +20,7 @@ Hanzo O11y is a **full-stack observability platform** for logs, metrics, and tra
 
 - **Backend**: Go 1.25, Gin, gorilla/mux, go-redis, cobra CLI
 - **Frontend**: React 18, TypeScript, Vite (rolldown-vite), Ant Design, `@hanzo/ui`, `@hanzo/insights`
-- **Telemetry Store**: ClickHouse (`ghcr.io/hanzoai/datastore`)
+- **Telemetry Store**: Datastore (`ghcr.io/hanzoai/datastore`)
 - **Ingestion**: OpenTelemetry Collector fork (`ghcr.io/hanzoai/otel-collector`)
 - **Metadata Store**: SQLite (community) or PostgreSQL (enterprise)
 - **Auth**: JWT tokens (built-in), OIDC + SAML (enterprise), OpenFGA for authz
@@ -41,8 +41,8 @@ Fork of `signoz/signoz`. Repo: `hanzoai/o11y`.
 
 ## Hard requirements
 
-1. **ClickHouse** (via `ghcr.io/hanzoai/datastore`) for telemetry storage
-2. **ZooKeeper** for ClickHouse coordination (single-node or cluster)
+1. **Datastore** (via `ghcr.io/hanzoai/datastore`) for telemetry storage
+2. **ZooKeeper** for Datastore coordination (single-node or cluster)
 3. **OpenTelemetry Collector** (`ghcr.io/hanzoai/otel-collector`) for data ingestion
 4. **Docker** or **Kubernetes** for deployment
 
@@ -69,8 +69,8 @@ Fork of `signoz/signoz`. Repo: `hanzoai/o11y`.
 
 ```
 ┌──────────────┐     ┌───────────────────┐     ┌──────────────┐
-│  Your Apps   │────>│  OTel Collector   │────>│  ClickHouse  │
-│  (OTel SDK)  │     │  (gRPC/HTTP)      │     │  (Datastore) │
+│  Your Apps   │────>│  OTel Collector   │────>│  Datastore   │
+│  (OTel SDK)  │     │  (gRPC/HTTP)      │     │  (:9000)     │
 └──────────────┘     │  :4317 / :4318    │     └──────┬───────┘
                      └───────────────────┘            │
                                                       │
@@ -83,8 +83,8 @@ Fork of `signoz/signoz`. Repo: `hanzoai/o11y`.
 ### Data Flow
 
 1. Applications instrumented with OpenTelemetry SDKs send traces, metrics, and logs to the OTel Collector
-2. OTel Collector processes and exports to ClickHouse databases: `observe_traces`, `observe_metrics`, `observe_logs`, `observe_meter`, `observe_metadata`
-3. The Go backend queries ClickHouse for telemetry data and serves the React frontend
+2. OTel Collector processes and exports to Datastore databases: `observe_traces`, `observe_metrics`, `observe_logs`, `observe_meter`, `observe_metadata`
+3. The Go backend queries Datastore for telemetry data and serves the React frontend
 4. SQLite (or PostgreSQL in enterprise) stores metadata: users, orgs, dashboards, alerts, saved views
 
 ### Directory Structure
@@ -100,14 +100,14 @@ pkg/
   authz/           # Authorization
   cache/           # In-memory or Redis cache
   prometheus/      # PromQL query engine
-  querier/         # Query layer over ClickHouse
+  querier/         # Query layer over Datastore
   query-service/   # Legacy query service
   querybuilder/    # Query builder for UI
   sqlstore/        # SQLite/PostgreSQL metadata store
   telemetrylogs/   # Log query handlers
   telemetrymetrics/# Metric query handlers
   telemetrytraces/ # Trace query handlers
-  telemetrystore/  # ClickHouse connection management
+  telemetrystore/  # Datastore connection management
   web/             # Embedded frontend serving
 ee/
   anomaly/         # Anomaly detection (enterprise)
@@ -121,7 +121,7 @@ frontend/
 deploy/
   docker/          # Docker Compose deployment
   docker-swarm/    # Docker Swarm deployment
-  common/          # Shared ClickHouse configs, dashboards
+  common/          # Shared Datastore configs, dashboards
 conf/
   example.yaml     # Full configuration reference
 tests/
@@ -135,7 +135,7 @@ git clone https://github.com/hanzoai/o11y.git && cd o11y/deploy/docker
 docker compose -f docker-compose.yaml up -d
 ```
 
-This starts: ZooKeeper, ClickHouse (datastore), O11y backend, OTel Collector, and a schema migrator.
+This starts: ZooKeeper, Datastore, O11y backend, OTel Collector, and a schema migrator.
 
 Access the UI at `http://localhost:8080`.
 
@@ -146,7 +146,7 @@ Send telemetry to `localhost:4317` (gRPC) or `localhost:4318` (HTTP).
 ### Backend (Go)
 
 ```bash
-# Start dependencies (ClickHouse + OTel Collector)
+# Start dependencies (Datastore + OTel Collector)
 make devenv-up
 
 # Run enterprise server locally
@@ -189,7 +189,7 @@ make docker-build-enterprise
 ## Key Environment Variables
 
 ```bash
-# Telemetry store (ClickHouse)
+# Telemetry store (Datastore)
 HANZO_TELEMETRYSTORE_DATASTORE_DSN=tcp://127.0.0.1:9000
 HANZO_TELEMETRYSTORE_DATASTORE_CLUSTER=cluster
 
@@ -209,8 +209,8 @@ HANZO_WEB_ENABLED=true
 HANZO_INSTRUMENTATION_LOGS_LEVEL=info
 
 # OTel Collector (separate process)
-HANZO_OTEL_COLLECTOR_CLICKHOUSE_DSN=tcp://clickhouse:9000
-HANZO_OTEL_COLLECTOR_CLICKHOUSE_CLUSTER=cluster
+HANZO_OTEL_COLLECTOR_DATASTORE_DSN=tcp://datastore:9000
+HANZO_OTEL_COLLECTOR_DATASTORE_CLUSTER=cluster
 ```
 
 ## OTel Collector Pipeline
@@ -224,7 +224,7 @@ The bundled OTel Collector config (`deploy/docker/otel-collector-config.yaml`) d
 | metrics/prometheus | prometheus scraper | observeclickhousemetrics, metadataexporter, observemeter |
 | logs | OTLP | clickhouselogsexporter, metadataexporter, observemeter |
 
-ClickHouse databases: `observe_traces`, `observe_metrics`, `observe_logs`, `observe_meter`, `observe_metadata`.
+Datastore databases: `observe_traces`, `observe_metrics`, `observe_logs`, `observe_meter`, `observe_metadata`.
 
 ## Instrumenting Your Application
 
@@ -255,7 +255,7 @@ All languages supported by OpenTelemetry work: Java, Python, Node.js, Go, .NET, 
 | Issue | Cause | Solution |
 |-------|-------|----------|
 | No data in UI | OTel Collector not receiving data | Check `localhost:4317` is reachable, verify SDK config |
-| ClickHouse OOM | High cardinality queries | Tune `max_execution_time` in conf, add resource limits |
+| Datastore OOM | High cardinality queries | Tune `max_execution_time` in conf, add resource limits |
 | Slow log queries | Missing indexes | Use the query builder, avoid unbounded time ranges |
 | OTel Collector crash loops | Schema migration incomplete | Run migrator: `/otel-collector migrate sync up` |
 | Frontend 502 | Backend not ready | Check `localhost:8080/api/v1/health` |
