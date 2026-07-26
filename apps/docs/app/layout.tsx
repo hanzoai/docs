@@ -21,8 +21,6 @@ export const metadata = createMetadata({
   description:
     'Documentation for Hanzo AI Cloud — 33 services, one API key, one gateway.',
   metadataBase: baseUrl,
-  // Hanzo Edit widget reads this to know which repo backs the docs (fork→edit→PR).
-  other: { 'hanzo:repo': 'hanzo-docs/docs' },
 });
 
 const geist = Geist({
@@ -53,8 +51,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </NextProvider>
         <Analytics product="docs" />
       </Body>
-      {/* Hanzo Edit — ever-present "improve this page" widget (repo in metadata.other). */}
-      <script async src="https://hanzo.app/edit.js" />
+      {/*
+        No Hanzo Edit widget here. Its shadow-DOM FAB is fixed at right/bottom
+        16px with z-index 2147483000 — the exact corner fumadocs floats "Ask AI"
+        into — so it painted over that button and the label read as "As". Both
+        jobs it offered are already served natively and in-page: asking the AI is
+        the "Ask AI" float (wired to the docs index), and improving a page is the
+        per-page ViewOptionsPopover (edit-on-GitHub + copy-as-markdown). One
+        launcher per corner, one way to each job.
+      */}
     </html>
   );
 }

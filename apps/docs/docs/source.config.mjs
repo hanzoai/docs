@@ -283,6 +283,7 @@ function transformerEscape() {
     }
   };
 }
+var FIRST_PARTY_JSX = /* @__PURE__ */ new Set(["ModelsCatalog", "ConnectorsCatalog"]);
 function remarkPassthroughUnknownJsx() {
   return (tree, file) => {
     const filePath = file.path ?? file.history[0] ?? "";
@@ -292,6 +293,7 @@ function remarkPassthroughUnknownJsx() {
     visit2(tree, ["mdxJsxFlowElement", "mdxJsxTextElement"], (node) => {
       if (!node.name) return;
       if (!/^[A-Z]/.test(node.name)) return;
+      if (FIRST_PARTY_JSX.has(node.name)) return;
       node.name = null;
       node.attributes = [];
     });

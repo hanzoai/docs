@@ -14,7 +14,7 @@ export const getPortkeySteps = (ctx: OnboardingComponentsContext): StepDefinitio
                 <>
                     <CalloutBox type="fyi" icon="IconInfo" title="About Portkey">
                         <Markdown>
-                            Portkey acts as an AI API that routes requests to 250+ LLM providers. The model string format (`@integration-slug/model`) determines which provider to use, where the slug is the name you chose when setting up the integration in Portkey.
+                            Portkey acts as an AI gateway that routes requests to 250+ LLM providers. The model string format (`@integration-slug/model`) determines which provider to use, where the slug is the name you chose when setting up the integration in Portkey.
                         </Markdown>
                     </CalloutBox>
 
