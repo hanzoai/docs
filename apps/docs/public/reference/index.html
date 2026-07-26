@@ -30,14 +30,27 @@
         font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
         text-align: center;
       }
-      /* Scalar's bundled CSS asks for fonts.scalar.com, which our CSP blocks
-         (font-src 'self' data:), so it silently fell back to Inter/system and
-         the reference did not match the rest of docs. Pin the docs stack. */
+      /* Scalar's bundled @font-face rules pointed at fonts.scalar.com, which our
+         CSP blocks (font-src 'self' data:) — 13 failed requests per load. Those
+         rules are patched out of the vendored bundle, so nothing is fetched.
+         Brand stack: Geist Sans for text, Geist Mono for code. NOTE: this static
+         page is outside Next's font pipeline, so Geist is NOT self-hosted here —
+         it resolves when locally installed and falls back cleanly otherwise.
+         Self-hosting it (copy the woff2 into /reference/fonts/ + @font-face)
+         would make it exact; the fallbacks below keep it honest until then. */
       body,
       .scalar-app {
-        font-family: Geist, ui-sans-serif, system-ui, -apple-system, sans-serif;
+        font-family: 'Geist Sans', Geist, ui-sans-serif, system-ui, -apple-system,
+          'Segoe UI', sans-serif;
       }
-    </style>
+      code,
+      pre,
+      .scalar-app code,
+      .scalar-app pre {
+        font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, Monaco,
+          'Cascadia Mono', monospace;
+      }
+</style>
   </head>
   <body>
     <div id="app"></div>
