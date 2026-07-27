@@ -1,6 +1,6 @@
 ---
-"fumadocs-mdx": minor
-"@fumadocs/content": minor
+"@hanzo/docs-mdx": minor
+"@hanzo/docs-content": minor
 ---
 
 Two brand-neutral / zero-config fixes:

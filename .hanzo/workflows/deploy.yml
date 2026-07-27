@@ -1,0 +1,80 @@
+name: deploy
+
+# Builds docs.hanzo.ai and publishes the image the operator runs. A build never
+# deploys itself: the tag that is live is named by hanzoai/universe
+# infra/k8s/operator/crs/docs.yaml, set by a human.
+#
+# The predecessor did deploy itself — it patched `app docs` with kubectl and
+# waited on the rollout — and it built the image from a heredoc Dockerfile
+# pinned to static:0.4.1 while the repo's own Dockerfile, the one the fabric
+# actually builds, pinned v0.5.1. Two builders for one image is one too many, so
+# the recipe lives in the Dockerfile alone and this file only runs it.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/docs/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+      - 'Dockerfile'
+      - '.hanzo/workflows/deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  image:
+    runs-on: hanzo-docs-build-linux-amd64
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Team-owned doc sections (hanzo-docs/<team>) are submodules under
+          # apps/docs/content/docs/. The Dockerfile copies the checkout, so
+          # without these the unified build silently loses whole sections.
+          submodules: recursive
+
+      - name: build
+        run: docker build -t "docs:${GITHUB_SHA}" .
+
+      # A broken export must never reach the registry, so the gate runs between
+      # the build and the push. It reads the image rather than a host-side
+      # directory: what serves is what is checked. hanzoai/static is FROM scratch
+      # and has no shell, so /public comes out with docker cp.
+      - name: validate export
+        run: |
+          set -euo pipefail
+          cid="$(docker create "docs:${GITHUB_SHA}")"
+          trap 'docker rm -f "${cid}" >/dev/null' EXIT
+          rm -rf out && docker cp "${cid}:/public" out
+
+          fail=0
+          for f in index.html docs/index.html docs/services/index.html; do
+            [ -s "out/$f" ] || { echo "::error::missing or empty /public/$f"; fail=1; }
+          done
+          n="$(find out -name '*.html' | wc -l)"
+          echo "html pages exported: ${n}"
+          [ "$n" -ge 50 ] || { echo "::error::only ${n} html pages — the export looks broken"; fail=1; }
+          # trailingSlash: /docs must be docs/index.html, not docs.html, which
+          # hanzoai/static answers with a 404.
+          grep -q 'href="/docs/' out/docs/index.html 2>/dev/null \
+            || { echo "::error::/docs carries no nav — shell-only render"; fail=1; }
+          exit "$fail"
+
+      - name: push
+        env:
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${REGISTRY_TOKEN:-}" ]; then
+            echo "::error::REGISTRY_TOKEN is unset, so nothing was published. Add the org secret."
+            exit 1
+          fi
+          image="ghcr.io/hanzoai/docs:${GITHUB_SHA}"
+          echo "${REGISTRY_TOKEN}" | docker login ghcr.io -u hanzo-dev --password-stdin
+          docker tag "docs:${GITHUB_SHA}" "${image}"
+          docker push "${image}"
+          echo "published ${image} — set spec.image.tag in universe crs/docs.yaml to ${GITHUB_SHA} to make it live"
