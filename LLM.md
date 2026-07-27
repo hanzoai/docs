@@ -2,6 +2,72 @@
 
 Fork of [Hanzo Docs](https://github.com/hanzoai/docs) with all packages renamed to `@hanzo/docs-*` namespace.
 
+## How this ships
+
+One way, and it runs on our own stack:
+
+    push  ->  github.com/hanzoai/docs         (a mirror)
+              .github/workflows/sync.yml       carries refs onward
+      ->  git.hanzo.ai/hanzoai/docs            CANONICAL
+              .hanzo/workflows/lint.yml        oxfmt, tsc, oxlint
+              .hanzo/workflows/test.yml        vitest
+              .hanzo/workflows/release.yml     publishes the npm packages
+              .hanzo/workflows/sync-zen-pricing.yml  the daily pricing commit
+              .hanzo/workflows/deploy.yml      builds ghcr.io/hanzoai/docs
+      ->  hanzoai/universe crs/docs.yaml       names the tag that is live
+      ->  hanzoai/operator                     reconciles the App
+      ->  hanzoai/static behind hanzoai/ingress serves docs.hanzo.ai
+
+**git.hanzo.ai is canonical; GitHub is a mirror.** `.github/workflows/` holds
+exactly one file, `sync.yml`, and its only job is getting refs to the forge. Every
+build, check, publish and deploy is a workflow under `.hanzo/workflows/`, which the
+forge reads. `.hanzo/workflows` uses GitHub Actions syntax, so a workflow moves
+between the two by changing directory and nothing else — which is how all of these
+got here, `runs-on: hanzo-docs-build-linux-amd64` and all. The forge's runner
+answers that label.
+
+`deploy.yml` builds and pushes, and stops. Its predecessor patched `app docs` with
+kubectl and waited on the rollout, and it built the image from a heredoc pinned to
+`static:0.4.1` while this repo's `Dockerfile` — the one the fabric builds — pinned
+`v0.5.1`. The recipe now lives in the `Dockerfile` alone; the workflow runs it,
+gates the export by reading `/public` out of the built image, and pushes only if
+the gate passes. A human then sets `spec.image.tag` in universe.
+
+### The nine sibling sites still on Cloudflare Pages
+
+`deploy-base-docs`, `-bootnode-docs`, `-bot-docs`, `-cloud`, `-dev-docs`,
+`-gui-docs`, `-insights-docs`, `-zen-docs`, `-zt-docs` each `wrangler pages
+deploy` their app. Each is the ONLY deploy of its host, so they moved to
+`.hanzo/workflows/` unchanged rather than being deleted: deleting one strands a
+host with no failing run to show it, which is exactly how admin.hanzo.ai went
+stale for a day.
+
+They are not done. To finish one:
+
+1. `docker build --build-arg APP=<app> .` — the root `Dockerfile` takes `APP`, so
+   no new Dockerfile is needed for any of them.
+2. Add `infra/k8s/operator/crs/<name>.yaml` in hanzoai/universe, copying
+   `hips.yaml`: `containerPort 3000` / `servicePort 80`, `HANZO_STATIC_CSP`,
+   `imagePullSecrets: ghcr-secret`, **empty tag**, and **not** listed in
+   `kustomization.yaml`. Inert until an image exists.
+3. Publish an image, set the tag, add the kustomization line, confirm the pod.
+4. Only then repoint DNS off Pages and delete that wrangler workflow.
+
+**The blocker is the host, not the build.** `infra/cf-zones/hanzo-ai.yaml`
+declares only three of the nine (`dev`, `docs-insights`, `zerotrust`); the rest
+are CF Pages custom domains set outside declared config. An App CR with a guessed
+host is wrong even while inert, so each host must be confirmed against Cloudflare
+before its CR is written.
+
+Two known snags in that set: `dev.hanzo.ai` already 404s, so its Pages project is
+broken independently of this migration; and `deploy-bot-docs.yml` contradicts
+universe `crs/bot-docs.yaml`, which already serves `docs.hanzo.bot` in-cluster
+from `ghcr.io/hanzoai/bot-docs` — bot-docs has two deploy paths today, and the
+wrangler one is the one to retire.
+
+`infra/cf-zones/hanzo-ai.yaml` also still declares `docs -> hanzo-docs.pages.dev`,
+which is stale: docs.hanzo.ai answers from the cluster.
+
 ## Canonical model — the one way to do docs
 
 Full ADR: `apps/docs/content/docs/contributing/docs-architecture.mdx` (rendered
@@ -219,8 +285,5 @@ Landing page apps were moved to their ecosystem repos:
 - Lux apps → `~/work/lux/apps/`
 - Zoo apps → `~/work/zoo/apps/`
 
-Only `docs` and `zap-docs` remain in this repo.
-
----
-
-*Last updated: 2026-02-08*
+`apps/zap-docs` and `apps/liquid` are gone; their deploy workflows were deleted
+because they built directories that do not exist. See `apps/` for what is here.

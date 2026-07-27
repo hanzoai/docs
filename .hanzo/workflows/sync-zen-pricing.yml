@@ -45,9 +45,12 @@ jobs:
         if: steps.sync.outputs.exit_code == '0'
         run: |
           TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          # packages/zen-models publishes as @zenlm/models. Naming a package that
+          # is not in the workspace makes `changeset version` fail in release.yml,
+          # so every sync this wrote was a changeset that could not be consumed.
           cat > .changeset/pricing-sync-${TIMESTAMP}.md << 'CHANGESET'
           ---
-          '@hanzo/zen-models': patch
+          '@zenlm/models': patch
           ---
 
           Sync model pricing from pricing.hanzo.ai
