@@ -251,6 +251,6 @@ This verifies that your OTel demo app is successfully sending telemetry data to 
 
 
 
-Don't forget to check our OpenTelemetry [track](https://signoz.io/resource-center/opentelemetry/), guaranteed to take you from a newbie to sensei in no time!
+Don't forget to check our [OpenTelemetry guides](https://docs.hanzo.ai), guaranteed to take you from a newbie to sensei in no time!
 
-Also from a fellow OTel fan to another, we at [O11y](https://signoz.io/) are building an open-source, OTel native, observability platform (one of its kind). So, show us love - star us on [GitHub](https://github.com/SigNoz/signoz), nitpick our [docs](https://signoz.io/docs/introduction/), or just tell your app we’re the ones who’ll catch its crashes mid-flight and finally shush all the 3am panic calls!
+Also from a fellow OTel fan to another, we at [Hanzo O11y](https://hanzo.ai) are building an open-source, OTel native, observability platform (one of its kind). So, show us love - star us on [GitHub](https://github.com/hanzoai/o11y), nitpick our [docs](https://docs.hanzo.ai), or just tell your app we’re the ones who’ll catch its crashes mid-flight and finally shush all the 3am panic calls!
