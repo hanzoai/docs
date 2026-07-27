@@ -13,7 +13,7 @@ Besides the enforce API, Hanzo IAM exposes APIs to read policy data; they are li
 
 ### Enforce
 
-POST to `/api/enforce` with **exactly one** of these query parameters:
+POST to `/v1/iam/enforce` with **exactly one** of these query parameters:
 
 - **permissionId** — `org/permission-name`
 - **modelId** — `org/model-name` (all permissions using that model)
@@ -24,7 +24,7 @@ POST to `/api/enforce` with **exactly one** of these query parameters:
 Example with `permissionId`:
 
 ```shell
-curl --location --request POST 'http://localhost:8000/api/enforce?permissionId=example-org/example-permission' \
+curl --location --request POST 'http://localhost:8000/v1/iam/enforce?permissionId=example-org/example-permission' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: Basic <Your_Application_ClientId> <Your_Application_ClientSecret>' \
 --data-raw '["example-org/example-user", "example-resource", "example-action"]'
@@ -32,7 +32,7 @@ curl --location --request POST 'http://localhost:8000/api/enforce?permissionId=e
 Example with `modelId`:
 
 ```shell
-curl --location --request POST 'http://localhost:8000/api/enforce?modelId=example-org/example-model' \
+curl --location --request POST 'http://localhost:8000/v1/iam/enforce?modelId=example-org/example-model' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: Basic <Your_Application_ClientId> <Your_Application_ClientSecret>' \
 --data-raw '["example-org/example-user", "example-resource", "example-action"]'
@@ -40,7 +40,7 @@ curl --location --request POST 'http://localhost:8000/api/enforce?modelId=exampl
 Example with `resourceId`:
 
 ```shell
-curl --location --request POST 'http://localhost:8000/api/enforce?resourceId=example-org/example-resource' \
+curl --location --request POST 'http://localhost:8000/v1/iam/enforce?resourceId=example-org/example-resource' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: Basic <Your_Application_ClientId> <Your_Application_ClientSecret>' \
 --data-raw '["example-org/example-user", "example-resource", "example-action"]'
@@ -72,7 +72,7 @@ Same query parameters as Enforce (only one at a time). Request body is an array 
 Example with `permissionId`:
 
 ```shell
-curl --location --request POST 'http://localhost:8000/api/batch-enforce?permissionId=example-org/example-permission' \
+curl --location --request POST 'http://localhost:8000/v1/iam/batch-enforce?permissionId=example-org/example-permission' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: Basic <Your_Application_ClientId> <Your_Application_ClientSecret>' \
 --data-raw '[["example-org/example-user", "example-resource", "example-action"], ["example-org/example-user2", "example-resource", "example-action"], ["example-org/example-user3", "example-resource", "example-action"]]'
@@ -80,7 +80,7 @@ curl --location --request POST 'http://localhost:8000/api/batch-enforce?permissi
 Example with `modelId`:
 
 ```shell
-curl --location --request POST 'http://localhost:8000/api/batch-enforce?modelId=example-org/example-model' \
+curl --location --request POST 'http://localhost:8000/v1/iam/batch-enforce?modelId=example-org/example-model' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: Basic <Your_Application_ClientId> <Your_Application_ClientSecret>' \
 --data-raw '[["example-org/example-user", "example-resource", "example-action"], ["example-org/example-user2", "example-resource", "example-action"]]'
@@ -114,13 +114,13 @@ Returns all objects (resources) the user can access. Optional query: `userId` (d
 With `userId`:
 
 ```shell
-curl --location --request GET 'http://localhost:8000/api/get-all-objects?userId=example-org/example-user' \
+curl --location --request GET 'http://localhost:8000/v1/iam/get-all-objects?userId=example-org/example-user' \
 --header 'Authorization: Basic <Your_Application_ClientId> <Your_Application_ClientSecret>'
 
 Without `userId` (uses session):
 
 ```shell
-curl --location --request GET 'http://localhost:8000/api/get-all-objects' \
+curl --location --request GET 'http://localhost:8000/v1/iam/get-all-objects' \
 --header 'Authorization: Basic <Your_Application_ClientId> <Your_Application_ClientSecret>'
 
 Response:
@@ -142,13 +142,13 @@ Returns all actions the user can perform. Optional `userId` (defaults to session
 With `userId`:
 
 ```shell
-curl --location --request GET 'http://localhost:8000/api/get-all-actions?userId=example-org/example-user' \
+curl --location --request GET 'http://localhost:8000/v1/iam/get-all-actions?userId=example-org/example-user' \
 --header 'Authorization: Basic <Your_Application_ClientId> <Your_Application_ClientSecret>'
 
 Without `userId` (uses session):
 
 ```shell
-curl --location --request GET 'http://localhost:8000/api/get-all-actions' \
+curl --location --request GET 'http://localhost:8000/v1/iam/get-all-actions' \
 --header 'Authorization: Basic <Your_Application_ClientId> <Your_Application_ClientSecret>'
 
 Response:
@@ -171,13 +171,13 @@ Returns all roles assigned to the user. Optional `userId` (defaults to session).
 With `userId`:
 
 ```shell
-curl --location --request GET 'http://localhost:8000/api/get-all-roles?userId=example-org/example-user' \
+curl --location --request GET 'http://localhost:8000/v1/iam/get-all-roles?userId=example-org/example-user' \
 --header 'Authorization: Basic <Your_Application_ClientId> <Your_Application_ClientSecret>'
 
 Without `userId` (uses session):
 
 ```shell
-curl --location --request GET 'http://localhost:8000/api/get-all-roles' \
+curl --location --request GET 'http://localhost:8000/v1/iam/get-all-roles' \
 --header 'Authorization: Basic <Your_Application_ClientId> <Your_Application_ClientSecret>'
 
 Response:
@@ -203,7 +203,7 @@ Runs Casbin CLI commands (Java, Go, Node.js, Python, etc.) via Hanzo IAM and ret
 Example:
 
 ```shell
-curl --location --request GET 'http://localhost:8000/api/run-casbin-command?language=go&args=["-v"]' \
+curl --location --request GET 'http://localhost:8000/v1/iam/run-casbin-command?language=go&args=["-v"]' \
 --header 'Authorization: Basic <Your_Application_ClientId> <Your_Application_ClientSecret>'
 
 Response:
