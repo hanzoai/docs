@@ -40,7 +40,9 @@ export type Translations = {
   pageActionsOpenChatGPT: string;
   pageActionsOpenClaude: string;
   pageActionsOpenCursor: string;
+  pageActionsOpenEnso: string;
   pageActionsOpenInLLMPrompt: TranslationValue<'url'>;
+  pageActionsEditInLLMPrompt: TranslationValue<'url'>;
 
   sidebarOpen: string;
   sidebarCollapse: string;
@@ -83,7 +85,9 @@ export const defaultTranslations: Translations = {
   pageActionsOpenChatGPT: 'Open in ChatGPT',
   pageActionsOpenClaude: 'Open in Claude',
   pageActionsOpenCursor: 'Open in Cursor',
+  pageActionsOpenEnso: 'Edit with Enso',
   pageActionsOpenInLLMPrompt: 'Read {url}, I want to ask questions about it.',
+  pageActionsEditInLLMPrompt: 'Read {url}. I want to edit this page — propose concrete improvements and draft the revised text.',
   bannerClose: 'Close Banner',
   searchOpen: 'Open Search',
   searchClose: 'Close Search',
