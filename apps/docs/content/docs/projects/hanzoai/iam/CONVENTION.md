@@ -33,7 +33,6 @@ the historical mess where `HANZO_IAM_URL` / `HANZO_CLIENT_ID` /
 | `IAM_*` | The auth/OIDC engine (user identity, JWT issuance, session) | `IAM_URL`, `IAM_CLIENT_ID`, `IAM_CLIENT_SECRET`, `IAM_AUDIENCE`, `IAM_ORG`, `IAM_REDIRECT_URI` |
 | `HANZO_*` | Hanzo **product** API access at `api.hanzo.ai` (one host for every `/v1/<service>`), `chat.hanzo.ai` etc — your developer credentials to *use* Hanzo as a paid service | `HANZO_API_KEY`, `HANZO_OAUTH_CLIENT_ID`, `HANZO_OAUTH_CLIENT_SECRET`, `HANZO_OAUTH_REDIRECT_URI` |
 | `IDV_*` | Identity-verification providers (biometric, KYC vendors) | `IDV_URL`, `IDV_CLIENT_ID`, `IDV_CLIENT_SECRET` |
-| `CASDOOR_*` | **DEAD** — engine isn't Casdoor-branded anymore | (delete) |
 
 A bot that **authenticates users via Hanzo IAM** AND **calls api.hanzo.ai for
 LLM completions** uses BOTH namespaces. They don't merge. They live side
@@ -66,8 +65,6 @@ HANZO_IAM_CLIENT_SECRET→ IAM_CLIENT_SECRET
 IAM_ENDPOINT           → IAM_URL
 IAM_SERVER_URL         → IAM_URL
 IAM_KEYS_URL           → derived from IAM_URL + /v1/iam/.well-known/jwks
-CASDOOR_*              → IAM_*                (engine isn't Casdoor-branded anymore)
-NEXT_PUBLIC_CASDOOR_*  → SPA runtime /config.json (§5)
 VITE_IAM_URL           → SPA runtime /config.json (§5)
 VITE_IAM_CLIENT_ID     → SPA runtime /config.json (§5)
 ```
@@ -200,7 +197,7 @@ TS hostname switches. No `if (host === 'iam.dev.example.com')` anywhere.
 
 Frontend: **`@hanzo/iam`** (or `@hanzo/iam/browser` for PKCE). Pin to the
 latest minor; bump along with IAM image bumps. The legacy
-`@hanzo/iam-js-sdk` Casdoor SDK is **deprecated** — migrate any consumer
+`@hanzo/iam-js-sdk` is **deprecated** — migrate any consumer
 still on it.
 
 Backend: read JWKS from `${IAM_URL}/v1/iam/.well-known/jwks`, validate
