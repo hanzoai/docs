@@ -15,7 +15,7 @@ Hanzo IAM SDKs extend standard OIDC with user management, resource uploads, and 
 **Backend SDKs** — For Go, Java, Node.js, Python, PHP, .NET, Rust, C++, and more.
 
 :::tip
-For a frontend/backend split, use a frontend SDK (e.g. `iam-js-sdk`, `iam-react-sdk`, `iam-vue-sdk`) in the UI and a backend SDK for token validation and API calls. For a traditional server-rendered app (JSP, PHP), a backend SDK may be enough. Example: [iam-python-vue-sdk-example](https://github.com/iam/iam-python-vue-sdk-example).
+For a frontend/backend split, use a frontend SDK (e.g. `@hanzo/iam`, `iam-react-sdk`, `iam-vue-sdk`) in the UI and a backend SDK for token validation and API calls. For a traditional server-rendered app (JSP, PHP), a backend SDK may be enough. Example: [iam-python-vue-sdk-example](https://github.com/iam/iam-python-vue-sdk-example).
 :::
 
 | Mobile SDK       | Description                     | SDK code                                                                        | Example code                                                                            |
@@ -30,14 +30,14 @@ For a frontend/backend split, use a frontend SDK (e.g. `iam-js-sdk`, `iam-react-
 
 | Desktop SDK      | Description            | SDK code                                                            | Example code                                                                                                                                                                                                                                                                                                                                               |
 |------------------|------------------------|---------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Electron SDK     | For Electron apps      | [iam-js-sdk](https://github.com/iam/iam-js-sdk)         | [iam-electron-example](https://github.com/iam/iam-electron-example)                                                                                                                                                                                                                                                                            |
+| Electron SDK     | For Electron apps      | [@hanzo/iam](https://github.com/iam/@hanzo/iam)         | [iam-electron-example](https://github.com/iam/iam-electron-example)                                                                                                                                                                                                                                                                            |
 | .NET Desktop SDK | For .NET desktop apps  | [iam-dotnet-sdk](https://github.com/iam/iam-dotnet-sdk) | WPF: [iam-dotnet-desktop-example](https://github.com/iam/iam-dotnet-desktop-example)<br />WinForms: [iam-dotnet-winform-example](https://github.com/iam/iam-dotnet-winform-example)<br />[Avalonia UI](https://avaloniaui.net/): [iam-dotnet-avalonia-example](https://github.com/RVShershnev/iam-dotnet-avalonia-example) |
 | C/C++ SDK        | For C/C++ desktop apps | [iam-cpp-sdk](https://github.com/iam/iam-cpp-sdk)       | [iam-cpp-qt-example](https://github.com/iam/iam-cpp-qt-example)                                                                                                                                                                                                                                                                                |
 
 | Web frontend SDK  | Description                      | SDK code                                                          | Example code                                                                                                                                                                                                                         |
 |-------------------|----------------------------------|-------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Javascript SDK    | For traditional non-SPA websites | [iam-js-sdk](https://github.com/iam/iam-js-sdk)       | Nodejs backend: [iam-raw-js-example](https://github.com/iam/iam-raw-js-example)<br />Go backend: [iam-go-react-sdk-example](https://github.com/iam/iam-go-react-sdk-example)                                 |
-| Frontend-only SDK | For frontend-only SPA websites   | [iam-js-sdk](https://github.com/iam/iam-js-sdk)       | [iam-react-only-example](https://github.com/iam/iam-react-only-example)                                                                                                                                                  |
+| Javascript SDK    | For traditional non-SPA websites | [@hanzo/iam](https://github.com/iam/@hanzo/iam)       | Nodejs backend: [iam-raw-js-example](https://github.com/iam/iam-raw-js-example)<br />Go backend: [iam-go-react-sdk-example](https://github.com/iam/iam-go-react-sdk-example)                                 |
+| Frontend-only SDK | For frontend-only SPA websites   | [@hanzo/iam](https://github.com/iam/@hanzo/iam)       | [iam-react-only-example](https://github.com/iam/iam-react-only-example)                                                                                                                                                  |
 | React SDK         | For React websites               | [iam-react-sdk](https://github.com/iam/iam-react-sdk) | Nodejs backend: [iam-nodejs-react-example](https://github.com/iam/iam-nodejs-react-example)<br />Java backend: [iam-spring-security-react-example](https://github.com/iam/iam-spring-security-react-example) |
 | Next.js SDK       | For Next.js websites             |                                                                   | [nextjs-auth](https://github.com/iam/nextjs-auth)                                                                                                                                                                                |
 | Nuxt SDK          | For Nuxt websites                |                                                                   | [nuxt-auth](https://github.com/iam/nuxt-auth)                                                                                                                                                                                    |
@@ -113,20 +113,20 @@ Then select the cert on the application edit page.
 
 ### 2. Frontend configuration
 
-First, install `iam-js-sdk` via NPM or Yarn:
+First, install `@hanzo/iam` via NPM or Yarn:
 
 ```shell
-npm install iam-js-sdk
+pnpm add @hanzo/iam
 
 Or:
 
 ```shell
-yarn add iam-js-sdk
+pnpm add @hanzo/iam
 
 Then define the following utility functions (better in a global JS file like `Setting.js`):
 
 ```js
-import Sdk from "iam-js-sdk";
+import { IamClient } from "@hanzo/iam";
 
 export function initHanzo IAMSdk(config) {
   Hanzo IAMSdk = new Sdk(config);
@@ -170,7 +170,7 @@ export function goToLink(link) {
   window.location.href = link;
 }
 
-In your frontend entry file (e.g. `index.js` or `app.js` in React), initialize the `iam-js-sdk` by calling `InitConfig()` with the required parameters. The first 4 parameters should use the same value as the Hanzo IAM backend SDK. The last parameter `redirectPath` is relative path for the redirected URL, returned from Hanzo IAM's login page.
+In your frontend entry file (e.g. `index.js` or `app.js` in React), initialize the `@hanzo/iam` by calling `InitConfig()` with the required parameters. The first 4 parameters should use the same value as the Hanzo IAM backend SDK. The last parameter `redirectPath` is relative path for the redirected URL, returned from Hanzo IAM's login page.
 
 ```js
 const config = {
