@@ -1,15 +1,157 @@
 ---
-title: Deploy on Hanzo
-description: Ship any Git repo to Hanzo in one click with hanzo.app/new, and add a "Deploy on Hanzo" badge to your README so anyone can launch your project.
+title: hanzo.app
+description: The build platform — fork a template, publish a site to <slug>.hanzo.app, and roll back by pointing at an older content-addressed release.
 ---
 
-# Deploy on Hanzo
+# hanzo.app
 
-Turn any public Git repository into a running app on Hanzo in one click. [hanzo.app](https://hanzo.app) clones the repo, provisions the project, and walks you through deploy -- no local setup, no CLI. OSS authors add a **Deploy on Hanzo** badge to their README so anyone can launch the project the same way.
+[hanzo.app](https://hanzo.app) is where a Hanzo project becomes a URL. It is a browser IDE and a deploy surface over the same `api.hanzo.ai` control plane as everything else: fork a template or import a Git repo, build, publish, and the result is served at `<slug>.hanzo.app`.
+
+There is no second control plane. The console, the [CLI](/docs/cli), and an agent calling the API all drive the identical `/v1` routes.
+
+## The `/v1` surface behind it
+
+Every path is in the [API reference](/docs/openapi), generated from the spec `api.hanzo.ai` publishes about itself. The build-and-ship slice of it:
+
+| Prefix | Paths | What it is |
+| --- | --- | --- |
+| `/v1/projects` | 11 | projects, deployments, domains, and `POST /v1/projects/fork` |
+| `/v1/git` | 27 | repos, branches, commits, webhooks on `git.hanzo.ai` |
+| `/v1/code` | 7 | `ask`, `context`, `file` — the agentic editing surface |
+| `/v1/sites` | 5 | build/deploy a site, plus the release routes below |
+| `/v1/templates` | 3 | the read-only starter catalog |
+| `/v1/automations` | 16 | scheduled and event-driven runs |
+| `/v1/authors` | 6 | the creator marketplace |
+| `/v1/runner` | 1 | `POST /v1/runner` — fire one build |
+| `/v1/builds` | 1 | list builds |
+
+Read the last two rows literally. **The build fabric is one entry point**, not a build product: `POST /v1/runner` takes a git context and produces an image, `GET /v1/builds` reports what it did. There is no build-config API, no pipeline DSL, no per-step surface. Anything more is you driving the runner.
+
+Counts come from the live spec, so they cannot drift into fiction:
+
+```bash
+curl -s https://api.hanzo.ai/v1/openapi.json | python3 -c '
+import json, sys, collections
+p = json.load(sys.stdin)["paths"]
+c = collections.Counter("/" + "/".join(k.strip("/").split("/")[:2]) for k in p)
+print(len(p), "paths total")
+for k in ["/v1/projects","/v1/git","/v1/code","/v1/sites","/v1/templates","/v1/runner","/v1/builds"]:
+    print(f"{k:16}{c[k]}")'
+```
+
+## Templates
+
+`GET /v1/templates` serves a read-only starter catalog embedded in the API binary — reference content, not org data. `GET /v1/templates/{slug}` returns one entry. You never mutate the catalog; you fork out of it:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/projects/fork \
+  -H "Authorization: Bearer hk-..." \
+  -H "X-Org-Id: org_a1b2c3" \
+  -H "Content-Type: application/json" \
+  -d '{ "template": "folio", "slug": "my-folio" }'
+```
+
+The sources live in the `hanzo-templates` GitHub org — **71 repositories**. A curated subset runs as live demos you can click before forking:
+
+- **44** are deployed at `<slug>.hanzo.app` and answer `200`
+- **39** of those render a real page
+
+That gap is the honest part, and the second number is the one that means anything. A `200` is not a working thing: a build that emitted a file index, or a bundle whose JS never mounted, still answers `200` with a title and an empty body. Demos are judged by rendering each one in a real browser and reading the DOM after scripts run — visible text length, image/canvas count, console errors — never by status code. Five fall short of that bar today: `ai-chat-interface`, `next`, `savor` and `vite` render effectively blank, and `analytics` renders too little to be worth a click. They count as broken, not as live.
+
+## How a demo is served
+
+A published site is a static read surface. The host router resolves a request in three steps, and only the first two are sites:
+
+1. `<slug>.hanzo.app` — exactly one non-reserved label under the apex → serve that project's objects from its object-store prefix. Terminal.
+2. a bound custom domain — your own apex pointed at this edge, with a live binding → serve that project. Only an external host qualifies; Hanzo's own domains never do, so a customer binding can never shadow a real Hanzo host.
+3. anything else → falls through to the normal `/v1` + console pipeline.
+
+Only `GET` and `HEAD` are answered; anything else is `405`. Every site response carries `X-Hanzo-Site`, the cheapest way to tell "this is a site" from "this fell through":
+
+```console
+$ curl -sI https://metrics-template.hanzo.app/ | grep -i x-hanzo-site
+x-hanzo-site: metrics-template
+```
+
+### Releases: values plus a pointer
+
+Publishing does not upload bytes. The builder's output already lives in Hanzo's object store, so publishing is a **server-side promote** — no bytes traverse the API, and no client ever holds an object-store credential.
+
+- A **release is a value.** Its id is `rel_` + 128 bits of a SHA-256 over the sorted manifest of `(key, size, etag)` triples. Identical bytes ⇒ identical id, so re-publishing an unchanged build is idempotent by construction rather than by a remembered request key — and two different builds can never land on one id.
+- A release prefix is **immutable.** Each object is copied conditional on the exact ETag it was digested from, so a writer touching the build output mid-publish fails the copy instead of poisoning the release.
+- The **pointer** is the project's current release. Serving reads through it, so going live is one atomic update.
+
+```bash
+# create + activate in one call — the 99% path
+curl -X POST https://api.hanzo.ai/v1/sites/my-folio/publish \
+  -H "Authorization: Bearer hk-..." -H "X-Org-Id: org_a1b2c3" \
+  -H "Content-Type: application/json" \
+  -d '{ "source": "builds/my-folio/out" }'
+
+# the rollback menu
+curl https://api.hanzo.ai/v1/sites/my-folio/releases \
+  -H "Authorization: Bearer hk-..." -H "X-Org-Id: org_a1b2c3"
+
+# rollback is the same flip, aimed at an older id. Nothing is rebuilt.
+curl -X POST https://api.hanzo.ai/v1/sites/my-folio/releases/rel_<id>/activate \
+  -H "Authorization: Bearer hk-..." -H "X-Org-Id: org_a1b2c3"
+```
+
+`source` is a path **relative to your own org's storage**. The org segment comes from the validated principal and the bucket is server-owned and never appears in the request, so the worst a hostile source string can name is something your org already owns.
+
+The release row is written **last**. A partially copied prefix therefore has no row, and activate cannot flip to a release with no row — a half-copied site is unreachable, not merely unlikely. A crash mid-copy leaves orphan objects nothing points at; the retry recomputes the same id from the same bytes and converges. The failure mode is wasted space, never a bad serve.
+
+## Why `hanzo.app` and not `app.hanzo.ai`
+
+Because the two apexes need *opposite* security models, and only one of them can be the multi-tenant one.
+
+**`hanzo.app` is multi-tenant.** Sites are the default, and a **denylist** carves out the labels that must stay real infrastructure. A new label is publishable unless someone reserved it.
+
+**`hanzo.ai` is the brand apex.** It carries `api`, `console`, `iam`, `kms` and every internal host not built yet. A denylist there would make the safety of each of those depend on someone adding a label *before* the host exists. So first-party sites on the brand apex are an **opt-in allowlist** pinned to the first-party org: only an explicitly listed label serves as a site, and it resolves pinned to that org, so a customer's same-named project can never shadow it. Everything else falls through to the normal pipeline, protected by default. Miss either the apex or the owning org and the mechanism disables itself — it fails closed.
+
+The failure being designed against is concrete. The shared `hanzo-app` IAM client registers exact-match OAuth redirect URIs on `<label>.<apex>`. If such a label were publishable, an attacker could claim it first, serve their own page, then run `authorize` with that `client_id` and a redirect that genuinely *is* on the client's allowlist. The victim's authorization code lands on the attacker's page, and the token that comes back carries an audience the API trusts. That is account takeover out of one missing denylist entry — a class of bug an allowlist cannot have.
+
+The second reason is the browser's. `hanzo.app` is a **separate registrable domain** from `hanzo.ai`, so tenant content sits outside the brand's cookie boundary by construction: a customer site cannot set a cookie the console, IAM or the API will ever send. On `app.hanzo.ai` they would share a registrable domain and a cookie jar, and cookie-tossing and session fixation become same-site problems kept out by policy. A separate apex makes that the browser's job instead of ours.
+
+## Reserved labels
+
+77 labels are baked in and cannot be removed by configuration — operator config only ever **adds**. They cover the apex and `www`, infrastructure hosts, auth/payment/security-sensitive words, and brand terms:
+
+```
+account accounts admin administrator api app apps assets auth bank billing blog
+cdn checkout cloud console cowork dashboard dns docs ftp gateway grafana hanzo
+hanzoai health healthz help host hosting iam id imap ingress internal kms login
+logout lux luxfi mail metrics ns ns1 ns2 oauth oauth2 official pay payment
+payments portal proxy root router secure security session signin signup site
+sites smtp sso static status stg store support team token verification verify
+wallet www zoo zooai
+```
+
+One predicate is consulted in three places that must never disagree: at **create** (a project can never take a reserved slug), at **bind** (the host table can never physically contain a reserved host), and at **serve** (a reserved host falls through). Because create and bind both reject, the serve gate is a backstop rather than the only guard.
+
+This is why the dashboard template is published as **`metrics-template`** and the blog template as **`blog-template`** — `metrics` and `blog` are both reserved. You can watch the rule work, one label apart on the same apex:
+
+```console
+$ curl -s https://metrics.hanzo.app/ | grep -o '<title>[^<]*</title>'
+<title>Hanzo Cloud Console</title>
+$ curl -s https://metrics-template.hanzo.app/ | grep -o '<title>[^<]*</title>'
+<title>Circle overview</title>
+```
+
+Check your slug against that list before deploying; `create` rejects a reserved one.
+
+## Game engines get cross-origin isolation
+
+A multithreaded WebGL build needs `SharedArrayBuffer`, and browsers only hand it to a cross-origin-isolated page. Declare a project's framework as `unity`, `unreal` or `godot` and its site is served isolated:
+
+- the HTML document gets `Cross-Origin-Opener-Policy: same-origin` plus `Cross-Origin-Embedder-Policy: require-corp` — the exact pair that turns on `crossOriginIsolated`
+- every other object (`.js`, `.wasm`, `.data`, `.pck`, …) gets `Cross-Origin-Resource-Policy: same-origin`, so a `require-corp` document loads them instead of being blocked
+
+Isolation is opt-in on that closed set of three and never global: it stops a page embedding third-party cross-origin content, which would break most other templates. Payloads are typed for it too — `.wasm` as `application/wasm`, `.data`/`.pck`/`.unityweb` as `application/octet-stream` — so streaming instantiation works.
 
 ## One-Click Deploy
 
-Send anyone to a pre-filled deploy flow by pointing `template` at a repository:
+Turn any public Git repository into a running app in one click. Send anyone to a pre-filled deploy flow by pointing `template` at a repository:
 
 ```
 https://hanzo.app/new?template=OWNER/REPO
@@ -35,7 +177,7 @@ Give visitors a button that launches your project in one click. Add this snippet
 [![Deploy on Hanzo](https://hanzo.app/button.svg)](https://hanzo.app/new?template=OWNER/REPO)
 ```
 
-It renders as a clickable button that opens the one-click deploy flow for your repo. The load-bearing part is the link target -- `hanzo.app/new?template=…` -- which works whether or not the badge image is present.
+It renders as a clickable button that opens the one-click deploy flow for your repo. The load-bearing part is the link target — `hanzo.app/new?template=…` — which works whether or not the badge image is present.
 
 <Callout>
 The button image is served from [hanzo.app](https://hanzo.app); grab the current badge markdown straight from the site to stay on the canonical asset. The deploy link itself never changes.
@@ -43,8 +185,10 @@ The button image is served from [hanzo.app](https://hanzo.app); grab the current
 
 ## Related
 
-- [Getting Started](/docs/getting-started) -- create an account and claim $5 in free credits
-- [PaaS](/docs/services/paas) -- the Kubernetes-native platform your deploys run on
-- [Credits & Billing](/docs/billing) -- how deploys and usage draw down credits
-- [Startup Program](/docs/startups) -- up to $150,000 in credits for venture-backed teams
-- [hanzo.app](https://hanzo.app) -- the browser IDE and deploy surface
+- [Getting Started](/docs/getting-started) — create an account and claim $5 in free credits
+- [PaaS](/docs/services/paas) — the Kubernetes-native platform your deploys run on
+- [Storage](/docs/storage) — the object store releases are promoted into
+- [Credits & Billing](/docs/billing) — how deploys and usage draw down credits
+- [Startup Program](/docs/startups) — up to $150,000 in credits for venture-backed teams
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`
+- [hanzo.app](https://hanzo.app) — the browser IDE and deploy surface
