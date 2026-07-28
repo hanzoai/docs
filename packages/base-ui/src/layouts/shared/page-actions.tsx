@@ -87,6 +87,7 @@ export function ViewOptionsPopover({
     const pageUrl =
       typeof window === 'undefined' ? pathname : new URL(pathname, window.location.origin);
     const q = renderTranslation(t.pageActionsOpenInLLMPrompt, { url: String(pageUrl) });
+    const editQ = renderTranslation(t.pageActionsEditInLLMPrompt, { url: String(pageUrl) });
 
     return [
       githubUrl && {
@@ -103,6 +104,23 @@ export function ViewOptionsPopover({
         title: t.pageActionsViewMarkdown,
         href: markdownUrl,
         icon: <TextIcon />,
+      },
+      {
+        title: t.pageActionsOpenEnso,
+        href: `https://hanzo.chat/c/new?${new URLSearchParams({
+          q: editQ,
+        })}`,
+        icon: (
+          <svg fill="none" role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <title>Enso</title>
+            <path
+              d="M12 3a9 9 0 1 0 9 9"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        ),
       },
       {
         title: t.pageActionsOpenScira,

@@ -42,7 +42,9 @@ const ui = {
   pageActionsOpenChatGPT: '在 ChatGPT 中打开',
   pageActionsOpenClaude: '在 Claude 中打开',
   pageActionsOpenCursor: '在 Cursor 中打开',
+  pageActionsOpenEnso: '用 Enso 编辑',
   pageActionsOpenInLLMPrompt: '阅读 {url}，我想询问相关问题。',
+  pageActionsEditInLLMPrompt: '阅读 {url}，我想编辑此页面——请提出具体改进建议并起草修改后的文本。',
 
   sidebarOpen: '打开侧边栏',
   sidebarCollapse: '收起侧边栏',
