@@ -35,14 +35,20 @@ The `<org>-<app>` naming scheme is canonical for `IAM_APP` values: `hanzo-team`,
 
 ## RFC-compliant OAuth/OIDC endpoints
 
-All consumer integrations MUST use the RFC 6749 / OpenID Connect Core 1.0
-standard paths. Legacy Casdoor paths (`/login/oauth/authorize`,
-`/api/login/oauth/access_token`, `/api/userinfo`, …) are still served for
-backward compatibility but are deprecated and MUST NOT appear in new code or
-docs. The Hanzo canonical alias prefix is `/v1/iam/*` (NOT `/api/*` — that
-is the Casdoor compat surface). Use `/v1/iam/userinfo`,
-`/v1/iam/login/oauth/access_token`, etc., when an RFC path is not yet
-available for a non-OIDC endpoint.
+All integrations use the RFC 6749 / OpenID Connect Core 1.0 standard paths under
+`/v1/iam/*`. There is ONE spelling per endpoint — the one OIDC discovery
+advertises at `/v1/iam/.well-known/openid-configuration`:
+
+| Purpose | Endpoint |
+| --- | --- |
+| Authorize | `/v1/iam/oauth/authorize` |
+| Token | `/v1/iam/oauth/token` |
+| UserInfo | `/v1/iam/oauth/userinfo` |
+| JWKS | `/v1/iam/.well-known/jwks` |
+
+Never `/api/*`, and never a second spelling of an endpoint discovery already
+names. Resolve the endpoint from the discovery document rather than hardcoding
+it, and a path change never becomes your outage.
 
 | Purpose | Path |
 |---------|------|
