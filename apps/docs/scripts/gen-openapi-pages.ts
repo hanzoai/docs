@@ -327,9 +327,16 @@ export async function genOpenapiPages(): Promise<void> {
   fs.copyFileSync(DOCUMENT, PUBLIC_COPY);
 
   const ops = doc.products.reduce((n, p) => n + p.operations.length, 0);
+  const withSynopsis = doc.products.filter((p) => p.description).length;
   console.log(
     `[openapi] ${doc.products.length} product pages, ${ops} operations, ` +
       `${doc.operations.filter((o) => o.description).length} carrying prose`,
+  );
+  console.log(
+    `[openapi] ${withSynopsis} products carry the owning package's synopsis; ` +
+      `${doc.undeclared.size} are served but declare no tag ` +
+      `(${doc.products.filter((p) => doc.undeclared.has(p.name)).reduce((n, p) => n + p.operations.length, 0)} operations) ` +
+      `— those want a tag in hanzoai/openapi`,
   );
 }
 
