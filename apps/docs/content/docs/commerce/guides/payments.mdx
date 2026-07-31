@@ -27,19 +27,63 @@ Cart → Order → Authorize → Capture → Complete
 
 ## Supported Providers
 
-| Provider | Type | Features |
-|----------|------|----------|
-| Stripe | Card, ACH | Subscriptions, 3D Secure |
-| PayPal | Wallet | Express checkout |
-| Authorize.net | Card | Legacy integration |
-| Ethereum | Crypto | ERC-20 tokens |
-| Bitcoin | Crypto | BTC, Lightning |
+**Square is the card processor.** Stripe is not surfaced for new charges — the
+payment-method surface a storefront renders is Square, crypto and wire.
 
-## Stripe Integration
+| Provider | Type | Status |
+|----------|------|--------|
+| Square | Card | **The card processor.** Subscriptions, card-on-file |
+| Crypto | Ethereum / Bitcoin | ERC-20, BTC, Lightning |
+| Wire | Bank transfer | Always available |
+| Stripe | Card, ACH | Legacy. Existing integrations only — never offered for a new charge |
+| PayPal | Wallet | Legacy |
+| Authorize.net | Card | Legacy |
+
+## Square Integration
 
 ### Setup
 
-Configure Stripe in your environment:
+Square credentials belong in KMS, never in a repo or a plain environment file.
+The deployment reads them under these names:
+
+```bash
+SQUARE_ACCESS_TOKEN=            # secret — KMS only
+SQUARE_APPLICATION_ID=          # public — the browser tokenizes with this
+SQUARE_LOCATION_ID=             # public
+SQUARE_ENVIRONMENT=production   # or: sandbox
+SQUARE_WEBHOOK_SIGNATURE_KEY=   # secret — KMS only; without it every
+                                # webhook fails signature and renewals drop
+```
+
+Sandbox uses the parallel `SQUARE_SANDBOX_ACCESS_TOKEN`,
+`SQUARE_SANDBOX_APPLICATION_ID` and `SQUARE_SANDBOX_LOCATION_ID`.
+
+### Which environment a charge uses
+
+Sandbox-versus-production is **org state**, not an environment variable: an
+organization carries a `Live` flag, and `TestMode()` is `!Live`. An org that is
+not live tokenizes and charges against Square sandbox even where the deployment
+is configured for production. Flip it with:
+
+```bash
+POST /v1/billing/test-mode   { "testMode": false }
+```
+
+That endpoint is admin-only by design — a user must not be able to move their own
+org to sandbox to dodge real charges.
+
+Fetch the public config the browser needs (application id, location id,
+environment) from `GET /v1/billing/payment-config`, or, for a storefront
+resolving by host, `GET /v1/commerce/tenant`. Both answer from the same
+authority, so the application the browser tokenizes with always matches the one
+the charge is made against.
+
+## Stripe Integration (legacy)
+
+Kept for existing integrations. Do not wire a new storefront to it — use Square
+above.
+
+### Setup
 
 ```bash
 STRIPE_SECRET_KEY=sk_live_...
