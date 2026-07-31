@@ -1,0 +1,73 @@
+# The six canonical journeys — DATA ONLY.
+#
+# This file names which operations make up each flow and nothing else. Every
+# word about what an operation does still comes from hanzo.yaml, and every
+# command, call and tool name is derived from the document, the CLI's committed
+# command table and the MCP naming rule. Nothing here describes behaviour, so
+# nothing here can contradict the API.
+#
+# PROVENANCE: hanzoai/openapi does not carry flows.yaml yet (checked: 404 on
+# main). This is the derived stand-in, written in the shape it should land in
+# upstream so it can move there unchanged; sync-openapi.sh already prefers the
+# upstream copy the moment it exists.
+#
+# Every `op` below is an operationId that must resolve in hanzo.yaml — the
+# generator fails the build if one does not.
+
+flows:
+  - id: hello
+    title: Hello
+    tagline: Prove your key works.
+    intent: >-
+      One authenticated call against the gateway. If this returns, your
+      credential, your org and your routing are all correct.
+    ops:
+      - ai_listModels
+
+  - id: chat
+    title: Chat
+    tagline: Talk to a model.
+    intent: >-
+      The inference surface. One request, any model in the catalogue, streamed
+      or whole.
+    ops:
+      - ai_createChatCompletion
+
+  - id: money
+    title: Money
+    tagline: Check credit, take a payment.
+    intent: >-
+      Read what an org has to spend, then charge for something. Billing meters
+      the cloud; commerce sells your own product on top of it.
+    ops:
+      - billing_billingBalance
+      - commerce_chargePayment
+
+  - id: store
+    title: Store
+    tagline: Put something down, pick it back up.
+    intent: >-
+      Durable state, keyed. The same shape holds for the object, vector and
+      relational stores.
+    ops:
+      - kv_setKey
+      - kv_getKey
+
+  - id: agent
+    title: Agent
+    tagline: Give the work to something that runs on its own.
+    intent: >-
+      Create an agent, then drive it through a session that survives the
+      connection.
+    ops:
+      - cloud_AgentsController.Create
+      - cloud_AgentSessionsController.Register
+
+  - id: tools
+    title: Tools
+    tagline: Let a model act.
+    intent: >-
+      The JSON-RPC tool surface an MCP client speaks to, so an agent can reach
+      every connector the org has enabled.
+    ops:
+      - automations_mcp

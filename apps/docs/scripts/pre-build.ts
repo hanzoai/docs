@@ -1,10 +1,19 @@
 import { buildRegistry } from '@/scripts/build-registry';
 import { genOpenapiPages } from './gen-openapi-pages';
+import { genFlowPages } from './gen-flow-pages';
+import { syncCliCommands } from './sync-cli-commands';
 import { syncProjectDocs } from './sync-project-docs';
 import { sanitizeMdx } from './sanitize-mdx';
 
 async function main() {
-  const tasks = [buildRegistry(), genOpenapiPages()];
+  // The document first, then its projections: the reference (one page per
+  // product) and the six flows (each shown four ways). Flows need both the
+  // document and the CLI's command table, so they run after those land.
+  await syncCliCommands();
+  await genOpenapiPages();
+  await genFlowPages();
+
+  const tasks = [buildRegistry()];
   if (process.env.HANZO_DOCS_SYNC !== '0') {
     tasks.push(syncProjectDocs());
   }
