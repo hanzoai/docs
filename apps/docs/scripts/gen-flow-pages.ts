@@ -25,12 +25,31 @@ const FLOWS = path.join(APP_ROOT, 'openapi-specs/flows.yaml');
 const CLI_TABLE = path.join(APP_ROOT, 'openapi-specs/cli-commands.json');
 const OUT_DIR = path.join(APP_ROOT, 'content/docs/start');
 
+/**
+ * Upstream's shape (hanzoai/openapi flows.yaml): a map of flow id to a summary,
+ * the operationIds in CALL ORDER, and any notes a caller needs. Data only —
+ * which routes a journey calls, never what they do.
+ */
 interface Flow {
   id: string;
   title: string;
-  tagline: string;
-  intent: string;
-  ops: string[];
+  summary: string;
+  notes: string;
+  operations: string[];
+}
+
+const titleOf = (id: string): string => id[0].toUpperCase() + id.slice(1);
+
+function readFlows(file: string): Flow[] {
+  const raw = parseYaml(fs.readFileSync(file, 'utf8'))?.flows;
+  if (!raw || typeof raw !== 'object') return [];
+  return Object.entries<any>(raw).map(([id, f]) => ({
+    id,
+    title: titleOf(id),
+    summary: String(f.summary ?? '').trim(),
+    notes: String(f.notes ?? '').trim(),
+    operations: f.operations ?? [],
+  }));
 }
 
 const text = (s: unknown): string =>
@@ -115,13 +134,17 @@ function renderFlow(
   const L: string[] = [];
   L.push('---');
   L.push(`title: ${JSON.stringify(flow.title)}`);
-  L.push(`description: ${JSON.stringify(`${flow.tagline} ${flow.intent}`.replace(/\s+/g, ' ').trim())}`);
+  L.push(`description: ${JSON.stringify(flow.summary)}`);
   L.push('---');
   L.push('');
   L.push("import { Tab, Tabs } from '@hanzo/docs-ui/components/tabs'");
   L.push('');
-  L.push(`**${text(flow.tagline)}** ${text(flow.intent)}`);
+  L.push(`**${text(flow.summary)}**`);
   L.push('');
+  if (flow.notes) {
+    L.push(`> ${prose(flow.notes)}`);
+    L.push('');
+  }
 
   for (const op of ops) {
     L.push(`## ${text(op.summary || op.name)}`);
@@ -170,7 +193,7 @@ function renderIndex(flows: Flow[], doc: Document): string {
   L.push('<Cards>');
   for (const f of flows) {
     L.push(`  <Card title=${JSON.stringify(f.title)} href="/docs/start/${f.id}">`);
-    L.push(`    ${text(f.tagline)} ${text(f.intent)}`);
+    L.push(`    ${text(f.summary)}`);
     L.push('  </Card>');
   }
   L.push('</Cards>');
@@ -195,7 +218,7 @@ export async function genFlowPages(): Promise<void> {
     return;
   }
   const doc = loadDocument(DOCUMENT);
-  const flows: Flow[] = (parseYaml(fs.readFileSync(FLOWS, 'utf8'))?.flows ?? []) as Flow[];
+  const flows = readFlows(FLOWS);
   const table = new Map<string, CliCommand>(
     (fs.existsSync(CLI_TABLE)
       ? (JSON.parse(fs.readFileSync(CLI_TABLE, 'utf8')) as CliCommand[])
@@ -210,7 +233,7 @@ export async function genFlowPages(): Promise<void> {
   let withMcp = 0;
   let total = 0;
   for (const flow of flows) {
-    const ops = flow.ops.map((id) => {
+    const ops = flow.operations.map((id) => {
       const op = doc.byId.get(id);
       // A flow may never name an operation the document does not have: that is
       // exactly the hand-written drift this pipeline exists to prevent.
