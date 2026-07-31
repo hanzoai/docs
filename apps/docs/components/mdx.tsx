@@ -6,6 +6,7 @@ import type { MDXComponents } from 'mdx/types';
 import { Accordion, Accordions } from '@hanzo/docs-ui/components/accordion';
 import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
 import { ModelsCatalog, ConnectorsCatalog } from '@/components/preview/lazy';
+import { DocsHero } from '@/components/docs-hero';
 import * as icons from 'lucide-react';
 
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
@@ -16,6 +17,8 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     // sentences). Register them so the card layout + titles + links render.
     Card,
     Cards,
+    // The docs masthead: title + Get started + Copy prompt.
+    DocsHero,
     // Live model catalog + pricing (fetches api.hanzo.ai/v1/models at runtime).
     ModelsCatalog,
     ConnectorsCatalog,
