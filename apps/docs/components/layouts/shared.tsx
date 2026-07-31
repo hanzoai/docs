@@ -1,21 +1,21 @@
 import type { BaseLayoutProps, LinkItemType } from '@hanzo/docs/ui/layouts/shared';
-import { U } from '@hanzogui/shell';
 import { HanzoDocsIcon } from '@/app/layout.client';
 
-// Docs top-nav. This is a DOCS surface, so items that HAVE a docs home keep the
-// visitor IN the docs — Models → /docs/services/models, Agents → /docs/agents,
-// Pricing → /docs/services/pricing, Developers → /docs. Only genuinely
-// marketing-only concepts (Solutions, Enterprise) resolve out to hanzo.ai. This
-// fixes the top nav bouncing readers to the marketing site mid-docs.
+// Docs top-nav: the four developer surfaces, and nothing that leaves the site.
+//
+// It carried six items shaped like the MARKETING nav — Models, Agents, MCP,
+// Developers, Pricing, Enterprise — two of which resolved out to hanzo.ai, bouncing
+// a reader off mid-page. These four are how you actually reach Hanzo: over the API,
+// from the CLI, through MCP, or via an SDK. Each was probed 200 before landing.
 export const linkItems: LinkItemType[] = [
   {
-    text: 'Models',
-    url: '/docs/services/models',
+    text: 'API',
+    url: '/docs/api',
     active: 'nested-url',
   },
   {
-    text: 'Agents',
-    url: '/docs/agents',
+    text: 'CLI',
+    url: '/docs/cli',
     active: 'nested-url',
   },
   {
@@ -24,19 +24,9 @@ export const linkItems: LinkItemType[] = [
     active: 'nested-url',
   },
   {
-    text: 'Developers',
-    url: '/docs',
+    text: 'SDKs',
+    url: '/docs/sdks',
     active: 'nested-url',
-  },
-  {
-    text: 'Pricing',
-    url: '/docs/services/pricing',
-    active: 'nested-url',
-  },
-  {
-    text: 'Enterprise',
-    url: U.enterprise,
-    external: true,
   },
 ];
 
@@ -51,6 +41,13 @@ export function baseOptions(): BaseLayoutProps {
         <>
           {logo}
           <span className="font-medium max-md:hidden">Hanzo</span>
+          {/* Says WHICH surface you are on. hanzo.ai, hanzo.app and this site share
+              the wordmark, so without it the header is ambiguous the moment a reader
+              arrives from search. It sits at the wordmark and not in the nav row
+              because it is an identity, not a destination. */}
+          <span className="max-md:hidden rounded border border-fd-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-fd-muted-foreground">
+            Docs
+          </span>
         </>
       ),
     },

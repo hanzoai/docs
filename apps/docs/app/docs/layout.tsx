@@ -1,4 +1,5 @@
 import { DocsLayout } from '@hanzo/docs-base-ui/layouts/docs';
+import { DocsNavbar } from '@/components/docs-navbar';
 import { baseOptions, linkItems, logo } from '@/components/layouts/shared';
 import { source } from '@/lib/source';
 import { getSection } from '@/lib/source/navigation';
@@ -20,9 +21,18 @@ export default function Layout({ children }: LayoutProps<'/docs'>) {
     <>
       <DocsLayout
         {...base}
+        // Desktop top bar. The stock slot is md:hidden, so doc pages had no header
+        // and the API/CLI/MCP/SDKs nav had nowhere to render. DocsNavbar is a client
+        // MODULE — an inline function here crashes the server at the RSC boundary.
+        slots={{ header: DocsNavbar }}
         tree={source.getPageTree()}
         links={[
-          ...linkItems.filter((item) => item.type === 'icon'),
+          // The four developer surfaces (API, CLI, MCP, SDKs) render HERE too, not
+          // just on the home layout. This filtered to `type === 'icon'`, which
+          // dropped every text link — so the nav a reader saw on the landing page
+          // vanished the moment they opened a doc, and the only way back to a
+          // sibling surface was the sidebar.
+          ...linkItems,
           {
             type: 'custom',
             on: 'nav',
