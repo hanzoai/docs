@@ -2,8 +2,10 @@
 
 import type { ComponentProps } from 'react';
 import { useDocsLayout } from '@hanzo/docs-base-ui/layouts/docs';
+import { HanzoAppLauncher } from '@hanzogui/shell';
 import { cn } from '@/lib/cn';
 import { DocsNavLinks } from '@/components/docs-nav-links';
+import { AuthButtons } from '@/components/auth-buttons';
 
 // The top bar on doc pages.
 //
@@ -55,7 +57,17 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
         <DocsNavLinks />
       </div>
 
-      {slots.searchTrigger && <slots.searchTrigger.sm hideIfDisabled className="p-2" />}
+      {/* The right-hand rail. These are passed to DocsLayout as `links` with
+          `on: 'nav'`, which the STOCK header renders — but this bar replaces that
+          header, so anything not named here simply does not appear. That is how
+          the site lost its Sign in and Console buttons: they were configured
+          correctly and rendered by nobody. Named explicitly so the omission
+          cannot happen silently again. */}
+      <div className="flex items-center gap-2">
+        {slots.searchTrigger && <slots.searchTrigger.sm hideIfDisabled className="p-2" />}
+        <HanzoAppLauncher currentApp="docs" quickSwitchKey={false} label="Meet Hanzo apps" />
+        <AuthButtons />
+      </div>
     </header>
   );
 }

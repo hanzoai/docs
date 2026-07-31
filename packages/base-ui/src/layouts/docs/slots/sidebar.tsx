@@ -116,7 +116,18 @@ export function Sidebar({ footer, banner, collapsible = true, components, ...res
                 <ChevronDown className="ms-auto size-3.5" />
               </slots.languageSelect.root>
             )}
-            <div className="flex text-fd-muted-foreground items-center border bg-fd-secondary/50 p-0.5 pe-0 rounded-lg empty:hidden">
+            {/* The pill is sized for icon links on the left with the theme switch
+                pushed to the right edge. With no icon links configured, `ms-auto`
+                still pushed the switch right but the border stayed full width —
+                a wide empty box with one control clinging to its end. `empty:hidden`
+                never caught it because the switch is a child. Shrink to fit when
+                the switch is all there is. */}
+            <div
+              className={cn(
+                'flex text-fd-muted-foreground items-center border bg-fd-secondary/50 p-0.5 pe-0 rounded-lg empty:hidden',
+                iconLinks.length === 0 && 'w-fit ms-auto',
+              )}
+            >
               {iconLinks.map((item, i) => (
                 <LinkItem
                   key={i}
