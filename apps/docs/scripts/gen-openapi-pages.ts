@@ -2,38 +2,36 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parse as parseYaml } from 'yaml';
+import { loadDocument, type Document, type Operation, type Product } from './openapi-doc';
 
-// Generate one static MDX API-reference page per OpenAPI spec.
+// The API reference, generated from THE document.
 //
-// The specs (openapi-specs/*.yaml) are synced from hanzoai/openapi by
-// scripts/sync-openapi.sh and are .gitignored, as are the generated pages
-// (content/docs/openapi/**/*.mdx — except the tracked index.mdx). We render a
-// self-contained static page (operations grouped by tag) rather than the
-// runtime <APIPage>, because the interactive loader is disabled in static
-// export (deep operation slugs break prerender). Pages are pure MDX, so they
-// export cleanly and can never 530.
+// hanzoai/openapi `hanzo.yaml` describes every Hanzo endpoint once. This script
+// renders one page per product tag: the tag's description — the owning package's
+// doc synopsis — is the product's intro, and each operation's entry is its own
+// prose and schema out of the document. Nothing here is authored; if a sentence
+// about an endpoint appears on docs.hanzo.ai, it was written next to the code
+// and travelled here through hanzo.yaml.
+//
+// Static MDX, not the runtime <APIPage>: the site ships as a static export
+// (NEXT_EXPORT=1), which disables the interactive loader (lib/openapi/index.ts).
+// MDX exports cleanly and can never 530.
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
-const SPECS_DIR = path.join(APP_ROOT, 'openapi-specs');
+const DOCUMENT = path.join(APP_ROOT, 'openapi-specs/hanzo.yaml');
 const OUT_DIR = path.join(APP_ROOT, 'content/docs/openapi');
 const SERVICES_DIR = path.join(APP_ROOT, 'content/docs/services');
-const METHODS = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'];
+const PUBLIC_COPY = path.join(APP_ROOT, 'public/openapi/hanzo.yaml');
 
-// A handful of services expose their concept guide under a slug that differs
-// from the OpenAPI product slug (the inference/app/evals surfaces live at
-// top-level guide pages, not under /docs/services/<svc>). Everything else is
-// resolved source-derived by checking for a matching guide on disk.
+// A few products document their concepts under a slug that differs from the
+// product name. Everything else resolves by looking for a guide on disk.
 const GUIDE_OVERRIDES: Record<string, string> = {
   ai: '/docs/llm',
   app: '/docs/services/paas',
   evals: '/docs/experiments',
 };
 
-// Resolve the human guide (concepts + examples) that pairs with an API
-// reference, so the two halves of the docs cross-link. Returns null when the
-// product has no prose guide yet (link is simply omitted — never fabricated).
 function guideHref(svc: string): string | null {
   if (GUIDE_OVERRIDES[svc]) return GUIDE_OVERRIDES[svc];
   if (
@@ -45,169 +43,299 @@ function guideHref(svc: string): string | null {
   return null;
 }
 
-// Inline code (inside backticks): only the GFM table pipe needs escaping.
-const codeEsc = (s: unknown): string =>
+// ---------------------------------------------------------------- MDX safety
+
+/** Inline code: only the GFM table pipe needs escaping. */
+const code = (s: unknown): string =>
   String(s ?? '').replace(/[\r\n]+/g, ' ').trim().replace(/\|/g, '\\|');
 
-// Plain table/heading text: neutralise MDX ({ }) and HTML (< >) + table pipe.
-const textEsc = (s: unknown): string =>
+/** Table/heading text: neutralise MDX expressions and JSX. */
+const text = (s: unknown): string =>
   String(s ?? '')
     .replace(/[\r\n]+/g, ' ')
     .trim()
     .replace(/\|/g, '\\|')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\{/g, '&#123;')
-    .replace(/\}/g, '&#125;');
+    .replace(/[<>]/g, (c) => (c === '<' ? '&lt;' : '&gt;'))
+    .replace(/[{}]/g, (c) => (c === '{' ? '&#123;' : '&#125;'));
 
-const firstLine = (s: unknown): string =>
-  String(s ?? '').split('\n')[0].trim().slice(0, 200);
+/**
+ * Operation prose lifted from Go doc comments is markdown, not MDX: a stray
+ * `{` or `<T>` is a build failure. Escape those in running text while leaving
+ * fenced blocks and inline code spans verbatim — MDX parses neither.
+ */
+function prose(s: string): string {
+  if (!s) return '';
+  const parts = String(s).split(/(```[\s\S]*?```|`[^`\n]*`)/g);
+  return parts
+    .map((part, i) =>
+      i % 2 === 1
+        ? part
+        : part
+            .replace(/[{}]/g, (c) => (c === '{' ? '&#123;' : '&#125;'))
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;'),
+    )
+    .join('')
+    .trim();
+}
 
-function syncSpecs(): void {
+const yamlString = (s: string): string =>
+  JSON.stringify(String(s ?? '').replace(/\s+/g, ' ').trim());
+
+const firstSentence = (s: string, max = 200): string => {
+  const t = String(s ?? '').replace(/\s+/g, ' ').trim();
+  if (t.length <= max) {
+    const m = t.match(/^(.+?[.!?])(\s|$)/);
+    return (m ? m[1] : t).trim();
+  }
+  const head = t.slice(0, max);
+  const stop = head.lastIndexOf('. ');
+  return (stop > 40 ? head.slice(0, stop + 1) : head).trim();
+};
+
+// ------------------------------------------------------------------ schema
+
+const typeOf = (schema: any): string => {
+  if (!schema || typeof schema !== 'object') return '';
+  if (schema.$ref) return String(schema.$ref).split('/').pop() ?? '';
+  const t = Array.isArray(schema.type) ? schema.type.join(' | ') : schema.type;
+  if (t === 'array') return `${typeOf(schema.items) || 'any'}[]`;
+  if (schema.enum?.length) return schema.enum.slice(0, 4).map((e: any) => `\`${e}\``).join(' \\| ');
+  if (schema.oneOf || schema.anyOf) return 'object';
+  return t || (schema.properties ? 'object' : '');
+};
+
+function bodyTable(op: Operation): string[] {
+  const s = op.body?.schema;
+  const props = s?.properties;
+  if (!props || !Object.keys(props).length) return [];
+  const required = new Set<string>(Array.isArray(s.required) ? s.required : []);
+  const names = Object.keys(props);
+  const rows = names
+    .slice(0, 40)
+    .map(
+      (name) =>
+        `| \`${code(name)}\` | ${text(typeOf(props[name]))} | ${
+          required.has(name) ? 'yes' : '—'
+        } | ${text(firstSentence(props[name]?.description ?? '', 120))} |`,
+    );
+  return [
+    '',
+    `**Request body** — \`${op.body!.contentType}\`${op.body!.required ? ' (required)' : ''}`,
+    '',
+    '| Field | Type | Required | Description |',
+    '|---|---|---|---|',
+    ...rows,
+    ...(names.length > 40 ? [`| … | | | ${names.length - 40} more fields in the schema |`] : []),
+  ];
+}
+
+function paramTable(op: Operation): string[] {
+  if (!op.parameters.length) return [];
+  const rows = op.parameters
+    .slice(0, 30)
+    .map(
+      (p) =>
+        `| \`${code(p.name)}\` | ${p.in} | ${text(typeOf(p.schema))} | ${
+          p.required ? 'yes' : '—'
+        } | ${text(firstSentence(p.description, 120))} |`,
+    );
+  return ['', '| Parameter | In | Type | Required | Description |', '|---|---|---|---|---|', ...rows];
+}
+
+// ------------------------------------------------------------------- pages
+
+function renderProduct(p: Product, doc: Document): string {
+  const guide = guideHref(p.name);
+  const L: string[] = [];
+
+  // The product's intro IS the tag description — the owning package's synopsis.
+  // Where the document carries only a title-length tag, there is no synopsis to
+  // print yet: say what the reference covers rather than echoing the heading.
+  const synopsis = p.description.trim() === p.title.trim() ? '' : p.description;
+
+  L.push('---');
+  L.push(`title: ${yamlString(p.title)}`);
+  L.push(
+    `description: ${yamlString(
+      firstSentence(synopsis) || `${p.title} — ${p.operations.length} operations on ${doc.server}.`,
+    )}`,
+  );
+  L.push('---');
+  L.push('');
+  L.push(
+    synopsis
+      ? prose(synopsis)
+      : `The REST reference for **${text(p.title)}** — ${p.operations.length} operations, generated from the OpenAPI document.`,
+  );
+  L.push('');
+
+  const nav = [
+    ...(guide ? [`[Guide & examples →](${guide})`] : []),
+    '[All API references →](/docs/openapi)',
+    '[Six flows, four surfaces →](/docs/start)',
+  ];
+  L.push(`> ${nav.join(' · ')}`);
+  L.push('');
+  L.push('| | |');
+  L.push('|---|---|');
+  L.push(`| **Base URL** | \`${doc.server}\` |`);
+  L.push(`| **Operations** | ${p.operations.length} |`);
+  L.push(`| **Auth** | \`Authorization: Bearer $HANZO_API_KEY\` |`);
+  L.push('');
+
+  const sections = new Map<string, Operation[]>();
+  for (const op of p.operations) {
+    if (!sections.has(op.tag)) sections.set(op.tag, []);
+    sections.get(op.tag)!.push(op);
+  }
+
+  for (const [tag, ops] of [...sections.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    L.push(`## ${text(tag)}`);
+    L.push('');
+    for (const op of ops) {
+      L.push(`### ${text(op.summary || op.name)}`);
+      L.push('');
+      L.push(
+        `\`${op.method.toUpperCase()} ${code(op.path)}\`${op.deprecated ? ' · **deprecated**' : ''}`,
+      );
+      L.push('');
+      if (op.description) {
+        L.push(prose(op.description));
+        L.push('');
+      }
+      L.push(...paramTable(op));
+      L.push(...bodyTable(op));
+      L.push('');
+    }
+  }
+
+  L.push('---');
+  L.push('');
+  L.push(
+    [
+      ...(guide ? [`[${text(p.title)} guide](${guide})`] : []),
+      '[All Hanzo APIs](/docs/openapi)',
+      '[Interactive reference](/reference)',
+    ].join(' · '),
+  );
+  L.push('');
+  return L.join('\n');
+}
+
+function renderIndex(doc: Document): string {
+  const ops = doc.products.reduce((n, p) => n + p.operations.length, 0);
+  const L: string[] = [];
+  L.push('---');
+  L.push('title: API Reference');
+  L.push(
+    `description: ${yamlString(
+      `The unified REST API reference for every Hanzo product — ${doc.products.length} products, ${ops} operations, generated from the OpenAPI document.`,
+    )}`,
+  );
+  L.push('icon: BookOpen');
+  L.push('---');
+  L.push('');
+  L.push("import { Cards, Card } from '@hanzo/docs-ui/components/card'");
+  L.push('');
+  L.push('# Hanzo API Reference');
+  L.push('');
+  L.push(
+    `One cloud, one credential. Every Hanzo product speaks REST over HTTPS, shares a single API key, and is documented here straight from the OpenAPI document that also generates the SDKs, the CLI and the MCP tools — **${doc.products.length} products, ${ops} operations**.`,
+  );
+  L.push('');
+  L.push('## Authentication');
+  L.push('');
+  L.push('Every product accepts the same bearer credential — a Hanzo IAM JWT or an `hk-` API key.');
+  L.push('');
+  L.push('```bash');
+  L.push(`curl -H "Authorization: Bearer $HANZO_API_KEY" ${doc.server}/v1/models`);
+  L.push('```');
+  L.push('');
+  L.push(
+    'Get a key at [console.hanzo.ai](https://console.hanzo.ai). New here? [Six flows, four surfaces](/docs/start) walks the same journeys as CLI, SDK, HTTP and MCP.',
+  );
+  L.push('');
+  L.push('## Products');
+  L.push('');
+  L.push('<Cards>');
+  for (const p of doc.products) {
+    L.push(`  <Card title=${JSON.stringify(p.title)} href="/docs/openapi/${p.name}">`);
+    L.push(`    ${text(firstSentence(p.description, 130))} · ${p.operations.length} operations`);
+    L.push('  </Card>');
+  }
+  L.push('</Cards>');
+  L.push('');
+  L.push('---');
+  L.push('');
+  L.push('Prefer to click? The [interactive reference](/reference) renders the same document.');
+  L.push('');
+  return L.join('\n');
+}
+
+// -------------------------------------------------------------------- main
+
+function syncDocument(): void {
   try {
-    execFileSync('bash', [path.join(SCRIPT_DIR, 'sync-openapi.sh')], {
-      stdio: 'inherit',
-    });
+    execFileSync('bash', [path.join(SCRIPT_DIR, 'sync-openapi.sh')], { stdio: 'inherit' });
   } catch (e) {
-    console.warn('[gen-openapi-pages] sync-openapi.sh failed; using existing specs', e);
+    console.warn('[openapi] sync failed; building from the committed snapshot', e);
   }
 }
 
 export async function genOpenapiPages(): Promise<void> {
-  syncSpecs();
-  if (!fs.existsSync(SPECS_DIR)) {
-    console.warn('[gen-openapi-pages] no specs dir; skipping');
-    return;
+  syncDocument();
+  if (!fs.existsSync(DOCUMENT)) {
+    throw new Error(
+      `[openapi] ${DOCUMENT} is missing — the API reference cannot be generated without the document`,
+    );
   }
+
+  const doc = loadDocument(DOCUMENT);
+  if (!doc.products.length) throw new Error('[openapi] the document resolved to zero products');
+  if (doc.unresolved.length) {
+    console.warn(
+      `[openapi] ${doc.unresolved.length} operations name no product and are omitted:`,
+      doc.unresolved.slice(0, 5).map((o) => `${o.method.toUpperCase()} ${o.path}`),
+    );
+  }
+
+  fs.rmSync(OUT_DIR, { recursive: true, force: true });
   fs.mkdirSync(OUT_DIR, { recursive: true });
 
-  const specFiles = fs
-    .readdirSync(SPECS_DIR)
-    .filter((f) => f.endsWith('.yaml') && f !== 'hanzo.yaml')
-    .sort();
-
-  const services: string[] = [];
-
-  for (const file of specFiles) {
-    const svc = file.replace(/\.yaml$/, '');
-    let spec: any;
-    try {
-      spec = parseYaml(fs.readFileSync(path.join(SPECS_DIR, file), 'utf8'));
-    } catch (e) {
-      console.warn(`[gen-openapi-pages] skip ${svc}: parse error`, e);
-      continue;
-    }
-    if (!spec || typeof spec !== 'object') continue;
-
-    const info = spec.info ?? {};
-    const title = info.title || `${svc} API`;
-    const version = info.version || '';
-    const desc = firstLine(info.description);
-    const summary = firstLine(info.summary);
-    const lead = summary || desc;
-    const guide = guideHref(svc);
-    const servers = Array.isArray(spec.servers) ? spec.servers : [];
-    const serverUrl = servers[0]?.url || 'https://api.hanzo.ai';
-
-    const schemes = spec.components?.securitySchemes ?? {};
-    const authLines: string[] = [];
-    for (const [name, sc] of Object.entries<any>(schemes)) {
-      if (!sc || typeof sc !== 'object') continue;
-      if (sc.type === 'http') authLines.push(`\`${name}\` — HTTP ${sc.scheme ?? ''}`);
-      else if (sc.type === 'apiKey')
-        authLines.push(`\`${name}\` — API key in ${sc.in ?? ''} (\`${sc.name ?? ''}\`)`);
-      else if (sc.type === 'oauth2') authLines.push(`\`${name}\` — OAuth 2.0`);
-      else authLines.push(`\`${name}\` — ${sc.type ?? ''}`);
-    }
-
-    const byTag = new Map<string, Array<[string, string, string]>>();
-    let total = 0;
-    for (const [p, item] of Object.entries<any>(spec.paths ?? {})) {
-      if (!item || typeof item !== 'object') continue;
-      for (const m of METHODS) {
-        const op = item[m];
-        if (!op || typeof op !== 'object') continue;
-        total++;
-        const tag = (Array.isArray(op.tags) && op.tags[0]) || 'General';
-        const summary = op.summary || op.operationId || '';
-        if (!byTag.has(tag)) byTag.set(tag, []);
-        byTag.get(tag)!.push([m.toUpperCase(), p, summary]);
-      }
-    }
-
-    const L: string[] = [];
-    L.push('---');
-    L.push(`title: ${title}`);
-    L.push(`description: ${JSON.stringify(lead || `REST API reference for ${title}.`).slice(1, -1)}`);
-    L.push('---');
-    L.push('');
-    if (lead) L.push(lead);
-    L.push('');
-    // Cross-link to the human guide (concepts + examples) and the index.
-    const nav: string[] = [];
-    if (guide) nav.push(`[Guide & examples →](${guide})`);
-    nav.push('[All API references →](/docs/openapi)');
-    L.push(`> **${title}** · ${nav.join(' · ')}`);
-    L.push('');
-    L.push('| | |');
-    L.push('|---|---|');
-    L.push(`| **Base URL** | \`${serverUrl}\` |`);
-    if (version) L.push(`| **Version** | ${textEsc(version)} |`);
-    L.push(`| **Operations** | ${total} |`);
-    if (guide) L.push(`| **Guide** | [${textEsc(title)} guide](${guide}) |`);
-    L.push('');
-    L.push('## Authentication');
-    L.push('');
-    if (authLines.length) {
-      for (const a of authLines) L.push(`- ${a}`);
-    } else {
-      L.push('- `BearerAuth` — HTTP bearer (Hanzo IAM JWT or `hk-` API key)');
-    }
-    L.push('');
-    L.push('All Hanzo APIs share one bearer credential and common [error](https://github.com/hanzoai/openapi/blob/main/shared/errors.yaml) and [pagination](https://github.com/hanzoai/openapi/blob/main/shared/pagination.yaml) conventions. See [API conventions](/docs/openapi#conventions).');
-    L.push('');
-    L.push('```bash');
-    L.push(`curl -H "Authorization: Bearer $HANZO_API_KEY" ${serverUrl}`);
-    L.push('```');
-    L.push('');
-    L.push('## Endpoints');
-    L.push('');
-    if (total === 0) L.push('_No documented operations in this specification yet._');
-    for (const tag of [...byTag.keys()].sort()) {
-      L.push(`### ${textEsc(tag)}`);
-      L.push('');
-      L.push('| Method | Endpoint | Description |');
-      L.push('|--------|----------|-------------|');
-      for (const [method, p, opSummary] of byTag.get(tag)!) {
-        L.push(`| \`${method}\` | \`${codeEsc(p)}\` | ${textEsc(opSummary)} |`);
-      }
-      L.push('');
-    }
-    L.push('---');
-    L.push('');
-    const footer: string[] = [];
-    if (guide) footer.push(`[${title} guide](${guide})`);
-    footer.push('[All Hanzo APIs](/docs/openapi)');
-    footer.push(`[OpenAPI spec](https://github.com/hanzoai/openapi/blob/main/${svc}/openapi.yaml)`);
-    L.push(footer.join(' · '));
-    L.push('');
-    fs.writeFileSync(path.join(OUT_DIR, `${svc}.mdx`), L.join('\n'));
-    services.push(svc);
+  for (const p of doc.products) {
+    fs.writeFileSync(path.join(OUT_DIR, `${p.name}.mdx`), renderProduct(p, doc));
   }
+  fs.writeFileSync(path.join(OUT_DIR, 'index.mdx'), renderIndex(doc));
+  fs.writeFileSync(
+    path.join(OUT_DIR, 'meta.json'),
+    JSON.stringify(
+      {
+        title: 'API Reference',
+        description:
+          'REST API reference for every Hanzo product, generated from the OpenAPI document.',
+        pages: ['index', ...doc.products.map((p) => p.name)],
+      },
+      null,
+      2,
+    ) + '\n',
+  );
 
-  const meta = {
-    title: 'API Reference',
-    description:
-      'REST API reference for every Hanzo service, generated from OpenAPI specs.',
-    pages: ['index', ...services],
-  };
-  fs.writeFileSync(path.join(OUT_DIR, 'meta.json'), JSON.stringify(meta, null, 2) + '\n');
-  console.log(`[gen-openapi-pages] generated ${services.length} API reference pages`);
+  // The interactive reference at /reference reads the same document. Copy it at
+  // build time rather than checking in a second one — one document, one copy.
+  fs.mkdirSync(path.dirname(PUBLIC_COPY), { recursive: true });
+  fs.copyFileSync(DOCUMENT, PUBLIC_COPY);
+
+  const ops = doc.products.reduce((n, p) => n + p.operations.length, 0);
+  console.log(
+    `[openapi] ${doc.products.length} product pages, ${ops} operations, ` +
+      `${doc.operations.filter((o) => o.description).length} carrying prose`,
+  );
 }
 
 if (import.meta.main) {
   genOpenapiPages().catch((e) => {
-    console.error('[gen-openapi-pages] failed', e);
+    console.error('[openapi] failed', e);
     process.exit(1);
   });
 }

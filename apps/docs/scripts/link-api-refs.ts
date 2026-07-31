@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parse as parseYaml } from 'yaml';
+import { loadDocument } from './openapi-doc';
 
 // Cross-link the human guides to their API reference (the other half of the
 // bidirectional link — gen-openapi-pages.ts links reference -> guide). For every
@@ -15,7 +15,7 @@ import { parse as parseYaml } from 'yaml';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
-const SPECS_DIR = path.join(APP_ROOT, 'openapi-specs');
+const DOCUMENT = path.join(APP_ROOT, 'openapi-specs/hanzo.yaml');
 const CONTENT = path.join(APP_ROOT, 'content/docs');
 
 // Products whose guide lives at a top-level page rather than /docs/services/<svc>.
@@ -37,14 +37,10 @@ function guideFile(svc: string): string | null {
   return null;
 }
 
-function specTitle(svc: string): string {
-  try {
-    const spec: any = parseYaml(fs.readFileSync(path.join(SPECS_DIR, `${svc}.yaml`), 'utf8'));
-    return spec?.info?.title || `${svc} API`;
-  } catch {
-    return `${svc} API`;
-  }
-}
+// Products and their titles come from THE document, the same source the
+// reference pages are generated from — never from a second per-product file.
+const DOC = loadDocument(DOCUMENT);
+const TITLES = new Map(DOC.products.map((p) => [p.name, p.title]));
 
 // Insert `block` after the first H1 that follows the frontmatter; if there is no
 // H1, insert right after the frontmatter (skipping leading blank/import lines).
@@ -71,11 +67,7 @@ function insertCallout(src: string, block: string): string {
 }
 
 function main(): void {
-  const specs = fs
-    .readdirSync(SPECS_DIR)
-    .filter((f) => f.endsWith('.yaml') && f !== 'hanzo.yaml')
-    .map((f) => f.replace(/\.yaml$/, ''))
-    .sort();
+  const specs = DOC.products.map((p) => p.name);
 
   let linked = 0;
   let already = 0;
@@ -92,7 +84,7 @@ function main(): void {
       already++;
       continue;
     }
-    const title = specTitle(svc);
+    const title = TITLES.get(svc) ?? `${svc} API`;
     const callout = `> **API reference** · [${title} →](/docs/openapi/${svc}) — every endpoint, generated from the OpenAPI spec.`;
     fs.writeFileSync(file, insertCallout(src, callout));
     linked++;
