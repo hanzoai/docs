@@ -156,6 +156,46 @@ body {
   --ui-color: #a9ceff;
 }
 
+@layer base {
+  /* Tailwind v4's preflight leaves buttons on the arrow cursor, so every real
+     button on the site read as inert. One rule, the way hanzo.ai and hanzo.app
+     do it — a per-component `cursor-pointer` class is the same fix written N
+     times. Utilities still win where a component genuinely wants otherwise. */
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
+  /* The house focus ring is monochrome. An element that carries no colour of
+     its own falls through to Chrome's -webkit-focus-ring-color — a blue the
+     brand does not contain, which is what the masthead logo was painting.
+     Only the colour is set: the ring itself is never removed, and a component
+     that designs its own outline still wins from the utility layer. */
+  :focus-visible {
+    outline-color: var(--color-fd-muted-foreground);
+  }
+}
+
+/* @hanzogui/shell paints the shared pre-footer CTA and the ecosystem footer
+   with INLINE styles, so only !important reaches them. Two seams to close:
+   the page is Geist and they shipped the system stack, and the footer ground
+   was #0b0b0f — blue-tinted where the page is neutral. Ground stays dark in
+   both themes because the shell's own text colour is a fixed white. */
+[data-hanzo-shell],
+[data-hanzo-shell] * {
+  font-family: var(--font-sans) !important;
+}
+
+footer[data-hanzo-shell] {
+  background: var(--color-neutral-950) !important;
+}
+
+/* The shell's column headings are 45% white, which cleared AA only on the blue
+   ground and only just (4.52:1). On a neutral one they land at 4.48:1, so they
+   move up with it — a heading should not be fainter than the links under it. */
+footer[data-hanzo-shell] nav > div:first-child {
+  color: rgb(255 255 255 / 0.7) !important;
+}
+
 @keyframes circuit_1 {
   0% {
     transform: translateY(-20px);
