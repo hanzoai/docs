@@ -19,8 +19,16 @@ export const metadata = createMetadata({
     default: 'Hanzo — Documentation',
   },
   description:
-    'Documentation for Hanzo AI Cloud — 33 services, one API key, one gateway.',
+    'Documentation for Hanzo AI Cloud — every model, every tool, one key.',
   metadataBase: baseUrl,
+  // Hanzo Edit convention: a page self-declares its source so the widget can
+  // resolve the file under the current route and open a PR against it. Repo-wide
+  // default; a route that maps 1:1 to a file may add `hanzo:path` of its own.
+  other: {
+    'hanzo:repo': 'hanzo-docs/docs',
+    'hanzo:branch': 'main',
+    'hanzo:provider': 'github',
+  },
 });
 
 const geist = Geist({
@@ -50,16 +58,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </TreeContextProvider>
         </NextProvider>
         <Analytics product="docs" />
+        {/*
+          Hanzo Edit — the same widget every other Hanzo app carries, served by
+          hanzo.app. It was kept out of this app because its shadow-DOM FAB pins
+          to right/bottom 16px at z-index 2147483000, the exact corner fumadocs
+          floated "Ask AI" into: the two overlapped and the label read as "As".
+          That was a corner collision, not a reason to run a second chat surface —
+          so Ask AI is gone and this is the one launcher in that corner. Reads the
+          hanzo:repo/branch/provider metas above and resolves the file under the
+          current route itself.
+        */}
+        <script async src="https://hanzo.app/edit.js" />
       </Body>
-      {/*
-        No Hanzo Edit widget here. Its shadow-DOM FAB is fixed at right/bottom
-        16px with z-index 2147483000 — the exact corner fumadocs floats "Ask AI"
-        into — so it painted over that button and the label read as "As". Both
-        jobs it offered are already served natively and in-page: asking the AI is
-        the "Ask AI" float (wired to the docs index), and improving a page is the
-        per-page ViewOptionsPopover (edit-on-GitHub + copy-as-markdown). One
-        launcher per corner, one way to each job.
-      */}
     </html>
   );
 }
