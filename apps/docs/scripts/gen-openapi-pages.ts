@@ -303,10 +303,28 @@ export async function genOpenapiPages(): Promise<void> {
   fs.rmSync(OUT_DIR, { recursive: true, force: true });
   fs.mkdirSync(OUT_DIR, { recursive: true });
 
+  // `index.mdx` is this folder's own page, at /docs/openapi. A product slugged
+  // `index` (Hanzo Index — full-text search) wants /docs/openapi/index, which is
+  // a different URL but the same filename, and writing it flat silently
+  // destroyed one or the other. A folder index resolves it: `index/index.mdx`
+  // serves /docs/openapi/index and leaves /docs/openapi alone.
+  const pageFile = (slug: string) =>
+    slug === 'index' ? path.join(OUT_DIR, slug, 'index.mdx') : path.join(OUT_DIR, `${slug}.mdx`);
+
   for (const p of doc.products) {
-    fs.writeFileSync(path.join(OUT_DIR, `${p.name}.mdx`), renderProduct(p, doc));
+    const f = pageFile(p.name);
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, renderProduct(p, doc));
   }
   fs.writeFileSync(path.join(OUT_DIR, 'index.mdx'), renderIndex(doc));
+
+  // Every product got its own page, or the build is lying about its coverage.
+  const written = new Set(doc.products.map((p) => pageFile(p.name)));
+  if (written.size !== doc.products.length) {
+    throw new Error(
+      `[openapi] ${doc.products.length} products collapsed onto ${written.size} files — two slugs share a path`,
+    );
+  }
   fs.writeFileSync(
     path.join(OUT_DIR, 'meta.json'),
     JSON.stringify(
