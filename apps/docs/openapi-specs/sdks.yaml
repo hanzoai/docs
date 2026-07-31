@@ -1,0 +1,160 @@
+# The SDK matrix — data only. The generator invocation is logic and lives once,
+# in generate.py; nothing in this file is executable and nothing in an SDK repo
+# duplicates it.
+#
+# Every row is one language projection of hanzo.yaml. `take` maps a path in the
+# generator's output onto a path in the SDK repo that the generator OWNS
+# ENTIRELY: generate.py replaces it wholesale and --check diffs it. Anything
+# outside a `take` path is the repo's own (build files, the legacy published
+# client) and is never touched.
+
+generator: 7.14.0 # openapi-generator, pinned for every language
+spec: hanzo.yaml
+
+# Files the generator offers that a client must not carry, matched on the whole
+# relative path or on the bare name. Two kinds: a SECOND copy of the spec
+# (api/openapi.yaml — the exact thing this pipeline exists to kill), and build
+# metadata that belongs to the repo, which already has one. Cargo.toml is
+# deliberately absent: the Rust client is its own workspace member crate.
+# (openapi-generator's own --ignore-file-override honours only some of these,
+# so the driver does all of it — one mechanism, not two.)
+drop:
+  - api/openapi.yaml
+  - .openapi-generator # a VERSION file would be a second home for the pin above
+  - .openapi-generator-ignore
+  - .gitignore
+  - .npmignore
+  - .travis.yml
+  - .gitlab-ci.yml
+  - git_push.sh
+  - README.md
+  - package.json
+  - tsconfig.json
+  - tsconfig.esm.json
+  - "*.gemspec"
+  - Gemfile
+  - Rakefile
+  - go.mod
+  - go.sum
+  - pom.xml
+  - build.gradle
+  - settings.gradle
+  - setup.py
+  - setup.cfg
+  - pyproject.toml
+  - requirements.txt
+  - test-requirements.txt
+  - tox.ini
+
+sdks:
+  python:
+    repo: python-sdk
+    generator: python
+    # Vendored into the published `hanzoai` distribution as `hanzoai.cloud`, so
+    # every existing top-level export keeps working untouched.
+    take: { hanzoai/cloud: pkg/hanzoai/cloud }
+    properties:
+      packageName: hanzoai.cloud
+      library: urllib3
+      generateSourceCodeOnly: "true"
+
+  go:
+    repo: go-sdk
+    generator: go
+    take: { .: cloud }
+    properties:
+      packageName: cloud
+      withGoMod: "false"
+      isGoSubmodule: "false"
+      # Go enums are package-scope consts, not nested types, so two schemas with
+      # a member of the same name collide: commerce PaymentStatus and OrderStatus
+      # both have CANCELLED and the package does not compile. Prefixing with the
+      # enum's own class is the generator's answer and is what every other
+      # language already gets for free from its namespacing.
+      enumClassPrefix: "true"
+
+  typescript:
+    repo: js-sdk
+    generator: typescript-axios
+    # `src`, not `src/cloud`: js-sdk IS the client. Python and Go vendor it as a
+    # subpackage beside a hand-written SDK that predates it, so there the client
+    # needs its own room; js-sdk has nothing else to be, and its src/index.ts is
+    # generator output down to the header. Pointing at src/cloud built a second,
+    # unexported copy of the same 2143 files next to the real one.
+    take: { .: src }
+    properties:
+      # `hanzoai`, the unscoped name, which is what js-sdk publishes and what
+      # npm hands us: `npm owner ls hanzoai` is zeekay and the registry's
+      # repository.url on it already points at hanzoai/js-sdk. This row said
+      # @hanzo/sdk, from a since-reverted belief that `hanzoai` was squatted —
+      # and @hanzo/sdk is a DIFFERENT package, owned by hanzo-js/sdk (v2.0.0,
+      # the unified per-service SDK), so that name would publish over someone
+      # else's line. Inert today only because package.json is on `drop` and the
+      # generated one never reaches the repo; a landmine the day it isn't.
+      npmName: hanzoai
+      withSeparateModelsAndApi: "true"
+      apiPackage: api
+      # `models`, plural, because that is what the published artifact ships. The
+      # singular here would rename every file under src/models and break anyone
+      # who deep-imports a model path — not something a patch release may do.
+      # The java/kotlin rows say `model` for the same reason in reverse: it is
+      # what those artifacts already ship.
+      modelPackage: models
+      supportsES6: "true"
+      useSingleRequestParameter: "true"
+
+  java:
+    repo: java-sdk
+    generator: java
+    take: { src/main/java/ai/hanzo/cloud: hanzo-java-cloud/src/main/java/ai/hanzo/cloud }
+    properties:
+      library: native # java.net.http — no third-party HTTP dependency
+      groupId: ai.hanzo
+      artifactId: hanzo-java-cloud
+      invokerPackage: ai.hanzo.cloud
+      apiPackage: ai.hanzo.cloud.api
+      modelPackage: ai.hanzo.cloud.model
+      hideGenerationTimestamp: "true"
+
+  kotlin:
+    repo: kotlin-sdk
+    generator: kotlin
+    take: { src/main/kotlin/ai/hanzo/cloud: hanzo-kotlin-cloud/src/main/kotlin/ai/hanzo/cloud }
+    properties:
+      library: jvm-okhttp4
+      groupId: ai.hanzo
+      artifactId: hanzo-kotlin-cloud
+      packageName: ai.hanzo.cloud
+      apiPackage: ai.hanzo.cloud.api
+      modelPackage: ai.hanzo.cloud.model
+      serializationLibrary: gson
+      hideGenerationTimestamp: "true"
+
+  ruby:
+    repo: ruby-sdk
+    generator: ruby
+    # Two paths because the Ruby generator puts the entry point beside the
+    # directory it loads, not inside it.
+    take:
+      lib/hanzoai_cloud: lib/hanzoai_cloud
+      lib/hanzoai_cloud.rb: lib/hanzoai_cloud.rb
+    properties:
+      gemName: hanzoai_cloud
+      moduleName: HanzoaiCloud
+      library: faraday
+      gemVersion: 8.0.0
+
+  rust:
+    repo: rust-sdk
+    # openapi-generator DOES emit Rust (reqwest); the client is a normal
+    # workspace member, so it needs its Cargo.toml and is the one language whose
+    # `take` root is the crate root.
+    generator: rust
+    take: { .: crates/hanzo-cloud }
+    properties:
+      packageName: hanzo-cloud
+      packageVersion: 8.0.0
+      library: reqwest
+      supportAsync: "true"
+      useSingleRequestParameter: "true"
+      preferUnsignedInt: "true"
