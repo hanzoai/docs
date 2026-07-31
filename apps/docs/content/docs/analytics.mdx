@@ -1,6 +1,6 @@
 ---
 title: Analytics SDKs
-description: "@hanzo/analytics, @hanzo/insights, @hanzo/capture, and @hanzo/flags — which JavaScript package to use, and the one-import setup for every Hanzo app."
+description: "@hanzo/analytics, @hanzo/insights, @hanzo/event, and @hanzo/flags — which JavaScript package to use, and the one-import setup for every Hanzo app."
 ---
 
 # Analytics SDKs
@@ -13,7 +13,7 @@ when you need only one of them.
 | --- | --- | --- |
 | [`@hanzo/analytics`](https://www.npmjs.com/package/@hanzo/analytics) | One import that initializes **everything**: behavioral analytics + feature flags (Insights) and privacy-first page views, with per-org keys built in. | Any Hanzo/Lux/Zoo/Pars app. Default choice. |
 | [`@hanzo/insights`](https://www.npmjs.com/package/@hanzo/insights) | The full behavioral SDK for [insights.hanzo.ai](/docs/insights): capture, identify, autocapture, session replay, flags. | You need the full analytics API surface directly. |
-| [`@hanzo/capture`](https://www.npmjs.com/package/@hanzo/capture) | Tiny batched product-analytics client for Cloud (`/v1/analytics` + `/v1/tracker`) with UTM/referrer attribution and a shared event vocabulary. | Lightweight product events into Hanzo Cloud (the console uses this). |
+| [`@hanzo/event`](https://www.npmjs.com/package/@hanzo/event) | Tiny batched telemetry client for Cloud: pageview/event/identify/group to the ONE ingest door (`POST /v1/event`), with UTM/referrer attribution, beacon-on-unload, client-side PII scrubbing and a shared event vocabulary. | Lightweight product events into Hanzo Cloud (the console and the admin cockpit use this). |
 | [`@hanzo/flags`](https://www.npmjs.com/package/@hanzo/flags) | Zero-dep client for the [native flags engine](/docs/flags) (`/v1/flags`). | Flags/experiments only — no analytics payload. |
 
 ## One-import setup
@@ -63,6 +63,9 @@ The flag engine has a client per language — exact usage for each lives in
 
 - **Behavioral events** (`capture`, autocapture, replay) →
   [insights.hanzo.ai](/docs/insights) → [Hanzo Datastore](/docs/datastore).
-- **Product events** (`@hanzo/capture`) → Hanzo Cloud `/v1/analytics` +
-  `/v1/tracker`, surfaced in the admin cockpit.
+- **Product events** (`@hanzo/event`) → Hanzo Cloud `POST /v1/event` — the one
+  ingest door for every shape (a single event, an array, or `{batch:[…]}`) —
+  surfaced in the admin cockpit. `@hanzo/capture` was the earlier client and
+  posted `/v1/analytics` + `/v1/tracker`; both are retired and `/v1/analytics`
+  now serves only the read lenses, so upgrade rather than pin it.
 - **Flags** are evaluated, not stored — reads hit the in-process engine.

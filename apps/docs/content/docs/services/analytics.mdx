@@ -50,7 +50,14 @@ The Analytics dashboard is available at `console.hanzo.ai`:
 
 ## Metrics API
 
-Every call is on the one Hanzo API host, `https://api.hanzo.ai/v1/analytics`, with your normal bearer.
+Every call is on the one Hanzo API host, `https://api.hanzo.ai`, with your normal bearer.
+
+`/v1/analytics` is READ ONLY — it is the lens over the event plane, never a way
+into it. Writing is one door, `POST /v1/event`, and one door is the whole rule:
+send a single event, a bare array, or `{"batch":[…]}` and they all land the same
+way. (There is no `/v1/event/batch`, and the older `/v1/analytics`,
+`/v1/analytics/batch` and `/v1/tracker` write paths are retired — `/v1/tracker`
+is the tracker product, not an ingest path.)
 
 | Method | Path | Purpose |
 |--------|------|---------|
@@ -58,8 +65,7 @@ Every call is on the one Hanzo API host, `https://api.hanzo.ai/v1/analytics`, wi
 | `GET` | `/v1/analytics/timeseries?range=` | Bucketed series (requests, tokens, spend) |
 | `GET` | `/v1/analytics/top?range=` | Leaderboards — top models, providers, pages |
 | `GET` | `/v1/analytics/health` | Datastore + per-lens availability |
-| `POST` | `/v1/analytics` | Capture one event |
-| `POST` | `/v1/analytics/batch` | Capture a batch of events |
+| `POST` | `/v1/event` | Capture — one event, an array, or `{"batch":[…]}` |
 
 `range` accepts `24h`, `7d`, `30d`, … The org is never passed by hand: the gateway re-mints `X-Org-Id` from your validated token, and every response echoes the resolved `scope`.
 
