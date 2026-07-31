@@ -1,0 +1,37 @@
+# Canonical CI config for hanzo-docs/docs — read by the hanzoai/ci reusable
+# (.hanzo/workflows/) and by platform.hanzo.ai.
+#
+# The repo builds ONE image: the Fumadocs monorepo exported static and served by
+# hanzoai/static. The recipe lives in the Dockerfile and nowhere else — APP
+# selects the workspace, so every static site here is built the same way. This
+# file only declares WHAT is built; it does not restate the recipe.
+#
+# The image tag hanzoai/universe pins (charts/app/values/hanzo/docs.yaml) is the
+# FULL commit sha, which is what .hanzo/workflows/deploy.yml pushes. A builder
+# that tags differently (hanzoai/ci publishes `sha-<short>` and `latest`) needs
+# that values file pointed at its scheme in the same change — the two are one
+# contract, and moving one alone leaves docs.hanzo.ai on whatever it was
+# already serving.
+images:
+  - name: docs
+    context: .
+    dockerfile: Dockerfile
+    repo: ghcr.io/hanzoai/docs
+
+test:
+  - name: unit
+    # vitest over packages/* and apps/docs. The apps/docs project is what pins
+    # the four surfaces: the SDK method names the docs print are openapi-
+    # generator's own derivation, and the MCP tool names are the door's, both
+    # asserted against real generated clients and a real tools/list answer. A
+    # drift in either naming rule fails here rather than teaching a call that
+    # does not exist.
+    run: pnpm install --frozen-lockfile && pnpm test
+
+# NOTE — the export gate is NOT here, deliberately. A static-export site fails
+# by exporting nothing, which no image build can notice: the layer is valid and
+# the site is empty. .hanzo/workflows/deploy.yml therefore gates BETWEEN build
+# and push — it creates the container, copies /public out, and requires
+# index.html, docs/index.html, a non-empty nav and >=50 pages before the image
+# may reach the registry. Any builder that publishes this repo must run that
+# check, or it will happily ship a 404.

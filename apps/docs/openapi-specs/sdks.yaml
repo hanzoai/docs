@@ -1,12 +1,34 @@
 # The SDK matrix — data only. The generator invocation is logic and lives once,
 # in generate.py; nothing in this file is executable and nothing in an SDK repo
-# duplicates it.
+# duplicates it. `hanzoai/js-sdk` and `hanzoai/java-sdk` are the shape: their
+# scripts/generate.sh carries NO flags, it execs this driver. js-sdk removed its
+# own copy after the two disagreed about modelPackage and about whether the
+# client lands in src/ or src/cloud/, which built an orphan second copy of all
+# 2143 files.
 #
 # Every row is one language projection of hanzo.yaml. `take` maps a path in the
 # generator's output onto a path in the SDK repo that the generator OWNS
 # ENTIRELY: generate.py replaces it wholesale and --check diffs it. Anything
 # outside a `take` path is the repo's own (build files, the legacy published
 # client) and is never touched.
+#
+# WHEN A LANGUAGE LEAVES THIS FILE — the boundary, so it is a rule and not a
+# mood: a row exists while the WHOLE invocation is expressible as data. A
+# language leaves when its invocation needs something that is not data, and both
+# departures are that, not neglect:
+#
+#   • go needs the client at the MODULE ROOT, beside go.mod and .git, which
+#     `take` cannot express — it rmtree's what it owns, so `{.: .}` deletes the
+#     repository.
+#   • rust needs a `reqwest/api.mustache` template override. A template is a
+#     FILE. It has to sit next to the generator call, and its flags have to sit
+#     next to it, or the pair drifts apart.
+#
+# A language that leaves owns its whole invocation in its own
+# scripts/generate.sh — same generator, same pin, same hanzo.yaml pulled from
+# here. That is the pull model, and it is the same one interface either way.
+# What is NOT allowed is a row here AND flags there: that is two declarations of
+# one contract, and both departures had already started drifting into it.
 
 generator: 7.14.0 # openapi-generator, pinned for every language
 spec: hanzo.yaml
@@ -58,20 +80,26 @@ sdks:
       library: urllib3
       generateSourceCodeOnly: "true"
 
-  go:
-    repo: go-sdk
-    generator: go
-    take: { .: cloud }
-    properties:
-      packageName: cloud
-      withGoMod: "false"
-      isGoSubmodule: "false"
-      # Go enums are package-scope consts, not nested types, so two schemas with
-      # a member of the same name collide: commerce PaymentStatus and OrderStatus
-      # both have CANCELLED and the package does not compile. Prefixing with the
-      # enum's own class is the generator's answer and is what every other
-      # language already gets for free from its namespacing.
-      enumClassPrefix: "true"
+  # go is DELIBERATELY ABSENT, and it is the row this file cannot hold.
+  #
+  # Every `take` above is a promise that the generator OWNS a directory: sdk()
+  # rmtree's the destination and copies the fresh tree in. The shipped Go client
+  # has no such directory — `package hanzoai` sits at the MODULE ROOT, beside
+  # go.mod, LICENSE, README.md, scripts/ and .git, because that is what
+  # `import "github.com/hanzoai/go-sdk"` requires. `take: { . : . }` would
+  # therefore delete the repository and replace it with generated files.
+  #
+  # The row that used to be here promised something else again: `take: {.: cloud}`
+  # with `packageName: cloud`, writing a SECOND client into a cloud/ subdir that
+  # the shipped module does not have and no consumer imports.
+  #
+  # The Go client regenerates from its own `scripts/generate.sh` — the same
+  # generator, the same pin, the same hanzo.yaml, pulled from this repo (it even
+  # handles the private-repo token fallback). That is the pull model working, not
+  # a gap: `packageName=hanzoai, withGoMod=false, structPrefix=true,
+  # enumClassPrefix=true`, output at the root. Canonical repo is hanzo-go/sdk;
+  # `hanzoai/go-sdk` is a rename redirect and stays the MODULE PATH, because
+  # that is what the proxy has and what consumers require.
 
   typescript:
     repo: js-sdk
@@ -107,8 +135,28 @@ sdks:
     repo: java-sdk
     generator: java
     take: { src/main/java/ai/hanzo/cloud: hanzo-java-cloud/src/main/java/ai/hanzo/cloud }
+    # edge_deployFunction offers both application/octet-stream and
+    # multipart/form-data. The generator skips a multipart form model by default
+    # yet still imports it from the API class that used it, so FunctionsApi
+    # imports a class nobody emitted. Emitting it is the fix; it is set here and
+    # not in generate.py because it would churn every other client's output.
+    global:
+      skipFormModel: "false"
     properties:
-      library: native # java.net.http — no third-party HTTP dependency
+      # `native` (java.net.http, no third-party HTTP dependency) is the library
+      # this row wants and cannot have: its oneof_model.mustache iterates the
+      # raw `oneOf` type-name set and emits `{{{.}}}.class`, which is illegal
+      # Java the moment a variant is an array — `List<CloudEvent>.class`. Three
+      # schemas in hanzo.yaml have an inline array in a oneOf
+      # (cloud_post_v1_event's body, gateway_createCompletion's `prompt`,
+      # search_deleteDocumentsByFilter's `filter`), so `native` produces 532
+      # javac errors. Every other Java library iterates `composedSchemas.oneOf`
+      # and guards on `isArray`, so okhttp-gson, jersey3 and apache-httpclient
+      # all compile; the bug is still present in 7.24.0, so this is not waiting
+      # on a version bump. okhttp-gson is the generator's default and puts the
+      # two JVM rows on ONE HTTP+JSON stack — the kotlin row below is already
+      # okhttp4 + gson.
+      library: okhttp-gson
       groupId: ai.hanzo
       artifactId: hanzo-java-cloud
       invokerPackage: ai.hanzo.cloud
@@ -120,6 +168,10 @@ sdks:
     repo: kotlin-sdk
     generator: kotlin
     take: { src/main/kotlin/ai/hanzo/cloud: hanzo-kotlin-cloud/src/main/kotlin/ai/hanzo/cloud }
+    # Same defect the java row hits: the generator skips a multipart form model
+    # yet still imports it, so FunctionsApi references a class nobody emitted.
+    global:
+      skipFormModel: "false"
     properties:
       library: jvm-okhttp4
       groupId: ai.hanzo
@@ -129,6 +181,20 @@ sdks:
       modelPackage: ai.hanzo.cloud.model
       serializationLibrary: gson
       hideGenerationTimestamp: "true"
+    # The Kotlin generator emits code that does not compile at this surface's
+    # size, in ways no `properties` knob reaches. These two are the whole of the
+    # correction.
+    flags:
+      # `sort=name` is an ordinary query value, but the generator names the enum
+      # entry after it, and `name` is already a property of every Kotlin enum:
+      # "Conflicting declarations: enum entry name, public final val name".
+      enum-name-mappings: name=NAME
+      # POST /v1/event takes a oneOf, and the generator flattens every branch
+      # into one class. Two branches spell the same field differently —
+      # cloud_Event.distinctId and cloud_insightsBody.distinct_id — and both
+      # camel-case to `distinctId`. The rename is Kotlin-side only; the wire
+      # name is still carried by @SerializedName.
+      name-mappings: distinct_id=distinctIdLegacy
 
   ruby:
     repo: ruby-sdk
@@ -144,17 +210,26 @@ sdks:
       library: faraday
       gemVersion: 8.0.0
 
-  rust:
-    repo: rust-sdk
-    # openapi-generator DOES emit Rust (reqwest); the client is a normal
-    # workspace member, so it needs its Cargo.toml and is the one language whose
-    # `take` root is the crate root.
-    generator: rust
-    take: { .: crates/hanzo-cloud }
-    properties:
-      packageName: hanzo-cloud
-      packageVersion: 8.0.0
-      library: reqwest
-      supportAsync: "true"
-      useSingleRequestParameter: "true"
-      preferUnsignedInt: "true"
+  # rust is DELIBERATELY ABSENT, for the reason above and not for lack of a
+  # generator: openapi-generator emits Rust (reqwest) and hanzo-rs/sdk ships it
+  # as crates/hanzo-client. What this file cannot hold is the TEMPLATE.
+  #
+  # Two things are required before the Rust output compiles at all, and only one
+  # of them is data:
+  #
+  #   • `--type-mappings=file=Vec<u8>`. Without it a binary body is a PathBuf,
+  #     and reqwest::Body has no From<PathBuf>. Expressible — three lines.
+  #   • a `reqwest/api.mustache` override for 14 operations whose binary body is
+  #     OPTIONAL, where the parameter arrives as Option<Vec<u8>>. No type mapping
+  #     reaches that one, because the problem is the Option and not the type.
+  #
+  # A template is a file that must sit beside the invocation. Keeping the
+  # mapping here and the template there splits one contract across two repos and
+  # guarantees the halves drift; a config that cannot build is worse than none.
+  # So the whole invocation lives in hanzo-rs/sdk's own scripts/generate.sh.
+  #
+  # The row that used to be here would not have compiled: no type mapping, no
+  # template, `useSingleRequestParameter: true` (which changes every call
+  # signature), `packageVersion: 8.0.0` (the SPEC's version — the crate shipped
+  # 0.1.0 as a first publish), and it pointed at `crates/hanzo-cloud`, which
+  # hanzo-rs/sdk does not have.
