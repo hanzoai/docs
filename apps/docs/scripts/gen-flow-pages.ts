@@ -107,6 +107,44 @@ function doorNotice(doc: Document): string[] {
   ];
 }
 
+/**
+ * The operation's signature — parameters and body fields, optional ones
+ * included.
+ *
+ * The four surfaces show a MINIMAL call, which by construction carries only
+ * what is required; that hid the part of an operation a reader most needs. A
+ * time window is the case in point: `GET /v1/billing/usage` takes `start` and
+ * `end`, both optional, so every column rendered a bare URL and the ledger
+ * looked unwindowed. Same document, same fields as the reference — printed here
+ * so the journey shows what the call actually accepts.
+ */
+function signature(op: Operation): string[] {
+  const rows = [
+    ...op.parameters.map((p) => [p.name, p.in, p.required, p.description] as const),
+    ...Object.entries<any>(op.body?.schema?.properties ?? {})
+      .slice(0, 12)
+      .map(
+        ([n, s]) =>
+          [
+            n,
+            'body',
+            (op.body?.schema?.required ?? []).includes(n),
+            String(s?.description ?? ''),
+          ] as const,
+      ),
+  ];
+  if (!rows.length) return [];
+  return [
+    '| Parameter | In | Required | Description |',
+    '|---|---|---|---|',
+    ...rows.map(
+      ([n, where, req, desc]) =>
+        `| \`${n}\` | ${where} | ${req ? 'yes' : '—'} | ${text(String(desc).slice(0, 110))} |`,
+    ),
+    '',
+  ];
+}
+
 /** One operation, four ways. */
 function surfaces(
   op: Operation,
@@ -192,6 +230,7 @@ function renderFlow(
       L.push(prose(op.description));
       L.push('');
     }
+    L.push(...signature(op));
     L.push(...surfaces(op, doc, table, tools));
     L.push('');
   }

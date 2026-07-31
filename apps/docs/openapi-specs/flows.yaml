@@ -14,10 +14,21 @@
 # Existing in the spec is necessary and not sufficient: an id can resolve and
 # still 404 on the wire. Every flow below was PROBED at api.hanzo.ai, and where
 # the obvious route did not answer, `notes` says what answered instead and how
-# the dead one failed. A served route replies 401/403 to an unauthenticated
-# call — it routed, then refused. A route the binary does not have replies 404
-# to GET and 405 to every other method, because the only thing matching it is a
-# GET-only wildcard.
+# the dead one failed.
+#
+# THE TEST, in two halves, because each half alone has been wrong here once:
+#
+#   • 403 PROVES THE ROUTE EXISTS. Auth middleware runs before the handler, so a
+#     mounted route refuses (401/403) and an unmounted one is 404/405. That is
+#     the only reliable liveness signal — a 404 BODY proves nothing, since a
+#     live handler says "not found" too.
+#   • PROBE THE METHOD THE DOCUMENT DECLARES, not GET. A POST-only route also
+#     404s on GET: POST /v1/mcp answers 200 with 796 tools while GET /v1/mcp is
+#     404, and reading that 404 as absence is how the fleet's one MCP door
+#     stayed undeclared. One verb is never a liveness probe.
+#
+# And a 200 is not proof either — see `hello`: /v1/ai/account answers 200 with
+# type="anonymous-user" to a request carrying no key at all.
 #
 # Nothing here is executable and no SDK repo duplicates it. What each example
 # prints is the language's business; WHICH routes it calls is not.
@@ -58,10 +69,17 @@ flows:
     operations: [cloud_get_v1_billing_balance, cloud_get_v1_billing_usage]
     notes: >-
       Neither takes an org: both derive the tenant server-side from the JWT
-      `owner` claim, so a key can only read its own money. The usage ledger is
-      unbounded by default — an example asks for a window. Both ids are cloud's
-      now: /v1/billing is among the routes where the binary's own woven document
+      `owner` claim, so a key can only read its own money. Both ids are cloud's
+      now — /v1/billing is among the routes where the binary's own woven document
       replaced a hand-written spec, so the prose is the handler's.
+
+
+      An example CAN ask for a window again: /v1/billing/usage takes `start` and
+      `end`. It briefly did not — the merge was replacing the whole authored
+      operation with cloud's undescribed one, and this note said to stop asking.
+      Both are restored, along with the response schema, so an SDK reads a typed
+      body rather than decoding by hand. See LLM.md, "An empty field from the
+      winner must not delete a populated one".
 
   store:
     summary: KV round-trip — create a store, read it back, delete it.
@@ -70,10 +88,17 @@ flows:
       The delete belongs in the language's finally/defer, so a failed read still
       cleans up instead of leaving the store for the next run to collide with.
       This is the provisioning plane, and it is here because it is the one that
-      answers: the value plane (/v1/kv/keys/{key} — kv_setKey, kv_getKey,
-      kv_deleteKey) is authored in kv/openapi.yaml but replies 404 to GET and
-      405 to PUT and DELETE at api.hanzo.ai, while /v1/kv and /v1/kv/namespaces
-      reply 403. An example may only call what routes.
+      answers. The value plane (/v1/kv/keys/{key} — kv_setKey, kv_getKey,
+      kv_deleteKey) is authored in kv/openapi.yaml and is mounted nowhere.
+
+
+      The discriminator, since a 404 body alone proves nothing: auth middleware
+      runs BEFORE the handler, so a route that EXISTS refuses with 403 and a
+      route that does not is 404/405. /v1/kv, /v1/kv/demo, /v1/kv/keys and the
+      control /v1/agents/{ref} all answer 403 "X-Org-Id required";
+      /v1/kv/keys/x answers 404. The parent collection routes and the child
+      does not — which is the shape of a plane that was authored and never
+      mounted, not of a key that is merely absent.
 
   agent:
     summary: Create an agent, run it, read the run back.
@@ -90,13 +115,17 @@ flows:
 
   tools:
     summary: List the MCP tools this key can reach.
-    operations: [cloud_get_v1_tools]
+    operations: [mcp_rpc]
     notes: >-
-      Assert the count is greater than zero and print three names. This is the
-      served tool list — every tool the caller's org can call, which is what
-      tools/list answers. There is no JSON-RPC door to send that method to:
-      /v1/mcp is not routed (404 page not found) and the document holds only
-      /v1/mcp/servers, the registry of external MCP servers, while the
-      automations door (/v1/automations/mcp — automations_mcp) replies 404 to
-      GET and 405 to POST. To CALL a tool, the next route is
-      cloud_post_v1_tools_call.
+      Send method=tools/list, assert the count is greater than zero, print three
+      names. POST /v1/mcp is the fleet's one MCP door — it composes the typed
+      product operations with the external MCP servers the caller's org has
+      enabled — and it is now IN hanzo.yaml, which is what this flow was waiting
+      for: an example built on an undeclared route is a hand-rolled HTTP call
+      inside a generated client, the exact drift these SDKs exist to prevent.
+      JSON-RPC reports failure INSIDE a 200, so an example reads `error` before
+      `result` and `result.isError` before `result.content`. The same operation
+      with method=tools/call runs one. `cloud_get_v1_tools` is the REST view of
+      the same catalogue and stays available; the door is what an MCP client
+      speaks. The automations door (/v1/automations/mcp — automations_mcp) is
+      retired: it replies 405 to POST, the method it documents.
