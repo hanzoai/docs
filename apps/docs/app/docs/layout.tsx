@@ -4,6 +4,7 @@ import { baseOptions, logo } from '@/components/layouts/shared';
 import { source } from '@/lib/source';
 import { getSection } from '@/lib/source/navigation';
 import { ProjectSwitcher } from '@/components/projects/project-switcher';
+import { SidebarFilter } from '@/components/sidebar-filter';
 import { Footer } from '@/components/footer';
 import 'katex/dist/katex.min.css';
 
@@ -30,7 +31,19 @@ export default function Layout({ children }: LayoutProps<'/docs'>) {
         }}
         sidebar={{
           prefetch: false,
-          banner: <ProjectSwitcher />,
+          // The tree shows 12 rows so it fits one screen; the filter is how a
+          // reader reaches the ~1,600 pages it does not list. Titles and paths are
+          // computed here, on the server, from the same source the tree comes from.
+          banner: (
+            <>
+              <ProjectSwitcher />
+              <SidebarFilter
+                pages={source
+                  .getPages()
+                  .map((p) => [p.url, p.data.title ?? p.url] as [string, string])}
+              />
+            </>
+          ),
           tabs: {
             transform(option, node) {
               const meta = source.getNodeMeta(node);
