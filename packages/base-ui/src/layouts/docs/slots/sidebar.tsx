@@ -65,7 +65,9 @@ export function Sidebar({ footer, banner, collapsible = true, components, ...res
   const iconLinks = menuItems.filter((item) => item.type === 'icon');
   const viewport = (
     <Base.SidebarViewport>
-      <div className="flex flex-col gap-0.5">
+      {/* Marked so a sidebar filter can stand in for the tree while typing,
+          instead of appearing above it and pushing it off screen. */}
+      <div className="flex flex-col gap-0.5" data-sidebar-tree>
         {menuItems
           .filter((v) => v.type !== 'icon')
           .map((item, i, list) => (
@@ -99,7 +101,12 @@ export function Sidebar({ footer, banner, collapsible = true, components, ...res
               </SidebarCollapseTrigger>
             )}
           </div>
-          {slots.searchTrigger && <slots.searchTrigger.full hideIfDisabled />}
+          {/* No search box here. This slot rendered a full "Search ⌘K" field while
+              the header rendered a magnifier opening the SAME dialog — two controls
+              for one job, a few inches apart, and the sidebar's copy cost a row of
+              the one screen it gets. The dialog lives in the header; the sidebar's
+              banner is free for a filter over the tree. The mobile drawer below
+              keeps its own trigger, since it has no header to borrow from. */}
           {tabs.length > 0 && tabMode === 'auto' && <SidebarTabsDropdown tabs={tabs} />}
           {banner}
         </div>
