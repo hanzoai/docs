@@ -1,0 +1,143 @@
+---
+title: Build a game
+description: The shortest path from nothing to something you can play — in the browser, from your terminal, or against the raw API.
+---
+
+import { Cards, Card } from '@hanzo/docs-ui/components/card'
+import { Callout } from '@hanzo/docs-ui/components/callout'
+import { Tabs, Tab } from '@hanzo/docs-ui/components/tabs'
+import { Rocket, Code, Package, Sparkles } from 'lucide-react'
+
+# Build a game
+
+A game is the fastest honest test of a platform. It has to render, it has to keep
+state, it has to respond in a loop, and you know within a second whether it works —
+no staging environment, no "looks right to me". So we use one to introduce the three
+ways to build on Hanzo.
+
+Same game, three paths. Pick by how much you want to type.
+
+<Tabs items={['In the browser', 'From your terminal', 'Against the API']}>
+
+<Tab value="In the browser">
+
+No install, no key, nothing to configure. Open [hanzo.app](https://hanzo.app), sign
+in, and describe the game:
+
+```
+Build a single-page snake game. Arrow keys to move, the snake grows when it
+eats, and the score is kept in the corner. Game over on hitting a wall or
+yourself, with a restart button. Use a canvas, no dependencies.
+```
+
+You get a running preview beside the chat. Keep going in plain English — *make the
+snake faster as the score climbs*, *add a high score that survives a refresh*,
+*make it playable on a phone* — and the preview updates as it goes.
+
+When it plays the way you want, publish it. It gets a URL on `hanzo.app` you can
+send to someone.
+
+<Callout type="info">
+This is the same model and the same tools as the other two paths. The only
+difference is that the app writes the code and hosts the result for you.
+</Callout>
+
+</Tab>
+
+<Tab value="From your terminal">
+
+Install the CLI and sign in — two commands, and you have a credential every later
+command and SDK on the machine will use:
+
+```bash
+curl -fsSL hanzo.sh | bash
+hanzo auth login
+```
+
+Then hand the job to [Dev](/docs/cli), our coding agent. It works in a real
+directory, so it can read what is already there, write files and run things:
+
+```bash
+mkdir snake && cd snake
+hanzo dev "Build a single-page snake game with a canvas and no dependencies.
+Arrow keys to move, the snake grows when it eats, score in the corner, game
+over on hitting a wall or yourself, restart button."
+```
+
+Open the file it wrote and play it. Then keep iterating in the same directory —
+Dev has the codebase in front of it, so later instructions are about *this* game,
+not a fresh one:
+
+```bash
+hanzo dev "make it speed up as the score climbs, and persist a high score"
+hanzo dev "write tests for the collision logic and run them"
+```
+
+</Tab>
+
+<Tab value="Against the API">
+
+If you want the model directly, it is one POST. Any language, any framework — the
+endpoint is [OpenAI-compatible](/docs/api), so an SDK you already have works by
+changing the base URL and the key.
+
+Mint a key at [console.hanzo.ai](https://console.hanzo.ai) (see
+[API Keys](/docs/api-keys)), then:
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer hk-..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "enso",
+    "messages": [{
+      "role": "user",
+      "content": "Write a complete single-file HTML snake game. Canvas, no dependencies. Arrow keys, growth on eating, score in the corner, game over on wall or self collision, restart button. Reply with only the HTML."
+    }]
+  }'
+```
+
+Write the response to `snake.html` and open it. In Python, with the OpenAI SDK
+pointed at us:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="https://api.hanzo.ai/v1", api_key="hk-...")
+
+game = client.chat.completions.create(
+    model="enso",
+    messages=[{"role": "user", "content": "Write a complete single-file HTML snake game..."}],
+)
+
+open("snake.html", "w").write(game.choices[0].message.content)
+```
+
+`model` is the only thing to change to try another of the
+[400+ models](/docs/llm) — the request shape does not move.
+
+</Tab>
+
+</Tabs>
+
+## Make it multiplayer
+
+The single-player version is local state in one browser tab. Two players need
+somewhere shared to put the state, and something to tell each tab when it changed —
+which is the point at which a toy starts using the platform properly:
+
+<Cards>
+  <Card icon={<Sparkles />} title="Keep the scores" href="/docs/kv" description="A key/value store for the leaderboard — read and written from the browser." />
+  <Card icon={<Rocket />} title="Push the moves" href="/docs/pubsub" description="Publish each move, subscribe in the other tab. No polling loop to write." />
+  <Card icon={<Code />} title="Know who is playing" href="/docs/iam" description="Sign-in, so a high score belongs to a person instead of a browser." />
+  <Card icon={<Package />} title="Put it somewhere" href="/docs/deploy" description="Ship the finished thing to a URL you can send to someone." />
+</Cards>
+
+## Then take it further
+
+<Cards>
+  <Card icon={<Rocket />} title="Get Started" href="/docs/getting-started" description="Account, API key, first call — the five-minute version." />
+  <Card icon={<Code />} title="API Reference" href="/docs/openapi" description="Every endpoint, generated from OpenAPI." />
+  <Card icon={<Package />} title="SDKs" href="/docs/sdks" description="Python, TypeScript, Go, Rust — one contract, many bindings." />
+  <Card icon={<Sparkles />} title="MCP" href="/docs/mcp" description="Give the model real tools — files, HTTP, your own functions." />
+</Cards>

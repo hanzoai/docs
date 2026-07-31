@@ -7,6 +7,7 @@ import { Accordion, Accordions } from '@hanzo/docs-ui/components/accordion';
 import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
 import { ModelsCatalog, ConnectorsCatalog } from '@/components/preview/lazy';
 import { DocsHero } from '@/components/docs-hero';
+import { ProviderStrip } from '@/components/provider-strip';
 import * as icons from 'lucide-react';
 
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
@@ -19,6 +20,8 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     Cards,
     // The docs masthead: title + Get started + Copy prompt.
     DocsHero,
+    // Provider brand marks, so "which models?" is answered at a glance.
+    ProviderStrip,
     // Live model catalog + pricing (fetches api.hanzo.ai/v1/models at runtime).
     ModelsCatalog,
     ConnectorsCatalog,
