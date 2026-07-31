@@ -24,8 +24,19 @@ APP_DIR="$SCRIPT_DIR/.."
 SPECS_DIR="$APP_DIR/openapi-specs"
 PIN_FILE="$SPECS_DIR/hanzo.pin"
 DOCUMENT="$SPECS_DIR/hanzo.yaml"
+# flows.yaml names the six canonical journeys as operationIds, in call order.
+# Upstream owns it: the SDKs ship the same six as `examples/<flow>/`, and the
+# docs' four-surface pages are one more projection of the same list.
+FLOWS="$SPECS_DIR/flows.yaml"
 
 mkdir -p "$SPECS_DIR"
+
+# Fetch one file from the pinned revision. $1 = repo-relative path, $2 = dest.
+fetch_pinned() {
+  [ -n "${TOKEN:-}" ] || return 1
+  curl -fsSL -H "Authorization: Bearer $TOKEN" \
+    "https://raw.githubusercontent.com/hanzoai/openapi/$PIN/$1" -o "$2" 2>/dev/null
+}
 
 if [ ! -f "$PIN_FILE" ]; then
   echo "[openapi] no $PIN_FILE — nothing to pin to; keeping the committed snapshot"
@@ -41,17 +52,21 @@ fi
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 
-if [ -n "$TOKEN" ] && curl -fsSL \
-    -H "Authorization: Bearer $TOKEN" \
-    "https://raw.githubusercontent.com/hanzoai/openapi/$PIN/hanzo.yaml" -o "$tmp" 2>/dev/null; then
+if fetch_pinned hanzo.yaml "$tmp"; then
   install -m 0644 "$tmp" "$DOCUMENT"
-  echo "[openapi] fetched hanzo.yaml @ ${PIN:0:9} ($(wc -c < "$DOCUMENT") bytes)"
+  if fetch_pinned flows.yaml "$tmp"; then
+    install -m 0644 "$tmp" "$FLOWS"
+    echo "[openapi] fetched hanzo.yaml + flows.yaml @ ${PIN:0:9} ($(wc -c < "$DOCUMENT") bytes)"
+  else
+    echo "[openapi] fetched hanzo.yaml @ ${PIN:0:9}; flows.yaml absent upstream at this pin"
+  fi
   exit 0
 fi
 
-SIBLING="$APP_DIR/../../../openapi/hanzo.yaml"
-if [ -f "$SIBLING" ]; then
-  install -m 0644 "$SIBLING" "$DOCUMENT"
+SIBLING_DIR="$APP_DIR/../../../openapi"
+if [ -f "$SIBLING_DIR/hanzo.yaml" ]; then
+  install -m 0644 "$SIBLING_DIR/hanzo.yaml" "$DOCUMENT"
+  [ -f "$SIBLING_DIR/flows.yaml" ] && install -m 0644 "$SIBLING_DIR/flows.yaml" "$FLOWS"
   echo "[openapi] using the sibling checkout ($(wc -c < "$DOCUMENT") bytes) — pin is ${PIN:0:9}"
   exit 0
 fi
