@@ -1,6 +1,6 @@
 import { DocsLayout } from '@hanzo/docs-base-ui/layouts/docs';
 import { DocsNavbar } from '@/components/docs-navbar';
-import { baseOptions, linkItems, logo } from '@/components/layouts/shared';
+import { baseOptions, logo } from '@/components/layouts/shared';
 import { source } from '@/lib/source';
 import { getSection } from '@/lib/source/navigation';
 import { AISearch, AISearchPanel, AISearchTrigger } from '@/components/ai/search';
@@ -27,12 +27,12 @@ export default function Layout({ children }: LayoutProps<'/docs'>) {
         slots={{ header: DocsNavbar }}
         tree={source.getPageTree()}
         links={[
-          // The four developer surfaces (API, CLI, MCP, SDKs) render HERE too, not
-          // just on the home layout. This filtered to `type === 'icon'`, which
-          // dropped every text link — so the nav a reader saw on the landing page
-          // vanished the moment they opened a doc, and the only way back to a
-          // sibling surface was the sidebar.
-          ...linkItems,
+          // Only the custom `on: 'nav'` items belong here. The four developer
+          // surfaces used to be spread in as well, which put API/CLI/MCP/SDKs at
+          // the top of the SIDEBAR — the same four the top bar already shows, two
+          // inches away. That cost four rows of the one screen the sidebar gets,
+          // to repeat what was already on screen. DocsNavbar renders linkItems in
+          // the bar; the sidebar is for the tree.
           {
             type: 'custom',
             on: 'nav',
