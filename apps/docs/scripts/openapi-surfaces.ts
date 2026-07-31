@@ -298,19 +298,35 @@ const py = (v: any): string =>
 // -------------------------------------------------------------------- MCP
 
 /**
- * The fleet MCP door names each tool for the operation's own `operationId`, and
- * a `tools/call` carries every argument in ONE FLAT object — neither query nor
- * path binds, so there is no path/query/body split to model here.
+ * The MCP door names a tool for the operation's `operationId` with the
+ * `<product>_` prefix removed — `ai_createChatCompletion` is `createChatCompletion`.
+ * That rule is not assumed: it reproduces 729 of the 730 names the live door
+ * returns for `tools/list`.
  *
- * Only typed operations become tools. An operation whose id carries the
- * untyped router shape (`_by_`) has no schema and therefore no MCP tool, no CLI
- * command and no SDK method; we return null rather than name a tool that can
- * never resolve.
+ * The door exposes a SUBSET of the document (730 of ~2,400 operations), so
+ * whether a given operation has a tool is a question only the door answers. We
+ * look it up in the vendored list and return null when it is absent, rather
+ * than printing a call that would come back "unknown tool".
+ *
+ * A `tools/call` carries every argument in ONE FLAT object — neither path nor
+ * query binds — so there is no path/query/body split to model here.
  */
-export function mcp(op: Operation, doc: Document): string | null {
-  if (op.id.includes('_by_')) return null;
+export function mcp(
+  op: Operation,
+  doc: Document,
+  tools: Map<string, { name: string }>,
+): { tool: string; call: string } | null {
+  const tool = op.name;
+  if (!tools.has(tool)) return null;
   const argsObj: Record<string, any> = {};
   for (const p of op.parameters.filter((x) => x.required)) argsObj[p.name] = placeholder(p);
   Object.assign(argsObj, exampleBody(op, doc) ?? {});
-  return JSON.stringify({ name: op.id, arguments: argsObj }, null, 2);
+  return {
+    tool,
+    call: JSON.stringify(
+      { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: tool, arguments: argsObj } },
+      null,
+      2,
+    ),
+  };
 }

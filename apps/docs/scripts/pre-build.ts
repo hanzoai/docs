@@ -2,6 +2,7 @@ import { buildRegistry } from '@/scripts/build-registry';
 import { genOpenapiPages } from './gen-openapi-pages';
 import { genFlowPages } from './gen-flow-pages';
 import { syncCliCommands } from './sync-cli-commands';
+import { syncMcpTools } from './sync-mcp-tools';
 import { syncProjectDocs } from './sync-project-docs';
 import { sanitizeMdx } from './sanitize-mdx';
 import { checkEndpoints } from './check-endpoints';
@@ -11,6 +12,7 @@ async function main() {
   // product) and the six flows (each shown four ways). Flows need both the
   // document and the CLI's command table, so they run after those land.
   await syncCliCommands();
+  await syncMcpTools();
   await genOpenapiPages();
   await genFlowPages();
 
