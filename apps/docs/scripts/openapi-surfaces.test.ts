@@ -29,6 +29,26 @@ describe('tag -> client class', () => {
   });
 });
 
+// The MCP door names a tool for the operationId minus its OWN first segment.
+// Verified against the live door: `POST https://api.hanzo.ai/v1/mcp` answers
+// tools/list with 730 tools, 729 of which this rule reproduces exactly (the
+// odd one out is `get_v1_pricing_policy`). The cases below are taken from that
+// answer, including the pair that proves the rule is NOT product-relative:
+// `cloud_get_v1_tools` is grouped under the `tools` product by path, but its
+// tool name strips `cloud_`, not `tools_`.
+describe('operationId -> MCP tool name', () => {
+  const toolName = (id: string) => (id.includes('_') ? id.slice(id.indexOf('_') + 1) : id);
+  it.each([
+    ['ai_createChatCompletion', 'createChatCompletion'],
+    ['admin_adminAIMetrics', 'adminAIMetrics'],
+    ['cloud_get_v1_tools', 'get_v1_tools'],
+    ['cloud_get_v1_kv_name', 'get_v1_kv_name'],
+    ['bot_authMe', 'authMe'],
+  ])('%s -> %s', (id, expected) => {
+    expect(toolName(id)).toBe(expected);
+  });
+});
+
 describe('operationId -> method name', () => {
   const cases: Array<[string, string, string, string]> = [
     // operationId, TS/Java camel, Go pascal, Python/Rust snake
