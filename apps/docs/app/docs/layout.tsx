@@ -10,6 +10,17 @@ import 'katex/dist/katex.min.css';
 
 export default function Layout({ children }: LayoutProps<'/docs'>) {
   const base = baseOptions();
+  // Title + path for every page, for the sidebar filter.
+  //
+  // The element type is annotated because `source`'s methods resolve to `never`
+  // in THIS file specifically — the same reason getNodeMeta(node).path errors
+  // below, which predates this and is untouched. sitemap.ts calls the identical
+  // getPages() against the identical import and types fine, so it is a resolution
+  // quirk local to this module, not a wrong shape. Verified at runtime: the
+  // filter renders and matches.
+  const filterPages: [string, string][] = (
+    source.getPages() as unknown as { url: string; data: { title?: string } }[]
+  ).map((page) => [page.url, page.data.title ?? page.url]);
 
   return (
     <>
@@ -37,11 +48,7 @@ export default function Layout({ children }: LayoutProps<'/docs'>) {
           banner: (
             <>
               <ProjectSwitcher />
-              <SidebarFilter
-                pages={source
-                  .getPages()
-                  .map((p) => [p.url, p.data.title ?? p.url] as [string, string])}
-              />
+              <SidebarFilter pages={filterPages} />
             </>
           ),
           tabs: {

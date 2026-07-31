@@ -126,22 +126,26 @@ export default function Page() {
       <section className="relative flex flex-col items-center text-center mx-auto w-full max-w-[1400px] px-6 pt-24 pb-16 md:pt-36 md:pb-24">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_600px_300px_at_50%_0%,rgba(255,255,255,0.04),transparent_70%)]" />
 
-        <Badge
-          variant="outline"
-          className="relative mb-8 rounded-full border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-[#a3a3a3] backdrop-blur font-normal"
+        {/* Enso first. The model is the reason to choose the platform; a
+            capability count is the reason to choose nothing. */}
+        <Link
+          href="https://hanzo.ai/enso"
+          target="_blank"
+          rel="noreferrer"
+          className="relative mb-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-[#a3a3a3] backdrop-blur transition-colors hover:border-white/20 hover:text-white"
         >
-          <span className="h-1.5 w-1.5 rounded-full bg-white mr-2" />
-          One binary &middot; One contract &middot; 67 capabilities
-        </Badge>
+          <span className="h-1.5 w-1.5 rounded-full bg-white" />
+          Meet Enso — our frontier model, default on every surface
+          <ArrowRight className="size-3.5" />
+        </Link>
 
         <h1 className="relative text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05]">
-          <span className="text-white">The AI cloud you<br className="hidden sm:block" /> can run yourself</span>
+          <span className="text-white">Build anything<br className="hidden sm:block" /> with Hanzo.</span>
         </h1>
         <p className="relative mt-5 max-w-xl text-[#737373] text-lg md:text-xl leading-relaxed">
-          One open-source binary is the whole cloud — 67 capabilities behind one
-          API, from identity and inference to data, observability, and commerce.
-          The same binary we run in production runs on your laptop, your GPU, or
-          your own cluster. The network is the cloud.
+          Every model. Every tool. One key. Start in the browser, ship from your
+          terminal, and when you want it on your own hardware, take the whole thing
+          with you — it is the same software we run in production.
         </p>
 
         {/* -- Install command -- the main CTA ------------------------------ */}
@@ -150,52 +154,59 @@ export default function Page() {
             <CardContent className="flex items-center gap-3 rounded-xl bg-[#0a0a0a] px-5 py-4 font-mono text-sm">
               <span className="text-[#525252] select-none">$</span>
               <span className="text-white flex-1 text-left">curl hanzo.sh | sh</span>
-              <button
-                className="text-[#525252] hover:text-white transition-colors"
-                title="Copy"
-                onClick={undefined}
-              >
-                <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                  <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-                </svg>
-              </button>
             </CardContent>
           </Card>
           <p className="text-xs text-[#404040] mt-3">
             Installs the <code className="text-[#666] bg-white/5 px-1 py-0.5 rounded">hanzo</code> CLI.
-            Then <code className="text-[#666] bg-white/5 px-1 py-0.5 rounded">hanzo login</code> to get started.
+            Then <code className="text-[#666] bg-white/5 px-1 py-0.5 rounded">hanzo auth login</code> to get a key.
           </p>
         </div>
 
-        <div className="relative flex flex-row items-center gap-3 mt-8 flex-wrap justify-center">
-          <Button asChild size="lg" className="rounded-full bg-white px-7 text-black hover:bg-neutral-200">
-            <Link href="/docs/getting-started">
-              Get Started
-              <ArrowRight className="size-4 ml-1" />
-            </Link>
-          </Button>
-          <Button asChild variant="outline" size="lg" className="rounded-full border-white/15 px-7 text-white hover:bg-white/5 bg-transparent">
-            <Link href="/docs/network">
-              Run it yourself
-            </Link>
-          </Button>
-        </div>
-
-        {/* -- Breadth stats bar -------------------------------------------- */}
-        <div className="relative mt-14 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-px w-full max-w-4xl rounded-2xl overflow-hidden border border-white/[0.08] bg-white/[0.04]">
+        {/* The three doors, in descending order of how much you type. The same
+            three the docs masthead offers, so the choice a reader makes here is
+            the one they keep. Replaces the stats bar: 67 / 436 / 600+ / 7 asked a
+            reader to be impressed before they knew what the thing was, and the
+            counts went stale the moment a service shipped. */}
+        <div className="relative mt-12 grid w-full max-w-4xl gap-4 sm:grid-cols-3">
           {[
-            { n: '67', label: 'Capabilities' },
-            { n: '436', label: 'Models' },
-            { n: '600+', label: 'MCP servers' },
-            { n: '7', label: 'SDK languages' },
-          ].map((s) => (
-            <div key={s.label} className="bg-[#0a0a0a] px-5 py-5 text-center">
-              <div className="text-2xl font-bold text-white tabular-nums">{s.n}</div>
-              <div className="mt-1 text-[11px] uppercase tracking-wider text-neutral-400">{s.label}</div>
-            </div>
+            {
+              eyebrow: 'No code',
+              title: 'Build with App',
+              body: 'Describe it in English and watch it build. Chat, agents and MCP tools in the browser.',
+              href: 'https://hanzo.app',
+              external: true,
+            },
+            {
+              eyebrow: 'In your terminal',
+              title: 'Build with Dev',
+              body: 'Our coding agent, in your repo. Or bring Claude Code and Codex — they work here too.',
+              href: '/docs/cli',
+            },
+            {
+              eyebrow: 'Lower level',
+              title: 'Build with API',
+              body: 'Over 400 models behind one REST endpoint, with SDKs for every language we ship.',
+              href: '/docs/api',
+            },
+          ].map((d) => (
+            <Link
+              key={d.title}
+              href={d.href}
+              {...(d.external ? { target: '_blank', rel: 'noreferrer' } : {})}
+              className="group flex flex-col rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]"
+            >
+              <span className="mb-2 text-[11px] uppercase tracking-[0.16em] text-[#737373]">
+                {d.eyebrow}
+              </span>
+              <span className="mb-1.5 flex items-center gap-1.5 text-lg font-semibold text-white">
+                {d.title}
+                <ArrowRight className="size-4 opacity-40 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
+              </span>
+              <span className="text-sm leading-relaxed text-[#737373]">{d.body}</span>
+            </Link>
           ))}
         </div>
+
       </section>
 
       <div className="mx-auto w-full max-w-[1400px] px-6 md:px-12 space-y-24">
@@ -325,7 +336,7 @@ print(response.choices[0].message.content)`}
             Every model, one API
           </h2>
           <p className="text-[#737373] text-sm mb-8">
-            436 models across every major provider — call any of them with one credential, one request shape.
+            Over 400 models across every major provider — call any of them with one credential, one request shape.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
             {[
