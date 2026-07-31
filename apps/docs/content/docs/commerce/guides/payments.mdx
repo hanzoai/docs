@@ -66,11 +66,17 @@ not live tokenizes and charges against Square sandbox even where the deployment
 is configured for production. Flip it with:
 
 ```bash
-POST /v1/billing/test-mode   { "testMode": false }
+POST /v1/billing/mode   { "testMode": false }
 ```
 
 That endpoint is admin-only by design — a user must not be able to move their own
 org to sandbox to dodge real charges.
+
+<Callout type="info">
+  This route was `/v1/billing/test-mode` until the billing surface dropped its
+  compound names, alongside `/v1/billing/spend-alerts` → `/v1/billing/alerts`.
+  If `mode` 404s, the rename has not reached that deployment yet.
+</Callout>
 
 Fetch the public config the browser needs (application id, location id,
 environment) from `GET /v1/billing/payment-config`, or, for a storefront
