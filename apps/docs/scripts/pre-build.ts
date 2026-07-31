@@ -4,6 +4,7 @@ import { genFlowPages } from './gen-flow-pages';
 import { syncCliCommands } from './sync-cli-commands';
 import { syncProjectDocs } from './sync-project-docs';
 import { sanitizeMdx } from './sanitize-mdx';
+import { checkEndpoints } from './check-endpoints';
 
 async function main() {
   // The document first, then its projections: the reference (one page per
@@ -22,6 +23,21 @@ async function main() {
   // docs (angle-bracket autolinks, mis-nested JSX wrappers) so every page
   // compiles instead of falling back to the error boundary.
   sanitizeMdx();
+
+  // Last: no page may claim an endpoint the document does not have. A generated
+  // page that does is a bug in a generator above and fails the build; authored
+  // prose that does is reported, because the fix there is someone's editorial
+  // call, not the build's.
+  const { checked, unknown } = checkEndpoints();
+  const generated = unknown.filter(([f]) => f.startsWith('openapi/') || f.startsWith('start/'));
+  if (generated.length) {
+    for (const [f, p] of generated.slice(0, 20)) console.error(`  ${f}: ${p}`);
+    throw new Error(`${generated.length} generated pages name endpoints the document does not have`);
+  }
+  console.log(
+    `[endpoints] ${checked} mentions checked, generated pages clean, ` +
+      `${unknown.length} in authored prose to reconcile`,
+  );
 }
 
 await main().catch((e) => {
