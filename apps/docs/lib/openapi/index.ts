@@ -3,19 +3,15 @@ import path from 'node:path';
 import fs from 'node:fs';
 
 const isExport = process.env.NEXT_EXPORT === '1';
-const specsDir = path.resolve('./openapi-specs');
+// ONE document. The interactive loader reads exactly the file the static
+// reference is generated from, so dev and the export never disagree.
+const document = path.resolve('./openapi-specs/hanzo.yaml');
 
-// Load OpenAPI specs when the directory exists (populated by sync-openapi.sh).
-// During static export the generated API pages contain slugs with dots and
-// deeply nested paths that break Next.js prerendering / file-copy, so we
-// skip them entirely in that mode.
-const specFiles =
-  !isExport && fs.existsSync(specsDir)
-    ? fs
-        .readdirSync(specsDir)
-        .filter((f: string) => f.endsWith('.yaml'))
-        .map((f: string) => path.join(specsDir, f))
-    : [];
+// Load the document when it is present (fetched by sync-openapi.sh). During
+// static export the generated API pages contain slugs with dots and deeply
+// nested paths that break Next.js prerendering / file-copy, so we skip them
+// entirely in that mode and serve the generated MDX instead.
+const specFiles = !isExport && fs.existsSync(document) ? [document] : [];
 
 export const hasSpecs = specFiles.length > 0;
 
