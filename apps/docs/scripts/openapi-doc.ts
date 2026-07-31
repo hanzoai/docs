@@ -114,39 +114,65 @@ const firstSentence = (s: string): string => {
  * inventing a product — and if neither resolves, the operation is reported as
  * unresolved instead of being silently dropped.
  */
-function resolveProduct(id: string, path: string, known: Set<string>): string | null {
+function resolveProduct(id: string, path: string, known: (s: string) => boolean): string | null {
   const prefix = id.includes('_') ? id.slice(0, id.indexOf('_')) : '';
-  if (prefix && known.has(prefix)) return prefix;
+  if (prefix && known(prefix)) return prefix;
   const seg = path.split('/').filter(Boolean);
-  if (seg[0] === 'v1' && seg[1] && known.has(seg[1])) return seg[1];
+  if (seg[0] === 'v1' && seg[1] && known(seg[1])) return seg[1];
   return prefix || null;
 }
+
+/**
+ * Product slugs are lowercase (`webhooks`, `pubsub`) because they come from an
+ * operationId prefix or a path segment; tag names are prose-cased (`Webhooks`,
+ * `Pub/Sub`). Matching them exactly stranded 16 packages' synopses on tags no
+ * page was keyed by. Compare on the squashed form so the prose finds its page,
+ * while the slug — and therefore the URL — stays the lowercase one.
+ */
+const squash = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 export function loadDocument(file: string): Document {
   const raw = parseYaml(fs.readFileSync(file, 'utf8'));
   if (!raw?.paths) throw new Error(`${file}: not an OpenAPI document (no paths)`);
 
+  /** Products the document serves but declares no tag for (so: no synopsis). */
+  const undeclared = new Set<string>();
+
   const tags: any[] = Array.isArray(raw.tags) ? raw.tags : [];
-  const known = new Set<string>(tags.map((t) => t.name));
+  // TWO indexes, deliberately not one. Resolution matches tag names EXACTLY;
+  // squash-matching there would let the woven document's `cloud_` prefix claim
+  // a `Cloud` tag and swallow every path-derived product with it (132 products
+  // collapsed to 29). Squashing is only for finding a slug's prose.
+  const tagByName = new Map<string, any>(tags.map((t) => [t.name, t]));
+  const tagBySquash = new Map<string, any>();
+  for (const t of tags) if (!tagBySquash.has(squash(t.name))) tagBySquash.set(squash(t.name), t);
+  const known = (s: string) => tagByName.has(s);
+
+  // Products are created on demand, keyed by SLUG. Pre-seeding one per tag
+  // would mint a second page for every tag whose name only squash-matches a
+  // slug (`Webhooks` beside `webhooks`).
   const byName = new Map<string, Product>();
-  for (const t of tags) {
-    const description = String(t.description ?? '').trim();
-    byName.set(t.name, {
-      name: t.name,
+  const product = (slug: string): Product => {
+    let p = byName.get(slug);
+    if (p) return p;
+    const t = tagByName.get(slug) ?? tagBySquash.get(squash(slug));
+    if (!t) undeclared.add(slug);
+    p = {
+      name: slug,
       // The tag NAME is the product's identity; its description is a synopsis,
       // not a heading ("Package agents is autonomous agents for your org: …").
       // Using the description's first line as a title turned whole sentences
       // into page titles once the document gained product-voice prose.
-      title: String(t['x-displayName'] ?? '').trim() || titleCase(t.name),
-      description,
+      title: String(t?.['x-displayName'] ?? '').trim() || titleCase(t?.name ?? slug),
+      description: String(t?.description ?? '').trim(),
       operations: [],
-    });
-  }
+    };
+    byName.set(slug, p);
+    return p;
+  };
 
   const operations: Operation[] = [];
   const unresolved: Operation[] = [];
-  /** Products the document serves but never declared a tag (so: no synopsis). */
-  const undeclared = new Set<string>();
   const byId = new Map<string, Operation>();
 
   for (const [path, item] of Object.entries<any>(raw.paths)) {
@@ -157,7 +183,7 @@ export function loadDocument(file: string): Document {
       if (!op || typeof op !== 'object') continue;
 
       const id = String(op.operationId ?? '');
-      const product = resolveProduct(id, path, known);
+      const product_ = resolveProduct(id, path, known);
 
       const parameters: Param[] = [...shared, ...(op.parameters ?? [])]
         .map((p) => deref(raw, p))
@@ -185,7 +211,7 @@ export function loadDocument(file: string): Document {
       const okCt = okRaw?.content ? Object.keys(okRaw.content)[0] : undefined;
 
       const resolved: Operation = {
-        product: product ?? '',
+        product: product_ ?? '',
         id,
         // The id's OWN prefix, not the product it is grouped under. These
         // differ: `cloud_get_v1_tools` is grouped under `tools` (its path) but
@@ -193,7 +219,7 @@ export function loadDocument(file: string): Document {
         // 729 of its 730 names are exactly it — so it must not be conflated
         // with page grouping.
         name: id.includes('_') ? id.slice(id.indexOf('_') + 1) : id,
-        tag: (Array.isArray(op.tags) && op.tags[0]) || product || 'General',
+        tag: (Array.isArray(op.tags) && op.tags[0]) || product_ || 'General',
         method,
         path,
         summary: String(op.summary ?? '').replace(/\s+/g, ' ').trim(),
@@ -213,17 +239,7 @@ export function loadDocument(file: string): Document {
       operations.push(resolved);
       if (id) byId.set(id, resolved);
 
-      // A product the document serves operations for but never declared a tag
-      // for still gets a page: dropping it would hide a third of the API
-      // because nobody wrote a synopsis yet. It is created with an empty
-      // description, so the page says what it can and no prose is invented.
-      let owner = product ? byName.get(product) : undefined;
-      if (!owner && product) {
-        owner = { name: product, title: titleCase(product), description: '', operations: [] };
-        byName.set(product, owner);
-        undeclared.add(product);
-      }
-      if (owner) owner.operations.push(resolved);
+      if (product_) product(product_).operations.push(resolved);
       else unresolved.push(resolved);
     }
   }
