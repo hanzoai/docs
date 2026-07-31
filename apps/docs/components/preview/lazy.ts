@@ -35,3 +35,7 @@ export const ModelsCatalog = dynamic(() =>
 export const ConnectorsCatalog = dynamic(() =>
   import('@/components/connectors-catalog').then((res) => res.ConnectorsCatalog),
 );
+
+export const InstallCatalog = dynamic(() =>
+  import('@/components/install-catalog').then((res) => res.InstallCatalog),
+);
