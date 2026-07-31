@@ -5,7 +5,7 @@ import { Steps, Step } from '@hanzo/docs-ui/components/steps';
 import type { MDXComponents } from 'mdx/types';
 import { Accordion, Accordions } from '@hanzo/docs-ui/components/accordion';
 import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
-import { ModelsCatalog, ConnectorsCatalog } from '@/components/preview/lazy';
+import { ModelsCatalog, ConnectorsCatalog, InstallCatalog } from '@/components/preview/lazy';
 import { DocsHero } from '@/components/docs-hero';
 import { ProviderStrip } from '@/components/provider-strip';
 import * as icons from 'lucide-react';
@@ -25,6 +25,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     // Live model catalog + pricing (fetches api.hanzo.ai/v1/models at runtime).
     ModelsCatalog,
     ConnectorsCatalog,
+    InstallCatalog,
     Tabs,
     Tab,
     TabsContent,
