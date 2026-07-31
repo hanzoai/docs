@@ -27,12 +27,12 @@ export function AuthButtons() {
   if (user) {
     return (
       <div className="flex items-center gap-3">
-        <span className="text-sm text-[#a3a3a3] truncate max-w-[120px]">
+        <span className="text-sm text-neutral-400 truncate max-w-[120px]">
           {user.email || user.displayName}
         </span>
         <button
           onClick={handleSignOut}
-          className="text-sm text-[#a3a3a3] hover:text-[#fafafa] transition-colors"
+          className="text-sm text-neutral-400 hover:text-neutral-50 transition-colors"
         >
           Sign Out
         </button>
@@ -50,7 +50,7 @@ export function AuthButtons() {
     <div className="flex items-center gap-3">
       <Link
         href="/login"
-        className="text-sm text-[#a3a3a3] hover:text-[#fafafa] transition-colors"
+        className="text-sm text-neutral-400 hover:text-neutral-50 transition-colors"
       >
         Sign In
       </Link>
