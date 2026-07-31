@@ -28,6 +28,9 @@ DOCUMENT="$SPECS_DIR/hanzo.yaml"
 # Upstream owns it: the SDKs ship the same six as `examples/<flow>/`, and the
 # docs' four-surface pages are one more projection of the same list.
 FLOWS="$SPECS_DIR/flows.yaml"
+# sdks.yaml is the SDK matrix — the package names the docs print must be the
+# ones the generator actually publishes under.
+SDKS="$SPECS_DIR/sdks.yaml"
 
 mkdir -p "$SPECS_DIR"
 
@@ -54,12 +57,14 @@ trap 'rm -f "$tmp"' EXIT
 
 if fetch_pinned hanzo.yaml "$tmp"; then
   install -m 0644 "$tmp" "$DOCUMENT"
-  if fetch_pinned flows.yaml "$tmp"; then
-    install -m 0644 "$tmp" "$FLOWS"
-    echo "[openapi] fetched hanzo.yaml + flows.yaml @ ${PIN:0:9} ($(wc -c < "$DOCUMENT") bytes)"
-  else
-    echo "[openapi] fetched hanzo.yaml @ ${PIN:0:9}; flows.yaml absent upstream at this pin"
-  fi
+  got=hanzo.yaml
+  for extra in flows.yaml sdks.yaml; do
+    if fetch_pinned "$extra" "$tmp"; then
+      install -m 0644 "$tmp" "$SPECS_DIR/$extra"
+      got="$got + $extra"
+    fi
+  done
+  echo "[openapi] fetched $got @ ${PIN:0:9} ($(wc -c < "$DOCUMENT") bytes)"
   exit 0
 fi
 
@@ -67,6 +72,7 @@ SIBLING_DIR="$APP_DIR/../../../openapi"
 if [ -f "$SIBLING_DIR/hanzo.yaml" ]; then
   install -m 0644 "$SIBLING_DIR/hanzo.yaml" "$DOCUMENT"
   [ -f "$SIBLING_DIR/flows.yaml" ] && install -m 0644 "$SIBLING_DIR/flows.yaml" "$FLOWS"
+  [ -f "$SIBLING_DIR/sdks.yaml" ] && install -m 0644 "$SIBLING_DIR/sdks.yaml" "$SDKS"
   echo "[openapi] using the sibling checkout ($(wc -c < "$DOCUMENT") bytes) — pin is ${PIN:0:9}"
   exit 0
 fi

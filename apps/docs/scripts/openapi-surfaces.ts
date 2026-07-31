@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { parse as parseYaml } from 'yaml';
 import { deref, type Document, type Operation, type Param } from './openapi-doc';
 import type { CliCommand } from './sync-cli-commands';
 
@@ -162,6 +164,25 @@ export interface SdkLang {
   render(op: Operation, doc: Document): string;
 }
 
+/**
+ * Package names come from upstream's SDK matrix (hanzoai/openapi sdks.yaml),
+ * which is what actually drives the generator that publishes them — never from
+ * a copy here. `@hanzo/sdk` became `hanzoai` upstream in one commit; a
+ * hardcoded name would have gone stale that day and taught an install that
+ * fails.
+ */
+const SDK_MATRIX: Record<string, any> = (() => {
+  const f = new URL('../openapi-specs/sdks.yaml', import.meta.url).pathname;
+  try {
+    return parseYaml(readFileSync(f, 'utf8'))?.sdks ?? {};
+  } catch {
+    return {};
+  }
+})();
+
+const pkg = (lang: string, prop: string, fallback: string): string =>
+  String(SDK_MATRIX[lang]?.properties?.[prop] ?? fallback);
+
 const args = (op: Operation, doc: Document): { keys: string[]; body?: any } => {
   const body = exampleBody(op, doc);
   const keys = op.parameters.filter((p) => p.required).map((p) => p.name);
@@ -181,7 +202,7 @@ export const SDKS: SdkLang[] = [
         ...(body ? Object.entries(body).map(([k, v]) => `${k}: ${JSON.stringify(v)}`) : []),
       ];
       return [
-        `import { Configuration, ${cls} } from '@hanzo/sdk';`,
+        `import { Configuration, ${cls} } from '${pkg('typescript', 'npmName', 'hanzoai')}';`,
         ``,
         `const api = new ${cls}(new Configuration({ accessToken: process.env.HANZO_API_KEY }));`,
         `const { data } = await api.${camelId(op.id)}(${params.length ? `{ ${params.join(', ')} }` : ''});`,
@@ -194,14 +215,15 @@ export const SDKS: SdkLang[] = [
     lang: 'python',
     render(op, doc) {
       const cls = `${pascalTag(op.tag)}Api`;
+      const py_pkg = pkg('python', 'packageName', 'hanzoai.cloud');
       const { keys, body } = args(op, doc);
       const params = [
         ...keys.map((k) => `${snakeId(k)}='${k}'`),
         ...(body ? Object.entries(body).map(([k, v]) => `${snakeId(k)}=${py(v)}`) : []),
       ];
       return [
-        `from hanzoai.cloud import ApiClient, Configuration`,
-        `from hanzoai.cloud.api import ${cls}`,
+        `from ${py_pkg} import ApiClient, Configuration`,
+        `from ${py_pkg}.api import ${cls}`,
         ``,
         `client = ApiClient(Configuration(access_token=os.environ["HANZO_API_KEY"]))`,
         `result = ${cls}(client).${snakeId(op.id)}(${params.join(', ')})`,
@@ -214,10 +236,11 @@ export const SDKS: SdkLang[] = [
     lang: 'go',
     render(op, doc) {
       const svc = `${pascalTag(op.tag)}API`;
+      const go_pkg = pkg('go', 'packageName', 'cloud');
       return [
-        `cfg := cloud.NewConfiguration()`,
+        `cfg := ${go_pkg}.NewConfiguration()`,
         `cfg.AddDefaultHeader("Authorization", "Bearer "+os.Getenv("HANZO_API_KEY"))`,
-        `client := cloud.NewAPIClient(cfg)`,
+        `client := ${go_pkg}.NewAPIClient(cfg)`,
         ``,
         `resp, _, err := client.${svc}.${pascalId(op.id)}(context.Background()).Execute()`,
         `if err != nil {`,
@@ -232,8 +255,9 @@ export const SDKS: SdkLang[] = [
     lang: 'rust',
     render(op, doc) {
       const mod = `${snakeId(pascalTag(op.tag))}_api`;
+      const crate = pkg('rust', 'packageName', 'hanzo-cloud').replace(/-/g, '_');
       return [
-        `use hanzo_cloud::apis::{configuration::Configuration, ${mod}};`,
+        `use ${crate}::apis::{configuration::Configuration, ${mod}};`,
         ``,
         `let mut cfg = Configuration::new();`,
         `cfg.bearer_access_token = std::env::var("HANZO_API_KEY").ok();`,
@@ -248,9 +272,10 @@ export const SDKS: SdkLang[] = [
     lang: 'java',
     render(op, doc) {
       const cls = `${pascalTag(op.tag)}Api`;
+      const jpkg = pkg('java', 'invokerPackage', 'ai.hanzo.cloud');
       return [
-        `import ai.hanzo.cloud.ApiClient;`,
-        `import ai.hanzo.cloud.api.${cls};`,
+        `import ${jpkg}.ApiClient;`,
+        `import ${jpkg}.api.${cls};`,
         ``,
         `ApiClient client = new ApiClient();`,
         `client.setRequestInterceptor(b -> b.header("Authorization", "Bearer " + System.getenv("HANZO_API_KEY")));`,
