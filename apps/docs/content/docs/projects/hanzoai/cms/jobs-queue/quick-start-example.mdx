@@ -63,7 +63,7 @@ export default buildConfig({
 })
 ```
 
-This defines a reusable task with a unique `slug`, an `inputSchema` that validates and types the input data, and a `handler` function containing the work to be performed. The `retries` option ensures the task will automatically retry up to 3 times if it fails. Learn more about [Tasks](/docs/jobs-queue/tasks).
+This defines a reusable task with a unique `slug`, an `inputSchema` that validates and types the input data, and a `handler` function containing the work to be performed. The `retries` option ensures the task will automatically retry up to 3 times if it fails. Learn more about [Tasks](/docs/projects/hanzoai/cms/jobs-queue/tasks).
 
 ### Step 2: Queue the Job trigger
 
@@ -90,7 +90,7 @@ This defines a reusable task with a unique `slug`, an `inputSchema` that validat
 }
 ```
 
-This uses [`payload.jobs.queue()`](/docs/jobs-queue/jobs#queuing-a-new-job) to create a job instance from the task definition. The job is added to the queue immediately but runs asynchronously, so the API response returns right away without waiting for the email to send. Jobs are stored in the database as documents in the `payload-jobs` collection.
+This uses [`payload.jobs.queue()`](/docs/projects/hanzoai/cms/jobs-queue/jobs#queuing-a-new-job) to create a job instance from the task definition. The job is added to the queue immediately but runs asynchronously, so the API response returns right away without waiting for the email to send. Jobs are stored in the database as documents in the `payload-jobs` collection.
 
 ### Step 3: Run the Jobs
 
@@ -110,7 +110,7 @@ export default buildConfig({
 })
 ```
 
-The [`autoRun`](/docs/jobs-queue/queues#cron-jobs) configuration automatically processes queued jobs on a schedule using cron syntax. In this example, Payload checks for pending jobs every 5 minutes and executes them. Alternatively, you can [manually trigger job processing](/docs/jobs-queue/queues#local-api) with `payload.jobs.run()` or use the [API endpoint](/docs/jobs-queue/queues#endpoint) for serverless platforms.
+The [`autoRun`](/docs/projects/hanzoai/cms/jobs-queue/queues#cron-jobs) configuration automatically processes queued jobs on a schedule using cron syntax. In this example, Payload checks for pending jobs every 5 minutes and executes them. Alternatively, you can [manually trigger job processing](/docs/projects/hanzoai/cms/jobs-queue/queues#local-api) with `payload.jobs.run()` or use the [API endpoint](/docs/projects/hanzoai/cms/jobs-queue/queues#endpoint) for serverless platforms.
 
 That's it! Now when users sign up, a job is queued and will be processed within 5 minutes without blocking the API response.
 
@@ -272,7 +272,7 @@ export default buildConfig({
 <Banner type="warning">
   **For Serverless Platforms:** If deploying to Vercel or similar platforms,
   `autoRun` won't work. Use the [Vercel Cron
-  approach](/docs/jobs-queue/queues#vercel-cron-example) instead.
+  approach](/docs/projects/hanzoai/cms/jobs-queue/queues#vercel-cron-example) instead.
 </Banner>
 
 ### When to Use Each Approach
@@ -296,4 +296,4 @@ await payload.jobs.queue({
 
 This is different from the `schedule` property, which repeats automatically.
 
-See [Job Schedules](/docs/jobs-queue/schedules) for more details on scheduling options and advanced patterns.
+See [Job Schedules](/docs/projects/hanzoai/cms/jobs-queue/schedules) for more details on scheduling options and advanced patterns.

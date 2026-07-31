@@ -156,6 +156,17 @@ export function DocsHero({
         </span>
       </Link>
 
+      {/* The action row, in the order a reader needs it: start, or hand the docs to
+          an assistant. Get started points at the CLI quickstart on this page — two
+          commands and you have a key. */}
+      <div className="flex flex-wrap items-center gap-3">
+      <Link
+        href="#get-going"
+        className="inline-flex h-10 items-center rounded-full bg-fd-primary px-6 text-sm font-medium text-fd-primary-foreground transition-opacity hover:opacity-90"
+      >
+        Get started
+      </Link>
+
       <button
         type="button"
         onClick={copy}
@@ -169,6 +180,7 @@ export function DocsHero({
         </span>
         {copied ? 'Copied' : 'Copy prompt'}
       </button>
+      </div>
     </div>
   );
 }
