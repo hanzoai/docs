@@ -72,7 +72,7 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
             depending on which page you were on. MeetHanzo is the one kept: it is
             labelled, and it resolves a product to its DOCS page when we have one instead
             of bouncing the reader out to marketing. */}
-        <MeetHanzo />
+        <MeetHanzo compact />
         <AuthButtons />
       </div>
     </header>
