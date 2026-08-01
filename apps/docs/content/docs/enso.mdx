@@ -49,13 +49,17 @@ disappoints you, not before.
 
 | Model | Context | In / Out (per 1M tokens) | Reach for it when |
 |---|---|---|---|
-| `enso-flash` | 1,000,000 | $2 / $6 | Default. High volume, tight latency budget, everyday work. |
+| `enso-flash` | 1,000,000 | $2 / $6 | Default. High volume, everyday work, anything you send a lot of. |
 | `enso` | 1,000,000 | $20 / $60 | The answer's quality matters more than its cost — hard reasoning, long documents, code that has to be right. |
-| `enso-ultra` | 200,000 | $40 / $120 | Being right matters more than being fast or cheap. |
+| `enso-ultra` | 200,000 | $40 / $120 | Being right matters more than being cheap. |
 
 The three tiers are roughly **1x, 10x, and 20x** the same unit of cost, which
 makes the choice easier than it looks: you are deciding how much a better answer
 is worth to you on this particular request.
+
+Note that the column above is about **cost**, not speed. Price and latency are
+independent here, and not in the direction the names suggest — measure before
+you assume, using the next section.
 
 ### What makes enso-ultra different
 
@@ -68,6 +72,69 @@ You pay for that in two currencies: money, and context. Ultra's window is
 **200K tokens, not 1M** — it is the one enso model that cannot take your whole
 codebase in a single prompt. If your input is large, `enso` is the better tool
 even though it is the cheaper one.
+
+## Measure them yourself
+
+Do not take anyone's word for which tier is fast — including this page's. Send
+one prompt to all three and time it. This is the whole experiment:
+
+```bash
+for m in enso enso-flash enso-ultra; do
+  printf '%-11s ' "$m"
+  curl -s -o /dev/null -w '%{http_code}  %{time_total}s\n' \
+    https://api.hanzo.ai/v1/chat/completions \
+    -H "Authorization: Bearer $HANZO_API_KEY" \
+    -H 'Content-Type: application/json' \
+    -d "{\"model\":\"$m\",\"messages\":[{\"role\":\"user\",\"content\":\"In two sentences, explain what an API key is to someone who has never used one.\"}]}"
+done
+```
+
+`-o /dev/null` throws the answer away and `-w` prints only the status code and
+the wall-clock time, so you are timing the request and nothing else. One run:
+
+```
+enso        200  18.481812s
+enso-flash  200  9.737156s
+enso-ultra  200  4.755649s
+```
+
+Run it a few times and the spread matters more than any single number. Over five
+rounds of that same prompt:
+
+| Model | Fastest | Median | Slowest |
+|---|---|---|---|
+| `enso-ultra` | 4.49s | **4.85s** | 5.21s |
+| `enso-flash` | 8.21s | **14.91s** | 33.13s |
+| `enso` | 19.15s | **20.26s** | 20.69s |
+
+Two things there are worth internalising, because neither is what the names
+imply. **`enso-ultra` was the fastest of the three on this prompt**, not the
+slowest — consistent with its design: it sizes a model to the task, and an easy
+question never reaches the panel. And **`enso-flash` was the least consistent** —
+its slowest round was four times its fastest, so a single timing tells you very
+little about the next one.
+
+Take that as a method, not as a league table. The prompt above is an easy one,
+and these numbers describe that prompt in that moment — a harder question can
+reorder them, because difficulty is what decides how much work `enso-ultra` does.
+Time the tiers on *your* prompt, on the kind of question you actually plan to
+ask, and re-time them when that changes.
+
+## What an answer looks like
+
+Same prompt, sent to `enso-ultra`, printed exactly as it came back:
+
+> An API key is a unique string of characters that acts like a password,
+> allowing a program to access a specific service or application programming
+> interface (API). It identifies the user or application to the service,
+> ensuring that only authorized users can make requests and helping track usage
+> for billing or rate-limiting purposes.
+
+That request billed 275 input tokens and 70 output tokens — the `usage` object
+in the response says so, and at ultra's $40/$120 per million that is about
+**$0.019**. The same traffic through `enso-flash` would cost about a tenth of a
+cent. Read `usage` rather than estimating: it is the number you are actually
+charged for.
 
 ## Switching between them
 
