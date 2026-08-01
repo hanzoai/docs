@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { PROVIDER_ICONS } from '@/components/provider-icons';
+import { AGENT_SETUP_PROMPT } from '@/lib/agent-setup-prompt';
 
 // The masthead. Three doors, one model, and nothing else above the fold.
 //
@@ -25,18 +26,8 @@ import { PROVIDER_ICONS } from '@/components/provider-icons';
 /** Assistants a reader might paste the prompt into, from our own icon set. */
 const ASSISTANTS = ['hanzo', 'anthropic', 'openai', 'google'] as const;
 
-/**
- * Points an assistant at the machine-readable corpus rather than paraphrasing it,
- * so it answers from current docs instead of its training data.
- */
-const PROMPT = [
-  'Read the Hanzo developer documentation at https://docs.hanzo.ai/llms.txt',
-  'and answer questions about the Hanzo platform using it.',
-  '',
-  'The REST API is at https://api.hanzo.ai/v1 and takes a bearer token:',
-  'an API key (hk-...) for server-to-server calls, or an IAM access token',
-  'for user-facing apps.',
-].join('\n');
+// The clipboard payload lives in lib/agent-setup-prompt.ts — see the note there
+// for why it instructs the AGENT rather than describing steps to a human.
 
 /**
  * The three paths, ordered by how much you type. Each carries its real first
@@ -91,7 +82,7 @@ function BrandIcon({ name, className = 'size-4' }: { name: string; className?: s
 }
 
 export function DocsHero({
-  title = 'Build anything with Hanzo',
+  title = 'Build Anything with Hanzo',
   description = 'Over 400 models, one platform. Pick how much you want to type.',
 }: {
   title?: string;
@@ -104,7 +95,7 @@ export function DocsHero({
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(PROMPT);
+      await navigator.clipboard.writeText(AGENT_SETUP_PROMPT);
       setCopied(true);
       // Revert rather than latch — a button stuck on "Copied" reads as broken.
       setTimeout(() => setCopied(false), 2000);
