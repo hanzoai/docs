@@ -14,7 +14,7 @@ picked an id.
 
 ## Using a model
 
-Pass the model id straight into any OpenAI-compatible request:
+Pass the model id straight into the request:
 
 ```bash
 curl https://api.hanzo.ai/v1/chat/completions \
@@ -29,12 +29,9 @@ curl https://api.hanzo.ai/v1/chat/completions \
 Swapping models is a one-string change — `zen5` (default), `zen5-coder` for code, `zen5-flash` for speed, or `enso` for the frontier reasoning tier:
 
 ```typescript
-import OpenAI from 'openai';
+import Hanzo from '@hanzo/ai';
 
-const client = new OpenAI({
-  baseURL: 'https://api.hanzo.ai/v1',
-  apiKey: process.env.HANZO_API_KEY,
-});
+const client = new Hanzo({ apiKey: process.env.HANZO_API_KEY });
 
 const res = await client.chat.completions.create({
   model: 'enso',
@@ -44,7 +41,7 @@ const res = await client.chat.completions.create({
 
 ## Listing models programmatically
 
-The same catalog is available as an OpenAI-compatible listing — each entry carries its `context`, `pricing` (USD per 1M tokens), `features`, and `family`:
+The same catalog is available over HTTP — each entry carries its `context`, `pricing` (USD per 1M tokens), `features`, and `family`:
 
 ```bash
 curl https://api.hanzo.ai/v1/models
@@ -78,7 +75,7 @@ curl https://api.hanzo.ai/v1/models
     The open-weight family, from 4B edge to 1T+ reasoning
   </Card>
   <Card title="Gateway" href="/docs/services/gateway">
-    The OpenAI-compatible router in front of every model
+    The API gateway in front of every model
   </Card>
   <Card title="Engine" href="/docs/services/engine">
     The GPU inference engine serving the Zen and Enso families

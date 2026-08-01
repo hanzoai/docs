@@ -20,7 +20,7 @@ Hanzo Console is the LLM engineering platform at the center of the Hanzo AI stac
 - **Session Replay** -- Reconstruct full user sessions across multiple traces and generations
 - **A/B Testing** -- Split traffic across prompt variants and compare metrics side-by-side
 - **Multi-Org Support** -- Organization isolation via Hanzo IAM SSO; switch between orgs in one click
-- **OpenAI SDK Compatible** -- Drop-in wrapper; change one line to start tracing existing OpenAI or Hanzo SDK calls
+- **Traces calls you already make** -- wrap an existing client and its calls start showing up in Console; one line, no rewrite
 
 ## Architecture
 
@@ -79,7 +79,7 @@ curl -X POST https://api.hanzo.ai/v1/console/ingestion \
         "body": {
           "traceId": "trace-001",
           "name": "llm-call",
-          "model": "anthropic-claude-haiku-4.5",
+          "model": "zen5",
           "input": [{"role": "user", "content": "What is Hanzo Console?"}],
           "output": {"role": "assistant", "content": "An LLM engineering platform."},
           "usage": {"inputTokens": 12, "outputTokens": 8}
@@ -103,9 +103,9 @@ Open `console.hanzo.ai`, select your project, and click **Traces**. Your trace a
 │  tions │ Trace Volume  ▁▂▃▅▆▇█▇▆▅▃▂▁▁▂▃▅▆▇█▇▆▅▃▂▁             │
 │ Scores │                                                         │
 │ Prompts│ Model Usage          │ Cost by Model                    │
-│ Datasets│ claude-haiku-4.5 47% │ claude-haiku-4.5    $147.20     │
-│ Evals  │ zen4-pro         28% │ zen4-pro            $89.60      │
-│ Users  │ gpt-5-nano       15% │ gpt-5-nano          $46.87      │
+│ Datasets│ zen5             47% │ zen5                $147.20     │
+│ Evals  │ zen5-pro         28% │ zen5-pro            $89.60      │
+│ Users  │ enso             15% │ enso                $46.87      │
 │ Sessions│ other            10% │ other               $28.80      │
 │ Settings│                      │                                  │
 │        │ Recent Traces                                           │
@@ -126,7 +126,7 @@ client = Hanzo(api_key="hk-your-api-key", trace=True)
 
 # Every call is traced automatically
 response = client.chat.completions.create(
-    model="anthropic-claude-haiku-4.5",
+    model="zen5",
     messages=[{"role": "user", "content": "Explain distributed tracing."}],
     metadata={"session_id": "sess-abc", "user_id": "user-42"},
 )
@@ -146,7 +146,7 @@ def my_pipeline(query: str) -> str:
 @observe(name="generation", capture_input=True, capture_output=True)
 def generate(docs: list) -> str:
     return client.chat.completions.create(
-        model="zen4-pro",
+        model="zen5-pro",
         messages=[{"role": "user", "content": str(docs)}],
     ).choices[0].message.content
 ```
@@ -160,7 +160,7 @@ prompt = get_prompt(name="qa-system", version=3)
 compiled = prompt.compile(context="Hanzo docs", question="What is Console?")
 
 response = client.chat.completions.create(
-    model="anthropic-claude-haiku-4.5",
+    model="zen5",
     messages=compiled,
     hanzo_prompt=prompt,  # links generation to prompt version
 )
@@ -174,7 +174,7 @@ import Hanzo from '@hanzo/ai'
 const client = new Hanzo({ apiKey: 'hk-your-api-key', trace: true })
 
 const response = await client.chat.completions.create({
-  model: 'anthropic-claude-haiku-4.5',
+  model: 'zen5',
   messages: [{ role: 'user', content: 'Explain distributed tracing.' }],
   metadata: { sessionId: 'sess-abc', userId: 'user-42' },
 })
@@ -194,14 +194,14 @@ retrieval.end({ output: docs })
 
 const generation = trace.generation({
   name: 'llm-call',
-  model: 'zen4-pro',
+  model: 'zen5-pro',
   input: messages,
 })
 const result = await llmCall(messages)
 generation.end({ output: result, usage: { inputTokens: 120, outputTokens: 45 } })
 ```
 
-### OpenAI Drop-In
+### Tracing an existing third-party client
 
 ```python
 from openai import OpenAI
@@ -214,7 +214,7 @@ openai_client = wrap_openai(OpenAI(
 
 # All calls are now traced to Hanzo Console
 response = openai_client.chat.completions.create(
-    model="openai-gpt-5-nano",
+    model="zen5",
     messages=[{"role": "user", "content": "Hello!"}],
 )
 ```
@@ -253,7 +253,7 @@ curl -X POST https://api.hanzo.ai/v1/console/prompts \
   -d '{
     "name": "qa-system",
     "prompt": "Answer based on context.\n\nContext: {{context}}\nQuestion: {{question}}",
-    "config": {"model": "anthropic-claude-haiku-4.5", "temperature": 0.2},
+    "config": {"model": "zen5", "temperature": 0.2},
     "labels": ["production"]
   }'
 ```
