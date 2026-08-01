@@ -5,70 +5,197 @@ import { fileURLToPath } from 'node:url';
 // The MCP door's tool list, taken from the MCP door.
 //
 // `POST https://api.hanzo.ai/v1/mcp` speaks JSON-RPC 2.0 and answers
-// `tools/list` with the tools this fleet actually exposes — 730 of the
-// document's ~2,400 operations, not all of them. So "is there an MCP tool for
-// this operation?" is a question only the door can answer, and the docs ask it
+// `tools/list` with the tools this fleet actually exposes — a subset of the
+// document's operations, not all of them. So "is there an MCP tool for this
+// operation?" is a question only the door can answer, and the docs ask it
 // rather than assuming.
 //
-// The NAME rule is verified against that answer: a tool is its operationId with
-// the `<product>_` prefix removed (729/730 exact; see mcp-tools.json meta).
+// The WHOLE answer is kept, `inputSchema` included: the tool reference renders
+// one page per tool straight from this file, so what the door declares is what
+// the page prints. A summary would drift from the door; a verbatim copy cannot.
 //
 // Snapshot, like the document and the CLI table: fetched when reachable, and
 // the committed copy when not, so a builder with no egress still renders a
-// truthful MCP column.
+// truthful reference. `meta.captured` records when the copy on disk was taken
+// and `meta.source` whether THIS build refreshed it, so every page can state
+// its own provenance instead of implying it is live.
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
 const OUT = path.join(APP_ROOT, 'openapi-specs/mcp-tools.json');
 
-/** The live JSON-RPC door. It is NOT declared in hanzo.yaml — see DOOR_UNDECLARED. */
+/** The live JSON-RPC door. It is NOT declared in hanzo.yaml — see doorNotice. */
 export const MCP_DOOR = 'https://api.hanzo.ai/v1/mcp';
 
 export interface McpTool {
   name: string;
+  /** The tool's description, verbatim — the door's own prose. */
   description: string;
+  /** The tool's declared arguments, verbatim: a JSON Schema object. */
+  inputSchema?: Record<string, any>;
 }
 
-export async function syncMcpTools(): Promise<void> {
-  let tools: McpTool[] | null = null;
+/** What the door answered `initialize` with — its own account of itself. */
+export interface McpHandshake {
+  protocolVersion: string;
+  serverName: string;
+  serverVersion: string;
+  /** Capabilities the door advertises, verbatim. */
+  capabilities: Record<string, any>;
+  /**
+   * What ONE `tools/call` answers with NO credential. The door replies 200 with
+   * a JSON-RPC result whose `isError` is set, so the docs can state the auth
+   * rule from the door's own words instead of asserting it.
+   *
+   * The message is the probed tool's, not a universal one — each tool refuses
+   * in its own terms — so `anonymousProbe` records which tool was asked and
+   * every page that quotes the message attributes it.
+   */
+  anonymousProbe: string;
+  anonymousCall: string;
+}
+
+export interface McpCatalog {
+  door: string;
+  meta: {
+    /** Tools in this file. */
+    count: number;
+    /** ISO date the list on disk was taken from the door. */
+    captured: string;
+    /** `live` when this build reached the door, `snapshot` when it read the copy. */
+    source: 'live' | 'snapshot';
+  };
+  handshake?: McpHandshake;
+  tools: McpTool[];
+}
+
+/** One JSON-RPC round trip to the door, with no credential attached. */
+async function rpc(method: string, params?: Record<string, any>): Promise<any | null> {
   try {
     const r = await fetch(MCP_DOOR, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
-      signal: AbortSignal.timeout(30_000),
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, ...(params ? { params } : {}) }),
+      signal: AbortSignal.timeout(60_000),
     });
-    if (r.ok) {
-      const body: any = await r.json();
-      const list = body?.result?.tools;
-      if (Array.isArray(list) && list.length) {
-        tools = list.map((t: any) => ({
-          name: String(t.name),
-          description: String(t.description ?? '').split('\n')[0].trim(),
-        }));
-      }
+    if (!r.ok) {
+      console.warn(`[mcp] door answered ${r.status} to ${method}`);
+      return null;
     }
-  } catch {
-    /* fall through to the snapshot */
+    return await r.json();
+  } catch (e) {
+    console.warn(`[mcp] door unreachable for ${method}: ${(e as Error).message}`);
+    return null;
   }
+}
+
+/** Ask the door for its tools. Null when it does not answer with a usable list. */
+async function fetchTools(): Promise<McpTool[] | null> {
+  const list = (await rpc('tools/list'))?.result?.tools;
+  if (!Array.isArray(list) || !list.length) return null;
+  return list.map((t: any) => ({
+    name: String(t.name),
+    description: String(t.description ?? ''),
+    ...(t.inputSchema && typeof t.inputSchema === 'object' ? { inputSchema: t.inputSchema } : {}),
+  }));
+}
+
+/**
+ * Ask the door to describe itself, and ask it once WITHOUT a credential so the
+ * docs can quote its own refusal rather than assert an auth rule.
+ * `tools/list` is answered anonymously — this file is the proof — but a
+ * `tools/call` is not, and the difference matters to anyone wiring a client up.
+ */
+async function fetchHandshake(probe: string): Promise<McpHandshake | null> {
+  const init = (
+    await rpc('initialize', {
+      protocolVersion: '2025-06-18',
+      capabilities: {},
+      clientInfo: { name: 'docs.hanzo.ai', version: '1' },
+    })
+  )?.result;
+  if (!init) return null;
+  const call = await rpc('tools/call', { name: probe, arguments: {} });
+  const said = call?.result?.content?.find((c: any) => c?.type === 'text')?.text;
+  return {
+    protocolVersion: String(init.protocolVersion ?? ''),
+    serverName: String(init.serverInfo?.name ?? ''),
+    serverVersion: String(init.serverInfo?.version ?? ''),
+    capabilities: init.capabilities ?? {},
+    anonymousProbe: probe,
+    anonymousCall: call?.result?.isError ? String(said ?? '') : '',
+  };
+}
+
+export async function syncMcpTools(): Promise<void> {
+  const tools = await fetchTools();
+  const have = fs.existsSync(OUT) ? load() : null;
+
+  const keep = (why: string): void => {
+    // Say it in the build log, loudly: this build's tool pages describe the
+    // door as it was, not as it is.
+    console.log(`[mcp] ${why} — falling back to the vendored list: ${have!.meta.count} tools captured ${have!.meta.captured}`);
+    fs.writeFileSync(
+      OUT,
+      JSON.stringify({ ...have!, meta: { ...have!.meta, source: 'snapshot' } }, null, 0) + '\n',
+    );
+  };
 
   if (!tools) {
-    if (fs.existsSync(OUT)) {
-      console.log('[mcp] door unreachable; keeping the committed tool list');
-      return;
-    }
-    throw new Error(`[mcp] no tool list available and no snapshot at ${OUT}`);
+    if (!have) throw new Error(`[mcp] no tool list available and no snapshot at ${OUT}`);
+    keep('door unreachable');
+    return;
+  }
+
+  // A door answering with a fraction of what it had is a door mid-deploy, not a
+  // door that lost tools. Keep the copy rather than publishing a reference that
+  // silently drops hundreds of pages.
+  if (have && tools.length < have.meta.count * 0.8) {
+    keep(`door answered with only ${tools.length} tools, down from ${have.meta.count}`);
+    return;
   }
 
   tools.sort((a, b) => a.name.localeCompare(b.name));
-  fs.writeFileSync(OUT, JSON.stringify({ door: MCP_DOOR, tools }, null, 0) + '\n');
-  console.log(`[mcp] ${tools.length} tools exposed by ${MCP_DOOR}`);
+  // Probe a READ, never a write. This call really is dispatched at the door, so
+  // the tool it names must be one that cannot change anything even if the
+  // credential rule ever loosens — and not an `admin*` one, whose refusal is
+  // narrower than the general "you sent no principal" we want to quote.
+  const readOnly = tools.find((t) => /^get([_A-Z]|$)/.test(t.name) && !/admin/i.test(t.name));
+  const handshake = readOnly ? await fetchHandshake(readOnly.name) : null;
+  const catalog: McpCatalog = {
+    door: MCP_DOOR,
+    meta: { count: tools.length, captured: new Date().toISOString().slice(0, 10), source: 'live' },
+    ...(handshake ?? have?.handshake ? { handshake: handshake ?? have!.handshake } : {}),
+    tools,
+  };
+  fs.writeFileSync(OUT, JSON.stringify(catalog, null, 0) + '\n');
+  const withArgs = tools.filter((t) => Object.keys(t.inputSchema?.properties ?? {}).length).length;
+  console.log(
+    `[mcp] ${tools.length} tools from ${MCP_DOOR}, ${withArgs} declaring arguments` +
+      (handshake ? `, protocol ${handshake.protocolVersion}` : ''),
+  );
+}
+
+/** The vendored catalogue. Throws when the build never vendored one. */
+export function load(): McpCatalog {
+  if (!fs.existsSync(OUT)) throw new Error(`[mcp] no vendored tool list at ${OUT}`);
+  const raw = JSON.parse(fs.readFileSync(OUT, 'utf8'));
+  const tools: McpTool[] = raw.tools ?? [];
+  return {
+    door: raw.door ?? MCP_DOOR,
+    meta: {
+      count: raw.meta?.count ?? tools.length,
+      captured: raw.meta?.captured ?? 'an unrecorded date',
+      source: raw.meta?.source ?? 'snapshot',
+    },
+    ...(raw.handshake ? { handshake: raw.handshake as McpHandshake } : {}),
+    tools,
+  };
 }
 
 export function loadMcpTools(): Map<string, McpTool> {
   if (!fs.existsSync(OUT)) return new Map();
-  const { tools } = JSON.parse(fs.readFileSync(OUT, 'utf8')) as { tools: McpTool[] };
-  return new Map(tools.map((t) => [t.name, t]));
+  return new Map(load().tools.map((t) => [t.name, t]));
 }
 
 if (import.meta.main) {
