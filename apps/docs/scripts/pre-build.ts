@@ -2,6 +2,7 @@ import { buildRegistry } from '@/scripts/build-registry';
 import { genOpenapiPages } from './gen-openapi-pages';
 import { genFlowPages } from './gen-flow-pages';
 import { genMcpPages } from './gen-mcp-pages';
+import { genPricingPage } from './gen-pricing-page';
 import { syncCliCommands } from './sync-cli-commands';
 import { syncMcpTools } from './sync-mcp-tools';
 import { syncProjectDocs } from './sync-project-docs';
@@ -19,6 +20,9 @@ async function main() {
   await genOpenapiPages();
   await genFlowPages();
   await genMcpPages();
+  // The pricing page is the billing API's own answer, not the document's — it
+  // reads /v1/pricing, so it neither needs nor blocks the three above.
+  await genPricingPage();
 
   const tasks = [buildRegistry()];
   if (process.env.HANZO_DOCS_SYNC !== '0') {

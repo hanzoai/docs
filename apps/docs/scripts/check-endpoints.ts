@@ -27,7 +27,7 @@ const SKIP = ['projects/'];
  * document or off the MCP door, so an unknown route here is a bug in the
  * generator and fails the build — unlike authored prose, which is reported.
  */
-export const GENERATED = ['openapi/', 'start/', 'mcp-tools/'];
+export const GENERATED = ['openapi/', 'start/', 'mcp-tools/', 'pricing.mdx'];
 
 const ENDPOINT = /`(\/v1\/[A-Za-z0-9_\-{}/.]*)`|(?:https?:\/\/[a-z.]*hanzo\.ai)(\/v1\/[A-Za-z0-9_\-{}/.]*)/g;
 

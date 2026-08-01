@@ -1,97 +1,34 @@
 ---
 title: Models
-description: All models available in Hanzo Chat — 14 Zen models and 100+ third-party from OpenAI, Anthropic, Google, Meta, Mistral, Together, and Groq.
+description: Which models Hanzo Chat can reach, and how to choose and configure them in chat.yaml.
 ---
 
 # Models
 
-Hanzo Chat provides access to 14 first-party Zen models and 100+ third-party models through the Hanzo AI API.
+Hanzo Chat talks to the Hanzo AI API, so it can reach **every model the gateway
+serves** — the Zen and Enso families plus every third-party provider, on one key.
 
-## Zen Models (First-Party)
+Which models those are, and what each costs, is one list and it lives at
+[**Models**](/docs/models). It is fetched from the gateway as you read it, so it
+is right today; the hand-written table that used to sit here named a `zen4`
+family the gateway has since retired, at prices that were never updated. That is
+what a second copy of a catalogue always becomes.
 
-All 14 Zen models are available by default. These are Hanzo's own frontier models built on MoDE (Mixture of Distilled Experts) architecture.
+This page covers the part that is Chat's own: choosing and configuring which of
+those models Chat offers you.
 
-| Model | Type | Context | Input $/MTok | Output $/MTok |
-|-------|------|---------|-------------|---------------|
-| zen4 | Flagship | 128K | $3.00 | $9.60 |
-| zen4-ultra | Max Reasoning | 128K | $3.00 | $9.60 |
-| zen4-pro | High Capability | 128K | $2.70 | $2.70 |
-| zen4-max | Large Documents | 1M | $3.60 | $3.60 |
-| zen4-mini | Fast & Efficient | 128K | $0.60 | $0.60 |
-| zen4-thinking | Chain-of-Thought | 128K | $2.70 | $2.70 |
-| zen4-coder | Code Generation | 128K | $3.60 | $3.60 |
-| zen4-coder-pro | Premium Code | 128K | $4.50 | $4.50 |
-| zen4-coder-flash | Fast Code | 128K | $1.50 | $1.50 |
-| zen3-omni | Multimodal | 128K | $1.80 | $6.60 |
-| zen3-vl | Vision-Language | 32K | $0.45 | $1.80 |
-| zen3-nano | Edge | 32K | $0.30 | $0.30 |
-| zen3-guard | Content Safety | 8K | $0.30 | $0.30 |
-| zen3-embedding | Embeddings | 8K | $0.39 | -- |
+## Recommendations
 
-### Model Recommendations
+Pick by the shape of the job, then copy the id from the catalogue:
 
-| Use Case | Recommended Model |
-|----------|------------------|
-| General chat | zen4 or zen4-pro |
-| Code generation | zen4-coder or zen4-coder-pro |
-| Quick responses | zen4-mini |
-| Image analysis | zen3-omni or zen3-vl |
-| Deep reasoning | zen4-thinking or zen4-ultra |
-| Long documents | zen4-max (1M context) |
-| Budget-friendly | zen3-nano ($0.30/MTok) |
-| Content moderation | zen3-guard |
-
-## Third-Party Models
-
-100+ models from all major providers are available through the Hanzo Gateway:
-
-### OpenAI
-
-| Model | Type |
-|-------|------|
-| gpt-4o | Flagship multimodal |
-| gpt-4o-mini | Fast, affordable |
-| o3 | Advanced reasoning |
-| o4-mini | Fast reasoning |
-
-### Anthropic
-
-| Model | Type |
-|-------|------|
-| claude-opus-4 | Most capable |
-| claude-sonnet-4.5 | Best balance |
-| claude-haiku-4.5 | Fast, efficient |
-
-### Google
-
-| Model | Type |
-|-------|------|
-| gemini-2.5-pro | Advanced reasoning |
-| gemini-2.5-flash | Fast multimodal |
-
-### Meta
-
-| Model | Type |
-|-------|------|
-| llama-4-maverick | 400B MoE |
-| llama-4-scout | 109B MoE |
-| llama-3.3-70b | Open weights |
-
-### Mistral
-
-| Model | Type |
-|-------|------|
-| mistral-large | Flagship |
-| codestral | Code-specialized |
-| mistral-small | Efficient |
-
-### Together AI
-
-50+ open models including Llama, Mixtral, Qwen, DeepSeek, and more with fastest inference.
-
-### Groq
-
-Ultra-fast inference for Llama, Mixtral, and Gemma models.
+| Use case | Reach for |
+|----------|-----------|
+| General chat | `enso-flash` — cheapest Enso tier, full 1M context |
+| Hard reasoning | `enso` or `enso-ultra` |
+| Code generation | `zen5-coder` |
+| Vision | `zen-vl` |
+| Content moderation | `zen-guard` |
+| Embeddings | `zen-embedding` |
 
 ## Configuring Models
 
@@ -104,9 +41,9 @@ endpoints:
     apiKey: "${HANZO_API_KEY}"
     models:
       default:
-        - zen4
-        - zen4-coder
-        - zen4-mini
+        - zen5
+        - zen5-coder
+        - zen5-mini
       fetch: true  # Auto-discover additional models
 
   openAI:
@@ -137,4 +74,4 @@ endpoints:
 - **$1 minimum balance** required for API calls
 - **No surprise bills** — service stops when credits are depleted
 
-See the full pricing table at [zenlm.org/pricing](https://zenlm.org/docs/api/pricing).
+Per-model rates are on the [Pricing](/docs/pricing) page.
