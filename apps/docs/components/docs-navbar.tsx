@@ -2,7 +2,7 @@
 
 import type { ComponentProps } from 'react';
 import { useDocsLayout } from '@hanzo/docs-base-ui/layouts/docs';
-import { HanzoAppLauncher } from '@hanzogui/shell';
+import { MeetHanzo } from '@/components/meet-hanzo';
 import { cn } from '@/lib/cn';
 import { DocsNavLinks } from '@/components/docs-nav-links';
 import { AuthButtons } from '@/components/auth-buttons';
@@ -65,7 +65,14 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
           cannot happen silently again. */}
       <div className="flex items-center gap-2">
         {slots.searchTrigger && <slots.searchTrigger.sm hideIfDisabled className="p-2" />}
-        <HanzoAppLauncher currentApp="docs" quickSwitchKey={false} label="Meet Hanzo apps" />
+        {/* ONE ecosystem affordance, the same on every page. The home layout used to
+            render BOTH this and <MeetHanzo>, which said the same thing twice and put an
+            unlabeled grid icon next to a labelled menu; the inner pages then showed only
+            the grid, so "where do I find the other products" had a different answer
+            depending on which page you were on. MeetHanzo is the one kept: it is
+            labelled, and it resolves a product to its DOCS page when we have one instead
+            of bouncing the reader out to marketing. */}
+        <MeetHanzo />
         <AuthButtons />
       </div>
     </header>
