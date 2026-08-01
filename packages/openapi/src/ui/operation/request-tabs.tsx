@@ -9,8 +9,7 @@ import {
   AccordionTrigger,
 } from '@/ui/components/accordion';
 import type { ReactNode } from 'react';
-import type { RawRequestData, RequestData } from '@/requests/types';
-import { encodeRequestData } from '@/requests/media/encode';
+import type { RawRequestData } from '@/requests/types';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@hanzo/docs-base-ui/components/ui/tabs';
 import { resolveRequestData } from '@/utils/url';
 import { MethodLabel } from '../components/method-label';

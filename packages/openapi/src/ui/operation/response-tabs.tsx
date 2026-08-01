@@ -8,8 +8,8 @@ import {
   AccordionTrigger,
 } from '@/ui/components/accordion';
 import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs';
-import { sample } from 'openapi-sampler';
-import type { ReactNode } from 'react';
+import { sample } from '@/utils/schema/sample';
+import { useMemo, type ReactNode } from 'react';
 import { I18nLabel } from '@/ui/client/i18n';
 
 export interface ResponseTab {
@@ -105,7 +105,35 @@ function renderResponseTabsDefault(tabs: ResponseTab[], ctx: RenderContext): Rea
 
   return (
     <Tabs groupId="hanzo_docs_openapi_responses" items={tabs.map((tab) => tab.code)}>
-      {tabs.map(renderResponse)}
+      {tabs.map((tab) => {
+        const { examples = [] } = tab;
+
+        let slot: ReactNode = <I18nLabel label="empty" />;
+        if (examples.length > 1) {
+          slot = (
+            <Accordions type="single" className="pt-2" defaultValue="0">
+              {examples.map((example, i) => (
+                <AccordionItem key={i} value={i.toString()}>
+                  <AccordionHeader>
+                    <AccordionTrigger>{example.label}</AccordionTrigger>
+                  </AccordionHeader>
+                  <AccordionContent className="prose-no-margin">
+                    {renderExampleContent(example)}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordions>
+          );
+        } else if (examples.length === 1) {
+          slot = renderExampleContent(examples[0]);
+        }
+
+        return (
+          <Tab key={tab.code} value={tab.code}>
+            {slot}
+          </Tab>
+        );
+      })}
     </Tabs>
   );
 }

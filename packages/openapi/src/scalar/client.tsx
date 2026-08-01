@@ -1,7 +1,7 @@
 'use client';
 import { cn } from '@/utils/cn';
 import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
-import { ApiClientModalProvider, useApiClientModal } from '@scalar/api-client-react';
+import { useApiClient } from '@scalar/api-client-react';
 import { MethodLabel } from '@/ui/components/method-label';
 import { useTheme } from '@hanzo/docs-ui/provider/base';
 import { useEffect, useState } from 'react';

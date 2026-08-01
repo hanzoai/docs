@@ -9,7 +9,6 @@ import {
   CodeBlockTabsList,
   CodeBlockTabsTrigger,
 } from '@hanzo/docs-ui/components/codeblock';
-import { UsageTabsSelectorLazy, UsageTabLazy } from './lazy';
 import { ResponseTabs } from '../response-tabs';
 import { registerDefault } from '@/requests/generators/all';
 import { useMemo } from 'react';
@@ -32,7 +31,7 @@ export function UsageTabs({ method, ctx }: { method: MethodInformation; ctx: Ren
     if (map.length === 0) return null;
 
     return (
-      <CodeBlockTabs groupId="fumadocs_openapi_requests" defaultValue={map[0][0]}>
+      <CodeBlockTabs groupId="hanzo_docs_openapi_requests" defaultValue={map[0][0]}>
         <CodeBlockTabsList>
           {map.map(([id, item]) => (
             <CodeBlockTabsTrigger key={id} value={id}>
