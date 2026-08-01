@@ -81,7 +81,10 @@ export function Sidebar({ footer, banner, collapsible = true, components, ...res
   return (
     <>
       <SidebarContent {...rest}>
-        <div className="flex flex-col gap-3 p-4 pb-2">
+        {/* gap-2, not the drawer's gap-3: this rail has a fixed height budget
+            and the drawer does not, so a point spent here is a point the tree
+            below never gets. */}
+        <div className="flex flex-col gap-2 p-4 pb-2">
           <div className="flex">
             {slots.navTitle && (
               <slots.navTitle className="inline-flex text-[0.9375rem] items-center gap-2.5 font-medium me-auto" />
@@ -304,7 +307,9 @@ function SidebarSeparator({ className, style, children, ...props }: ComponentPro
   return (
     <Base.SidebarSeparator
       className={cn(
-        'inline-flex items-center gap-2 mb-1 px-2 mt-6 empty:mb-0 [&_svg]:size-4 [&_svg]:shrink-0',
+        // mt-3, not mt-6: 24px above a 20px label is more air than the label is
+        // tall, and a tree pays it once per group.
+        'inline-flex items-center gap-2 mb-1 px-2 mt-3 empty:mb-0 [&_svg]:size-4 [&_svg]:shrink-0',
         depth === 0 && 'first:mt-0',
         className,
       )}

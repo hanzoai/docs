@@ -227,7 +227,10 @@ export function SidebarViewport({ className, ...props }: ScrollAreaProps) {
       }
       {...props}
     >
-      <ScrollViewport className="p-4 overscroll-contain mask-[linear-gradient(to_bottom,transparent,white_12px,white_calc(100%-12px),transparent)]">
+      {/* py-3, so the tree's inset is the same 12px the mask fades over. At p-4
+          the first row cleared the fade by 4px it did not need, and paid that
+          4px again at the foot — on top of the 8px the banner already pads. */}
+      <ScrollViewport className="px-4 py-3 overscroll-contain mask-[linear-gradient(to_bottom,transparent,white_12px,white_calc(100%-12px),transparent)]">
         {props.children}
       </ScrollViewport>
     </ScrollArea>
