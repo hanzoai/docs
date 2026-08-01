@@ -46,17 +46,24 @@ export function AuthButtons() {
     )
   }
 
+  // whitespace-nowrap + shrink-0: these are LABELS, not prose. The docs header is a
+  // fixed 56px row, and from 768 the sidebar claims 268px of the width — so with
+  // wrapping allowed "Get API Key" broke to three lines (72px) and spilled out of the
+  // bar, above and below it, in the 768-805 band. A two-word button that reflows is
+  // never what was wanted at any width; the row should overflow-scroll or the label
+  // should shorten, but the one thing it must not do is grow taller than the bar it
+  // sits in.
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex shrink-0 items-center gap-3">
       <Link
         href="/login"
-        className="text-sm text-neutral-400 hover:text-neutral-50 transition-colors"
+        className="whitespace-nowrap text-sm text-neutral-400 hover:text-neutral-50 transition-colors"
       >
         Sign In
       </Link>
       <a
         href="https://console.hanzo.ai"
-        className="rounded-full bg-white px-4 py-1.5 text-sm font-medium text-black hover:bg-neutral-200 transition-colors"
+        className="whitespace-nowrap rounded-full bg-white px-4 py-1.5 text-sm font-medium text-black hover:bg-neutral-200 transition-colors"
       >
         Get API Key
       </a>

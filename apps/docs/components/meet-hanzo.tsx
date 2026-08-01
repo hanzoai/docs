@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, LayoutGrid } from 'lucide-react';
 import { MeetHanzoMenu } from '@hanzogui/shell';
 
 /**
@@ -28,7 +28,18 @@ const DOCS_HREFS: Record<string, string> = {
   keys: '/docs/api-keys',
 };
 
-export function MeetHanzo() {
+/**
+ * `compact` collapses the trigger to its icon below `lg`.
+ *
+ * The docs header is a fixed 56px row that also carries search, Sign In and Get API
+ * Key. Swapping a ~34px icon for the ~83-120px "Meet Hanzo" label overflowed it: at
+ * 834 Get API Key wrapped to four lines and spilled out of the bar, and at 768 it was
+ * clipped off the right edge entirely (measured). The label is worth its width where
+ * there is room and costs the header where there is not, so it earns its space by
+ * breakpoint. The accessible name stays "Meet Hanzo" at every width — only the glyph
+ * changes, so nothing is lost to a screen reader or a keyboard user.
+ */
+export function MeetHanzo({ compact = false }: { compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const panelId = 'meet-hanzo-menu';
 
@@ -40,11 +51,18 @@ export function MeetHanzo() {
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-medium text-fd-muted-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground"
+        aria-label="Meet Hanzo"
+        className={`inline-flex shrink-0 items-center gap-1 rounded-full text-sm font-medium text-fd-muted-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground ${
+          compact ? 'size-9 justify-center lg:size-auto lg:px-3 lg:py-1.5' : 'px-3 py-1.5'
+        }`}
       >
-        Meet Hanzo
+        {compact && <LayoutGrid className="size-4 lg:hidden" aria-hidden />}
+        <span className={compact ? 'hidden lg:inline' : undefined}>Meet Hanzo</span>
         <ChevronDown
-          className={`size-3.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          aria-hidden
+          className={`size-3.5 transition-transform duration-200 ${open ? 'rotate-180' : ''} ${
+            compact ? 'hidden lg:inline-block' : ''
+          }`}
         />
       </button>
       <MeetHanzoMenu
