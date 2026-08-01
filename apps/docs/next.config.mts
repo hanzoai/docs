@@ -38,10 +38,6 @@ const config: NextConfig = {
   basePath: isGitHubPages ? '/docs' : undefined,
   assetPrefix: assetPrefix || undefined,
   reactStrictMode: true,
-  // Shared Hanzo shell chrome (header/mega-menu/footer) + brand tokens ship as
-  // ESM with 'use client' boundaries — transpile them through the app build so
-  // the client/server split and JSX runtime resolve correctly.
-  transpilePackages: ['@hanzogui/shell', '@hanzo/brand'],
   // Turbopack is the Next 16 default and correctly compiles MDX bodies via the
   // createMDX loader rules (the --webpack path emits empty bodies on Next 16).
   // Turbopack ignores the webpack resolve.alias below, so the virtual content
@@ -188,14 +184,24 @@ const config: NextConfig = {
       fullUrl: true,
     },
   },
-  // Workspace UI packages are consumed as compiled dist; list them so Turbopack
-  // resolves their deep subpath exports (@hanzo/docs-base-ui/components/ui/*, etc.).
+  // ONE list. There were two `transpilePackages` keys in this object literal and
+  // the later one won, so the shell/brand entries above it had never taken
+  // effect — the comment explaining why they must be transpiled outlived the
+  // setting it described. Both groups are here now:
+  //   - workspace UI packages are consumed as compiled dist, so Turbopack needs
+  //     them listed to resolve deep subpath exports
+  //     (@hanzo/docs-base-ui/components/ui/*, etc.)
+  //   - the shared Hanzo shell chrome (header/mega-menu/footer) and brand tokens
+  //     ship as ESM with 'use client' boundaries, so the client/server split and
+  //     JSX runtime resolve correctly only when the app build compiles them
   transpilePackages: [
     '@hanzo/docs',
     '@hanzo/docs-ui',
     '@hanzo/docs-base-ui',
     '@hanzo/docs-core',
     '@hanzo/docs-openapi',
+    '@hanzogui/shell',
+    '@hanzo/brand',
   ],
   serverExternalPackages: [
     'ts-morph',
@@ -235,6 +241,8 @@ const config: NextConfig = {
 // excluded from the core build).
 const withMDX = createMDX({ outDir: 'docs' });
 
-// Type assertion needed due to version mismatch between @hanzo/docs-mdx (next@16) and docs app (next@15)
+// createMDX is typed against its own copy of NextConfig, so the two structurally
+// identical types are nominally distinct here. (The comment this replaces blamed
+// a next@16-vs-next@15 skew that no longer exists — both are on 16.2.12.)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default withAnalyzer(withMDX(config as any) as any);
