@@ -35,12 +35,11 @@ export function useI18n(): I18nContextType {
   return use(I18nContext);
 }
 
-export function useTranslations(
+export function useTranslations<Obj extends TranslationObject = Translations>(
   namespace?: string,
-): Translations & Record<string, string | Record<string, string>> {
-  return (
-    namespace ? use(I18nContext).text[namespace] : use(I18nContext).text
-  ) as Translations & Record<string, string | Record<string, string>>;
+): Obj {
+  const { text } = use(I18nContext);
+  return (namespace ? text[namespace] : text) as unknown as Obj;
 }
 
 export interface I18nProviderProps {
