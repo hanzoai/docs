@@ -1,11 +1,12 @@
 ---
 title: Embeddings
-description: Generate 3072-dimensional vector embeddings with zen3-embedding
+description: Generate 1024-dimensional vector embeddings with zen-embedding
 ---
 
 # Embeddings
 
-Generate dense vector embeddings for text using the `zen3-embedding` model.
+Generate dense vector embeddings for text using `zen-embedding`, the embedding
+model in the Zen family.
 
 ## Endpoint
 
@@ -17,7 +18,7 @@ POST https://api.hanzo.ai/v1/embeddings
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `model` | string | Yes | Must be `zen3-embedding` |
+| `model` | string | Yes | Must be `zen-embedding` |
 | `input` | string/array | Yes | Text to embed (string or array of strings) |
 
 ## Example
@@ -27,7 +28,7 @@ curl https://api.hanzo.ai/v1/embeddings \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "zen3-embedding",
+    "model": "zen-embedding",
     "input": "Zen LM is a family of frontier AI models"
   }'
 ```
@@ -35,17 +36,34 @@ curl https://api.hanzo.ai/v1/embeddings \
 ## Python
 
 ```python
-from openai import OpenAI
+from hanzoai import Hanzo
 
-client = OpenAI(base_url="https://api.hanzo.ai/v1", api_key="hk-your-key")
+client = Hanzo(api_key="hk-your-key")
 
 response = client.embeddings.create(
-    model="zen3-embedding",
+    model="zen-embedding",
     input=["Hello world", "Zen LM models"],
 )
 
 for embedding in response.data:
     print(f"Vector dim: {len(embedding.embedding)}")
+```
+
+## TypeScript
+
+```ts
+import Hanzo from '@hanzo/ai'
+
+const client = new Hanzo({ apiKey: 'hk-your-key' })
+
+const response = await client.embeddings.create({
+  model: 'zen-embedding',
+  input: ['Hello world', 'Zen LM models'],
+})
+
+for (const item of response.data) {
+  console.log(`Vector dim: ${item.embedding.length}`)
+}
 ```
 
 ## Response
@@ -60,7 +78,7 @@ for embedding in response.data:
       "embedding": [0.0023, -0.0091, 0.0152, "..."]
     }
   ],
-  "model": "zen3-embedding",
+  "model": "zen-embedding",
   "usage": {
     "prompt_tokens": 8,
     "total_tokens": 8
@@ -72,9 +90,8 @@ for embedding in response.data:
 
 | Property | Value |
 |----------|-------|
-| **Model** | zen3-embedding |
-| **Upstream** | text-embedding-3-large by OpenAI |
-| **Dimensions** | 3,072 |
+| **Model** | zen-embedding |
+| **Dimensions** | 1,024 |
 | **Max Input** | 8,191 tokens |
 | **Tier** | pro max |
 | **Pricing** | $0.39 / 1M tokens |
@@ -86,3 +103,10 @@ for embedding in response.data:
 - **Clustering**: Group similar texts together
 - **Classification**: Use embeddings as features for classifiers
 - **Deduplication**: Identify near-duplicate content at scale
+
+## Wire compatibility
+
+The request and response bodies are the standard embeddings JSON shape, so an
+HTTP client already written against that shape works here once its base URL
+points at `https://api.hanzo.ai/v1` and it sends a Hanzo key. Model ids do not
+carry across vendors — `zen-embedding` is a Hanzo model and resolves only here.

@@ -26,12 +26,13 @@ const headingVariants = cva('font-medium tracking-tight', {
 });
 
 const models = [
+  { provider: 'Hanzo', names: 'enso, zen5, zen5-coder' },
   { provider: 'Anthropic', names: 'Claude Opus 4.6, Sonnet 4.5' },
   { provider: 'OpenAI', names: 'GPT-5.2, GPT-5.1 Codex' },
   { provider: 'Google', names: 'Gemini 3 Pro, Flash' },
   { provider: 'Open Source', names: 'Qwen 3, GLM 4.7, Llama' },
   { provider: 'Together AI', names: 'DeepSeek, Mixtral, more' },
-  { provider: 'OpenRouter', names: '100+ models, one API' },
+  { provider: 'OpenRouter', names: 'Aggregated third-party catalogue' },
 ];
 
 const features = [
@@ -71,7 +72,7 @@ const pricingTiers = [
     badge: 'Most Popular',
     features: [
       'Full Linux desktop VM',
-      '100+ AI models included',
+      'Hanzo AI API included',
       'Bot wallet with AI coin funding',
       'Marketplace buying & selling',
       'Auto-purchase compute rules',
@@ -168,7 +169,7 @@ export default function Page() {
       {/* Models */}
       <section className="mb-14">
         <h2 className="text-xl font-semibold flex items-center gap-2.5 mb-5">
-          <span className="text-brand font-bold">&#x27E9;</span> 100+ AI Models
+          <span className="text-brand font-bold">&#x27E9;</span> Models
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {models.map((m) => (
@@ -412,7 +413,7 @@ export default function Page() {
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {[
-            { name: 'AI API', desc: '200+ AI models, one API', href: 'https://docs.hanzo.ai/docs/llm' },
+            { name: 'AI API', desc: 'Chat, embeddings, images, rerank', href: 'https://docs.hanzo.ai/docs/llm' },
             { name: 'Marketplace', desc: 'Buy & sell AI capacity', href: 'https://app.hanzo.bot' },
             { name: 'MCP', desc: '260+ tools for agents', href: 'https://docs.hanzo.ai/docs/mcp' },
             { name: 'Commerce', desc: 'Billing & on-chain settlement', href: 'https://docs.hanzo.ai/docs/commerce' },

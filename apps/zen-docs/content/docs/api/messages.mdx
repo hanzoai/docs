@@ -5,7 +5,12 @@ description: Use the Anthropic Messages API format with Zen models via api.hanzo
 
 # Messages API (Anthropic-compatible)
 
-Zen LM supports the **Anthropic Messages API format** at the same base URL. Drop-in compatible with the Anthropic SDK — just change the base URL and API key.
+Zen models are reachable through the **Anthropic Messages wire format** at the
+same base URL, alongside the chat-completions format. This is a second envelope
+we speak so that a client already written against that shape can call Zen models
+without being rewritten — point its base URL at `https://api.hanzo.ai/v1` and
+give it a Hanzo key. Model ids do not carry across vendors: the ids below are
+Hanzo models and resolve only here.
 
 ## Endpoint
 
@@ -37,7 +42,7 @@ curl https://api.hanzo.ai/v1/messages \
   -H "anthropic-version: 2023-06-01" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "zen4",
+    "model": "zen5",
     "max_tokens": 1024,
     "messages": [{"role": "user", "content": "Hello, Zen."}]
   }'
@@ -54,7 +59,7 @@ client = Anthropic(
 )
 
 message = client.messages.create(
-    model="zen4",
+    model="zen5",
     max_tokens=1024,
     messages=[{"role": "user", "content": "Hello, Zen."}],
 )
@@ -72,7 +77,7 @@ const client = new Anthropic({
 });
 
 const message = await client.messages.create({
-  model: "zen4",
+  model: "zen5",
   max_tokens: 1024,
   messages: [{ role: "user", content: "Hello, Zen." }],
 });
@@ -87,7 +92,7 @@ curl https://api.hanzo.ai/v1/messages \
   -H "anthropic-version: 2023-06-01" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "zen4",
+    "model": "zen5",
     "max_tokens": 1024,
     "stream": true,
     "messages": [{"role": "user", "content": "Hello, Zen."}]
@@ -100,7 +105,7 @@ Streaming uses Server-Sent Events (SSE), identical to the Anthropic streaming fo
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `model` | string | Yes | Zen model ID (e.g., `zen4`, `zen4-mini`, `zen4-thinking`) |
+| `model` | string | Yes | Zen model ID (e.g., `zen5`, `zen5-pro`, `zen5-coder`) |
 | `messages` | array | Yes | Array of message objects with `role` and `content` |
 | `max_tokens` | integer | Yes | Maximum tokens to generate |
 | `stream` | boolean | No | Enable SSE streaming (default: false) |
@@ -122,7 +127,7 @@ Streaming uses Server-Sent Events (SSE), identical to the Anthropic streaming fo
       "text": "Hello! How can I help you today?"
     }
   ],
-  "model": "zen4",
+  "model": "zen5",
   "stop_reason": "end_turn",
   "usage": {
     "input_tokens": 12,
@@ -133,12 +138,12 @@ Streaming uses Server-Sent Events (SSE), identical to the Anthropic streaming fo
 
 ## Using Both Formats
 
-The same `api.hanzo.ai/v1` endpoint supports both OpenAI and Anthropic formats:
+The same `api.hanzo.ai/v1` host serves both wire formats:
 
-| Format | Endpoint | SDK |
-|--------|----------|-----|
-| OpenAI | `POST /v1/chat/completions` | `openai`, `hanzoai` |
-| Anthropic | `POST /v1/messages` | `anthropic` |
-| Models | `GET /v1/models` | Any HTTP client |
+| Wire format | Endpoint | Clients |
+|-------------|----------|---------|
+| Chat completions | `POST /v1/chat/completions` | `hanzoai`, `@hanzo/ai`, or any client written for that shape |
+| Messages | `POST /v1/messages` | `anthropic` |
+| Catalogue | `GET /v1/models` | Any HTTP client |
 
-All Zen models work with both formats. Use whichever your application already integrates with.
+All Zen models work with both. Use whichever your application already speaks.

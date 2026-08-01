@@ -455,7 +455,7 @@ const SDKS = [
 
 const ECOSYSTEM = [
   { title: 'Hanzo Analytics', description: 'Lightweight privacy-first web analytics. Script-based page tracking without cookies.', href: 'https://analytics.hanzo.ai', cta: 'View Analytics' },
-  { title: 'Hanzo Chat',      description: 'AI-powered chat with 14 Zen models plus 100+ third-party models and MCP tools.', href: 'https://hanzo.chat', cta: 'Open Chat' },
+  { title: 'Hanzo Chat',      description: 'Chat over 14 Zen models, with outside models and MCP tools on the same key.', href: 'https://hanzo.chat', cta: 'Open Chat' },
   { title: 'Hanzo Console',   description: 'LLM observability, API key management, and usage analytics for AI applications.', href: 'https://console.hanzo.ai', cta: 'Open Console' },
   { title: 'Hanzo Flow',      description: 'Visual workflow builder for AI pipelines. Connect models, tools, and data sources.', href: 'https://flow.hanzo.ai', cta: 'Try Flow' },
 ];

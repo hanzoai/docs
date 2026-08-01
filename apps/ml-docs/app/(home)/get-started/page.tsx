@@ -42,7 +42,7 @@ const plans = [
     price: '$5',
     period: '/mo per bot',
     icon: CloudIcon,
-    desc: 'Always-on Linux VM in Hanzo Cloud. 100+ AI models included. No hardware needed.',
+    desc: 'Always-on Linux VM in Hanzo Cloud. Hanzo AI API included. No hardware needed.',
     cta: 'Start Free Trial',
     ctaHref: 'https://app.hanzo.bot/auth/signup?plan=cloud',
     external: true,
@@ -50,7 +50,7 @@ const plans = [
     badge: '14-day free trial',
     features: [
       'Full Linux desktop VM (Ubuntu)',
-      '100+ AI models via Hanzo AI API',
+      'AI models via the Hanzo AI API',
       'Always-on with daily backups',
       'Web dashboard at app.hanzo.bot',
     ],

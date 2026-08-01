@@ -42,7 +42,7 @@ const features = [
     icon: BrainCircuitIcon,
     title: 'AI API',
     description:
-      'Unified API for 100+ AI providers. OpenAI, Anthropic, Together, Deepseek, and more through a single API.',
+      'Chat, embeddings, images and reranking on one host. Our own enso and Zen models served first-party, with outside models on the same key.',
   },
   {
     icon: BarChart3Icon,
@@ -77,8 +77,8 @@ const features = [
 ];
 
 const stats = [
-  { value: '100+', label: 'AI Providers' },
-  { value: '<50ms', label: 'Proxy Latency' },
+  { value: 'enso + Zen', label: 'First-Party Models' },
+  { value: '<50ms', label: 'Added Latency' },
   { value: '99.9%', label: 'Uptime SLA' },
   { value: '5000', label: 'Req/s Capacity' },
 ];
@@ -133,7 +133,7 @@ export default function Page() {
               <span className="text-text">AI at Scale</span>
             </h1>
             <p className="mx-auto mb-12 max-w-2xl text-lg text-text-muted md:text-xl">
-              One API for every model — 100+ AI providers. Usage analytics,
+              Our enso and Zen models, served first-party. Usage analytics,
               team management, and API key provisioning — all in one platform.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4">

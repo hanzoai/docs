@@ -17,7 +17,7 @@ description: Zen LM by Hanzo AI -- frontier models for code, reasoning, vision, 
     5 models -- multimodal, vision, edge, safety, and embeddings.
   </Card>
   <Card title="API Reference" href="/docs/api">
-    OpenAI-compatible API at api.hanzo.ai with all models.
+    Every Zen model at api.hanzo.ai, behind one key.
   </Card>
   <Card title="Pricing" href="/docs/api/pricing">
     Transparent pricing from $0.30/MTok.
@@ -26,7 +26,57 @@ description: Zen LM by Hanzo AI -- frontier models for code, reasoning, vision, 
 
 ## Quick Start
 
-### API (OpenAI-compatible)
+Zen models are served at `https://api.hanzo.ai/v1`. Get a key from the
+[console](https://console.hanzo.ai), then:
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer hk-your-api-key" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "zen5", "messages": [{"role": "user", "content": "Hello, Zen."}]}'
+```
+
+### Python
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="hk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen5",
+    messages=[{"role": "user", "content": "Hello, who are you?"}],
+)
+print(response.choices[0].message.content)
+```
+
+### TypeScript
+
+```ts
+import Hanzo from '@hanzo/ai'
+
+const client = new Hanzo({ apiKey: 'hk-your-api-key' })
+
+const response = await client.chat.completions.create({
+  model: 'zen5',
+  messages: [{ role: 'user', content: 'Hello, who are you?' }],
+})
+console.log(response.choices[0].message.content)
+```
+
+## Key Facts
+
+- **Zen models** covering all major AI tasks
+- **Zen MoDE** (Mixture of Diverse Experts) architecture
+- **Apache 2.0 weights** -- download and run the same models yourself
+- **Transparent pricing** from $0.30/MTok
+
+## Wire compatibility
+
+`/v1/chat/completions` and `/v1/embeddings` take and return the standard
+chat-completions JSON shape, so an HTTP client already written against that
+shape works here once its base URL points at `https://api.hanzo.ai/v1` and it
+sends a Hanzo key:
 
 ```python
 from openai import OpenAI
@@ -37,27 +87,13 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="zen4",
+    model="zen5",
     messages=[{"role": "user", "content": "Hello, who are you?"}],
 )
-print(response.choices[0].message.content)
 ```
 
-### curl
-
-```bash
-curl https://api.hanzo.ai/v1/chat/completions \
-  -H "Authorization: Bearer hk-your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"model": "zen4", "messages": [{"role": "user", "content": "Hello, Zen."}]}'
-```
-
-## Key Facts
-
-- **Zen models** covering all major AI tasks
-- **OpenAI-compatible** API -- works with every SDK that supports the OpenAI format
-- **Zen MoDE** (Mixture of Diverse Experts) architecture
-- **Transparent pricing** from $0.30/MTok
+Model ids do not carry across vendors — `zen5` is a Hanzo model and resolves
+only here.
 - **API key prefix**: `hk-`
 - **Endpoints**: `api.hanzo.ai/v1` and `api.zen.hanzo.ai/v1`
 
