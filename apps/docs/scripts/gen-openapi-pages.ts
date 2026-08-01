@@ -34,6 +34,12 @@ const GUIDE_OVERRIDES: Record<string, string> = {
 
 function guideHref(svc: string): string | null {
   if (GUIDE_OVERRIDES[svc]) return GUIDE_OVERRIDES[svc];
+  // `services/index.mdx` is the SECTION LANDING, not a guide for a product
+  // called "index". The document does serve a product named index (full-text
+  // search), and matching it here pointed the Index reference at the whole
+  // services catalogue — via /docs/services/index, which is not even a route:
+  // the file renders at /docs/services.
+  if (svc === 'index') return null;
   if (
     fs.existsSync(path.join(SERVICES_DIR, `${svc}.mdx`)) ||
     fs.existsSync(path.join(SERVICES_DIR, svc, 'index.mdx'))
