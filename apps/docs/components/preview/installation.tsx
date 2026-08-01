@@ -1,4 +1,4 @@
-import { ServerCodeBlock } from '@hanzo/docs-ui/components/codeblock.rsc';
+import { ServerCodeBlock } from '@hanzo/docs-base-ui/components/codeblock.rsc';
 
 export function Installation({ name }: { name: string }) {
   return (

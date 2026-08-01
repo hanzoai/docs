@@ -8,7 +8,7 @@ import { Body } from '@/app/layout.client';
 import { Provider } from './provider';
 import type { ReactNode } from 'react';
 import { Geist, Geist_Mono } from 'next/font/google';
-import { TreeContextProvider } from '@hanzo/docs/ui/contexts/tree';
+import { TreeContextProvider } from '@hanzo/docs-base-ui/contexts/tree';
 import { source } from '@/lib/source';
 import { NextProvider } from '@hanzo/docs/core/framework/next';
 import { Analytics } from '@hanzo/docs-analytics';

@@ -1,6 +1,6 @@
 import { Fragment, ReactNode } from 'react';
 import Image from 'next/image';
-import { buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
 import { cn } from '@/lib/cn';
 import { getSponsors, type Sponsor } from '@/lib/get-sponsors';
 import { owner } from '@/lib/github';
@@ -71,6 +71,8 @@ export default async function Page() {
         target="_blank"
         className={cn(
           buttonVariants({
+            variant: 'primary',
+            size: 'md',
             className: 'group rounded-full mt-6',
           }),
         )}

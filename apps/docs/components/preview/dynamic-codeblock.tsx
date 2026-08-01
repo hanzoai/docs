@@ -1,5 +1,5 @@
 'use client';
-import { DynamicCodeBlock } from '@hanzo/docs/ui/components/dynamic-codeblock';
+import { DynamicCodeBlock } from '@hanzo/docs-base-ui/components/dynamic-codeblock';
 import { useState } from 'react';
 import { bundledLanguages } from 'shiki';
 import {
@@ -8,7 +8,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@hanzo/docs-base-ui/components/ui/select';
 
 export default function Example() {
   const [lang, setLang] = useState('js');
@@ -17,7 +17,12 @@ export default function Example() {
   return (
     <div className="prose flex flex-col gap-4 rounded-lg bg-fd-background p-4">
       <div className="not-prose flex flex-col gap-2 rounded-lg bg-fd-secondary text-fd-secondary-foreground p-2">
-        <Select value={lang} onValueChange={setLang}>
+        <Select
+          value={lang}
+          onValueChange={(next) => {
+            if (next) setLang(next);
+          }}
+        >
           <SelectTrigger className="w-fit min-w-[140px] h-8 text-xs bg-transparent border-fd-border/50">
             <SelectValue />
           </SelectTrigger>

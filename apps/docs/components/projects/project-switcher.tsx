@@ -11,7 +11,7 @@ import {
   SelectSeparator,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@hanzo/docs-base-ui/components/ui/select';
 
 interface DocSection {
   name: string;

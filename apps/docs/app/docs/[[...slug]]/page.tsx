@@ -10,7 +10,7 @@ import { Wrapper } from '@/components/preview/wrapper';
 import { Mermaid } from '@/components/mdx/mermaid';
 import { PageFeedback, PageFeedbackBlock } from '@/components/feedback';
 import { owner, repo } from '@/lib/github';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@hanzo/docs-base-ui/components/ui/hover-card';
 import Link from '@hanzo/docs-core/link';
 import { findSiblings } from '@hanzo/docs-core/page-tree';
 import { Card, Cards } from '@hanzo/docs-base-ui/components/card';

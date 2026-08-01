@@ -1,9 +1,9 @@
-import defaultMdxComponents from '@hanzo/docs-ui/mdx';
-import { Files, File, Folder } from '@hanzo/docs-ui/components/files';
-import { Tabs, Tab, TabsContent, TabsList, TabsTrigger } from '@hanzo/docs-ui/components/tabs';
-import { Steps, Step } from '@hanzo/docs-ui/components/steps';
+import defaultMdxComponents from '@hanzo/docs-base-ui/mdx';
+import { Files, File, Folder } from '@hanzo/docs-base-ui/components/files';
+import { Tabs, Tab, TabsContent, TabsList, TabsTrigger } from '@hanzo/docs-base-ui/components/tabs';
+import { Steps, Step } from '@hanzo/docs-base-ui/components/steps';
 import type { MDXComponents } from 'mdx/types';
-import { Accordion, Accordions } from '@hanzo/docs-ui/components/accordion';
+import { Accordion, Accordions } from '@hanzo/docs-base-ui/components/accordion';
 import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
 import { ModelsCatalog, ConnectorsCatalog, InstallCatalog } from '@/components/preview/lazy';
 import { DocsHero } from '@/components/docs-hero';
