@@ -56,13 +56,21 @@ matters because that section comes from a submodule (see the export gate).
 
 ## The one trigger, today
 
-**Act 1 is already done for the current tip.** An image for `b20bb98cc` exists in
-GHCR: `linux/amd64`, entrypoint `/static -port 3000 -root /public`, two layers,
-2.55 GB — the image serving now measures 2.55 GB too, so nothing collapsed on the
-way in:
+**Act 1 is already done.** The newest image in GHCR is `b20bb98cc`:
+`linux/amd64`, entrypoint `/static -port 3000 -root /public`, two layers, 2.55 GB
+— the image serving now measures 2.55 GB too, so nothing collapsed on the way in:
 
     ghcr.io/hanzoai/docs:b20bb98cc6e971d042c6280cf81a5f2fb4229c4f-amd64-docs
     sha256:a0e2a31447b4ead2e3c765f31d0f116118c2c306dd833a21a652549a8c7e0b93
+
+`main` may sit ahead of that commit without the site differing by a byte. The
+export reads `apps/docs/content/**` and the packages it imports; this file is not
+a build input, so a commit that only edits `RELEASE.md` produces an identical
+export. Check what actually changed before assuming a rebuild is owed:
+
+```sh
+git diff --stat b20bb98cc6e971d042c6280cf81a5f2fb4229c4f origin/main
+```
 
 **That it exists is the export gate's verdict.** The gate runs inside the
 Dockerfile, before the serving stage is assembled, so an image cannot come into
@@ -83,14 +91,20 @@ changing two lines that must move together —
 `cd.automated: true` on that file makes the GitOps plane the sole writer, so the
 commit IS the rollout. There is nothing to trigger afterwards.
 
-Re-read the digest before you paste it — a tag is mutable and this one was read at
-a moment in time:
+Re-derive both lines before you paste them — a tag is mutable and these were read
+at a moment in time. This walks back from `main` and stops at the newest commit
+that has an image, printing the two lines in the shape the values file wants:
 
 ```sh
-crane digest ghcr.io/hanzoai/docs:$(git rev-parse origin/main)-amd64-docs
+for c in $(git rev-list -20 origin/main); do
+  d=$(crane digest "ghcr.io/hanzoai/docs:$c-amd64-docs" 2>/dev/null) || continue
+  printf '  tag: %s-amd64-docs\n  digest: %s\n' "$c" "$d"; break
+done
 ```
 
-If that prints nothing, the tip is not built and you are back to Act 1 below.
+It prints nothing only if the last twenty commits have no image at all — then you
+need a build, and Act 1 below is how. Otherwise diff the commit it names against
+`main`, per above: if the difference is outside the export, the pin is enough.
 
 ## Act 1 — the six ways to build
 
