@@ -9,7 +9,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Platform',
-  description: 'The AI Workforce Platform — Deploy autonomous AI teams with 100+ models, 600+ integrations, computer use, and team management.',
+  description: 'The AI Workforce Platform — Deploy autonomous AI teams on the Hanzo AI API, with 600+ integrations, computer use, and team management.',
 };
 
 /* ---- Data ---- */
@@ -85,8 +85,8 @@ const archLayers = [
 const capabilities = [
   {
     icon: SparklesIcon,
-    title: '100+ AI Models',
-    desc: 'Access Claude, GPT, Gemini, Qwen, Llama and more through one AI API. Swap models per-agent or per-task.',
+    title: 'Models',
+    desc: 'Our own enso and Zen models on the Hanzo AI API, with outside models reachable on the same key. Swap models per-agent or per-task.',
   },
   {
     icon: NetworkIcon,
@@ -146,7 +146,7 @@ export default function PlatformPage() {
         </h1>
 
         <p className="text-base sm:text-lg text-fd-muted-foreground max-w-[640px] mx-auto leading-relaxed">
-          Deploy autonomous AI teams with 100+ models, 600+ integrations,
+          Deploy autonomous AI teams on the Hanzo AI API, 600+ integrations,
           full computer use, and team management. Run locally or scale
           to thousands of agents in Hanzo Cloud.
         </p>
@@ -301,7 +301,7 @@ export default function PlatformPage() {
           <p className="text-fd-muted-foreground max-w-[500px]">
             Free forever when running locally on your own hardware. Hanzo Cloud
             starts at <span className="text-fd-foreground font-semibold">$5/mo per bot</span> with
-            100+ AI models included.
+            the Hanzo AI API included.
           </p>
           <div className="flex flex-wrap justify-center gap-6 text-sm">
             <div className="flex items-center gap-2">

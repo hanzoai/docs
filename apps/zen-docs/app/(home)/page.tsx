@@ -236,7 +236,7 @@ export default function HomePage() {
           <WhyCard
             icon={<Code className="h-6 w-6" />}
             title="Build with the API"
-            desc="OpenAI-compatible API at api.hanzo.ai. From $0.15/MTok. Drop-in replacement for GPT-4 or Claude."
+            desc="Every Zen model at api.hanzo.ai, one key, from $0.15/MTok. Python and TypeScript SDKs, or plain HTTP."
           />
         </div>
       </section>
@@ -275,7 +275,7 @@ export default function HomePage() {
         <div className="flex items-end justify-between mb-8">
           <div>
             <h2 className="text-3xl font-bold tracking-tight mb-2">Developer API</h2>
-            <p className="text-fd-muted-foreground">OpenAI-compatible. Drop-in replacement.</p>
+            <p className="text-fd-muted-foreground">One host, one key, every Zen model.</p>
           </div>
           <Link href="/docs/api" className="hidden sm:inline-flex items-center gap-2 text-sm font-medium hover:underline">
             Full docs <ArrowRight className="h-4 w-4" />
@@ -293,7 +293,7 @@ from hanzoai import Hanzo
 
 client = Hanzo(api_key="hk-...")
 r = client.chat.completions.create(
-    model="zen4",
+    model="zen5",
     messages=[{"role": "user", "content": "Hello!"}],
 )
 print(r.choices[0].message.content)`}</code></pre>
@@ -307,13 +307,19 @@ print(r.choices[0].message.content)`}</code></pre>
   -H "Authorization: Bearer hk-..." \\
   -H "Content-Type: application/json" \\
   -d '{
-    "model": "zen4",
+    "model": "zen5",
     "messages": [
       {"role": "user", "content": "Hello!"}
     ]
   }'`}</code></pre>
           </div>
         </div>
+
+        <p className="text-sm text-fd-muted-foreground mb-8">
+          The endpoint takes and returns the standard chat-completions JSON shape, so an
+          HTTP client already written against that shape works here once its base URL
+          points at <code>https://api.hanzo.ai/v1</code> and it sends a Hanzo key.
+        </p>
 
         <div className="flex flex-wrap gap-4 items-center">
           <a href="https://console.hanzo.ai" target="_blank" rel="noopener noreferrer"

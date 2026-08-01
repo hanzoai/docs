@@ -11,7 +11,7 @@ import { DynamicAiModels } from './_components/DynamicAiModels';
 
 export const metadata: Metadata = {
   title: 'Pricing',
-  description: 'Hanzo Platform pricing — Cloud VMs from $5/mo, Kubernetes from $0.005/hr, 100+ AI models. Deploy anywhere.',
+  description: 'Hanzo Platform pricing — Cloud VMs from $5/mo, Kubernetes from $0.005/hr, and the Hanzo AI API. Deploy anywhere.',
 };
 
 /* ---- Cloud VM Plans ---- */
@@ -99,7 +99,7 @@ const comparisonRows: { feature: string; nano: CellValue; standard: CellValue; p
   { feature: 'Custom domains & TLS', nano: true, standard: true, power: true },
   { feature: 'Kubernetes management', nano: false, standard: true, power: true },
   { feature: 'Docker Swarm', nano: true, standard: true, power: true },
-  { feature: 'AI model access', nano: 'Zen 1B free', standard: '100+ models', power: '100+ with priority' },
+  { feature: 'AI model access', nano: 'Zen 1B free', standard: 'Full catalogue', power: 'Full catalogue, priority' },
   { feature: 'Multi-cluster fleet', nano: false, standard: 'Up to 5', power: 'Unlimited' },
   { feature: 'Team collaboration', nano: false, standard: true, power: true },
   { feature: 'RBAC & SSO', nano: false, standard: false, power: true },
@@ -123,7 +123,7 @@ export default function PricingPage() {
           </span>
         </h1>
         <p className="text-lg text-fd-muted-foreground max-w-[640px] mx-auto">
-          Cloud VMs from $5/mo. Kubernetes, Docker, and 100+ AI models.
+          Cloud VMs from $5/mo. Kubernetes, Docker, and the Hanzo AI API.
           Pay only for what you use.
         </p>
       </header>
@@ -222,8 +222,9 @@ export default function PricingPage() {
           <h2 className="text-2xl font-bold text-fd-foreground">AI Models</h2>
         </div>
         <p className="text-sm text-fd-muted-foreground mb-6 max-w-[540px]">
-          100+ models available via Hanzo AI API. Pricing per 1M tokens.
-          Zen models at 3x inference cost. Third-party models at 1.2x pass-through.
+          Models are served through the Hanzo AI API and priced per 1M tokens.
+          Our own enso and Zen models are priced per model; third-party models are
+          passed through at 1.2x.
         </p>
         <DynamicAiModels />
         <p className="text-xs text-fd-muted-foreground mt-3">

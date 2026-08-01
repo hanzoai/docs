@@ -5,7 +5,7 @@ const billingFaqs = [
   },
   {
     q: 'What does the $5/mo Cloud plan include?',
-    a: 'A full Linux desktop VM running in Hanzo Cloud with access to 100+ AI models via the Hanzo AI API. Your bot is always on, backed up daily, and accessible from any device. All chat integrations are included.',
+    a: 'A full Linux desktop VM running in Hanzo Cloud with access to AI models via the Hanzo AI API. Your bot is always on, backed up daily, and accessible from any device. All chat integrations are included.',
   },
   {
     q: 'Why is Cloud Pro $25/mo?',
@@ -17,7 +17,7 @@ const billingFaqs = [
   },
   {
     q: 'Can I use my own API keys with Cloud plans?',
-    a: 'Yes! Cloud plans include access to 100+ models, but you can also bring your own API keys if you prefer. Mix and match freely. When using your own keys, you pay the provider directly and skip our token pricing.',
+    a: 'Yes! Cloud plans include model access through the Hanzo AI API, but you can also bring your own API keys if you prefer. Mix and match freely. When using your own keys, you pay the provider directly and skip our token pricing.',
   },
   {
     q: 'How does the free trial work?',
