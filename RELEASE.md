@@ -1,8 +1,8 @@
 # Publishing docs.hanzo.ai
 
-Everything a publish needs, and what each path is waiting on. Every fact below
-was read off the live systems, not off a design doc; where something could not be
-checked, it says so.
+Every path that can publish this site, what each one tags, and the one credential
+each is waiting on. Every fact below was read off the live systems; where
+something could not be checked, it says so rather than guessing.
 
 ## Publishing is two acts
 
@@ -12,34 +12,63 @@ checked, it says so.
 Act 2 is the deploy. That file carries `cd.automated: true`, which makes the
 GitOps plane the sole writer of the workload and self-heal anything else that
 touches it — so the commit that edits it IS the rollout, and conversely a
-`kubectl patch` or a `deploy:` block in `hanzo.yml` would be reverted on the next
+`kubectl patch` or a `deploy:` block in `hanzo.yml` gets reverted on the next
 sync. Nothing goes live because it was built; something goes live because that
 file names it.
 
 ## Where things stand
 
-`ghcr.io/hanzoai/docs` is anonymously pullable, so this is checkable by anyone:
+`ghcr.io/hanzoai/docs` is anonymously pullable, so none of this has to be taken
+on trust. Ask it directly, for whatever `main` is when you are reading:
 
-| tag | shape | exists |
-|---|---|---|
-| `e8fb4369c925e75b1277d5a4a1c61e16a9bd93be` | full SHA — the live pin | yes |
-| `latest` | floating | yes, and it is a **different** image from the pin |
-| `f2ad2c477311dc1acfc8fbb725e313777b6dd0f0` | full SHA — current `main` | no |
-| `f2ad2c477311dc1acfc8fbb725e313777b6dd0f0-amd64-docs` | platform webhook shape | no |
-| `sha-f2ad2c4-amd64` | hanzoai/ci shape | no |
+```sh
+SHA=$(git rev-parse origin/main); SHORT=$(echo "$SHA" | cut -c1-7)
+for t in "$SHA-amd64-docs" "$SHA" "sha-$SHORT-amd64" "sha-$SHORT-amd64-docs" latest; do
+  printf '%-52s %s\n' "$t" "$(crane digest "ghcr.io/hanzoai/docs:$t" 2>/dev/null || echo '— absent')"
+done
+```
 
-The live pin resolves to `sha256:2b589f95…`, which is byte-for-byte the `digest:`
-in the values file — the pin mechanism is sound. The last three rows are the
-useful ones: **no builder has produced an image for current `main`**, in any of
-the three tag shapes, so all lanes are genuinely cold rather than one of them
-quietly working. `main` is 2 commits ahead of what is serving.
+Those are every tag shape in the contract below, in the order of the table under
+Act 2 — so whichever one comes back with a digest names the lane that built it.
 
-## Act 1 — the four ways to build
+**The first row is the live one.** `<sha40>-amd64-docs` is the platform lane's
+shape, it is what exists in GHCR for the commit universe currently pins, and it
+is what that pin reads. The bare 40-char tag the pin *used* to carry does not
+exist in GHCR for that commit — which is exactly the trap this file is for: the
+tag shape you assume decides whether the pin names a real image.
+
+Three facts worth stating outright, because they are the ones people get wrong:
+
+- The pin's `digest:` in universe is byte-for-byte GHCR's `docker-content-digest`
+  for the tag beside it. The pin mechanism is sound; when a rollout does nothing,
+  the cause is a `tag:` moved without its `digest:`, not a broken chart.
+- **`latest` is a different image from the pin.** Nothing we run reads it, but a
+  bare `docker pull ghcr.io/hanzoai/docs` gets it.
+- **A `<sha40>-amd64-docs` tag does not prove the webhook fired.** `POST
+  /v1/runner` takes its tag verbatim, so a hand-fired build can be named in the
+  platform's own shape and is indistinguishable from a webhook build afterwards.
+  Whether the Hanzo GitHub App is installed on this repo could not be read with
+  the token available (`repos/…/installation` needs an App JWT), so this file does
+  not claim it either way.
+
+`docs.hanzo.ai` answers 200, as do `/docs/` and `/docs/studio/` — the last one
+matters because that section comes from a submodule (see the export gate).
+
+## Act 1 — the six ways to build
+
+Six producers, five different tag shapes, and three of those come from three
+programs reading *this same* `hanzo.yml` and disagreeing about what it means.
+That is the whole reason the tag contract exists.
+
+If you only want to publish: **lane 1 is the one to fire** — it is the only one
+whose blocker is a single credential rather than missing infrastructure. Lane 5
+is what built the image running now. Lanes 2, 3, 4 and 6 are written down so the
+next person does not rediscover why they are cold.
 
 ### 1. The runner fabric — `POST /v1/runner`
 
-The only path that is one credential away from working. The Dockerfile names it
-as the real builder, and it is what produced the image now serving.
+The path that built what is serving now, and the one that is a single credential
+away from working. The Dockerfile names it as the real builder.
 
 ```
 POST https://platform.hanzo.ai/v1/runner
@@ -51,7 +80,7 @@ Content-Type: application/json
  "image":"ghcr.io/hanzoai/docs:<40-char sha>"}
 ```
 
-or, the same request with the recipe read for you:
+or the same request with the recipe read for you:
 
 ```
 hanzo build hanzo-docs/docs --sha <40-char sha> \
@@ -61,139 +90,238 @@ hanzo build hanzo-docs/docs --sha <40-char sha> \
 **Credential: `PLATFORM_BUILD_CALLBACK_TOKEN`**, in KMS. Unauthenticated the
 route answers `401 {"message":"Invalid enqueue token"}` — a 401, not a 403, and
 not the `500 PLATFORM_BUILD_CALLBACK_TOKEN is not configured` it returns when the
-server lacks the token. So the endpoint is armed and correct on the far side; the
+server lacks the token. The endpoint is armed and correct on the far side; the
 only missing piece is the bearer.
+
+**The tag is whatever you put in `image:`** — the route takes it verbatim. Pass
+the full 40-char SHA and the pin needs no reconciling at all. This is the lane
+whose shape `charts/app/values/hanzo/docs.yaml` already speaks.
 
 Two things to know before using it:
 
-- **`hanzo build` will not fall back to your login.** The CLI resolves the bearer
-  as `--build-token` → `HANZO_BUILD_TOKEN` → `PLATFORM_BUILD_CALLBACK_TOKEN` →
-  the stored build token → *your IAM access token*, and its help says an IAM
-  login authorizes a build. The deployed route disagrees: it compares the bearer
-  against `PLATFORM_BUILD_CALLBACK_TOKEN` and nothing else, so an IAM token gets
-  the same 401 as no token. Set `HANZO_BUILD_TOKEN` to the enqueue token.
-- **It builds and pushes; it does not deploy.** Rollout is driven by the repo's
+- **It builds and pushes; it does not deploy.** Rollout is driven by a repo's
   `deploy:` block, and this repo deliberately has none, so the job records
   `rolloutStatus: skipped`. Act 2 is still yours.
-
-The image tag is whatever you put in `image:` — the route takes it verbatim. Pass
-the full 40-char SHA and the pin needs no reconciling at all.
+- **`hanzo build`'s IAM login does not authorize a build against the deployed
+  route — yet.** The CLI resolves its bearer as `--build-token` →
+  `HANZO_BUILD_TOKEN` → `PLATFORM_BUILD_CALLBACK_TOKEN` → the stored build token
+  → your IAM access token, and its help says an IAM login is enough. That is true
+  of `apps/platform/runner.go` on `main`, which accepts *either* the shared token
+  *or* a validated IAM admin. It is not true of what is deployed: the live route
+  still answers with the older handler's `401 Invalid enqueue token`, where
+  `main`'s returns `403 invalid build token` and has the IAM branch. So the CLI
+  help describes the design and the cluster is behind it. Until platform
+  redeploys, set `HANZO_BUILD_TOKEN` to the enqueue token.
 
 ### 2. The forge — `.hanzo/workflows/deploy.yml`
 
 Blocked, and not on billing or a secret.
 
-`git.hanzo.ai/hanzo-docs/docs` is a **pull mirror with no Actions unit**:
-`/actions` on it answers 404 while `git.hanzo.ai/hanzoai/cloud/actions` on the
-same instance answers 200. Even with a unit, a mirror sync moves refs without
-firing a push event, so the `on: push` trigger would not fire either. (The sync
-itself is healthy — the mirror's `main` matches GitHub's exactly.)
+`git.hanzo.ai/hanzo-docs/docs` is a **pull mirror with no Actions unit**: the
+repo answers 200 and `/actions` on it answers 404, while
+`git.hanzo.ai/hanzoai/cloud/actions` on the same instance answers 200. Even with
+a unit, a mirror sync moves refs without firing a push event, so the `on: push`
+trigger would not fire either.
 
-The neighbouring `git.hanzo.ai/hanzoai/docs` *does* have an Actions unit, but it
-is a different, stale mirror sitting on an old commit, so it is not a way in.
+The neighbouring `git.hanzo.ai/hanzoai/docs` *does* have an Actions unit
+(`/actions` → 200), but it is a different, stale mirror on an old commit, so it
+is not a way in.
 
 **Credential when it does run: `REGISTRY_TOKEN`** (forge secret, GHCR write on
-the `hanzoai` org). The workflow already refuses to publish without it rather
-than silently skipping the push. **Tag: the full 40-char SHA** — this is the lane
-universe's pin shape was written for.
+the `hanzoai` org). The workflow refuses to publish without it rather than
+silently skipping the push. **Tag: the full 40-char SHA** — this lane and lane 1
+are the two that speak the shape universe already pins.
 
-To unblock: give `hanzo-docs/docs` on the forge an Actions unit, and make the
+To unblock: give `hanzo-docs/docs` on the forge an Actions unit and make the
 mirror a real push target rather than a pull mirror. Then disarm one of the two
-builders — see the note at the top of `deploy.yml`.
+push-triggered builders — see the note at the top of `deploy.yml`.
 
 ### 3. GitHub — `.github/workflows/cicd.yml` → hanzoai/ci
 
-Landed, correct, and unable to schedule. The blocker is a runner, not Actions.
+Landed, registered, and unable to schedule. The blocker is a runner, not Actions.
 
-- Actions is **on** (`{"enabled":true,"allowed_actions":"all"}`) and the repo is
-  public, so runs dispatch normally. There were simply no workflow files: the
-  last thirteen moved to `.hanzo/workflows/` and the final one, the mirror-sync
-  nudge, was deleted as superseded.
-- Every runner we own is an `act_runner` registered to **git.hanzo.ai**, not to
-  github.com. `arcd`, the pool that used to answer on the GitHub side, is
-  retired. The single registration left on this org
-  (`hanzo-docs-build-linux-amd64-5dzd2-runner-dcm4t`) is offline and advertises
-  no labels.
+- Actions is **on** (`{"enabled":true,"allowed_actions":"all"}`), the repo is
+  public, and GitHub lists this workflow as `state: active`. A dispatch is
+  accepted.
+- **There are zero self-hosted runners registered**, at the repo level and at the
+  org level both (`actions/runners` returns `total_count: 0` for each). Every
+  runner we own is an `act_runner` registered to git.hanzo.ai, not to github.com;
+  arcd, the pool that used to answer on the GitHub side, is retired.
 
 So a dispatched run sits pending against a runner GitHub cannot see. The workflow
-is `workflow_dispatch:` only, which keeps that from happening on every push and
-keeps it from racing the forge lane; it names our own pool label, deliberately —
-**do not point it at a GitHub-hosted runner.** That is the one thing this fleet
-does not build on, and a workflow that names one starts working immediately,
-which is exactly what makes the rule easy to break by accident.
+is `workflow_dispatch:` only, which keeps it from racing the forge lane, and it
+names our own pool label deliberately — **do not point it at a GitHub-hosted
+runner.** That is the one thing this fleet does not build on, and a workflow that
+names one starts working immediately, which is exactly what makes the rule easy
+to break by accident.
 
-**Credentials, all already present as repo secrets:** `KMS_CLIENT_ID` and
+It passes `submodules: recursive`, and that is load-bearing rather than tidy:
+hanzoai/ci checks out with `actions/checkout`'s default, which fetches no
+submodules, and `apps/docs/content/docs/studio` is one. Without it that section
+is simply absent from the export — silently, since every other page still builds.
+Here the export gate names those pages, so the build would fail on this lane
+every time while the forge lane built the same commit clean. The `submodules`
+input exists on hanzoai/ci for this; its default is checkout's own, so no other
+caller changed behaviour.
+
+**Credentials, already present as repo secrets:** `KMS_CLIENT_ID` and
 `KMS_CLIENT_SECRET` — hanzoai/ci uses them to pull the org's GHCR write token
 (`buildx-ghcr-auth`) at run time. Without them it falls back to the job's own
 `GITHUB_TOKEN`, which can only write a package linked to *this* repo and will 403
 against `ghcr.io/hanzoai/docs`; an org `GH_PAT` is the other way to satisfy it and
-is **not** set here. This lane has never run, so that fallback chain is reasoned
-from the workflow source, not observed.
+is **not** set here. This lane has never run, so that fallback chain is read from
+the workflow source, not observed.
 
-**Tags: `sha-<sha7>-amd64` and `latest`** — neither is the shape universe pins,
-and `latest` currently points at an image unrelated to what is live, so a run here
+**Tags: `sha-<sha7>-amd64` and `latest`.** Neither is the shape universe pins, and
+`latest` currently points at an image unrelated to what is live, so a run here
 moves a floating tag that other pulls see.
 
-### 4. The platform webhook
+### 4. hanzoai/ci in `mode: delegate`
 
-`/v1/github-webhook` derives builds from this `hanzo.yml` on a push event via the
-Hanzo GitHub App. It needs no work here and no credential from us. Its tag shape
-is `{{git.sha}}-amd64-<tag-suffix>`, i.e.
-`ghcr.io/hanzoai/docs:<40-char sha>-amd64-docs`.
+Same workflow as lane 3, but instead of running buildx on the runner it POSTs
+each image to `platform.hanzo.ai/v1/arcd/enqueue`; platform builds in-cluster with
+BuildKit. The GitHub job then finishes in seconds. Opt in with
+`with: { mode: delegate }`.
 
-Whether the App is installed for this repo could not be read with the token
-available. What *can* be said is that no image exists in that tag shape for
-current `main`, so it is not currently publishing this repo.
+**Credential: `PLATFORM_BUILD_CALLBACK_TOKEN`** (same secret as lane 1, reached
+through `secrets: inherit`); the workflow fails the step outright if it is unset.
+It still needs a runner to place the POST from, so today it is blocked by the same
+missing runner as lane 3 — it removes the buildx minutes, not the prerequisite.
+
+**Tag: `sha-<sha7>-amd64`** — the same shape lane 3 produces, minus `latest`.
+
+### 5. The platform lane — `/v1/github-webhook` → BuildKit
+
+The lane that produced the image running today, and the shape the pin now reads.
+
+`platform.hanzo.ai` reads this `hanzo.yml` (`pkg/platform/src/services/ci/
+platform-config.ts`), turns each `images:` entry into a build, and runs it
+in-cluster with BuildKit. It needs no work in this repo and no credential from
+us — the delivery authenticates as a GitHub App installation.
+
+**Tag: `<sha40>-amd64-docs`**, from `tagPattern: {{git.sha}}-amd64-<suffix>` with
+`suffix` defaulting to the image `name`. Note the FULL sha — this is the one
+producer that does not abbreviate, and the reason the pin looks the way it does.
+
+Whether the App is installed here could not be read (see above). What can be said
+is that an image exists in this shape for the pinned commit, and that as of
+writing none exists for the tip — so if the App is installed, it is not building
+every push, and the tip still needs a trigger.
+
+### 6. The forge push orchestrator — dormant
+
+`apps/git/build_on_push.go` in hanzoai/cloud reacts to a default-branch push
+landing on git.hanzo.ai, reads this same `hanzo.yml`, and enqueues one
+`/v1/runner` build per declared image.
+
+It **ships dormant**: it no-ops unless `CLOUD_NATIVE_CICD_ENABLED` is truthy on
+the git App CR *and* the enqueue token is present. It also reacts to the forge,
+which is the mirror that fires no push event for this repo — two independent
+reasons it is not publishing this site.
+
+**Tag: `sha-<sha7>-amd64-docs`** — a third reading of the same file, and the one
+whose own comment claims a convergence that does not hold. See below.
 
 ### Not a path: building on a workstation
 
-`docker build .` produces the same image — that is the whole point of the recipe
-living in the Dockerfile. It is still not how this ships: images are built by the
-fabric for every org/arch, not on a laptop.
+`docker build .` produces the same image — that is the point of the recipe living
+in the Dockerfile. It is still not how this ships: images are built by the fabric
+for every org/arch combination, not on a laptop.
 
-## Act 2 — the pin
+## Act 2 — the pin, per builder
 
 `hanzoai/universe`, `charts/app/values/hanzo/docs.yaml`:
 
 ```yaml
 image:
   repository: ghcr.io/hanzoai/docs
-  tag: e8fb4369c925e75b1277d5a4a1c61e16a9bd93be
-  digest: sha256:2b589f957d50f2c14ce2114d6c75281ed426b2b39e79c757791914e8e570b25a
+  tag: 1a9146f131fc2cba05aa19f4f4ecb5ac68709c4d
+  digest: sha256:01cd407c7e1dcab277337899645a17492292c7ce371ff1395af26481889e3757
 ```
 
 **`digest:` is the line that changes what runs.** The chart renders
-`repository:tag@digest` when both are set, and a reference carrying a digest is
-resolved by the digest — the tag is a label a human reads. Move `tag:` alone and
-docs.hanzo.ai keeps serving exactly what it was serving, with a values file that
-says otherwise. That is a silent no-op, and it is the failure this section exists
-to prevent.
+`repository:tag@digest`, and a reference carrying a digest is resolved by the
+digest — the tag is a label a human reads. Move `tag:` alone and docs.hanzo.ai
+keeps serving exactly what it served before, from a values file that says
+otherwise. That is a silent no-op, and it has already happened once here (see the
+comment in that file).
 
-So the edit is: **`digest:` to make it live, `tag:` in the same commit so the file
-does not lie.** The digest of what you just pushed:
+So the edit is **`digest:` to make it live, `tag:` in the same commit so the file
+does not lie.** Get the digest of what you just pushed:
 
 ```
 crane digest ghcr.io/hanzoai/docs:<tag>
 ```
 
-Per builder, `tag:` becomes:
+The one-line `tag:` edit, per builder, for a commit whose full SHA is `<sha40>`
+and whose first seven characters are `<sha7>`:
 
-| builder | `tag:` |
-|---|---|
-| `POST /v1/runner` | the tag you named in `image:` (use the full 40-char SHA) |
-| forge `deploy.yml` | the full 40-char SHA |
-| platform webhook | `<40-char SHA>-amd64-docs` |
-| hanzoai/ci | `sha-<first 7 of the SHA>-amd64` |
+| builder | `tag:` becomes | state |
+|---|---|---|
+| 5. platform lane (webhook) | `<sha40>-amd64-docs` | **what the pin reads today** |
+| 1. `POST /v1/runner` | whatever you put in `image:` | works; needs the bearer |
+| 2. forge `deploy.yml` | `<sha40>` | no Actions unit on the mirror |
+| 3. hanzoai/ci (buildx) | `sha-<sha7>-amd64` | no runner |
+| 4. hanzoai/ci (delegate) | `sha-<sha7>-amd64` | no runner |
+| 6. forge push orchestrator | `sha-<sha7>-amd64-docs` | dormant |
 
-`digest:` is the same shape in all four rows, which is the point — the digest is
-the identity, and the four tag schemes are four names for it.
+`digest:` is the same shape in all six rows, which is the point — the digest is
+the identity and these are six names for it.
 
-Deleting the `digest:` line reduces the whole thing to a one-line `tag:` edit and
-is a real option, but it trades an immutable pin for a mutable one: a tag can be
-repointed, and then the file names an image that is no longer the image.
+If you fire lane 1, **name the tag in the shape of the lane you want to be
+standard.** Naming it `<sha40>-amd64-docs` keeps one shape in the registry and
+one shape in the pin; naming it a bare `<sha40>` is also fine, but then the pin
+and the previous pin disagree in shape for no reason a reader can see.
 
-Committing that file to `main` on universe is the rollout. There is no second
-step and nothing to trigger.
+Publishing lane 1 from current `main`, end to end — this prints the two lines to
+paste, and prints nothing if the image is not actually there:
+
+```sh
+SHA=$(git rev-parse origin/main)
+hanzo build hanzo-docs/docs --sha "$SHA" --image "ghcr.io/hanzoai/docs:$SHA"
+printf '  tag: %s\n  digest: %s\n' "$SHA" "$(crane digest "ghcr.io/hanzoai/docs:$SHA")"
+```
+
+Deleting the `digest:` line reduces this to a one-line `tag:` edit and is a real
+option, but it trades an immutable pin for a mutable one: a tag can be repointed,
+and then the file names an image that is no longer the image.
+
+Committing that file to `main` on universe is the rollout. There is no second step
+and nothing else to trigger.
+
+### Why the shapes disagree — three readers of one file
+
+This is the part that actually bites, so it is worth being exact. `hanzo.yml`
+declares `name: docs` and **no** `tag-suffix`. Three separate programs read that
+and reach three different tags:
+
+| reader | suffix when `tag-suffix` is absent | sha | result |
+|---|---|---|---|
+| hanzo/platform `platform-config.ts` | falls back to `name` → `docs` | **full** | `<sha40>-amd64-docs` |
+| hanzoai/cloud `apps/git/build_on_push.go` | falls back to `name` → `docs` | short | `sha-<sha7>-amd64-docs` |
+| hanzoai/ci `build.yml` | `."tag-suffix" // ""` → **none** | short | `sha-<sha7>-amd64` |
+
+Two independent disagreements, not one: whether an absent `tag-suffix` falls back
+to the image `name`, and whether the sha is abbreviated. Only a repo that sets
+`tag-suffix` explicitly *and* ignores the sha length gets agreement, and even then
+only between the last two.
+
+`build_on_push.go`'s header states that its door and the ci door "enqueue
+identical image tags so they converge, never diverge". That holds only for a repo
+that sets `tag-suffix`. For every repo that omits it — most of them, this one
+included — they differ by exactly the suffix. Its own test documents the fallback
+(`tag-suffix defaults to name`, asserting `…:sha-abcdef1-amd64-api` for an image
+declaring no suffix), so the behaviour is intended and only the comment is wrong.
+
+**Setting `tag-suffix: docs` here would close one of the two gaps** — it would
+make ci emit `sha-<sha7>-amd64-docs`, matching row 2, and as a side effect stop ci
+from moving the shared `latest` tag (it would push `docs-latest`). It would not
+close the sha-length gap, and it changes the tag shape of lanes that have never
+run. Deliberately not done: it is a fleet-shaped decision, not a silent edit in a
+docs repo.
+
+Until then the rule is the one at the top of this file — **read the tag off the
+build you actually fired**, and move `digest:` with it.
 
 ## The export gate
 
@@ -201,40 +329,43 @@ This site fails by exporting **nothing**. The build succeeds, the layer is valid
 the push succeeds, the host answers 404, and no builder notices, because from a
 builder's point of view nothing went wrong.
 
-So the gate is inside the Dockerfile, which is the one thing every builder passes
+So the gate lives inside the Dockerfile — the one thing every builder passes
 through:
 
     scripts/check-export.sh        what "a site" means, in one place
     apps/<app>/export.require      the sections this app must not lose
 
-A build that fails it never produces an image, so no lane can push past it — which
-matters most for the GitHub lane, where `docker buildx --push` builds and pushes
-in a single invocation and there is no step in between to hold, and where
-`hanzo.yml`'s `test:` block runs *after* the push and so cannot gate it either.
+A build that fails it never produces an image, so no lane can push past it. That
+matters most on lane 3, where `docker buildx build --push` builds and pushes in a
+single invocation with no step in between to hold, and where `hanzo.yml`'s `test:`
+block runs *after* the push and so cannot gate it either.
 
-It checks: `index.html` and `docs/index.html` are non-empty; at least 50 HTML
-pages exported; `/docs` actually rendered its nav (a shell-only render produces
-both files and no links); and every page named in `export.require`.
+It checks: `index.html` and `docs/index.html` exist and are non-empty; at least 50
+HTML pages were exported; `/docs` actually rendered its nav (a shell-only render
+produces both files and no links); and every page named in `export.require`.
 
-That last one is for the failures that leave everything else green. `docs/studio/`
-is a git submodule — a checkout that does not recurse drops the section and the
-page count and nav checks both still pass. hanzoai/ci checks out **without**
-`submodules: recursive`, so on that lane this is not hypothetical.
-
-Anything added to `export.require` is enforced on every lane at once, which is
-the only way a section stays required.
+That last rule is for the failures that leave everything else green — a submodule
+that was not checked out drops its whole section while the page count and the nav
+check both still pass. Anything added to `export.require` is enforced on every
+lane at once, which is the only way a section stays required.
 
 ## Known gaps
 
 - **Nothing gates a pull request.** The forge holds `lint.yml` and `test.yml` and
   cannot run them; the GitHub lane is dispatch-only, and could not be otherwise —
   hanzoai/ci has no test-without-build mode for a repo that declares `images:`, so
-  a PR trigger would build and push an image, including moving `latest`, for every
+  a PR trigger would build and push an image, including moving `latest`, on every
   PR.
-- **`hanzo build`'s IAM fallback does not work against the deployed route** (see
-  path 1). The CLI help promises it; the route only accepts the enqueue token.
-- **`latest` is not what the pin serves.** Nothing we run reads it, but anyone
-  doing a bare `docker pull ghcr.io/hanzoai/docs` gets it, and the GitHub lane
-  would move it.
-- **The GitHub lane has never executed.** Its credential chain is read from the
-  workflow source. The first real run is the first evidence.
+- **`latest` is not what the pin serves** (`sha256:eb7cccd3…` vs
+  `sha256:01cd407c…`). Nothing we run reads it, but a bare
+  `docker pull ghcr.io/hanzoai/docs` gets it, and lane 3 would move it.
+- **The GitHub lane has never executed.** Its credential chain and its tag shape
+  are read from the workflow source. The first real run is the first evidence.
+- **`hanzo build`'s IAM path is in `main` but not in the cluster** (see lane 1).
+- **The tag divergence above** is three readers of one file reaching three
+  answers, one of them documented by a comment that contradicts its own code.
+  Nothing is broken by it today; it is a wrong-pin waiting for the day a second
+  lane is armed.
+- **Whether the GitHub App is installed here is unknown** — it needs an App JWT to
+  read. An image in the platform shape exists for the pinned commit, but lane 1
+  can produce that shape by hand, so its presence proves nothing about the App.
