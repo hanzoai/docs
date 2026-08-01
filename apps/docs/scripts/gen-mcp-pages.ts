@@ -26,6 +26,23 @@ import { code, fence, firstSentence, prose, text, yamlString } from './mdx';
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
 const DOCUMENT = path.join(APP_ROOT, 'openapi-specs/hanzo.yaml');
+/**
+ * The commit the document was pinned at.
+ *
+ * This reference joins a LIVE door against a PINNED document, so the two can
+ * legitimately disagree — a route the door has renamed since the pin resolves
+ * to no operation. Pages that report such a tool name the pin, so the reader
+ * can tell "the document does not describe this" from "the copy we hold does
+ * not describe this yet".
+ */
+const DOCUMENT_PIN = (() => {
+  try {
+    return fs.readFileSync(path.join(APP_ROOT, 'openapi-specs/hanzo.pin'), 'utf8').trim().slice(0, 9);
+  } catch {
+    return '';
+  }
+})();
+const pinned = DOCUMENT_PIN ? ` (pinned at \`${DOCUMENT_PIN}\`)` : '';
 const OUT_DIR = path.join(APP_ROOT, 'content/docs/mcp-tools');
 
 /** The client command that registers the door, over its streamable HTTP transport. */
@@ -58,76 +75,236 @@ function typeOf(node: any): string {
   return String(t);
 }
 
+// ------------------------------------------------------- the two declarations
+//
+// A tool argument is declared TWICE, and neither declaration is complete.
+//
+//   the door      names the field, gives it a type and usually a description,
+//                 and says nothing else — measured across the whole catalogue,
+//                 not one tool marks a field required, carries a default, or
+//                 enumerates a value set.
+//   the document  declares the same field on the operation the tool dispatches
+//                 to, WITH whether it is required, its enumerated values, its
+//                 default and its format — because that is what the REST API
+//                 validates against.
+//
+// A reference that prints only the door's half leaves an empty Required column
+// on every field the API will reject the call without — hundreds of them. So
+// the two are joined here: shape from the door, constraints from the document,
+// and every page states which column came from which. Nothing is inferred — a
+// field with no answer in either source prints `—`.
+
+/** `a, b and c` — a list read as a sentence, since these lists are computed. */
+const conjoin = (xs: string[]): string =>
+  xs.length < 2 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
+
+/** What the operation declares about one argument, over and above the door. */
+interface Constraint {
+  required: boolean;
+  /** The declared value set, verbatim. */
+  enum: string[];
+  /** The declared default, JSON-rendered; empty when there is none. */
+  def: string;
+  /** `date-time`, `uuid`, … — a shape the type alone does not carry. */
+  format: string;
+  /** The operation's own prose for the field, used only where the door has none. */
+  description: string;
+}
+
+/**
+ * One operation's half, keyed by field name.
+ *
+ * A tool's flat `arguments` object is the operation's path, query and body
+ * parameters merged — the door erases the distinction — so both are read into
+ * one map, body last because a body property is the more specific declaration
+ * where a name appears in both.
+ */
+function declaredBy(op: Operation): Map<string, Constraint> {
+  const out = new Map<string, Constraint>();
+  const put = (name: string, required: boolean, schema: any, description: string) => {
+    out.set(name, {
+      required,
+      enum: Array.isArray(schema?.enum) ? schema.enum.map((v: any) => JSON.stringify(v)) : [],
+      def: schema?.default === undefined ? '' : JSON.stringify(schema.default),
+      format: String(schema?.format ?? ''),
+      description: String(description ?? '').trim(),
+    });
+  };
+  for (const p of op.parameters) put(p.name, p.required, p.schema, p.description);
+  const body = op.body?.schema;
+  const bodyRequired = new Set<string>(Array.isArray(body?.required) ? body.required : []);
+  for (const [name, p] of Object.entries<any>(body?.properties ?? {}))
+    put(name, bodyRequired.has(name), p, p?.description ?? '');
+  return out;
+}
+
+/**
+ * The document's half — what EVERY operation the tool could be agrees on.
+ *
+ * A handful of tool names resolve to two operations, and the door does not say
+ * which it dispatches to. Reading the first would attribute one route's rules to
+ * a call that might take the other's, so a constraint survives here only if
+ * every candidate declares it, identically. Where they differ the field falls
+ * back to `—`, which is the true answer: the document does not settle it.
+ */
+export function constraintsOf(ops: Operation[] | undefined): Map<string, Constraint> {
+  if (!ops?.length) return new Map();
+  const [first, ...rest] = ops.map(declaredBy);
+  if (!rest.length) return first;
+  const out = new Map<string, Constraint>();
+  for (const [name, c] of first) {
+    const others = rest.map((m) => m.get(name));
+    if (others.some((o) => !o)) continue;
+    const same = <T>(pick: (c: Constraint) => T): boolean =>
+      others.every((o) => JSON.stringify(pick(o!)) === JSON.stringify(pick(c)));
+    out.set(name, {
+      required: same((x) => x.required) ? c.required : false,
+      enum: same((x) => x.enum) ? c.enum : [],
+      def: same((x) => x.def) ? c.def : '',
+      format: same((x) => x.format) ? c.format : '',
+      description: same((x) => x.description) ? c.description : '',
+    });
+  }
+  return out;
+}
+
+/**
+ * Arguments the operation requires that the door's schema never names.
+ *
+ * `GET /v1/webhooks/{id}` cannot address a webhook without `id`, and the door
+ * publishes `{"properties":{}}` for the tool that calls it. The reference cannot
+ * say how to supply the value, so it says that, rather than printing "call it
+ * with an empty object" and teaching a call that cannot resolve a resource.
+ */
+const undeclaredRequired = (schema: any, con: Map<string, Constraint>): string[] => {
+  const props: Record<string, any> = schema?.properties ?? {};
+  return [...con.entries()].filter(([n, c]) => c.required && !(n in props)).map(([n]) => n);
+};
+
 interface Field {
   name: string;
   type: string;
   required: boolean;
-  /** The declared default, rendered; empty when the door declares none. */
+  /** The declared default, rendered; empty when neither source declares one. */
   def: string;
+  /** The enumerated value set, else the declared format, else empty. */
+  values: string;
   description: string;
 }
 
-const fieldsOf = (schema: any): Field[] => {
+const fieldsOf = (schema: any, con: Map<string, Constraint> = new Map()): Field[] => {
   const props: Record<string, any> = schema?.properties ?? {};
-  const required = new Set<string>(Array.isArray(schema?.required) ? schema.required : []);
+  const doorRequired = new Set<string>(Array.isArray(schema?.required) ? schema.required : []);
   return Object.keys(props)
     .sort()
-    .map((name) => ({
-      name,
-      type: typeOf(props[name]),
-      required: required.has(name),
-      def: props[name]?.default === undefined ? '' : JSON.stringify(props[name].default),
-      description: String(props[name]?.description ?? ''),
-    }));
+    .map((name) => {
+      const p = props[name] ?? {};
+      const c = con.get(name);
+      return {
+        name,
+        type: typeOf(p),
+        required: doorRequired.has(name) || Boolean(c?.required),
+        def: p.default !== undefined ? JSON.stringify(p.default) : (c?.def ?? ''),
+        // A string's quotes are noise beside a Type column that already says
+        // `string`; a number's or a boolean's JSON form is the value itself.
+        values: c?.enum.length
+          ? c.enum.map((v) => `\`${code(v.startsWith('"') ? v.slice(1, -1) : v)}\``).join(', ')
+          : c?.format
+            ? `\`${code(c.format)}\``
+            : '',
+        // The door's prose wins; the operation's is the fallback, never a
+        // second copy of the same sentence.
+        description: String(p.description ?? '') || (c?.description ?? ''),
+      };
+    });
 };
 
 function fieldTable(fields: Field[]): string[] {
   return [
-    '| Field | Type | Required | Default | Description |',
-    '|---|---|---|---|---|',
+    '| Field | Type | Required | Default | Values | Description |',
+    '|---|---|---|---|---|---|',
     ...fields.map(
       (f) =>
-        `| \`${code(f.name)}\` | \`${code(f.type)}\` | ${f.required ? 'yes' : '—'} | ${
+        `| \`${code(f.name)}\` | \`${code(f.type)}\` | ${f.required ? '**yes**' : '—'} | ${
           f.def ? `\`${code(f.def)}\`` : '—'
-        } | ${text(f.description) || '—'} |`,
+        } | ${f.values || '—'} | ${text(f.description) || '—'} |`,
     ),
   ];
 }
 
 /**
- * What the door does NOT say about these fields, said out loud.
+ * Which source filled which column, said out loud on every page that has one.
  *
- * `tools/list` publishes `type` and `description` and, for these tools, neither
- * `required` nor `default` nor `enum`. A reference that quietly prints an empty
- * column implies the answer is "none"; the honest reading is "the door does not
- * declare it". This notice is computed from the schema, so the moment the door
- * starts publishing a constraint the sentence narrows or disappears on its own.
+ * The Required, Default and Values columns are almost never the door's — it
+ * publishes a type and a description and stops. Printing them without saying
+ * where they came from would imply the door declares them; leaving them empty
+ * would imply the answer is "none". Both are computed from the schemas in hand,
+ * so the sentence narrows on its own the day the door starts publishing more.
  */
-function undeclaredNotice(schema: any, fields: Field[]): string[] {
+function sourceNotice(schema: any, fields: Field[], ops: Operation[] | undefined): string[] {
   if (!fields.length) return [];
-  const missing: string[] = [];
-  if (!Array.isArray(schema?.required) || !schema.required.length) missing.push('which fields are required');
-  if (!fields.some((f) => f.def)) missing.push('any default');
   const props: Record<string, any> = schema?.properties ?? {};
-  if (!Object.values(props).some((p: any) => Array.isArray(p?.enum) && p.enum.length))
-    missing.push('any enumerated value set');
-  if (!missing.length) return [];
-  return [
-    '',
-    `This tool's schema does not declare ${missing.join(', nor ')}. The columns above are ` +
-      'empty because the door publishes nothing there, not because the answer is "none" — ' +
-      "where a field is constrained, the constraint is stated in that field's own description.",
-  ];
+  const doorHas = (k: string) => Object.values(props).some((p: any) => p?.[k] !== undefined);
+  const doorSays: string[] = ['a type'];
+  if (Object.values(props).some((p: any) => p?.description)) doorSays.push('a description');
+  if (Array.isArray(schema?.required) && schema.required.length) doorSays.push('which fields are required');
+  if (doorHas('default')) doorSays.push('a default');
+  if (doorHas('enum')) doorSays.push('an enumerated value set');
+
+  const filled: string[] = [];
+  if (fields.some((f) => f.required)) filled.push('**Required**');
+  if (fields.some((f) => f.def)) filled.push('**Default**');
+  if (fields.some((f) => f.values)) filled.push('**Values**');
+
+  const L = [''];
+  if (!ops?.length) {
+    L.push(
+      `\`tools/list\` declares ${conjoin(doorSays)} for each field and nothing further, and the ` +
+        'OpenAPI document describes no operation for this tool. A `—` above means neither source ' +
+        'constrains the field, not that it is unconstrained in practice.',
+    );
+    return L;
+  }
+  const routes = ops.map((o) => `\`${o.method.toUpperCase()} ${code(o.path)}\``);
+  L.push(
+    `\`tools/list\` declares ${conjoin(doorSays)} for each field and nothing further. ` +
+      (filled.length
+        ? `The ${conjoin(filled)} column${filled.length > 1 ? 's are' : ' is'} taken from ` +
+          (routes.length === 1
+            ? `${routes[0]}, the operation this tool dispatches to — the same declaration the REST API validates against. `
+            : `${conjoin(routes)} — the ${routes.length} operations the document names for this tool — and carries only what they agree on, since the door does not say which of them it dispatches to. `)
+        : '') +
+      `A \`—\` means neither the door nor ${routes.length === 1 ? 'that operation' : 'those operations'} constrains the field.`,
+  );
+  return L;
 }
 
-/** Nested object types the tool references, each enumerated in full. */
+/**
+ * Every object a tool's fields are made of, enumerated.
+ *
+ * The door writes a nested object two ways: as a named `$defs` entry a field
+ * `$ref`s, and INLINE on the field itself. Both are objects with fields, so both
+ * get a table — an inline one used to collapse to the word `object` in the Type
+ * column and its fields went unpublished, which is the same page failing to
+ * enumerate as a page that omits a flag.
+ */
 function defsTables(schema: any): string[] {
   const defs: Record<string, any> = schema?.$defs ?? {};
+  const props: Record<string, any> = schema?.properties ?? {};
+  /** An inline object is the field itself, or the item type of an array field. */
+  const inline = Object.keys(props)
+    .sort()
+    .map((n) => [n, props[n]?.properties ? props[n] : props[n]?.items?.properties ? props[n].items : null] as const)
+    .filter(([, s]) => s) as [string, any][];
   const names = Object.keys(defs).sort();
-  if (!names.length) return [];
+  if (!names.length && !inline.length) return [];
+
   const L: string[] = ['', '## Object types', ''];
+  const shown = [...names.map((n) => `\`${code(n)}\``), ...inline.map(([n]) => `\`${code(n)}\``)];
   L.push(
-    `\`${code(names.join('`, `'))}\` are objects this tool's fields refer to. Each is declared inside the tool's own schema.`,
+    shown.length === 1
+      ? `${shown[0]} is an object this tool's fields are made of, declared inside the tool's own schema and enumerated in full below.`
+      : `${conjoin(shown)} are objects this tool's fields are made of. Each is declared inside the tool's own schema, and each is enumerated in full below.`,
   );
   for (const n of names) {
     L.push('', `### ${text(n)}`, '');
@@ -138,16 +315,44 @@ function defsTables(schema: any): string[] {
     }
     L.push(...fieldTable(f));
   }
+  for (const [n, s] of inline) {
+    L.push('', `### ${text(n)}`, '');
+    const f = fieldsOf(s);
+    L.push(
+      `\`${code(n)}\` is declared inline on the field of the same name` +
+        (props[n]?.items ? ', as the item type of an array' : '') +
+        '.',
+    );
+    L.push('');
+    if (!f.length) L.push(`\`${code(n)}\` declares no fields of its own.`);
+    else L.push(...fieldTable(f));
+  }
   return L;
 }
 
 // ----------------------------------------------------------------- example
 
-/** A placeholder for one field, derived from its declared type. */
-function sample(node: any, name: string, defs: Record<string, any>, depth = 0): any {
+/**
+ * A value for one field.
+ *
+ * A REAL one wherever a source declares one — the operation's default, or the
+ * first member of its enumerated set, which is a value the API accepts rather
+ * than one we made up. Only where neither source declares a value does this
+ * fall back to a typed placeholder, and a placeholder is written `<name>` so it
+ * is obvious it is one.
+ */
+function sample(
+  node: any,
+  name: string,
+  defs: Record<string, any>,
+  con?: Constraint,
+  depth = 0,
+): any {
   if (node?.default !== undefined) return node.default;
+  if (con?.def) return JSON.parse(con.def);
+  if (con?.enum.length) return JSON.parse(con.enum[0]);
   const ref = refName(node?.$ref);
-  if (ref && depth < 3) return sample(defs[ref] ?? {}, name, defs, depth + 1);
+  if (ref && depth < 3) return sample(defs[ref] ?? {}, name, defs, undefined, depth + 1);
   const t = Array.isArray(node?.type) ? node.type[0] : node?.type;
   switch (t) {
     case 'integer':
@@ -158,13 +363,18 @@ function sample(node: any, name: string, defs: Record<string, any>, depth = 0): 
       return false;
     case 'array': {
       if (depth >= 3) return [];
-      const inner = sample(node.items ?? {}, name, defs, depth + 1);
+      const inner = sample(node.items ?? {}, name, defs, undefined, depth + 1);
       return inner === null ? [] : [inner];
     }
-    case 'object':
-      return {};
+    case 'object': {
+      if (depth >= 3 || !node.properties) return {};
+      const out: Record<string, any> = {};
+      for (const k of Object.keys(node.properties).sort())
+        out[k] = sample(node.properties[k], k, defs, undefined, depth + 1);
+      return out;
+    }
     case 'string':
-      return `<${name}>`;
+      return con?.format === 'date-time' ? '2026-01-01T00:00:00Z' : `<${name}>`;
     default:
       // The door declared no type. Say so in the value rather than picking one.
       return node?.properties ? {} : `<${name}>`;
@@ -174,23 +384,28 @@ function sample(node: any, name: string, defs: Record<string, any>, depth = 0): 
 /**
  * The runnable call.
  *
- * Every declared argument is included: the door marks none of them required, so
- * a reader has no way to know which to send, and an example that drops fields
- * would be teaching a guess. Values are derived from each field's declared
- * type — a placeholder is honest about being one.
+ * A minimal one where the operation says what is minimal: exactly the arguments
+ * it requires, which is a call a reader can send. Where the operation requires
+ * nothing — or the document does not describe the tool at all — there is no
+ * minimum to show, so every declared argument is included instead, because
+ * dropping fields there would be teaching a guess about which matter.
  */
-function callEnvelope(tool: McpTool): string {
+function callEnvelope(tool: McpTool, con: Map<string, Constraint>): { body: string; minimal: boolean } {
   const schema = tool.inputSchema ?? {};
   const defs: Record<string, any> = schema.$defs ?? {};
+  const declared = Object.keys(schema.properties ?? {}).sort();
+  const required = declared.filter((n) => con.get(n)?.required || (schema.required ?? []).includes(n));
+  const minimal = required.length > 0;
   const args: Record<string, any> = {};
-  for (const name of Object.keys(schema.properties ?? {}).sort()) {
-    args[name] = sample(schema.properties![name], name, defs);
+  for (const name of minimal ? required : declared) {
+    args[name] = sample(schema.properties![name], name, defs, con.get(name));
   }
-  return JSON.stringify(
+  const body = JSON.stringify(
     { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: tool.name, arguments: args } },
     null,
     2,
   );
+  return { body, minimal };
 }
 
 const curl = (body: string): string =>
@@ -207,7 +422,9 @@ const provenance = (cat: McpCatalog): string =>
 
 function renderTool(tool: McpTool, ops: Operation[] | undefined, cat: McpCatalog, doc: Document): string {
   const schema = tool.inputSchema ?? {};
-  const fields = fieldsOf(schema);
+  const con = constraintsOf(ops);
+  const fields = fieldsOf(schema, con);
+  const absent = undeclaredRequired(schema, con);
   const L: string[] = [];
 
   L.push('---');
@@ -231,7 +448,11 @@ function renderTool(tool: McpTool, ops: Operation[] | undefined, cat: McpCatalog
   L.push(`| **Tool** | \`${code(tool.name)}\` |`);
   L.push(`| **Door** | \`${code(cat.door)}\` |`);
   L.push('| **Method** | `tools/call` (JSON-RPC 2.0) |');
-  L.push(`| **Arguments** | ${fields.length} |`);
+  L.push(
+    `| **Arguments** | ${fields.length}${
+      fields.filter((f) => f.required).length ? `, ${fields.filter((f) => f.required).length} required` : ''
+    } |`,
+  );
   L.push(
     `| **Operation** | ${
       ops?.length
@@ -247,27 +468,53 @@ function renderTool(tool: McpTool, ops: Operation[] | undefined, cat: McpCatalog
   L.push('## Arguments');
   L.push('');
   if (!fields.length) {
-    L.push('This tool declares no arguments. Call it with an empty `arguments` object.');
+    L.push(
+      absent.length
+        ? 'The door declares no arguments for this tool.'
+        : 'This tool declares no arguments. Call it with an empty `arguments` object.',
+    );
   } else {
     L.push(...fieldTable(fields));
-    L.push(...undeclaredNotice(schema, fields));
+    L.push(...sourceNotice(schema, fields, ops));
+  }
+  // The gap, stated where a reader would otherwise be misled into an empty
+  // object: the operation cannot run without these, and the door never names
+  // them, so this reference cannot say where they go.
+  if (absent.length) {
+    L.push('');
+    L.push(
+      `\`${code(ops![0].method.toUpperCase())} ${code(ops![0].path)}\` requires ` +
+        `${absent.map((n) => `\`${code(n)}\``).join(', ')}, which \`tools/list\` does not declare on this tool. ` +
+        'Where that value goes in a `tools/call` is not something the door publishes, so this page does not ' +
+        'guess — the same capability over plain HTTP is fully specified in the API reference below.',
+    );
   }
   L.push(...defsTables(schema));
   L.push('');
 
   // 4. The call, built from the schema above.
+  const { body, minimal } = callEnvelope(tool, con);
   L.push('## Call it');
   L.push('');
   L.push(
     fields.length
-      ? 'A `tools/call` carries every argument in one flat object — nothing binds to a path or a query string. Every declared argument is shown, because the door marks none of them required.'
-      : 'A `tools/call` carries its arguments in one flat object. This tool declares none, so the object is empty.',
+      ? 'A `tools/call` carries every argument in one flat object — nothing binds to a path or a query string. ' +
+        (minimal
+          ? 'This call carries exactly the arguments the operation requires, so it is the smallest one that can run.'
+          : 'Nothing above is required, so every declared argument is shown rather than a guess at which matter.')
+      : 'A `tools/call` carries its arguments in one flat object. This tool declares none, so the object is empty' +
+        (absent.length
+          ? ` — though the operation behind it requires ${conjoin(absent.map((n) => `\`${code(n)}\``))}, so this envelope is the shape of the call, not one that can name a resource.`
+          : '.'),
   );
   L.push('');
-  L.push(...fence('bash', curl(callEnvelope(tool))));
+  L.push(...fence('bash', curl(body)));
   L.push('');
   L.push(
-    (fields.length ? "Values are placeholders derived from each field's declared type. " : '') +
+    (fields.length
+      ? 'Values are the operation\'s own defaults and enumerated values where it declares them, and a ' +
+        '`<placeholder>` where neither source declares one. '
+      : '') +
       '`tools/list` needs no credential; `tools/call` does — called without one the door answers HTTP 200 ' +
       'with a JSON-RPC result whose `isError` is set and whose text says what was missing. ' +
       '[How to get a key →](/docs/mcp-tools#credentials)',
@@ -279,9 +526,10 @@ function renderTool(tool: McpTool, ops: Operation[] | undefined, cat: McpCatalog
   L.push('');
   if (!ops?.length) {
     L.push(
-      `The door exposes \`${code(tool.name)}\`, but the OpenAPI document describes no operation for it — ` +
-        'neither under that name nor at the route the name implies. Everything on this page comes from ' +
-        '`tools/list`; there is no REST reference to link to until the route is declared in the document.',
+      `The door exposes \`${code(tool.name)}\`, but the copy of the OpenAPI document this build holds${pinned} ` +
+        'describes no operation for it — neither under that name nor at the route the name implies. That is ' +
+        'either a route the document has yet to declare, or one the door has renamed since the pin. Everything ' +
+        'on this page comes from `tools/list`; there is no REST reference to link to until the two agree.',
     );
   } else {
     if (ops.length > 1) {
@@ -335,17 +583,20 @@ function renderProductIndex(product: string, tools: McpTool[], cat: McpCatalog, 
   L.push(
     known
       ? `The ${tools.length} tool${tools.length === 1 ? '' : 's'} \`tools/list\` names for **${text(product)}**. Each dispatches to an operation in the [${text(product)} API reference](/docs/openapi/${product}).`
-      : `The door lists ${tools.length} tool${tools.length === 1 ? '' : 's'} that resolve to no operation in the OpenAPI document. They are documented from \`tools/list\` alone, and want declaring in hanzoai/openapi.`,
+      : `The door lists ${tools.length} tool${tools.length === 1 ? '' : 's'} that resolve to no operation in the copy of the OpenAPI document this build holds${pinned}. Each is either a route the document has yet to declare or one the door has renamed since the pin; both are documented from \`tools/list\` alone rather than left out.`,
   );
   L.push('');
-  L.push('| Tool | Route | Arguments | Description |');
-  L.push('|---|---|---|---|');
+  L.push('| Tool | Route | Arguments | Required | Description |');
+  L.push('|---|---|---|---|---|');
   for (const t of tools) {
     const ops = mapped.get(t.name);
+    const req = fieldsOf(t.inputSchema ?? {}, constraintsOf(ops)).filter((f) => f.required);
     L.push(
       `| [\`${code(t.name)}\`](/docs/mcp-tools/${product}/${t.name}) | ${
         ops?.length ? `\`${ops[0].method.toUpperCase()} ${code(ops[0].path)}\`` : '—'
-      } | ${Object.keys(t.inputSchema?.properties ?? {}).length} | ${text(firstSentence(t.description, 100))} |`,
+      } | ${Object.keys(t.inputSchema?.properties ?? {}).length} | ${
+        req.length ? req.map((f) => `\`${code(f.name)}\``).join(', ') : '—'
+      } | ${text(firstSentence(t.description, 100))} |`,
     );
   }
   L.push('');
@@ -504,6 +755,22 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
     `The door exposes a subset of the document, not all of it: ${cat.meta.count} tools against ${doc.operations.length} operations. Whether an operation has a tool is a question only the door answers, so every page here asks it rather than assuming.`,
   );
   L.push('');
+  L.push('### How a tool page is built');
+  L.push('');
+  L.push(
+    'Each argument is declared twice, and neither declaration is whole. `tools/list` names a field and gives ' +
+      'it a type and usually a description — across the whole catalogue it marks nothing required, carries no ' +
+      'default and enumerates no value set. The operation the tool dispatches to declares the rest, because ' +
+      'that is what the API validates against. So a tool page takes its **shape** from the door and its ' +
+      '**constraints** from the document, and says on every table which column came from which. A `—` means ' +
+      'neither source constrains the field; it is never a guess, and where the two cannot be joined the page ' +
+      'says that instead.',
+  );
+  L.push('');
+  L.push(
+    `The door is read live at build time; the document is a pinned snapshot${pinned}. They can disagree, and where they do the page reports it rather than smoothing it over.`,
+  );
+  L.push('');
 
   L.push('## Add your org\'s own servers');
   L.push('');
@@ -524,28 +791,34 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
       );
     }
     L.push('');
+    // The registering call, under the same rule the tool pages use: the fields
+    // the operation requires, and where it requires none — as here — every
+    // declared field, because picking a subset would be a guess about which
+    // matter. (The reference's compact HTTP examples fall back to the first two
+    // instead, which on this body would drop `name` and `url`.)
     const post = servers.find((o) => o.method === 'post');
-    if (post) {
-      const body = Object.keys(post.body?.schema?.properties ?? {});
-      if (body.length) {
-        L.push(
-          ...fence(
-            'bash',
-            `curl -X POST ${doc.server}${post.path} \\\n  -H "Authorization: Bearer $HANZO_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(
-              Object.fromEntries(body.map((k) => [k, `<${k}>`])),
-              null,
-              2,
-            )
-              .split('\n')
-              .join('\n     ')}'`,
-          ),
-        );
-        L.push('');
-        L.push(
-          `Fields, types and prose for these routes are enumerated in the [${text(servers[0].product)} API reference](/docs/openapi/${servers[0].product}).`,
-        );
-        L.push('');
-      }
+    const props: Record<string, any> = post?.body?.schema?.properties ?? {};
+    if (post && Object.keys(props).length) {
+      const required: string[] = Array.isArray(post.body?.schema?.required) ? post.body!.schema.required : [];
+      const send = required.length ? required : Object.keys(props).sort();
+      const body = Object.fromEntries(
+        send.map((k) => [k, props[k]?.enum?.[0] ?? props[k]?.default ?? props[k]?.example ?? `<${k}>`]),
+      );
+      L.push(
+        ...fence(
+          'bash',
+          `curl -X POST ${doc.server}${post.path} \\\n  -H "Authorization: Bearer $HANZO_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '${JSON.stringify(body, null, 2).split('\n').join('\n     ')}'`,
+        ),
+      );
+      L.push('');
+      L.push(
+        `${
+          required.length
+            ? `Those are the fields \`${code(post.path)}\` requires.`
+            : 'The operation marks no field required, so every declared field is shown.'
+        } Fields, types and prose for these routes are enumerated in the [${text(servers[0].product)} API reference](/docs/openapi/${servers[0].product}).`,
+      );
+      L.push('');
     }
   }
 

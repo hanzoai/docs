@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { loadDocument } from './openapi-doc';
 import { toolKeys, toolOperations } from './openapi-surfaces';
 import { load } from './sync-mcp-tools';
-import { genMcpPages } from './gen-mcp-pages';
+import { constraintsOf, genMcpPages } from './gen-mcp-pages';
 
 // THE MCP REFERENCE, held to its own claims.
 //
@@ -23,6 +23,8 @@ import { genMcpPages } from './gen-mcp-pages';
 
 const catalog = load();
 const doc = loadDocument(path.join(import.meta.dirname, '../openapi-specs/hanzo.yaml'));
+/** The join every completeness assertion below reads through. */
+const mappedOps = toolOperations(doc, catalog.tools);
 
 let out: string;
 let pageOf: Map<string, string>;
@@ -104,14 +106,101 @@ describe('complete — every declared field is enumerated', () => {
     expect(missing).toEqual([]);
   });
 
-  it('states the columns the door leaves empty rather than implying "none"', () => {
-    // Not one tool in the door's answer declares `required`, `default` or
-    // `enum`. A page with fields must therefore say so, or its empty columns
-    // are an unsourced claim.
+  it('attributes every column to the source that filled it', () => {
+    // The door publishes a type and a description and nothing else, so the
+    // Required, Default and Values columns come from the operation. A page that
+    // printed them without saying so would imply the door declares them.
     const withFields = catalog.tools.filter((t) => Object.keys(t.inputSchema?.properties ?? {}).length);
     expect(withFields.length).toBeGreaterThan(0);
-    const silent = withFields.filter((t) => !pageOf.get(t.name)!.includes('does not declare'));
+    const silent = withFields.filter((t) => !pageOf.get(t.name)!.includes('and nothing further'));
     expect(silent).toEqual([]);
+  });
+
+  it('marks a field the operation requires, on every page that has one', () => {
+    // The gap this reference exists to close: the door marks nothing required,
+    // so before the join every one of these pages printed `—` for a field the
+    // API rejects the call without.
+    const marked: string[] = [];
+    const wrong: string[] = [];
+    for (const t of catalog.tools) {
+      const props = t.inputSchema?.properties ?? {};
+      const con = constraintsOf(mappedOps.get(t.name));
+      const required = Object.keys(props).filter((n) => con.get(n)?.required);
+      if (!required.length) continue;
+      marked.push(t.name);
+      const src = pageOf.get(t.name)!;
+      for (const n of required) {
+        const row = src.split('\n').find((l) => l.startsWith(`| \`${n}\` |`));
+        if (!row?.includes('**yes**')) wrong.push(`${t.name}.${n}`);
+      }
+      if (!src.includes(`, ${required.length} required |`)) wrong.push(`${t.name}: header count`);
+    }
+    expect(wrong).toEqual([]);
+    // Guard the join itself: if it collapsed, the loop above would run zero
+    // times and pass vacuously. A fraction, not a count — the fleet's tool list
+    // moves daily and this asserts the shape of the join, not today's total.
+    expect(marked.length).toBeGreaterThan(catalog.tools.length * 0.2);
+  });
+
+  it('enumerates every value the operation restricts a field to', () => {
+    const missing: string[] = [];
+    let checked = 0;
+    for (const t of catalog.tools) {
+      const props = t.inputSchema?.properties ?? {};
+      const con = constraintsOf(mappedOps.get(t.name));
+      for (const n of Object.keys(props)) {
+        const vals = con.get(n)?.enum ?? [];
+        if (!vals.length) continue;
+        checked++;
+        const row = pageOf.get(t.name)!.split('\n').find((l) => l.startsWith(`| \`${n}\` |`));
+        for (const v of vals) {
+          const bare = v.startsWith('"') ? v.slice(1, -1) : v;
+          if (!row?.includes(`\`${bare}\``)) missing.push(`${t.name}.${n} = ${v}`);
+        }
+      }
+    }
+    expect(missing).toEqual([]);
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it('enumerates an object declared inline, not just one named in $defs', () => {
+    const missing: string[] = [];
+    let checked = 0;
+    for (const t of catalog.tools) {
+      for (const [n, p] of Object.entries<any>(t.inputSchema?.properties ?? {})) {
+        const obj = p?.properties ? p : p?.items?.properties ? p.items : null;
+        if (!obj) continue;
+        checked++;
+        const src = pageOf.get(t.name)!;
+        if (!src.includes(`### ${n}`)) missing.push(`${t.name}.${n}: no table`);
+        for (const f of Object.keys(obj.properties)) {
+          if (!src.includes(`| \`${f}\` |`)) missing.push(`${t.name}.${n}.${f}`);
+        }
+      }
+    }
+    expect(missing).toEqual([]);
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it('states a required argument the door never declares, instead of an empty object', () => {
+    // Some operations need a path parameter the door's schema omits entirely.
+    // The page cannot say where the value goes, so it must say that.
+    const silent: string[] = [];
+    let checked = 0;
+    for (const t of catalog.tools) {
+      const con = constraintsOf(mappedOps.get(t.name));
+      const props = t.inputSchema?.properties ?? {};
+      const absent = [...con.entries()].filter(([n, c]) => c.required && !(n in props)).map(([n]) => n);
+      if (!absent.length) continue;
+      checked++;
+      const src = pageOf.get(t.name)!;
+      for (const n of absent) {
+        if (!src.includes(`does not declare on this tool`) || !src.includes(`\`${n}\``))
+          silent.push(`${t.name}.${n}`);
+      }
+    }
+    expect(silent).toEqual([]);
+    expect(checked).toBeGreaterThan(0);
   });
 });
 
@@ -135,9 +224,39 @@ describe('exemplified — every page carries a call that parses', () => {
       if (parsed.params?.name !== t.name) bad.push(`${t.name}: envelope names ${parsed.params?.name}`);
       const args = Object.keys(parsed.params?.arguments ?? {});
       const declared = Object.keys(t.inputSchema?.properties ?? {});
-      if (args.length !== declared.length) bad.push(`${t.name}: ${args.length} args for ${declared.length} fields`);
+      const con = constraintsOf(mappedOps.get(t.name));
+      const required = declared.filter((n) => con.get(n)?.required);
+      // The envelope is the smallest call that can run: exactly the required
+      // arguments where the operation names any, every declared one where it
+      // names none. Never a subset chosen by anything else.
+      const want = required.length ? required : declared;
+      if (args.join(',') !== want.sort().join(','))
+        bad.push(`${t.name}: sent [${args}] for [${want}]`);
+      for (const n of args) {
+        if (!declared.includes(n)) bad.push(`${t.name}: sent ${n}, which the door does not declare`);
+      }
     }
     expect(bad).toEqual([]);
+  });
+
+  it('uses a value the operation accepts wherever it declares one', () => {
+    // A placeholder where a real value exists is an invented example. Where the
+    // operation enumerates a field's values, the call must carry one of them.
+    const invented: string[] = [];
+    let checked = 0;
+    for (const t of catalog.tools) {
+      const con = constraintsOf(mappedOps.get(t.name));
+      const body = pageOf.get(t.name)!.match(/-d '([\s\S]*?)'\n```/)?.[1];
+      const args = JSON.parse(body!.replace(/\n {5}/g, '\n')).params.arguments ?? {};
+      for (const [n, v] of Object.entries(args)) {
+        const vals = con.get(n)?.enum ?? [];
+        if (!vals.length) continue;
+        checked++;
+        if (!vals.includes(JSON.stringify(v))) invented.push(`${t.name}.${n} = ${JSON.stringify(v)}`);
+      }
+    }
+    expect(invented).toEqual([]);
+    expect(checked).toBeGreaterThan(0);
   });
 });
 
