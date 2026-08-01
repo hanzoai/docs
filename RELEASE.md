@@ -54,16 +54,56 @@ Three facts worth stating outright, because they are the ones people get wrong:
 `docs.hanzo.ai` answers 200, as do `/docs/` and `/docs/studio/` — the last one
 matters because that section comes from a submodule (see the export gate).
 
+## The one trigger, today
+
+**Act 1 is already done for the current tip.** An image for `b20bb98cc` exists in
+GHCR: `linux/amd64`, entrypoint `/static -port 3000 -root /public`, two layers,
+2.55 GB — the image serving now measures 2.55 GB too, so nothing collapsed on the
+way in:
+
+    ghcr.io/hanzoai/docs:b20bb98cc6e971d042c6280cf81a5f2fb4229c4f-amd64-docs
+    sha256:a0e2a31447b4ead2e3c765f31d0f116118c2c306dd833a21a652549a8c7e0b93
+
+**That it exists is the export gate's verdict.** The gate runs inside the
+Dockerfile, before the serving stage is assembled, so an image cannot come into
+being unless the export it carries has `index.html`, `docs/index.html`, at least
+50 HTML pages, a rendered nav, and every page named in `apps/docs/export.require`
+— including `docs/studio/` and `docs/mcp-tools/all-tools/`. No builder had to
+know this repo is special, and none of them can skip it.
+
+So publishing the tip needs **no build and no build credential**. It is Act 2
+alone: one commit to `hanzoai/universe`, `charts/app/values/hanzo/docs.yaml`,
+changing two lines that must move together —
+
+```yaml
+  tag: b20bb98cc6e971d042c6280cf81a5f2fb4229c4f-amd64-docs
+  digest: sha256:a0e2a31447b4ead2e3c765f31d0f116118c2c306dd833a21a652549a8c7e0b93
+```
+
+`cd.automated: true` on that file makes the GitOps plane the sole writer, so the
+commit IS the rollout. There is nothing to trigger afterwards.
+
+Re-read the digest before you paste it — a tag is mutable and this one was read at
+a moment in time:
+
+```sh
+crane digest ghcr.io/hanzoai/docs:$(git rev-parse origin/main)-amd64-docs
+```
+
+If that prints nothing, the tip is not built and you are back to Act 1 below.
+
 ## Act 1 — the six ways to build
 
 Six producers, five different tag shapes, and three of those come from three
 programs reading *this same* `hanzo.yml` and disagreeing about what it means.
 That is the whole reason the tag contract exists.
 
-If you only want to publish: **lane 1 is the one to fire** — it is the only one
-whose blocker is a single credential rather than missing infrastructure. Lane 5
-is what built the image running now. Lanes 2, 3, 4 and 6 are written down so the
-next person does not rediscover why they are cold.
+You need this section only when the commit you want to ship has no image — check
+that first, with the probe above; for the current tip it does, and the section
+before this one is the whole procedure. When you do need to build, **lane 1 is the
+one to fire**: it is the only one whose blocker is a single credential rather than
+missing infrastructure. Lane 5's shape is what the pin reads. Lanes 2, 3, 4 and 6
+are written down so the next person does not rediscover why they are cold.
 
 ### 1. The runner fabric — `POST /v1/runner`
 
@@ -203,10 +243,23 @@ us — the delivery authenticates as a GitHub App installation.
 `suffix` defaulting to the image `name`. Note the FULL sha — this is the one
 producer that does not abbreviate, and the reason the pin looks the way it does.
 
-Whether the App is installed here could not be read (see above). What can be said
-is that an image exists in this shape for the pinned commit, and that as of
-writing none exists for the tip — so if the App is installed, it is not building
-every push, and the tip still needs a trigger.
+Whether the App is installed here could not be read (see above). What CAN be read
+is the registry, and it says this lane's shape is being produced but not on every
+push. Walking the seven commits from the pinned one to the tip and asking GHCR for
+`<sha40>-amd64-docs` on each:
+
+    c2d2755b8  docs: a ported doc's import header is dead weight   sha256:feb3a652…
+    57635523c  docs: the sidebar's CLI is the hanzo binary          sha256:c5e4e051…
+    95eca7168  docs(enso): the tier table is about cost             — absent
+    c83a5d1b1  ci: the GitHub lane checks out the submodules        — absent
+    cb23a7ac5  docs(release): the tag contract is three readers     — absent
+    eff700657  docs(mcp): a tool page states what the API requires  — absent
+    b20bb98cc  docs(mcp): the register-a-server body                sha256:a0e2a314…
+
+Three of seven. A per-push builder leaves no holes, so whatever is producing these
+is being fired by hand — and lane 1 can produce exactly this shape, so the two are
+indistinguishable after the fact. Treat the shape as evidence of a lane, never of
+an installation.
 
 ### 6. The forge push orchestrator — dormant
 
@@ -235,9 +288,16 @@ for every org/arch combination, not on a laptop.
 ```yaml
 image:
   repository: ghcr.io/hanzoai/docs
-  tag: 1a9146f131fc2cba05aa19f4f4ecb5ac68709c4d
-  digest: sha256:01cd407c7e1dcab277337899645a17492292c7ce371ff1395af26481889e3757
+  tag: c2d2755b869d51dfa75c7322c5e77d2be57ad3da-amd64-docs
+  digest: sha256:feb3a65270d1e8bfa5eb0bcb161a4484e77e3fbfe424044086f9c8b1626cdbce
 ```
+
+Those two lines are the file as it stands, and GHCR agrees with them: that tag
+answers with that exact digest. Note the shape — `<sha40>-amd64-docs`, lane 5's.
+The pin used to read a bare `<sha40>` and was moved off it, because the bare tag
+**does not exist in GHCR** for the commit it named. That is the failure this
+section exists to prevent, and it is not hypothetical: it is the last edit
+`docs.yaml` received.
 
 **`digest:` is the line that changes what runs.** The chart renders
 `repository:tag@digest`, and a reference carrying a digest is resolved by the
@@ -356,9 +416,13 @@ lane at once, which is the only way a section stays required.
   hanzoai/ci has no test-without-build mode for a repo that declares `images:`, so
   a PR trigger would build and push an image, including moving `latest`, on every
   PR.
-- **`latest` is not what the pin serves** (`sha256:eb7cccd3…` vs
-  `sha256:01cd407c…`). Nothing we run reads it, but a bare
+- **`latest` is not what the pin serves** (`sha256:eb7cccd3…` vs the pin's
+  `sha256:feb3a652…`). Nothing we run reads it, but a bare
   `docker pull ghcr.io/hanzoai/docs` gets it, and lane 3 would move it.
+- **The builds that exist are sporadic, not per-push.** Of the seven commits from
+  the pinned one to the tip, three have an image in lane 5's shape and four do
+  not. So nothing is building this repo on every push, and "there is an image for
+  the tip" is a fact to re-check with the probe above, never an assumption.
 - **The GitHub lane has never executed.** Its credential chain and its tag shape
   are read from the workflow source. The first real run is the first evidence.
 - **`hanzo build`'s IAM path is in `main` but not in the cluster** (see lane 1).
