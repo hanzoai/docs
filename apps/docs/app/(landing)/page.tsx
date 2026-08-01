@@ -122,9 +122,20 @@ const devLinks = [
 
 export default function Page() {
   return (
-    <main className="pb-6 md:pb-12">
+    // `[grid-area:main]` because this page hangs off DocsLayout, whose container
+    // is a named 5-column grid — sidebar, header, main, toc. An unplaced child
+    // is auto-placed into an implicit row under column one and renders 268px
+    // wide beneath the sidebar. The docs pages get this from DocsPage; this one
+    // is hand-built, so it says it itself.
+    //
+    // Widths below are sized to the column the grid gives it — roughly 1170px at
+    // a 1440 viewport, not the 1400px the full-bleed home layout had — so the
+    // page is laid out for the space it has rather than clamped into it. Every
+    // `md:`/`lg:` column count that assumed the full viewport moved up one step,
+    // because the sidebar takes 268px from `md` up and 768→1024→1280 step by 256.
+    <main className="[grid-area:main] min-w-0 pb-6 md:pb-12">
       {/* -- Hero ---------------------------------------------------------- */}
-      <section className="relative flex flex-col items-center text-center mx-auto w-full max-w-[1400px] px-6 pt-24 pb-16 md:pt-36 md:pb-24">
+      <section className="relative flex flex-col items-center text-center mx-auto w-full max-w-5xl px-6 pt-24 pb-16 md:pt-36 md:pb-24">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_600px_300px_at_50%_0%,rgba(255,255,255,0.04),transparent_70%)]" />
 
         {/* Enso first. The model is the reason to choose the platform; a
@@ -168,7 +179,11 @@ export default function Page() {
             the one they keep. Replaces the stats bar: 67 / 436 / 600+ / 7 asked a
             reader to be impressed before they knew what the thing was, and the
             counts went stale the moment a service shipped. */}
-        <div className="relative mt-12 grid w-full max-w-4xl gap-4 sm:grid-cols-3">
+        {/* Three across at `sm`, where there is no sidebar yet, and again from
+            `lg`. Between those the sidebar has appeared but the viewport has not
+            grown to pay for it: at 768 the column is 500px and a third of it put
+            "Build with App" on three lines. Stacked is the honest layout there. */}
+        <div className="relative mt-12 grid w-full max-w-4xl gap-4 sm:grid-cols-3 md:grid-cols-1 lg:grid-cols-3">
           {[
             {
               eyebrow: 'No code',
@@ -210,7 +225,7 @@ export default function Page() {
 
       </section>
 
-      <div className="mx-auto w-full max-w-[1400px] px-6 md:px-12 space-y-24">
+      <div className="mx-auto w-full max-w-5xl px-6 md:px-8 space-y-24">
 
         {/* -- Quick Start Guide ------------------------------------------- */}
         <section>
@@ -220,7 +235,7 @@ export default function Page() {
           <p className="text-neutral-300 text-sm mb-8">
             Install the CLI, log in, and reach every capability from your terminal.
           </p>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <CodeBlock
               code={`# Install the Hanzo CLI
 curl hanzo.sh | sh
@@ -263,7 +278,7 @@ print(response.choices[0].message.content)`}
           <p className="text-neutral-300 text-sm mb-8">
             Every capability has one name and one route. Browse by domain — click any card to go deep.
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
             {domains.map((item) => {
               const isExternal = !!(item as { external?: boolean }).external;
               const linkProps = isExternal
@@ -323,7 +338,7 @@ print(response.choices[0].message.content)`}
           <p className="text-neutral-300 text-sm mb-8">
             SDKs, APIs, and protocols for every stack.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
             {devLinks.map((t) => (
               <Card
                 key={t.name}
@@ -348,7 +363,7 @@ print(response.choices[0].message.content)`}
           <p className="text-neutral-300 text-sm mb-8">
             Over 400 models across every major provider — call any of them with one credential, one request shape.
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
             {[
               { name: 'Zen', spec: 'Open weights' },
               { name: 'OpenAI', spec: 'GPT' },
@@ -370,7 +385,7 @@ print(response.choices[0].message.content)`}
         </section>
 
         {/* -- SDKs + connectors ------------------------------------------- */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <Card className="border-white/[0.08] bg-white/[0.02] shadow-none py-0 gap-0 rounded-2xl overflow-hidden">
             <CardContent className="p-8">
               <div className="flex items-center gap-3 mb-2">
@@ -469,7 +484,7 @@ print(response.choices[0].message.content)`}
               Frontier AI models from 4B edge to 1T+ reasoning. MoDE (Mixture of Diverse Experts) architecture.
               Text, code, vision, audio, video, 3D, and safety. Open weights on HuggingFace.
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
               {[
                 { name: 'zen4', spec: '~400B MoDE' },
                 { name: 'zen4-coder', spec: '~200B MoDE' },
