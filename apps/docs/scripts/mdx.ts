@@ -46,7 +46,15 @@ export function prose(s: string): string {
 export const yamlString = (s: string): string =>
   JSON.stringify(String(s ?? '').replace(/\s+/g, ' ').trim());
 
-/** The first sentence, for a description or a card blurb. */
+/**
+ * The first sentence, for a description or a card blurb.
+ *
+ * A sentence that fits comes back whole. One that does not is cut at the last
+ * sentence boundary inside the budget, and where the budget holds no boundary,
+ * at a word boundary with an ellipsis. The ellipsis is the point: a cell cut
+ * mid-clause otherwise reads as a complete sentence the source never wrote, and
+ * a reader has no way to tell there is more.
+ */
 export const firstSentence = (s: string, max = 200): string => {
   const t = String(s ?? '').replace(/\s+/g, ' ').trim();
   if (t.length <= max) {
@@ -55,7 +63,9 @@ export const firstSentence = (s: string, max = 200): string => {
   }
   const head = t.slice(0, max);
   const stop = head.lastIndexOf('. ');
-  return (stop > 40 ? head.slice(0, stop + 1) : head).trim();
+  if (stop > 40) return head.slice(0, stop + 1).trim();
+  const word = head.lastIndexOf(' ');
+  return (word > 40 ? head.slice(0, word) : head).trim() + '…';
 };
 
 export const fence = (lang: string, body: string): string[] => ['```' + lang, body, '```'];
