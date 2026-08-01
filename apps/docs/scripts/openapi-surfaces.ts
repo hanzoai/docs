@@ -298,15 +298,54 @@ const py = (v: any): string =>
 // -------------------------------------------------------------------- MCP
 
 /**
- * The MCP door names a tool for the operation's `operationId` with the
- * `<product>_` prefix removed — `ai_createChatCompletion` is `createChatCompletion`.
- * That rule is not assumed: it reproduces 729 of the 730 names the live door
- * returns for `tools/list`.
+ * THE TOOL-NAME RULE, in one place and read in both directions.
  *
- * The door exposes a SUBSET of the document (730 of ~2,400 operations), so
- * whether a given operation has a tool is a question only the door answers. We
- * look it up in the vendored list and return null when it is absent, rather
- * than printing a call that would come back "unknown tool".
+ * The door names a tool for the operation's `operationId` with the leading
+ * `<product>_` removed — `ai_createChatCompletion` is `createChatCompletion`,
+ * and `cloud_get_v1_tools` is `get_v1_tools`. That is the primary key.
+ *
+ * Where an operationId spells a path parameter differently from the door
+ * (`cloud_delete_v1_projects_by_slug` against the door's
+ * `delete_v1_projects_slug`) the name misses, so the operation's method and
+ * path are a second key. Measured against the live door: the name key resolves
+ * 803 tools, the method+path key a further 30, and one tool resolves to no
+ * operation at all.
+ *
+ * Both directions use these keys, so "which operation is this tool?" and "does
+ * this operation have a tool?" can never disagree.
+ */
+export const toolKeys = (op: Operation): [name: string, route: string] => [
+  op.name,
+  `${op.method}_${op.path.replace(/[{}]/g, '').split('/').filter(Boolean).join('_')}`.toLowerCase(),
+];
+
+/**
+ * Every tool the door lists, resolved to the operations it can name. A tool
+ * absent from the map is one the document does not describe; a tool with more
+ * than one operation is a name the document uses twice, and the door does not
+ * say which it dispatches to.
+ */
+export function toolOperations(doc: Document, tools: Iterable<{ name: string }>): Map<string, Operation[]> {
+  const byName = new Map<string, Operation[]>();
+  const byRoute = new Map<string, Operation[]>();
+  for (const op of doc.operations) {
+    const [name, route] = toolKeys(op);
+    (byName.get(name) ?? byName.set(name, []).get(name)!).push(op);
+    (byRoute.get(route) ?? byRoute.set(route, []).get(route)!).push(op);
+  }
+  const out = new Map<string, Operation[]>();
+  for (const t of tools) {
+    const hit = byName.get(t.name) ?? byRoute.get(t.name.toLowerCase());
+    if (hit) out.set(t.name, hit);
+  }
+  return out;
+}
+
+/**
+ * The door exposes a SUBSET of the document, so whether a given operation has a
+ * tool is a question only the door answers. We look it up in the vendored list
+ * and return null when it is absent, rather than printing a call that would
+ * come back "unknown tool".
  *
  * A `tools/call` carries every argument in ONE FLAT object — neither path nor
  * query binds — so there is no path/query/body split to model here.
@@ -316,8 +355,8 @@ export function mcp(
   doc: Document,
   tools: Map<string, { name: string }>,
 ): { tool: string; call: string } | null {
-  const tool = op.name;
-  if (!tools.has(tool)) return null;
+  const tool = toolKeys(op).find((k) => tools.has(k));
+  if (!tool) return null;
   const argsObj: Record<string, any> = {};
   for (const p of op.parameters.filter((x) => x.required)) argsObj[p.name] = placeholder(p);
   Object.assign(argsObj, exampleBody(op, doc) ?? {});
