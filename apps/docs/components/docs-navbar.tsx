@@ -49,8 +49,13 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
         props.className,
       )}
     >
+      {/* Mobile only. The sidebar renders this same `navTitle` slot at its top, and
+          the sidebar is visible from md up — so on desktop the wordmark drew twice,
+          once here and once six inches to the left. Below md the sidebar collapses
+          into a drawer and this is the only place a wordmark can live, so it stays
+          there rather than being dropped outright. */}
       {slots.navTitle && (
-        <slots.navTitle className="inline-flex items-center gap-2.5 font-semibold" />
+        <slots.navTitle className="inline-flex items-center gap-2.5 font-semibold md:hidden" />
       )}
 
       <div className="flex flex-1 items-center">
