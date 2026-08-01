@@ -112,10 +112,27 @@ export function parseSecurities(
   const security = method.security ?? dereferenced.security ?? [];
   if (security.length === 0) return result;
 
+  // A `security:` entry may name a scheme the document never defines. Every
+  // consumer downstream looks the id up and reads a property of it —
+  // `schemes[id].deprecated`, `schemes[id].type` — so one such entry throws
+  // "Cannot read properties of undefined" from a prerendered page and takes the
+  // whole export down with it. The document is a boundary: resolve here, once,
+  // and nothing after this has to re-check. An undefined scheme carries no
+  // credential to render or send, so dropping it is also what it means.
+  const defined = dereferenced.components?.securitySchemes ?? {};
+
   for (const map of security) {
     const list: SecurityEntry[] = [];
 
     for (const [key, scopes] of Object.entries(map)) {
+      if (!(key in defined)) {
+        console.warn(
+          `[openapi] operation ${method.operationId ?? method.method} requires security scheme ` +
+            `"${key}", which the document does not define — ignoring it.`,
+        );
+        continue;
+      }
+
       list.push({
         id: key,
         scopes,
