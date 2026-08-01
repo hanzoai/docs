@@ -1,14 +1,27 @@
 name: deploy
 
 # Builds docs.hanzo.ai and publishes the image the operator runs. A build never
-# deploys itself: the tag that is live is named by hanzoai/universe
-# infra/k8s/operator/crs/docs.yaml, set by a human.
+# deploys itself: what is live is named by hanzoai/universe
+# charts/app/values/hanzo/docs.yaml, set by a human. That file carries
+# `cd.automated: true`, so the commit that edits it IS the rollout.
 #
 # The predecessor did deploy itself — it patched `app docs` with kubectl and
 # waited on the rollout — and it built the image from a heredoc Dockerfile
 # pinned to static:0.4.1 while the repo's own Dockerfile, the one the fabric
 # actually builds, pinned v0.5.1. Two builders for one image is one too many, so
 # the recipe lives in the Dockerfile alone and this file only runs it.
+#
+# THIS FILE CANNOT RUN TODAY. git.hanzo.ai/hanzo-docs/docs is a pull mirror with
+# no Actions unit (/actions 404s; hanzoai/cloud on the same forge answers 200),
+# and a mirror sync moves refs without firing a push event, so neither trigger
+# below can reach a runner. It is kept, not deleted, because it is the only
+# definition of the tag hanzoai/universe already pins — the full 40-char SHA.
+# See RELEASE.md for every path that can publish today and what each one needs.
+#
+# It is also the ONLY builder here that fires by itself. .github/workflows/
+# cicd.yml is workflow_dispatch-only for exactly that reason: give this repo two
+# push-triggered builders for one image and the same commit produces two images
+# under two tag schemes, and the pin in universe names one of them by luck.
 
 on:
   push:
@@ -40,29 +53,23 @@ jobs:
       - name: build
         run: docker build -t "docs:${GITHUB_SHA}" .
 
-      # A broken export must never reach the registry, so the gate runs between
-      # the build and the push. It reads the image rather than a host-side
-      # directory: what serves is what is checked. hanzoai/static is FROM scratch
-      # and has no shell, so /public comes out with docker cp.
-      - name: validate export
+      # The gate itself runs inside the Dockerfile, so `docker build` above has
+      # already refused a broken export and this step cannot be the thing that
+      # saves us — which is the point: every builder gets it, not just this one.
+      #
+      # What is left for this step is the one question the build stage cannot
+      # answer: did the export actually land in the IMAGE. That is a different
+      # claim from "the export was good", and it is the claim that matters to a
+      # registry. Same script, same rules, read out of the finished image —
+      # hanzoai/static is FROM scratch and has no shell, so /public comes out
+      # with docker cp.
+      - name: validate export in the image
         run: |
           set -euo pipefail
           cid="$(docker create "docs:${GITHUB_SHA}")"
           trap 'docker rm -f "${cid}" >/dev/null' EXIT
           rm -rf out && docker cp "${cid}:/public" out
-
-          fail=0
-          for f in index.html docs/index.html docs/services/index.html; do
-            [ -s "out/$f" ] || { echo "::error::missing or empty /public/$f"; fail=1; }
-          done
-          n="$(find out -name '*.html' | wc -l)"
-          echo "html pages exported: ${n}"
-          [ "$n" -ge 50 ] || { echo "::error::only ${n} html pages — the export looks broken"; fail=1; }
-          # trailingSlash: /docs must be docs/index.html, not docs.html, which
-          # hanzoai/static answers with a 404.
-          grep -q 'href="/docs/' out/docs/index.html 2>/dev/null \
-            || { echo "::error::/docs carries no nav — shell-only render"; fail=1; }
-          exit "$fail"
+          sh scripts/check-export.sh out apps/docs/export.require
 
       - name: push
         env:
@@ -73,8 +80,20 @@ jobs:
             echo "::error::REGISTRY_TOKEN is unset, so nothing was published. Add the org secret."
             exit 1
           fi
+          # The FULL 40-char SHA. universe already pins exactly this shape; see
+          # RELEASE.md for what every other builder tags instead.
           image="ghcr.io/hanzoai/docs:${GITHUB_SHA}"
           echo "${REGISTRY_TOKEN}" | docker login ghcr.io -u hanzo-dev --password-stdin
           docker tag "docs:${GITHUB_SHA}" "${image}"
           docker push "${image}"
-          echo "published ${image} — set spec.image.tag in universe crs/docs.yaml to ${GITHUB_SHA} to make it live"
+          # The digest is what a pin actually PULLS: the chart renders
+          # repo:tag@digest and the digest wins, so moving the tag beside a stale
+          # digest changes nothing at all. Print both, in the shape they are pasted.
+          # Never fail the step over this — the image is already published, and a
+          # missing digest line is a paste-it-yourself, not a failed release.
+          digest="$(docker inspect --format='{{range .RepoDigests}}{{println .}}{{end}}' "${image}" \
+                    | grep "^ghcr.io/hanzoai/docs@" | head -1 | cut -d@ -f2 || true)"
+          echo "published ${image}"
+          echo "to make it live — hanzoai/universe charts/app/values/hanzo/docs.yaml:"
+          echo "    tag: ${GITHUB_SHA}"
+          echo "    digest: ${digest:-<crane digest ${image}>}"

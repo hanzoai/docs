@@ -34,6 +34,17 @@ ENV NEXT_EXPORT=1 \
 ARG APP=docs
 RUN pnpm build --filter="${APP}"
 
+# The export gate, INSIDE the recipe — so it is not a property of one builder.
+#
+# A static-export build fails by exporting nothing: the layer is valid, the push
+# succeeds, and the host answers 404. Gating here means the failure happens
+# before an image exists, for every builder, without any of them knowing this
+# repo is special — buildx `--push` builds and pushes in one invocation and has
+# no step in between to hold, and an in-cluster BuildKit job has none either.
+# scripts/check-export.sh states what "a site" means; apps/${APP}/export.require
+# names the sections this app must not silently lose.
+RUN sh scripts/check-export.sh "apps/${APP}/out"
+
 FROM ghcr.io/hanzoai/static:v0.5.1
 # Re-declared: an ARG is scoped to the stage that names it.
 ARG APP=docs

@@ -1,17 +1,24 @@
-# Canonical CI config for hanzo-docs/docs — read by the hanzoai/ci reusable
-# (.hanzo/workflows/) and by platform.hanzo.ai.
+# Canonical CI config for hanzo-docs/docs — read by hanzoai/ci (the GitHub lane,
+# .github/workflows/cicd.yml) and by platform.hanzo.ai (the webhook lane).
 #
 # The repo builds ONE image: the Fumadocs monorepo exported static and served by
 # hanzoai/static. The recipe lives in the Dockerfile and nowhere else — APP
 # selects the workspace, so every static site here is built the same way. This
 # file only declares WHAT is built; it does not restate the recipe.
 #
-# The image tag hanzoai/universe pins (charts/app/values/hanzo/docs.yaml) is the
-# FULL commit sha, which is what .hanzo/workflows/deploy.yml pushes. A builder
-# that tags differently (hanzoai/ci publishes `sha-<short>` and `latest`) needs
-# that values file pointed at its scheme in the same change — the two are one
-# contract, and moving one alone leaves docs.hanzo.ai on whatever it was
-# already serving.
+# THE TAG CONTRACT. hanzoai/universe pins this image in
+# charts/app/values/hanzo/docs.yaml, and the four builders that can produce it do
+# not agree on what to call it:
+#
+#   .hanzo/workflows/deploy.yml   <sha40>                   ← what universe pins
+#   POST /v1/runner               whatever the caller names  (convention: <sha40>)
+#   platform webhook, this file   <sha40>-amd64-docs         ({{git.sha}}-amd64-<tag-suffix>)
+#   hanzoai/ci, this file         sha-<sha7>-amd64  + latest
+#
+# Whichever one publishes, the pin has to be told its name — and the line that
+# actually decides what runs is `digest:`, not `tag:`, because the chart renders
+# repo:tag@digest and a digest beside a tag is what gets pulled. RELEASE.md
+# writes out the exact edit for each of the four.
 images:
   - name: docs
     context: .
@@ -28,10 +35,27 @@ test:
     # does not exist.
     run: pnpm install --frozen-lockfile && pnpm test
 
-# NOTE — the export gate is NOT here, deliberately. A static-export site fails
-# by exporting nothing, which no image build can notice: the layer is valid and
-# the site is empty. .hanzo/workflows/deploy.yml therefore gates BETWEEN build
-# and push — it creates the container, copies /public out, and requires
-# index.html, docs/index.html, a non-empty nav and >=50 pages before the image
-# may reach the registry. Any builder that publishes this repo must run that
-# check, or it will happily ship a 404.
+# NOTE — the export gate is not declared here, and not because it was forgotten.
+#
+# A static-export site fails by exporting NOTHING, which no image build can
+# notice: the layer is valid and the site is empty. So the check has to happen
+# somewhere every builder passes through, and `test:` is not it — hanzoai/ci
+# runs `test:` AFTER `docker buildx --push`, and buildx builds and pushes in one
+# invocation with no step in between to hold. A gate declared here would report a
+# broken export that was already in the registry.
+#
+# The gate is therefore inside the Dockerfile (scripts/check-export.sh, plus
+# apps/docs/export.require naming the sections that must not vanish). A failing
+# export fails the build, so no builder reaches a push — including this one.
+#
+# That placement also covers the one thing the GitHub lane gets wrong on its own:
+# hanzoai/ci checks out without `submodules: recursive`, and apps/docs/content/
+# docs/studio is a submodule (hanzo-docs/studio-docs). Without it that section
+# simply does not exist in the output while page count and nav stay green. It is
+# named in export.require, so the build fails loudly instead of shipping a hole.
+
+# No `deploy:` — ON PURPOSE, and this is not the usual "a human should review it".
+# docs.hanzo.ai is delivered by the hanzo/app chart with `cd.automated: true`, so
+# Argo is the sole writer of those objects and self-heals anything else that
+# touches them. A `deploy:` block here would have the platform patch a workload
+# that gets reverted on the next sync. The rollout IS the commit to universe.

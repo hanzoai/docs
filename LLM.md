@@ -4,34 +4,58 @@ Fork of [Hanzo Docs](https://github.com/hanzoai/docs) with all packages renamed 
 
 ## How this ships
 
-One way, and it runs on our own stack:
+**Full runbook: [`RELEASE.md`](./RELEASE.md)** — every path that can publish, the
+credential each one needs, and the exact edit that makes an image live. What
+follows is the shape; that file is the detail.
 
-    push  ->  github.com/hanzoai/docs         (a mirror)
-              .github/workflows/sync.yml       carries refs onward
-      ->  git.hanzo.ai/hanzoai/docs            CANONICAL
+    push  ->  github.com/hanzo-docs/docs       origin
+              .github/workflows/cicd.yml       hanzoai/ci, workflow_dispatch only
+      ->  git.hanzo.ai/hanzo-docs/docs         a PULL mirror
               .hanzo/workflows/lint.yml        oxfmt, tsc, oxlint
               .hanzo/workflows/test.yml        vitest
               .hanzo/workflows/release.yml     publishes the npm packages
               .hanzo/workflows/sync-zen-pricing.yml  the daily pricing commit
               .hanzo/workflows/deploy.yml      builds ghcr.io/hanzoai/docs
-      ->  hanzoai/universe crs/docs.yaml       names the tag that is live
-      ->  hanzoai/operator                     reconciles the App
+      ->  POST /v1/runner                      the fabric that built what is live
+      ->  hanzoai/universe                     charts/app/values/hanzo/docs.yaml
+                                               names what is live; cd.automated
       ->  hanzoai/static behind hanzoai/ingress serves docs.hanzo.ai
 
-**git.hanzo.ai is canonical; GitHub is a mirror.** `.github/workflows/` holds
-exactly one file, `sync.yml`, and its only job is getting refs to the forge. Every
-build, check, publish and deploy is a workflow under `.hanzo/workflows/`, which the
-forge reads. `.hanzo/workflows` uses GitHub Actions syntax, so a workflow moves
-between the two by changing directory and nothing else — which is how all of these
-got here, `runs-on: hanzo-docs-build-linux-amd64` and all. The forge's runner
-answers that label.
+Every build, check, publish and deploy is a workflow under `.hanzo/workflows/`,
+which the forge reads. `.hanzo/workflows` uses GitHub Actions syntax, so a
+workflow moves between the two directories and nothing else changes — which is how
+all of these got here, `runs-on: hanzo-docs-build-linux-amd64` and all.
+
+**None of them can run today.** `git.hanzo.ai/hanzo-docs/docs` is a pull mirror
+with **no Actions unit at all** — `/actions` on it 404s while `hanzoai/cloud` on
+the same forge answers 200 — and a mirror sync moves refs without firing a push
+event, so even with a unit the `on: push` triggers would not fire. The refs
+themselves are fine: the mirror's `main` matches GitHub's exactly.
+
+`.github/workflows/cicd.yml` is the other lane: seven lines importing hanzoai/ci,
+configured by the root `hanzo.yml`. It is `workflow_dispatch`-only, because two
+push-triggered builders for one image means one commit yields two images under two
+tag schemes. It also cannot schedule yet — Actions is enabled and the repo is
+public, but every runner we own answers to git.hanzo.ai and not to github.com,
+and GitHub-hosted runners are not something we build on.
 
 `deploy.yml` builds and pushes, and stops. Its predecessor patched `app docs` with
 kubectl and waited on the rollout, and it built the image from a heredoc pinned to
 `static:0.4.1` while this repo's `Dockerfile` — the one the fabric builds — pinned
-`v0.5.1`. The recipe now lives in the `Dockerfile` alone; the workflow runs it,
-gates the export by reading `/public` out of the built image, and pushes only if
-the gate passes. A human then sets `spec.image.tag` in universe.
+`v0.5.1`. The recipe lives in the `Dockerfile` alone now; a workflow only runs it.
+
+**The export gate is in the Dockerfile**, not in any workflow. This site fails by
+exporting nothing — a valid layer, a valid image, a 404 — and no builder can
+notice that. `scripts/check-export.sh` says what a site is and
+`apps/<app>/export.require` names the sections that must not silently vanish
+(`docs/studio/` is a submodule; a checkout that does not recurse drops it while
+page count and nav stay green). A failed gate means no image exists, so no lane
+can push past it.
+
+The tag that goes live is set by hand in `hanzoai/universe`
+`charts/app/values/hanzo/docs.yaml`, which carries `cd.automated: true` — so that
+commit IS the rollout. Note that the file pins a `digest:` beside the `tag:`, and
+the digest is what actually gets pulled: moving the tag alone changes nothing.
 
 ### The nine sibling sites still on Cloudflare Pages
 
@@ -45,7 +69,13 @@ stale for a day.
 They are not done. To finish one:
 
 1. `docker build --build-arg APP=<app> .` — the root `Dockerfile` takes `APP`, so
-   no new Dockerfile is needed for any of them.
+   no new Dockerfile is needed for any of them. Two things are true of `apps/docs`
+   and of none of the siblings yet, and both stop this build: only
+   `apps/docs/next.config.mts` honours `NEXT_EXPORT` with `output: 'export'`, so a
+   sibling writes no `out/` at all; and the export gate's floor of 50 pages is the
+   hub's shape, which a seven-page sibling will not clear. Give the sibling
+   `output: 'export'` first, then reconcile the floor —
+   `scripts/check-export.sh` is where it is stated, once, for everything.
 2. Add `infra/k8s/operator/crs/<name>.yaml` in hanzoai/universe, copying
    `hips.yaml`: `containerPort 3000` / `servicePort 80`, `HANZO_STATIC_CSP`,
    `imagePullSecrets: ghcr-secret`, **empty tag**, and **not** listed in
@@ -113,8 +143,9 @@ at docs.hanzo.ai/docs/contributing/docs-architecture). Summary:
   of: ≈150+ pages or fast OSS-upstream churn, independent versioning, direct
   audience. Standalone runs its own copy of this framework; the hub links out,
   never copies.
-- **Serving:** CF Pages `hanzo-docs` (token from KMS, never hard-coded) or
-  `ghcr.io/hanzoai/docs` behind hanzoai/ingress. No nginx/caddy.
+- **Serving:** `ghcr.io/hanzoai/docs` behind hanzoai/ingress for docs.hanzo.ai.
+  The nine sibling hosts below are still CF Pages `hanzo-docs` (token from KMS,
+  never hard-coded). No nginx/caddy.
 
 **Known dedup debt (rollout, not done):** the `apps/*-docs` legacy apps
 (base-docs, bootnode-docs, bot-docs, cloud, dev-docs, dns-docs, flow, gui-docs,
@@ -125,7 +156,9 @@ app.
 
 ## Branch Convention
 
-- **`main`** — Production branch. CF Pages deploys docs.hanzo.ai from here. All Hanzo work lands here.
+- **`main`** — Production branch. docs.hanzo.ai is built from here and served
+  in-cluster from `ghcr.io/hanzoai/docs`; landing on `main` does not publish, a
+  build plus a pin in universe does (`RELEASE.md`). All Hanzo work lands here.
 - **`dev`** — Tracks upstream `Hanzo Docs/dev`. Used for upstream sync merges only.
 - **`upstream`** remote — points to `hanzoai/docs`
 

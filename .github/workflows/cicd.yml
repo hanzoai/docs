@@ -1,0 +1,30 @@
+# The GitHub lane: hanzoai/ci, driven by this repo's root hanzo.yml.
+#
+# Manual only, and that is deliberate. `.hanzo/workflows/deploy.yml` is the
+# builder that fires by itself; two push-triggered builders for one image means
+# one commit produces two images under two different tag schemes, and the pin in
+# hanzoai/universe then names one of them by luck. So exactly one of the two is
+# ever armed, and this is the one a human arms.
+#
+# It also cannot schedule today, and the reason is not Actions. Actions is ON for
+# this repo (`{"enabled":true,"allowed_actions":"all"}`) and the repo is public,
+# so a run dispatches fine — it just has nowhere to run. Every runner we own is
+# an act_runner registered to git.hanzo.ai, not to github.com; arcd, which was
+# the GitHub-side pool, is retired, and the one leftover registration on this org
+# (hanzo-docs-build-linux-amd64-5dzd2-runner-dcm4t) is offline and advertises no
+# labels. A run started now sits pending against a runner GitHub cannot see.
+#
+# The fix is to register one of our runners against this org, NOT to reach for
+# ubuntu-latest. GitHub-hosted runners are the one thing this fleet does not
+# build on, and a workflow that names one executes immediately and quietly makes
+# that untrue. The runner label below is the same one the forge lane already
+# answers to, so the two lanes never disagree about where a build belongs.
+name: CI/CD
+on:
+  workflow_dispatch:
+jobs:
+  cicd:
+    uses: hanzoai/ci/.github/workflows/build.yml@v1
+    with:
+      runner: '["hanzo-docs-build-linux-amd64"]'
+    secrets: inherit
