@@ -48,11 +48,14 @@ test:
 # apps/docs/export.require naming the sections that must not vanish). A failing
 # export fails the build, so no builder reaches a push — including this one.
 #
-# That placement also covers the one thing the GitHub lane gets wrong on its own:
-# hanzoai/ci checks out without `submodules: recursive`, and apps/docs/content/
-# docs/studio is a submodule (hanzo-docs/studio-docs). Without it that section
-# simply does not exist in the output while page count and nav stay green. It is
-# named in export.require, so the build fails loudly instead of shipping a hole.
+# That placement is also what caught the one thing the GitHub lane got wrong on
+# its own. apps/docs/content/docs/studio is a submodule (hanzo-docs/studio-docs),
+# and hanzoai/ci checked out with actions/checkout's default, which fetches none:
+# the section simply would not exist in the output while page count and nav both
+# stayed green. It is named in export.require, so that lane failed loudly instead
+# of shipping a hole — and the fix is upstream, where hanzoai/ci now takes a
+# `submodules` input (default unchanged) that .github/workflows/cicd.yml sets to
+# `recursive`. The gate stays, because it is what makes the next such hole loud.
 
 # No `deploy:` — ON PURPOSE, and this is not the usual "a human should review it".
 # docs.hanzo.ai is delivered by the hanzo/app chart with `cd.automated: true`, so
