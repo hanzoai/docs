@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadDocument, type Document, type Operation, type Product } from './openapi-doc';
+import { code, firstSentence, prose, text, yamlString } from './mdx';
 
 // The API reference, generated from THE document.
 //
@@ -48,56 +49,6 @@ function guideHref(svc: string): string | null {
   }
   return null;
 }
-
-// ---------------------------------------------------------------- MDX safety
-
-/** Inline code: only the GFM table pipe needs escaping. */
-const code = (s: unknown): string =>
-  String(s ?? '').replace(/[\r\n]+/g, ' ').trim().replace(/\|/g, '\\|');
-
-/** Table/heading text: neutralise MDX expressions and JSX. */
-const text = (s: unknown): string =>
-  String(s ?? '')
-    .replace(/[\r\n]+/g, ' ')
-    .trim()
-    .replace(/\|/g, '\\|')
-    .replace(/[<>]/g, (c) => (c === '<' ? '&lt;' : '&gt;'))
-    .replace(/[{}]/g, (c) => (c === '{' ? '&#123;' : '&#125;'));
-
-/**
- * Operation prose lifted from Go doc comments is markdown, not MDX: a stray
- * `{` or `<T>` is a build failure. Escape those in running text while leaving
- * fenced blocks and inline code spans verbatim — MDX parses neither.
- */
-function prose(s: string): string {
-  if (!s) return '';
-  const parts = String(s).split(/(```[\s\S]*?```|`[^`\n]*`)/g);
-  return parts
-    .map((part, i) =>
-      i % 2 === 1
-        ? part
-        : part
-            .replace(/[{}]/g, (c) => (c === '{' ? '&#123;' : '&#125;'))
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;'),
-    )
-    .join('')
-    .trim();
-}
-
-const yamlString = (s: string): string =>
-  JSON.stringify(String(s ?? '').replace(/\s+/g, ' ').trim());
-
-const firstSentence = (s: string, max = 200): string => {
-  const t = String(s ?? '').replace(/\s+/g, ' ').trim();
-  if (t.length <= max) {
-    const m = t.match(/^(.+?[.!?])(\s|$)/);
-    return (m ? m[1] : t).trim();
-  }
-  const head = t.slice(0, max);
-  const stop = head.lastIndexOf('. ');
-  return (stop > 40 ? head.slice(0, stop + 1) : head).trim();
-};
 
 // ------------------------------------------------------------------ schema
 

@@ -6,6 +6,7 @@ import { loadDocument, type Document, type Operation } from './openapi-doc';
 import { SDKS, cli, http, mcp } from './openapi-surfaces';
 import { MCP_DOOR, loadMcpTools } from './sync-mcp-tools';
 import type { CliCommand } from './sync-cli-commands';
+import { fence, prose, text } from './mdx';
 
 // SIX FLOWS, FOUR SURFACES.
 //
@@ -53,30 +54,6 @@ function readFlows(file: string): Flow[] {
   }));
 }
 
-const text = (s: unknown): string =>
-  String(s ?? '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/[<>]/g, (c) => (c === '<' ? '&lt;' : '&gt;'))
-    .replace(/[{}]/g, (c) => (c === '{' ? '&#123;' : '&#125;'));
-
-function prose(s: string): string {
-  if (!s) return '';
-  return String(s)
-    .split(/(```[\s\S]*?```|`[^`\n]*`)/g)
-    .map((part, i) =>
-      i % 2 === 1
-        ? part
-        : part
-            .replace(/[{}]/g, (c) => (c === '{' ? '&#123;' : '&#125;'))
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;'),
-    )
-    .join('')
-    .trim();
-}
-
-const fence = (lang: string, body: string): string[] => ['```' + lang, body, '```'];
 
 /**
  * The MCP door is real and undeclared.
