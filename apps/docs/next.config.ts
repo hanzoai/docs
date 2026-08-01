@@ -2,9 +2,15 @@ import createBundleAnalyzer from '@next/bundle-analyzer';
 import { createMDX } from '@hanzo/docs/mdx/next';
 import type { NextConfig } from 'next';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// `__dirname`, the CommonJS global, not a `fileURLToPath(import.meta.url)`
+// shim. This app is `next.config.ts` like every other app in the monorepo, and
+// this package declares no `"type": "module"`, so Next compiles the config to
+// CommonJS — where `import.meta` is a syntax error and the shim above it fails
+// the whole build before a single page renders. An upstream merge renamed this
+// file to `.mts` and brought the ESM idiom with it; the pinned Next refuses
+// `.mts` outright, so the rename could never have built. One extension, one
+// module system, one way to find the app root.
 
 const withAnalyzer = createBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
