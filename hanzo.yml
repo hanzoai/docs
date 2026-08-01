@@ -1,5 +1,8 @@
-# Canonical CI config for hanzo-docs/docs — read by hanzoai/ci (the GitHub lane,
-# .github/workflows/cicd.yml) and by platform.hanzo.ai (the webhook lane).
+# Canonical CI config for hanzo-docs/docs. THREE programs read this file:
+# hanzo/platform (the webhook lane that builds what is serving), hanzoai/ci (the
+# GitHub lane, .github/workflows/cicd.yml), and hanzoai/cloud's forge push
+# orchestrator. All three read `images:`; only ci reads `test:`. They do not agree
+# on the tag — see below, because that disagreement is the whole contract.
 #
 # The repo builds ONE image: the Fumadocs monorepo exported static and served by
 # hanzoai/static. The recipe lives in the Dockerfile and nowhere else — APP
@@ -7,18 +10,28 @@
 # file only declares WHAT is built; it does not restate the recipe.
 #
 # THE TAG CONTRACT. hanzoai/universe pins this image in
-# charts/app/values/hanzo/docs.yaml, and the four builders that can produce it do
+# charts/app/values/hanzo/docs.yaml, and the six builders that can produce it do
 # not agree on what to call it:
 #
-#   .hanzo/workflows/deploy.yml   <sha40>                   ← what universe pins
-#   POST /v1/runner               whatever the caller names  (convention: <sha40>)
-#   platform webhook, this file   <sha40>-amd64-docs         ({{git.sha}}-amd64-<tag-suffix>)
-#   hanzoai/ci, this file         sha-<sha7>-amd64  + latest
+#   platform webhook, THIS file   <sha40>-amd64-docs        ← what universe pins
+#   POST /v1/runner               whatever the caller names
+#   .hanzo/workflows/deploy.yml   <sha40>
+#   hanzoai/ci (buildx)           sha-<sha7>-amd64  + latest
+#   hanzoai/ci (mode: delegate)   sha-<sha7>-amd64
+#   forge push orchestrator       sha-<sha7>-amd64-docs      (dormant)
+#
+# Three of those are three programs reading THIS file and disagreeing twice over:
+# whether an absent `tag-suffix` falls back to `name` (platform: yes; cloud's
+# apps/git/build_on_push.go: yes; hanzoai/ci: no, it reads `."tag-suffix" // ""`),
+# and whether the sha is abbreviated (platform: no; the other two: yes). Adding
+# `tag-suffix: docs` below would close the first disagreement and not the second
+# — deliberately NOT done, because it changes the tag shape of lanes that have
+# never run. RELEASE.md has the table and the reasoning.
 #
 # Whichever one publishes, the pin has to be told its name — and the line that
 # actually decides what runs is `digest:`, not `tag:`, because the chart renders
-# repo:tag@digest and a digest beside a tag is what gets pulled. RELEASE.md
-# writes out the exact edit for each of the four.
+# repo:tag@digest and a digest beside a tag is what gets pulled. Read the tag off
+# the build you actually fired; RELEASE.md writes out the edit for each of the six.
 images:
   - name: docs
     context: .
