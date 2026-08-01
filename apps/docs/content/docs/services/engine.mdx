@@ -7,7 +7,7 @@ description: High-performance LLM inference engine — blazing-fast Rust-based s
 
 > **API reference** · [Hanzo Engine API →](/docs/openapi/engine) — every endpoint, generated from the OpenAPI spec.
 
-Hanzo Engine is a high-performance, multimodal inference engine written in Rust. It serves LLMs, vision models, speech models, image generation models, and embedding models through an OpenAI-compatible HTTP API, with optional MCP (Model Context Protocol) server support.
+Hanzo Engine is a high-performance, multimodal inference engine written in Rust. It serves LLMs, vision models, speech models, image generation models, and embedding models over HTTP on `/v1/*`, with optional MCP (Model Context Protocol) server support.
 
 Key design goals: zero-config model loading, hardware-aware quantization, and production-grade throughput via PagedAttention and continuous batching.
 
@@ -23,7 +23,7 @@ Key design goals: zero-config model loading, hardware-aware quantization, and pr
 - **Speculative Decoding**: Draft-model acceleration with rejection sampling for 2-3x speedup on supported architectures
 - **Multimodal**: Text, vision, audio/speech, image generation, and embeddings in a single binary
 - **MCP Integration**: Built-in MCP server exposing model tools via JSON-RPC, plus MCP client for connecting to external tool servers
-- **OpenAI-Compatible API**: Drop-in replacement for OpenAI endpoints -- `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`, `/v1/images/generations`, `/v1/models`
+- **HTTP API**: Serves `/v1/chat/completions`, `/v1/completions`, `/v1/embeddings`, `/v1/images/generations`, and `/v1/models`
 - **Agentic**: Integrated tool calling with Python/Rust callbacks, web search, and structured output (JSON schema, regex, grammar)
 - **Distributed Inference**: Multi-GPU via NCCL tensor parallelism, multi-node via TCP ring topology with heterogeneous device support
 - **LoRA / X-LoRA**: Adapter model support with runtime weight merging
@@ -226,7 +226,9 @@ The server listens on port `36900` by default. Visit `http://localhost:36900/ui`
 
 ## API Reference
 
-Hanzo Engine exposes an OpenAI-compatible REST API. Any client that speaks the OpenAI API works out of the box.
+Hanzo Engine serves a REST API on `/v1/*`. The endpoints take and return the
+same JSON shapes as the widely-implemented chat-completions format, so an HTTP
+client written against that shape works once its base URL points at the Engine.
 
 ### Chat Completions
 
@@ -672,7 +674,7 @@ hanzo-engine from-config -f config.toml
     On-device inference runtime -- mobile, web (WASM), and embedded deployment
   </Card>
   <Card title="Gateway" href="/docs/services/gateway">
-    LLM API gateway -- routes requests to Engine and 100+ external providers
+    The Hanzo API gateway -- one host and one key in front of Engine and the rest of Hanzo Cloud
   </Card>
   <Card title="ML" href="/docs/services/ml">
     Rust ML framework powering Engine tensor operations

@@ -1,6 +1,6 @@
 ---
 title: Pricing API
-description: Unified pricing API for AI models, cloud plans, GPU tiers, and subscriptions
+description: Live pricing for Hanzo models, cloud plans, GPU tiers, and subscriptions.
 ---
 
 # Pricing API
@@ -15,7 +15,7 @@ The Hanzo Pricing API provides real-time pricing for the entire Hanzo platform �
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /v1/models` | OpenAI-compatible model listing (376+ models) |
+| `GET /v1/models` | Per-model rates — the live catalogue and its pricing |
 | `GET /v1/plans` | Subscription plans (Developer, Pro, Team, Enterprise) |
 | `GET /v1/cloud` | Cloud VM plans, regions, and storage |
 | `GET /v1/gpu` | GPU tier pricing (H100) |
@@ -23,12 +23,14 @@ The Hanzo Pricing API provides real-time pricing for the entire Hanzo platform �
 
 ## Features
 
-- **376+ AI models** — 32 Zen (first-party) + 344 third-party from 58 providers
+- **Model rates** — the `enso` and Zen families, and the outside models we carry, each with its input and output price per 1M tokens
 - **11 cloud VM plans** — from $5/mo (Starter) to $3,999/mo (Ultra)
 - **Zero egress fees** on all plans
-- **6-hour sync** — prices updated from upstream providers automatically
-- **OpenAI-compatible** `/v1/models` endpoint
+- **6-hour sync** — rates for carried models refresh from their upstreams automatically
 - **Revenue sharing** — earn up to 20% on idle compute resale
+
+`GET /v1/models` is the source of truth for what a model costs today. Each entry
+carries its `id`, `owned_by`, `premium` flag and `pricing`.
 
 ## Authentication
 

@@ -19,7 +19,7 @@ Hanzo Edge is a high-performance, cross-platform AI inference runtime for on-dev
 - **Cross-Platform**: macOS, Linux, iOS, Android, Web (WASM), and embedded devices from a single codebase
 - **Hardware Acceleration**: Metal (Apple Silicon), CUDA (NVIDIA), CPU (AVX2/AVX-512), Accelerate (macOS)
 - **GGUF Native**: First-class support for quantized models (Q4_K, Q5_K, Q8_0, and all standard GGUF types)
-- **OpenAI-Compatible API**: Drop-in replacement local server at localhost -- works with any OpenAI SDK client
+- **Local HTTP API**: Serves `/v1/*` on localhost -- chat completions, completions, and models
 - **Streaming**: Token-by-token streaming via SSE (HTTP) and callbacks (Rust/WASM)
 - **HuggingFace Hub**: Automatic model download and caching from any HF repository
 - **WebAssembly**: Run inference directly in the browser via WASM with streaming support
@@ -40,7 +40,7 @@ hanzo-edge (workspace)
 |   +-- loader.rs           # HF Hub download with progress bars
 |   +-- cmd/
 |       +-- run.rs          # Streaming inference to stdout
-|       +-- serve.rs        # OpenAI-compatible HTTP server (Axum)
+|       +-- serve.rs        # Local HTTP server on /v1/* (Axum)
 |       +-- bench.rs        # TTFT, throughput, memory benchmarking
 |       +-- info.rs         # Model metadata inspection
 +-- edge-wasm/              # WebAssembly module
@@ -75,7 +75,7 @@ cargo install hanzo-edge
 # Run inference with streaming output
 hanzo-edge run --model zenlm/zen3-nano --prompt "Hello!"
 
-# Start local OpenAI-compatible API server
+# Start the local API server on /v1/*
 hanzo-edge serve --model zenlm/zen3-nano --port 8080
 
 # Model info (architecture, params, quantization, context length)
@@ -91,7 +91,7 @@ hanzo-edge bench --model zenlm/zen3-nano --prompt "Hello" \
 | Command | Purpose |
 |---------|---------|
 | `run` | Streaming inference to stdout |
-| `serve` | Start OpenAI-compatible HTTP server |
+| `serve` | Start the local HTTP server on `/v1/*` |
 | `bench` | TTFT, throughput, and memory benchmarking |
 | `info` | Model metadata inspection |
 
@@ -127,7 +127,7 @@ Any GGUF file using the Llama-family tensor layout is supported.
 
 ## API Server
 
-The built-in server is OpenAI-compatible -- any client that speaks the OpenAI API works out of the box:
+`serve` starts a local HTTP server holding the model in memory:
 
 ```bash
 hanzo-edge serve --model zenlm/zen3-nano --port 8080
@@ -142,7 +142,20 @@ hanzo-edge serve --model zenlm/zen3-nano --port 8080
 | `GET` | `/v1/models` | List loaded models |
 | `GET` | `/health` | Health check |
 
+```bash
+curl http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen3-nano",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
 Chat completions support `stream: true` for server-sent events (SSE), with `[DONE]` sentinel and ChatML-formatted prompts.
+
+These endpoints take and return the same JSON shapes as the widely-implemented
+chat-completions format, so an HTTP client written against that shape works
+once its base URL points at the local server.
 
 ## SDK Usage
 
@@ -179,12 +192,14 @@ for token_result in stream {
 }
 ```
 
-### Python (via local API)
+### Python (existing chat-completions clients)
+
+Any Python client built on the chat-completions shape reaches the local server
+by pointing its base URL at it:
 
 ```python
 from openai import OpenAI
 
-# Point at the local hanzo-edge server
 client = OpenAI(base_url="http://localhost:8080/v1", api_key="local")
 
 # Chat completions (streaming)
@@ -287,7 +302,7 @@ cargo test --workspace
     Cloud GPU inference engine -- production serving with PagedAttention, continuous batching, and multi-GPU
   </Card>
   <Card title="Gateway" href="/docs/services/gateway">
-    Unified API gateway -- routes to Engine and 100+ external providers
+    The Hanzo API gateway -- one host and one key in front of Engine and the rest of Hanzo Cloud
   </Card>
   <Card title="ML" href="/docs/services/ml">
     Rust ML framework powering Edge and Engine tensor operations

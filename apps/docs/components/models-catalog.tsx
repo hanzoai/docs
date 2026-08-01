@@ -18,7 +18,11 @@ type Model = {
   description?: string;
   features?: string[];
   tier?: string;
-  context?: number | null;
+  // The catalogue names this `context_window`, and carries it per model rather
+  // than on every row — read it, do not assume it.
+  context_window?: number | null;
+  supports_tools?: boolean;
+  supports_vision?: boolean;
   pricing?: Pricing;
   provider?: string;
   owned_by?: string;
@@ -27,6 +31,10 @@ type Family = { id: string; name: string; description?: string; icon?: string; m
 type Catalog = { data: Model[]; families?: Family[]; summary?: Record<string, number>; updated?: string };
 
 const FAMILY_ICON: Record<string, typeof Sparkles> = { Sparkles, Zap, Cpu, Box };
+
+// The models trained here, and what to call their group. `owned_by` is the
+// catalogue's raw key; these are the names we use for them.
+const OURS: Record<string, string> = { hanzo: 'Hanzo', zenlm: 'Zen' };
 
 // Prices come back as USD per 1M tokens.
 function price(v: number | null | undefined): string {
@@ -42,7 +50,7 @@ function ctx(n: number | null | undefined): string {
 }
 
 // Provider identity chip — a stable, self-contained monogram (no external logo
-// assets, so it works in a static export for all 59 providers uniformly). The
+// assets, so it works in a static export and every group renders uniformly). The
 // tint is derived deterministically from the name, so a provider always reads
 // the same color across sessions. currentColor-free HSL keeps it legible in
 // both themes.
@@ -104,6 +112,16 @@ function CopyId({ id }: { id: string }) {
   );
 }
 
+// What the catalogue actually says a model can do. It publishes booleans, not a
+// `features` list, so the chips are derived from those rather than left empty.
+function capabilities(m: Model): string[] {
+  if (m.features?.length) return m.features;
+  const out: string[] = [];
+  if (m.supports_tools) out.push('tools');
+  if (m.supports_vision) out.push('vision');
+  return out;
+}
+
 function ModelRow({ m }: { m: Model }) {
   const p = m.pricing;
   return (
@@ -117,12 +135,12 @@ function ModelRow({ m }: { m: Model }) {
           </span>
         ) : null}
       </td>
-      <td className="py-2.5 px-3 text-right align-top tabular-nums text-fd-muted-foreground">{ctx(m.context)}</td>
+      <td className="py-2.5 px-3 text-right align-top tabular-nums text-fd-muted-foreground">{ctx(m.context_window)}</td>
       <td className="py-2.5 px-3 text-right align-top tabular-nums">{price(p?.input)}</td>
       <td className="py-2.5 px-3 text-right align-top tabular-nums">{price(p?.output)}</td>
       <td className="py-2.5 pl-3 align-top">
         <div className="flex flex-wrap gap-1 justify-end">
-          {(m.features ?? []).slice(0, 4).map((f) => (
+          {capabilities(m).slice(0, 4).map((f) => (
             <span key={f} className="rounded border border-fd-border px-1.5 py-0.5 text-[10px] text-fd-muted-foreground">
               {f}
             </span>
@@ -158,25 +176,41 @@ export function ModelsCatalog() {
       models.forEach((m) => claimed.add(m.id));
       return { ...f, resolved: models };
     });
-    // Everything not in a curated (Hanzo) family groups BY PROVIDER — OpenAI,
-    // Anthropic, Google, Qwen, … — sorted by model count, so the full 350+
-    // third-party catalog reads like OpenRouter instead of one wall of rows.
+    // Everything not in a curated family groups by who trained it, so the rest
+    // of the catalogue reads as sections instead of one wall of rows. Our own
+    // families lead: sorting purely by model count would bury `hanzo` and
+    // `zenlm` under whichever outside lab happens to ship the most ids.
     const rest = cat.data.filter((m) => !claimed.has(m.id));
-    const byProvider = new Map<string, Model[]>();
+    const byOwner = new Map<string, Model[]>();
     for (const m of rest) {
-      const p = m.provider || m.owned_by || 'Other';
-      (byProvider.get(p) ?? byProvider.set(p, []).get(p)!).push(m);
+      const p = m.owned_by || m.provider || 'Other';
+      (byOwner.get(p) ?? byOwner.set(p, []).get(p)!).push(m);
     }
-    [...byProvider.entries()]
-      .sort((a, b) => b[1].length - a[1].length)
-      .forEach(([p, models]) => fams.push({ id: `provider-${p}`, name: p, icon: 'Box', models: [], resolved: models }));
+    const ours = Object.keys(OURS);
+    [...byOwner.entries()]
+      .sort((a, b) => {
+        const ai = ours.indexOf(a[0]);
+        const bi = ours.indexOf(b[0]);
+        if (ai !== bi && (ai < 0 || bi < 0)) return ai < 0 ? 1 : -1;
+        if (ai >= 0 && bi >= 0) return ai - bi;
+        return b[1].length - a[1].length;
+      })
+      .forEach(([p, models]) =>
+        fams.push({
+          id: `${OURS[p] ? 'family' : 'provider'}-${p}`,
+          name: OURS[p] ?? p,
+          icon: OURS[p] ? 'Sparkles' : 'Box',
+          models: [],
+          resolved: models,
+        }),
+      );
     const needle = q.trim().toLowerCase();
     if (!needle) return fams.filter((f) => f.resolved.length);
     return fams
       .map((f) => ({
         ...f,
         resolved: f.resolved.filter((m) =>
-          `${m.fullName} ${m.name} ${m.id} ${(m.features ?? []).join(' ')}`.toLowerCase().includes(needle),
+          `${m.fullName} ${m.name} ${m.id} ${capabilities(m).join(' ')}`.toLowerCase().includes(needle),
         ),
       }))
       .filter((f) => f.resolved.length);
@@ -185,10 +219,18 @@ export function ModelsCatalog() {
   if (err)
     return (
       <div className="my-4 rounded-lg border border-fd-border bg-fd-card p-4 text-sm text-fd-muted-foreground">
-        Couldn’t load the live catalog ({err}). Query it directly:{' '}
-        <a className="text-fd-primary underline" href={ENDPOINT}>
-          {ENDPOINT}
-        </a>
+        <p className="mt-0">
+          Couldn’t load the live catalog ({err}). <code>GET /v1/models</code> requires a bearer token, and this page
+          has none to send — so read it with your own key instead:
+        </p>
+        <pre className="overflow-x-auto rounded bg-fd-muted/60 p-3 text-xs">
+          {`curl -s ${ENDPOINT} \\\n  -H "Authorization: Bearer $HANZO_API_KEY"`}
+        </pre>
+        <p className="mb-0">
+          <a className="text-fd-primary underline" href="/docs/api-keys">
+            Mint a key →
+          </a>
+        </p>
       </div>
     );
   if (!cat)

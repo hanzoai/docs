@@ -1,7 +1,7 @@
 ---
 icon: Boxes
 title: Models
-description: Every model served through api.hanzo.ai/v1 — the live catalogue, with the id you pass as "model", its context window and its current rate.
+description: Every model served through api.hanzo.ai/v1 — the live catalogue, with the id you pass as "model" and its current rate.
 ---
 
 import { Callout } from '@hanzo/docs-ui/components/callout'
@@ -31,8 +31,9 @@ built here, and they are the ones to reach for first:
   are the hosted ones. [On Hugging Face →](https://zenlm.org)
 
 <Callout title="Not sure? Ask for `enso-flash`.">
-It is the cheapest Enso tier and carries the full million-token context window.
-Most work never needs to leave it, and moving up later is a one-word diff.
+It is the cheapest Enso tier, and most work never needs to leave it. Moving up
+later is a one-word diff, so start here and change your mind when a smaller
+model has actually disappointed you.
 </Callout>
 
 ## The catalogue
@@ -63,23 +64,29 @@ curl https://api.hanzo.ai/v1/chat/completions \
   }'
 ```
 
-`/v1/chat/completions` is a standard chat-completions endpoint, so an OpenAI
-client you already have installed works against it once you point its base URL
-at `https://api.hanzo.ai/v1`. Swapping `enso-flash` for `zen5-coder` — or for
-any id in the table above — is the entire migration between models.
+Swapping `enso-flash` for `zen5-coder` — or for any id in the table above — is
+the entire migration between models.
 
 ## Listing them yourself
 
-The catalogue is public. No key, no account:
+`GET /v1/models` is the catalogue this page renders, and it takes a bearer
+token like every other endpoint:
 
 ```bash
-curl -s https://api.hanzo.ai/v1/models | jq '.summary'
+curl -s https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  | jq '.data[] | select(.owned_by == "hanzo" or .owned_by == "zenlm")'
 ```
 
-Each entry in `.data[]` carries its `id`, `context`, `pricing` in USD per
-million tokens, `features` and `provider`; `.families[]` names the curated
-groups. That response is what this page renders, so the two cannot disagree —
-and if you ever think they do, believe the endpoint.
+Every entry in `.data[]` carries the `id` you pass as `model`, the `owned_by`
+that trained it, a `premium` flag and a `pricing` object with `input` and
+`output`. Some also carry `context_window`, `provider`, `max_output_tokens`,
+`supports_tools` and `supports_vision` — those are present per model, not on
+every row, so read them rather than assume them. Rates and how they are billed
+are on [Pricing](/docs/pricing).
+
+That response is what this page renders, so the two cannot disagree — and if
+you ever think they do, believe the endpoint.
 
 ## Next
 

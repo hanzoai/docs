@@ -10,7 +10,7 @@ Hanzo Nexus is an enterprise AI knowledge base and agent management platform bas
 ## Features
 
 - **Knowledge Base Management**: RAG-powered document ingestion and retrieval
-- **Multi-Model Support**: ChatGPT, Claude, Llama, Ollama, HuggingFace
+- **Models**: enso and Zen by default, with Ollama, HuggingFace and outside providers connectable
 - **MCP Integration**: Model Context Protocol server management
 - **A2A Communication**: Agent-to-agent messaging and orchestration
 - **SSO Integration**: Built-in single sign-on via Hanzo IAM
@@ -86,8 +86,8 @@ const nexus = new HanzoNexus({
 // Create knowledge base
 const kb = await nexus.knowledgeBases.create({
   name: 'product-docs',
-  model: 'gpt-4o',
-  embeddingModel: 'text-embedding-3-large'
+  model: 'zen5',
+  embeddingModel: 'zen-embedding'
 })
 ```
 
@@ -138,7 +138,7 @@ await nexus.mcp.register({
 // Define agent
 const agent = await nexus.agents.create({
   name: 'code-reviewer',
-  model: 'claude-3-opus',
+  model: 'zen5-coder',
   systemPrompt: 'You are a code review expert...',
   tools: ['github', 'jira']
 })
@@ -153,10 +153,15 @@ await nexus.agents.message({
 
 ## Model Registry
 
-### Supported Providers
+### Providers you can connect
+
+Nexus calls Hanzo's own models by default — `enso` and Zen on `api.hanzo.ai`,
+with the key you already have. Connect an outside provider when a workflow
+needs a specific model from one.
 
 | Provider | Models |
 |----------|--------|
+| Hanzo | `enso`, `enso-ultra`, `zen5`, `zen5-coder`, `zen-embedding` |
 | OpenAI | GPT-4o, GPT-4 Turbo, o1 |
 | Anthropic | Claude 3 Opus, Sonnet, Haiku |
 | Ollama | Llama 3, Qwen3, Mistral |
@@ -193,7 +198,7 @@ await nexus.models.configure({
 ### API
 
 ```bash
-curl -X POST https://nexus.hanzo.ai/api/chat \
+curl -X POST https://nexus.hanzo.ai/v1/chat \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
