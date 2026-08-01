@@ -22,6 +22,13 @@ const CONTENT = path.join(APP_ROOT, 'content/docs');
 // authored here, so they are not ours to hold to our document.
 const SKIP = ['projects/'];
 
+/**
+ * Page trees written by a generator. A route on one of these came out of the
+ * document or off the MCP door, so an unknown route here is a bug in the
+ * generator and fails the build — unlike authored prose, which is reported.
+ */
+export const GENERATED = ['openapi/', 'start/', 'mcp-tools/'];
+
 const ENDPOINT = /`(\/v1\/[A-Za-z0-9_\-{}/.]*)`|(?:https?:\/\/[a-z.]*hanzo\.ai)(\/v1\/[A-Za-z0-9_\-{}/.]*)/g;
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -68,7 +75,7 @@ export function checkEndpoints(): { checked: number; unknown: Array<[string, str
 
 if (import.meta.main) {
   const { checked, unknown } = checkEndpoints();
-  const generated = unknown.filter(([f]) => f.startsWith('openapi/') || f.startsWith('start/'));
+  const generated = unknown.filter(([f]) => GENERATED.some((d) => f.startsWith(d)));
   console.log(`[endpoints] ${checked} endpoint mentions checked against the document`);
   if (generated.length) {
     console.error(`[endpoints] FAIL — ${generated.length} in GENERATED pages:`);

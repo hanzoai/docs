@@ -1,20 +1,24 @@
 import { buildRegistry } from '@/scripts/build-registry';
 import { genOpenapiPages } from './gen-openapi-pages';
 import { genFlowPages } from './gen-flow-pages';
+import { genMcpPages } from './gen-mcp-pages';
 import { syncCliCommands } from './sync-cli-commands';
 import { syncMcpTools } from './sync-mcp-tools';
 import { syncProjectDocs } from './sync-project-docs';
 import { sanitizeMdx } from './sanitize-mdx';
-import { checkEndpoints } from './check-endpoints';
+import { GENERATED, checkEndpoints } from './check-endpoints';
 
 async function main() {
   // The document first, then its projections: the reference (one page per
-  // product) and the six flows (each shown four ways). Flows need both the
-  // document and the CLI's command table, so they run after those land.
+  // product), the six flows (each shown four ways), and the MCP reference (one
+  // page per tool). Flows need both the document and the CLI's command table,
+  // and both flows and the MCP reference need the door's answer, so the syncs
+  // run first.
   await syncCliCommands();
   await syncMcpTools();
   await genOpenapiPages();
   await genFlowPages();
+  await genMcpPages();
 
   const tasks = [buildRegistry()];
   if (process.env.HANZO_DOCS_SYNC !== '0') {
@@ -31,7 +35,7 @@ async function main() {
   // prose that does is reported, because the fix there is someone's editorial
   // call, not the build's.
   const { checked, unknown } = checkEndpoints();
-  const generated = unknown.filter(([f]) => f.startsWith('openapi/') || f.startsWith('start/'));
+  const generated = unknown.filter(([f]) => GENERATED.some((d) => f.startsWith(d)));
   if (generated.length) {
     for (const [f, p] of generated.slice(0, 20)) console.error(`  ${f}: ${p}`);
     throw new Error(`${generated.length} generated pages name endpoints the document does not have`);
