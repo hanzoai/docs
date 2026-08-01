@@ -239,6 +239,61 @@ describe('exemplified — every page carries a call that parses', () => {
     expect(bad).toEqual([]);
   });
 
+  it('names every value it had to invent, so none reads as a declared default', () => {
+    // A `<placeholder>` announces itself. A number, a boolean and a timestamp
+    // cannot, so an unannounced one is indistinguishable from a value the API
+    // declares — the page would be inventing quietly. Checked against the
+    // RENDERED envelope, and the schema walk below is this test's own: it
+    // resolves a dotted path through the door's schema without asking the
+    // generator what it decided.
+    const nodeAt = (schema: any, path: string): any => {
+      const defs: Record<string, any> = schema?.$defs ?? {};
+      let node = schema?.properties?.[path.split('.')[0].replace(/\[\]$/, '')];
+      for (const seg of path.split('.').slice(1)) {
+        const bare = seg.replace(/\[\]$/, '');
+        if (node?.$ref?.startsWith('#/$defs/')) node = defs[node.$ref.slice(8)];
+        if (seg.endsWith('[]') || node?.type === 'array') node = node?.items ?? node;
+        node = node?.properties?.[bare];
+      }
+      return node ?? {};
+    };
+    /** Dotted paths of leaves a reader cannot tell are stand-ins. */
+    const opaque = (v: unknown, at: string): string[] => {
+      if (typeof v === 'number' || typeof v === 'boolean') return [at];
+      if (typeof v === 'string') return /^\d{4}-\d{2}-\d{2}T/.test(v) ? [at] : [];
+      if (Array.isArray(v)) return v.flatMap((x) => opaque(x, `${at}[]`));
+      if (v && typeof v === 'object')
+        return Object.entries(v).flatMap(([k, x]) => opaque(x, `${at}.${k}`));
+      return [];
+    };
+
+    const quiet: string[] = [];
+    let checked = 0;
+    for (const t of catalog.tools) {
+      const src = pageOf.get(t.name)!;
+      const schema = t.inputSchema ?? {};
+      const con = constraintsOf(mappedOps.get(t.name));
+      const args = JSON.parse(
+        src.match(/-d '([\s\S]*?)'\n```/)![1].replace(/\n {5}/g, '\n'),
+      ).params.arguments ?? {};
+      for (const [n, v] of Object.entries(args)) {
+        const c = con.get(n);
+        // A value either source declares is the API's own, whole subtree.
+        if (schema.properties?.[n]?.default !== undefined || c?.def || c?.enum.length) continue;
+        for (const p of opaque(v, n)) {
+          if (nodeAt(schema, p)?.default !== undefined) continue;
+          checked++;
+          if (!src.includes(`\`${p}\` hold`) && !src.includes(`\`${p}\`, `) && !src.includes(`\`${p}\` and `))
+            quiet.push(`${t.name}: ${p} = ${JSON.stringify(v)}`);
+        }
+      }
+    }
+    expect(quiet).toEqual([]);
+    // The catalogue really does force this: without it, hundreds of fabricated
+    // scalars would ship unattributed.
+    expect(checked).toBeGreaterThan(100);
+  });
+
   it('uses a value the operation accepts wherever it declares one', () => {
     // A placeholder where a real value exists is an invented example. Where the
     // operation enumerates a field's values, the call must carry one of them.

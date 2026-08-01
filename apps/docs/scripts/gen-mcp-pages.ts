@@ -333,48 +333,60 @@ function defsTables(schema: any): string[] {
 // ----------------------------------------------------------------- example
 
 /**
- * A value for one field.
+ * A value for one field, and a note of every value the reference had to invent.
  *
  * A REAL one wherever a source declares one — the operation's default, or the
  * first member of its enumerated set, which is a value the API accepts rather
  * than one we made up. Only where neither source declares a value does this
- * fall back to a typed placeholder, and a placeholder is written `<name>` so it
- * is obvious it is one.
+ * fall back to a stand-in.
+ *
+ * A stand-in is written `<name>` so it is visibly one — but only a string can
+ * be spelled that way. A number, a boolean and a timestamp have no placeholder
+ * form that is still valid JSON of their own type, so those are pushed onto
+ * `invented` by their dotted path, and the page names them under the call.
+ * Otherwise `"limit": 0` reads exactly like a declared default, which measured
+ * across this catalogue would be 249 fabricated values passed off as the API's
+ * own — the page would be inventing, quietly, on 149 of its pages.
  */
 function sample(
   node: any,
   name: string,
   defs: Record<string, any>,
-  con?: Constraint,
+  con: Constraint | undefined,
+  invented: string[],
+  at: string,
   depth = 0,
 ): any {
   if (node?.default !== undefined) return node.default;
   if (con?.def) return JSON.parse(con.def);
   if (con?.enum.length) return JSON.parse(con.enum[0]);
   const ref = refName(node?.$ref);
-  if (ref && depth < 3) return sample(defs[ref] ?? {}, name, defs, undefined, depth + 1);
+  if (ref && depth < 3) return sample(defs[ref] ?? {}, name, defs, undefined, invented, at, depth + 1);
   const t = Array.isArray(node?.type) ? node.type[0] : node?.type;
   switch (t) {
     case 'integer':
-      return 0;
     case 'number':
+      invented.push(at);
       return 0;
     case 'boolean':
+      invented.push(at);
       return false;
     case 'array': {
       if (depth >= 3) return [];
-      const inner = sample(node.items ?? {}, name, defs, undefined, depth + 1);
+      const inner = sample(node.items ?? {}, name, defs, undefined, invented, `${at}[]`, depth + 1);
       return inner === null ? [] : [inner];
     }
     case 'object': {
       if (depth >= 3 || !node.properties) return {};
       const out: Record<string, any> = {};
       for (const k of Object.keys(node.properties).sort())
-        out[k] = sample(node.properties[k], k, defs, undefined, depth + 1);
+        out[k] = sample(node.properties[k], k, defs, undefined, invented, `${at}.${k}`, depth + 1);
       return out;
     }
     case 'string':
-      return con?.format === 'date-time' ? '2026-01-01T00:00:00Z' : `<${name}>`;
+      if (con?.format !== 'date-time') return `<${name}>`;
+      invented.push(at);
+      return '2026-01-01T00:00:00Z';
     default:
       // The door declared no type. Say so in the value rather than picking one.
       return node?.properties ? {} : `<${name}>`;
@@ -390,22 +402,26 @@ function sample(
  * minimum to show, so every declared argument is included instead, because
  * dropping fields there would be teaching a guess about which matter.
  */
-function callEnvelope(tool: McpTool, con: Map<string, Constraint>): { body: string; minimal: boolean } {
+export function callEnvelope(
+  tool: McpTool,
+  con: Map<string, Constraint>,
+): { body: string; minimal: boolean; invented: string[] } {
   const schema = tool.inputSchema ?? {};
   const defs: Record<string, any> = schema.$defs ?? {};
   const declared = Object.keys(schema.properties ?? {}).sort();
   const required = declared.filter((n) => con.get(n)?.required || (schema.required ?? []).includes(n));
   const minimal = required.length > 0;
   const args: Record<string, any> = {};
+  const invented: string[] = [];
   for (const name of minimal ? required : declared) {
-    args[name] = sample(schema.properties![name], name, defs, con.get(name));
+    args[name] = sample(schema.properties![name], name, defs, con.get(name), invented, name);
   }
   const body = JSON.stringify(
     { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: tool.name, arguments: args } },
     null,
     2,
   );
-  return { body, minimal };
+  return { body, minimal, invented };
 }
 
 const curl = (body: string): string =>
@@ -493,7 +509,7 @@ function renderTool(tool: McpTool, ops: Operation[] | undefined, cat: McpCatalog
   L.push('');
 
   // 4. The call, built from the schema above.
-  const { body, minimal } = callEnvelope(tool, con);
+  const { body, minimal, invented } = callEnvelope(tool, con);
   L.push('## Call it');
   L.push('');
   L.push(
@@ -510,11 +526,20 @@ function renderTool(tool: McpTool, ops: Operation[] | undefined, cat: McpCatalog
   L.push('');
   L.push(...fence('bash', curl(body)));
   L.push('');
+  // Which values are the API's own and which this page had to invent, named
+  // field by field. A `<placeholder>` announces itself; `0`, `false` and a
+  // timestamp cannot, and an unannounced one reads as a declared default.
   L.push(
     (fields.length
       ? 'Values are the operation\'s own defaults and enumerated values where it declares them, and a ' +
         '`<placeholder>` where neither source declares one. '
       : '') +
+      (invented.length
+        ? `${conjoin(invented.map((n) => `\`${code(n)}\``))} ${invented.length === 1 ? 'holds a stand-in' : 'hold stand-ins'} that cannot be spelled that way — ` +
+          'JSON gives a number, a boolean and a timestamp no placeholder form — so ' +
+          `${invented.length === 1 ? 'that value is' : 'those values are'} this page's, not the API's. ` +
+          'Neither the door nor the operation declares one. '
+        : '') +
       '`tools/list` needs no credential; `tools/call` does — called without one the door answers HTTP 200 ' +
       'with a JSON-RPC result whose `isError` is set and whose text says what was missing. ' +
       '[How to get a key →](/docs/mcp-tools#credentials)',
@@ -724,9 +749,18 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
         : '.'),
   );
   L.push('');
+  // Which credential, in the document's words. Naming the accepted key formats
+  // in a sentence here would be a second copy of the security scheme's own
+  // description — the REST reference prints that one, and two copies drift.
+  const bearer = Object.entries<any>(doc.securitySchemes).find(
+    ([, s]) => s?.type === 'http' && s?.scheme === 'bearer' && s?.description,
+  );
   L.push(
-    'The door takes the same bearer credential as the REST API — a Hanzo IAM JWT or an `hk-` key from ' +
-      '[console.hanzo.ai](https://console.hanzo.ai) — in an `Authorization` header on the request:',
+    'The door takes the same bearer credential as the REST API' +
+      (bearer
+        ? ` — the document's \`${code(bearer[0])}\` scheme: ${text(bearer[1].description).replace(/\.$/, '')}`
+        : '') +
+      '. Send it in an `Authorization` header on the request:',
   );
   L.push('');
   L.push(
@@ -738,17 +772,18 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
   L.push('');
   L.push(
     'Set that header however your client sets request headers for an HTTP MCP server. One credential ' +
-      'reaches every tool, because one credential reaches every product.',
+      'reaches every tool, because one credential reaches every product — ' +
+      '[where keys come from →](/docs/api-keys)',
   );
   L.push('');
 
   L.push('## What is behind the tools');
   L.push('');
   L.push(
-    `Every tool is a projection of the same OpenAPI document that generates the REST reference, the SDKs and the CLI. ${cat.meta.count - unmapped} of the ${cat.meta.count} tools resolve to an operation in it, across ${groups.size - (unmapped ? 1 : 0)} products` +
+    'Every tool is a projection of the same OpenAPI document that generates the REST reference, the SDKs and the CLI. ' +
       (unmapped
-        ? `; ${unmapped} do not, and are [listed as such](/docs/mcp-tools/unmapped) rather than left out.`
-        : '.'),
+        ? `${cat.meta.count - unmapped} of the ${cat.meta.count} tools resolve to an operation in it, across ${groups.size - 1} products; ${unmapped} do not, and are [listed as such](/docs/mcp-tools/unmapped) rather than left out.`
+        : `Every one of the ${cat.meta.count} tools resolves to an operation in it, across ${groups.size} products.`),
   );
   L.push('');
   L.push(
