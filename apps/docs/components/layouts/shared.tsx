@@ -7,6 +7,12 @@ import { HanzoDocsIcon } from '@/app/layout.client';
 // Developers, Pricing, Enterprise — two of which resolved out to hanzo.ai, bouncing
 // a reader off mid-page. These four are how you actually reach Hanzo: over the API,
 // from the CLI, through MCP, or via an SDK. Each was probed 200 before landing.
+//
+// CLI does NOT point at /docs/cli. That section is fumadocs' own tooling, kept
+// from the fork — "the CLI tool that automates setups and installs components",
+// plus a Markdown previewer. 200, and about the wrong product. The `hanzo`
+// binary is documented at the URL below, and hanzo.ai's nav now names the same
+// four surfaces pointing at these same pages.
 export const linkItems: LinkItemType[] = [
   {
     text: 'API',
@@ -15,7 +21,7 @@ export const linkItems: LinkItemType[] = [
   },
   {
     text: 'CLI',
-    url: '/docs/cli',
+    url: '/docs/services/platform/getting-started/cli',
     active: 'nested-url',
   },
   {

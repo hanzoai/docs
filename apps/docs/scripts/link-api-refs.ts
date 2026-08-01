@@ -8,10 +8,17 @@ import { loadDocument } from './openapi-doc';
 // product that has an OpenAPI spec AND a prose guide, insert one prominent
 // "API reference" callout near the top of the guide.
 //
-// Source-derived (iterates the synced specs, not a hardcoded list) and
-// idempotent (skips a guide that already points at /docs/openapi/<svc>), so it
-// is safe to re-run after new products land. It edits committed guide MDX in
-// place — run it, review, commit.
+// Source-derived (iterates THE DOCUMENT, not a hardcoded list) and idempotent,
+// so it is safe to re-run. It edits committed guide MDX in place — run it,
+// review, commit.
+//
+// RECONCILES, not appends. It used to only ever add, which meant a callout
+// outlived the product it pointed at: when `db` was renamed `sql` the generated
+// page moved to /docs/openapi/sql and services/sql.mdx kept advertising
+// /docs/openapi/db — a 404 that nothing failed on. Twelve guides had drifted
+// that way. A callout whose product is no longer in the document is now
+// removed on the same pass that adds the missing ones, so one run leaves the
+// tree consistent with the document and a rename repairs itself.
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
@@ -30,11 +37,30 @@ function guideFile(svc: string): string | null {
     const f = path.join(CONTENT, GUIDE_FILE_OVERRIDES[svc]);
     return fs.existsSync(f) ? f : null;
   }
+  // `services/index.mdx` is the section landing. Matching it for the product
+  // named `index` would staple the Index reference onto the whole catalogue.
+  if (svc === 'index') return null;
   const flat = path.join(CONTENT, 'services', `${svc}.mdx`);
   if (fs.existsSync(flat)) return flat;
   const dir = path.join(CONTENT, 'services', svc, 'index.mdx');
   if (fs.existsSync(dir)) return dir;
   return null;
+}
+
+/** The callout this script writes, and the only shape it will remove. */
+const CALLOUT = /^> \*\*API reference\*\* · \[[^\]]*\]\(\/docs\/openapi\/([a-z0-9-]+)\)[^\n]*\n?/gm;
+
+function mdxFiles(dir: string, out: string[] = []): string[] {
+  for (const entry of fs.readdirSync(dir)) {
+    const full = path.join(dir, entry);
+    if (!fs.existsSync(full)) continue; // broken symlink / uninitialised submodule
+    const stat = fs.statSync(full);
+    if (stat.isDirectory()) {
+      // Vendored upstream docs are not ours to rewrite.
+      if (entry !== 'projects') mdxFiles(full, out);
+    } else if (entry.endsWith('.mdx')) out.push(full);
+  }
+  return out;
 }
 
 // Products and their titles come from THE document, the same source the
@@ -66,8 +92,29 @@ function insertCallout(src: string, block: string): string {
   return lines.join('\n');
 }
 
+/**
+ * Drop every callout pointing at a product the document no longer serves.
+ * Runs FIRST so the add pass below sees a clean slate — a guide whose product
+ * was renamed then gets the new callout in the same run.
+ */
+function prune(products: Set<string>): number {
+  let dropped = 0;
+  for (const file of mdxFiles(CONTENT)) {
+    const src = fs.readFileSync(file, 'utf8');
+    if (!src.includes('/docs/openapi/')) continue;
+    const next = src.replace(CALLOUT, (whole, svc: string) => {
+      if (products.has(svc)) return whole;
+      dropped++;
+      return '';
+    });
+    if (next !== src) fs.writeFileSync(file, next.replace(/\n{3,}/g, '\n\n'));
+  }
+  return dropped;
+}
+
 function main(): void {
   const specs = DOC.products.map((p) => p.name);
+  const dropped = prune(new Set(specs));
 
   let linked = 0;
   let already = 0;
@@ -90,7 +137,7 @@ function main(): void {
     linked++;
   }
 
-  console.log(`[link-api-refs] linked ${linked}, already-linked ${already}, no-guide ${missing.length}${missing.length ? ` (${missing.join(', ')})` : ''}`);
+  console.log(`[link-api-refs] dropped ${dropped}, linked ${linked}, already-linked ${already}, no-guide ${missing.length}${missing.length ? ` (${missing.join(', ')})` : ''}`);
 }
 
 main();
