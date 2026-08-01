@@ -41,16 +41,48 @@ const AUTOLINK = /<((?:https?|ftp|mailto):[^\s<>]+)>/g;
 /** One whole ESM import with a module specifier — the only header line we touch. */
 const IMPORT = /^import\s.*\sfrom\s+['"][^'"]+['"];?\s*$/;
 
-/** Blank line after the last import of the header, if markdown starts right on it. */
-function terminateImportHeader(lines: string[]): void {
+/** First line after the frontmatter and any blank lines — where the import header starts. */
+function headerStart(lines: string[]): number {
   let i = lines[0] === '---' ? lines.indexOf('---', 1) + 1 : 0;
   while (lines[i]?.trim() === '') i++;
+  return i;
+}
+
+// A ported doc's import header is dead, and this is the rule rather than a list
+// of bad specifiers, because the JSX side already decided it: for projects/**,
+// remarkPassthroughUnknownJsx (source.config.ts) rewrites every unknown
+// PascalCase component to a fragment AND clears its attributes, so no imported
+// binding is ever referenced by the rendered tree. Nothing reads these lines.
+//
+// Dead would be harmless; unresolvable is not. A specifier Next cannot resolve
+// fails the WHOLE build, not its page, and every doc platform ports its own
+// flavour of them — `@theme/CodeBlock` (Docusaurus), `./index.tsx?demo` (dumi),
+// `fumadocs-ui/components/tabs` (the upstream names of packages we fork and ship
+// as `@hanzo/docs-*`), `./partials/_setup.mdx`, `../CHANGELOG.md`. Chasing them
+// one pattern at a time just uncovers the next flavour — python-sdk and the icons
+// demo, then Detox behind them. The invariant covers all of them at once.
+//
+// Only the header: deeper in a page an `import` line is somebody's code sample.
+function dropImportHeader(lines: string[]): number {
+  let i = headerStart(lines);
+  let n = 0;
+  for (;;) {
+    while (i < lines.length && lines[i].trim() === '') i++;
+    if (i >= lines.length || !IMPORT.test(lines[i])) return n;
+    lines.splice(i, 1);
+    n++;
+  }
+}
+
+/** Blank line after the last import of the header, if markdown starts right on it. */
+function terminateImportHeader(lines: string[]): void {
+  let i = headerStart(lines);
   let last = -1;
   for (; IMPORT.test(lines[i] ?? ''); i++) last = i;
   if (last >= 0 && (lines[last + 1] ?? '').trim() !== '') lines.splice(last + 1, 0, '');
 }
 
-function sanitize(src: string): string {
+function sanitize(src: string, ported: boolean, stats: { dropped: number }): string {
   const lines = src.split('\n');
   let inFence = false;
   let fence = '';
@@ -67,14 +99,18 @@ function sanitize(src: string): string {
     }
     if (AUTOLINK.test(lines[i])) lines[i] = lines[i].replace(AUTOLINK, '$1');
   }
+  if (ported) stats.dropped += dropImportHeader(lines);
   terminateImportHeader(lines);
   return lines.join('\n');
 }
+
+const PORTED_DIR = path.join(CONTENT_DIR, 'projects');
 
 export function sanitizeMdx(): void {
   if (!fs.existsSync(CONTENT_DIR)) return;
   let scanned = 0;
   let fixed = 0;
+  const stats = { dropped: 0 };
   const walk = (dir: string) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const fp = path.join(dir, entry.name);
@@ -83,7 +119,7 @@ export function sanitizeMdx(): void {
       } else if (entry.name.endsWith('.mdx')) {
         scanned++;
         const orig = fs.readFileSync(fp, 'utf8');
-        const out = sanitize(orig);
+        const out = sanitize(orig, fp.startsWith(PORTED_DIR), stats);
         if (out !== orig) {
           fs.writeFileSync(fp, out);
           fixed++;
@@ -92,7 +128,10 @@ export function sanitizeMdx(): void {
     }
   };
   walk(CONTENT_DIR);
-  console.log(`[sanitize-mdx] scanned ${scanned} mdx, rewrote ${fixed} (autolinks, ESM blocks)`);
+  console.log(
+    `[sanitize-mdx] scanned ${scanned} mdx, rewrote ${fixed} ` +
+      `(autolinks, ESM blocks, ${stats.dropped} ported imports)`,
+  );
 }
 
 if (import.meta.main) sanitizeMdx();
