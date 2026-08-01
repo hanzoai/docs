@@ -1,7 +1,7 @@
 import { RenderContext } from '@/types';
-import { processDocument } from '@/utils/process-document';
+import { processDocument } from '@/utils/document/process';
 import { defaultShikiFactory } from '@hanzo/docs-core/highlight/shiki/full';
-import Slugger from 'github-slugger';
+import * as ClientBoundary from '@/ui/client/boundary.lazy';
 
 export async function renderContextFrom(input: string): Promise<RenderContext> {
   const schema = await processDocument(input);

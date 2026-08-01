@@ -14,7 +14,6 @@ import {
   useRef,
   useState,
 } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@hanzo/docs-ui/components/tabs';
 import { useTranslations } from '@/ui/client/i18n';
 import type {
   InfoTag,
@@ -22,13 +21,8 @@ import type {
   SchemaDataObjectProperty,
   SchemaUIGeneratedData,
 } from '@/ui/schema';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@hanzo/docs-ui/components/ui/collapsible';
 import { buttonVariants } from '@hanzo/docs-ui/components/ui/button';
-import { ChevronDown, FilterIcon } from 'lucide-react';
+import { CheckIcon, FilterIcon, LinkIcon } from 'lucide-react';
 import { Badge } from '@/ui/components/method-label';
 import { Popover, PopoverContent, PopoverTrigger } from '@hanzo/docs-ui/components/ui/popover';
 import { cn } from '@/utils/cn';

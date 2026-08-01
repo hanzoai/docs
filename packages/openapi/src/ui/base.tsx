@@ -25,6 +25,9 @@ import type { CodeUsageGeneratorRegistry, InlineCodeUsageGenerator } from '@/req
 import type { JSONSchema } from 'json-schema-typed';
 import type { BundledTheme, CodeOptionsThemes, CodeToHastOptionsCommon } from 'shiki';
 import { highlightHast, type ShikiFactory } from '@hanzo/docs-core/highlight/shiki';
+import type { ExampleRequestItem } from './operation/get-example-requests';
+import type { RequestTabsRenderContext } from './operation/request-tabs';
+import { compile } from '@fumari/json-schema-ts';
 
 export interface GenerateTypeScriptDefinitionsContext extends RenderContext {
   operation: NoReference<MethodInformation>;

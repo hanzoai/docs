@@ -1,6 +1,5 @@
+import type { TranslationsAPIExtension, TranslationValue } from '@hanzo/docs-core/i18n';
 import type { I18nUIConfig } from '@hanzo/docs-ui/i18n';
-import { deepmerge } from '@fastify/deepmerge';
-import type { TranslationsOption } from '@hanzo/docs-ui/contexts/i18n';
 
 export const defaultTranslations = {
   // General
