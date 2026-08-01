@@ -123,6 +123,18 @@ const SECTIONS: SectionGroup[] = [
 /** Flatten all items for route matching */
 const ALL_ITEMS = SECTIONS.flatMap((g) => g.items);
 
+/** The value held when the path matches no section. A select needs a value, so
+ *  "everything" is a sentinel rather than null. */
+const ALL = '__all__';
+
+/** value -> label, the whole vocabulary of this switcher. Base UI resolves the
+ *  trigger's text from `items`; given no map it prints the value itself, which
+ *  is how every docs page came to show `__all__` where the section name goes. */
+const LABELS: Record<string, string> = {
+  [ALL]: 'All Services',
+  ...Object.fromEntries(ALL_ITEMS.map((item) => [item.route, item.name])),
+};
+
 /** Deduplicate by route — keep first occurrence */
 const DEDUPED_SECTIONS: SectionGroup[] = (() => {
   const seen = new Set<string>();
@@ -153,39 +165,37 @@ export function ProjectSwitcher() {
   const pathname = usePathname();
 
   const current = findCurrentSection(pathname ?? '');
-  const value = current?.route ?? '__all__';
+  const value = current?.route ?? ALL;
 
+  // No eyebrow above the trigger: it read "Docs" inside the docs sidebar, over a
+  // control that now names the section itself.
   return (
-    <div className="flex flex-col gap-1.5">
-      <span className="text-xs font-semibold uppercase tracking-wide text-fd-muted-foreground">
-        Docs
-      </span>
-      <Select
-        value={value}
-        onValueChange={(next) => {
-          if (next && next !== '__all__') router.push(next);
-          else if (next === '__all__') router.push('/docs/services');
-        }}
-      >
-        <SelectTrigger aria-label="Section switcher">
-          <LayoutGrid className="h-3.5 w-3.5 shrink-0 text-fd-muted-foreground mr-1.5" />
-          <SelectValue placeholder="All Services" />
-        </SelectTrigger>
-        <SelectContent className="max-h-80">
-          <SelectItem value="__all__">All Services</SelectItem>
-          {DEDUPED_SECTIONS.map((group, idx) => (
-            <SelectGroup key={group.label}>
-              {idx > 0 && <SelectSeparator />}
-              <SelectLabel>{group.label}</SelectLabel>
-              {group.items.map((item) => (
-                <SelectItem key={item.route} value={item.route}>
-                  {item.name}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <Select
+      items={LABELS}
+      value={value}
+      onValueChange={(next) => {
+        if (next && next !== ALL) router.push(next);
+        else if (next === ALL) router.push('/docs/services');
+      }}
+    >
+      <SelectTrigger aria-label="Section switcher">
+        <LayoutGrid className="h-3.5 w-3.5 shrink-0 text-fd-muted-foreground mr-1.5" />
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent className="max-h-80">
+        <SelectItem value={ALL}>{LABELS[ALL]}</SelectItem>
+        {DEDUPED_SECTIONS.map((group, idx) => (
+          <SelectGroup key={group.label}>
+            {idx > 0 && <SelectSeparator />}
+            <SelectLabel>{group.label}</SelectLabel>
+            {group.items.map((item) => (
+              <SelectItem key={item.route} value={item.route}>
+                {item.name}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
