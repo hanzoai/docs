@@ -154,17 +154,17 @@ let guard = Guard::builder()
 ### Python (via Proxy)
 
 ```python
-from openai import OpenAI
+from hanzoai import Hanzo
 
-# Point any OpenAI-compatible client through guard-proxy
-client = OpenAI(
+# guard-proxy sits in front of the API; point the client at it
+client = Hanzo(
     api_key="your-key",
     base_url="http://localhost:8080/v1"  # guard-proxy
 )
 
 # All requests are now automatically sanitized
 response = client.chat.completions.create(
-    model="gpt-4o",
+    model="zen5",
     messages=[{"role": "user", "content": "My SSN is 123-45-6789"}]
 )
 # The LLM never sees the actual SSN
@@ -403,10 +403,10 @@ guard-mcp -- npx @hanzo/mcp serve
 
 <Cards>
   <Card title="Gateway" href="/docs/services/gateway">
-    Unified API gateway with LLM proxy routing to 100+ providers
+    The API gateway in front of Hanzo Cloud — routing, rate limiting, telemetry
   </Card>
   <Card title="Cloud" href="/docs/services/cloud">
-    Cloud Backend for LLM provider routing and management
+    Cloud Backend — inference, knowledge bases, and model management
   </Card>
   <Card title="IAM" href="/docs/services/iam">
     Identity and access management for authentication and authorization
