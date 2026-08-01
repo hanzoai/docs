@@ -1,13 +1,18 @@
 ---
 title: Hanzo Gateway
-description: Unified API gateway and LLM proxy — routes to 100+ AI providers
+description: The API gateway in front of Hanzo Cloud — one host and one key for every service.
 ---
 
 # Hanzo Gateway
 
 > **API reference** · [Hanzo Gateway API →](/docs/openapi/gateway) — every endpoint, generated from the OpenAPI spec.
 
-Hanzo Gateway is the unified, high-performance API gateway for all Hanzo services. It serves as the single entry point for LLM inference, commerce, authentication, analytics, and every other Hanzo backend -- with rate limiting, circuit breakers, header forwarding, and telemetry driven by declarative JSON configuration. Two independent gateway instances run on separate Kubernetes clusters, each with its own routing table and rate-limit policy.
+Hanzo Gateway is the front door to Hanzo Cloud. Every service — inference,
+commerce, authentication, analytics, storage — is reached through it, on one
+host and behind one key. It handles rate limiting, circuit breaking, header
+forwarding and telemetry, all driven by a declarative JSON config. Two
+independent instances run on separate Kubernetes clusters, each with its own
+routing table and rate-limit policy.
 
 **GitHub:** [github.com/hanzoai/gateway](https://github.com/hanzoai/gateway)
 **Docker:** `ghcr.io/hanzoai/gateway`
@@ -17,15 +22,15 @@ Hanzo Gateway is the unified, high-performance API gateway for all Hanzo service
 
 | Cluster | Domain | Purpose |
 |---------|--------|---------|
-| **hanzo-k8s** | `api.hanzo.ai` | All Hanzo services (LLM, Commerce, Auth, Analytics, Agents, Bot, etc.) |
+| **hanzo-k8s** | `api.hanzo.ai` | All Hanzo services (AI, Commerce, Auth, Analytics, Agents, Bot, etc.) |
 | **lux-k8s** | `api.lux.network` | Lux blockchain RPC (C-Chain, X-Chain, P-Chain, indexers) |
 
 Both endpoints terminate TLS via Cloudflare (Hanzo) or DigitalOcean Load Balancer (Lux) and proxy to the gateway on port 8080 inside the cluster.
 
 ## Features
 
-- **LLM Proxy**: OpenAI-compatible `/v1/*` endpoints routed to 100+ models via Cloud Backend and DO AI inference
-- **Unified Routing**: Single gateway fans out to 15+ backend services across 133+ endpoints (Cloud, Commerce, IAM, Analytics, Agents, Bot, Operative, KMS, Web3, Infra, Console, Team, Billing)
+- **Inference**: `/v1/*` — chat, embeddings, images and audio, served by Hanzo Engine and Cloud Backend
+- **Routing**: One gateway fans out to 15+ backend services across 133+ endpoints (Cloud, Commerce, IAM, Analytics, Agents, Bot, Operative, KMS, Web3, Infra, Console, Team, Billing)
 - **Rate Limiting**: Per-IP and global rate limits on every endpoint, enforced at the gateway layer before requests reach backends
 - **Circuit Breakers**: Automatic backend failure isolation prevents cascading failures across services
 - **Passthrough Encoding**: All traffic uses `no-op` encoding -- the gateway never transforms request or response bodies
@@ -118,7 +123,7 @@ curl https://api.hanzo.ai/v1/chat/completions \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "anthropic-claude-haiku-4.5",
+    "model": "zen5",
     "messages": [
       {"role": "user", "content": "Explain quantum computing in one paragraph."}
     ],
@@ -133,7 +138,7 @@ Response:
   "id": "chatcmpl-abc123",
   "object": "chat.completions",
   "created": 1740000000,
-  "model": "anthropic-claude-haiku-4.5",
+  "model": "zen5",
   "choices": [
     {
       "index": 0,
@@ -159,7 +164,7 @@ curl https://api.hanzo.ai/v1/chat/completions \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "openai-gpt-5-nano",
+    "model": "zen5-flash",
     "messages": [{"role": "user", "content": "Hello!"}],
     "stream": true
   }'
@@ -172,7 +177,7 @@ curl https://api.hanzo.ai/v1/embeddings \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "text-embedding-3-small",
+    "model": "zen-embedding",
     "input": "The quick brown fox jumps over the lazy dog"
   }'
 ```
@@ -184,7 +189,7 @@ curl https://api.hanzo.ai/v1/images/generations \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "dall-e-3",
+    "model": "zen-image",
     "prompt": "A futuristic city skyline at sunset",
     "n": 1,
     "size": "1024x1024"
@@ -208,7 +213,7 @@ from hanzoai import Hanzo
 client = Hanzo(api_key="your-key")
 
 response = client.chat.completions.create(
-    model="zen4-pro",
+    model="zen5-pro",
     messages=[{"role": "user", "content": "Hello!"}]
 )
 print(response.choices[0].message.content)
@@ -222,15 +227,19 @@ import Hanzo from '@hanzo/ai'
 const client = new Hanzo({ apiKey: 'your-key' })
 
 const response = await client.chat.completions.create({
-  model: 'zen4-pro',
+  model: 'zen5-pro',
   messages: [{ role: 'user', content: 'Hello!' }]
 })
 console.log(response.choices[0].message.content)
 ```
 
-### OpenAI SDK (Drop-in)
+### Existing HTTP clients
 
-Any OpenAI-compatible client works by changing the base URL:
+`/v1/chat/completions`, `/v1/embeddings` and `/v1/responses` take and return the
+same JSON shapes as the widely-implemented chat-completions format. That shape
+is an interchange format we do not own and had no reason to re-invent, so a
+client written against it works here once its base URL points at
+`https://api.hanzo.ai/v1` and it sends a Hanzo key:
 
 ```python
 from openai import OpenAI
@@ -241,39 +250,44 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="openai-gpt-5-nano",
+    model="zen5",
     messages=[{"role": "user", "content": "Hello!"}]
 )
 ```
 
-## Provider Routing
+Compatibility is about the envelope, not the contents. Model ids are not
+portable across vendors — `zen5` and `enso` exist only here.
 
-Chat and text completions are routed through the **Cloud Backend** (`cloud-api`), which selects the appropriate upstream provider based on the model ID prefix:
+## Upstream routing
 
-| Prefix | Provider | Upstream URL |
-|--------|----------|-------------|
-| `zen-` / `zen4-` | Zen models (Hanzo Engine) | `engine.hanzo.svc` |
-| `openai-` | OpenAI (via DO AI) | `inference.do-ai.run/v1` |
-| `anthropic-` | Anthropic (via DO AI) | `inference.do-ai.run/v1` |
-| `meta-` | Meta models (via DO AI) | `inference.do-ai.run/v1` |
-| `mistral-` | Mistral models (via DO AI) | `inference.do-ai.run/v1` |
-| `google-` | Google models (via DO AI) | `inference.do-ai.run/v1` |
+Chat and text completions go through the **Cloud Backend** (`cloud-api`), which
+reads the model id and picks the upstream that serves it.
+
+Our own models — the `enso` and `zen` families — are served by Hanzo Engine
+inside the cluster. Models from outside labs are carried too, and reaching one
+means naming its id on this same endpoint with this same key; Cloud Backend
+dispatches those to their upstream.
+
+| Model id | Served by | Upstream |
+|----------|-----------|----------|
+| `enso`, `enso-flash`, `enso-ultra` | Hanzo Engine | `engine.hanzo.svc` |
+| `zen5`, `zen5-pro`, `zen5-coder`, `zen5-flash`, `zen-*` | Hanzo Engine | `engine.hanzo.svc` |
+| vendor-prefixed ids (`openai-`, `anthropic-`, `meta-`, `mistral-`, `google-`) | outside lab | `inference.do-ai.run/v1` |
 
 Embeddings, images, audio, and async-invoke endpoints bypass Cloud Backend and route directly to DO AI (`inference.do-ai.run`).
 
-### Model ID Format
+### Model ids
 
-Model IDs follow the pattern `{provider}-{model-name}`. Examples:
+Hanzo models are named plainly — `enso`, `zen5`, `zen5-pro`, `zen-embedding`.
+There is no vendor prefix on them, because there is no vendor between you and
+them. Models from outside labs carry a `{lab}-{model}` prefix so the dispatch is
+unambiguous.
 
-```
-zen4-pro
-zen4-mini
-openai-gpt-5-nano
-anthropic-claude-haiku-4.5
-meta-llama-3.3-70b-instruct
-mistral-small-3.1-24b-instruct
-google-gemini-2.0-flash-001
-```
+`best` is not one model but a choice we keep current: it resolves to whichever
+model we would pick for general work today. Name a specific id instead whenever
+you need the answer to be reproducible.
+
+`GET /v1/models` is the source of truth for the live catalogue.
 
 ## Rate Limiting
 

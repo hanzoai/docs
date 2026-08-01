@@ -1,19 +1,19 @@
 ---
 title: "Hanzo AI API"
-description: "Unified API that routes requests to 100+ LLM providers through a single OpenAI-compatible API with smart routing, cost tracking, and provider fallback."
+description: "Hanzo's inference API. Serves the Zen model family at api.hanzo.ai/v1, with cost tracking, budgets, and fallback routing. The server behind it is open source, so you can run it yourself."
 ---
 
 ## Overview
 
-Hanzo AI API is a **unified API** that routes requests to 100+ model providers through a single OpenAI-compatible API, with Hanzo routing, cost tracking, and provider fallback. Powers `api.hanzo.ai/v1`.
+The Hanzo AI API is Hanzo's inference API. It serves the Zen model family at `api.hanzo.ai/v1`, tracks cost per request, enforces budgets, and fails over between backends. The server is open source (`github.com/hanzoai/llm`), so you can also run it inside your own network against backends you choose.
 
 ### Why Hanzo AI API?
 
-- **One endpoint, all models**: OpenAI, Anthropic, Google, Meta, Mistral, Zen + 100 more
-- **Smart routing**: Load balancing, fallback chains, cost optimization
+- **Zen models**: `enso`, `zen5`, `zen5-coder`, `zen-vl`, `zen-embedding` and the rest of the family, served directly
 - **Cost tracking**: Per-request attribution via Hanzo Console
-- **Self-hostable**: Run your own gateway with custom provider keys
-- **Rate limit handling**: Automatic retry with provider rotation
+- **Budgets and rate limits**: Spend caps and concurrency limits per key
+- **Fallback routing**: Retry on a second backend when the first returns 429, 500, or times out
+- **Self-hostable**: Run it behind your firewall with your own keys
 
 ### Open source
 
@@ -21,16 +21,16 @@ Repo: `github.com/hanzoai/llm`.
 
 ## When to use
 
+- Calling Zen models over HTTP
 - Running centralized model access for your team
-- Routing between multiple AI providers
 - Cost tracking and budget enforcement
-- Self-hosting LLM access behind your firewall
-- Adding custom models or providers
+- Self-hosting model access behind your firewall
+- Adding your own models or backends
 
 ## Hard requirements
 
-1. **At least one provider API key** (OpenAI, Anthropic, etc.)
-2. **Port 4000** available (default)
+1. **An API key** — `HANZO_API_KEY` for `api.hanzo.ai`, or a key for whichever backend you point a self-hosted instance at
+2. **Port 4000** available (default, self-hosted)
 3. **PostgreSQL** for logging (optional)
 
 ## Quick reference
@@ -44,28 +44,62 @@ Repo: `github.com/hanzoai/llm`.
 | Dashboard | `https://console.hanzo.ai` |
 | Repo | `github.com/hanzoai/llm` |
 
-## One-file quickstart
+## First request
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer ${HANZO_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen5",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+## Zen models
+
+Zen is Hanzo's own model family, trained by Hanzo and served on this API. Current ids:
+
+| Id | Use |
+|----|-----|
+| `enso`, `enso-flash`, `enso-ultra` | General reasoning, three sizes |
+| `zen5`, `zen5-pro`, `zen5-flash` | General chat, three sizes |
+| `zen5-coder` | Code |
+| `zen-vl` | Vision-language |
+| `zen-embedding`, `zen-rerank` | Retrieval |
+| `zen-image`, `zen-video`, `zen-voice`, `zen-music`, `zen-foley` | Generation |
+| `zen-guard` | Safety classification |
+| `best` | Routes to the strongest model available for the request |
+
+See `hanzo/zenlm.md` for architecture and local inference.
+
+## Self-hosting
 
 ### Docker
 
 ```bash
 docker run -d --name hanzo-llm \
   -p 4000:4000 \
-  -e OPENAI_API_KEY="${OPENAI_API_KEY}" \
-  -e ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY}" \
+  -e HANZO_MASTER_KEY="${HANZO_MASTER_KEY}" \
+  -e HANZO_API_KEY="${HANZO_API_KEY}" \
   ghcr.io/hanzoai/llm:latest
 ```
 
 ### Config file
 
+A self-hosted instance serves whatever you put in `model_list`. Point entries at your own inference servers, at outside providers using keys you supply, or at both.
+
 ```yaml
 # config.yaml
 model_list:
-  - model_name: zen-70b
+  # Your own inference server (Hanzo Engine, vLLM, Ollama, ...)
+  - model_name: local
     llm_params:
-      model: together_ai/Qwen/Qwen3-235B-A22B
-      api_key: os.environ/TOGETHER_API_KEY
+      model: openai/local
+      api_base: http://engine.hanzo.svc.cluster.local:8000/v1
+      api_key: os.environ/HANZO_ENGINE_KEY
 
+  # Outside providers, with keys you supply
   - model_name: gpt-4o
     llm_params:
       model: openai/gpt-4o
@@ -80,12 +114,14 @@ router_settings:
   routing_strategy: least-busy
   num_retries: 3
   fallbacks:
-    - zen-70b: [gpt-4o, claude-sonnet]
+    - local: [gpt-4o, claude-sonnet]
 
 general_settings:
-  master_key: os.environ/LITELLM_MASTER_KEY
+  master_key: os.environ/HANZO_MASTER_KEY
   database_url: os.environ/DATABASE_URL
 ```
+
+Zen models are served from `api.hanzo.ai/v1` — a self-hosted instance reaches them the same way any other client does, with your `HANZO_API_KEY`.
 
 ### Make commands
 
@@ -99,32 +135,34 @@ docker compose up -d  # Alternative
 
 ### Test request
 
+Against a fresh self-hosted instance, the master key is also a valid caller key:
+
 ```bash
 curl http://localhost:4000/v1/chat/completions \
-  -H "Authorization: Bearer ${LITELLM_MASTER_KEY}" \
+  -H "Authorization: Bearer ${HANZO_MASTER_KEY}" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "zen-70b",
+    "model": "local",
     "messages": [{"role": "user", "content": "Hello!"}]
   }'
 ```
 
 ## Core Concepts
 
-### Provider Routing
+### Routing
 
 ```
 Client Request
     |
     v
 +------------------+
-|  AI API     |
+|  AI API          |
 |  (port 4000)     |
 +------------------+
 | Router:          |
-| +- least-busy    |-->  OpenAI
-| +- fallback      |-->  Anthropic
-| +- cost-based    |-->  Together AI
+| +- least-busy    |-->  Backend A
+| +- fallback      |-->  Backend B
+| +- cost-based    |-->  Backend C
 +------------------+    ^
 | Logging:         |    |
 | +- PostgreSQL    |    |
@@ -134,12 +172,12 @@ Client Request
 
 ### Fallback Chains
 
-When primary provider fails (429, 500, timeout), gateway automatically routes to fallback:
+When a backend fails (429, 500, timeout), the router retries against the next entry:
 
 ```yaml
 fallbacks:
-  - zen-70b: [gpt-4o, claude-sonnet]  # Try zen -> GPT-4o -> Claude
-  - gpt-4o: [claude-sonnet]            # Try GPT-4o -> Claude
+  - local: [gpt-4o, claude-sonnet]
+  - gpt-4o: [claude-sonnet]
 ```
 
 ### Budget & Rate Limits
@@ -150,12 +188,6 @@ general_settings:
   budget_duration: 1m          # Reset monthly
   max_parallel_requests: 100   # Concurrent limit
 ```
-
-### Zen Model Mapping
-
-Zen models map to upstream providers (private config in `github.com/hanzoai/zen` gateway/config.yaml):
-
-**BRAND POLICY**: Never reference upstream model names in public-facing contexts. Zen models are presented as Hanzo's own architecture: **Zen MoDE (Mixture of Diverse Experts)**.
 
 ## Production Deployment
 
@@ -176,7 +208,7 @@ spec:
         ports:
         - containerPort: 4000
         env:
-        - name: LITELLM_MASTER_KEY
+        - name: HANZO_MASTER_KEY
           valueFrom:
             secretKeyRef:
               name: llm-secrets
@@ -188,18 +220,22 @@ spec:
               key: database-url
 ```
 
+## HTTP clients
+
+`/v1/chat/completions` takes and returns the chat-completions JSON shape, so an HTTP client already written against that shape works once its base URL points at `https://api.hanzo.ai/v1` and it sends your `HANZO_API_KEY`.
+
 ## Troubleshooting
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| 401 on requests | Wrong master key | Check LITELLM_MASTER_KEY |
-| Provider timeout | Upstream provider slow | Increase timeout or add fallback |
+| 401 on requests | Wrong master key | Check `HANZO_MASTER_KEY` |
+| Backend timeout | Upstream backend slow | Increase timeout or add a fallback |
 | Cost not tracking | No DATABASE_URL | Add PostgreSQL connection |
-| Model not found | Not in config | Add to config.yaml |
+| Model not found | Not in config | Add to `config.yaml` |
 
 ## Related Skills
 
-- `hanzo/hanzo-chat.md` - Chat API (uses this gateway)
+- `hanzo/hanzo-chat.md` - Chat UI (calls this API)
 - `hanzo/hanzo-console.md` - Observability (receives cost data)
 - `hanzo/python-sdk.md` - Client library
 - `hanzo/zenlm.md` - Zen model family

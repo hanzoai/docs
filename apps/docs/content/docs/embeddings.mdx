@@ -1,34 +1,34 @@
 ---
 icon: Binary
 title: Hanzo Embeddings
-description: Generate, store, and search vector embeddings at scale — an OpenAI-compatible embeddings API on the Hanzo gateway that pairs with Vector.
+description: Generate, store, and search vector embeddings at scale — the embeddings endpoint on Hanzo Cloud, serving our own zen-embedding and pairing with Vector.
 ---
 
 # Hanzo Embeddings
 
-Hanzo Embeddings turns text into vectors through a single OpenAI-compatible endpoint on the AI API. Generate embeddings with any supported model, then store and query them in [Vector](/docs/vector) for semantic search and RAG.
+Hanzo Embeddings turns text into vectors on the AI API — one endpoint, the same `hk-` key as everything else. Generate embeddings, then store and query them in [Vector](/docs/vector) for semantic search and RAG.
 
 ## Generate Embeddings
 
-The endpoint is drop-in compatible with the OpenAI embeddings API, so existing SDKs work by pointing at `api.hanzo.ai`.
+`zen-embedding` is ours, and the default:
 
 ```bash
 curl https://api.hanzo.ai/v1/embeddings \
   -H "Authorization: Bearer hk-..." \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "text-embedding-3-small",
+    "model": "zen-embedding",
     "input": "Hanzo is an AI cloud platform."
   }'
 ```
 
-Response (OpenAI shape):
+Response:
 
 ```json
 {
   "object": "list",
   "data": [{ "object": "embedding", "index": 0, "embedding": [0.021, -0.014, "..."] }],
-  "model": "text-embedding-3-small",
+  "model": "zen-embedding",
   "usage": { "prompt_tokens": 8, "total_tokens": 8 }
 }
 ```
@@ -40,12 +40,12 @@ Pass an array of strings as `input` to embed a batch in one request.
 Provision a [Vector](/docs/vector) collection whose `dimensions` match your model, then upsert the returned vectors and query for nearest neighbors.
 
 ```python
-from openai import OpenAI
+from hanzoai import Hanzo
 
-client = OpenAI(api_key="hk-...", base_url="https://api.hanzo.ai/v1")
+client = Hanzo(api_key="hk-...")
 
 vecs = client.embeddings.create(
-    model="text-embedding-3-small",
+    model="zen-embedding",
     input=["first document", "second document"],
 )
 # Upsert vecs.data[i].embedding into your Vector collection, then search.
@@ -55,16 +55,18 @@ vecs = client.embeddings.create(
 
 | Model | Dimensions | Notes |
 |-------|-----------|-------|
-| `text-embedding-3-small` | 1536 | Fast, low-cost default |
-| `text-embedding-3-large` | 3072 | Highest quality |
-| `bge-base-en-v1.5` | 768 | Open-weight, self-hostable |
+| `zen-embedding` | 1024 | Default. Hanzo's own embedding model. |
 
-Model availability and pricing follow the AI API. Because embeddings share the gateway's per-key budgets and rate limits, the same `hk-` key governs spend across chat and embeddings.
+The catalogue also carries open-weight embedding models such as `bge-m3`. `GET /v1/models` lists every id this endpoint accepts — see [Models](/docs/models). Whichever you pick, set your Vector collection's `dimensions` from the length of the vector you actually get back rather than assuming it.
+
+Pricing follows the AI API. Because embeddings share the gateway's per-key budgets and rate limits, the same `hk-` key governs spend across chat and embeddings.
+
+`/v1/embeddings` takes and returns the same JSON shapes as the widely-implemented embeddings format, so an HTTP client written against it works here once its base URL points at `https://api.hanzo.ai/v1` and it sends a Hanzo key.
 
 ## Related
 
 - [Vector](/docs/vector) — store and search the embeddings you generate
 - [Search](/docs/search) — hybrid full-text + semantic ranking
-- [AI API](/docs/llm) — one API for 200+ models, including embeddings
+- [AI API](/docs/llm) — chat, embeddings, images and reranking on one host
 - [API Keys](/docs/api-keys) — budgets and rate limits per key
 - [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

@@ -12,10 +12,10 @@ Hanzo Cloud is the core AI Cloud OS that powers `api.hanzo.ai`. It provides a un
 ## Features
 
 - **Three Protocols**: REST API, MCP (Model Context Protocol), ZAP (Zero-overhead API Protocol)
-- **Model Gateway**: Route inference requests across 50+ models and providers
+- **Model Gateway**: One host and one key for inference — `enso` and Zen served first-party
 - **Knowledge Base**: RAG-powered document stores with vector embeddings
 - **Container Cloud**: Kubernetes application templates and management
-- **Multi-Provider**: OpenAI, Anthropic, Fireworks, DO-AI, and custom Zen models
+- **Outside Providers**: Connect Anthropic, OpenAI, Fireworks or DO-AI when a workflow needs a specific model
 - **IAM Authentication**: OAuth2/OIDC via Hanzo IAM, API keys (`hk-*`), widget keys (`hz-*`)
 - **Usage Billing**: Per-request metering via Hanzo Commerce API
 - **Rate Limiting**: Dynamic tier-based limits (free → enterprise)
@@ -31,9 +31,9 @@ Hanzo Cloud is the core AI Cloud OS that powers `api.hanzo.ai`. It provides a un
 │  ┌─────────────────────┐    ┌──────────────────────────────┐    │
 │  │   ZAP Model Gateway │    │     Knowledge / RAG          │    │
 │  │  ┌───────┐ ┌──────┐ │    │  ┌────────┐  ┌───────────┐  │    │
-│  │  │OpenAI │ │Zen   │ │    │  │ Stores │  │ Vectors   │  │    │
-│  │  │Anthro │ │Models│ │    │  │ (docs) │  │ (embeds)  │  │    │
-│  │  │Firew. │ │      │ │    │  └────────┘  └───────────┘  │    │
+│  │  │enso   │ │OpenAI│ │    │  │ Stores │  │ Vectors   │  │    │
+│  │  │Zen    │ │Anthro│ │    │  │ (docs) │  │ (embeds)  │  │    │
+│  │  │models │ │Firew.│ │    │  └────────┘  └───────────┘  │    │
 │  │  └───────┘ └──────┘ │    └──────────────────────────────┘    │
 │  └─────────────────────┘                                        │
 │                                                                  │
@@ -68,14 +68,14 @@ curl -X POST https://api.hanzo.ai/v1/add-token \
   -d '{"name": "my-key", "organization": "hanzo"}'
 ```
 
-### 2. Chat Completion (OpenAI-Compatible)
+### 2. Chat Completion
 
 ```bash
 curl https://api.hanzo.ai/v1/chat/completions \
   -H "Authorization: Bearer hk-your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "zen4-mini",
+    "model": "zen5-flash",
     "messages": [{"role": "user", "content": "Hello"}]
   }'
 ```
@@ -83,15 +83,12 @@ curl https://api.hanzo.ai/v1/chat/completions \
 ### 3. SDK Usage
 
 ```typescript
-import OpenAI from 'openai'
+import Hanzo from '@hanzo/ai'
 
-const client = new OpenAI({
-  baseURL: 'https://api.hanzo.ai/v1',
-  apiKey: 'hk-your-api-key'
-})
+const client = new Hanzo({ apiKey: 'hk-your-api-key' })
 
 const response = await client.chat.completions.create({
-  model: 'zen4-mini',
+  model: 'zen5-flash',
   messages: [{ role: 'user', content: 'Hello' }]
 })
 ```
@@ -102,17 +99,23 @@ Hanzo Cloud exposes three protocols for accessing AI services:
 
 | Protocol | Transport | Use Case |
 |----------|-----------|----------|
-| **REST** | HTTPS (JSON) | Standard OpenAI-compatible API for chat completions, embeddings, models |
+| **REST** | HTTPS (JSON) | Chat completions, embeddings and model listing over plain JSON |
 | **MCP** | stdio / SSE | Model Context Protocol — 260+ tools for AI agents (filesystem, search, browser, etc.) |
 | **ZAP** | WebSocket (binary) | Zero-overhead API Protocol — native binary streaming for low-latency inference |
 
-### REST (OpenAI-Compatible)
+### REST
 
 ```bash
 curl https://api.hanzo.ai/v1/chat/completions \
   -H "Authorization: Bearer hk-your-key" \
-  -d '{"model": "zen4-mini", "messages": [{"role": "user", "content": "Hello"}]}'
+  -d '{"model": "zen5-flash", "messages": [{"role": "user", "content": "Hello"}]}'
 ```
+
+`/v1/chat/completions`, `/v1/embeddings` and `/v1/models` take and return the
+chat-completions JSON shape, so an HTTP client already written against it works
+here once its base URL points at `https://api.hanzo.ai/v1` and it sends an
+`hk-*` key. Model ids do not carry across vendors — `zen5` and `enso` are Hanzo
+models and resolve only here.
 
 ### MCP (Model Context Protocol)
 

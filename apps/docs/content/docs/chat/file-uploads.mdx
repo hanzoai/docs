@@ -52,11 +52,11 @@ services:
 
 ```bash
 # Embeddings provider (required)
-RAG_OPENAI_API_KEY=sk-...          # Or use HANZO_API_KEY with Hanzo embeddings
+RAG_OPENAI_API_KEY=hk-your-api-key  # a Hanzo key
+RAG_OPENAI_BASEURL=https://api.hanzo.ai/v1
 
-# Provider selection
-EMBEDDINGS_PROVIDER=openai          # openai, azure, huggingface, huggingfacetei, ollama
-EMBEDDINGS_MODEL=text-embedding-3-small
+# Embeddings model
+EMBEDDINGS_MODEL=zen-embedding
 
 # Chunking parameters
 CHUNK_SIZE=1500                     # Characters per chunk
@@ -70,14 +70,16 @@ POSTGRES_USER=rag
 POSTGRES_PASSWORD=your-password
 ```
 
-### Using Hanzo Embeddings
+### Pointing embeddings elsewhere
 
-To use Zen embeddings instead of OpenAI:
+The RAG API's key and base-URL variables are named for the wire format they
+speak, not for a particular vendor. Leave them pointed at `api.hanzo.ai` to use
+`zen-embedding`, or repoint them at another embeddings service that takes the
+same request shape:
 
 ```bash
-RAG_OPENAI_API_KEY=${HANZO_API_KEY}
-RAG_OPENAI_BASEURL=https://api.hanzo.ai/v1
-EMBEDDINGS_MODEL=zen3-embedding
+RAG_OPENAI_BASEURL=https://your-embeddings-host/v1
+EMBEDDINGS_MODEL=your-model-id
 ```
 
 ## Usage Tips

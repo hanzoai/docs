@@ -1,19 +1,19 @@
 ---
 title: Hanzo Chat
-description: AI chat platform with Zen models, 100+ third-party models, MCP tools, and agents
+description: The chat platform on Hanzo Cloud — enso and Zen models, MCP tools, agents, and conversation history.
 ---
 
 # Hanzo Chat
 
-Hanzo Chat is a production-ready AI chat platform. It ships first-party Zen models alongside 100+ third-party models from OpenAI, Anthropic, Google, Meta, and Mistral. Built-in MCP tool support, agents, file uploads, vision, and conversation history make it a complete chat solution for teams and products.
+Hanzo Chat is the chat platform on Hanzo Cloud. It runs our own models — the **enso** frontier family and the **Zen** open-weight family — with MCP tools, agents, file uploads, vision and conversation history. Models from outside labs are carried too, and appear in the same model menu.
 
 ## Features
 
-- **Zen Models**: Flagship, reasoning, code, vision, multimodal, edge, safety, and embeddings
-- **100+ Third-Party Models**: OpenAI, Anthropic, Google, Meta, Mistral, Together, Groq, and more
+- **enso**: The frontier family — `enso-flash`, `enso`, `enso-ultra`
+- **Zen**: Chat, reasoning, code, vision, safety, embeddings and the other modalities
 - **MCP Tools**: Model Context Protocol integration for extending model capabilities
 - **Agents**: Configurable AI agents with custom system prompts and tool access
-- **Vision & Multimodal**: Image analysis via zen3-vl, zen3-omni, GPT-4o, Claude
+- **Vision & Multimodal**: Image analysis via `zen-vl`
 - **File Uploads**: Upload documents, images, and code for analysis
 - **Streaming**: Real-time streaming responses for all models
 - **Conversation History**: Persistent chat history backed by MongoDB
@@ -114,24 +114,21 @@ cache: true
 
 endpoints:
   hanzo:
-    # Zen models + 100+ third-party via Hanzo Gateway
+    # The enso and Zen families, on api.hanzo.ai
     baseURL: "https://api.hanzo.ai/v1"
     apiKey: "${HANZO_API_KEY}"
     models:
       default:
-        - zen4
-        - zen4-ultra
-        - zen4-pro
-        - zen4-max
-        - zen4-mini
-        - zen4-thinking
-        - zen4-coder
-        - zen4-coder-pro
-        - zen4-coder-flash
-        - zen3-omni
-        - zen3-vl
-        - zen3-nano
-        - zen3-guard
+        - enso
+        - enso-flash
+        - enso-ultra
+        - zen5
+        - zen5-pro
+        - zen5-coder
+        - zen5-flash
+        - zen-vl
+        - zen-guard
+      fetch: true  # Auto-discover the rest of the catalogue, carried models included
 
   # Direct provider endpoints (optional)
   openAI:
@@ -146,53 +143,47 @@ endpoints:
     apiKey: "${ANTHROPIC_API_KEY}"
     models:
       default:
-        - zen5
         - claude-opus-4-20250514
 ```
 
 ## Models
 
-### Zen Models (First-Party)
+### Our models
 
-All Zen models are available by default:
+Available by default. Rates are USD per 1M tokens.
 
-| Model | Type | Input $/MTok | Output $/MTok |
-|-------|------|-------------|---------------|
-| zen4 | Flagship | $3.00 | $9.60 |
-| zen4-ultra | Max Reasoning | $3.00 | $9.60 |
-| zen4-pro | High Capability | $2.70 | $2.70 |
-| zen4-max | Large Documents | $3.60 | $3.60 |
-| zen4-mini | Fast & Efficient | $0.60 | $0.60 |
-| zen4-thinking | Chain-of-Thought | $2.70 | $2.70 |
-| zen4-coder | Code Generation | $3.60 | $3.60 |
-| zen4-coder-pro | Premium Code | $4.50 | $4.50 |
-| zen4-coder-flash | Fast Code | $1.50 | $1.50 |
-| zen3-omni | Multimodal | $1.80 | $6.60 |
-| zen3-vl | Vision-Language | $0.45 | $1.80 |
-| zen3-nano | Edge | $0.30 | $0.30 |
-| zen3-guard | Content Safety | $0.30 | $0.30 |
-| zen3-embedding | Embeddings | $0.39 | -- |
+| Model | For | Input | Output |
+|-------|-----|-------|--------|
+| `enso-ultra` | Frontier work that has to be right | $5.00 | $25.00 |
+| `enso` | The frontier default | $4.00 | $20.00 |
+| `enso-flash` | Frontier quality where latency matters | $2.00 | $4.00 |
+| `zen5` | General chat and reasoning | $4.18 | $13.20 |
+| `zen5-pro` | Longer, harder reasoning | $4.18 | $8.35 |
+| `zen5-coder` | Code generation and review | $4.18 | $13.20 |
+| `zen5-flash` | High-volume work where latency matters | $0.34 | $0.67 |
+| `zen-vl` | Images in, text out | $0.60 | $1.80 |
+| `zen-guard` | Safety classification | $1.95 | $1.95 |
+| `zen-image` | Image generation | $0.24 | -- |
+| `zen-embedding` | Embeddings | $0.06 | $0.06 |
+| `zen-rerank` | Reordering retrieval results | $0.03 | $0.03 |
 
-### Third-Party Models
+`zen-voice`, `zen-music`, `zen-video` and `zen-foley` cover the remaining
+modalities. `GET /v1/models` is the source of truth for the live catalogue and
+current rates.
 
-100+ models from all major providers are available through the Hanzo Gateway:
+### Carried models
 
-| Provider | Notable Models |
-|----------|---------------|
-| **OpenAI** | GPT-4o, o3, o4-mini |
-| **Anthropic** | Claude Opus 4, Claude Sonnet 4.5 |
-| **Google** | Gemini 2.x |
-| **Meta** | Llama 3.x, Llama 4 |
-| **Mistral** | Mistral Large, Codestral |
-| **Together AI** | 50+ open models |
-| **Groq** | Llama, Mixtral (fastest inference) |
+Models from outside labs are carried as well, and you reach one by naming its id
+on this same endpoint with this same key. That is a convenience for teams who
+need a specific outside model in one workflow. `GET /v1/models` lists what is
+available today.
 
 ## Pricing
 
 - **$5 free credit** on every new account (expires in 30 days)
 - **Prepaid billing** -- add credits via [console.hanzo.ai](https://console.hanzo.ai)
 - **$1 minimum balance** required to make API calls
-- **Starting at $0.30/MTok** (zen3-nano)
+- **Starting at $0.34/MTok** input (`zen5-flash`)
 - **No surprise bills** -- service stops when credits are depleted
 
 See [Zen Pricing](/docs/services/pricing) for the full pricing table.
@@ -225,7 +216,7 @@ Create custom AI agents with specific system prompts, model selection, and tool 
 # chat.yaml (agents section)
 agents:
   - name: "Code Reviewer"
-    model: "zen4-coder"
+    model: "zen5-coder"
     systemPrompt: |
       You are a senior code reviewer. Analyze code for bugs,
       security issues, and style improvements.
@@ -234,7 +225,7 @@ agents:
       - web
 
   - name: "Research Assistant"
-    model: "zen4-pro"
+    model: "zen5-pro"
     systemPrompt: |
       You are a research assistant. Search the web, analyze
       documents, and provide citations.
@@ -275,7 +266,7 @@ curl https://api.hanzo.ai/v1/chat/completions \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "zen4",
+    "model": "zen5",
     "messages": [{"role": "user", "content": "Hello"}]
   }'
 ```
@@ -283,7 +274,7 @@ curl https://api.hanzo.ai/v1/chat/completions \
 ## Related
 
 - [Zen Models](/docs/chat/models) -- Full model catalog with specs and pricing
-- [AI API](/docs/llm) -- Unified API proxy for all models
+- [AI API](/docs/llm) -- The inference API: chat, embeddings, images and reranking
 - [Hanzo MCP](/docs/mcp) -- Model Context Protocol tools
 - [Gateway Service](/docs/services/gateway) -- API gateway deployment and configuration
 - [Console](/docs/services/cloud) -- Billing, usage, and API key management

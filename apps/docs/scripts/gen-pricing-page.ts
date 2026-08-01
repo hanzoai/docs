@@ -21,7 +21,7 @@ import { text, yamlString } from './mdx';
 // `meta.source` whether THIS build refreshed it, so the page states its own
 // provenance instead of implying it is live.
 //
-// The long tail — 400+ third-party models, each with its own rate — is NOT
+// The long tail — the outside models we carry, each with its own rate — is NOT
 // rendered here. /docs/models fetches the catalogue in the browser and is
 // therefore current without a rebuild; this page links to it rather than
 // printing a second, staler copy of the same table.
@@ -144,7 +144,7 @@ function load(): Pricing {
 /**
  * What gets committed: the projection this page renders, not the whole 128 KB
  * response. `/v1/pricing` also carries the cloud plans, the datastore tiers, the
- * GPU table and all 400+ third-party rates — none of which appear here, and all
+ * GPU table and every third-party rate — none of which appear here, and all
  * of which move constantly. Vendoring them would churn the snapshot on every
  * sync with no change to the page, and bury a real Enso price change in noise.
  * A section that starts being rendered gets added here at the same time.
@@ -176,15 +176,12 @@ function perUnit(models: Model[]): Model[] {
 }
 
 function render(p: Pricing): string {
-  const s = p.summary ?? {};
   const models = p.hanzoModels ?? [];
   const tiers = ensoTiers(models);
   const units = perUnit(models);
   const tools = p.tools ?? [];
   const free = (p.freeModels ?? []).length;
-  const providers = Object.keys(p.providers ?? {}).length;
   const captured = p.meta?.captured ?? 'an unrecorded date';
-  const total = s.totalModels ?? 0;
 
   const L: string[] = [];
   const w = (...lines: string[]) => L.push(...lines);
@@ -263,10 +260,9 @@ function render(p: Pricing): string {
   w(
     '## Every other model',
     '',
-    total
-      ? `The gateway serves **${total} models** from **${providers} providers** on the ` +
-          'same key and the same endpoint. Each is billed at its own published rate.'
-      : 'Every model the gateway serves is billed at its own published rate.',
+    'Alongside the Enso and Zen families the gateway carries models from outside',
+    'labs, on the same key and the same endpoint. Each is billed at its own',
+    'published rate.',
     '',
     'Those rates move as providers change theirs, so they are not reprinted here.',
     'The catalogue at [**Models**](/docs/models) fetches them in your browser as',

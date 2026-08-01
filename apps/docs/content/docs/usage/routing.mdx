@@ -10,7 +10,7 @@ import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
 
 Set `model: "auto"` on a Hanzo Cloud chat completion and each prompt is routed
 to the model that fits the task and your service-level objective — a local
-[zen](https://huggingface.co/zenlm) model, a cheap tier, or a frontier model.
+[Zen](https://huggingface.co/zenlm) model, a cheap tier, or a frontier model.
 You are billed as whatever actually served the request, and every response
 carries an `X-Routed-Model` header so the choice is transparent.
 
@@ -47,8 +47,8 @@ Restart the gateway to pick up the change.
 
 ## Send `model: "auto"`
 
-Point any OpenAI-compatible client at `api.hanzo.ai` and set the model to
-`auto`. Nothing else changes — same request shape, same response shape.
+Set the model to `auto` on a chat completion against `api.hanzo.ai`. Nothing
+else changes — same request shape, same response shape.
 
 <Tabs items={["curl", "JavaScript"]}>
 <TabsContent value="curl">
@@ -69,12 +69,9 @@ value the router picked.
 </TabsContent>
 <TabsContent value="JavaScript">
 ```ts
-import OpenAI from 'openai';
+import Hanzo from '@hanzo/sdk';
 
-const client = new OpenAI({
-  baseURL: 'https://api.hanzo.ai/v1',
-  apiKey: process.env.HANZO_API_KEY,
-});
+const client = new Hanzo({ apiKey: process.env.HANZO_API_KEY });
 
 const res = await client.chat.completions.create({
   model: 'auto',
@@ -84,7 +81,7 @@ const res = await client.chat.completions.create({
 });
 
 // The model that actually served the request:
-console.log(res.model); // e.g. "zen-nano" | "zen5" | a frontier model
+console.log(res.model); // e.g. "zen5-flash" | "zen5" | a frontier model
 ```
 </TabsContent>
 </Tabs>
@@ -124,7 +121,7 @@ per request, exactly which tier answered and what you were billed for.
 
 ```http
 HTTP/1.1 200 OK
-X-Routed-Model: zen-nano
+X-Routed-Model: zen5-flash
 Content-Type: application/json
 ```
 
@@ -167,7 +164,7 @@ The savings are real but workload-dependent, so we frame them honestly:
   quality at roughly **13× lower cost** than the best single model — cited as a
   replication smoke run, not a Hanzo-specific benchmark.
 - Full total-cost-of-ownership also improves from seat consolidation, overage
-  avoidance, and running on-device zen models where they suffice.
+  avoidance, and running on-device Zen models where they suffice.
 
 We never publish fabricated benchmarks. The worked mix above is an illustration,
 not a measurement; the RouterBench figure is a public third-party result. Hanzo

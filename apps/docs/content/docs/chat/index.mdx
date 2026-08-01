@@ -1,6 +1,6 @@
 ---
 title: Hanzo Chat
-description: AI chat platform with Zen models, 100+ third-party models, MCP tools, agents, file uploads, and RAG. Self-host or use hosted at chat.hanzo.ai.
+description: The chat app on Hanzo Cloud — enso and Zen models, MCP tools, agents, file uploads and RAG. Hosted at chat.hanzo.ai, or self-host it.
 index: true
 ---
 
@@ -9,7 +9,7 @@ import { LayoutGrid } from 'lucide-react'
 
 # Hanzo Chat
 
-Hanzo Chat is a production-ready AI chat platform built on [LibreChat](https://librechat.ai). It ships **first-party Zen models** alongside **100+ third-party models** from OpenAI, Anthropic, Google, Meta, Mistral, Together, and Groq. Built-in MCP tool support, configurable agents, file uploads with RAG, vision, conversation history, presets, and plugins make it a complete chat solution.
+Hanzo Chat is the chat app on Hanzo Cloud, built on [LibreChat](https://librechat.ai). It runs our own models — the **enso** frontier family and the **Zen** open-weight family — with MCP tools, configurable agents, file uploads with RAG, vision, conversation history, presets and plugins. Models from outside labs are carried too, and appear in the same model menu.
 
 Available as a hosted service at [chat.hanzo.ai](https://chat.hanzo.ai) or self-hosted via Docker.
 
@@ -40,7 +40,7 @@ curl https://api.hanzo.ai/v1/chat/completions \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "zen4",
+    "model": "zen5",
     "messages": [{"role": "user", "content": "Hello!"}]
   }'
 ```
@@ -50,15 +50,12 @@ curl https://api.hanzo.ai/v1/chat/completions \
 ### Python
 
 ```python
-from openai import OpenAI
+from hanzoai import Hanzo
 
-client = OpenAI(
-    api_key="hk-your-api-key",
-    base_url="https://api.hanzo.ai/v1"
-)
+client = Hanzo(api_key="hk-your-api-key")
 
 response = client.chat.completions.create(
-    model="zen4",
+    model="zen5",
     messages=[{"role": "user", "content": "Hello, Zen."}]
 )
 print(response.choices[0].message.content)
@@ -67,19 +64,23 @@ print(response.choices[0].message.content)
 ### TypeScript
 
 ```typescript
-import OpenAI from 'openai'
+import Hanzo from '@hanzo/ai'
 
-const client = new OpenAI({
-  apiKey: process.env.HANZO_API_KEY,
-  baseURL: 'https://api.hanzo.ai/v1',
-})
+const client = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
 
 const completion = await client.chat.completions.create({
-  model: 'zen4',
+  model: 'zen5',
   messages: [{ role: 'user', content: 'Hello, Zen.' }],
 })
 console.log(completion.choices[0].message.content)
 ```
+
+### Existing HTTP clients
+
+`/v1/chat/completions` takes and returns the chat-completions JSON shape, so a
+client already written against that shape works here once its base URL points at
+`https://api.hanzo.ai/v1` and it sends a Hanzo key. Model ids are not portable
+across vendors, though — `zen5` and `enso` exist only here.
 
 ## Architecture
 
@@ -121,7 +122,7 @@ console.log(completion.choices[0].message.content)
 
 - **$5 free credit** on every new account (expires in 30 days)
 - **Prepaid billing** — add credits via [console.hanzo.ai](https://console.hanzo.ai)
-- **Starting at $0.30/MTok** (zen3-nano)
+- **Starting at $0.34/MTok** input (`zen5-flash`)
 - **No surprise bills** — service stops when credits are depleted
 
 <Cards>
@@ -132,7 +133,7 @@ console.log(completion.choices[0].message.content)
     chat.yaml reference, endpoints, MCP tools, model config
   </Card>
   <Card title="Models" href="/docs/chat/models">
-    Zen models + 100+ third-party with full pricing
+    Every model in the menu, with its context window and rate
   </Card>
   <Card title="Agents" href="/docs/chat/agents">
     Custom AI agents with system prompts and tool access

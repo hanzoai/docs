@@ -19,43 +19,41 @@ them is the `model` string.
 
 ## See them for yourself
 
-The model catalog is public. No key, no account — you can run this line right
-now, before you have either:
+The model catalog is what the gateway answers from, and `GET /v1/models` takes
+a bearer token like every other endpoint. [Mint a key](/docs/api-keys), then:
 
 ```bash
 curl -s https://api.hanzo.ai/v1/models \
-  | jq -r '.data[] | select(.id | startswith("enso")) | [.id, .context, .pricing.input, .pricing.output] | @tsv' \
-  | column -t
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  | jq '.data[] | select(.id | startswith("enso"))'
 ```
 
-```
-enso        1000000  20  60
-enso-flash  1000000  2   6
-enso-ultra  200000   40  120
-```
-
-That is the real output, and it is the same catalog the rest of this page is
-built from — id, context window, then price in **US dollars per million tokens**,
-input and output. The gateway is the source of truth for these numbers, so if
-this page and that command ever disagree, believe the command.
+Each entry carries the `id` you pass as `model`, the `owned_by` that trained it,
+a `premium` flag, `pricing.input` / `pricing.output`, and — for the enso tiers —
+`context_window`. The gateway is the source of truth for all of it, so if this
+page and that command ever disagree, believe the command. Current rates are on
+[Pricing](/docs/pricing), which is generated from the gateway rather than typed
+by hand.
 
 ## Which one
 
 <Callout title="Start with enso-flash.">
-It has the full million-token context window and costs a tenth of `enso`. Most
-work never needs more than this — reach for a bigger model when flash actually
-disappoints you, not before.
+It is the cheapest tier, and most work never needs more than it. Reach for a
+bigger model when flash actually disappoints you, not before.
 </Callout>
 
 | Model | Context | In / Out (per 1M tokens) | Reach for it when |
 |---|---|---|---|
-| `enso-flash` | 1,000,000 | $2 / $6 | Default. High volume, everyday work, anything you send a lot of. |
-| `enso` | 1,000,000 | $20 / $60 | The answer's quality matters more than its cost — hard reasoning, long documents, code that has to be right. |
-| `enso-ultra` | 200,000 | $40 / $120 | Being right matters more than being cheap. |
+| `enso-flash` | 262,144 | $2 / $4 | Default. High volume, everyday work, anything you send a lot of. |
+| `enso` | 1,000,000 | $4 / $20 | The answer's quality matters more than its cost — hard reasoning, long documents, code that has to be right. |
+| `enso-ultra` | 1,000,000 | $5 / $25 | Being right matters more than being cheap. |
 
-The three tiers are roughly **1x, 10x, and 20x** the same unit of cost, which
-makes the choice easier than it looks: you are deciding how much a better answer
-is worth to you on this particular request.
+Those figures are the gateway's own, read from `/v1/models`. Across the range
+that is 2.5x on input and about 6x on output — a narrower spread than the tier
+names suggest, so trading up costs less than it sounds like it should.
+
+`enso-flash` is also the one tier that does **not** carry the million-token
+window. If your input is large, that — not price — is the reason to move up.
 
 Note that the column above is about **cost**, not speed. Price and latency are
 independent here, and not in the direction the names suggest — measure before
@@ -68,10 +66,10 @@ it probes with a model sized to the task, escalates to a panel of models only
 when the task turns out to be hard, then verifies the candidate answers and
 selects the best one.
 
-You pay for that in two currencies: money, and context. Ultra's window is
-**200K tokens, not 1M** — it is the one enso model that cannot take your whole
-codebase in a single prompt. If your input is large, `enso` is the better tool
-even though it is the cheaper one.
+You pay for that in money rather than in context: ultra carries the same
+million-token window `enso` does, so moving up from `enso` costs you nothing in
+input size. The tier that cannot take your whole codebase in one prompt is
+`enso-flash`, at 262,144 tokens.
 
 ## Measure them yourself
 
@@ -131,8 +129,8 @@ Same prompt, sent to `enso-ultra`, printed exactly as it came back:
 > for billing or rate-limiting purposes.
 
 That request billed 275 input tokens and 70 output tokens — the `usage` object
-in the response says so, and at ultra's $40/$120 per million that is about
-**$0.019**. The same traffic through `enso-flash` would cost about a tenth of a
+in the response says so, and at ultra's $5/$25 per million that is about
+**$0.003**. The same traffic through `enso-flash` would cost under a tenth of a
 cent. Read `usage` rather than estimating: it is the number you are actually
 charged for.
 
@@ -160,9 +158,9 @@ curl https://api.hanzo.ai/v1/chat/completions \
 
 ```python
 import os
-from openai import OpenAI
+from hanzoai import Hanzo
 
-client = OpenAI(base_url="https://api.hanzo.ai/v1", api_key=os.environ["HANZO_API_KEY"])
+client = Hanzo(api_key=os.environ["HANZO_API_KEY"])
 
 answer = client.chat.completions.create(
     model="enso-flash",                      # -> "enso" or "enso-ultra"
@@ -176,12 +174,9 @@ print(answer.choices[0].message.content)
 <Tab value="TypeScript">
 
 ```typescript
-import OpenAI from 'openai';
+import Hanzo from '@hanzo/ai';
 
-const client = new OpenAI({
-  baseURL: 'https://api.hanzo.ai/v1',
-  apiKey: process.env.HANZO_API_KEY,
-});
+const client = new Hanzo({ apiKey: process.env.HANZO_API_KEY });
 
 const answer = await client.chat.completions.create({
   model: 'enso-flash',                       // -> 'enso' or 'enso-ultra'
@@ -198,9 +193,15 @@ That is the whole migration path between tiers. It is also why you should start
 cheap: moving up costs you one word of a diff, so there is no reason to pay for
 a bigger model until a smaller one has actually failed you.
 
-`/v1/chat/completions` is a standard chat-completions endpoint, so a client you
-already have installed works against it once you point its base URL at
-`api.hanzo.ai/v1`. Every model in our catalog answers on that one path.
+Every model in our catalog answers on that one path.
+
+### If you already have an HTTP client
+
+`/v1/chat/completions` takes and returns the same JSON shapes as the
+widely-implemented chat-completions format — an interchange format we do not own
+and had no reason to re-invent. A client written against it works here once its
+base URL points at `https://api.hanzo.ai/v1` and it sends a Hanzo key. The ids
+do not travel, though: `enso` is ours and resolves only here.
 
 ## What a request costs
 
@@ -209,9 +210,9 @@ answer:
 
 | Model | Input | Output | Total |
 |---|---|---|---|
-| `enso-flash` | 2,000 x $2/1M = $0.004 | 500 x $6/1M = $0.003 | **$0.007** |
-| `enso` | 2,000 x $20/1M = $0.04 | 500 x $60/1M = $0.03 | **$0.07** |
-| `enso-ultra` | 2,000 x $40/1M = $0.08 | 500 x $120/1M = $0.06 | **$0.14** |
+| `enso-flash` | 2,000 x $2/1M = $0.004 | 500 x $4/1M = $0.002 | **$0.006** |
+| `enso` | 2,000 x $4/1M = $0.008 | 500 x $20/1M = $0.010 | **$0.018** |
+| `enso-ultra` | 2,000 x $5/1M = $0.010 | 500 x $25/1M = $0.0125 | **$0.0225** |
 
 A token is roughly three quarters of a word, so "2,000 tokens" is about three
 pages. The response you get back reports exactly what you were charged for in
