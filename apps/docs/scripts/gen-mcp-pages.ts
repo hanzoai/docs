@@ -791,14 +791,34 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
       );
     }
     L.push('');
-    // The registering call, under the same rule the tool pages use: the fields
-    // the operation requires, and where it requires none — as here — every
-    // declared field, because picking a subset would be a guess about which
-    // matter. (The reference's compact HTTP examples fall back to the first two
-    // instead, which on this body would drop `name` and `url`.)
     const post = servers.find((o) => o.method === 'post');
     const props: Record<string, any> = post?.body?.schema?.properties ?? {};
     if (post && Object.keys(props).length) {
+      // Registering a server is the one write on this page, so its body is
+      // enumerated here in full rather than left to a link — same table as
+      // every tool page, filled from the document instead of the door.
+      //
+      // The catalog route is NOT named in prose: the `listing` field's own
+      // description names it, and that description is the document's. A
+      // sentence here would be a second copy of it, free to drift.
+      L.push(...fieldTable(fieldsOf(post.body!.schema, declaredBy(post))));
+      L.push('');
+      const catalog = doc.operations.find(
+        (o) => o.method === 'get' && /catalog/.test(o.path) && /mcp server/i.test(o.summary || ''),
+      );
+      if (catalog) {
+        // The summary whole, not a first sentence: these summaries carry dotted
+        // hostnames, and a sentence-splitter cuts them at the first full stop.
+        L.push(
+          `Registering by \`url\` wires up a server the org runs or trusts. The other source is \`${code(catalog.method.toUpperCase())} ${code(catalog.path)}\` — ${text(catalog.summary || firstSentence(catalog.description))} Its entries are enabled by id through the \`listing\` field above, and either way the server's tools appear on this door.`,
+        );
+        L.push('');
+      }
+      // The registering call, under the same rule the tool pages use: the
+      // fields the operation requires, and where it requires none — as here —
+      // every declared field, because picking a subset would be a guess about
+      // which matter. (The reference's compact HTTP examples fall back to the
+      // first two instead, which on this body would drop `name` and `url`.)
       const required: string[] = Array.isArray(post.body?.schema?.required) ? post.body!.schema.required : [];
       const send = required.length ? required : Object.keys(props).sort();
       const body = Object.fromEntries(
@@ -816,7 +836,7 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
           required.length
             ? `Those are the fields \`${code(post.path)}\` requires.`
             : 'The operation marks no field required, so every declared field is shown.'
-        } Fields, types and prose for these routes are enumerated in the [${text(servers[0].product)} API reference](/docs/openapi/${servers[0].product}).`,
+        } Responses and error codes for all three routes are in the [${text(servers[0].product)} API reference](/docs/openapi/${servers[0].product}).`,
       );
       L.push('');
     }
