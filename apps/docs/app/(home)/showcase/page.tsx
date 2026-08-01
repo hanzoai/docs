@@ -1,7 +1,7 @@
 import { PlusIcon } from 'lucide-react';
 import Image, { type StaticImageData } from 'next/image';
 import { cn } from '@/lib/cn';
-import { buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
 import { createMetadata } from '@/lib/metadata';
 import Expostarter from '@/public/showcases/expostarter.png';
 import Sunar from '@/public/showcases/sunar.png';
@@ -338,6 +338,7 @@ export default function Showcase() {
             className={cn(
               buttonVariants({
                 variant: 'outline',
+                size: 'md',
               }),
             )}
           >

@@ -13,7 +13,7 @@ import {
 } from 'react';
 import { Loader2, MessageCircleIcon, RefreshCw, Send, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { buttonVariants } from '@hanzo/docs-ui/components/ui/button';
+import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
 import Link from '@hanzo/docs-core/link';
 import type { ProvideLinksToolSchema } from '@/lib/ai/qa-schema';
 import type { z } from 'zod';

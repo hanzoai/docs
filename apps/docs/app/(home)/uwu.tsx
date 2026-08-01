@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { cn } from '@/lib/cn';
-import { buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
 import Logo from '@/public/logo.png';
 
 export function UwuHero() {
@@ -17,7 +17,7 @@ export function UwuHero() {
       <div className="inline-flex items-center gap-3">
         <Link
           href="/docs"
-          className={cn(buttonVariants({ size: 'lg', className: 'rounded-full' }))}
+          className={cn(buttonVariants({ variant: 'primary', size: 'lg', className: 'rounded-full' }))}
         >
           Getting Started
         </Link>

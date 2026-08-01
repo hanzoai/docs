@@ -1,4 +1,4 @@
-import type { BaseLayoutProps, LinkItemType } from '@hanzo/docs/ui/layouts/shared';
+import type { BaseLayoutProps, LinkItemType } from '@hanzo/docs-base-ui/layouts/shared';
 import { HanzoDocsIcon } from '@/app/layout.client';
 
 // Docs top-nav: the four developer surfaces, and nothing that leaves the site.

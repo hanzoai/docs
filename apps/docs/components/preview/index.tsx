@@ -1,14 +1,14 @@
 import { Home } from 'lucide-react';
-import { Heading } from '@hanzo/docs/ui/components/heading';
-import { Card } from '@hanzo/docs/ui/components/card';
-import { Callout } from '@hanzo/docs/ui/components/callout';
-import { Accordion, Accordions } from '@hanzo/docs/ui/components/accordion';
-import { Tab, Tabs } from '@hanzo/docs/ui/components/tabs';
-import { Step, Steps } from '@hanzo/docs/ui/components/steps';
-import { TypeTable } from '@hanzo/docs/ui/components/type-table';
+import { Heading } from '@hanzo/docs-base-ui/components/heading';
+import { Card } from '@hanzo/docs-base-ui/components/card';
+import { Callout } from '@hanzo/docs-base-ui/components/callout';
+import { Accordion, Accordions } from '@hanzo/docs-base-ui/components/accordion';
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs';
+import { Step, Steps } from '@hanzo/docs-base-ui/components/steps';
+import { TypeTable } from '@hanzo/docs-base-ui/components/type-table';
 import { type ReactNode } from 'react';
 import { Wrapper } from './wrapper';
-import { GithubInfo } from '@hanzo/docs/ui/components/github-info';
+import { GithubInfo } from '@hanzo/docs-base-ui/components/github-info';
 import { owner, repo } from '@/lib/github';
 import {
   Banner,

@@ -188,7 +188,7 @@ function renderFlow(
   L.push(`description: ${JSON.stringify(flow.summary)}`);
   L.push('---');
   L.push('');
-  L.push("import { Tab, Tabs } from '@hanzo/docs-ui/components/tabs'");
+  L.push("import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs'");
   L.push('');
   L.push(`**${text(flow.summary)}**`);
   L.push('');
@@ -233,7 +233,7 @@ function renderIndex(flows: Flow[], doc: Document): string {
   L.push('icon: Rocket');
   L.push('---');
   L.push('');
-  L.push("import { Cards, Card } from '@hanzo/docs-ui/components/card'");
+  L.push("import { Cards, Card } from '@hanzo/docs-base-ui/components/card'");
   L.push('');
   L.push('# Six flows, four surfaces');
   L.push('');

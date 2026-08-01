@@ -12,14 +12,14 @@ import {
   SearchDialogOverlay,
   type SearchItemType,
   type SharedProps,
-} from '@hanzo/docs/ui/components/dialog/search';
+} from '@hanzo/docs-base-ui/components/dialog/search';
 import { useDocsSearch } from '@hanzo/docs/core/search/client';
 import { useMemo, useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@hanzo/docs-base-ui/components/ui/popover';
 import { ArrowRight, ChevronDown } from 'lucide-react';
-import { buttonVariants } from '@hanzo/docs/ui/components/ui/button';
+import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
 import { cn } from '@/lib/cn';
-import { useTreeContext } from '@hanzo/docs/ui/contexts/tree';
+import { useTreeContext } from '@hanzo/docs-base-ui/contexts/tree';
 import type { Item, Node } from '@hanzo/docs/core/page-tree';
 import { useRouter } from 'next/navigation';
 

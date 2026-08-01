@@ -193,7 +193,7 @@ function renderIndex(doc: Document): string {
   L.push('icon: BookOpen');
   L.push('---');
   L.push('');
-  L.push("import { Cards, Card } from '@hanzo/docs-ui/components/card'");
+  L.push("import { Cards, Card } from '@hanzo/docs-base-ui/components/card'");
   L.push('');
   L.push('# Hanzo API Reference');
   L.push('');

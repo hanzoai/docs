@@ -15,8 +15,9 @@ import {
   Terminal,
   Workflow,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
+import { Badge } from '@hanzo/docs-base-ui/components/ui/badge';
+import { cn } from '@/lib/cn';
 import {
   Card,
   CardContent,
@@ -24,7 +25,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
+} from '@hanzo/docs-base-ui/components/ui/card';
 import { CodeBlock } from '@/components/code-block';
 
 /* -- The eight domains -- category-first, mirrors the console shell --------- */
@@ -486,15 +487,17 @@ print(response.choices[0].message.content)`}
               ))}
             </div>
             <div className="flex items-center gap-3 flex-wrap">
-              <Button asChild variant="outline" size="sm" className="rounded-full border-white/20 text-white hover:bg-white/5 bg-transparent text-xs px-4 py-2 h-auto">
-                <a
-                  href="https://zenlm.org"
-                  target="_blank"
-                  rel="noreferrer noopener"
-                >
-                  zenlm.org &rarr;
-                </a>
-              </Button>
+              <a
+                href="https://zenlm.org"
+                target="_blank"
+                rel="noreferrer noopener"
+                className={cn(
+                  buttonVariants({ variant: 'outline', size: 'sm' }),
+                  'rounded-full border-white/20 text-white hover:bg-white/5 bg-transparent text-xs px-4 py-2 h-auto',
+                )}
+              >
+                zenlm.org &rarr;
+              </a>
               <a
                 href="https://huggingface.co/zenlm"
                 target="_blank"
@@ -520,17 +523,25 @@ print(response.choices[0].message.content)`}
             curl hanzo.sh | sh
           </div>
           <div className="relative flex items-center justify-center gap-3 flex-wrap">
-            <Button asChild size="lg" className="rounded-full bg-white px-8 text-black hover:bg-neutral-200">
-              <a href="https://hanzo.id/signup?redirect_uri=https://console.hanzo.ai">
-                Sign Up Free
-                <ArrowRight className="size-4 ml-1" />
-              </a>
-            </Button>
-            <Button asChild variant="outline" size="lg" className="rounded-full border-white/15 px-8 text-white hover:bg-white/5 bg-transparent">
-              <Link href="/docs">
-                Browse Documentation
-              </Link>
-            </Button>
+            <a
+              href="https://hanzo.id/signup?redirect_uri=https://console.hanzo.ai"
+              className={cn(
+                buttonVariants({ variant: 'primary', size: 'lg' }),
+                'rounded-full bg-white px-8 text-black hover:bg-neutral-200',
+              )}
+            >
+              Sign Up Free
+              <ArrowRight className="size-4 ml-1" />
+            </a>
+            <Link
+              href="/docs"
+              className={cn(
+                buttonVariants({ variant: 'outline', size: 'lg' }),
+                'rounded-full border-white/15 px-8 text-white hover:bg-white/5 bg-transparent',
+              )}
+            >
+              Browse Documentation
+            </Link>
           </div>
         </section>
       </div>

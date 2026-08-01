@@ -2,6 +2,8 @@
 import Slugger from 'github-slugger';
 import type { Awaitable, MethodInformation, RenderContext } from '@/types';
 import { parseSecurities, type NoReference } from '@/utils/schema';
+import { pickSchema } from '@/utils/schema/pick';
+import { encodeInternalRef } from '@/utils/schema/ref';
 import type { DereferencedDocument } from '@/utils/document/dereference';
 import { defaultAdapters, MediaAdapter } from '@/requests/media/adapter';
 import type { FC, HTMLAttributes, ReactNode } from 'react';
@@ -243,10 +245,6 @@ export function createAPIPage(
       .use(rehypeReact);
   }
 
-  function renderPlaygroundProviderDefault({ children }: { children: ReactNode }) {
-    return <PlaygroundAuthProvider>{children}</PlaygroundAuthProvider>;
-  }
-
   function renderPlaygroundDefault({ path, method, ctx }: APIPlaygroundProps) {
     return (
       <ctx.clientBoundary.PlaygroundClient
@@ -271,8 +269,15 @@ export function createAPIPage(
     }
 
     const slugger = new Slugger();
-    const { ApiProvider, PlaygroundClient, SchemaUI, ServerProvider, UsageTab, UsageTabsSelector } =
-      await import('@/ui/client/boundary.lazy');
+    const {
+      ApiProvider,
+      PlaygroundAuthProvider,
+      PlaygroundClient,
+      SchemaUI,
+      ServerProvider,
+      UsageTab,
+      UsageTabsSelector,
+    } = await import('@/ui/client/boundary.lazy');
 
     const ctx: RenderContext = {
       schema: processed,
@@ -292,7 +297,9 @@ export function createAPIPage(
       },
       playground: {
         ...options.playground,
-        provider: options.playground?.provider ?? renderPlaygroundProviderDefault,
+        provider:
+          options.playground?.provider ??
+          (({ children }) => <PlaygroundAuthProvider>{children}</PlaygroundAuthProvider>),
         render: options.playground?.render ?? renderPlaygroundDefault,
       },
       generateTypeScriptDefinitions:
