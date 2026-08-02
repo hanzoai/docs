@@ -19,12 +19,11 @@ them is the `model` string.
 
 ## See them for yourself
 
-The model catalog is what the gateway answers from, and `GET /v1/models` takes
-a bearer token like every other endpoint. [Mint a key](/docs/api-keys), then:
+The model catalog is what the gateway answers from, and reading it needs no key
+— you can run this line right now, before you have one:
 
 ```bash
 curl -s https://api.hanzo.ai/v1/models \
-  -H "Authorization: Bearer $HANZO_API_KEY" \
   | jq '.data[] | select(.id | startswith("enso"))'
 ```
 
@@ -50,12 +49,15 @@ bigger model when flash actually disappoints you, not before.
 
 Those figures are the gateway's own, read from `/v1/models`. Across the range
 that is 2.5x on input and about 6x on output — a narrower spread than the tier
-names suggest, so trading up costs less than it sounds like it should.
+names suggest, so trading up costs less than it sounds like it should. On the
+mixed request priced at the bottom of this page, the three come to $0.006,
+$0.018 and $0.0225: 1x, 3x and 3.75x, not the order of magnitude "ultra"
+implies.
 
 `enso-flash` is also the one tier that does **not** carry the million-token
 window. If your input is large, that — not price — is the reason to move up.
 
-Note that the column above is about **cost**, not speed. Price and latency are
+Note that the columns above are about **cost**, not speed. Price and latency are
 independent here, and not in the direction the names suggest — measure before
 you assume, using the next section.
 
@@ -69,7 +71,9 @@ selects the best one.
 You pay for that in money rather than in context: ultra carries the same
 million-token window `enso` does, so moving up from `enso` costs you nothing in
 input size. The tier that cannot take your whole codebase in one prompt is
-`enso-flash`, at 262,144 tokens.
+`enso-flash`, at 262,144 tokens. The panel is billed by the token like anything
+else, which puts ultra a quarter above `enso` per million — $5/$25 against
+$4/$20, not a different order of cost.
 
 ## Measure them yourself
 
