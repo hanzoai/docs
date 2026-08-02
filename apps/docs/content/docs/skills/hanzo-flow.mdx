@@ -1,25 +1,25 @@
 ---
 title: "Hanzo Flow"
-description: "Visual AI Workflow Builder"
+description: "Hanzo Flow is a visual workflow builder for AI agents and pipelines — drag-and-drop LLM chains and multi-agent orchestrations, each deployable as a REST API or MCP server with no extra code."
 ---
 
 ## Overview
 
-Hanzo Flow is a **visual workflow builder** for AI-powered agents and pipelines. It is a fork of [Langflow](https://github.com/langflow-ai/langflow) maintained at `github.com/hanzoai/flow`, providing a drag-and-drop visual interface for designing LLM chains, multi-agent orchestrations, and data processing pipelines. Every workflow can be deployed as a REST API or MCP server with zero additional code.
+Hanzo Flow is a **visual workflow builder** for AI-powered agents and pipelines, maintained at `github.com/hanzoai/flow`. It gives you a drag-and-drop canvas for designing LLM chains, multi-agent orchestrations, and data processing pipelines — and every workflow you build can be served as a REST API or an MCP server with zero additional code. The graph you drew is the deployment artifact.
 
-The project is a **Python-first** monorepo with a React/TypeScript frontend. It ships three packages: `hanzoflow` (the main application), `langflow-base` (the backend framework layer), and `lfx` (a lightweight CLI executor for running flows headlessly).
+The project is a **Python-first** monorepo with a React/TypeScript frontend. It ships four packages: `hanzo-flow` (the application, entry point `flow`), `hanzo-flow-base` (the backend framework layer), `hanzo-flow-sdk` (the client SDK), and `lfx` (a lightweight CLI executor for running flows headlessly).
 
 ## Quick Reference
 
 | Item | Value |
 |------|-------|
 | Repo | `github.com/hanzoai/flow` |
-| Upstream | `langflow-ai/langflow` (remote: `upstream`) |
 | Language | Python 3.12+ (backend), TypeScript (frontend) |
-| Package | `hanzoflow` on PyPI |
+| Package | `hanzo-flow` on PyPI (CLI: `flow`) |
 | CLI Executor | `lfx` on PyPI |
-| Version | 1.8.0 (`hanzoflow`), 0.8.0 (`langflow-base`), 0.3.0 (`lfx`) |
-| Default Port | 7860 (hanzoflow), 3006 (Docker), 8000 (lfx serve) |
+| SDK | `hanzo-flow-sdk` on PyPI |
+| Version | 1.8.2 (`hanzo-flow`), 0.9.6 (`hanzo-flow-base`), 0.3.1 (`lfx`), 0.1.6 (`hanzo-flow-sdk`) |
+| Default Port | 7860 (dev), 3006 (Docker), 8000 (`lfx serve`) |
 | Docker Image | `hanzoai/flow:latest` |
 | License | MIT |
 | Python Tooling | `uv` (package manager), `ruff` (linter/formatter), `mypy` (type checker) |
@@ -30,10 +30,10 @@ The project is a **Python-first** monorepo with a React/TypeScript frontend. It 
 
 ```bash
 # Install from PyPI
-uv pip install hanzoflow -U
+uv pip install hanzo-flow -U
 
 # Run the visual builder
-uv run hanzoflow run
+uv run flow run
 # --> http://localhost:7860
 
 # Docker (production)
@@ -49,7 +49,7 @@ make run_cli
 
 ```
 flow/
-├── pyproject.toml              # Root workspace: hanzoflow v1.8.0
+├── pyproject.toml              # Root workspace: hanzo-flow v1.8.2 (CLI: flow)
 ├── uv.lock                     # Locked dependencies
 ├── Dockerfile                  # Multi-stage production build (Python 3.12-slim)
 ├── Makefile                    # 40+ automation targets
@@ -57,8 +57,8 @@ flow/
 ├── src/
 │   ├── backend/
 │   │   ├── base/
-│   │   │   ├── pyproject.toml  # langflow-base v0.8.0
-│   │   │   ├── langflow/       # Core framework (API, services, graph engine)
+│   │   │   ├── pyproject.toml  # hanzo-flow-base v0.9.6
+│   │   │   └── flow/           # Core framework (API, services, graph engine)
 │   │   │   │   ├── api/        # REST API (v1, v2)
 │   │   │   │   ├── base/       # Base classes
 │   │   │   │   ├── components/ # Built-in component definitions
@@ -66,12 +66,12 @@ flow/
 │   │   │   │   ├── graph/      # DAG execution engine
 │   │   │   │   ├── interface/  # Type interfaces
 │   │   │   │   ├── services/   # Service layer (storage only)
-│   │   │   │   └── template/   # Component templates
-│   │   │   └── hanzoflow/      # Hanzo-branded entry point
+│   │   │       └── template/   # Component templates
+│   │   ├── flow/               # Application layer on top of the framework
 │   │   ├── src/                # Additional backend source
 │   │   └── tests/              # Backend test suite
 │   ├── lfx/                    # Hanzo Flow Executor (lightweight CLI)
-│   │   ├── pyproject.toml      # lfx v0.3.0
+│   │   ├── pyproject.toml      # lfx v0.3.1
 │   │   ├── src/lfx/
 │   │   │   ├── __main__.py     # CLI entry point
 │   │   │   ├── cli/            # Typer CLI (serve, run commands)
@@ -92,8 +92,9 @@ flow/
 │   │   │   ├── schema/         # Pydantic schemas
 │   │   │   └── serialization/  # Flow import/export
 │   │   └── tests/              # lfx test suite
+│   ├── sdk/                    # hanzo-flow-sdk v0.1.6 (client SDK)
 │   └── frontend/               # React/TypeScript UI
-│       ├── package.json        # langflow v1.8.0 (private)
+│       ├── package.json        # flow v1.9.6 (private)
 │       ├── src/                # React components, state, API client
 │       ├── tests/              # Jest unit + Playwright E2E tests
 │       └── tailwind.config.mjs # Tailwind CSS config
@@ -127,7 +128,7 @@ The `lfx` package is a standalone CLI for running flows without the web UI:
 uv run lfx run my_flow.json "What is AI?"
 
 # Serve a flow as an API
-export LANGFLOW_API_KEY=your-secret-key
+export FLOW_API_KEY=your-secret-key
 uv run lfx serve my_flow.json --port 8000
 
 # Programmatic usage
@@ -174,7 +175,7 @@ lfx supports replacing built-in services with custom implementations. Services i
 | Testing | Jest, Playwright |
 | Linting | Biome |
 
-### Key Dependencies (langflow-base)
+### Key Dependencies (hanzo-flow-base)
 - `langchain~=0.3.27`, `langchain-core>=0.3.81`, `langchain-community>=0.3.28`
 - `fastapi>=0.115.2`, `uvicorn>=0.30.0`, `gunicorn>=22.0.0`
 - `sqlmodel==0.0.22`, `pydantic~=2.11.0`, `alembic>=1.13.0`
@@ -247,7 +248,7 @@ uv run mypy .         # Type check
 ## Related Skills
 
 - `hanzo/hanzo-agent.md` -- Agent SDK for multi-agent orchestration
-- `hanzo/hanzo-studio.md` -- Visual AI engine (ComfyUI fork, image/video generation)
+- `hanzo/hanzo-studio.md` -- Visual node-based AI engine (image/video generation)
 - `hanzo/hanzo-console.md` -- Observability, traces, and cost tracking
 - `hanzo/hanzo-mcp.md` -- MCP tools and protocol implementation
 - `hanzo/hanzo-llm.md` -- AI API (upstream model routing)
