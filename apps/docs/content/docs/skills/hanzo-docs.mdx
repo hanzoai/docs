@@ -1,20 +1,18 @@
 ---
 title: "Hanzo Docs - Multi-Brand Documentation Platform"
-description: "Hanzo Docs is a multi-brand documentation platform — fork of Hanzo Docs with 27 packages and 15 apps. Serves documentation for Hanzo, Lux, Zoo, and Zen brands from a single monorepo with shared compo..."
+description: "Hanzo Docs is the multi-brand documentation platform behind docs.hanzo.ai — a pnpm/turbo monorepo of 35 packages covering MDX processing, UI, search, i18n, and OpenAPI reference generation. Serves Hanzo, Lux, Zoo, and Zen documentation with per-brand theming."
 ---
 
 ## Overview
 
-Hanzo Docs is a **multi-brand documentation platform** — fork of Hanzo Docs with 27 packages and 15 apps. Serves documentation for Hanzo, Lux, Zoo, and Zen brands from a single monorepo with shared components and per-brand theming.
+Hanzo Docs is the **multi-brand documentation platform** behind `docs.hanzo.ai`. It is a pnpm/turbo monorepo of 35 packages — MDX processing, two UI component sets (Radix and headless), full-text search, i18n, and reference generators for OpenAPI and TypeScript — composed into Next.js documentation sites. The same packages serve Hanzo, Lux, Zoo, and Zen documentation with per-brand theming.
 
-**NOTE**: This is a **Hanzo Docs fork** (not a plain Next.js MDX site). It's a monorepo with **27 packages** and **15 apps**, supporting multi-brand documentation (hanzo.ai/docs, docs.lux.network, docs.zoo.ngo, docs.zenlm.org).
+**NOTE**: This is a documentation *framework*, not a plain Next.js MDX site. Content enters a build through exactly one of three routes: authored MDX in `content/docs/`, generated reference synced from `hanzoai/openapi`, or ported upstream OSS docs mirrored with attribution.
 
 ### Why Hanzo Docs?
 
-- **Hanzo Docs fork**: Full-featured documentation framework
+- **Composable framework**: 35 packages you compose, not a fixed template
 - **Multi-brand**: 4 brands from one codebase (Hanzo, Lux, Zoo, Zen)
-- **27 packages**: Shared components, MDX plugins, search, themes
-- **15 apps**: Brand-specific documentation sites
 - **MDX-powered**: Markdown with React components (live code, diagrams)
 - **Auto-generated API docs**: From OpenAPI spec
 - **Full-text search**: Across all documentation sites
@@ -32,53 +30,46 @@ Hanzo Docs is a **multi-brand documentation platform** — fork of Hanzo Docs wi
 
 | Item | Value |
 |------|-------|
-| Repo | `github.com/hanzoai/docs` |
-| Upstream | Hanzo Docs fork |
-| Framework | Next.js 14+ with MDX |
-| Packages | 27 |
-| Apps | 15 |
+| Repo | `github.com/hanzo-docs/docs` (`hanzoai/docs` redirects here) |
+| Framework | Next.js 16 with MDX, React 19, Tailwind 4 |
+| Packages | 35 |
+| Apps | 21 |
 | Dev | `pnpm dev` |
 | Build | `pnpm build` |
 | Port | 3000 (dev) |
 
 ## Brand Sites
 
-| Brand | URL | App |
-|-------|-----|-----|
-| Hanzo | `hanzo.ai/docs` | `apps/hanzo/` |
-| Lux | `docs.lux.network` | `apps/lux/` |
-| Zoo | `docs.zoo.ngo` | `apps/zoo/` |
-| Zen | `docs.zenlm.org` | `apps/zen/` |
+| Brand | URL | Build |
+|-------|-----|-------|
+| Hanzo | `docs.hanzo.ai` | `apps/docs/` in this repo — the hub |
+| Lux | `docs.lux.network` | separate deployment of the `@hanzo/docs-*` packages |
+| Zoo | `docs.zoo.ngo` | separate deployment of the `@hanzo/docs-*` packages |
+| Zen | `docs.zenlm.org` | separate deployment of the `@hanzo/docs-*` packages |
+
+A brand site is a standalone deployment only when it needs independent
+versioning and its own audience. Otherwise it is a section of the hub — the hub
+links out to standalone sites, it never copies their content.
 
 ## Project Structure
 
 ```
 docs/
-├── apps/                    # 15 brand-specific apps
-│   ├── hanzo/               # hanzo.ai/docs
-│   ├── lux/                 # docs.lux.network
-│   ├── zoo/                 # docs.zoo.ngo
-│   ├── zen/                 # docs.zenlm.org
-│   └── ...                  # Other product-specific doc sites
-│                            # Apps: base-docs, bootnode-docs, bot-docs, cloud,
-│                            # dev-docs, dns-docs, docs, flow, insights-docs,
-│                            # platform, team, visor, zap-docs, zen-docs, zt-docs
-├── packages/                # 27 shared packages
-│   ├── core/                # Core docs engine
-│   ├── mdx/                 # MDX processing and plugins
-│   ├── ui/                  # Shared UI components
-│   ├── search/              # Full-text search
-│   ├── openapi/             # OpenAPI → docs generator
-│   ├── components/          # Shared MDX components
-│   │   ├── CodeBlock.tsx
-│   │   ├── ApiEndpoint.tsx
-│   │   ├── Callout.tsx
-│   │   └── SDKTabs.tsx
-│   └── ...                  # More packages
-├── content/                 # Shared content
-│   ├── api/                 # API reference (auto-generated from OpenAPI)
-│   ├── guides/              # Cross-brand guides
-│   └── sdks/                # SDK documentation
+├── apps/                    # 21 apps
+│   ├── docs/                # docs.hanzo.ai — THE hub, one build
+│   │   └── content/docs/    # authored MDX + generated + ported sections
+│   └── ...                  # legacy per-product sites, migrating into the hub
+├── packages/                # 35 packages, published as @hanzo/docs-*
+│   ├── core/                # source loading, search, i18n
+│   ├── mdx/                 # MDX processing, collections
+│   ├── radix-ui/            # @hanzo/docs-ui — full UI with Radix primitives
+│   ├── base-ui/             # @hanzo/docs-base-ui — headless UI
+│   ├── openapi/             # OpenAPI → reference pages
+│   ├── typescript/          # auto type tables from source
+│   ├── twoslash/            # TypeScript hints in code blocks
+│   ├── cli/                 # scaffolding & customization
+│   └── ...                  # tailwind, story, obsidian, python, epub, ...
+├── examples/                # runnable starters (Next.js, Astro, React Router, ...)
 ├── pnpm-workspace.yaml
 └── package.json
 ```
@@ -86,15 +77,15 @@ docs/
 ## Development
 
 ```bash
-git clone https://github.com/hanzoai/docs.git
+git clone https://github.com/hanzo-docs/docs.git
 cd docs
 pnpm install
 
-# Dev all brands
+# Dev the hub (docs.hanzo.ai)
 pnpm dev
 
-# Dev specific brand
-pnpm dev --filter @hanzo/docs-hanzo
+# Dev a single package
+pnpm dev --filter @hanzo/docs-ui
 
 # Build for production
 pnpm build
@@ -148,16 +139,22 @@ const response = await client.chat.completions.create({
 </SDKTabs>
 ```
 
-### Adding a New Brand
+### Adding a Section
+
+The default is a section of the hub, not a new site:
 
 ```bash
-# 1. Create new app
-cp -r apps/hanzo apps/new-brand
+# 1. Add MDX under the hub's content tree
+mkdir apps/docs/content/docs/<section>
 
-# 2. Configure brand colors, logo, navigation in the app
-# 3. Add to pnpm-workspace.yaml
-# 4. Add to CI/CD
+# 2. Register it in apps/docs/content/docs/meta.json under a movement
+
+# 3. Team-owned sections live in their own hanzo-docs/<team> content repo,
+#    mounted here as a git submodule at content/docs/<team>/
 ```
+
+Spin up a standalone site only when a section needs independent versioning,
+its own release cadence, and its own audience.
 
 ## Redirects
 
