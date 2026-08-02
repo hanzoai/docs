@@ -86,16 +86,14 @@ services:
       retries: 5
 
   s3:
-    image: ghcr.io/hanzoai/storage:latest
+    image: ghcr.io/hanzoai/s3:latest
     restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: your-access-key        # env var name required by storage engine
-      MINIO_ROOT_PASSWORD: your-secret-key     # env var name required by storage engine
+    command: server -s3 -s3.port=9000 -s3.config=/etc/hanzo/s3.json -dir=/data
     ports:
-      - "9001:9001"  # Hanzo Space console (optional, remove in production)
+      - "23646:23646"  # admin console (optional, remove in production)
     volumes:
       - s3_data:/data
+      - ./s3.json:/etc/hanzo/s3.json:ro   # access keys — see Hanzo S3 identities
 
   search:
     image: ghcr.io/hanzoai/search:latest
@@ -174,10 +172,11 @@ postgres:
   environment:
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}  # from .env
 
-s3:
-  environment:
-    MINIO_ROOT_USER: ${S3_ACCESS_KEY}      # env var name required by storage engine
-    MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY}  # env var name required by storage engine
+# Hanzo S3 reads access keys from its identities file, not from the environment.
+# Render ./s3.json from Hanzo KMS at deploy time and mount it read-only:
+#   { "identities": [ { "name": "commerce",
+#       "credentials": [ { "accessKey": "…", "secretKey": "…" } ],
+#       "actions": ["Read", "List", "Write"] } ] }
 ```
 
 ### 2. Restrict Exposed Ports
@@ -189,7 +188,7 @@ services:
   commerce:
     ports:
       - "127.0.0.1:8090:8090"  # bind to localhost only
-  # Remove s3 port 9001 mapping
+  # Remove the s3 admin console port 23646 mapping
 ```
 
 ### 3. Add Resource Limits

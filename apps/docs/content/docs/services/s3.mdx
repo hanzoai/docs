@@ -84,18 +84,6 @@ In Kubernetes, sync the keys into a Secret with a [KMSSecret CRD](/docs/services
 
 Any S3 client works. The examples below use the host `s3.hanzo.ai` with credentials from the environment.
 
-### MinIO Client (`mc`)
-
-```bash
-mc alias set hanzo https://s3.hanzo.ai "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"
-
-mc mb hanzo/my-models                       # create a bucket
-mc cp ./model.safetensors hanzo/my-models/  # upload
-mc ls hanzo/my-models/                       # list
-mc cp hanzo/my-models/model.safetensors ./  # download
-mc mirror ./training-data/ hanzo/datasets/  # recursive sync
-```
-
 ### AWS CLI
 
 The AWS CLI works against Hanzo S3 with `--endpoint-url`. Set any region (it is not used for routing).
@@ -105,6 +93,14 @@ aws --endpoint-url https://s3.hanzo.ai --region us-east-1 s3 mb s3://my-models
 aws --endpoint-url https://s3.hanzo.ai --region us-east-1 s3 cp ./model.safetensors s3://my-models/
 aws --endpoint-url https://s3.hanzo.ai --region us-east-1 s3 ls s3://my-models/
 aws --endpoint-url https://s3.hanzo.ai --region us-east-1 s3 sync ./run-042/ s3://datasets/run-042/
+```
+
+Other S3 CLIs work the same way — `rclone` and `mc` both take an endpoint and
+the same credentials:
+
+```bash
+mc alias set hanzo https://s3.hanzo.ai "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"
+mc mirror ./training-data/ hanzo/datasets/
 ```
 
 ### Python (boto3)
@@ -286,7 +282,7 @@ Hanzo S3 has no bespoke SDK — and needs none. Every standard AWS S3 SDK works 
 | Go | `github.com/aws/aws-sdk-go-v2` |
 | Java | `software.amazon.awssdk:s3` |
 | Rust | `aws-sdk-s3` |
-| CLI | `aws`, `mc` (MinIO Client), `rclone` |
+| CLI | `aws` (with `--endpoint-url`), `rclone`, `mc` |
 
 ## Related Services
 
