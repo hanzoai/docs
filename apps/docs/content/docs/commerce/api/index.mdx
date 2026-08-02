@@ -168,12 +168,19 @@ curl -X POST https://api.hanzo.ai/order \
 
 ## Versioning
 
-The API is versioned via the URL path. The current version is `v1` (implicit):
+Every endpoint lives under `/v1`, and the prefix is explicit — there is no
+implicit-version form:
 
 ```
-https://api.hanzo.ai/product        # Current version (v1)
-https://api.hanzo.ai/v2/product     # Future version
+https://api.hanzo.ai/v1/admin/products
+https://api.hanzo.ai/v1/store/{storeid}/product/{key}
 ```
+
+There is no `/v2`, and there will not be one. New capability arrives as new
+paths under `/v1`; breaking changes are avoided rather than versioned around.
+A path without the `/v1` prefix is not an API route — it falls through to the
+console, which answers `200 text/html` for any unmatched path, so a missing
+prefix looks like success until you read the body.
 
 ## Expanding Resources
 
