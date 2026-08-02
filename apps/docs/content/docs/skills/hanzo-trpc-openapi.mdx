@@ -5,7 +5,7 @@ description: "`@hanzo/trpc-openapi` is a TypeScript library that generates OpenA
 
 ## Overview
 
-`@hanzo/trpc-openapi` is a TypeScript library that generates **OpenAPI 3.x documents** from tRPC v11 routers and provides HTTP adapters to serve tRPC procedures as REST endpoints. Published on npm as `@hanzo/trpc-openapi`. This is a maintained fork of the abandoned `trpc-to-openapi` project with Hanzo-specific enhancements.
+`@hanzo/trpc-openapi` is a TypeScript library that generates **OpenAPI 3.x documents** from tRPC v11 routers and provides HTTP adapters to serve tRPC procedures as REST endpoints. Published on npm as `@hanzo/trpc-openapi`. One router definition produces both the tRPC client types and the REST surface, so the OpenAPI document can never drift from the code that serves it.
 
 ### Why @hanzo/trpc-openapi?
 
@@ -27,13 +27,14 @@ description: "`@hanzo/trpc-openapi` is a TypeScript library that generates OpenA
 - **Linting**: ESLint + Prettier
 - **Build**: TypeScript compiler (dual CJS + ESM output)
 
-### OSS Base
+### Behaviour worth knowing
 
-Fork of [trpc-to-openapi](https://www.npmjs.com/package/trpc-to-openapi). Hanzo-specific additions:
-- Optional input/output parameters are required by default in generated docs
-- `.meta` is optional for all procedures (auto-generates defaults)
-- `override` flag: use only provided openapi object, no defaults merged
-- `additional` flag: merge provided openapi on top of defaults
+- Optional input/output parameters are emitted as required in the generated
+  document, so consumers get a tight contract rather than an all-optional blob
+- `.meta({ openapi: ... })` is optional on every procedure — without it the
+  method comes from the procedure type and the path from the procedure path
+- `override` flag: use only the provided openapi object, merge no defaults
+- `additional` flag: merge the provided openapi on top of the defaults
 
 Repo: `github.com/hanzoai/trpc-openapi`
 
