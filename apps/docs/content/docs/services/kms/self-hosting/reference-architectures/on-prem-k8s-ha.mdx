@@ -15,7 +15,7 @@ flowchart TB
 
     subgraph OS["Object Storage"]
         direction LR
-        store["S3/MinIO/Enterprise Storage"]
+        store["Hanzo S3 / any S3-compatible storage"]
         subgraph store_contents["Storage Contents"]
             wal["PostgreSQL WAL"]
             pgbackup["PostgreSQL Backups"]
@@ -108,9 +108,9 @@ This is the entry point where all other services will interact with Hanzo KMS.
 
 ### Object Storage
 The architecture requires S3-compatible object storage for database backups and cross-datacenter replication. This can be provided by:
-- Existing enterprise object storage solution
-- Dedicated MinIO deployment
-- In-cluster MinIO deployment if neither option above is available
+- [Hanzo S3](/docs/services/s3), deployed alongside the cluster
+- An existing enterprise object storage solution that speaks the S3 API
+- An in-cluster Hanzo S3 deployment if neither option above is available
 
 The object storage must be accessible from all Kubernetes clusters and provides:
 - Storage for PostgreSQL WAL archiving and backups
@@ -224,8 +224,8 @@ CloudNativePG manages replication across data centers:
 - **Failover:** The operator can promote a replica cluster to primary during planned switchovers or failures
 
 ### Object Storage Configuration
-If using MinIO for object storage, ensure:
-- High availability deployment if running dedicated MinIO cluster
+If you operate the object store yourself, ensure:
+- A high-availability deployment, not a single node
 - Proper access controls and encryption for data at rest
 - Regular monitoring of storage capacity and performance
-- Backup of object storage data itself if running your own MinIO deployment
+- A backup of the object storage data itself
