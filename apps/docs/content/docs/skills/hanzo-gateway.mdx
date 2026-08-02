@@ -1,11 +1,11 @@
 ---
 title: "Hanzo Gateway - API Gateway for Hanzo and Lux Networks"
-description: "Hanzo Gateway is a high-performance API gateway built on KrakenD/Lura that routes 147+ endpoints across production clusters. It serves as the unified API entry point for all Hanzo (`api.hanzo.ai`) ..."
+description: "Hanzo Gateway is a high-performance API gateway routing 147+ endpoints across production clusters. It is the unified API entry point for all Hanzo (`api.hanzo.ai`) and Lux (`api.lux.network`) traffic, with per-endpoint rate limiting, JWT auth, billing enforcement, circuit breakers, and ZAP binary transport — all driven by declarative JSON."
 ---
 
 ## Overview
 
-Hanzo Gateway is a **high-performance API gateway** built on KrakenD/Lura that routes 147+ endpoints across production clusters. It serves as the unified API entry point for all Hanzo (`api.hanzo.ai`) and Lux (`api.lux.network`) traffic with per-endpoint rate limiting, JWT authentication, billing enforcement, CORS, circuit breakers, host-based reverse proxying, and ZAP binary transport -- all driven by declarative JSON configuration.
+Hanzo Gateway is a **high-performance API gateway** that routes 147+ endpoints across production clusters. It is the unified API entry point for all Hanzo (`api.hanzo.ai`) and Lux (`api.lux.network`) traffic, handling per-endpoint rate limiting, JWT authentication, billing enforcement, CORS, circuit breakers, host-based reverse proxying, and ZAP binary transport -- all driven by declarative JSON configuration. One binary, one config file per cluster, no imperative routing code.
 
 ### Why Hanzo Gateway?
 
@@ -20,15 +20,19 @@ Hanzo Gateway is a **high-performance API gateway** built on KrakenD/Lura that r
 ### Tech Stack
 
 - **Language**: Go 1.26
-- **Core framework**: KrakenD (Lura v2.12.1) + Gin
-- **Module**: `github.com/hanzoai/gateway`
+- **HTTP layer**: Gin, over an internalized routing/proxy engine (`internal/`)
+- **Module**: `github.com/hanzoai/gateway/v2`
 - **Binary**: `gateway` (also builds `ingress` sidecar)
 - **Config**: Declarative JSON (`gateway.json` per cluster)
 - **Image**: `ghcr.io/hanzoai/gateway:latest`
 
-### OSS Base
+### What lives in this repo
 
-Fork of KrakenD Community Edition with Hanzo-specific additions: auth middleware, widget security, host-based proxy routing, ZAP binary transport, and billing enforcement. Upstream telemetry reporting is disabled.
+The routing and proxy engine is vendored into `internal/` rather than pulled as
+a dependency, so the whole request path is one auditable tree. On top of it the
+repo owns the parts that make the gateway Hanzo's: IAM auth middleware, widget
+key security, host-based proxy routing, ZAP binary transport, and billing
+enforcement. There is no phone-home telemetry.
 
 Repo: `hanzoai/gateway`.
 
@@ -71,7 +75,7 @@ Repo: `hanzoai/gateway`.
 | Per-IP rate limit | 100 req/s |
 | Auth JWKS | `https://hanzo.id/.well-known/jwks` |
 | CI/CD | GitHub Actions (`deploy.yml`) |
-| Repo | `github.com/hanzoai/gateway` |
+| Repo | `github.com/hanzoai/gateway/v2` |
 
 ## One-file quickstart
 
@@ -205,7 +209,7 @@ Client --> api.hanzo.ai/v1/chat/completions
   Streaming response back through gateway (no buffering)
 ```
 
-For `api.hanzo.ai`, AI endpoints (`/v1/chat`, `/v1/completions`, `/v1/models`, etc.) are routed directly to cloud-api via reverse proxy with `/v1/` rewritten to `/api/`. Non-AI paths (`/billing/*`, `/auth/*`, `/analytics/*`, etc.) fall through to KrakenD endpoint handlers defined in `gateway.json`.
+For `api.hanzo.ai`, AI endpoints (`/v1/chat`, `/v1/completions`, `/v1/models`, etc.) are routed directly to cloud-api via reverse proxy with `/v1/` rewritten to `/api/`. Non-AI paths (`/billing/*`, `/auth/*`, `/analytics/*`, etc.) fall through to the declarative endpoint handlers defined in `gateway.json`.
 
 ### Host-Based Routing
 
@@ -227,7 +231,7 @@ Subdomain patterns: Hosts containing `lux-test` or `lux-dev` route to testnet/de
 
 ### Configuration Structure
 
-All routing is defined in JSON config files (`configs/hanzo/gateway.json`, `configs/lux/gateway.json`). Each follows KrakenD v3 schema:
+All routing is defined in JSON config files (`configs/hanzo/gateway.json`, `configs/lux/gateway.json`). Each uses the gateway's v3 config schema:
 
 ```json
 {
@@ -364,7 +368,7 @@ auth_middleware_test.go # Auth middleware tests
 widget_security.go      # Widget key rate limiting + origin validation
 widget_security_test.go # Widget security tests
 router_engine.go        # Host-based reverse proxy, gin engine setup
-executor.go             # KrakenD executor (wires all components)
+executor.go             # Request executor (wires all components)
 backend_factory.go      # Backend factory with CEL, Lua, metrics
 handler_factory.go      # Handler factory with JOSE, rate limiting
 proxy_factory.go        # Proxy factory with CEL, Lua, rate limiting
@@ -385,7 +389,7 @@ sd.go                   # Service discovery registration
 | 403 Forbidden (widget) | Widget key (`hz_*`) used from unauthorized origin | Add origin to `AllowedOrigins` in `widget_security.go`; or use `hk-*` API key instead |
 | API key rejected | Key prefix not recognized | Recognized prefixes: `hk-`, `sk-`, `fw_`, `hz_`, `pk-` |
 | Route not found (404) | Endpoint not in gateway.json or host not in hostRoutes | Add endpoint to config or host to `router_engine.go` |
-| Config validation fails | JSON syntax error or schema violation | Run `make validate`; check against KrakenD v2.12 schema |
+| Config validation fails | JSON syntax error or schema violation | Run `make validate`; check against the v3 config schema |
 | WebSocket not connecting | Host not in `hostRoutes` | Add host entry; `httputil.ReverseProxy` handles WS natively |
 | ZAP listener fails | Missing TLS cert or wrong port | Check `ZAP_TLS_CERT`/`ZAP_TLS_KEY` paths; verify port 9651 is free |
 | Billing check blocks users | Commerce API unreachable | Billing is fail-open by design; check `AUTH_BILLING_URL` connectivity |
