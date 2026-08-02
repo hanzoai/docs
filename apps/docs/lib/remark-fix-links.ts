@@ -14,7 +14,9 @@ import type { Root } from 'mdast';
 //      (/self-hosting/overview on a kms page -> /docs/services/kms/self-hosting/overview),
 //   2. resolve relative links against the current page,
 //   3. keep links that already resolve (incl. _redirects sources),
-//   4. fall back to the section root for links whose target genuinely doesn't
+//   4. find the page the link MEANT inside its own mount, when the upstream
+//      site's root happened to be /docs too (see mount index below),
+//   5. fall back to the section root for links whose target genuinely doesn't
 //      exist (dead upstream refs) — a valid page, never a 404.
 //
 // The set of valid URLs is derived from the content tree (verified byte-for-byte
@@ -69,6 +71,60 @@ function sectionRoot(fileUrl: string): string {
   return '/docs';
 }
 
+// A ported repo whose own site was ALSO rooted at /docs writes its links as
+// /docs/<its own path> — indistinguishable from one of ours until you look for
+// the target and find nothing. Next.js's docs are 443 pages of exactly this, and
+// step 1 above skips them because they already start with /docs.
+//
+// Two things stand between such a link and its page. The path is relative to the
+// upstream root, not ours (/docs/app/glossary lives at
+// /docs/projects/hanzoai/next.js/01-app/04-glossary); and ordering prefixes
+// ("01-app", "04-glossary") order the sidebar here but never appeared in the
+// upstream URL. So the mount is indexed by BARE path suffix: strip the prefixes,
+// then look the link up by its longest suffix that names exactly one page in
+// that mount. Longest-first, and ambiguous suffixes are dropped rather than
+// guessed — a link is repointed only when one page can be the one it meant.
+const bare = (seg: string) => seg.replace(/^\d+[-.]/, '');
+
+function mountOf(url: string): string | null {
+  const p = url.split('/'); // ['', 'docs', 'projects', org, repo, ...]
+  if (p[1] !== 'docs') return null;
+  if (p[2] === 'services' && p[3]) return `/docs/services/${p[3]}`;
+  if (p[2] === 'projects' && p[3] && p[4]) return `/docs/projects/${p[3]}/${p[4]}`;
+  return null;
+}
+
+/** mount root -> (bare path suffix -> the one page it names, or null if several). */
+let MOUNTS: Map<string, Map<string, string | null>> | null = null;
+function mountIndex(): Map<string, Map<string, string | null>> {
+  if (MOUNTS) return MOUNTS;
+  const mounts = new Map<string, Map<string, string | null>>();
+  for (const url of validUrls()) {
+    const mount = mountOf(url);
+    if (!mount || url === mount) continue;
+    let index = mounts.get(mount);
+    if (!index) mounts.set(mount, (index = new Map()));
+    const segments = url.slice(mount.length + 1).split('/').map(bare);
+    for (let i = 0; i < segments.length; i += 1) {
+      const key = segments.slice(i).join('/');
+      index.set(key, index.has(key) ? null : url);
+    }
+  }
+  MOUNTS = mounts;
+  return mounts;
+}
+
+function resolveInMount(p: string, mount: string): string | null {
+  const index = mountIndex().get(mount);
+  if (!index) return null;
+  const segments = p.split('/').filter(Boolean).map(bare);
+  for (let i = 0; i < segments.length; i += 1) {
+    const hit = index.get(segments.slice(i).join('/'));
+    if (hit) return hit;
+  }
+  return null;
+}
+
 function normalize(u: string): string {
   if (u.length > 1 && u.endsWith('/')) u = u.slice(0, -1);
   return u;
@@ -102,7 +158,8 @@ function fixOne(url: string, pageUrl: string, root: string, valid: Set<string>):
   let target: string;
   if (valid.has(cand)) target = cand;
   else if (valid.has(normalize(p))) target = normalize(p);
-  else target = root; // dead upstream ref -> section index, never a 404
+  // the page it meant, inside its own mount
+  else target = resolveInMount(p, root) ?? root; // else section index, never a 404
 
   return target + suffix;
 }
@@ -117,7 +174,9 @@ export function remarkFixInternalLinks(): Transformer<Root, Root> {
     const root = sectionRoot(pageUrl);
 
     visit(tree, (node: any) => {
-      if (node.type === 'link' && typeof node.url === 'string') {
+      // `definition` is the other half of a link: `[label]: /url` at the foot of
+      // the page, referenced as `[text][label]`. Same link, different node.
+      if ((node.type === 'link' || node.type === 'definition') && typeof node.url === 'string') {
         node.url = fixOne(node.url, pageUrl, root, valid);
       } else if (
         node.type === 'mdxJsxFlowElement' ||
