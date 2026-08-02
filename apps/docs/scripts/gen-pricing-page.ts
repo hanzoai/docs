@@ -5,11 +5,21 @@ import { text, yamlString } from './mdx';
 
 // THE PRICING PAGE, generated from the billing API.
 //
-// `GET https://api.hanzo.ai/v1/pricing` is what the gateway charges against.
-// Every figure on /docs/pricing is read out of that response — the Enso tiers,
-// the per-call tool rates, the free-model count, the provider count. Nothing is
-// typed by hand, because a hand-typed price is wrong the first time a rate
-// moves and nobody notices until a bill does.
+// `GET https://api.hanzo.ai/v1/pricing` is the shape of the bill — the tool
+// rates, the free-model count, the provider count, which models exist and what
+// each one is for. Every figure on /docs/pricing is read out of a response.
+// Nothing is typed by hand, because a hand-typed price is wrong the first time a
+// rate moves and nobody notices until a bill does.
+//
+// The per-token rates and context windows come from `GET /v1/models`, the
+// gateway's own catalogue, because that is the answer the gateway gives about
+// the model you are about to name in `model` — and, when the two disagree, the
+// one that matches what you were actually charged. /v1/pricing has been serving
+// a frozen 2026-03-14 snapshot with no Enso rows at all; a page built from it
+// alone published Enso prices five times the real ones, or dropped the family
+// off the page entirely. So: rates from the catalogue, everything else from
+// /v1/pricing, and a pricing response that has lost the Enso family is treated
+// as no answer at all (see fetchPricing).
 //
 // The ONE exception is declared and attributed inline: GPQA-Diamond scores. The
 // catalogue carries prices and context windows but no benchmark, so the quality
@@ -32,6 +42,15 @@ const VENDORED = path.join(APP_ROOT, 'openapi-specs/pricing.json');
 const OUT = path.join(APP_ROOT, 'content/docs/pricing.mdx');
 
 export const PRICING_ENDPOINT = 'https://api.hanzo.ai/v1/pricing';
+export const MODELS_ENDPOINT = 'https://api.hanzo.ai/v1/models';
+
+/**
+ * Enso engines that exist but are never a model you name. They are reached only
+ * as a vision fallback from inside another tier, so listing them would publish a
+ * price for a string nobody can send. `/v1/models` already omits them; this is
+ * the guard for the day /v1/pricing does not.
+ */
+const UNLISTED = new Set(['enso-vl', 'enso-vl-pro']);
 
 /** USD per million tokens, or per unit when `pricingUnit` says otherwise. */
 interface Rate {
@@ -111,6 +130,8 @@ const ctx = (n: number | null | undefined): string => {
 
 // ------------------------------------------------------------------- fetch
 
+const isEnso = (name: string): boolean => /^enso(-|$)/.test(name);
+
 /** The billing API's own answer. Null when it does not give a usable one. */
 async function fetchPricing(): Promise<Pricing | null> {
   try {
@@ -129,11 +150,64 @@ async function fetchPricing(): Promise<Pricing | null> {
       console.warn('[pricing] api answered without hanzoModels');
       return null;
     }
+    // Nor is one that answers with a Hanzo family containing no Enso. Enso is
+    // the first section of this page and the tier a reader is here to price; a
+    // response missing it is incomplete, not a catalogue where Enso stopped
+    // existing. Rendering it would silently delete the section.
+    if (!d.hanzoModels.some((m) => isEnso(m.name))) {
+      console.warn('[pricing] api answered without the Enso family');
+      return null;
+    }
     return d;
   } catch (e) {
     console.warn(`[pricing] api unreachable: ${(e as Error).message}`);
     return null;
   }
+}
+
+/** The gateway catalogue, keyed by the id you pass as `model`. */
+async function fetchCatalogue(): Promise<Map<string, Rate & { context: number | null }>> {
+  const out = new Map<string, Rate & { context: number | null }>();
+  try {
+    const r = await fetch(MODELS_ENDPOINT, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!r.ok) {
+      console.warn(`[pricing] catalogue answered ${r.status}`);
+      return out;
+    }
+    const d = (await r.json()) as {
+      data?: Array<{ id: string; context_window?: number | null; pricing?: Rate }>;
+    };
+    for (const m of d.data ?? []) {
+      if (m.pricing?.input == null) continue;
+      out.set(m.id, { ...m.pricing, context: m.context_window ?? null });
+    }
+  } catch (e) {
+    console.warn(`[pricing] catalogue unreachable: ${(e as Error).message}`);
+  }
+  return out;
+}
+
+/**
+ * The catalogue's rate wins. Only for models billed per token — a model priced
+ * per image or per clip has no input/output rate for the catalogue's per-token
+ * figure to be about, and overwriting one with the other prints a rate that
+ * nobody is charged.
+ */
+function applyCatalogue(p: Pricing, catalogue: Awaited<ReturnType<typeof fetchCatalogue>>): number {
+  let changed = 0;
+  for (const m of p.hanzoModels ?? []) {
+    const c = catalogue.get(m.name);
+    if (!c || m.pricingUnit) continue;
+    if (m.pricing?.input !== c.input || m.pricing?.output !== c.output || m.context !== c.context) {
+      changed += 1;
+    }
+    m.pricing = { ...m.pricing, input: c.input, output: c.output };
+    m.context = c.context;
+  }
+  return changed;
 }
 
 function load(): Pricing {
@@ -164,7 +238,7 @@ const project = (p: Pricing, meta: Pricing['meta']): Pricing => ({
 /** The three Enso tiers, cheapest first — the order you should try them in. */
 function ensoTiers(models: Model[]): Model[] {
   return models
-    .filter((m) => /^enso(-|$)/.test(m.name))
+    .filter((m) => isEnso(m.name) && !UNLISTED.has(m.name))
     .sort((a, b) => (a.pricing?.input ?? 0) - (b.pricing?.input ?? 0));
 }
 
@@ -234,8 +308,9 @@ function render(p: Pricing): string {
     w(
       '',
       'Prices and context windows are the gateway\'s own, read from',
-      '`/v1/pricing`. The GPQA-Diamond column is the exception — the catalogue',
-      'carries no benchmark field, so those figures come from',
+      '`/v1/models` — the same answer you get for the id you pass as `model`.',
+      'The GPQA-Diamond column is the exception — the catalogue carries no',
+      'benchmark field, so those figures come from',
       '[hanzo.ai/enso](https://hanzo.ai/enso), where they are published.',
       '',
     );
@@ -365,7 +440,8 @@ function render(p: Pricing): string {
     '  <Card icon={<Code />} title="Pricing API" href="/docs/openapi/pricing" description="Every pricing endpoint, generated from the spec." />',
     '</Cards>',
     '',
-    `*Rates captured from \`/v1/pricing\` on ${captured}.*`,
+    `*Per-token rates and context windows read from \`/v1/models\`. Everything` +
+      ` else captured from \`/v1/pricing\` on ${captured}.*`,
     '',
   );
 
@@ -375,7 +451,7 @@ function render(p: Pricing): string {
 // -------------------------------------------------------------------- main
 
 export async function genPricingPage(): Promise<void> {
-  const live = await fetchPricing();
+  const [live, catalogue] = await Promise.all([fetchPricing(), fetchCatalogue()]);
   const have = fs.existsSync(VENDORED) ? load() : null;
 
   let pricing: Pricing;
@@ -386,10 +462,12 @@ export async function genPricingPage(): Promise<void> {
     // Say it in the build log, loudly: this build's page states the rates as
     // they were, not as they are.
     console.log(
-      `[pricing] api unreachable — rendering the vendored copy captured ${have.meta?.captured ?? '(undated)'}`,
+      `[pricing] no usable /v1/pricing — rendering the vendored copy captured ${have.meta?.captured ?? '(undated)'}`,
     );
     pricing = project(have, { ...have.meta!, source: 'snapshot' });
   }
+  const corrected = applyCatalogue(pricing, catalogue);
+  if (corrected) console.log(`[pricing] ${corrected} rate(s) corrected from ${MODELS_ENDPOINT}`);
   fs.writeFileSync(VENDORED, JSON.stringify(pricing, null, 2) + '\n');
 
   fs.writeFileSync(OUT, render(pricing) + '\n');
