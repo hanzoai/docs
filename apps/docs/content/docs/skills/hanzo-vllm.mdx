@@ -1,11 +1,11 @@
 ---
 title: "Hanzo vLLM"
-description: "Hanzo vLLM is a Rust LLM inference server with an OpenAI-compatible API, PagedAttention, continuous batching, and multi-GPU/multi-node support. Fork of `EricLBuehler/candle-vllm`, built on top of `..."
+description: "Hanzo vLLM is a Rust LLM inference server with an OpenAI-compatible API, PagedAttention, continuous batching, and multi-GPU/multi-node support. Binary `candle-vllm`, version 0.2.1, MIT licensed."
 ---
 
 ## Overview
 
-Hanzo vLLM is a **Rust LLM inference server** with an OpenAI-compatible API, PagedAttention, continuous batching, and multi-GPU/multi-node support. Fork of `EricLBuehler/candle-vllm`, built on top of `guoqingbao/candle` (a fork of Hugging Face's Candle ML framework). Binary name: `candle-vllm`. Version 0.2.1.
+Hanzo vLLM is a **Rust LLM inference server** with an OpenAI-compatible API, PagedAttention, continuous batching, and multi-GPU/multi-node support. No Python in the serving path — point any OpenAI SDK at it and it answers. Binary name: `candle-vllm`. Version 0.2.1.
 
 ### Why Hanzo vLLM?
 
@@ -30,9 +30,9 @@ Hanzo vLLM is a **Rust LLM inference server** with an OpenAI-compatible API, Pag
 - **Distributed**: MPI (optional, for multi-node)
 - **Template Engine**: MiniJinja (chat templates)
 
-### OSS Base
+### Repo
 
-Repo: `hanzoai/vllm` (90MB). Fork of `EricLBuehler/candle-vllm`. MIT License (Copyright 2023 Eric Buehler). Default branch: `master`.
+`hanzoai/vllm`. MIT License (Copyright 2023 Eric Buehler). Default branch: `master`.
 
 ## When to use
 
@@ -325,16 +325,17 @@ python3 examples/benchmark.py --batch 16 --max_tokens 1024
 | `--log` | Enable logging | false |
 | `--num-experts-offload-per-rank` | CPU offload (MoE models) | 0 |
 
-## Relationship to Hanzo Candle
+## Relationship to Hanzo ML
 
-Hanzo vLLM depends on `guoqingbao/candle` (a fork of `huggingface/candle`) for tensor operations, neural network layers, and GPU backends. The Hanzo Candle repo (`hanzoai/candle`) is the same Candle framework but maintained under the Hanzo org. They serve different purposes:
+The two are separate layers of the same stack:
 
-- **hanzoai/candle** -- ML framework (tensors, layers, GPU ops)
-- **hanzoai/vllm** -- Inference server (API, batching, scheduling, PagedAttention) built on Candle
+- **hanzoai/ml** -- the ML framework: tensors, neural network layers, GPU kernels
+- **hanzoai/vllm** -- the inference server: OpenAI-compatible API, continuous
+  batching, scheduling, PagedAttention
 
 ## Related Skills
 
-- `hanzo/hanzo-candle.md` - Rust ML framework (underlying tensor engine)
+- `hanzo/hanzo-ml.md` - Rust ML framework (underlying tensor engine)
 - `hanzo/hanzo-cloud.md` - Cloud LLM inference API (uses this as a backend)
 - `hanzo/hanzo-ai-api.md` - the Hanzo AI API (routes to this among others)
 - `hanzo/hanzo-engine.md` - GPU scheduling and ML job management
