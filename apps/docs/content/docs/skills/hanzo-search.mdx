@@ -1,13 +1,13 @@
 ---
 title: "Hanzo Search - High-Performance Search Engine"
-description: "Hanzo Search is a high-performance search engine built as a Rust workspace with 22 crates. Fork of Meilisearch v1.37.0 with AI-powered ranking, vector search, and faceting. Designed for sub-50ms se..."
+description: "Hanzo Search is a high-performance search engine — a Rust workspace of 23 crates delivering typo-tolerant full-text search, vector and hybrid retrieval, AI ranking, and faceting in sub-50ms across millions of documents."
 ---
 
 ## Overview
 
-Hanzo Search is a **high-performance search engine** built as a Rust workspace with 22 crates. Fork of Meilisearch v1.37.0 with AI-powered ranking, vector search, and faceting. Designed for sub-50ms search across millions of documents.
+Hanzo Search is a **high-performance search engine**: documents in, ranked results out. It is a Rust workspace of 23 crates providing typo-tolerant full-text search, dense-vector and hybrid retrieval, AI ranking, and faceting — designed for sub-50ms queries across millions of documents. It ships as a single binary with no external dependencies.
 
-**NOTE**: Crate names are not yet renamed from upstream — the binary is still `meilisearch`, core engine is `milli`, and CLI tool is `meilitool`. Dual licensed: MIT for open-source use, with a separate enterprise license (LICENSE-EE).
+**Layout**: the server binary is `search`, the operator CLI is `searchtool`, and the core index engine is the `milli` crate. Repo: `hanzoai/index`. Dual licensed: MIT for open-source use, with a separate enterprise license (`LICENSE-EE`).
 
 ### Features
 
@@ -19,9 +19,6 @@ Hanzo Search is a **high-performance search engine** built as a Rust workspace w
 - **RESTful API**: Simple HTTP/JSON interface
 - **Self-hostable**: Single binary, no external dependencies
 
-### OSS Base
-
-Fork of **Meilisearch** v1.37.0. Repo: `hanzoai/search`.
 
 ## When to use
 
@@ -34,21 +31,23 @@ Fork of **Meilisearch** v1.37.0. Repo: `hanzoai/search`.
 
 | Item | Value |
 |------|-------|
-| Tech | Rust workspace (22 crates) |
-| Binary | `meilisearch` (not yet renamed from upstream) |
+| Tech | Rust workspace (23 crates) |
+| Binary | `search` |
+| CLI | `searchtool` |
 | Port | 7700 (default) |
-| Repo | `github.com/hanzoai/search` |
+| Repo | `github.com/hanzoai/index` |
+| Image | `ghcr.io/hanzoai/search:latest` |
 
 ## One-file quickstart
 
 ```bash
-cd search
+cd index
 
 # Build
 cargo build --release
 
 # Run
-./target/release/meilisearch --http-addr 0.0.0.0:7700 --master-key YOUR_KEY
+./target/release/search --http-addr 0.0.0.0:7700 --master-key YOUR_KEY
 
 # Index documents
 curl -X POST http://localhost:7700/indexes/movies/documents \
@@ -66,11 +65,11 @@ curl http://localhost:7700/indexes/movies/search \
 
 ```bash
 # Environment variables
-MEILI_MASTER_KEY=your-master-key    # API authentication
-MEILI_DB_PATH=./data.ms             # Data directory
-MEILI_HTTP_ADDR=0.0.0.0:7700       # Listen address
-MEILI_ENV=production                # production or development
-MEILI_MAX_INDEXING_MEMORY=2Gi      # Indexing memory limit
+INDEX_MASTER_KEY=your-master-key     # API authentication
+INDEX_DB_PATH=./data.ms              # Data directory
+INDEX_HTTP_ADDR=0.0.0.0:7700         # Listen address
+INDEX_ENV=production                 # production or development
+INDEX_MAX_INDEXING_MEMORY=2Gi        # Indexing memory limit
 ```
 
 ### Vector Search
@@ -102,11 +101,13 @@ Key crates in the Rust workspace:
 
 | Crate | Purpose |
 |-------|---------|
-| `meilisearch` | Main binary and HTTP API |
+| `search` | Main binary and HTTP API |
 | `milli` | Core indexing engine |
 | `index-scheduler` | Async task scheduling |
-| `meilisearch-auth` | API key management |
-| `meilitool` | CLI maintenance tool |
+| `search-auth` | API key management |
+| `search-types` | Shared request/response types |
+| `search-snap` | Snapshot and restore |
+| `searchtool` | CLI maintenance tool |
 | `filter-parser` | Query filter DSL |
 | `json-depth-checker` | Document validation |
 | `flatten-serde-json` | Nested document flattening |
@@ -115,8 +116,8 @@ Key crates in the Rust workspace:
 
 ```bash
 docker run -p 7700:7700 \
-  -v $(pwd)/meili_data:/meili_data \
-  -e MEILI_MASTER_KEY=YOUR_KEY \
+  -v $(pwd)/search-data:/data \
+  -e INDEX_MASTER_KEY=YOUR_KEY \
   ghcr.io/hanzoai/search:latest
 ```
 
