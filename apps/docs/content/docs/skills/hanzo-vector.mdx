@@ -1,17 +1,17 @@
 ---
 title: "Hanzo Vector - High-Performance Vector Search Engine"
-description: "Hanzo Vector is a high-performance vector search engine for the Hanzo AI platform. It is a full fork of Qdrant v1.17.0, written in Rust, providing dense and sparse vector similarity search with fil..."
+description: "Hanzo Vector is the vector search engine behind /v1/vector — Rust, dense and sparse similarity search with payload filtering, quantization, distributed clustering and GPU acceleration, over a Qdrant-compatible REST and gRPC API."
 ---
 
 ## Overview
 
-Hanzo Vector is a **high-performance vector search engine** for the Hanzo AI platform. It is a full fork of [Qdrant](https://github.com/qdrant/qdrant) v1.17.0, written in Rust, providing dense and sparse vector similarity search with filtering, payloads, quantization, distributed clustering, and GPU acceleration.
+Hanzo Vector is the **vector search engine** behind `/v1/vector` — written in Rust, serving dense and sparse similarity search with payload filtering, quantization, distributed clustering, and GPU acceleration.
 
-The crate is named `hanzo-vector` (package name in Cargo.toml), but the binary is still `qdrant` for wire-protocol compatibility with Qdrant clients.
+It speaks the **Qdrant wire protocol** over both REST and gRPC. That is a deliberate interface choice, not an accident of history: every Qdrant client SDK (Python, JS, Rust, Go) and every tool that talks to Qdrant works against Hanzo Vector unchanged, and the binary keeps the `qdrant` name so that compatibility holds all the way down to the container command line.
 
 ### Why Hanzo Vector?
 
-- **Drop-in Qdrant replacement**: Compatible with all Qdrant client SDKs (Python, JS, Rust, Go)
+- **Qdrant-compatible API**: every Qdrant client SDK (Python, JS, Rust, Go) works unchanged
 - **Dense + sparse vectors**: Hybrid search combining semantic embeddings and keyword matching
 - **HNSW indexing**: Approximate nearest neighbor with SIMD acceleration
 - **Vector quantization**: Scalar, product, and binary quantization for memory efficiency
@@ -25,15 +25,13 @@ The crate is named `hanzo-vector` (package name in Cargo.toml), but the binary i
 
 - **Language**: Rust (edition 2024, rust-version 1.92)
 - **HTTP server**: actix-web with rustls TLS
-- **gRPC server**: tonic (custom fork for qdrant compatibility)
+- **gRPC server**: tonic, serving the Qdrant protobuf service definitions
 - **Consensus**: Raft (via `raft` crate, prost codec)
 - **Allocator**: jemalloc (tikv-jemallocator) on x86_64/aarch64
 - **Profiling**: Pyroscope, tracing-tracy, console-subscriber
 - **Build**: cargo-chef for Docker layer caching, mold linker
 
-### OSS Base
-
-Fork of [qdrant/qdrant](https://github.com/qdrant/qdrant). Repo: `hanzoai/vector`, branch `master` (not `main`).
+Repo: `hanzoai/vector`, branch `master` (not `main`).
 
 ## When to use
 
