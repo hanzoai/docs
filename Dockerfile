@@ -26,25 +26,22 @@ COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 RUN apk add --no-cache git libstdc++ libgcc && corepack enable && corepack prepare pnpm@11.1.0 --activate
 WORKDIR /src
 COPY . .
-RUN pnpm install --frozen-lockfile
 ENV NEXT_EXPORT=1 \
     HANZO_DOCS_SYNC=0 \
     NEXT_TELEMETRY_DISABLED=1 \
     NODE_OPTIONS=--max-old-space-size=24576
 ARG APP=docs
-# The ingest key, gated HERE for the same reason the export gate below is here:
-# this is the one thing every builder passes through. A guard in deploy.yml
-# protects one of six lanes — and the lane that produced the last live image was
-# not that one, so the guard never fired and the bundle shipped keyless.
+# The ingest key, gated HERE for the same reason the export gate is here: this is
+# the one thing every builder passes through. A guard in deploy.yml protects one
+# of six lanes, and the lane that produced the last live image was not that one,
+# so the guard never fired and the bundle shipped keyless.
 #
 # EVENT_INGEST_KEY is the name in KMS and on the --build-arg; NEXT_PUBLIC_ is
-# added here because that prefix is what makes Next inline it. The secret store
-# keeps the ONE plain name.
+# added here because that prefix is what makes Next inline it.
 #
 # Fail closed: an empty key builds, serves and looks correct while cloud files
-# every pageview under the reserved $public tenant, which this org cannot read —
-# and ingest answers 200, so nothing anywhere says so. Refuse the artifact
-# instead. The value is publishable and write-only, so it is safe in the bundle.
+# every pageview under $public, which this org cannot read, and ingest answers
+# 200 either way. Refuse the artifact instead.
 ARG EVENT_INGEST_KEY=
 ENV NEXT_PUBLIC_EVENT_INGEST_KEY=$EVENT_INGEST_KEY
 RUN case "$EVENT_INGEST_KEY" in \
@@ -52,7 +49,36 @@ RUN case "$EVENT_INGEST_KEY" in \
       '')   echo "EVENT_INGEST_KEY is empty - pass --build-arg EVENT_INGEST_KEY=<pk-...> (KMS deploy/EVENT_INGEST_KEY, env prod)" >&2; exit 1 ;; \
       *)    echo "EVENT_INGEST_KEY is not a publishable key (expected a pk- prefix)" >&2; exit 1 ;; \
     esac
-RUN pnpm build --filter="${APP}"
+# Install, build, and drop every intermediate IN ONE LAYER. Only `out/` survives.
+#
+# The single `&&` chain is the whole point, and it is a disk budget rather than
+# tidiness. A RUN is a layer, and a layer stores what existed when it ended — so
+# installing in one RUN and deleting in a later one frees NOTHING: node_modules
+# is still in the earlier layer, on disk, for the rest of the build. Only files
+# that never outlive their own layer cost nothing.
+#
+# What that saves here: node_modules for a 21-app / 36-package workspace, plus
+# .next (~6.9G), plus the turbo cache (~2.4G), plus the pnpm store. The runner's
+# docker storage is a 38Gi emptyDir and this build wanted more than all of it.
+#
+# Over that line the kubelet EVICTS the runner pod --
+#   Evicted: Usage of EmptyDir volume "docker-storage" exceeds the limit "38Gi"
+# -- which looks nothing like a build failure. The pod restarts, so dockerd
+# restarts, so the job log truncates with no error and the run sits in_progress.
+# It reads exactly like an OOM and is not one; MemoryPressure stays False and
+# node memory sits near 7%. Check `kubectl -n hanzo get events | grep -i evict`
+# before believing anything the build log implies about why it stopped.
+#
+# Splitting this chain back into separate RUNs will reintroduce the eviction
+# without changing a line of application code.
+#
+# Nothing downstream needs the toolchain: the export gate reads `out/` with sh,
+# and the serving stage copies `out/` alone.
+RUN pnpm install --frozen-lockfile \
+ && pnpm build --filter="${APP}" \
+ && rm -rf node_modules apps/*/node_modules packages/*/node_modules \
+           "apps/${APP}/.next" .turbo \
+           /root/.cache /root/.local/share/pnpm /root/.npm
 
 # The export gate, INSIDE the recipe — so it is not a property of one builder.
 #
