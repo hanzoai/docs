@@ -484,19 +484,42 @@ lane at once, which is the only way a section stays required.
   trigger. Those are opposite diagnoses and only one of them is fixable by
   arming a lane.
 
-  The failure was not the build. Nothing inside the build container can see the
-  pod's limits — `docker info` reports the node's 33.6GB and `nproc` reports the
-  node's 8 cores, because that cgroup carries neither — so Next forked 7 static
-  generation workers, each inheriting `--max-old-space-size=24576`, inside a
-  26Gi pod. That does not fail as an out-of-memory build; it kills the runner's
-  own **dockerd**, which takes the build container with it. So the job's log
-  truncates mid-export with no error line and the forge goes on reporting the
-  run as `in_progress` forever.
+  The failure is **disk**, and it is worth being exact, because the symptom
+  invites a wrong answer. The job's log truncates mid-export with no error line,
+  dockerd appears to restart, and the run reports `in_progress` for another ten
+  minutes. That reads like an out-of-memory kill. It is not one — the kubelet
+  says so:
 
-  Read that signature correctly: **a job whose log stops and never ends is an
-  infrastructure kill, not a build defect.** A real build failure on this forge
-  marks the later steps `skipped` and names its error. The `Dockerfile` now
-  bounds Node the way the CI fleet already bounds Go and Rust.
+      git-runner-5   Evicted: Usage of EmptyDir volume "docker-storage"
+                              exceeds the limit "38Gi"
+      git-runner-7   Evicted: node was low on resource: ephemeral-storage
+      MemoryPressure=False, node memory usage 7%
+
+  The runner's docker storage is a 38Gi `emptyDir`, and this build wants nearly
+  all of it: node_modules for a 21-app / 36-package workspace, `.next` ~6.9G,
+  `out` ~6.4G, the turbo cache ~2.4G, the 2.55G image, and whatever earlier jobs
+  left on that runner (measured: 1.6–7.5G). Over the line, the pod is evicted and
+  restarted — which is what restarts dockerd, and why nothing logs an error.
+
+  Read the signature correctly: **a job whose log stops, whose pod restarts, and
+  which never ends is an eviction.** A real build failure names its error and
+  marks the later steps `skipped`. An OOM would show `MemoryPressure`. Check
+  `kubectl -n hanzo get events | grep -i evict` before touching the Dockerfile.
+
+  Three changes keep the build inside its volume: a `.dockerignore` (there was
+  none, so `COPY . .` shipped the whole tree — 16G if it had ever been built
+  locally, now 323M), removal of `.next` and the turbo cache **in the same RUN**
+  that creates them (~9G, and a later RUN would free nothing since the earlier
+  layer still stores them), and a reclaim step in `deploy.yml` that prunes the
+  runner and prints `df` before and after, so the next failure of this kind says
+  so in its own log.
+
+- **The runner pool is over-subscribed on disk, and that is not fixed here.**
+  Two runners share a node, each with a 38Gi `docker-storage` emptyDir plus
+  images and checkouts, on a ~98G disk. The node hit `DiskPressure` and evicted
+  a third runner during this work. Trimming this build buys margin; it does not
+  change the arithmetic. Sizing that pool is a fleet decision in hanzoai/universe
+  (`charts/app/values/hanzo/git-runner.yaml`), not a docs-repo one.
 
 - **`hanzoai/docs` is a second lane on the same source.** It still mirrors from
   the other host every 10 minutes and still has its Actions unit, so it will keep
