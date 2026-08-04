@@ -506,13 +506,20 @@ lane at once, which is the only way a section stays required.
   marks the later steps `skipped`. An OOM would show `MemoryPressure`. Check
   `kubectl -n hanzo get events | grep -i evict` before touching the Dockerfile.
 
-  Three changes keep the build inside its volume: a `.dockerignore` (there was
-  none, so `COPY . .` shipped the whole tree — 16G if it had ever been built
-  locally, now 323M), removal of `.next` and the turbo cache **in the same RUN**
-  that creates them (~9G, and a later RUN would free nothing since the earlier
-  layer still stores them), and a reclaim step in `deploy.yml` that prunes the
-  runner and prints `df` before and after, so the next failure of this kind says
-  so in its own log.
+  Three changes keep the build inside its volume:
+
+  1. A `.dockerignore`. There was none, so `COPY . .` shipped the whole tree —
+     16G if it had ever been built locally, and 776M of `.git` even on a clean
+     CI checkout. Now 323M.
+  2. **One layer** for install + build + cleanup. A RUN is a layer and a layer
+     stores what existed when it ended, so installing in one RUN and deleting in
+     a later one frees nothing — `node_modules` for a 21-app / 36-package
+     workspace stays on disk for the rest of the build. Chained with `&&`, it
+     never outlives its own layer. Splitting that chain reintroduces the
+     eviction without changing a line of application code.
+  3. A reclaim step in `deploy.yml` that prunes the runner and reports
+     `docker system df` before and after — measured at ~3.3G recovered on a
+     warm runner — so the next failure of this kind is legible in its own log.
 
 - **The runner pool is over-subscribed on disk, and that is not fixed here.**
   Two runners share a node, each with a 38Gi `docker-storage` emptyDir plus

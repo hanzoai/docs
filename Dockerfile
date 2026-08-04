@@ -26,7 +26,6 @@ COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 RUN apk add --no-cache git libstdc++ libgcc && corepack enable && corepack prepare pnpm@11.1.0 --activate
 WORKDIR /src
 COPY . .
-RUN pnpm install --frozen-lockfile
 ENV NEXT_EXPORT=1 \
     HANZO_DOCS_SYNC=0 \
     NEXT_TELEMETRY_DISABLED=1 \
@@ -39,25 +38,36 @@ ARG APP=docs
 # loss is silent. The value is publishable and write-only by design.
 ARG NEXT_PUBLIC_EVENT_INGEST_KEY=
 ENV NEXT_PUBLIC_EVENT_INGEST_KEY=$NEXT_PUBLIC_EVENT_INGEST_KEY
-# Build, then drop the intermediates IN THE SAME LAYER. Only `out/` is copied to
-# the serving stage; `.next/` and the turbo cache are scaffolding.
+# Install, build, and drop every intermediate IN ONE LAYER. Only `out/` survives.
 #
-# The `&&` is the whole point. Deleting them in a later RUN would free nothing:
-# each RUN is its own layer, so a file created in one and removed in the next is
-# still stored in the first. Folding the removal into the command that creates
-# them means the layer never contains them at all.
+# The single `&&` chain is the whole point, and it is a disk budget rather than
+# tidiness. A RUN is a layer, and a layer stores what existed when it ended — so
+# installing in one RUN and deleting in a later one frees NOTHING: node_modules
+# is still in the earlier layer, on disk, for the rest of the build. Only files
+# that never outlive their own layer cost nothing.
 #
-# This is a disk budget, and disk is what actually breaks this build. The CI
-# runner's docker storage is a 38Gi emptyDir, and this build wants roughly all
-# of it: node_modules for a 21-app / 36-package workspace, plus .next (~6.9G),
-# plus out (~6.4G), plus the turbo cache (~2.4G), on a runner already holding a
-# few GB from earlier jobs. Over that line the kubelet EVICTS the runner pod --
-# "Usage of EmptyDir volume docker-storage exceeds the limit 38Gi" -- which
-# reads nothing like a build failure: the job's log truncates mid-export with no
-# error, dockerd appears to restart, and the run reports in_progress for ages.
-# Removing ~9G of scaffolding here is what keeps the build inside its volume.
-RUN pnpm build --filter="${APP}" \
- && rm -rf "apps/${APP}/.next" .turbo node_modules/.cache
+# What that saves here: node_modules for a 21-app / 36-package workspace, plus
+# .next (~6.9G), plus the turbo cache (~2.4G), plus the pnpm store. The runner's
+# docker storage is a 38Gi emptyDir and this build wanted more than all of it.
+#
+# Over that line the kubelet EVICTS the runner pod --
+#   Evicted: Usage of EmptyDir volume "docker-storage" exceeds the limit "38Gi"
+# -- which looks nothing like a build failure. The pod restarts, so dockerd
+# restarts, so the job log truncates with no error and the run sits in_progress.
+# It reads exactly like an OOM and is not one; MemoryPressure stays False and
+# node memory sits near 7%. Check `kubectl -n hanzo get events | grep -i evict`
+# before believing anything the build log implies about why it stopped.
+#
+# Splitting this chain back into separate RUNs will reintroduce the eviction
+# without changing a line of application code.
+#
+# Nothing downstream needs the toolchain: the export gate reads `out/` with sh,
+# and the serving stage copies `out/` alone.
+RUN pnpm install --frozen-lockfile \
+ && pnpm build --filter="${APP}" \
+ && rm -rf node_modules apps/*/node_modules packages/*/node_modules \
+           "apps/${APP}/.next" .turbo \
+           /root/.cache /root/.local/share/pnpm /root/.npm
 
 # The export gate, INSIDE the recipe — so it is not a property of one builder.
 #
