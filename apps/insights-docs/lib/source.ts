@@ -1,4 +1,4 @@
-import { docs } from '@/docs/server';
+import { docs } from '@hanzo/mdx:collections/server';
 import { type InferPageType, loader } from '@hanzo/docs-core/source';
 import { lucideIconsPlugin } from '@hanzo/docs-core/source/lucide-icons';
 

@@ -18,9 +18,9 @@ const config: NextConfig = {
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@hanzo/mdx:collections/server': resolve(__dirname, './docs/server.ts'),
-      '@hanzo/mdx:collections/browser': resolve(__dirname, './docs/browser.ts'),
-      '@hanzo/mdx:collections/dynamic': resolve(__dirname, './docs/dynamic.ts'),
+      '@hanzo/mdx:collections/server': resolve(__dirname, './.docs/server.ts'),
+      '@hanzo/mdx:collections/browser': resolve(__dirname, './.docs/browser.ts'),
+      '@hanzo/mdx:collections/dynamic': resolve(__dirname, './.docs/dynamic.ts'),
     };
     return config;
   },

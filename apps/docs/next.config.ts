@@ -56,16 +56,21 @@ const config: NextConfig = {
   // resolve foreign refs. Stub → the no-op empty module, rendering children only.
   turbopack: {
     resolveAlias: {
-      'collections/server': './docs/server.ts',
-      'collections/browser': './docs/browser.ts',
-      'collections/dynamic': './docs/dynamic.ts',
-      '@hanzo/mdx:collections/server': './docs/server.ts',
-      '@hanzo/mdx:collections/browser': './docs/browser.ts',
-      '@hanzo/mdx:collections/dynamic': './docs/dynamic.ts',
+      'collections/server': './.docs/server.ts',
+      'collections/browser': './.docs/browser.ts',
+      'collections/dynamic': './.docs/dynamic.ts',
+      '@hanzo/mdx:collections/server': './.docs/server.ts',
+      '@hanzo/mdx:collections/browser': './.docs/browser.ts',
+      '@hanzo/mdx:collections/dynamic': './.docs/dynamic.ts',
+      // Ported docs written against the upstream framework name still say
+      // `fumadocs-ui`; those components are ours, under our name.
+      'fumadocs-ui/components/callout': '@hanzo/docs-ui/components/callout',
+      'fumadocs-ui/components/tabs': '@hanzo/docs-ui/components/tabs',
       '@docusaurus': './lib/empty-project-module.js',
       '@theme': './lib/empty-project-module.js',
       '@theme/Tabs': './lib/empty-project-module.js',
       '@theme/TabItem': './lib/empty-project-module.js',
+      '@theme/CodeBlock': './lib/empty-project-module.js',
       'nextra': './lib/empty-project-module.js',
       '@mintlify': './lib/empty-project-module.js',
       '@hanzo/icons': './lib/empty-project-module.js',
@@ -95,17 +100,22 @@ const config: NextConfig = {
       // Virtual collection modules (internal). Both the namespaced specifier
       // and the bare `collections/*` specifier resolve to the generated source
       // (lib/source imports the bare form).
-      '@hanzo/mdx:collections/server': path.resolve(__dirname, 'docs/server.ts'),
-      '@hanzo/mdx:collections/browser': path.resolve(__dirname, 'docs/browser.ts'),
-      '@hanzo/mdx:collections/dynamic': path.resolve(__dirname, 'docs/dynamic.ts'),
-      'collections/server': path.resolve(__dirname, 'docs/server.ts'),
-      'collections/browser': path.resolve(__dirname, 'docs/browser.ts'),
-      'collections/dynamic': path.resolve(__dirname, 'docs/dynamic.ts'),
+      '@hanzo/mdx:collections/server': path.resolve(__dirname, '.docs/server.ts'),
+      '@hanzo/mdx:collections/browser': path.resolve(__dirname, '.docs/browser.ts'),
+      '@hanzo/mdx:collections/dynamic': path.resolve(__dirname, '.docs/dynamic.ts'),
+      'collections/server': path.resolve(__dirname, '.docs/server.ts'),
+      'collections/browser': path.resolve(__dirname, '.docs/browser.ts'),
+      'collections/dynamic': path.resolve(__dirname, '.docs/dynamic.ts'),
+
+      // (a) Upstream framework name -> the same components under ours
+      'fumadocs-ui/components/callout': '@hanzo/docs-ui/components/callout',
+      'fumadocs-ui/components/tabs': '@hanzo/docs-ui/components/tabs',
 
       // Other doc-platform packages -> no-op stub
       '@docusaurus': emptyProjectModule,
       '@theme/Tabs': emptyProjectModule,
       '@theme/TabItem': emptyProjectModule,
+      '@theme/CodeBlock': emptyProjectModule,
       '@theme': emptyProjectModule,
       'nextra': emptyProjectModule,
       '@mintlify': emptyProjectModule,
@@ -241,11 +251,11 @@ const config: NextConfig = {
   },
 };
 
-// Regenerate the content collection (docs/server.ts etc.) into the SAME dir the
-// resolve.alias below points at, so the build always uses a fresh, section-filtered
-// collection instead of a stale committed one (which referenced projects/* pages
-// excluded from the core build).
-const withMDX = createMDX({ outDir: 'docs' });
+// The collection modules are generated into the generator's own output dir
+// (`.docs/`, gitignored) — the same dir every alias above points at, and the
+// same dir every other app and example uses. Nothing is committed, so the build
+// can never pick up a stale collection.
+const withMDX = createMDX();
 
 // createMDX is typed against its own copy of NextConfig, so the two structurally
 // identical types are nominally distinct here. (The comment this replaces blamed
