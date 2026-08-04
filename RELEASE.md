@@ -476,10 +476,34 @@ lane at once, which is the only way a section stays required.
 - **`latest` is not what the pin serves** (`sha256:eb7cccd3…` vs the pin's
   `sha256:feb3a652…`). Nothing we run reads it, but a bare
   `docker pull ghcr.io/hanzoai/docs` gets it, and lane 3 would move it.
-- **The builds that exist are sporadic, not per-push.** Of the seven commits from
-  the pinned one to the tip, three have an image in lane 5's shape and four do
-  not. So nothing is building this repo on every push, and "there is an image for
-  the tip" is a fact to re-check with the probe above, never an assumption.
+- **The builds that exist are sporadic, and now we know why.** It was read here
+  as "nothing is building this repo on every push." Something was: `hanzoai/docs`
+  fires `deploy.yml` on every mirror sync whose paths match. It was *failing* —
+  89 of its 95 runs are failures, and every recent `image` run dies inside
+  `docker build`. Sporadic images were the occasional survivor, not an occasional
+  trigger. Those are opposite diagnoses and only one of them is fixable by
+  arming a lane.
+
+  The failure was not the build. Nothing inside the build container can see the
+  pod's limits — `docker info` reports the node's 33.6GB and `nproc` reports the
+  node's 8 cores, because that cgroup carries neither — so Next forked 7 static
+  generation workers, each inheriting `--max-old-space-size=24576`, inside a
+  26Gi pod. That does not fail as an out-of-memory build; it kills the runner's
+  own **dockerd**, which takes the build container with it. So the job's log
+  truncates mid-export with no error line and the forge goes on reporting the
+  run as `in_progress` forever.
+
+  Read that signature correctly: **a job whose log stops and never ends is an
+  infrastructure kill, not a build defect.** A real build failure on this forge
+  marks the later steps `skipped` and names its error. The `Dockerfile` now
+  bounds Node the way the CI fleet already bounds Go and Rust.
+
+- **`hanzoai/docs` is a second lane on the same source.** It still mirrors from
+  the other host every 10 minutes and still has its Actions unit, so it will keep
+  firing `deploy.yml` and the nine wrangler deploys. Two lanes for one image is
+  the thing the top of `deploy.yml` warns about. Retiring it is a CTO call
+  because two of its wrangler jobs (`cloud-site`, `gui-docs`) are the only deploy
+  those hosts have.
 - **The GitHub lane has never executed.** Its credential chain and its tag shape
   are read from the workflow source. The first real run is the first evidence.
 - **`hanzo build`'s IAM path is in `main` but not in the cluster** (see lane 1).
