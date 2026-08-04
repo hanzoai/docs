@@ -3,8 +3,8 @@ import { defaultTranslations, type Translations } from '@/i18n';
 import { renderTranslation, type TranslationValue } from '@hanzo/docs-core/i18n';
 import { useTranslations as useTranslationsBase } from '@hanzo/docs-ui/contexts/i18n';
 
-export function useTranslations() {
-  return useTranslationsBase<Translations>('openapi') ?? defaultTranslations;
+export function useTranslations(): Translations {
+  return (useTranslationsBase('openapi') as unknown as Translations | undefined) ?? defaultTranslations;
 }
 
 /**
@@ -20,5 +20,5 @@ export function I18nLabel<K extends keyof Translations>({
     : never;
 }): string {
   const text = useTranslations();
-  return renderTranslation(text[label], replacements!);
+  return renderTranslation(text[label] as TranslationValue<never>, replacements!);
 }
