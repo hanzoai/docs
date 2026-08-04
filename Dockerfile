@@ -32,13 +32,26 @@ ENV NEXT_EXPORT=1 \
     NEXT_TELEMETRY_DISABLED=1 \
     NODE_OPTIONS=--max-old-space-size=24576
 ARG APP=docs
-# Next inlines NEXT_PUBLIC_* at BUILD time, so the ingest key has to arrive as a
-# build-arg rather than as pod env. Without it the bundle ships keyless and cloud
-# files every pageview under the reserved $public tenant — pageview and error
-# only, and our own org cannot read it. Ingest answers 200 either way, so the
-# loss is silent. The value is publishable and write-only by design.
-ARG NEXT_PUBLIC_EVENT_INGEST_KEY=
-ENV NEXT_PUBLIC_EVENT_INGEST_KEY=$NEXT_PUBLIC_EVENT_INGEST_KEY
+# The ingest key, gated HERE for the same reason the export gate below is here:
+# this is the one thing every builder passes through. A guard in deploy.yml
+# protects one of six lanes — and the lane that produced the last live image was
+# not that one, so the guard never fired and the bundle shipped keyless.
+#
+# EVENT_INGEST_KEY is the name in KMS and on the --build-arg; NEXT_PUBLIC_ is
+# added here because that prefix is what makes Next inline it. The secret store
+# keeps the ONE plain name.
+#
+# Fail closed: an empty key builds, serves and looks correct while cloud files
+# every pageview under the reserved $public tenant, which this org cannot read —
+# and ingest answers 200, so nothing anywhere says so. Refuse the artifact
+# instead. The value is publishable and write-only, so it is safe in the bundle.
+ARG EVENT_INGEST_KEY=
+ENV NEXT_PUBLIC_EVENT_INGEST_KEY=$EVENT_INGEST_KEY
+RUN case "$EVENT_INGEST_KEY" in \
+      pk-*) : ;; \
+      '')   echo "EVENT_INGEST_KEY is empty - pass --build-arg EVENT_INGEST_KEY=<pk-...> (KMS deploy/EVENT_INGEST_KEY, env prod)" >&2; exit 1 ;; \
+      *)    echo "EVENT_INGEST_KEY is not a publishable key (expected a pk- prefix)" >&2; exit 1 ;; \
+    esac
 RUN pnpm build --filter="${APP}"
 
 # The export gate, INSIDE the recipe — so it is not a property of one builder.

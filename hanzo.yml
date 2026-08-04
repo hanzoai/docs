@@ -37,6 +37,10 @@ images:
     context: .
     dockerfile: Dockerfile
     repo: ghcr.io/hanzoai/docs
+    # The KMS name IS the build-arg name. Without this the ci lane passes no key
+    # and the Dockerfile gate refuses the build — which is the point: the two
+    # lanes now either both supply it or both fail loudly.
+    build_secrets: [EVENT_INGEST_KEY]
 
 test:
   - name: unit
