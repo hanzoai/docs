@@ -23,7 +23,6 @@ import {
   Accordions,
   AccordionTrigger,
 } from '@/ui/components/accordion';
-import { isMediaTypeSupported } from '@/requests/media/adapter';
 import { RequestTabs } from './request-tabs';
 import { cn } from '@/utils/cn';
 import { getExampleRequests } from './get-example-requests';
@@ -106,10 +105,13 @@ export function Operation({
         </div>
         {body!.description && ctx.renderMarkdown(body!.description)}
         {contentTypes.map(([type, content]) => {
-          if (!isMediaTypeSupported(type, ctx.mediaAdapters)) {
-            throw new Error(`Media type ${type} is not supported (in ${path})`);
-          }
-
+          // A media type with no adapter used to throw here, which ended the
+          // export of every page (`application/x-git-upload-pack-request` in
+          // smart-http.yaml). Nothing in this subtree needs an adapter — it
+          // renders the schema and the TypeScript definitions — and the
+          // playground already refuses to SEND an unadapted body with a
+          // readable 400 from `createBrowserFetcher`. Documenting a media type
+          // we cannot send is right; refusing to document it is not.
           return (
             <SelectTab key={type} anchorSegments={['request-body', type]} value={type}>
               <RequestBodyContentItem content={content} method={method} ctx={ctx} />
