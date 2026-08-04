@@ -77,6 +77,21 @@ const config: NextConfig = {
   experimental: {
     // Reduce peak memory during webpack compilation for large builds.
     webpackMemoryOptimizations: true,
+    // Static generation forks one worker per CPU, and inside a container Next
+    // counts the HOST's CPUs — there is no cgroup quota for it to read, so on a
+    // 6-CPU pod running on an 8-core node it forks 7. Each worker is a Node
+    // process that inherits NODE_OPTIONS, so the build's real memory ceiling is
+    // (workers + 1) x --max-old-space-size, which is how a 26Gi pod ends up
+    // hosting a claim on far more than 26Gi.
+    //
+    // Unset locally, so a workstation build is unchanged and keeps every core.
+    // The Dockerfile sets it, because that is the build that runs in a cgroup.
+    // This is the same bound the CI fleet already puts on Go (GOFLAGS -p=2) and
+    // Rust (CARGO_BUILD_JOBS 4) for exactly this reason; Node was the one
+    // toolchain left unbounded.
+    ...(process.env.NEXT_BUILD_CPUS
+      ? { cpus: Math.max(1, Number(process.env.NEXT_BUILD_CPUS)) }
+      : {}),
   },
   webpack: (config) => {
     // ------------------------------------------------------------------ //
