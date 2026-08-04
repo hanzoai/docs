@@ -11,12 +11,22 @@ name: deploy
 # actually builds, pinned v0.5.1. Two builders for one image is one too many, so
 # the recipe lives in the Dockerfile alone and this file only runs it.
 #
-# THIS FILE CANNOT RUN TODAY. git.hanzo.ai/hanzo-docs/docs is a pull mirror with
-# no Actions unit (/actions 404s; hanzoai/cloud on the same forge answers 200),
-# and a mirror sync moves refs without firing a push event, so neither trigger
-# below can reach a runner. It is kept, not deleted, because it is the only
-# definition of the tag hanzoai/universe already pins — the full 40-char SHA.
-# See RELEASE.md for every path that can publish today and what each one needs.
+# This file runs. It could not before, and the reason was ONE repo setting, not
+# the two that were written down here: git.hanzo.ai/hanzo-docs/docs had no
+# Actions unit, so /actions 404'd and nothing scheduled.
+#
+# The second reason recorded here — that a mirror sync moves refs without firing
+# a push event — is FALSE on this forge, and it mattered, because it made the
+# blocker look like infrastructure we did not have rather than a checkbox.
+# services/mirror/mirror_pull.go calls notify_service.SyncPushCommits on every
+# updated ref, services/actions/notifier.go implements it as a real
+# HookEventPush, and the only gate between the two is the Actions unit
+# (notifier_helper.go). The natural experiment settles it without reading any of
+# that: hanzoai/docs is also a pull mirror, it HAS the unit, and its runs are
+# stamped `event: push`. A mirror on this forge builds.
+#
+# It is also the only definition of the tag hanzoai/universe pins — the full
+# 40-char SHA. See RELEASE.md for every path that can publish and what each needs.
 #
 # It is also the ONLY builder here that fires by itself. .github/workflows/
 # cicd.yml is workflow_dispatch-only for exactly that reason: give this repo two
@@ -50,9 +60,55 @@ jobs:
           # without these the unified build silently loses whole sections.
           submodules: recursive
 
-      - name: build
+      # The ingest key comes from KMS, never from a forge secret. Secrets live in
+      # ONE place and CI reads them at run time; a copy pasted into a repo's
+      # secret store is a second thing to rotate and the one nobody remembers.
+      #
+      # The contract is hanzoai/ci `.hanzo/workflows/build.yml`'s KMS step, which
+      # is the fleet's definition of how a build reads a secret:
+      #
+      #   login  POST {KMS}/v1/kms/auth/login {clientId,clientSecret} -> .accessToken
+      #   read   GET  {KMS}/v1/kms/secrets/<path>/<name>?env=<env>    -> .value
+      #
+      # The org is carried by the TOKEN, not the URL. The older
+      # /v1/kms/orgs/<org>/secrets/... form with a nested `.secret.value` is a
+      # DIFFERENT service, and this workflow deliberately does not fall back to
+      # it: the two instances hold different values under this same name, and the
+      # standalone one's copy is stale — measured, it is refused at ingest with
+      # 403. Reading the wrong host is worse than reading nothing, because the
+      # build "finds" a key and ships one that cannot write.
+      - name: ingest key from KMS
         env:
-          EVENT_INGEST_KEY: ${{ secrets.EVENT_INGEST_KEY }}
+          KMS_CLIENT_ID: ${{ secrets.KMS_CLIENT_ID }}
+          KMS_CLIENT_SECRET: ${{ secrets.KMS_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          KMS="${KMS_ENDPOINT:-https://api.hanzo.ai}"
+          if [ -z "${KMS_CLIENT_ID:-}" ] || [ -z "${KMS_CLIENT_SECRET:-}" ]; then
+            echo "::error::KMS_CLIENT_ID/KMS_CLIENT_SECRET are unset, so the ingest key cannot be read. Add them as org secrets on this forge."
+            exit 1
+          fi
+          token="$(curl -sf "$KMS/v1/kms/auth/login" -H 'Content-Type: application/json' \
+            -d "{\"clientId\":\"$KMS_CLIENT_ID\",\"clientSecret\":\"$KMS_CLIENT_SECRET\"}" \
+            | sed -n 's/.*"accessToken"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+          [ -n "$token" ] || { echo "::error::KMS login failed at $KMS"; exit 1; }
+          key="$(curl -sf "$KMS/v1/kms/secrets/deploy/EVENT_INGEST_KEY?env=prod" \
+            -H "Authorization: Bearer $token" \
+            | sed -n 's/.*"value"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+          # Fail closed. An empty build-arg produces an image that builds, serves,
+          # and looks correct while every event it emits is unattributed — the
+          # exact silent hole this step exists to close, and one no amount of
+          # looking at a green build would reveal. Same rule as the export gate:
+          # refuse to produce the artifact rather than produce a hollow one.
+          case "$key" in
+            pk-*) : ;;
+            '')   echo "::error::KMS returned no value for deploy/EVENT_INGEST_KEY (env=prod)"; exit 1 ;;
+            *)    echo "::error::deploy/EVENT_INGEST_KEY is not a publishable key (expected a pk- prefix)"; exit 1 ;;
+          esac
+          echo "::add-mask::$key"
+          echo "EVENT_INGEST_KEY=$key" >> "$GITHUB_ENV"
+
+      - name: build
         run: |
           docker build \
             --build-arg "NEXT_PUBLIC_EVENT_INGEST_KEY=${EVENT_INGEST_KEY}" \
@@ -75,6 +131,17 @@ jobs:
           trap 'docker rm -f "${cid}" >/dev/null' EXIT
           rm -rf out && docker cp "${cid}:/public" out
           sh scripts/check-export.sh out apps/docs/export.require
+          # The same question, for the ingest key: it was read from KMS and
+          # passed as a build-arg, but did Next actually BAKE it into a chunk?
+          # A key that is present at build time and absent from the bundle is
+          # indistinguishable from success everywhere except the warehouse,
+          # where the traffic simply lands unattributed. So assert it on the
+          # bytes that ship, which is the only place the claim is true or false.
+          if ! grep -rqF "${EVENT_INGEST_KEY}" out; then
+            echo "::error::the ingest key is not in the exported bundle — docs would ship unattributed"
+            exit 1
+          fi
+          echo "ingest key present in the export"
 
       - name: push
         env:
