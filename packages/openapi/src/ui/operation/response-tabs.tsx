@@ -103,6 +103,36 @@ function renderResponseTabsDefault(tabs: ResponseTab[], ctx: RenderContext): Rea
     );
   }
 
+  function renderResponse(tab: ResponseTab) {
+    const { examples = [] } = tab;
+
+    let slot: ReactNode = <I18nLabel label="empty" />;
+    if (examples.length > 1) {
+      slot = (
+        <Accordions type="single" className="pt-2" defaultValue="0">
+          {examples.map((example, i) => (
+            <AccordionItem key={i} value={i.toString()}>
+              <AccordionHeader>
+                <AccordionTrigger>{example.label}</AccordionTrigger>
+              </AccordionHeader>
+              <AccordionContent className="prose-no-margin">
+                {renderExampleContent(example)}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordions>
+      );
+    } else if (examples.length === 1) {
+      slot = renderExampleContent(examples[0]);
+    }
+
+    return (
+      <Tab key={tab.code} value={tab.code}>
+        {slot}
+      </Tab>
+    );
+  }
+
   return (
     <Tabs groupId="hanzo_docs_openapi_responses" items={tabs.map((tab) => tab.code)}>
       {tabs.map((tab) => {

@@ -1,5 +1,5 @@
-import type { TranslationsAPIExtension, TranslationValue } from '@hanzo/docs-core/i18n';
 import type { I18nUIConfig } from '@hanzo/docs-ui/i18n';
+import type { TranslationsAPIExtension, TranslationValue } from '@hanzo/docs-core/i18n';
 
 export const defaultTranslations = {
   // General
