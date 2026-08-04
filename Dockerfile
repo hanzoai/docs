@@ -21,11 +21,32 @@
 # Bring the musl bun binary in from the official image.
 FROM oven/bun:1-alpine AS bun
 
+# Prune the workspace to what ${APP} actually needs, BEFORE anything is installed.
+#
+# This repo is 21 apps and 36 packages; apps/docs depends on 11 of them. Installing
+# the whole workspace put node_modules for all 57 on the runner's 38Gi emptyDir,
+# alongside .next and out, and the kubelet evicts the runner over that line — after
+# a build that had already completed every one of its tasks.
+#
+# `turbo prune --docker` emits a workspace containing only ${APP} and its
+# transitive internal deps. It is the same source and the same lockfile, so the
+# image is unchanged; what changes is how much of the monorepo ever lands on disk.
+FROM public.ecr.aws/docker/library/node:22-alpine AS pruner
+RUN corepack enable && corepack prepare pnpm@11.1.0 --activate
+WORKDIR /src
+COPY . .
+ARG APP=docs
+RUN pnpm dlx turbo@2.9.15 prune "${APP}" --docker
+
 FROM public.ecr.aws/docker/library/node:22-alpine AS build
 COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 RUN apk add --no-cache git libstdc++ libgcc && corepack enable && corepack prepare pnpm@11.1.0 --activate
 WORKDIR /src
-COPY . .
+COPY --from=pruner /src/out/json/ ./
+COPY --from=pruner /src/out/full/ ./
+# turbo prune emits the workspace, not the repo: root-level scripts are not in it
+# and the export gate below runs one. Copied explicitly so the gate still holds.
+COPY --from=pruner /src/scripts/ ./scripts/
 ENV NEXT_EXPORT=1 \
     HANZO_DOCS_SYNC=0 \
     NEXT_TELEMETRY_DISABLED=1 \
