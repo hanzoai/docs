@@ -51,7 +51,12 @@ jobs:
           submodules: recursive
 
       - name: build
-        run: docker build -t "docs:${GITHUB_SHA}" .
+        env:
+          EVENT_INGEST_KEY: ${{ secrets.EVENT_INGEST_KEY }}
+        run: |
+          docker build \
+            --build-arg "NEXT_PUBLIC_EVENT_INGEST_KEY=${EVENT_INGEST_KEY}" \
+            -t "docs:${GITHUB_SHA}" .
 
       # The gate itself runs inside the Dockerfile, so `docker build` above has
       # already refused a broken export and this step cannot be the thing that
