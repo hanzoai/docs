@@ -169,26 +169,67 @@ Two things to know before using it:
 
 ### 2. The forge — `.hanzo/workflows/deploy.yml`
 
-Blocked, and not on billing or a secret.
+**This is the lane. It runs.** It was blocked, the blocker was one repo setting,
+and the entry that used to sit here got the diagnosis wrong in a way worth
+recording, because the wrong diagnosis is what made this look unfixable.
 
-`git.hanzo.ai/hanzo-docs/docs` is a **pull mirror with no Actions unit**: the
-repo answers 200 and `/actions` on it answers 404, while
-`git.hanzo.ai/hanzoai/cloud/actions` on the same instance answers 200. Even with
-a unit, a mirror sync moves refs without firing a push event, so the `on: push`
-trigger would not fire either.
+What was true: `git.hanzo.ai/hanzo-docs/docs` had **no Actions unit**, so
+`/actions` answered 404 and nothing scheduled. On this forge a repo created as a
+mirror gets `DefaultMirrorRepoUnits` (`models/unit/unit.go`), which is Code,
+Issues, Releases, Wiki, Projects, Packages — and deliberately **not** Actions.
+That one missing row in `repo_unit` was the whole outage.
 
-The neighbouring `git.hanzo.ai/hanzoai/docs` *does* have an Actions unit
-(`/actions` → 200), but it is a different, stale mirror on an old commit, so it
-is not a way in.
+What was false, and cost the most: *"a mirror sync moves refs without firing a
+push event."* It does fire. `services/mirror/mirror_pull.go` calls
+`notify_service.SyncPushCommits` on every updated ref,
+`services/actions/notifier.go` implements that as a real `HookEventPush`, and
+`notifier_helper.go` gates it on exactly one thing — the Actions unit. There is
+no `IsMirror` check anywhere in that path. The cheapest proof needs none of that
+source: `hanzoai/docs` is *also* a pull mirror, it *has* the unit, and its runs
+are stamped `event: push`.
 
-**Credential when it does run: `REGISTRY_TOKEN`** (forge secret, GHCR write on
-the `hanzoai` org). The workflow refuses to publish without it rather than
-silently skipping the push. **Tag: the full 40-char SHA** — this lane and lane 1
+Also false: that `hanzoai/docs` is "a different, stale mirror on an old commit."
+It tracks the same content and sits on the same commit. It is not stale — it is
+a **second lane on the same source**, which is a thing to retire, not a thing to
+ignore.
+
+The fix was three calls against the forge API (which is served at bare `/v1`,
+not `/api/v1`):
+
+```sh
+# 1. stop being a pull mirror, so the forge can receive pushes
+curl -X DELETE -H "Authorization: token $T" \
+  https://git.hanzo.ai/v1/repos/hanzo-docs/docs/pull-mirror        # 204
+
+# 2. add the Actions unit
+curl -X PATCH -H "Authorization: token $T" -H 'Content-Type: application/json' \
+  -d '{"has_actions":true}' https://git.hanzo.ai/v1/repos/hanzo-docs/docs
+
+# 3. run it
+curl -X POST -H "Authorization: token $T" -H 'Content-Type: application/json' \
+  -d '{"ref":"refs/heads/main"}' \
+  https://git.hanzo.ai/v1/repos/hanzo-docs/docs/actions/workflows/deploy.yml/dispatches
+```
+
+Step 1 is what makes `git.hanzo.ai` the place this repo is pushed to. Step 2 is
+orthogonal to it: converting a mirror does **not** add the unit, and adding the
+unit does **not** require converting — a mirror with the unit builds on sync.
+
+**Credentials, org secrets on `hanzo-docs`:** `REGISTRY_TOKEN` (GHCR write on the
+`hanzoai` org) and `KMS_CLIENT_ID` / `KMS_CLIENT_SECRET`, which the build
+exchanges for the ingest key at run time. The ingest key itself is **not** a
+forge secret and must not become one — it lives in KMS at `deploy/EVENT_INGEST_KEY`
+and the build reads it there. **Tag: the full 40-char SHA** — this lane and lane 1
 are the two that speak the shape universe already pins.
 
-To unblock: give `hanzo-docs/docs` on the forge an Actions unit and make the
-mirror a real push target rather than a pull mirror. Then disarm one of the two
-push-triggered builders — see the note at the top of `deploy.yml`.
+Note the runner label: `runs-on: hanzo-docs-build-linux-amd64` is real and always
+was. The `git-runner` fleet advertises it (`infra/k8s/git-runner/config.yaml` in
+hanzoai/universe). No runner work was ever needed here.
+
+Still open: this repo now has one armed push-triggered builder (`deploy.yml`) and
+`release.yml`, which carries no `paths:` filter and so fires on every push to
+`main`. The nine `deploy-*-docs.yml` are push-triggered too but filter on paths
+their own app owns, so they stay quiet unless that app changes.
 
 ### 3. GitHub — `.github/workflows/cicd.yml` → hanzoai/ci
 
@@ -334,7 +375,7 @@ and whose first seven characters are `<sha7>`:
 |---|---|---|
 | 5. platform lane (webhook) | `<sha40>-amd64-docs` | **what the pin reads today** |
 | 1. `POST /v1/runner` | whatever you put in `image:` | works; needs the bearer |
-| 2. forge `deploy.yml` | `<sha40>` | no Actions unit on the mirror |
+| 2. forge `deploy.yml` | `<sha40>` | **runs — the lane** |
 | 3. hanzoai/ci (buildx) | `sha-<sha7>-amd64` | no runner |
 | 4. hanzoai/ci (delegate) | `sha-<sha7>-amd64` | no runner |
 | 6. forge push orchestrator | `sha-<sha7>-amd64-docs` | dormant |
@@ -425,8 +466,10 @@ lane at once, which is the only way a section stays required.
 
 ## Known gaps
 
-- **Nothing gates a pull request.** The forge holds `lint.yml` and `test.yml` and
-  cannot run them; the GitHub lane is dispatch-only, and could not be otherwise —
+- **Nothing gates a pull request yet, but the forge can now run one.** `lint.yml`
+  and `test.yml` are `on: pull_request` and the forge sees them; what is missing
+  is pull requests being opened here rather than on the other host. The GitHub
+  lane is dispatch-only, and could not be otherwise —
   hanzoai/ci has no test-without-build mode for a repo that declares `images:`, so
   a PR trigger would build and push an image, including moving `latest`, on every
   PR.
