@@ -26,11 +26,11 @@ which the forge reads. `.hanzo/workflows` uses GitHub Actions syntax, so a
 workflow moves between the two directories and nothing else changes — which is how
 all of these got here, `runs-on: hanzo-docs-build-linux-amd64` and all.
 
-**None of them can run today.** `git.hanzo.ai/hanzo-docs/docs` is a pull mirror
-with **no Actions unit at all** — `/actions` on it 404s while `hanzoai/cloud` on
-the same forge answers 200 — and a mirror sync moves refs without firing a push
-event, so even with a unit the `on: push` triggers would not fire. The refs
-themselves are fine: the mirror's `main` matches GitHub's exactly.
+These DO run. The git-runners pick up `hanzoai/docs` off git.hanzo.ai — task
+31188 built it at 2026-08-04T04:35Z. The earlier claim here that nothing could
+run (a `hanzo-docs/docs` pull mirror with no Actions unit) named a repo that is
+not the one the runners poll, and reading it as "docs cannot build" sends you
+looking for a build lane that already exists.
 
 `.github/workflows/cicd.yml` is the other lane: seven lines importing hanzoai/ci,
 configured by the root `hanzo.yml`. It is `workflow_dispatch`-only, because two
