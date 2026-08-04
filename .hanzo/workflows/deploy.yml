@@ -108,6 +108,29 @@ jobs:
           echo "::add-mask::$key"
           echo "EVENT_INGEST_KEY=$key" >> "$GITHUB_ENV"
 
+      # Reclaim the runner's docker storage before building, and SAY how much
+      # there is. This build lives inside a 38Gi emptyDir and wants most of it,
+      # so a few GB left behind by earlier jobs on this runner is the difference
+      # between finishing and being evicted mid-export by the kubelet.
+      #
+      # Print the numbers rather than trusting them: when this build fails for
+      # space, the log needs to show what it started with, otherwise the failure
+      # looks like a broken Dockerfile. That is exactly how this was misread
+      # before — an eviction has no error message of its own, it just truncates
+      # the log and restarts the pod.
+      - name: reclaim runner disk
+        run: |
+          set -eu
+          echo "before:"; df -h /var/lib/docker 2>/dev/null | tail -1 || true
+          docker system df 2>/dev/null || true
+          # Unused images and the build cache only. Nothing else on this runner
+          # owns state here: a job's container is torn down with the job.
+          docker builder prune -af >/dev/null 2>&1 || true
+          docker image prune -af >/dev/null 2>&1 || true
+          docker volume prune -f >/dev/null 2>&1 || true
+          echo "after:"; df -h /var/lib/docker 2>/dev/null | tail -1 || true
+          docker system df 2>/dev/null || true
+
       - name: build
         run: |
           docker build \

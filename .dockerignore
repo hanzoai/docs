@@ -1,0 +1,48 @@
+# What `COPY . .` must NOT carry into the build.
+#
+# There was no .dockerignore, so the build context was the whole working tree.
+# On a clean CI checkout that is mostly source, but a tree that has ever been
+# built locally carries ~16G of artifacts -- apps/docs/.next 6.9G, apps/docs/out
+# 6.4G, .turbo/cache 2.4G -- and every byte of it was being copied into a build
+# that immediately regenerates all three. The build then runs inside a 38Gi
+# docker-storage volume, so the waste is not merely slow: it is the difference
+# between finishing and being evicted mid-export.
+#
+# Excluding build output also keeps the image HONEST. Without this, a stale
+# local `out/` is copied in, and if the build were ever to not overwrite it the
+# export gate would pass on bytes from a previous build rather than this one.
+
+# Build output and caches -- all regenerated inside the image.
+**/node_modules
+**/.next
+**/out
+**/dist
+**/.turbo
+.turbo
+**/.cache
+**/*.tsbuildinfo
+
+# History. 775M, and nothing in the build reads it.
+.git
+.gitignore
+.github
+
+# Local/editor/OS noise.
+**/.env
+**/.env.*
+!**/.env.example
+**/.DS_Store
+**/npm-debug.log*
+**/pnpm-debug.log*
+.vscode
+.idea
+
+# Docs about shipping, not inputs to it. Excluded so that editing them cannot
+# invalidate the build cache -- and so a commit that only touches them produces
+# a byte-identical export, which RELEASE.md relies on when deciding whether a
+# rebuild is owed.
+RELEASE.md
+LLM.md
+CLAUDE.md
+screenshots
+documents
