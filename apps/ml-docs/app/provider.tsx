@@ -3,7 +3,6 @@
 import { RootProvider } from '@hanzo/docs/ui/provider/base';
 import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
-import { TooltipProvider } from '@radix-ui/react-tooltip';
 import { AISearch } from '@/components/ai/search';
 
 const SearchDialog = dynamic(() => import('@/components/layouts/search'), {
@@ -18,11 +17,9 @@ export function Provider({ children }: { children: ReactNode }) {
       }}
       theme={{ defaultTheme: 'dark', enableSystem: false }}
     >
-      <TooltipProvider>
-        <AISearch>
-          {children}
-        </AISearch>
-      </TooltipProvider>
+      <AISearch>
+        {children}
+      </AISearch>
     </RootProvider>
   );
 }
