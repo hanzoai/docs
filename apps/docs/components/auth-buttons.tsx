@@ -3,32 +3,39 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
+import { currentUser, iam } from '@/lib/iam'
+
 export function AuthButtons() {
-  const [user, setUser] = useState<{ email?: string; displayName?: string } | null>(null)
+  const [user, setUser] = useState<{ email?: string; name?: string } | null>(null)
 
   useEffect(() => {
-    try {
-      const token = sessionStorage.getItem('hanzo_iam_access_token')
-      const userInfo = sessionStorage.getItem('hanzo_iam_user_info')
-      if (token && userInfo) {
-        setUser(JSON.parse(userInfo))
-      }
-    } catch {}
+    let live = true
+    currentUser().then((u) => {
+      if (live) setUser(u)
+    })
+    return () => {
+      live = false
+    }
   }, [])
 
   const handleSignOut = () => {
-    sessionStorage.removeItem('hanzo_iam_access_token')
-    sessionStorage.removeItem('hanzo_iam_refresh_token')
-    sessionStorage.removeItem('hanzo_iam_user_info')
-    setUser(null)
-    window.location.reload()
+    // The SDK owns the token store and clears every key it wrote — including the
+    // ones this component never knew about. Picking keys off by hand is how
+    // `hanzo_iam_id_token` and `hanzo_iam_expires_at` used to survive a sign-out.
+    iam()
+      .logout()
+      .catch(() => iam().clearTokens())
+      .finally(() => {
+        setUser(null)
+        window.location.reload()
+      })
   }
 
   if (user) {
     return (
       <div className="flex items-center gap-3">
         <span className="text-sm text-neutral-400 truncate max-w-[120px]">
-          {user.email || user.displayName}
+          {user.email || user.name}
         </span>
         <button
           onClick={handleSignOut}
