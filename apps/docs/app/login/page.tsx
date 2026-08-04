@@ -2,29 +2,21 @@
 
 import { useEffect, useState } from 'react'
 
-const IAM_SERVER = process.env.NEXT_PUBLIC_IAM_SERVER_URL || 'https://hanzo.id'
-const CLIENT_ID = process.env.NEXT_PUBLIC_IAM_CLIENT_ID || 'hanzo-docs-client-id'
+import { iam } from '@/lib/iam'
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const token = sessionStorage.getItem('hanzo_iam_access_token')
-    if (token) {
+    // Already signed in — including in ANOTHER tab, now that the session is not
+    // scoped to this one.
+    if (iam().getAccessToken()) {
       window.location.href = '/docs'
       return
     }
-
-    import('@hanzo/iam/browser').then(({ BrowserIamSdk }) => {
-      const sdk = new BrowserIamSdk({
-        serverUrl: IAM_SERVER,
-        clientId: CLIENT_ID,
-        redirectUri: `${window.location.origin}/callback`,
-      })
-      sdk.signinRedirect()
-    }).catch(() => {
-      setError('Failed to load authentication. Please try again.')
-    })
+    iam()
+      .signinRedirect()
+      .catch(() => setError('Failed to load authentication. Please try again.'))
   }, [])
 
   if (error) {

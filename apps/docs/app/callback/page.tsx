@@ -2,29 +2,18 @@
 
 import { useEffect, useState } from 'react'
 
-const IAM_SERVER = process.env.NEXT_PUBLIC_IAM_SERVER_URL || 'https://hanzo.id'
-const CLIENT_ID = process.env.NEXT_PUBLIC_IAM_CLIENT_ID || 'hanzo-docs-client-id'
+import { iam } from '@/lib/iam'
 
 export default function CallbackPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    import('@hanzo/iam/browser').then(({ BrowserIamSdk }) => {
-      const sdk = new BrowserIamSdk({
-        serverUrl: IAM_SERVER,
-        clientId: CLIENT_ID,
-        redirectUri: `${window.location.origin}/callback`,
+    iam()
+      .handleCallback(window.location.href)
+      .then(() => {
+        window.location.href = '/docs'
       })
-      sdk.handleCallback(window.location.href)
-        .then(() => {
-          window.location.href = '/docs'
-        })
-        .catch(() => {
-          setError('Authentication failed. Please try again.')
-        })
-    }).catch(() => {
-      setError('Failed to load authentication. Please try again.')
-    })
+      .catch(() => setError('Authentication failed. Please try again.'))
   }, [])
 
   if (error) {
