@@ -45,6 +45,57 @@ function parseFrontmatter(raw: string): { fm: Record<string, string>; body: stri
 
 const esc = (s: string) => s.replace(/"/g, '\\"')
 
+const AUTOLINK = /<((?:https?|ftp|mailto):[^\s<>]+)>/g
+
+/**
+ * HIP bodies are CommonMark; this site renders them as MDX. Three CommonMark
+ * constructs mean something else to the MDX parser, and each one costs the
+ * whole page:
+ *
+ *   `{x}`        an expression — `runtime ∈ {native, goja}` compiled to a
+ *                reference and crashed the render with `native is not defined`
+ *   `<https://…>` an autolink — MDX reads `<h` as a tag and chokes on `:`
+ *   `<plugin>`, `<X%`, `<100ms`  a tag: either an unclosed element or a name
+ *                that cannot start with that character
+ *
+ * Escape them so a HIP renders as the Markdown it is. Every `<` outside code
+ * is escaped, without trying to guess which ones open a real element: across
+ * the corpus every one of them is a placeholder (`<plugin>`, `<org>`, `<X%`)
+ * or a comparison, and a guess that reads one wrong costs the entire page.
+ * Fenced code blocks and inline code spans are left alone — that is where the
+ * ecosystem's real JSX examples live, and they are meant to be shown verbatim.
+ */
+function mdxSafe(src: string): string {
+  const lines = src.split('\n')
+  let inFence = false
+  let fence = ''
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trimStart()
+    if (!inFence && (trimmed.startsWith('```') || trimmed.startsWith('~~~'))) {
+      inFence = true
+      fence = trimmed.slice(0, 3)
+      continue
+    }
+    if (inFence) {
+      if (trimmed.startsWith(fence)) inFence = false
+      continue
+    }
+    // Odd indices are inline code spans; leave them verbatim.
+    lines[i] = lines[i]
+      .split(/(`+[^`]*`+)/)
+      .map((part, index) =>
+        index % 2 === 1
+          ? part
+          : part
+              .replace(AUTOLINK, '$1')
+              .replace(/[{}]/g, (brace) => `\\${brace}`)
+              .replace(/</g, '&lt;'),
+      )
+      .join('')
+  }
+  return lines.join('\n')
+}
+
 function main() {
   const { dir, cleanup } = resolveHipsDir()
   mkdirSync(OUT, { recursive: true })
@@ -66,7 +117,7 @@ title: "HIP-${num}: ${esc(title)}"
 description: "${esc(desc)}"
 ---
 
-${body.replace(/^#\s+HIP-?\d+[:\s].*\n/, '').trimStart()}
+${mdxSafe(body.replace(/^#\s+HIP-?\d+[:\s].*\n/, '').trimStart())}
 `
     writeFileSync(join(OUT, `${slug}.mdx`), out)
     entries.push({ num, slug, title, status })
