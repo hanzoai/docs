@@ -21,14 +21,15 @@ at `api.hanzo.ai`.
 
 ## Surfaces
 
-Three groups of resources live under `/v1`. They are separate services behind one
-host, which is why the path prefixes differ.
+Resources live under `/v1` in groups. They are separate services behind one host,
+which is why the path prefixes differ.
 
 | Prefix | Resource | Docs |
 |--------|----------|------|
-| `/v1/platform/projects/…` | Projects, apps, deploys, env, domains | [Containers](/docs/api/containers) |
-| `/v1/machines`, `/v1/gpus`, `/v1/clusters`, `/v1/k8s/…` | Machines, GPUs, clusters, node pools | [Clusters](/docs/api/clusters) · [Machines](/docs/api/vms) |
-| `/v1/iam/…` | Organizations, roles, invitations | [Organizations](/docs/api/organizations) |
+| `/v1/platform/projects/…` | Projects, apps, deploys, env, domains | [Apps](/docs/api/containers) |
+| `/v1/machines`, `/v1/gpus`, `/v1/compute/…` | Machines, GPUs, the launch catalog | [Machines](/docs/api/vms) |
+| `/v1/clusters`, `/v1/k8s/…` | Clusters, node pools, nodes | [Clusters](/docs/api/clusters) |
+| `/v1/iam/…` | Organizations, users, roles, invitations, API keys | [Organizations](/docs/api/organizations) · [Authentication](/docs/api/authentication) |
 
 ## Authentication
 
@@ -37,13 +38,25 @@ organization:
 
 ```bash
 curl https://api.hanzo.ai/v1/platform/projects \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
   -H "X-Org-Id: acme-corp"
 ```
 
-A call with no validated principal, or one whose token is not bound to a single
-org and carries no `X-Org-Id`, is refused `403` with
-`{"status":403,"code":"forbidden","error":"X-Org-Id required"}`. See
+The org is taken from the **validated** identity. A call with no validated
+principal is refused `403` even if it sets `X-Org-Id`, because trusting the
+header alone would let an unauthenticated caller act inside someone else's
+tenant:
+
+```json
+{
+  "status": 403,
+  "code": "forbidden",
+  "error": "X-Org-Id required"
+}
+```
+
+With a valid bearer, `X-Org-Id` selects which of your orgs the call acts as; a
+token bound to exactly one org does not need it. See
 [Authentication](/docs/api/authentication) for how to obtain a token.
 
 ## Request Format
@@ -53,7 +66,7 @@ body:
 
 ```bash
 curl -X POST https://api.hanzo.ai/v1/platform/projects/my-app/apps \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
   -H "X-Org-Id: acme-corp" \
   -H "Content-Type: application/json" \
   -d '{
@@ -63,6 +76,13 @@ curl -X POST https://api.hanzo.ai/v1/platform/projects/my-app/apps \
     "port": 3000
   }'
 ```
+
+<Callout type="warn">
+Routes are keyed by **method as well as path**. `PATCH` is served nowhere;
+`PUT` is served on exactly one platform route (replacing an app's env set). An
+unregistered verb on a real path answers `404`, not `405` — so a `404` means
+"check the method" at least as often as it means "no such resource".
+</Callout>
 
 ## Response Format
 
@@ -99,10 +119,11 @@ Errors return the matching HTTP status with a three-field body:
 | `400` | Invalid input |
 | `401` | Missing or invalid token |
 | `403` | No validated principal, or no organization |
-| `404` | Resource does not exist |
+| `404` | No such resource — or that method is not served on this path |
 | `409` | Slug or host already claimed |
 | `429` | Too many in-flight builds or deploys — retry |
 | `500` | Server error |
+| `503` | A dependency the write needs (cluster, KMS) is unreachable |
 
 Every response carries `x-request-id`; quote it when reporting a problem.
 
@@ -110,5 +131,14 @@ Every response carries `x-request-id`; quote it when reporting a problem.
 
 Deploys, not reads, are what the platform bounds. Concurrent in-flight image
 deploys are capped per organization and concurrent builds are capped in the
-cluster; over the cap a deploy is refused `429` and is safe to retry. Reads are
-not rate-limited by the platform.
+cluster; over the cap a deploy is refused `429`, nothing is recorded, and it is
+safe to retry. Reads are not rate-limited by the platform.
+
+## Health
+
+```bash
+curl https://api.hanzo.ai/v1/platform/health
+```
+
+`200` when the control plane can reach the cluster, `503` with the real reason
+when it cannot. It is the one route that needs no organization.

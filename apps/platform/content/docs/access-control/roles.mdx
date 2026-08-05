@@ -82,20 +82,30 @@ An Admin cannot promote a member to Owner or demote an existing Owner. Only Owne
 
 ## Role via API
 
-A role belongs to a **membership**, not to a user — the same person can hold a
-different role in every organization they belong to — so the write addresses
-`memberId`. Every write on this surface is a `POST`; there is no `PATCH`.
+A role belongs to a **membership**, not to a person — the same user can hold a
+different role in every organization they belong to. So the API writes a
+`(user, org, role)` triple, and the user is named the way IAM names one:
+`<home-org>/<username>`.
 
 ```bash
-# Update a member's role
-curl -X POST https://api.hanzo.ai/v1/iam/update-role \
+# Give someone a role in an organization
+curl -X POST https://api.hanzo.ai/v1/iam/add-membership \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "memberId": "mem_abc123",
-    "role": "developer"
+    "user": "acme-corp/alice",
+    "org": "acme-corp",
+    "role": "admin"
   }'
 ```
 
-Owner is nontransferable here: the call refuses any change into or out of Owner,
-and refuses to change your own role. Transfer ownership from the dashboard.
+Two limits are worth knowing before you script against it:
+
+- **`role` is `owner`, `admin`, or `member`.** The five names in the matrix above
+  are the dashboard's vocabulary; the membership API takes only these three, and
+  rejects anything else outright. Omit `role` and you get `member`.
+- **It grants, it does not re-grant.** The call is idempotent on `(user, org)`:
+  it adds the membership when there is none and otherwise changes nothing. It
+  never downgrades, so re-sending it as `member` cannot quietly strip an owner —
+  and equally, it cannot be used to *change* a role. Change roles from
+  **Settings > Members**.

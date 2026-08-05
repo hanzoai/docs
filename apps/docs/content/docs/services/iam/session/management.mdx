@@ -49,43 +49,76 @@ When you delete a session record entirely (not just a single session ID), Hanzo 
 
 Deleting all sessions for a user effectively logs them out from all devices and browsers simultaneously.
 
-## API for Session Deletion
+## Session API
 
-Developers can programmatically delete sessions using the Hanzo IAM API:
+The session resource is five typed operations under `/v1/iam/sessions`. Every
+one is a **POST**, including the reads: the (owner, name, application) key
+travels on the request body rather than as path or query parameters, so the same
+registration serves REST, OpenAPI and MCP from one shape.
 
-### Delete a Specific Session ID
+| Operation | Path |
+|---|---|
+| List | `POST /v1/iam/sessions/list` |
+| Get | `POST /v1/iam/sessions/get` |
+| Create | `POST /v1/iam/sessions/create` |
+| Update | `POST /v1/iam/sessions/update` |
+| Delete | `POST /v1/iam/sessions/delete` |
 
-To delete a single session ID from a session record:
+### List sessions
 
-```bash
-POST /v1/iam/delete-session?sessionId={'{'}session-id{'}'}
-Content-Type: application/json
-
-{
-  "owner": "organization-name",
-  "name": "username",
-  "application": "app-name"
-}
-```
-
-The `sessionId` parameter specifies which session ID to remove. If this is the last session ID for the record, the entire session record is deleted.
-
-### Delete All Session IDs
-
-To delete all session IDs for a user-application pair:
+`owner` is required; `name` and `application` narrow the result. Newest first.
 
 ```bash
-POST /v1/iam/delete-session
-Content-Type: application/json
-
-{
-  "owner": "organization-name",
-  "name": "username",
-  "application": "app-name"
-}
+curl -X POST https://api.hanzo.ai/v1/iam/sessions/list \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"owner": "organization-name"}'
 ```
 
-Omit the `sessionId` parameter to delete all sessions. The current active session cannot be deleted this way; the API returns an error.
+### Delete a session record
+
+Delete addresses one record by its full key — all three fields are required. It
+removes the record and every session ID in it, so the browsers carrying those
+cookies stop being authenticated.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/iam/sessions/delete \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "owner": "organization-name",
+    "name": "username",
+    "application": "app-name"
+  }'
+```
+
+```json
+{ "deleted": true }
+```
+
+A session that is already gone reports `{"deleted": false}` rather than an
+error, so the call is safe to repeat.
+
+### Remove one session ID
+
+There is no `sessionId` parameter on delete. To drop a single ID and keep the
+rest, `update` the record with the list you want to retain — `sessionId`
+**replaces** the stored list:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/iam/sessions/update \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "owner": "organization-name",
+    "name": "username",
+    "application": "app-name",
+    "sessionId": ["keep-this-one", "and-this-one"]
+  }'
+```
+
+The list is capped at the newest 100 IDs per record, so a long-lived principal
+cannot grow the row without limit.
 
 ## Session Cleanup
 

@@ -97,7 +97,7 @@ func (c *ApiController) Signin() {
     /page?access_token=<The access token>
     ```
 
-    Demo site example: `https://api.hanzo.ai/v1/iam/get-global-providers?access_token=eyJhbGciOiJSUzI1NiIs`
+    Demo site example: `https://api.hanzo.ai/v1/iam/get-providers?access_token=eyJhbGciOiJSUzI1NiIs`
 
 2. **Bearer header:**
 
@@ -189,12 +189,12 @@ Create a key pair on the user’s account settings page.
     /page?accessKey=<The user's access key>&accessSecret=<the user's access secret>"
     ```
 
-Example: `https://api.hanzo.ai/v1/iam/get-global-providers?accessKey=...&accessSecret=...`
+Example: `https://api.hanzo.ai/v1/iam/get-providers?accessKey=...&accessSecret=...`
 
 ![User Api Key](/img/basic/user_api_key.png)
 
 ```bash
-curl --location 'https://api.hanzo.ai/v1/iam/user?accessKey=b86db9dc-6bd7-4997-935c-af480dd2c796&accessSecret=79911517-fc36-4093-b115-65a9741f6b14'
+curl --location 'https://api.hanzo.ai/v1/iam/get-account?accessKey=b86db9dc-6bd7-4997-935c-af480dd2c796&accessSecret=79911517-fc36-4093-b115-65a9741f6b14'
 
 ### 4. Username and password
 
@@ -210,62 +210,62 @@ Username format: `<organization>/<username>`. API calls run as that user.
     /page?username=<The user's organization name>/<The user name>&password=<the user's password>"
     ```
 
-## SSO logout
+## Sign-out
 
-The `/v1/iam/sso-logout` endpoint logs a user out from all applications or only the current session, depending on `logoutAll`.
+Sign-out is the OIDC RP-initiated logout endpoint. There is no `sso-logout`
+endpoint and no `logoutAll` parameter — it is scoped to (user, application) on
+purpose.
 
 ### Endpoint
 
 ```http
-GET or POST /v1/iam/sso-logout?logoutAll=<true|false>
+GET or POST /v1/iam/oauth/logout
+```
+
+It is the `end_session_endpoint` in `/.well-known/openid-configuration`, so read
+it from discovery rather than hard-coding it.
 
 ### Parameters
 
-- **logoutAll** (optional): `true`, `1`, or omit → logout from all sessions and expire all tokens. `false` or `0` → current session only.
+- **id_token_hint** (optional): the ID token for the session being ended. It is
+  verified; a forged one is ignored. It is the only thing that can name an
+  application, for both the revocation and the redirect.
+- **post_logout_redirect_uri** (optional): honored only with a verified
+  `id_token_hint` *and* only when that application has registered this exact URI.
+- **state** (optional): appended to the redirect.
 
 ### Behavior
 
-**Full SSO logout** (default):
+1. The browser session dies — `sid` revoked server-side and the cookie expired.
+2. The identified application's tokens are deleted, along with the whole
+   refresh-rotation family each belongs to, so nothing rotated stays mintable.
+3. Only then is a redirect considered, and only to a registered URI.
 
-- Deletes all active sessions for the user across all applications
-- Expires all access tokens issued to the user
-- Sends logout notifications with all session IDs and token hashes
+Other applications the same person is signed into are untouched. To end
+everything, enumerate with `POST /v1/iam/sessions/list` and revoke each refresh
+token with `POST /v1/iam/oauth/revoke` (RFC 7009).
 
-**Session-only logout**:
-
-- Deletes only the current session
-- Preserves other active sessions and tokens
-- Sends logout notification with only the current session ID
-
-Use session-only logout when users should sign out from one device but stay signed in elsewhere.
-
-### Authentication
-
-The user must be authenticated. Use any of the [authentication methods](#how-to-authenticate) above.
-
-### Example Request
+### Example request
 
 ```bash
-# Full SSO logout (all sessions)
-curl -X POST https://api.hanzo.ai/v1/iam/sso-logout \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+# Sign out, naming the relying party so its grant is revoked
+curl -X POST https://api.hanzo.ai/v1/iam/oauth/logout \
+  -d "id_token_hint=$ID_TOKEN"
 
-# Session-level logout (current session only)
-curl -X POST "https://api.hanzo.ai/v1/iam/sso-logout?logoutAll=false" \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-
-# Using session cookie
-curl -X POST https://api.hanzo.ai/v1/iam/sso-logout \
-  --cookie "iam_session_id=abc123def456"
+# Using the session cookie
+curl -X POST https://api.hanzo.ai/v1/iam/oauth/logout \
+  --cookie "__Host-hanzo_session=abc123def456"
+```
 
 ### Response
 
 ```json
-{
-  "status": "ok",
-  "msg": "",
-  "data": ""
-}
+{ "status": "ok" }
+```
+
+A browser *navigating* to the endpoint is redirected to the issuer's own
+`/login?signed_out=1` instead. See
+[Sign-out](/docs/services/iam/session/single-sign-out) for the full contract.
 
 ## CORS
 

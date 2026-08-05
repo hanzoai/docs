@@ -85,20 +85,26 @@ hanzo org invite \
   --email carol@example.com --role admin
 ```
 
-The API takes **one invitation per call**, so bulk over HTTP is a loop:
+Over HTTP the shape is different, and the difference matters. There is no bulk
+call, and there is no invitation: the API adds an **existing** Hanzo ID straight
+into the organization. No email is sent and nothing waits to be accepted, so use
+it for people who already have an account — everyone else goes through the
+dashboard or the CLI above.
+
+Each call takes one person, named `<home-org>/<username>`, so a batch is a loop:
 
 ```bash
-for who in alice:developer bob:developer carol:admin; do
+for who in alice:member bob:member carol:admin; do
   curl -X POST https://api.hanzo.ai/v1/iam/add-membership \
     -H "Authorization: Bearer YOUR_TOKEN" \
     -H "Content-Type: application/json" \
-    -d "{ \"email\": \"${who%%:*}@example.com\", \"role\": \"${who##*:}\" }"
+    -d "{ \"user\": \"acme-corp/${who%%:*}\", \"org\": \"acme-corp\", \"role\": \"${who##*:}\" }"
 done
 ```
 
-The invitation lands in the organization the token is acting as — it is never
-named in the body. Owner is non-delegable: an invite with `"role": "owner"` is
-refused, as is a second pending invite to an address that already has one.
+`role` is `owner`, `admin`, or `member` — nothing else is accepted, and omitting
+it means `member`. The call is safe to repeat: it adds a membership only when
+there is none, and never lowers a role that already exists.
 
 ## Removing Members
 

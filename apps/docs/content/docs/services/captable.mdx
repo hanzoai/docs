@@ -32,8 +32,7 @@ Hanzo Cap Table is an open-source equity-management platform for startups and gr
 | Environment | URL |
 |-------------|-----|
 | Production | `https://captable.hanzo.ai` |
-| REST API | `https://captable.hanzo.ai/v1/captable` |
-| API reference | `https://captable.hanzo.ai/v1/docs` |
+| REST API | `https://captable.hanzo.ai/v1/captable` (also `https://api.hanzo.ai/v1/captable`) |
 
 ## Architecture
 
@@ -155,9 +154,9 @@ docker run -d \
 
 ## API
 
-Hanzo Cap Table is built on **tRPC** for type-safe internal calls, with a **REST API** exposed under `/api/v1` (built on Hono) and an interactive **OpenAPI reference at `/v1/docs`**. Programmatic access uses scoped API tokens; token types include API access, signature, data-room, and investor-update tokens.
+Hanzo Cap Table is built on **tRPC** for type-safe internal calls. The hosted REST surface is `/v1/captable/*` — `company`, `summary`, `stakeholders`, `shares`, `shares/transfer`, `options`, `plans`, `classes`, `safes`, `convertibles`, `rounds`, `rounds/{id}`, `rounds/{id}/close`, `rounds/{id}/investments`, `investments`. Every call is org-scoped; without `X-Org-Id` it answers `403 forbidden`. Programmatic access uses scoped API tokens; token types include API access, signature, data-room, and investor-update tokens.
 
-The API covers the same resources as the dashboard — companies and members, stakeholders, share classes and equity plans, securities (shares, options, SAFEs, convertible notes), documents and data rooms, and investor updates. See `/v1/docs` on your instance for the exact request and response shapes.
+Self-hosting the standalone app is different: it is a Next.js app, so its Hono REST surface and OpenAPI reference are Next route handlers at `/api/v1` and `/api/v1/docs`. The hosted service serves neither of those paths.
 
 ## Next Steps
 
