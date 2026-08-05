@@ -117,7 +117,7 @@ at docs.hanzo.ai/docs/contributing/docs-architecture). Summary:
   top nav (`components/layouts/shared.tsx`), deliberately NOT in the root
   sidebar descent. The landing (`app/(landing)/page.tsx` — its own route group,
   because it carries the docs chrome from `components/layouts/docs.tsx` while
-  `(home)` keeps the marketing chrome for /blog, /showcase and /sponsors) + docs home
+  `(home)` keeps the marketing chrome for /blog) + docs home
   (`content/docs/index.mdx`) lead with the decentralized spine ("the AI cloud
   you can run yourself"); `content/docs/network.mdx` = self-host/hanzo.network,
   `content/docs/architecture/philosophy.mdx` = the engineering pedagogy. Landing
