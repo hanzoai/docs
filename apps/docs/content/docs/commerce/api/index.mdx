@@ -13,12 +13,34 @@ Production: https://api.hanzo.ai
 Sandbox:    https://sandbox.api.hanzo.ai
 ```
 
+## What api.hanzo.ai serves today
+
+Commerce is one module served in two places, and they do not expose the same
+surface. `api.hanzo.ai` serves these families:
+
+| Family | What it covers |
+|---|---|
+| `/v1/cart` | Carts — open, read, set an item, discard. |
+| `/v1/store/{storeid}/…` | Storefronts, their listings, and the checkout flow (authorize, capture, charge). |
+| `/v1/payments` | Take a card payment; read a settled one. |
+| `/v1/billing/…` | Invoices, subscriptions, saved cards, credits, spend caps, top-up rails, provider webhooks. |
+| `/v1/catalog`, `/v1/plans` | The platform product catalog and plan authority (admin). |
+| `/v1/commerce/…` | The public checkout surface: tenant config, catalog projection, currencies. |
+
+The module also implements a wider admin surface — products, variants, orders,
+customers, coupons, promotions, inventory, tax, regions, fulfillment, gift cards,
+draft orders, exchanges, claims, B2B and more. Those are **routed by the
+standalone commerce deployment, not by `api.hanzo.ai`**. Pages in this section
+that document them describe the module's capability, not a live route on this
+host — check the [OpenAPI reference](/docs/openapi) for what is actually served
+before you build against a path.
+
 ## Authentication
 
 All API requests require authentication via Bearer token:
 
 ```bash
-curl https://api.hanzo.ai/product \
+curl https://api.hanzo.ai/v1/cart/6QiZNqrY9hW \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -33,12 +55,11 @@ See the [Authentication Guide](/docs/commerce/guides/authentication) for details
 ### Example Request
 
 ```bash
-curl -X POST https://api.hanzo.ai/product \
+curl -X POST https://api.hanzo.ai/v1/cart \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Premium Widget",
-    "price": 2999,
+    "email": "jane@example.com",
     "currency": "USD"
   }'
 ```
@@ -106,21 +127,23 @@ All responses return JSON with the following structure:
 List endpoints support pagination:
 
 ```bash
-curl "https://api.hanzo.ai/product?limit=20&offset=40" \
+curl "https://api.hanzo.ai/v1/store/?page=3&display=20" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `limit` | integer | 20 | Results per page (max 100) |
-| `offset` | integer | 0 | Number of results to skip |
+| `display` | integer | — | Page size. |
+| `page` | integer | 1 | Which page, and only meaningful alongside `display`. |
+
+Either one that is not a positive integer is refused, not silently ignored.
 
 ## Filtering
 
 Filter results using query parameters:
 
 ```bash
-curl "https://api.hanzo.ai/order?status=confirmed&since=2024-01-01" \
+curl "https://api.hanzo.ai/v1/billing/subscriptions?status=active" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -129,10 +152,7 @@ curl "https://api.hanzo.ai/order?status=confirmed&since=2024-01-01" \
 Sort results using the `sort` parameter:
 
 ```bash
-curl "https://api.hanzo.ai/product?sort=price:asc" \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-
-curl "https://api.hanzo.ai/order?sort=createdAt:desc" \
+curl "https://api.hanzo.ai/v1/store/?sort=slug" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -159,7 +179,7 @@ X-RateLimit-Reset: 1705315200
 For POST requests, include an idempotency key to prevent duplicate operations:
 
 ```bash
-curl -X POST https://api.hanzo.ai/order \
+curl -X POST https://api.hanzo.ai/v1/payments \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Idempotency-Key: unique-request-id-123" \
   -H "Content-Type: application/json" \
@@ -172,9 +192,13 @@ Every endpoint lives under `/v1`, and the prefix is explicit — there is no
 implicit-version form:
 
 ```
-https://api.hanzo.ai/v1/admin/products
+https://api.hanzo.ai/v1/cart
 https://api.hanzo.ai/v1/store/{storeid}/product/{key}
 ```
+
+`/v1/admin/products` is **not** a commerce path, despite the name. It is the
+platform's fleet workload registry — the operator App CRs running in the
+cluster — and has nothing to do with a product you sell.
 
 There is no `/v2`, and there will not be one. New capability arrives as new
 paths under `/v1`; breaking changes are avoided rather than versioned around.
@@ -187,7 +211,7 @@ prefix looks like success until you read the body.
 Include related resources in responses:
 
 ```bash
-curl "https://api.hanzo.ai/order/order_abc123?expand=items.product,payments" \
+curl "https://api.hanzo.ai/v1/cart/6QiZNqrY9hW" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
@@ -196,7 +220,7 @@ curl "https://api.hanzo.ai/order/order_abc123?expand=items.product,payments" \
 Register webhooks to receive real-time event notifications:
 
 ```bash
-curl -X POST https://api.hanzo.ai/webhook \
+curl -X POST https://api.hanzo.ai/v1/webhooks \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

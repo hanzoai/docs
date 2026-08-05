@@ -1,359 +1,159 @@
 ---
 title: Cart API
-description: Manage shopping carts, line items, promotions, and checkout preparation
+description: Open a cart, set what is in it, read what it comes to
 icon: ShoppingBag
 ---
 
-The Cart API handles shopping cart lifecycle including line item management, coupon application, shipping method selection, and tax calculation. Carts are the foundation for the checkout flow.
+A cart is where a sale begins. You open one, set quantities on it, and hand it to
+checkout, which turns it into an order.
 
-## Cart Structure
+Four operations, all under `/v1/cart`. Every one is scoped to your own
+organization: a cart is created, found and amended inside your org's own store, so
+a cart id belonging to another tenant is simply not there and reads as `404`.
+
+## Cart
 
 ```json
 {
-  "id": "cart_abc123",
+  "id": "6QiZNqrY9hW",
   "status": "active",
+  "currency": "usd",
   "email": "jane@example.com",
-  "currency": "USD",
+  "store": "XkSkQWyr5T3",
   "items": [
     {
-      "id": "item_001",
-      "variantId": "var_xyz789",
-      "productId": "prod_abc123",
-      "title": "Premium T-Shirt - Black / M",
+      "id": "var_xyz789",
+      "kind": "variant",
+      "name": "Premium T-Shirt — Black / M",
+      "sku": "TEE-BLK-M",
       "quantity": 2,
-      "unitPrice": 2999,
-      "subtotal": 5998,
-      "thumbnail": "https://cdn.hanzo.ai/products/premium-tee-black.jpg"
+      "priceCents": 2999
     }
   ],
-  "subtotal": 5998,
-  "discount": 1499,
-  "shippingTotal": 599,
-  "taxTotal": 540,
-  "total": 5638,
-  "coupons": [
-    { "code": "SUMMER25", "discount": 1499 }
-  ],
-  "shippingAddress": {
-    "line1": "456 Oak Ave",
-    "city": "Portland",
-    "state": "OR",
-    "postalCode": "97201",
-    "country": "US"
-  },
-  "shippingMethod": {
-    "id": "ship_standard",
-    "name": "Standard Shipping",
-    "price": 599,
-    "estimatedDays": 5
-  },
-  "metadata": {},
-  "createdAt": "2024-06-15T10:00:00Z",
-  "updatedAt": "2024-06-15T10:15:00Z"
+  "lineTotalCents": 5998,
+  "discountCents": 0,
+  "subtotalCents": 5998,
+  "shippingCents": 0,
+  "taxCents": 0,
+  "totalCents": 5998,
+  "createdAt": "2026-08-05T20:18:13Z",
+  "updatedAt": "2026-08-05T20:18:13Z"
 }
 ```
 
-## Endpoints
+Every amount is **whole cents**, and every field name says so.
 
-### Create Cart
+`status` is `active` while the cart is being filled, `ordered` once checkout
+completed it, `discarded` if the shopper abandoned it.
 
-`POST /cart`
+`shippingCents` and `taxCents` stay `0` until checkout resolves a shipping option
+and a tax region. A cart total before checkout is the **merchandise** total, and
+is meant to be.
 
-Create a new empty cart or initialize with items.
+## Open a cart
+
+`POST /v1/cart`
 
 ```bash
-curl -X POST https://api.hanzo.ai/cart \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+curl -X POST https://api.hanzo.ai/v1/cart \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "currency": "USD",
-    "items": [
-      {
-        "variantId": "var_xyz789",
-        "quantity": 2
-      }
-    ]
-  }'
+  -d '{"email": "jane@example.com", "currency": "USD"}'
 ```
 
-**Response:** `201 Created`
+| Field | Meaning |
+|---|---|
+| `email` | The shopper's address, for a cart belonging to someone not signed in. |
+| `user` | The signed-in shopper this cart belongs to. Empty means a guest cart. |
+| `store` | The storefront being filled. Empty uses your org's default store. |
+| `currency` | ISO 4217, lower-cased. Empty means `usd`. |
 
-```json
-{
-  "id": "cart_abc123",
-  "status": "active",
-  "currency": "USD",
-  "items": [
-    {
-      "id": "item_001",
-      "variantId": "var_xyz789",
-      "title": "Premium T-Shirt - Black / M",
-      "quantity": 2,
-      "unitPrice": 2999,
-      "subtotal": 5998
-    }
-  ],
-  "subtotal": 5998,
-  "total": 5998,
-  "createdAt": "2024-06-15T10:00:00Z"
-}
-```
+Every field is optional — an empty body opens a perfectly good anonymous cart.
+Answers `201` with the cart.
 
-### Get Cart
+`currency` is a **hint, not a commitment**: checkout overrides it with the store's
+own currency when the sale is authorized.
 
-`GET /cart/:id`
+## Read a cart
+
+`GET /v1/cart/{id}`
 
 ```bash
-curl https://api.hanzo.ai/cart/cart_abc123 \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+curl https://api.hanzo.ai/v1/cart/6QiZNqrY9hW \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-### Update Cart
+Answers `200` with the cart, or `404` if there is no such cart **in your org**.
 
-`PATCH /cart/:id`
+## Set an item
 
-Update cart-level properties such as email, shipping address, or shipping method.
+`POST /v1/cart/{id}/item`
+
+This is the one way a cart's contents change. Add, change and remove are the same
+call at three quantities.
 
 ```bash
-curl -X PATCH https://api.hanzo.ai/cart/cart_abc123 \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+curl -X POST https://api.hanzo.ai/v1/cart/6QiZNqrY9hW/item \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "email": "jane@example.com",
-    "shippingAddress": {
-      "line1": "456 Oak Ave",
-      "city": "Portland",
-      "state": "OR",
-      "postalCode": "97201",
-      "country": "US"
-    },
-    "shippingMethodId": "ship_standard"
-  }'
+  -d '{"variant": "TEE-BLK-M", "quantity": 2}'
 ```
 
-<Callout type="info">
-Setting a shipping address automatically triggers tax calculation based on the destination. Tax totals update in the response.
-</Callout>
+| Field | Meaning |
+|---|---|
+| `product` | The catalog product to set, by id or URL slug. |
+| `variant` | The sellable variant to set, by id or SKU. |
+| `quantity` | How many the cart holds **after** this call. `0` removes the line. |
 
-## Line Items
+Name **either** `product` **or** `variant`, never both. Prefer `variant` for
+anything sold in sizes, colours or tiers — the price and the stock belong to the
+variant, so a product-level line on a varianted product prices the wrong thing.
 
-### Add Item
+`quantity` is the **result, not a delta**. Sending `3` leaves `3` however many were
+there before, so a retry is safe and a double-submit cannot double an order.
 
-`POST /cart/:id/items`
+**There is no `DELETE`.** `quantity: 0` removes the line; a second spelling of one
+act would be a second set of edge cases.
+
+The item's price and name are cached onto the line as it is added, so the cart
+keeps the price the shopper was shown even if the catalog moves underneath it.
+
+Answers `200` with the whole updated cart. An item that resolves to nothing in the
+catalog is `400`, and the cart is left exactly as it was — nothing is partially
+applied.
+
+## Discard a cart
+
+`POST /v1/cart/{id}/discard`
 
 ```bash
-curl -X POST https://api.hanzo.ai/cart/cart_abc123/items \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "variantId": "var_def456",
-    "quantity": 1
-  }'
+curl -X POST https://api.hanzo.ai/v1/cart/6QiZNqrY9hW/discard \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-**Response:**
+A discarded cart is **closed, not deleted**: the row stays, so abandoned-basket
+reporting still has something to read. It stops being a cart anything will check
+out.
 
-```json
-{
-  "id": "item_002",
-  "variantId": "var_def456",
-  "title": "Classic Hoodie - Grey / L",
-  "quantity": 1,
-  "unitPrice": 4999,
-  "subtotal": 4999
-}
-```
+Discarding is idempotent — a cart already discarded answers its stored state
+rather than failing.
 
-### Update Item Quantity
+## Checkout
 
-`PUT /cart/:id/items/:itemId`
+A cart becomes an order through the store checkout addresses, which take the
+storefront in the path:
 
-```bash
-curl -X PUT https://api.hanzo.ai/cart/cart_abc123/items/item_001 \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "quantity": 3
-  }'
-```
+| Endpoint | What it does |
+|---|---|
+| `POST /v1/store/{storeid}/authorize` | Hold the funds without settling them. |
+| `POST /v1/store/{storeid}/capture/{orderid}` | Settle a previous authorization. |
+| `POST /v1/store/{storeid}/charge` | Authorize and capture in one call. |
 
-### Remove Item
+## Errors
 
-`DELETE /cart/:id/items/:itemId`
-
-```bash
-curl -X DELETE https://api.hanzo.ai/cart/cart_abc123/items/item_001 \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-```
-
-**Response:** `204 No Content`
-
-## Coupons
-
-### Apply Coupon
-
-`POST /cart/:id/coupons`
-
-```bash
-curl -X POST https://api.hanzo.ai/cart/cart_abc123/coupons \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "code": "SUMMER25"
-  }'
-```
-
-**Response:**
-
-```json
-{
-  "code": "SUMMER25",
-  "discount": 1499,
-  "description": "25% off orders over $50",
-  "applied": true
-}
-```
-
-**Error Responses:**
-
-| Status | Code | Description |
-|--------|------|-------------|
-| `400` | `coupon_invalid` | Code does not exist |
-| `400` | `coupon_expired` | Promotion has ended |
-| `400` | `coupon_minimum_not_met` | Cart does not meet minimum requirements |
-| `400` | `coupon_usage_exceeded` | Code has reached its usage limit |
-
-### Remove Coupon
-
-`DELETE /cart/:id/coupons/:code`
-
-```bash
-curl -X DELETE https://api.hanzo.ai/cart/cart_abc123/coupons/SUMMER25 \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-```
-
-## Shipping Methods
-
-### List Available Methods
-
-`GET /cart/:id/shipping-methods`
-
-Returns shipping options based on the cart's shipping address and item weights.
-
-```bash
-curl https://api.hanzo.ai/cart/cart_abc123/shipping-methods \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
-```
-
-**Response:**
-
-```json
-{
-  "methods": [
-    {
-      "id": "ship_standard",
-      "name": "Standard Shipping",
-      "price": 599,
-      "estimatedDays": 5
-    },
-    {
-      "id": "ship_express",
-      "name": "Express Shipping",
-      "price": 1499,
-      "estimatedDays": 2
-    }
-  ]
-}
-```
-
-## Tax Calculation
-
-Tax is calculated automatically when a shipping address is set. The calculation uses the tax rates configured in your [Regions](/docs/commerce/api/regions) and [Tax](/docs/commerce/api/tax) settings.
-
-```json
-{
-  "subtotal": 5998,
-  "discount": 1499,
-  "shippingTotal": 599,
-  "taxTotal": 540,
-  "taxLines": [
-    { "name": "Oregon State Tax", "rate": 0.0, "amount": 0 },
-    { "name": "Multnomah County Tax", "rate": 0.0, "amount": 0 }
-  ],
-  "total": 5098
-}
-```
-
-## SDK Examples
-
-### JavaScript
-
-```typescript
-import { Commerce } from '@hanzo/commerce'
-
-const commerce = new Commerce({ apiKey: 'your_key' })
-
-// Create cart with items
-const cart = await commerce.cart.create({
-  currency: 'USD',
-  items: [{ variantId: 'var_xyz789', quantity: 2 }]
-})
-
-// Add item
-await commerce.cart.addItem(cart.id, {
-  variantId: 'var_def456',
-  quantity: 1
-})
-
-// Update quantity
-await commerce.cart.updateItem(cart.id, 'item_001', { quantity: 3 })
-
-// Apply coupon
-await commerce.cart.applyCoupon(cart.id, 'SUMMER25')
-
-// Set shipping address and method
-await commerce.cart.update(cart.id, {
-  email: 'jane@example.com',
-  shippingAddress: {
-    line1: '456 Oak Ave',
-    city: 'Portland',
-    state: 'OR',
-    postalCode: '97201',
-    country: 'US'
-  },
-  shippingMethodId: 'ship_standard'
-})
-
-// Get updated cart with totals
-const updated = await commerce.cart.get(cart.id)
-```
-
-### Go
-
-```go
-cart, err := client.Cart.Create(ctx, &sdk.CartInput{
-    Currency: "USD",
-    Items: []sdk.CartItemInput{
-        {VariantID: "var_xyz789", Quantity: 2},
-    },
-})
-
-err = client.Cart.AddItem(ctx, cart.ID, &sdk.CartItemInput{
-    VariantID: "var_def456",
-    Quantity:  1,
-})
-
-err = client.Cart.ApplyCoupon(ctx, cart.ID, "SUMMER25")
-
-err = client.Cart.Update(ctx, cart.ID, &sdk.CartUpdateInput{
-    Email:            "jane@example.com",
-    ShippingMethodID: "ship_standard",
-    ShippingAddress: &sdk.Address{
-        Line1:      "456 Oak Ave",
-        City:       "Portland",
-        State:      "OR",
-        PostalCode: "97201",
-        Country:    "US",
-    },
-})
-```
+| Status | When |
+|---|---|
+| `400` | Neither `product` nor `variant` named, both named, a negative quantity, or an item that is not in the catalog. |
+| `403` | No validated organization on the call — you are not signed in. |
+| `404` | No such cart in your organization. Another tenant's id reads the same way, so the id space cannot be probed. |
+| `503` | Commerce is not co-resident in this process. |
