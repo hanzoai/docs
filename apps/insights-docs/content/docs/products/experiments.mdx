@@ -17,7 +17,9 @@ Experiments in Hanzo Insights use feature flags under the hood, giving you full 
 Split traffic between control and variant. Classic 50/50 or any custom split.
 
 ### Multi-Variant Test
-Test multiple variants simultaneously (A/B/C/D). Automatically accounts for multiple comparisons.
+Test multiple variants simultaneously (A/B/C/D). Every arm is tested against the
+control, so read more arms as more chances of a false positive and tighten `alpha`
+accordingly — nothing corrects for that on your behalf.
 
 ### Holdout Test
 Measure long-term impact by maintaining a permanent holdout group.
@@ -118,11 +120,11 @@ Stop when:
 1. The leading arm's p-value clears alpha (green indicator)
 2. You've reached your minimum sample size
 
-**Ship the winner**: one click in the dashboard, or `POST
-/v1/experiments/{id}/decide` with `{"winner": "test"}`. Either rewrites the
-assignment flag so that arm serves 100% and every other arm 0%, and stamps who
-decided. It takes effect immediately, and it needs an **org admin** — a stricter
-gate than the rest of the surface, because promoting is a flag write.
+**Ship the winner**: one click in the dashboard, or `POST /v1/experiments/{id}/decide`
+with `{"winner": "test"}`. Either rewrites the assignment flag so that arm serves
+100% and every other arm 0%, and stamps who decided. It takes effect immediately,
+and it needs an **org admin** — a stricter gate than the rest of the surface,
+because promoting is a flag write.
 
 Deciding is not terminal: a second call re-promotes a different arm. Nothing here
 restores the original split — that means writing the flag definition back through

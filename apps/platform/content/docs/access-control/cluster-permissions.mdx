@@ -89,26 +89,18 @@ Cluster permissions control **who** can deploy. [Environment protection](/docs/a
 
 ## API
 
-Over HTTP the grant lives on the **member**, not on the cluster: `accessedServers`
-is the list of clusters that member may reach, and the capability flags beside it
-decide what they may do once there. Assigning replaces that member's whole grant,
-so send the full list every time.
+Cluster permissions are granted from the dashboard. The `api.hanzo.ai/v1` surface
+carries no op that grants, revokes, or reads a per-cluster permission, so there
+is nothing to script here — use the steps above.
 
-Writes are `POST`; reads are `GET`. There is no `PATCH` on this surface.
+What it does expose is the clusters themselves:
 
 ```bash
-# Grant a member access to two clusters
-curl -X POST https://api.hanzo.ai/v1/iam/update-role \
+# List your organization's clusters
+curl https://api.hanzo.ai/v1/clusters \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "id": "user_def456",
-    "accessedServers": ["cluster_abc123", "cluster_ghi789"],
-    "canCreateServices": true,
-    "canDeleteServices": false
-  }'
-
-# Read one member, including the clusters they can reach
-curl "https://api.hanzo.ai/v1/iam/get-user?userId=user_def456" \
-  -H "Authorization: Bearer YOUR_TOKEN"
+  -H "X-Org-Id: acme-corp"
 ```
+
+The listing is org-scoped by the calling token and covers both kinds of cluster:
+the managed ones and any you attached yourself.

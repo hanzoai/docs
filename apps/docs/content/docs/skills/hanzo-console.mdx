@@ -5,15 +5,15 @@ description: "Hanzo Console is the observability and prompt management layer for
 
 ## Overview
 
-Hanzo Console is the **observability and prompt management layer** for AI applications. It captures traces, scores, datasets, and prompts from any LLM application and provides a dashboard for debugging, evaluation, and cost analysis. Compatible with the Langfuse SDK and OpenTelemetry, it integrates natively with every Hanzo service.
+Hanzo Console is the **observability and prompt management layer** for AI applications. It captures traces, scores, datasets, evaluators and prompts from any LLM application and provides a dashboard for debugging, evaluation, and cost analysis. Everything it shows is readable and writable over the same unified `api.hanzo.ai/v1` plane the rest of Hanzo uses — no separate API host, no separate key.
 
 ### Why Hanzo Console?
 
-- **Full trace capture**: Every LLM call, tool use, and agent step recorded
-- **Cost attribution**: Per-request, per-user, per-model cost breakdown
-- **Prompt management**: Version, test, and deploy prompts from a central registry
-- **Datasets & evals**: Build evaluation sets and run automated scoring
-- **Langfuse compatible**: Drop-in replacement for Langfuse SDK
+- **Full trace capture**: Every LLM call, tool use, and agent step recorded as a gen_ai span
+- **Cost attribution**: Per-model cost, token and latency breakdown over a window
+- **Prompt management**: A versioned prompt library — creating a prompt whose name already exists appends a version, so nothing changes silently
+- **Datasets & evals**: Build graded example sets, define judges, run them, record scores
+- **One plane**: The same `Authorization: Bearer` credential as the AI gateway, the same `/v1` addresses
 - **Part of Hanzo ecosystem**: Auto-instrumented for Hanzo Chat, Web3, Commerce
 
 ## When to use
@@ -27,226 +27,250 @@ Use this skill when:
 
 ## Hard requirements
 
-1. **API Key required.** Use `HANZO_API_KEY` or the Langfuse-compatible pair `LANGFUSE_PUBLIC_KEY` + `LANGFUSE_SECRET_KEY`. Get keys at https://console.hanzo.ai.
+1. **API key required.** Use `HANZO_API_KEY`, sent as `Authorization: Bearer ${HANZO_API_KEY}`. Get keys at https://console.hanzo.ai.
 2. **Never expose keys** in user-visible output, logs, or screenshots.
-3. **Traces are async.** The SDK batches and sends traces in the background. Call `flush()` before process exit.
+3. **Tenancy is server-side.** Org and project are minted from the validated credential — never a body field, never a client header. A call with no validated principal is `403`, not an empty list, so an empty result never quietly means "wrong key".
+4. **Scores and traces are telemetry.** They need the datastore: a deployment with none wired answers `503` rather than an empty page that would read as "no data".
 
 ## Preflight checks
 
 Before making any request, silently verify:
-- `HANZO_API_KEY` is set, OR both `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are set
-- If using Langfuse SDK, set `LANGFUSE_HOST=https://console.hanzo.ai`
+- `HANZO_API_KEY` is set
+- The base URL is `https://api.hanzo.ai/v1` (`https://console.hanzo.ai/v1` serves the identical routes)
 
 ## Quick reference
 
 | Item | Value |
 |------|-------|
 | Dashboard | `https://console.hanzo.ai` |
-| API Base URL | `https://console.hanzo.ai/api` |
-| Langfuse host | `https://console.hanzo.ai` |
-| Auth (Hanzo) | `Authorization: Bearer ${HANZO_API_KEY}` |
-| Auth (Langfuse) | Basic auth with public/secret key pair |
+| API base URL | `https://api.hanzo.ai/v1` |
+| Alternate base (identical routes) | `https://console.hanzo.ai/v1` |
+| Auth | `Authorization: Bearer ${HANZO_API_KEY}` |
+| Model gateway | `https://api.hanzo.ai/v1/chat/completions` |
 | Docs | https://hanzo.ai/docs/console |
 
 ## One-file quickstart
 
-### Python (Langfuse SDK)
-
-```python
-from langfuse import Langfuse
-
-lf = Langfuse(
-    host="https://console.hanzo.ai",
-    public_key=os.environ["LANGFUSE_PUBLIC_KEY"],
-    secret_key=os.environ["LANGFUSE_SECRET_KEY"],
-)
-
-# Create a trace
-trace = lf.trace(name="chat-request", user_id="user_123")
-
-# Log a generation (LLM call)
-generation = trace.generation(
-    name="chat-completion",
-    model="zen-70b",
-    input=[{"role": "user", "content": "Hello!"}],
-    output="Hi there! How can I help?",
-    usage={"input": 5, "output": 8, "unit": "TOKENS"},
-    metadata={"temperature": 0.7},
-)
-
-# Score the trace
-trace.score(name="quality", value=0.95, comment="Accurate and concise")
-
-# Flush before exit
-lf.flush()
-```
-
-### Python (Hanzo SDK decorator)
-
-```python
-from hanzo import Hanzo
-from hanzo.console import observe
-
-client = Hanzo()  # uses HANZO_API_KEY from env
-
-@observe()
-def chat(message: str) -> str:
-    """Automatically traced: input, output, latency, cost."""
-    response = client.chat.completions.create(
-        model="zen-70b",
-        messages=[{"role": "user", "content": message}],
-    )
-    return response.choices[0].message.content
-
-result = chat("What is Hanzo?")
-```
-
-### Python (OpenAI integration)
-
-```python
-from langfuse.openai import openai
-
-# Calls made through this client are traced automatically
-openai.base_url = "https://api.hanzo.ai/v1"
-openai.api_key = os.environ["HANZO_API_KEY"]
-
-response = openai.chat.completions.create(
-    model="zen-70b",
-    messages=[{"role": "user", "content": "Hello!"}],
-    langfuse_trace_id="trace_abc",  # optional: link to existing trace
-)
-# Trace automatically sent to console.hanzo.ai
-```
-
-### curl (API direct)
+### curl
 
 ```bash
-# Create trace
-curl -X POST https://console.hanzo.ai/v1/o11y/traces \
-  -H "Content-Type: application/json" \
-  -u "${LANGFUSE_PUBLIC_KEY}:${LANGFUSE_SECRET_KEY}" \
-  -d '{
-    "name": "api-request",
-    "userId": "user_123",
-    "input": {"message": "Hello"},
-    "output": {"response": "Hi there!"}
-  }'
+# The AI overview board: totals, per-model breakdown, latency percentiles
+curl "https://api.hanzo.ai/v1/evals/metrics?range=24h" \
+  -H "Authorization: Bearer ${HANZO_API_KEY}"
 
-# Get trace
-curl https://console.hanzo.ai/v1/o11y/traces/{trace_id} \
-  -u "${LANGFUSE_PUBLIC_KEY}:${LANGFUSE_SECRET_KEY}"
+# The traces behind your evaluations
+curl "https://api.hanzo.ai/v1/evals/traces?limit=50" \
+  -H "Authorization: Bearer ${HANZO_API_KEY}"
+
+# Record a score against a trace
+curl -X POST https://api.hanzo.ai/v1/evals/scores \
+  -H "Authorization: Bearer ${HANZO_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "quality",
+    "value": 0.95,
+    "traceId": "trace_abc",
+    "comment": "Accurate and concise"
+  }'
+```
+
+### Python (HTTP)
+
+```python
+import os, httpx
+
+api = httpx.Client(
+    base_url="https://api.hanzo.ai/v1",
+    headers={"Authorization": f"Bearer {os.environ['HANZO_API_KEY']}"},
+)
+
+# The board: generations, prompt/completion tokens, cost in cents, errors,
+# success rate, a gap-filled series, a per-model breakdown, latency percentiles.
+board = api.get("/evals/metrics", params={"range": "7d"}).json()
+
+# Score a trace out of band — human review lands beside the automatic graders.
+api.post("/evals/scores", json={
+    "name": "quality",
+    "value": 0.95,
+    "traceId": "trace_abc",
+    "comment": "Accurate and concise",
+})
+```
+
+### Python (model calls through the gateway)
+
+```python
+import os
+from openai import OpenAI
+
+# Calls made through the Hanzo gateway are recorded as gen_ai spans, which is
+# what the LLM-observability views below project over.
+client = OpenAI(
+    base_url="https://api.hanzo.ai/v1",
+    api_key=os.environ["HANZO_API_KEY"],
+)
+
+response = client.chat.completions.create(
+    model="zen-70b",
+    messages=[{"role": "user", "content": "Hello!"}],
+)
 ```
 
 ## Endpoint selector
 
-### Traces
+All paths are relative to `https://api.hanzo.ai/v1`. Routes are keyed by method: on
+the evals surface a verb that is not listed for a path is a `404`, not a `405`.
+
+### Evaluation traces and scores
 
 | Task | Endpoint | Method |
 |------|----------|--------|
-| Create trace | `POST /api/public/traces` | POST |
-| Get trace | `GET /api/public/traces/{id}` | GET |
-| List traces | `GET /api/public/traces` | GET |
+| List evaluation traces | `/evals/traces` | GET |
+| Record a score | `/evals/scores` | POST |
+| List scores (filter by `name`, `runName`, `traceId`) | `/evals/scores` | GET |
+| Declare what a score name may be | `/evals/rubrics` | POST |
+| List score rubrics | `/evals/rubrics` | GET |
+| AI overview board (`range`=`24h`\|`7d`\|`30d`) | `/evals/metrics` | GET |
 
-### Generations (LLM calls)
-
-| Task | Endpoint | Method |
-|------|----------|--------|
-| Create generation | `POST /api/public/generations` | POST |
-| Update generation | `PATCH /api/public/generations/{id}` | PATCH |
-| List generations | `GET /api/public/generations` | GET |
-
-### Scores
+### Datasets and runs
 
 | Task | Endpoint | Method |
 |------|----------|--------|
-| Create score | `POST /api/public/scores` | POST |
-| List scores | `GET /api/public/scores` | GET |
+| Create or edit a dataset | `/evals/datasets` | POST |
+| List datasets | `/evals/datasets` | GET |
+| One dataset, with its item count | `/evals/datasets/{name}` | GET |
+| Delete a dataset and its examples | `/evals/datasets/{name}` | DELETE |
+| Add a graded example | `/evals/datasets/{name}/items` | POST |
+| List a dataset's examples | `/evals/datasets/{name}/items` | GET |
+| Define a judge | `/evals/evaluators` | POST |
+| List judges | `/evals/evaluators` | GET |
+| Run a dataset through a model + judge | `/evals/runs` | POST |
+| List runs | `/evals/runs` | GET |
+
+### LLM observability (gen_ai span views)
+
+| Task | Endpoint | Method |
+|------|----------|--------|
+| LLM calls with model, tokens, cost, latency | `/o11y/llm/observations` | GET |
+| Traces | `/o11y/llm/traces` | GET |
+| Sessions | `/o11y/llm/sessions` | GET |
+| Users | `/o11y/llm/users` | GET |
+| List / create eval scores | `/o11y/llm/scores` | GET, POST |
+| Read / delete one score | `/o11y/llm/score/{id}` | GET, DELETE |
+| List / create human annotations | `/o11y/llm/annotation` | GET, POST |
+| Read / replace token pricing rules | `/o11y/llm_pricing_rules` | GET, PUT |
+| Read / delete one pricing rule | `/o11y/llm_pricing_rules/{id}` | GET, DELETE |
+
+Reads need the viewer role; the score and annotation writes need editor; the
+pricing-rule writes need admin.
+
+### APM traces
+
+| Task | Endpoint | Method |
+|------|----------|--------|
+| Your org's trace list | `/o11y/traces` | GET |
+| One trace in full | `/o11y/traces/{traceId}` | GET |
+| Session list | `/o11y/sessions` | GET |
+
+These are reads. There is no `POST /o11y/traces` — spans arrive from the
+instrumented call path, not from a client write.
 
 ### Prompts
 
 | Task | Endpoint | Method |
 |------|----------|--------|
-| Create prompt | `POST /api/public/prompts` | POST |
-| Get prompt | `GET /api/public/prompts/{name}` | GET |
-| List prompts | `GET /api/public/prompts` | GET |
-| Get prompt version | `GET /api/public/prompts/{name}/{version}` | GET |
-
-### Datasets
-
-| Task | Endpoint | Method |
-|------|----------|--------|
-| Create dataset | `POST /api/public/datasets` | POST |
-| List datasets | `GET /api/public/datasets` | GET |
-| Create dataset item | `POST /api/public/dataset-items` | POST |
-| Create dataset run | `POST /api/public/dataset-run-items` | POST |
-
-### Sessions
-
-| Task | Endpoint | Method |
-|------|----------|--------|
-| Get session | `GET /api/public/sessions/{id}` | GET |
-| List sessions | `GET /api/public/sessions` | GET |
+| List your org's prompts | `/prompts` | GET |
+| Create a prompt, or append a version | `/prompts` | POST |
+| Prompt detail + version history | `/prompts/{name}` | GET |
+| Delete a prompt and its versions | `/prompts/{name}` | DELETE |
+| Per-prompt stats | `/prompts/metrics` | GET |
+| The read-only starter set | `/prompts/catalog` | GET |
 
 ## Prompt management
 
-Version, test, and deploy prompts from a central registry:
+A prompt is a name, a template body, and free-form `labels` / `tags`. The **name is
+the key**: posting a name your org already has appends a new version rather than
+overwriting one, so the history is real and inspectable.
 
-```python
-from langfuse import Langfuse
+```bash
+# Create, or append a version to an existing name
+curl -X POST https://api.hanzo.ai/v1/prompts \
+  -H "Authorization: Bearer ${HANZO_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "chat-system-prompt",
+    "prompt": "You are a helpful assistant for {{user_name}}.",
+    "labels": ["production"]
+  }'
 
-lf = Langfuse(host="https://console.hanzo.ai")
-
-# Get latest production prompt
-prompt = lf.get_prompt("chat-system-prompt")
-compiled = prompt.compile(user_name="Alice")
-
-# Use in chat completion
-response = client.chat.completions.create(
-    model="zen-70b",
-    messages=[
-        {"role": "system", "content": compiled},
-        {"role": "user", "content": "Hello!"},
-    ],
-    langfuse_prompt=prompt,  # links trace to prompt version
-)
+# Read the current version plus its version history
+curl https://api.hanzo.ai/v1/prompts/chat-system-prompt \
+  -H "Authorization: Bearer ${HANZO_API_KEY}"
 ```
+
+The detail response carries `prompt` (the current body), `version`, and
+`versionHistory` — version numbers, type and creation time. History is **metadata
+only**: past bodies are not served, so a prompt cannot be read out version by
+version.
 
 ### Prompt lifecycle
 
-1. **Create**: Author prompt in Console dashboard or via API
-2. **Version**: Each edit creates a new version (immutable)
-3. **Label**: Mark versions as `production`, `staging`, `latest`
-4. **Deploy**: SDK fetches by label; no code change needed to update prompts
-5. **Evaluate**: A/B test prompt versions against datasets
+1. **Create**: author the prompt in the Console dashboard or `POST /v1/prompts`
+2. **Version**: posting the same name appends a version; nothing is overwritten
+3. **Label**: `labels` and `tags` are free-form taxonomy — use them to mark intent
+4. **Fetch**: `GET /v1/prompts/{name}` returns the current body, so changing a
+   prompt needs no code change and no redeploy
+5. **Evaluate**: score a prompt change against a dataset with `/v1/evals/runs`
+
+Names must match `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`, and `metrics`, `catalog` and
+`new` are reserved because they are sibling routes. A body is capped at 64 KiB and
+holds template text only — never a secret.
 
 ## Evaluation and datasets
 
-Build evaluation pipelines:
+A dataset is a named set of graded examples. An evaluator is a judge — a model plus
+the criteria it grades by. A run scores one through the other.
 
-```python
-# Create evaluation dataset
-dataset = lf.create_dataset(name="chat-eval-v1")
+```bash
+# 1. Create the dataset. Posting the same name edits it; its items are untouched.
+curl -X POST https://api.hanzo.ai/v1/evals/datasets \
+  -H "Authorization: Bearer ${HANZO_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "chat-eval-v1", "description": "Core product questions"}'
 
-# Add items
-lf.create_dataset_item(
-    dataset_name="chat-eval-v1",
-    input={"messages": [{"role": "user", "content": "What is Hanzo?"}]},
-    expected_output="Hanzo is an AI infrastructure company...",
-)
+# 2. Add graded examples. Supply "id" to make the write idempotent.
+curl -X POST https://api.hanzo.ai/v1/evals/datasets/chat-eval-v1/items \
+  -H "Authorization: Bearer ${HANZO_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": {"messages": [{"role": "user", "content": "What is Hanzo?"}]},
+    "expectedOutput": "Hanzo is an AI infrastructure company...",
+    "status": "ACTIVE"
+  }'
 
-# Run evaluation
-for item in lf.get_dataset("chat-eval-v1").items:
-    response = client.chat.completions.create(
-        model="zen-70b",
-        messages=item.input["messages"],
-    )
-
-    # Score the result
-    item.link(
-        trace_id=response.langfuse_trace_id,
-        run_name="zen-70b-eval-v1",
-    )
+# 3. Run it. This is synchronous work, not a job id — the summary comes back once
+#    every item has been called, traced, judged and scored.
+curl -X POST https://api.hanzo.ai/v1/evals/runs \
+  -H "Authorization: Bearer ${HANZO_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"dataset": "chat-eval-v1", "model": "zen-70b", "runName": "zen-70b-eval-v1"}'
 ```
+
+Things that will bite you if you do not know them:
+
+- Only `ACTIVE` examples are fed to a run — that is how an example is retired
+  without deleting it. A dataset with none is `422`.
+- A run executes **as you**: your own bearer drives the model gateway, so a request
+  without one is `401` rather than a run made under a service identity.
+- `judge` is optional. Omitted, the model under test grades itself against a
+  default correctness criterion, under the score name `llm-judge`.
+- An org may have at most 4 runs in flight; the fifth is `429` rather than queued.
+  A whole run is capped at 10 minutes.
+- Deleting a dataset deletes its examples in the same transaction. Scores and runs
+  already recorded against it are telemetry and survive.
+- Declare a rubric (`POST /v1/evals/rubrics`) before recording scores under a name
+  you care about: once one exists its data type is authoritative, and out-of-range
+  values, unlisted labels and non-finite numbers are refused at write time.
 
 ## MCP Integration
 
@@ -254,6 +278,9 @@ Expose observability as MCP tools:
 
 ```typescript
 import { MCPServer, Tool } from '@hanzo/mcp'
+
+const BASE = 'https://api.hanzo.ai/v1'
+const auth = { Authorization: `Bearer ${process.env.HANZO_API_KEY}` }
 
 const consoleTools: Tool[] = [
   {
@@ -263,39 +290,29 @@ const consoleTools: Tool[] = [
       trace_id: { type: 'string', required: true }
     },
     async execute({ trace_id }) {
-      const res = await fetch(
-        `https://console.hanzo.ai/v1/o11y/traces/${trace_id}`,
-        { headers: { 'Authorization': `Bearer ${process.env.HANZO_API_KEY}` } }
-      )
+      const res = await fetch(`${BASE}/o11y/traces/${trace_id}`, { headers: auth })
       return await res.json()
     }
   },
   {
     name: 'console_get_prompt',
-    description: 'Fetch a managed prompt by name and label',
+    description: 'Fetch a managed prompt by name, with its version history',
     parameters: {
-      name: { type: 'string', required: true },
-      label: { type: 'string', default: 'production' }
+      name: { type: 'string', required: true }
     },
-    async execute({ name, label }) {
-      const res = await fetch(
-        `https://console.hanzo.ai/v1/prompts/${name}?label=${label}`,
-        { headers: { 'Authorization': `Bearer ${process.env.HANZO_API_KEY}` } }
-      )
+    async execute({ name }) {
+      const res = await fetch(`${BASE}/prompts/${name}`, { headers: auth })
       return await res.json()
     }
   },
   {
     name: 'console_cost_summary',
-    description: 'Get cost breakdown by model and time period',
+    description: 'Get cost, token and latency breakdown by model over a window',
     parameters: {
-      period: { type: 'string', enum: ['day', 'week', 'month'], default: 'week' }
+      range: { type: 'string', enum: ['24h', '7d', '30d'], default: '24h' }
     },
-    async execute({ period }) {
-      const res = await fetch(
-        `https://api.hanzo.ai/v1/billing/usage?period=${period}`,
-        { headers: { 'Authorization': `Bearer ${process.env.HANZO_API_KEY}` } }
-      )
+    async execute({ range }) {
+      const res = await fetch(`${BASE}/evals/metrics?range=${range}`, { headers: auth })
       return await res.json()
     }
   }
@@ -307,16 +324,21 @@ const consoleTools: Tool[] = [
 | Code | Meaning | Action |
 |------|---------|--------|
 | 200 | Success | Process response |
-| 400 | Bad request | Check trace/generation format |
-| 401 | Unauthorized | Check API keys or Langfuse credentials |
-| 404 | Not found | Check trace/prompt/dataset ID |
-| 429 | Rate limited | SDK auto-retries; manual calls should backoff |
-| 500 | Server error | Retry up to 3 times |
+| 201 | Created | A write landed; the body is the created object |
+| 204 | Deleted | No body, by design |
+| 400 | Bad request | Check the body shape, the name pattern, or a non-finite score value |
+| 401 | Unauthorized | Missing or malformed `Authorization: Bearer` |
+| 403 | Forbidden | No validated principal, or the route needs a higher role |
+| 404 | Not found | Wrong id — or the right id in another tenant, which looks the same |
+| 405 | Method not allowed | The path exists, but not for this verb |
+| 409 | Conflict | An id already claimed elsewhere |
+| 422 | Unprocessable | E.g. a run against a dataset with no ACTIVE examples |
+| 429 | Rate limited | Back off; runs cap at 4 in flight per org |
+| 503 | Telemetry unavailable | No datastore wired — retry; do not read it as "no data" |
 
 ## Official links
 
 - Dashboard: https://console.hanzo.ai
 - Documentation: https://hanzo.ai/docs/console
-- Langfuse SDK: https://github.com/langfuse/langfuse-python
 - Hanzo Python SDK: https://github.com/hanzoai/python-sdk
 - Hanzo AI: https://hanzo.ai
