@@ -465,7 +465,7 @@ make build-prod   # Build and push production image
 
 | Protocol | Path |
 |----------|------|
-| SAML | `/api/saml/redirect`, `/api/saml/metadata` |
+| SAML | `/v1/iam/saml/redirect/{owner}/{application}`, `/v1/iam/saml/metadata`, `/v1/iam/acs` (ACS, POST only) |
 | CAS | `/cas/login`, `/cas/logout`, `/cas/serviceValidate`, `/cas/proxyValidate` |
 | LDAP | Port 389 (LDAPS 636) |
 | RADIUS | Port 1812 |
@@ -474,7 +474,7 @@ make build-prod   # Build and push production image
 
 ### Metrics
 
-Prometheus metrics exposed at `/api/metrics`.
+Prometheus metrics are on zip's ops listener at `/metrics` — a second port the deployment brings up when it sets `OPS_PORT`, never the public one. A liveness or scrape request must not queue behind public traffic, so `/metrics`, `/healthz` and `/readyz` are not on the served surface at all.
 
 ## SDK Integration
 

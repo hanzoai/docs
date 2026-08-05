@@ -34,7 +34,7 @@ Per app:
     - testnet: `https://test.hanzo.ai`
     - devnet:  `https://dev.hanzo.ai`
 4. **Authorization callback URL**:
-    - mainnet: `https://iam.hanzo.ai/v1/iam/callback`
+    - mainnet: `https://api.hanzo.ai/v1/iam/callback`
     - testnet: `https://iam.test.hanzo.ai/v1/iam/callback`
     - devnet:  `https://iam.dev.hanzo.ai/v1/iam/callback`
 5. **Enable Device Flow**: off (we use OAuth web flow only).
@@ -79,7 +79,7 @@ Per env:
     - testnet: `https://iam.test.hanzo.ai`
     - devnet:  `https://iam.dev.hanzo.ai`
 5. **Authorized redirect URIs**:
-    - mainnet: `https://iam.hanzo.ai/v1/iam/callback`
+    - mainnet: `https://api.hanzo.ai/v1/iam/callback`
     - testnet: `https://iam.test.hanzo.ai/v1/iam/callback`
     - devnet:  `https://iam.dev.hanzo.ai/v1/iam/callback`
 6. Click **Create**. Record the **Client ID** and **Client secret** from
@@ -121,10 +121,10 @@ authorize URL directly:
 
 ```bash
 # GitHub (replace <client-id> per env)
-open "https://github.com/login/oauth/authorize?client_id=<client-id>&redirect_uri=https://iam.hanzo.ai/v1/iam/callback&scope=read:user"
+open "https://github.com/login/oauth/authorize?client_id=<client-id>&redirect_uri=https://api.hanzo.ai/v1/iam/callback&scope=read:user"
 
 # Google
-open "https://accounts.google.com/o/oauth2/v2/auth?client_id=<client-id>&redirect_uri=https://iam.hanzo.ai/v1/iam/callback&scope=openid+profile+email&response_type=code"
+open "https://accounts.google.com/o/oauth2/v2/auth?client_id=<client-id>&redirect_uri=https://api.hanzo.ai/v1/iam/callback&scope=openid+profile+email&response_type=code"
 ```
 
 A correctly-configured app shows the OAuth consent screen; a misconfigured

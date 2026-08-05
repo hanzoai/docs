@@ -85,18 +85,18 @@ record is touched.
 
 ```bash
 # Login — the broker exchanges your machine credential for an IAM bearer
-export KMS_TOKEN=$(curl -s -X POST https://kms.hanzo.ai/v1/kms/auth/login \
+export KMS_TOKEN=$(curl -s -X POST https://api.hanzo.ai/v1/kms/auth/login \
   -H "Content-Type: application/json" \
   -d '{"clientId": "'$KMS_CLIENT_ID'", "clientSecret": "'$KMS_CLIENT_SECRET'"}' \
   | jq -r '.accessToken')
 
 # List your org's secrets (metadata only — no values)
-curl -s https://kms.hanzo.ai/v1/kms/secrets \
+curl -s https://api.hanzo.ai/v1/kms/secrets \
   -H "Authorization: Bearer ${KMS_TOKEN}" \
   -G -d "path=/ci" -d "env=production"
 
 # Read one value
-curl -s "https://kms.hanzo.ai/v1/kms/secrets/ci/DATABASE_URL?env=production" \
+curl -s "https://api.hanzo.ai/v1/kms/secrets/ci/DATABASE_URL?env=production" \
   -H "Authorization: Bearer ${KMS_TOKEN}" | jq -r '.value'
 ```
 

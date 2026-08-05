@@ -185,7 +185,7 @@ export default function Page() {
               <pre className="overflow-x-auto p-6 text-sm font-mono leading-relaxed">
                 <code className="text-text-muted">
                   <span className="text-brand">curl</span>
-                  {' https://app.flow.hanzo.ai/api/v1/run/my-flow \\\n'}
+                  {' https://api.hanzo.ai/v1/flow/run/my-flow \\\n'}
                   {'  -H '}
                   <span className="text-green-400">
                     {'"Authorization: Bearer sk-..."'}
