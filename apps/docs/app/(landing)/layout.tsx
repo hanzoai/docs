@@ -10,10 +10,10 @@ import { Footer } from '@/components/footer';
 // site would show them what it contains. The sidebar is the table of contents
 // for ~1,600 pages, and the front door is where it is worth the most.
 //
-// / gets its own route group because (home) also wraps /blog, /showcase and
-// /sponsors. Those are editorial pages with no place in the docs tree, so they
-// keep the marketing chrome — and (home) keeps its name, which reads as "the
-// pages using HomeLayout", the upstream component's own vocabulary.
+// / gets its own route group because (home) also wraps /blog, an editorial
+// page with no place in the docs tree, so it keeps the marketing chrome — and
+// (home) keeps its name, which reads as "the pages using HomeLayout", the
+// upstream component's own vocabulary.
 export default function Layout({ children }: LayoutProps<'/'>) {
   return (
     <>
