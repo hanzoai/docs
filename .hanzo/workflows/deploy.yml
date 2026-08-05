@@ -92,7 +92,7 @@ jobs:
             -d "{\"clientId\":\"$KMS_CLIENT_ID\",\"clientSecret\":\"$KMS_CLIENT_SECRET\"}" \
             | sed -n 's/.*"accessToken"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
           [ -n "$token" ] || { echo "::error::KMS login failed at $KMS"; exit 1; }
-          key="$(curl -sf "$KMS/v1/kms/secrets/deploy/EVENT_INGEST_KEY?env=prod" \
+          key="$(curl -sf "$KMS/v1/kms/secrets/deploy/PUBLISHABLE_KEY?env=prod" \
             -H "Authorization: Bearer $token" \
             | sed -n 's/.*"value"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
           # Fail closed. An empty build-arg produces an image that builds, serves,
@@ -102,11 +102,11 @@ jobs:
           # refuse to produce the artifact rather than produce a hollow one.
           case "$key" in
             pk-*) : ;;
-            '')   echo "::error::KMS returned no value for deploy/EVENT_INGEST_KEY (env=prod)"; exit 1 ;;
-            *)    echo "::error::deploy/EVENT_INGEST_KEY is not a publishable key (expected a pk- prefix)"; exit 1 ;;
+            '')   echo "::error::KMS returned no value for deploy/PUBLISHABLE_KEY (env=prod)"; exit 1 ;;
+            *)    echo "::error::deploy/PUBLISHABLE_KEY is not a publishable key (expected a pk- prefix)"; exit 1 ;;
           esac
           echo "::add-mask::$key"
-          echo "EVENT_INGEST_KEY=$key" >> "$GITHUB_ENV"
+          echo "PUBLISHABLE_KEY=$key" >> "$GITHUB_ENV"
 
       # Reclaim the runner's docker storage before building, and SAY how much
       # there is. This build lives inside a 38Gi emptyDir and wants most of it,
@@ -134,7 +134,7 @@ jobs:
       - name: build
         run: |
           docker build \
-            --build-arg "EVENT_INGEST_KEY=${EVENT_INGEST_KEY}" \
+            --build-arg "PUBLISHABLE_KEY=${PUBLISHABLE_KEY}" \
             -t "docs:${GITHUB_SHA}" .
 
       # The gate itself runs inside the Dockerfile, so `docker build` above has
@@ -160,7 +160,7 @@ jobs:
           # indistinguishable from success everywhere except the warehouse,
           # where the traffic simply lands unattributed. So assert it on the
           # bytes that ship, which is the only place the claim is true or false.
-          if ! grep -rqF "${EVENT_INGEST_KEY}" out; then
+          if ! grep -rqF "${PUBLISHABLE_KEY}" out; then
             echo "::error::the ingest key is not in the exported bundle — docs would ship unattributed"
             exit 1
           fi
