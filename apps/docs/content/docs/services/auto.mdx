@@ -49,7 +49,7 @@ Hanzo Auto is an enterprise workflow automation platform that connects 600+ serv
 | Environment | URL |
 |-------------|-----|
 | Production | `https://auto.hanzo.ai` |
-| API Base | `https://auto.hanzo.ai/v1` |
+| API Base | `https://api.hanzo.ai/v1/auto` |
 
 ## Quick Start
 
@@ -66,16 +66,17 @@ Hanzo Auto is an enterprise workflow automation platform that connects 600+ serv
 
 ```bash
 # List flows
-curl https://auto.hanzo.ai/v1/flows \
+curl https://api.hanzo.ai/v1/auto/flows \
   -H "Authorization: Bearer $HANZO_TOKEN"
 
-# Trigger a webhook flow
-curl -X POST https://auto.hanzo.ai/v1/webhooks/:flowId \
+# Start a run — asynchronous; answers immediately with the run record
+curl -X POST https://api.hanzo.ai/v1/auto/runs \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"event": "order.created", "data": {...}}'
+  -d '{"flow": "k2fj93m1x8qplzv", "input": {"event": "order.created"}}'
 
 # Get flow runs
-curl https://auto.hanzo.ai/v1/flow-runs \
+curl https://api.hanzo.ai/v1/auto/runs \
   -H "Authorization: Bearer $HANZO_TOKEN"
 ```
 
@@ -165,6 +166,6 @@ npm run create-trigger
 
 ## Related
 
-- [Bot Hub Integrations](https://api.hanzo.ai/v1/bot/integrations) — All 600+ integrations cataloged
+- `GET https://api.hanzo.ai/v1/automations/connectors` — the connector catalogue: every external service a flow step can invoke, with its auth descriptor and the input properties of its actions and triggers (705 entries, same for every tenant)
 - [@hanzo/mq](https://github.com/hanzoai/mq) -- Message queue
 - [@hanzo/kv-client](https://github.com/hanzoai/kv-client) -- KV client

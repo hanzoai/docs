@@ -1,0 +1,422 @@
+---
+title: Apps API
+description: Deploy and run container workloads under a project
+---
+
+An **app** is a container workload the platform runs for you. It lives under a
+project, is built from git or pulled as an image, and is deployed by writing an
+operator `Service` custom resource that the cluster reconciles.
+
+## Base
+
+```
+https://api.hanzo.ai/v1/platform
+```
+
+Every route is org-scoped by the validated identity, and everything is written
+into that org's own `tenant-<org>` namespace. No validated principal is `403`.
+
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/projects` | Your projects, each with its app count |
+| `GET` | `/projects/{project}` | One project |
+| `GET` | `/projects/{project}/apps` | Apps in a project |
+| `POST` | `/projects/{project}/apps` | Create an app |
+| `GET` | `/projects/{project}/apps/{app}` | One app |
+| `DELETE` | `/projects/{project}/apps/{app}` | Delete an app |
+| `PUT` | `/projects/{project}/apps/{app}/env` | Replace the env set |
+| `POST` | `/projects/{project}/apps/{app}/deploy` | Deploy |
+| `POST` | `/projects/{project}/apps/{app}/stop` | Scale to zero |
+| `POST` | `/projects/{project}/apps/{app}/start` | Scale back up |
+| `GET` | `/projects/{project}/apps/{app}/deployments` | Deployment history |
+| `GET` | `/projects/{project}/apps/{app}/deployments/{id}` | One deployment |
+| `GET` | `/projects/{project}/apps/{app}/deployments/{id}/logs` | Build then app logs |
+| `POST` | `/projects/{project}/apps/{app}/preview` | Deploy a branch to its own host |
+| `POST` | `/projects/{project}/apps/{app}/promote` | Promote a built release |
+| `POST` | `/projects/{project}/apps/{app}/rollback` | Go back a release |
+| `GET` | `/projects/{project}/apps/{app}/domains` | Hosts on the app |
+| `POST` | `/projects/{project}/apps/{app}/domains` | Claim a host |
+| `POST` | `/projects/{project}/apps/{app}/domains/{host}/verify` | Verify a custom claim |
+| `DELETE` | `/projects/{project}/apps/{app}/domains/{host}` | Release a host |
+| `GET` | `/health` | Control-plane probe |
+
+<Callout type="warn">
+`PATCH` is not served anywhere on this surface. `PUT` is used for exactly one
+thing — replacing the env set — and every other write is `POST`. An unregistered
+method on a real path answers `404`, so check the verb before concluding a
+resource is gone.
+</Callout>
+
+## Projects
+
+A project is an **IAM** resource: it is created and deleted at
+`/v1/iam/projects`, never here. The platform serves the one projection IAM
+cannot — the project plus what has been deployed under it.
+
+```bash
+curl https://api.hanzo.ai/v1/platform/projects \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp"
+```
+
+**Response:**
+
+```json
+[
+  {
+    "org": "acme-corp",
+    "slug": "my-app",
+    "name": "My App",
+    "description": "Customer-facing web",
+    "applications": 3,
+    "createdAt": 1771070400
+  }
+]
+```
+
+The `slug` is what the `{project}` path segment takes. An org with no projects
+gets an empty list, not an error.
+
+## List Apps
+
+`GET /projects/{project}/apps`
+
+```bash
+curl https://api.hanzo.ai/v1/platform/projects/my-app/apps \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp"
+```
+
+## Get an App
+
+`GET /projects/{project}/apps/{app}`
+
+```bash
+curl https://api.hanzo.ai/v1/platform/projects/my-app/apps/web \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp"
+```
+
+**Response:**
+
+```json
+{
+  "id": "app_abc123",
+  "org": "acme-corp",
+  "projectId": "my-app",
+  "slug": "web",
+  "name": "web",
+  "environment": "production",
+  "source": "image",
+  "repo": {},
+  "image": { "repository": "ghcr.io/myorg/web", "tag": "v1.2.3" },
+  "env": [
+    { "key": "NODE_ENV", "value": "production", "secret": false },
+    { "key": "DATABASE_URL", "value": "", "secret": true }
+  ],
+  "port": 3000,
+  "replicas": 3,
+  "domains": ["web-acme-corp.hanzo.app"],
+  "status": "running",
+  "namespace": "tenant-acme-corp",
+  "currentDeploymentId": "dep_xyz789",
+  "createdAt": 1767261600,
+  "updatedAt": 1771070400
+}
+```
+
+A secret's `value` is always blank on read. Secrets are sealed into KMS on write
+and never echoed back.
+
+## Create an App
+
+`POST /projects/{project}/apps`
+
+<Tabs items={["From an image", "From git"]}>
+  <Tab value="From an image">
+```bash
+curl -X POST https://api.hanzo.ai/v1/platform/projects/my-app/apps \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "web",
+    "source": "image",
+    "image": { "repository": "ghcr.io/myorg/web", "tag": "v1.2.3" },
+    "port": 3000,
+    "replicas": 3
+  }'
+```
+  </Tab>
+  <Tab value="From git">
+```bash
+curl -X POST https://api.hanzo.ai/v1/platform/projects/my-app/apps \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "web",
+    "source": "git",
+    "repo": { "url": "https://github.com/myorg/web", "branch": "main" },
+    "buildType": "pack",
+    "port": 3000
+  }'
+```
+  </Tab>
+</Tabs>
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Display name |
+| `slug` | string | No | Cluster identity and part of the host. Derived from `name` if omitted; must match `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$` |
+| `description` | string | No | Free text |
+| `environment` | string | No | Deploy target. `production` by default |
+| `source` | string | Yes | `git` or `image`. Anything else is `400` |
+| `repo` | object | For `git` | `{ url, branch, provider }`. `repo.url` is required and validated at the boundary |
+| `image` | object | For `image` | `{ repository, tag }`. `image.repository` is required |
+| `buildType` | string | No | `pack` — the zero-config default that detects any project — or `dockerfile` |
+| `dockerfile` | string | For `dockerfile` | Path to build from |
+| `port` | number | No | Container port |
+| `replicas` | number | No | Clamped to the deployment's limit rather than refused |
+| `storageGb` | number | No | Persistent volume in GiB. Absent means stateless |
+
+**Response:** `201 Created`, the app object.
+
+A slug already used in the project is `409`.
+
+## Environment Variables
+
+`PUT /projects/{project}/apps/{app}/env`
+
+This is the one post-create write path for env, and it **replaces** rather than
+merges: a variable absent from the body is gone.
+
+```bash
+curl -X PUT https://api.hanzo.ai/v1/platform/projects/my-app/apps/web/env \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "env": [
+      { "key": "NODE_ENV", "value": "production" },
+      { "key": "LOG_LEVEL", "value": "info" },
+      { "key": "DATABASE_URL", "value": "postgres://...", "secret": true }
+    ]
+  }'
+```
+
+Keys must match `^[A-Za-z_][A-Za-z0-9_]*$`. A variable marked `secret: true` is
+sealed into KMS and blanked in the database, so plaintext is never persisted —
+and the write fails `503` if KMS is unavailable rather than storing one.
+
+The answer is the updated app. New values reach the pods on the next deploy.
+
+## Deploy
+
+`POST /projects/{project}/apps/{app}/deploy`
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/platform/projects/my-app/apps/web/deploy \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp" \
+  -H "Content-Type: application/json" \
+  -d '{ "tag": "v1.3.0" }'
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `tag` | string | Image tag to deploy, for an image app. Falls back to the app's tag, then `latest` |
+| `commit` | string | Commit or ref to build, for a git app. Defaults to the app's branch |
+
+**Response:** `202 Accepted`
+
+```json
+{
+  "id": "dep_xyz789",
+  "org": "acme-corp",
+  "applicationId": "app_abc123",
+  "version": 7,
+  "status": "building",
+  "source": "git",
+  "commit": "a1b2c3d",
+  "image": "",
+  "buildId": "build_112",
+  "createdAt": 1771070400,
+  "updatedAt": 1771070400
+}
+```
+
+`202` is an **accepted** deployment, not a live one. An image app writes its
+Service CR straight away; a git app comes back `building` and the CR is applied
+by the reconciler once the in-cluster build Job succeeds. The reconciler is
+restart-safe, so a build in flight survives a control-plane restart.
+
+Deploys are bounded per org. Over the cap is `429` and **nothing is recorded**,
+so a rejected deploy leaves no phantom in the history. An unreachable cluster is
+`503` but still records an honest `error` deployment — a deploy that was
+attempted and failed must never look like one that was never made.
+
+## Stop and Start
+
+```bash
+# Scale to zero. The record, env, domains and history all survive
+curl -X POST https://api.hanzo.ai/v1/platform/projects/my-app/apps/web/stop \
+  -H "Authorization: Bearer $HANZO_TOKEN" -H "X-Org-Id: acme-corp"
+
+# Back up at the configured replica count — no redeploy, same image
+curl -X POST https://api.hanzo.ai/v1/platform/projects/my-app/apps/web/start \
+  -H "Authorization: Bearer $HANZO_TOKEN" -H "X-Org-Id: acme-corp"
+```
+
+Both answer the updated app. Stopping stops the compute metering with the pods;
+starting resets the billing watermark to now, so you are never charged for the
+gap. An app with no Service CR is `404`.
+
+## Deployment History and Logs
+
+```bash
+curl https://api.hanzo.ai/v1/platform/projects/my-app/apps/web/deployments \
+  -H "Authorization: Bearer $HANZO_TOKEN" -H "X-Org-Id: acme-corp"
+
+curl https://api.hanzo.ai/v1/platform/projects/my-app/apps/web/deployments/dep_xyz789/logs \
+  -H "Authorization: Bearer $HANZO_TOKEN" -H "X-Org-Id: acme-corp"
+```
+
+**Logs response:**
+
+```json
+{
+  "deploymentId": "dep_xyz789",
+  "source": "build",
+  "logs": "#1 [internal] load build definition\n..."
+}
+```
+
+`source` says which log you got — the build's while it is building, the app's
+once it is running.
+
+## Preview, Promote, Rollback
+
+All three reuse the one deploy mechanic and all three answer `202`.
+
+```bash
+# A branch on its own slug and host. A preview never builds — name a built image
+curl -X POST https://api.hanzo.ai/v1/platform/projects/my-app/apps/web/preview \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp" \
+  -H "Content-Type: application/json" \
+  -d '{ "branch": "feat/new-nav", "image": "ghcr.io/myorg/web:sha-a1b2c3d" }'
+
+# Promote an already-built release, by deployment or by tag
+curl -X POST https://api.hanzo.ai/v1/platform/projects/my-app/apps/web/promote \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp" \
+  -H "Content-Type: application/json" \
+  -d '{ "deploymentId": "dep_xyz789" }'
+
+# Back one release. With no body, the newest earlier deployment that carries a
+# real built image and did not error
+curl -X POST https://api.hanzo.ai/v1/platform/projects/my-app/apps/web/rollback \
+  -H "Authorization: Bearer $HANZO_TOKEN" -H "X-Org-Id: acme-corp"
+```
+
+`image` is required on a preview; one of `deploymentId` or `tag` is required on a
+promote. An app with nothing earlier to return to cannot roll back.
+
+## Domains
+
+```bash
+# Hosts on the app
+curl https://api.hanzo.ai/v1/platform/projects/my-app/apps/web/domains \
+  -H "Authorization: Bearer $HANZO_TOKEN" -H "X-Org-Id: acme-corp"
+
+# Claim one
+curl -X POST https://api.hanzo.ai/v1/platform/projects/my-app/apps/web/domains \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp" \
+  -H "Content-Type: application/json" \
+  -d '{ "host": "app.acme.com" }'
+
+# Verify a custom claim once its DNS is published
+curl -X POST https://api.hanzo.ai/v1/platform/projects/my-app/apps/web/domains/app.acme.com/verify \
+  -H "Authorization: Bearer $HANZO_TOKEN" -H "X-Org-Id: acme-corp"
+
+# Release it
+curl -X DELETE https://api.hanzo.ai/v1/platform/projects/my-app/apps/web/domains/app.acme.com \
+  -H "Authorization: Bearer $HANZO_TOKEN" -H "X-Org-Id: acme-corp"
+```
+
+**Response:**
+
+```json
+{
+  "host": "app.acme.com",
+  "kind": "custom",
+  "status": "pending",
+  "url": "https://app.acme.com",
+  "verified": false,
+  "records": [{ "type": "CNAME", "name": "app", "value": "..." }],
+  "detail": "waiting on DNS",
+  "createdAt": 1771070400
+}
+```
+
+Claiming a host has two honest outcomes and the route publishes both: a new claim
+is `201`, and re-adding the app's own host is idempotent at `200`. `kind` is
+`default`, `subtree`, or `custom`; `status` is `live`, `provisioning`,
+`pending_deploy`, or `pending`, derived from the operator CR and never fabricated.
+A host already claimed by another app is `409`.
+
+## Delete an App
+
+`DELETE /projects/{project}/apps/{app}`
+
+```bash
+curl -X DELETE https://api.hanzo.ai/v1/platform/projects/my-app/apps/web \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp"
+```
+
+<Callout type="warn">
+Deleting an app tears down its workload and releases its hosts. This cannot be
+undone.
+</Callout>
+
+## One-shot: `POST /v1/run`
+
+Skip the project → app → deploy sequence when all you want is an image running
+at a URL. It creates-or-updates an image app in the org's default project and
+deploys it through the same Service-CR writer.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/run \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp" \
+  -H "Content-Type: application/json" \
+  -d '{ "image": "ghcr.io/myorg/web:v1.3.0", "port": 3000 }'
+```
+
+Re-running the same name updates the app rather than making a second one, and the
+result stays listable, stoppable, and redeployable through the routes above.
+
+## Console Aggregates
+
+Four flat, top-level `GET` projections derived from the same project / app /
+deployment / build data — no second write path:
+
+```
+GET /v1/environments
+GET /v1/pipelines
+GET /v1/builds
+GET /v1/releases
+```
+
+## Health
+
+`GET /v1/platform/health` answers `200` when the control plane can reach the
+cluster and `503` with the real reason when it cannot. It is the one route here
+that needs no organization.

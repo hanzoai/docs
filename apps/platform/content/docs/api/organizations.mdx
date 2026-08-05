@@ -1,103 +1,119 @@
 ---
 title: Organizations API
-description: Create, read, update, and delete organizations
+description: Create, read, update, and delete organizations in Hanzo IAM
 ---
 
-The Organizations API manages the top-level entity in Hanzo Platform. Every cluster, project, and team member belongs to an organization.
+An organization is the account everything else is named inside — users,
+applications, roles, projects, and every app and machine the platform runs for
+you. It is an **IAM** resource, so it lives on the IAM surface rather than under
+`/v1/platform`.
+
+## Base
+
+```
+https://api.hanzo.ai/v1/iam/organizations
+```
 
 ## Endpoints
 
-| Procedure | Method | Description |
-|-----------|--------|-------------|
-| `organization.all` | GET | List all organizations for the authenticated user |
-| `organization.one` | GET | Get a single organization by ID |
-| `organization.create` | POST | Create a new organization |
-| `organization.update` | PATCH | Update organization settings |
-| `organization.remove` | DELETE | Delete an organization |
+The natural key is the `(owner, name)` pair — not a surrogate id — so every read,
+update, and delete names both.
+
+| Operation | Request |
+|-----------|---------|
+| List | `GET /v1/iam/organizations` |
+| Get one | `GET /v1/iam/organizations/get` |
+| Create | `POST /v1/iam/organizations` |
+| Update | `POST /v1/iam/organizations/update` |
+| Delete | `POST /v1/iam/organizations/delete` |
+
+<Callout type="warn">
+Reads are `GET` and writes are `POST`. There is no `PATCH`, `PUT`, or `DELETE`
+verb on this surface — the route table is keyed by method, so sending one gets a
+`404`, not a `405`.
+</Callout>
 
 ## List Organizations
 
-`GET /api/organization.all`
-
-Returns all organizations the authenticated user is a member of.
+`GET /v1/iam/organizations`
 
 ```bash
-curl https://app.platform.hanzo.ai/v1/organization.all \
-  -H "Authorization: Bearer YOUR_TOKEN"
+curl "https://api.hanzo.ai/v1/iam/organizations?owner=acme-corp&limit=20&offset=0" \
+  -H "Authorization: Bearer $HANZO_TOKEN"
 ```
+
+All three query parameters are optional; `owner` scopes the listing, `limit` and
+`offset` page it.
 
 **Response:**
 
 ```json
 {
-  "result": {
-    "data": [
-      {
-        "id": "org_abc123",
-        "name": "Acme Corp",
-        "description": "Production infrastructure",
-        "createdAt": "2025-01-15T10:00:00Z",
-        "memberCount": 12,
-        "clusterCount": 3
-      },
-      {
-        "id": "org_def456",
-        "name": "Staging",
-        "description": "Development and testing",
-        "createdAt": "2025-03-20T14:30:00Z",
-        "memberCount": 5,
-        "clusterCount": 1
-      }
-    ]
-  }
+  "organizations": [
+    {
+      "owner": "admin",
+      "name": "acme-corp",
+      "displayName": "Acme Corp",
+      "websiteUrl": "https://acme.com",
+      "defaultApplication": "acme-console",
+      "createdTime": "2026-01-15T10:00:00Z"
+    }
+  ],
+  "count": 1
 }
 ```
 
 ## Get Organization
 
-`GET /api/organization.one?organizationId=org_abc123`
+`GET /v1/iam/organizations/get`
 
 ```bash
-curl "https://app.platform.hanzo.ai/v1/organization.one?organizationId=org_abc123" \
-  -H "Authorization: Bearer YOUR_TOKEN"
+curl "https://api.hanzo.ai/v1/iam/organizations/get?owner=admin&name=acme-corp" \
+  -H "Authorization: Bearer $HANZO_TOKEN"
 ```
+
+`owner` and `name` are both required; either one missing is a `400`, so a
+mistyped selector is loud rather than a silent full-table read. An organization
+that does not exist is `404`.
 
 **Response:**
 
 ```json
 {
-  "result": {
-    "data": {
-      "id": "org_abc123",
-      "name": "Acme Corp",
-      "description": "Production infrastructure",
-      "createdAt": "2025-01-15T10:00:00Z",
-      "memberCount": 12,
-      "clusterCount": 3,
-      "members": [
-        {
-          "userId": "user_abc",
-          "email": "alice@acme.com",
-          "role": "owner",
-          "joinedAt": "2025-01-15T10:00:00Z"
-        }
-      ]
-    }
-  }
+  "owner": "admin",
+  "name": "acme-corp",
+  "displayName": "Acme Corp",
+  "websiteUrl": "https://acme.com",
+  "logo": "https://cdn.acme.com/logo.svg",
+  "favicon": "https://cdn.acme.com/favicon.ico",
+  "defaultApplication": "acme-console",
+  "languages": ["en"],
+  "tags": ["production"],
+  "mfaRememberInHours": 168,
+  "failedSigninLimit": 5,
+  "failedSigninFrozenTime": 15,
+  "createdTime": "2026-01-15T10:00:00Z"
 }
 ```
+
+Credential material — password salts, obfuscator keys, master and default
+passwords, the master verification code — is masked on every read. It is only
+ever accepted on the way in.
 
 ## Create Organization
 
-`POST /api/organization.create`
+`POST /v1/iam/organizations`
 
 ```bash
-curl -X POST https://app.platform.hanzo.ai/v1/organization.create \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+curl -X POST https://api.hanzo.ai/v1/iam/organizations \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Acme Corp",
-    "description": "Production infrastructure"
+    "owner": "admin",
+    "name": "acme-corp",
+    "displayName": "Acme Corp",
+    "websiteUrl": "https://acme.com",
+    "defaultApplication": "acme-console"
   }'
 ```
 
@@ -105,101 +121,102 @@ curl -X POST https://app.platform.hanzo.ai/v1/organization.create \
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | string | Yes | Organization name (2-50 characters) |
-| `description` | string | No | Short description |
+| `owner` | string | Yes | The parent tenant. Half of the natural key |
+| `name` | string | Yes | Machine name, unique within `owner` |
+| `displayName` | string | No | Human-facing label |
+| `websiteUrl` | string | No | Public site |
+| `logo`, `logoDark`, `favicon` | string | No | Branding used by the sign-in portal |
+| `defaultApplication` | string | No | The app a bare sign-in lands on |
+| `languages`, `tags`, `countryCodes` | array | No | Free-form lists |
+| `failedSigninLimit` | number | No | Per-org sign-in throttle; `0` inherits the application default |
+| `failedSigninFrozenTime` | number | No | Minutes frozen after the limit trips |
 
-**Response:** `201 Created`
-
-```json
-{
-  "result": {
-    "data": {
-      "id": "org_new789",
-      "name": "Acme Corp",
-      "description": "Production infrastructure",
-      "createdAt": "2026-02-26T10:00:00Z"
-    }
-  }
-}
-```
-
-The authenticated user is automatically assigned the **Owner** role.
+The full response is the created organization. A `(owner, name)` already in use
+is refused `409` rather than taken over.
 
 ## Update Organization
 
-`PATCH /api/organization.update`
+`POST /v1/iam/organizations/update`
+
+The body carries the desired state; its `owner` and `name` select the row.
 
 ```bash
-curl -X PATCH https://app.platform.hanzo.ai/v1/organization.update \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+curl -X POST https://api.hanzo.ai/v1/iam/organizations/update \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "organizationId": "org_abc123",
-    "name": "Acme Corporation",
-    "description": "Updated description"
+    "owner": "admin",
+    "name": "acme-corp",
+    "displayName": "Acme Corporation",
+    "websiteUrl": "https://acme.com"
   }'
 ```
-
-**Parameters:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `organizationId` | string | Yes | Organization ID |
-| `name` | string | No | New name |
-| `description` | string | No | New description |
-
-Requires **Owner** or **Admin** role.
 
 ## Delete Organization
 
-`DELETE /api/organization.remove`
+`POST /v1/iam/organizations/delete`
 
 ```bash
-curl -X DELETE https://app.platform.hanzo.ai/api/organization.remove \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+curl -X POST https://api.hanzo.ai/v1/iam/organizations/delete \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{
-    "organizationId": "org_abc123"
-  }'
+  -d '{ "owner": "admin", "name": "acme-corp" }'
 ```
 
-**Response:** `204 No Content`
+**Response:**
+
+```json
+{ "affected": true }
+```
 
 <Callout type="warn">
-Deleting an organization permanently removes all clusters, projects, environments, and data. This action cannot be undone. Requires the **Owner** role.
+Deleting an organization removes the account every user, application, role, and
+project is named inside. This cannot be undone.
 </Callout>
 
-## Team Management
+## Membership
 
-Team members are managed via the `orgTeam` router:
+There is no separate team endpoint. Membership and permission are **roles** and
+**permissions** on the same IAM surface, and a role carries its member list
+directly:
 
-| Procedure | Method | Description |
-|-----------|--------|-------------|
-| `orgTeam.all` | GET | List all members of an organization |
-| `orgTeam.update` | PATCH | Change a member's role |
-| `orgTeam.remove` | DELETE | Remove a member |
+| Resource | List | Create | Get | Update | Delete |
+|----------|------|--------|-----|--------|--------|
+| Users | `GET /v1/iam/users` | `POST /v1/iam/users` | `GET /v1/iam/users/get` | `POST /v1/iam/users/update` | `POST /v1/iam/users/delete` |
+| Roles | `GET /v1/iam/roles` | `POST /v1/iam/roles` | `POST /v1/iam/roles/get` | `POST /v1/iam/roles/update` | `POST /v1/iam/roles/delete` |
+| Permissions | `GET /v1/iam/permissions` | `POST /v1/iam/permissions` | `GET /v1/iam/permissions/get` | `POST /v1/iam/permissions/update` | `POST /v1/iam/permissions/delete` |
+| Invitations | `GET /v1/iam/invitations` | `POST /v1/iam/invitations` | `POST /v1/iam/invitations/get` | `POST /v1/iam/invitations/update` | `POST /v1/iam/invitations/delete` |
 
 ```bash
-# List members
-curl "https://app.platform.hanzo.ai/api/orgTeam.all?organizationId=org_abc123" \
-  -H "Authorization: Bearer YOUR_TOKEN"
+# Who is in the org
+curl "https://api.hanzo.ai/v1/iam/users?owner=acme-corp" \
+  -H "Authorization: Bearer $HANZO_TOKEN"
 
-# Change role
-curl -X PATCH https://app.platform.hanzo.ai/api/orgTeam.update \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+# Put someone in a role — the role owns its member list
+curl -X POST https://api.hanzo.ai/v1/iam/roles/update \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "organizationId": "org_abc123",
-    "userId": "user_def456",
-    "role": "admin"
+    "owner": "acme-corp",
+    "name": "admins",
+    "displayName": "Administrators",
+    "users": ["acme-corp/alice", "acme-corp/bob"],
+    "isEnabled": true
   }'
 
-# Remove member
-curl -X DELETE https://app.platform.hanzo.ai/api/orgTeam.remove \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+# Invite someone in
+curl -X POST https://api.hanzo.ai/v1/iam/invitations \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "organizationId": "org_abc123",
-    "userId": "user_def456"
+    "owner": "acme-corp",
+    "name": "q1-eng",
+    "displayName": "Q1 engineering hires",
+    "application": "acme-console",
+    "quota": 10,
+    "state": "Active"
   }'
 ```
+
+SCIM 2.0 (RFC 7644) is served alongside these for identity providers that
+provision users automatically.

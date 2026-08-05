@@ -25,11 +25,10 @@ Documents are signed cryptographically: the completed PDF is sealed with a signi
 
 ## Endpoints
 
-| Environment | URL |
-|-------------|-----|
-| Production | `https://esign.hanzo.ai` |
-| API (stable) | `https://api.hanzo.ai/v1/esign` |
-| API (v2, tRPC) | `https://api.hanzo.ai/v1/esign` |
+| Surface | URL |
+|---------|-----|
+| App | `https://esign.hanzo.ai` |
+| API | `https://api.hanzo.ai/v1/esign` |
 
 ## Architecture
 
@@ -121,22 +120,11 @@ await fetch(`https://api.hanzo.ai/v1/esign/documents/${docId}/send`, {
 
 ## Webhooks
 
-### Configure Webhook
-
-```typescript
-await fetch('https://api.hanzo.ai/v1/esign/webhooks', {
-  method: 'POST',
-  headers: { 'Authorization': `Bearer ${apiToken}` },
-  body: JSON.stringify({
-    url: 'https://myapp.com/webhooks/sign',
-    events: [
-      'DOCUMENT_SENT',
-      'DOCUMENT_SIGNED',
-      'DOCUMENT_COMPLETED'
-    ]
-  })
-})
-```
+Webhooks are configured per team inside the app — `esign.hanzo.ai` → team
+settings → Webhooks — where you give a delivery URL and pick the events it
+should receive. Webhook configuration is not part of the API surface at
+`api.hanzo.ai/v1/esign`, which covers documents, recipients, fields, sending
+and signing.
 
 ### Webhook Events
 
@@ -148,6 +136,8 @@ await fetch('https://api.hanzo.ai/v1/esign/webhooks', {
 | `DOCUMENT_SIGNED` | A recipient signed |
 | `DOCUMENT_COMPLETED` | All recipients signed |
 | `DOCUMENT_REJECTED` | Recipient rejected |
+| `DOCUMENT_CANCELLED` | Sender cancelled the document |
+| `RECIPIENT_EXPIRED` | A recipient's signing window lapsed |
 
 ## Authentication
 
@@ -199,29 +189,38 @@ docker run -d \
 
 ## API Reference
 
-Hanzo Sign exposes two API surfaces:
-
-- **`/api/v1`** — the stable REST API (contract-based), authenticated with a Bearer API token. The endpoints below are on this surface.
-- **`/api/v2`** and **`/api/v2-beta`** — the current tRPC API with an auto-generated OpenAPI schema at `/api/v2/openapi.json`. This surface is evolving and covers newer capabilities (envelopes, folders, embedding).
+Base URL `https://api.hanzo.ai/v1/esign`. Owner routes take a Bearer token and
+resolve the tenant from the validated principal's org; recipient routes are
+unauthenticated and carry the signing token in the path, so a signer needs no
+account. What follows is the whole surface.
 
 ### Documents
 
-- `POST /api/v1/documents` - Create document
-- `GET /api/v1/documents` - List documents
-- `GET /api/v1/documents/:id` - Get document
-- `POST /api/v1/documents/:id/send` - Send for signing
-- `DELETE /api/v1/documents/:id` - Delete document
+- `POST /v1/esign/documents` — Create document
+- `GET /v1/esign/documents` — List documents
+- `GET /v1/esign/documents/:id` — Get document
+- `POST /v1/esign/documents/:id/send` — Send for signing
+- `GET /v1/esign/documents/:id/download` — Download the sealed PDF
+- `GET /v1/esign/documents/:id/audit` — Audit trail
 
-### Templates
+### Recipients & Fields
 
-- `POST /api/v1/templates` - Create template
-- `GET /api/v1/templates` - List templates
-- `POST /api/v1/templates/:id/use` - Create document from template
+- `POST /v1/esign/documents/:id/recipients` — Add recipients
+- `POST /v1/esign/documents/:id/fields` — Add signing fields
 
-### Recipients
+### Signing (recipient token, unauthenticated)
 
-- `POST /api/v1/documents/:id/recipients` - Add recipients
-- `DELETE /api/v1/documents/:id/recipients/:recipientId` - Remove recipient
+- `GET /v1/esign/o/:org/sign/:token` — Open the signing session
+- `POST /v1/esign/o/:org/sign/:token/fields/:fieldId` — Fill one field
+- `POST /v1/esign/o/:org/sign/:token/complete` — Complete signing
+- `POST /v1/esign/o/:org/sign/:token/reject` — Reject
+
+### Health
+
+- `GET /v1/esign/health` — Service health, unauthenticated
+
+Templates, envelopes and folders are app features with no route on this
+surface — build and send those in `esign.hanzo.ai`.
 
 ## Next Steps
 

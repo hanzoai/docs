@@ -103,23 +103,20 @@ Locked mode can be toggled quickly from the environment settings. Use it as a te
 
 ## API
 
-```bash
-# Set environment protection
-curl -X PATCH https://app.platform.hanzo.ai/v1/environment.update \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "environmentId": "env_abc123",
-    "protection": "restricted",
-    "reviewers": ["user_def456", "user_ghi789"]
-  }'
+Protection rules and deployment approvals are set in the console. There is no
+HTTP endpoint for either: the API at `https://api.hanzo.ai/v1/platform` covers
+projects, apps, env, deploys, domains and releases, and it has no environment
+mutation or approval op.
 
-# Approve a pending deployment
-curl -X POST https://app.platform.hanzo.ai/api/environment.approveDeployment \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "deploymentId": "dep_abc123",
-    "comment": "Reviewed, looks good"
-  }'
+What the API does expose is the read side — the environments themselves, and the
+deploy call that a protection rule gates:
+
+```bash
+# List environments
+curl https://api.hanzo.ai/v1/environments \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Deploy an app (subject to whatever protection its environment carries)
+curl -X POST https://api.hanzo.ai/v1/platform/projects/proj_abc123/apps/my-app/deploy \
+  -H "Authorization: Bearer YOUR_TOKEN"
 ```
