@@ -52,7 +52,7 @@ same primitives here.
 | Item | Value |
 |------|-------|
 | UI | `https://kms.hanzo.ai` |
-| API | `https://kms.hanzo.ai/api/v1` |
+| API | `https://kms.hanzo.ai/v1/kms` (also `https://api.hanzo.ai/v1/kms`) |
 | Auth | Universal Auth (client ID + secret) |
 | K8s CRD | `KMSSecret` |
 | Go SDK | `github.com/hanzoai/kms-go-sdk` |
@@ -60,22 +60,49 @@ same primitives here.
 | Python SDK | `hanzo-kms` (pip) |
 | Repo | `github.com/hanzoai/kms` |
 
+## REST surface
+
+Seven routes, all under `/v1/kms`. There is no other HTTP surface — cross-org
+access exists only in-process, never over HTTP.
+
+| Method | Path | What it does |
+|--------|------|--------------|
+| GET | `/v1/kms/health` | Liveness + whether the store holds a master key |
+| GET | `/v1/kms/config` | The console SPA's runtime config (issuer, login path) |
+| POST | `/v1/kms/auth/login` | Exchange `{clientId, clientSecret}` for `{accessToken, expiresIn, tokenType}`. Public, rate-limited per source IP |
+| GET | `/v1/kms/secrets` | List your org's secret **metadata** — no values, no ciphertext. `?path=` narrows, `?env=` selects (omit for every environment) |
+| POST | `/v1/kms/secrets` | Upsert one secret: `{path?, name, env, value}`. `env` is **required** on a write and has no default |
+| GET | `/v1/kms/secrets/{subpath}/{name}` | Read one value. `?env=` selects; the response body is the only place the value appears |
+| DELETE | `/v1/kms/secrets/{subpath}/{name}` | Delete one secret. `?env=` selects |
+
+Admission is fail-closed and in order: validated member (403), org that is a
+DNS-1123 label (400), store holding a master key (503) — all decided before any
+record is touched.
+
 ## One-file quickstart
 
 ### CLI (fetch secrets)
 
 ```bash
-# Login
-export KMS_TOKEN=$(curl -s -X POST https://kms.hanzo.ai/api/v1/auth/universal-auth/login \
+# Login — the broker exchanges your machine credential for an IAM bearer
+export KMS_TOKEN=$(curl -s -X POST https://kms.hanzo.ai/v1/kms/auth/login \
   -H "Content-Type: application/json" \
   -d '{"clientId": "'$KMS_CLIENT_ID'", "clientSecret": "'$KMS_CLIENT_SECRET'"}' \
   | jq -r '.accessToken')
 
-# Fetch secrets
+# List your org's secrets (metadata only — no values)
 curl -s https://kms.hanzo.ai/v1/kms/secrets \
   -H "Authorization: Bearer ${KMS_TOKEN}" \
-  -G -d "workspaceId=${PROJECT_ID}&environment=production"
+  -G -d "path=/ci" -d "env=production"
+
+# Read one value
+curl -s "https://kms.hanzo.ai/v1/kms/secrets/ci/DATABASE_URL?env=production" \
+  -H "Authorization: Bearer ${KMS_TOKEN}" | jq -r '.value'
 ```
+
+The org is taken from your validated token, never from the path or the body — a
+caller cannot name another tenant's namespace. `env` and `path` are also accepted
+under the operator's spellings, `environment` and `secretPath`.
 
 ### Go SDK
 
@@ -180,15 +207,16 @@ jobs:
     steps:
       - name: Login to KMS
         run: |
-          export KMS_TOKEN=$(curl -s -X POST $KMS_URL/api/v1/auth/universal-auth/login \
+          export KMS_TOKEN=$(curl -s -X POST $KMS_URL/v1/kms/auth/login \
+            -H "Content-Type: application/json" \
             -d '{"clientId":"${{ secrets.KMS_CLIENT_ID }}","clientSecret":"${{ secrets.KMS_CLIENT_SECRET }}"}' \
             | jq -r '.accessToken')
           echo "KMS_TOKEN=$KMS_TOKEN" >> $GITHUB_ENV
 
       - name: Fetch deploy secrets
         run: |
-          DOCKERHUB_TOKEN=$(curl -s "$KMS_URL/api/v1/secrets/raw/DOCKERHUB_TOKEN?workspaceId=$PROJECT_ID&environment=production" \
-            -H "Authorization: Bearer $KMS_TOKEN" | jq -r '.secret.secretValue')
+          DOCKERHUB_TOKEN=$(curl -s "$KMS_URL/v1/kms/secrets/DOCKERHUB_TOKEN?env=production" \
+            -H "Authorization: Bearer $KMS_TOKEN" | jq -r '.value')
 ```
 
 ## Troubleshooting

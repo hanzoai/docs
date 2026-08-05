@@ -116,12 +116,10 @@ export default async function Page() {
               <pre className="p-4 text-sm overflow-x-auto font-mono">
                 <code className="text-fd-muted-foreground">{`$ `}<span className="text-fd-foreground">base serve</span>{`
 > Server started at http://127.0.0.1:8090
-  - REST API:    /api/
-  - Realtime:    /api/realtime
-  - Admin UI:    /_/
-  - Auth:        /api/collections/users/auth-with-password
+  ├─ REST API:  http://127.0.0.1:8090/v1/
+  └─ Dashboard: http://127.0.0.1:8090/_/
 
-$ `}<span className="text-fd-foreground">curl localhost:8090/api/collections/tasks/records</span>{`
+$ `}<span className="text-fd-foreground">curl localhost:8090/v1/collections/tasks/records</span>{`
 {
   "items": [...],
   "totalItems": 42,
@@ -494,7 +492,7 @@ docker pull ghcr.io/hanzoai/base`}
 base serve --dev
 
 # Admin UI: localhost:8090/_/
-# API:      localhost:8090/api/`}
+# API:      localhost:8090/v1/`}
               </pre>
             </div>
             <div>

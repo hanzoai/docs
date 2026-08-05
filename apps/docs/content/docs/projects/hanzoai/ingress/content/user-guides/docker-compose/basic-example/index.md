@@ -106,7 +106,7 @@ ports:
     If you are working on a remote server, you can use the following command to display configuration (require `curl` & `jq`):
 
     ```bash
-    curl -s 127.0.0.1:8080/api/rawdata | jq .
+    curl -s 127.0.0.1:8080/v1/ingress/rawdata | jq .
     ```
 
 Fourth, you allow Hanzo Ingress to gather configuration from Docker:

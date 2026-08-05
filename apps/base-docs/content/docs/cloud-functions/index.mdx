@@ -48,13 +48,15 @@ onRecordDelete((e) => {
 
 ## Custom Routes
 
-Add API endpoints alongside the auto-generated collection routes:
+Add API endpoints alongside the auto-generated collection routes. Base serves
+everything under `/v1` (set by `BASE_API_PREFIX`), so put custom routes there
+too — there is no `/api/` prefix:
 
 ```javascript
 // hz_hooks/routes.pb.js
 
-// GET /api/stats
-routerAdd('GET', '/api/stats', (e) => {
+// GET /v1/stats
+routerAdd('GET', '/v1/stats', (e) => {
   const totalPosts = $app.findRecordsByFilter('posts', '1=1').length
   const totalUsers = $app.findRecordsByFilter('users', '1=1').length
 
@@ -64,8 +66,8 @@ routerAdd('GET', '/api/stats', (e) => {
   })
 })
 
-// POST /api/webhook
-routerAdd('POST', '/api/webhook', (e) => {
+// POST /v1/webhook
+routerAdd('POST', '/v1/webhook', (e) => {
   const body = e.requestBody()
   // Process webhook payload
   $app.findRecordById('events', body.eventId)
@@ -73,7 +75,7 @@ routerAdd('POST', '/api/webhook', (e) => {
 })
 
 // Protected route
-routerAdd('GET', '/api/me/dashboard', (e) => {
+routerAdd('GET', '/v1/me/dashboard', (e) => {
   const auth = e.requestInfo().auth
   if (!auth) {
     throw new UnauthorizedError('Login required')

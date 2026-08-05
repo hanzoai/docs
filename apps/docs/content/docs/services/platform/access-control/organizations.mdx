@@ -11,7 +11,7 @@ Organizations are the top-level entity in Hanzo Platform. Every cluster, project
 
 ### Sign in to the dashboard
 
-Go to [app.platform.hanzo.ai](https://app.platform.hanzo.ai) and sign in with your Hanzo ID.
+Go to the Studio at [platform.hanzo.ai](https://platform.hanzo.ai) and sign in with your Hanzo ID.
 
 ### Create the org
 
@@ -57,10 +57,16 @@ To delete, go to **Settings > General > Danger Zone** and confirm the org name.
 
 ## API
 
-Organizations can also be managed via the API. See [Organizations API](/docs/services/platform/api/organizations).
+An organization is an **identity** object, so it lives in [Hanzo IAM](/docs/services/iam), reached on the one Hanzo API host. See [Organizations API](/docs/services/platform/api/organizations) for the full set.
 
 ```bash
-# List your organizations
-curl https://app.platform.hanzo.ai/v1/organization.all \
-  -H "Authorization: Bearer YOUR_TOKEN"
+# List the organizations your bearer can see
+curl -fsS "https://api.hanzo.ai/v1/iam/get-organizations?owner=admin" \
+  -H "Authorization: Bearer $TOKEN"
 ```
+
+These are administrative endpoints — a normal member bearer gets `403 forbidden`. Ordinary membership and roles are managed in the Studio, or through [`/v1/iam/roles`](/docs/services/platform/access-control/roles).
+
+<Callout type="warn">
+There is no `organization.all` procedure and no `/api` prefix anywhere in Hanzo. `app.platform.hanzo.ai` redirects to `platform.hanzo.ai`, the Studio's browser UI — its `/v1/*` answers `401 Unauthorized` to every path, real or not. The programmatic host is `api.hanzo.ai`.
+</Callout>

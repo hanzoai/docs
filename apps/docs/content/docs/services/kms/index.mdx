@@ -1,178 +1,152 @@
 ---
 title: Hanzo KMS
-description: Key Management Service for secrets, machine-identity access, and threshold signing keys
+description: The sealed secret store every Hanzo service reads its credentials from
 ---
 
 # Hanzo KMS
 
 > **API reference** · [Hanzo KMS API →](/docs/openapi/kms) — every endpoint, generated from the OpenAPI spec.
 
-Hanzo KMS is the key management service for the Hanzo platform. It stores secrets and API keys, hands them to workloads through short-lived machine-identity tokens, syncs them into Kubernetes, and manages threshold signing keys backed by [Hanzo MPC](/docs/services/mpc).
+Hanzo KMS is the credential broker for the platform. It holds secrets sealed at rest, hands them to workloads that present a machine identity, and syncs them into Kubernetes through the `KMSSecret` CRD. That is the whole job — it is a secret store with a login, not a certificate authority, a rotation engine, or a scanner.
 
 | | |
 |---|---|
 | **API** | `https://api.hanzo.ai` — one host for every Hanzo service |
-| **API prefix** | `/v1/kms` |
-| **Auth** | Machine-identity login → bearer JWT (verified against [Hanzo IAM](/docs/services/iam)) |
-| **K8s sync** | `KMSSecret` CRD via the kms-operator |
-| **Source** | [github.com/hanzoai/kms](https://github.com/hanzoai/kms) |
+| **Also served at** | `https://kms.hanzo.ai` — the same routes, plus the console |
+| **Prefix** | `/v1/kms` |
+| **Auth** | Machine identity (`clientId`/`clientSecret`) → bearer JWT minted by [Hanzo IAM](/docs/services/iam) |
+| **K8s sync** | `KMSSecret` CRD, reconciled by the kms-operator |
+| **Implementation** | The `luxfi/kms` sealed store, embedded in [Hanzo Cloud](/docs/services/cloud) |
 
-<Callout>
-Hanzo KMS exposes a single surface under `/v1/kms`. Secrets are addressed by **org / path / name** with the environment as a query parameter. There is no plaintext-secret-in-config anywhere — workloads authenticate with a machine identity and read values at runtime.
+## The whole surface
+
+Seven operations. There is no eighth.
+
+| Method | Path | Auth | Purpose |
+|--------|------|------|---------|
+| `GET` | `/v1/kms/health` | public | Readiness — 200 only if the store is open **and** a master key is configured |
+| `GET` | `/v1/kms/config` | public | Console runtime config (brand, OIDC issuer, API base, login path) |
+| `POST` | `/v1/kms/auth/login` | public | Exchange a machine credential for a bearer token |
+| `GET` | `/v1/kms/secrets` | bearer | List your org's secret **metadata** — never values |
+| `GET` | `/v1/kms/secrets/{path}/{name}` | bearer | Read one secret's value |
+| `POST` | `/v1/kms/secrets` | bearer | Create or replace one secret |
+| `DELETE` | `/v1/kms/secrets/{path}/{name}` | bearer | Delete one secret |
+
+<Callout type="warn">
+**Your org is never in the URL.** It is read from the validated token's `owner` claim and folded into the storage path server-side. There is no tenant path segment and no admin override, so over HTTP another org's namespace is not merely refused — it is unaddressable.
 </Callout>
 
-## Authentication
+## Addressing a secret
 
-KMS uses **machine identities**: a non-human `clientId` + `clientSecret` minted in [Hanzo IAM](/docs/services/iam). Exchange them for a short-lived access token, then send that token as a bearer on every request.
+Three coordinates travel in the request; the fourth comes from your token.
+
+```
+org      ←  the token's owner claim (never in the URL)
+path        /providers          a folder beneath your org root
+name        OPENAI_API_KEY      the exact key
+env         ?env=prod           the environment
+```
+
+`env` is part of the storage key, not a filter. A value written under `env=prod` and one written under `env=default` are two different records.
+
+| Operation | `env` behaviour |
+|-----------|-----------------|
+| `POST` (write) | **Required.** There is no default — a silently defaulted write lands in a bucket your readers never resolve, so it fails loudly instead |
+| `GET` / `DELETE` one secret | Optional; falls back to `default` |
+| `GET` list | Optional; **omitted means every environment** |
+
+The list route also accepts the operator's spellings — `environment` for `env`, `secretPath` for `path` — so one endpoint serves both callers.
+
+## Authenticate
+
+A machine identity is a client-credentials application in [Hanzo IAM](/docs/services/iam). KMS brokers its `clientId`/`clientSecret` to IAM and returns the bearer you carry on every secret call.
 
 ```bash
-# Log in (clientId/clientSecret come from a K8s Secret or your secret store — never inline them)
 ACCESS_TOKEN=$(curl -sS -X POST https://api.hanzo.ai/v1/kms/auth/login \
   -H 'Content-Type: application/json' \
   -d "{\"clientId\":\"$KMS_CLIENT_ID\",\"clientSecret\":\"$KMS_CLIENT_SECRET\"}" \
   | jq -r .accessToken)
 ```
 
-Response:
-
 ```json
-{ "accessToken": "<RS256 JWT>", "expiresIn": 86400, "tokenType": "Bearer" }
+{ "accessToken": "<JWT>", "expiresIn": 3600, "tokenType": "Bearer" }
 ```
 
-The token is a standard JWT whose signature, issuer, and audience are validated against IAM's JWKS. Its `owner` claim is the organization it can act on — a token can only read secrets under its own `{org}`.
+This is the one public, unauthenticated route, so it is the one route rate-limited **per source IP** — 60 requests per minute. Failures collapse to a single status with no upstream detail (`400` missing field, `401` bad credential, `502` IAM unreachable, `503` no issuer configured); a richer error would be a validity oracle for guessed credentials.
 
-## Secret hierarchy
+## Read, write, list, delete
 
-A secret is addressed by four coordinates:
-
+```bash
+# Read one value
+curl -sS "https://api.hanzo.ai/v1/kms/secrets/providers/OPENAI_API_KEY?env=prod" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+# → { "name": "OPENAI_API_KEY", "env": "prod", "value": "<secret value>" }
 ```
-org   /  path        /  name              ? env
-hanzo /  providers   /  OPENAI_API_KEY    ? env=prod
+
+```bash
+# Write one value — env is required
+curl -sS -X POST https://api.hanzo.ai/v1/kms/secrets \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"path":"/providers","name":"OPENAI_API_KEY","env":"prod","value":"<new value>"}'
+# → { "stored": true, "name": "OPENAI_API_KEY", "env": "prod" }
 ```
 
-- **org** — the organization slug; must match the token's `owner` claim.
-- **path** — a folder within the org (e.g. `/`, `/providers`, `/db`).
-- **name** — the exact secret key.
-- **env** — a query parameter; defaults to `default` when omitted.
+```bash
+# List metadata — no values come back
+curl -sS "https://api.hanzo.ai/v1/kms/secrets?path=/providers&env=prod" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+# → { "secrets": [ … ], "total": 2, "names": ["OPENAI_API_KEY","ANTHROPIC_API_KEY"] }
+```
+
+```bash
+# Delete one
+curl -sS -X DELETE "https://api.hanzo.ai/v1/kms/secrets/providers/OPENAI_API_KEY?env=prod" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+# → { "deleted": true, "name": "OPENAI_API_KEY", "env": "prod" }
+```
+
+A secret at the org root omits the folder segment: `…/secrets/STRIPE_SECRET_KEY?env=prod`.
 
 <Callout type="info">
-Reads are **exact-name**: `GET …/secrets/{path}/{name}?env=` returns one value. `GET …/secrets?env=` lists a namespace's secret **metadata** (name, path, env, scheme) — never values. Enumerate the keys your workload needs; the `KMSSecret` CRD does exactly this.
+**Listing gives you names, not values.** `GET /v1/kms/secrets` returns each secret's name, path, environment and sealing scheme — no value, no ciphertext. Reading a value is a separate per-secret call, and that response body is the only place the value ever appears: it is not logged and never carried in an error.
 </Callout>
 
-## Reading & writing secrets
+## What it does not do
 
-All routes are under `https://api.hanzo.ai/v1/kms/orgs/{org}/secrets`.
+Saying so is cheaper than a support thread.
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| `GET` | `/v1/kms/orgs/{org}/secrets?env=` | List secret metadata in the namespace (no values) |
-| `GET` | `/v1/kms/orgs/{org}/secrets/{path}/{name}?env=` | Read a secret value + version |
-| `POST` | `/v1/kms/orgs/{org}/secrets` | Create/upsert (`{path,name,env,value}`) → `{ok,version}` |
-| `PATCH` | `/v1/kms/orgs/{org}/secrets/{path}/{name}` | Update (optimistic concurrency — see below) |
-| `DELETE` | `/v1/kms/orgs/{org}/secrets/{path}/{name}?env=` | Delete |
+- **No `PATCH`, no version field, no optimistic concurrency.** A write is an upsert; last writer wins.
+- **No rotation engine, no PKI or SSH certificate authority, no secret scanning, no dynamic secrets, no third-party secret syncs.** None of these are served under `/v1/kms`.
+- **No threshold-signing routes on this surface.** `GET /v1/kms/health` reports a `signing` field saying whether signing keys are configured for the embedded store; distributed key generation and threshold signatures live in [Hanzo MPC](/docs/services/mpc), not here.
+- **No cross-org read.** Cross-org access exists only in-process, inside the cloud binary that holds the master key — never over HTTP.
 
-<Callout type="warn">
-`env` is **required** on every read and write. Omitting it silently buckets the secret into the `default` environment, where the workload looking for `env=prod` will never find it. Always pass it explicitly.
-</Callout>
+## Failure modes
 
-### Read
+`GET /v1/kms/health` answers `200` with `{"status":"ok","ready":true,"signing":…,"service":"kms"}` only when the store is open and a master key is present. Anything less is `503` with `ready:false` and the reason — exactly the two states in which the secret routes refuse.
 
-```bash
-curl -sS "https://api.hanzo.ai/v1/kms/orgs/hanzo/secrets/providers/OPENAI_API_KEY?env=prod" \
-  -H "Authorization: Bearer $ACCESS_TOKEN"
-```
+Admission on the secret routes is fail-closed, in this order, all decided before a record is touched:
 
-```json
-{ "secret": { "value": "<secret value>" }, "version": 3 }
-```
+| Status | Meaning |
+|--------|---------|
+| `403` | No validated member on the request |
+| `400` | Malformed org, `env`, `path`, or `name` |
+| `503` | Store open but no master key configured |
+| `404` | Secret not there — a plain 404 that names nothing about the store |
 
-A root-path secret omits the folder segment: `…/secrets/STRIPE_SECRET_KEY?env=prod`.
-
-### Create
-
-```bash
-curl -sS -X POST "https://api.hanzo.ai/v1/kms/orgs/hanzo/secrets" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ "path": "/providers", "name": "OPENAI_API_KEY", "env": "prod", "value": "<new value>" }'
-```
-
-```json
-{ "ok": true, "version": 1 }
-```
-
-### Update (optimistic concurrency)
-
-Updates require the current version, supplied either as an `If-Match` header or `version` in the body. A missing precondition returns `428 Precondition Required`; a stale version returns `409 Conflict` with the current version.
-
-```bash
-curl -sS -X PATCH "https://api.hanzo.ai/v1/kms/orgs/hanzo/secrets/providers/OPENAI_API_KEY?env=prod" \
-  -H "Authorization: Bearer $ACCESS_TOKEN" \
-  -H "If-Match: 3" \
-  -H "Content-Type: application/json" \
-  -d '{ "value": "<rotated value>" }'
-```
-
-## Threshold signing keys
-
-When KMS is wired to an [MPC](/docs/services/mpc) vault, it manages distributed signing keys whose private material is never assembled in one place:
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| `POST` | `/v1/kms/keys/generate` | Distributed key generation (DKG) for a validator/signing key set |
-| `GET` | `/v1/kms/keys` · `/v1/kms/keys/{id}` | List / inspect key sets |
-| `POST` | `/v1/kms/keys/{id}/sign` | Threshold sign (e.g. `bls`) |
-| `POST` | `/v1/kms/keys/{id}/rotate` | Reshare / rotate shares |
-
-These operations require an admin or MPC-scoped token. See [Hanzo MPC](/docs/services/mpc) for the underlying threshold scheme.
-
-## Kubernetes integration
-
-In a cluster, you never call the API directly — you declare a `KMSSecret` and the **kms-operator** logs in with a machine identity, reads the named keys, and writes a Kubernetes `Secret` you reference as normal:
-
-```yaml
-apiVersion: secrets.lux.network/v1alpha1
-kind: KMSSecret
-metadata:
-  name: app-kms-sync
-  namespace: hanzo
-spec:
-  hostAPI: https://kms.hanzo.ai
-  resyncInterval: 60
-  authentication:
-    universalAuth:
-      credentialsRef:
-        secretName: app-kms-auth        # K8s Secret holding clientId/clientSecret
-        secretNamespace: hanzo
-      secretsScope:
-        projectSlug: hanzo               # -> {org}
-        envSlug: production              # -> ?env=prod
-        secretsPath: /providers          # -> {path}
-        keys:                            # enumerated; no list endpoint
-          - OPENAI_API_KEY
-          - ANTHROPIC_API_KEY
-  managedSecretReference:
-    secretName: app-secrets
-    secretNamespace: hanzo
-    secretType: Opaque
-    creationPolicy: Orphan
-```
-
-See the [KMSSecret CRD reference](/docs/services/kms/kmssecret-crd) for the full spec.
-
-## Next Steps
+## Next steps
 
 <Cards>
-  <Card title="Machine Identities" href="/docs/services/kms/universal-auth">
-    How services authenticate to KMS and refresh tokens
+  <Card title="Quickstart" href="/docs/services/kms/getting-started/overview">
+    Log in and read your first secret
+  </Card>
+  <Card title="Machine identities" href="/docs/services/kms/universal-auth">
+    How a workload authenticates and refreshes its token
   </Card>
   <Card title="KMSSecret CRD" href="/docs/services/kms/kmssecret-crd">
-    Complete Kubernetes sync reference
+    Sync secrets into Kubernetes
   </Card>
-  <Card title="Service Integration" href="/docs/services/kms/service-integration">
-    The pattern every Hanzo service uses to consume secrets
-  </Card>
-  <Card title="Hanzo MPC" href="/docs/services/mpc">
-    Threshold signing backend for KMS-managed keys
+  <Card title="Service integration" href="/docs/services/kms/service-integration">
+    The pattern every Hanzo service uses
   </Card>
 </Cards>

@@ -176,24 +176,29 @@ hanzo org invite user@example.com --role developer
 
 ## Configuration
 
-The CLI stores configuration in `~/.config/hanzo/config.json`:
+The CLI stores configuration as JSON in `~/.hanzo/config` (set `HANZO_HOME` to move the directory, or `HANZO_CONFIG` to name the file outright):
 
-```json title="~/.config/hanzo/config.json"
+```json title="~/.hanzo/config"
 {
-  "current_org": "acme-corp",
-  "current_project": "my-app",
-  "api_url": "https://app.platform.hanzo.ai/api"
+  "org": "acme-corp",
+  "cloud_url": "https://api.hanzo.ai",
+  "platform_url": "https://platform.hanzo.ai",
+  "iam_issuer": "https://hanzo.id",
+  "output": "table"
 }
 ```
 
-Override any value with environment variables:
+Write a key with `hanzo config set <key> <value>`. `cloud_url` is the API host every command calls; `platform_url` is the **Studio** the CLI opens in a browser for interactive sign-in — a UI, not an API. Both already default to the values above, so a normal install has nothing to set.
+
+Each key is overridable by environment variable, and by a flag above that:
 
 ```bash
 export HANZO_ORG=acme-corp
-export HANZO_PROJECT=my-app
-export HANZO_API_URL=https://app.platform.hanzo.ai/api
-export HANZO_API_TOKEN=hzo_...
+export HANZO_CLOUD_URL=https://api.hanzo.ai
+export HANZO_TOKEN=...          # an IAM bearer; normally `hanzo login` holds this for you
 ```
+
+Precedence is flag → environment → config file → built-in default.
 
 ## Next Steps
 

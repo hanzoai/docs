@@ -24,7 +24,7 @@ Hanzo DNS is a multi-tenant DNS management system with PostgreSQL as the source 
 │  (Go, K8s)       │    │  CF API reconciliation          │
 │  CRDs → CoreDNS  │    │  for public zones               │
 └──────┬──────────┘    └─────────────────────────────────┘
-       │ POST /api/v1/sync
+       │ POST /v1/dns/sync
 ┌──────▼──────────────────────────────────────────────────┐
 │  CoreDNS (hanzodns plugin)                               │
 │  In-memory zone store → :53 resolution                   │
@@ -60,7 +60,7 @@ PostgreSQL is the **single source of truth**. CoreDNS and Cloudflare are derived
 
 A Kubernetes operator written in Go with controller-runtime. It has four controllers:
 
-1. **DnsZone Controller** — Syncs zone records to CoreDNS via `/api/v1/sync`
+1. **DnsZone Controller** — Syncs zone records to CoreDNS via `/v1/dns/sync`
 2. **DnsRecord Controller** — Validates records and triggers zone re-sync
 3. **Cloudflare Controller** — Pushes records with `syncToCloudflare` to CF API
 4. **PostgreSQL Watcher** — Polls PG for changes and creates/updates CRDs
@@ -89,7 +89,7 @@ User → Console UI → tRPC createRecord → PostgreSQL INSERT
                                               ↓
                          DNS Operator detects change
                               ↓                    ↓
-                     CoreDNS /api/v1/sync    CF API (if sync=true)
+                     CoreDNS /v1/dns/sync    CF API (if sync=true)
                               ↓                    ↓
                      DNS resolution (:53)    Edge resolution
 ```

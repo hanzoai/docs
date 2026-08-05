@@ -11,33 +11,69 @@ The `hanzodns` plugin serves a REST API on port `:8443` (configurable).
 
 ### Authentication
 
-When OIDC is configured, all requests require a valid JWT bearer token:
+Every route except `GET /v1/dns/health` requires a bearer token:
 
 ```
 Authorization: Bearer <token>
 ```
+
+The API picks exactly one auth boundary from configuration and fails closed:
+`HANZO_DNS_OIDC_ISSUER` selects IAM-validated JWTs (multi-tenant production),
+`HANZO_DNS_API_KEY` selects a static shared key (single-tenant standalone). With
+neither set the API answers `503 unconfigured` — anonymous access exists only
+behind an explicit `HANZO_DNS_DEV_INSECURE=1`.
 
 ### Endpoints
 
 #### List Zones
 
 ```
-GET /api/v1/zones
+GET /v1/dns/zones
 ```
 
-Returns all zones in the store.
+Returns the caller's zones. Every operation is scoped to the org in the
+validated `owner` claim — one org never sees another's zones.
 
 **Response:**
 ```json
 {
-  "zones": ["example.com.", "internal.corp."]
+  "zones": [
+    {
+      "id": "z_01",
+      "zone": "example.com.",
+      "org": "acme",
+      "provider": "authoritative",
+      "status": "active",
+      "nameservers": ["ns1.hanzo.ai.", "ns2.hanzo.ai."],
+      "record_count": 3
+    }
+  ],
+  "total": 1
 }
+```
+
+#### Get Zone
+
+```
+GET /v1/dns/zones/{zone}
+```
+
+#### Create Zone
+
+```
+POST /v1/dns/zones
+```
+
+#### Delete Zone
+
+```
+DELETE /v1/dns/zones/{zone}
 ```
 
 #### Get Zone Records
 
 ```
-GET /api/v1/zones/{zone}/records
+GET /v1/dns/zones/{zone}/records
 ```
 
 **Response:**
@@ -45,19 +81,22 @@ GET /api/v1/zones/{zone}/records
 {
   "records": [
     {
+      "id": "r_01",
       "name": "www",
       "type": "A",
       "content": "192.168.1.1",
-      "ttl": 300
+      "ttl": 300,
+      "proxied": false
     }
-  ]
+  ],
+  "total": 1
 }
 ```
 
 #### Create Record
 
 ```
-POST /api/v1/zones/{zone}/records
+POST /v1/dns/zones/{zone}/records
 ```
 
 **Request:**
@@ -71,22 +110,29 @@ POST /api/v1/zones/{zone}/records
 }
 ```
 
+#### Get Record
+
+```
+GET /v1/dns/zones/{zone}/records/{id}
+```
+
 #### Update Record
 
 ```
-PUT /api/v1/zones/{zone}/records/{id}
+PUT /v1/dns/zones/{zone}/records/{id}
+PATCH /v1/dns/zones/{zone}/records/{id}
 ```
 
 #### Delete Record
 
 ```
-DELETE /api/v1/zones/{zone}/records/{id}
+DELETE /v1/dns/zones/{zone}/records/{id}
 ```
 
 #### Bulk Sync
 
 ```
-POST /api/v1/sync
+POST /v1/dns/sync
 ```
 
 Atomically replaces all records in one or more zones.
@@ -110,16 +156,25 @@ Atomically replaces all records in one or more zones.
 **Response:**
 ```json
 {
-  "results": [
+  "synced": [
     {
       "zone": "example.com.",
+      "record_count": 3,
       "created": 3,
-      "deleted": 1,
-      "error": ""
+      "deleted": 1
     }
-  ]
+  ],
+  "total": 1
 }
 ```
+
+#### Health
+
+```
+GET /v1/dns/health
+```
+
+The one unauthenticated route. Returns `{"status":"ok"}`.
 
 ## Console tRPC API
 
