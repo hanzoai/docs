@@ -6,11 +6,24 @@
 # client lands in src/ or src/cloud/, which built an orphan second copy of all
 # 2143 files.
 #
-# Every row is one language projection of hanzo.yaml. `take` maps a path in the
-# generator's output onto a path in the SDK repo that the generator OWNS
-# ENTIRELY: generate.py replaces it wholesale and --check diffs it. Anything
-# outside a `take` path is the repo's own (build files, the legacy published
-# client) and is never touched.
+# Every row is one language projection of THE DOCUMENT — `hanzo.yaml`, which
+# `publish.py` derives from hanzoai/cloud's own emission at the ref `.spec-lock`
+# pins. There is still no `spec:` key: WHICH document a client is a projection of
+# is a fact about the CLIENT (its own lock, written by a release) and not about
+# this checkout, so it is not expressible as a row here — generate.py resolves it
+# per repo, falling back to this checkout's `hanzo.yaml` for a hand run.
+#
+# That fallback was removed once, correctly, when `hanzo.yaml` was a hand-merged
+# union carrying 185 operations cloud does not serve. It is back because the file
+# is not that any more, and because the alternative was measured: cloud's raw
+# emission fails `openapi-generator validate` with 1012 errors — every route the
+# weave publishes with an address and no `responses` — and `generate` writes zero
+# files from it in every language. See generate.py's header.
+#
+# `take` maps a path in the generator's output onto a path in the SDK repo that
+# the generator OWNS ENTIRELY: generate.py replaces it wholesale and --check
+# diffs it. Anything outside a `take` path is the repo's own (build files, the
+# legacy published client) and is never touched.
 #
 # WHEN A LANGUAGE LEAVES THIS FILE — the boundary, so it is a rule and not a
 # mood: a row exists while the WHOLE invocation is expressible as data. A
@@ -25,13 +38,12 @@
 #     next to it, or the pair drifts apart.
 #
 # A language that leaves owns its whole invocation in its own
-# scripts/generate.sh — same generator, same pin, same hanzo.yaml pulled from
-# here. That is the pull model, and it is the same one interface either way.
+# scripts/generate.sh — same generator, same pin, same document at the same
+# locked ref. That is the pull model, the same one interface either way.
 # What is NOT allowed is a row here AND flags there: that is two declarations of
 # one contract, and both departures had already started drifting into it.
 
 generator: 7.14.0 # openapi-generator, pinned for every language
-spec: hanzo.yaml
 
 # Files the generator offers that a client must not carry, matched on the whole
 # relative path or on the bare name. Two kinds: a SECOND copy of the spec
@@ -94,8 +106,8 @@ sdks:
   # the shipped module does not have and no consumer imports.
   #
   # The Go client regenerates from its own `scripts/generate.sh` — the same
-  # generator, the same pin, the same hanzo.yaml, pulled from this repo (it even
-  # handles the private-repo token fallback). That is the pull model working, not
+  # generator, the same pin, the same hanzoai/cloud document at the ref its own
+  # `.spec-lock` names. That is the pull model working, not
   # a gap: `packageName=hanzoai, withGoMod=false, structPrefix=true,
   # enumClassPrefix=true`, output at the root. Canonical repo is hanzo-go/sdk;
   # `hanzoai/go-sdk` is a rename redirect and stays the MODULE PATH, because
@@ -147,7 +159,7 @@ sdks:
       # this row wants and cannot have: its oneof_model.mustache iterates the
       # raw `oneOf` type-name set and emits `{{{.}}}.class`, which is illegal
       # Java the moment a variant is an array — `List<CloudEvent>.class`. Three
-      # schemas in hanzo.yaml have an inline array in a oneOf
+      # schemas in the document have an inline array in a oneOf
       # (cloud_post_v1_event's body, gateway_createCompletion's `prompt`,
       # search_deleteDocumentsByFilter's `filter`), so `native` produces 532
       # javac errors. Every other Java library iterates `composedSchemas.oneOf`
@@ -195,20 +207,6 @@ sdks:
       # camel-case to `distinctId`. The rename is Kotlin-side only; the wire
       # name is still carried by @SerializedName.
       name-mappings: distinct_id=distinctIdLegacy
-
-  ruby:
-    repo: ruby-sdk
-    generator: ruby
-    # Two paths because the Ruby generator puts the entry point beside the
-    # directory it loads, not inside it.
-    take:
-      lib/hanzoai_cloud: lib/hanzoai_cloud
-      lib/hanzoai_cloud.rb: lib/hanzoai_cloud.rb
-    properties:
-      gemName: hanzoai_cloud
-      moduleName: HanzoaiCloud
-      library: faraday
-      gemVersion: 8.0.0
 
   # rust is DELIBERATELY ABSENT, for the reason above and not for lack of a
   # generator: openapi-generator emits Rust (reqwest) and hanzo-rs/sdk ships it
@@ -264,3 +262,20 @@ sdks:
   #
   # Canonical repo is hanzo-cpp/sdk; `hanzoai/cpp-sdk` is a rename redirect to
   # it.
+
+  # ruby is ABSENT, and not the way the three above are. Those are DEPARTURES
+  # under the rule at the top — the invocation needs something that is not data,
+  # so it lives beside that thing, and the client ships either way. There is no
+  # Ruby client to ship.
+  #
+  # `hanzoai/ruby-sdk` answers a hard 404 with no redirect, and every SDK repo
+  # that was really renamed answers a redirect instead (go-sdk, rust-sdk,
+  # cpp-sdk, kotlin-sdk all 301). rubygems has no gem under `hanzoai_cloud` —
+  # the name the deleted row itself declared — nor under `hanzoai` or any other
+  # candidate; the gem literally named `hanzo` there is someone else's Heroku
+  # tool. The row named a repo to write into and a gem to ship, and neither
+  # exists.
+  #
+  # README.md and LLM.md render this file as the SDK matrix, so the row WAS the
+  # claim — nothing else asserted a Ruby client. No repo, no gem, no row. A
+  # visible gap is honest; a row that generates into nothing is not.

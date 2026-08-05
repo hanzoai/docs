@@ -300,16 +300,15 @@ const py = (v: any): string =>
 /**
  * THE TOOL-NAME RULE, in one place and read in both directions.
  *
- * The door names a tool for the operation's `operationId` with the leading
- * `<product>_` removed — `ai_createChatCompletion` is `createChatCompletion`,
- * and `cloud_get_v1_tools` is `get_v1_tools`. That is the primary key.
+ * The door names a tool for the operation's `operationId`, and hanzoai/openapi
+ * publishes that id bare — `get_v1_tools` is `get_v1_tools`. That is the primary
+ * key.
  *
  * Where an operationId spells a path parameter differently from the door
- * (`cloud_delete_v1_projects_by_slug` against the door's
- * `delete_v1_projects_slug`) the name misses, so the operation's method and
- * path are a second key. Measured against the live door: the name key resolves
- * 803 tools, the method+path key a further 30, and one tool resolves to no
- * operation at all.
+ * (`delete_v1_projects_by_slug` against the door's `delete_v1_projects_slug`)
+ * the name misses, so the operation's method and path are a second key.
+ * Measured against the live door: the name key resolves 802 of 833 tools and
+ * the method+path key the rest.
  *
  * Both directions use these keys, so "which operation is this tool?" and "does
  * this operation have a tool?" can never disagree.

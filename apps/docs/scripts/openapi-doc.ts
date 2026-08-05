@@ -32,12 +32,11 @@ export interface Body {
 export interface Operation {
   /** Product this page groups the operation under: its tag, else `/v1/<seg>`. */
   product: string;
-  /** Full operationId, e.g. `ai_createChatCompletion`. */
+  /** Full operationId, e.g. `get_v1_tools`. */
   id: string;
   /**
-   * operationId minus its OWN first segment, e.g. `createChatCompletion` from
-   * `ai_createChatCompletion`. This is the MCP door's tool-naming rule, and it
-   * is not always `product`-relative — see the note where it is computed.
+   * The MCP door's tool name for this operation, which is the operationId
+   * itself — see the note where it is computed.
    */
   name: string;
   /** The operation's own tag — a section heading within its product. */
@@ -213,12 +212,13 @@ export function loadDocument(file: string): Document {
       const resolved: Operation = {
         product: product_ ?? '',
         id,
-        // The id's OWN prefix, not the product it is grouped under. These
-        // differ: `cloud_get_v1_tools` is grouped under `tools` (its path) but
-        // its name is `get_v1_tools`. The MCP door names tools by this rule —
-        // 729 of its 730 names are exactly it — so it must not be conflated
-        // with page grouping.
-        name: id.includes('_') ? id.slice(id.indexOf('_') + 1) : id,
+        // The door's tool name IS the operationId. It was the id minus its own
+        // first segment while hanzoai/openapi prefixed every id with the spec it
+        // came from (`cloud_get_v1_tools`); one document needs no such
+        // disambiguator and that prefix is gone, so the ids are bare. Measured
+        // against the door's own tools/list: 802 of 833 names are the
+        // operationId exactly, where stripping a segment resolves 89.
+        name: id,
         tag: (Array.isArray(op.tags) && op.tags[0]) || product_ || 'General',
         method,
         path,
