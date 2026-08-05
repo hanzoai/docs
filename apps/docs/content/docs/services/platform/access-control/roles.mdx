@@ -82,13 +82,23 @@ An Admin cannot promote a member to Owner or demote an existing Owner. Only Owne
 
 ## Role via API
 
+A role is an **identity** object, so it lives in [Hanzo IAM](/docs/services/iam) — the deploy plane does not keep a second copy. There is no role endpoint under `/v1/platform`.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `https://api.hanzo.ai/v1/iam/roles` | List the org's roles |
+| `POST` | `https://api.hanzo.ai/v1/iam/roles` | Create a role |
+| `POST` | `https://api.hanzo.ai/v1/iam/roles/get` | One role |
+| `POST` | `https://api.hanzo.ai/v1/iam/roles/update` | Change its members, or the roles it includes |
+| `POST` | `https://api.hanzo.ai/v1/iam/roles/delete` | Delete a role |
+
 ```bash
-# Update a member's role
-curl -X PATCH https://app.platform.hanzo.ai/api/orgTeam.update \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "userId": "user_abc123",
-    "role": "developer"
-  }'
+curl -fsS https://api.hanzo.ai/v1/iam/roles \
+  -H "Authorization: Bearer $TOKEN"
 ```
+
+Every write is a `POST` — there is no `PATCH` on this surface. You never name the organization: the gateway re-mints `X-Org-Id` from the bearer's `owner` claim, so a token only ever reaches its own org's roles. Access changes for everyone in a role as soon as the write lands.
+
+<Callout type="warn">
+There is no `orgTeam.update` procedure and no `/api` prefix anywhere in Hanzo. `app.platform.hanzo.ai` redirects to `platform.hanzo.ai`, the Studio's browser UI — its `/v1/*` answers `401 Unauthorized` to every path, existing or not, so a status there tells you nothing. Programmatic calls go to `api.hanzo.ai`.
+</Callout>

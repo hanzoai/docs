@@ -1,127 +1,114 @@
 ---
 title: API Reference
-description: Platform REST and tRPC API for managing organizations, clusters, containers, and VMs
+description: The api.hanzo.ai REST surface for apps, compute, and organizations
 ---
 
-Hanzo Platform exposes two API surfaces: **tRPC** for the dashboard and **REST** for external integrations. Both share the same authentication and authorization layer.
+Everything the dashboard does, it does over one public HTTP surface. There is no
+second protocol and no second host.
 
 ## Base URL
 
 ```
-https://app.platform.hanzo.ai/api
+https://api.hanzo.ai/v1
 ```
 
-All endpoints are relative to this base URL.
+<Callout type="warn">
+`app.platform.hanzo.ai` is the **dashboard**, not an API host. It answers `301`
+on every path and redirects to `platform.hanzo.ai`, and `curl` silently
+downgrades a `POST` to a `GET` when it follows a `301`. Point programmatic calls
+at `api.hanzo.ai`.
+</Callout>
 
-## API Surfaces
+## Surfaces
 
-| Surface | Protocol | Use Case |
-|---------|----------|----------|
-| **tRPC** | HTTP POST with JSON | Dashboard, SDK, programmatic access |
-| **REST** | Standard HTTP methods | External integrations, webhooks, CI/CD |
+Three groups of resources live under `/v1`. They are separate services behind one
+host, which is why the path prefixes differ.
 
-The tRPC API uses procedure calls (e.g., `organization.all`, `cluster.create`). The REST API uses standard resource paths (e.g., `GET /clusters`, `POST /containers`).
+| Prefix | Resource | Docs |
+|--------|----------|------|
+| `/v1/platform/projects/…` | Projects, apps, deploys, env, domains | [Containers](/docs/api/containers) |
+| `/v1/machines`, `/v1/gpus`, `/v1/clusters`, `/v1/k8s/…` | Machines, GPUs, clusters, node pools | [Clusters](/docs/api/clusters) · [Machines](/docs/api/vms) |
+| `/v1/iam/…` | Organizations, roles, invitations | [Organizations](/docs/api/organizations) |
 
 ## Authentication
 
-All requests require a Bearer token in the `Authorization` header:
+Every request carries a bearer token, and every request acts as exactly one
+organization:
 
 ```bash
-curl https://app.platform.hanzo.ai/v1/organization.all \
-  -H "Authorization: Bearer YOUR_TOKEN"
+curl https://api.hanzo.ai/v1/platform/projects \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-Org-Id: acme-corp"
 ```
 
-See [Authentication](/docs/api/authentication) for details on obtaining tokens.
-
-## tRPC Procedures
-
-The platform exposes 16 tRPC routers:
-
-| Router | Description |
-|--------|-------------|
-| `organization` | Organization CRUD |
-| `orgTeam` | Team member management |
-| `cluster` | Cluster lifecycle |
-| `container` | Container deployments |
-| `project` | Project management |
-| `environment` | Environment configuration |
-| `build` | Build pipelines |
-| `log` | Log streaming |
-| `registry` | Container registry |
-| `domain` | Domain and DNS management |
-| `git` | Git integration |
-| `user` | User profile |
-| `provisioner` | Infrastructure provisioning |
-| `audit` | Audit log |
-| `invitation` | Team invitations |
-| `system` | System health and status |
+A call with no validated principal, or one whose token is not bound to a single
+org and carries no `X-Org-Id`, is refused `403` with
+`{"status":403,"code":"forbidden","error":"X-Org-Id required"}`. See
+[Authentication](/docs/api/authentication) for how to obtain a token.
 
 ## Request Format
 
-tRPC requests use HTTP POST with a JSON body:
+The HTTP method carries the verb; the path names the resource. Writes take a JSON
+body:
 
 ```bash
-curl -X POST https://app.platform.hanzo.ai/api/cluster.create \
+curl -X POST https://api.hanzo.ai/v1/platform/projects/my-app/apps \
   -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "X-Org-Id: acme-corp" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "production",
-    "provider": "digitalocean",
-    "region": "sfo3"
+    "name": "web",
+    "source": "image",
+    "image": { "repository": "ghcr.io/myorg/web", "tag": "v1.2.3" },
+    "port": 3000
   }'
 ```
 
 ## Response Format
 
-All responses return JSON:
+Success returns the resource itself — no envelope:
 
 ```json
 {
-  "result": {
-    "data": {
-      "id": "cluster_abc123",
-      "name": "production",
-      "status": "provisioning"
-    }
-  }
+  "id": "app_abc123",
+  "slug": "web",
+  "name": "web",
+  "environment": "production",
+  "source": "image",
+  "image": { "repository": "ghcr.io/myorg/web", "tag": "v1.2.3" },
+  "port": 3000,
+  "replicas": 1,
+  "status": "running"
 }
 ```
 
 ## Error Responses
 
-Errors return an appropriate HTTP status code with a JSON body:
+Errors return the matching HTTP status with a three-field body:
 
 ```json
 {
-  "error": {
-    "message": "Cluster not found",
-    "code": "NOT_FOUND",
-    "httpStatus": 404
-  }
+  "status": 403,
+  "code": "forbidden",
+  "error": "X-Org-Id required"
 }
 ```
 
-| Code | Meaning |
-|------|---------|
-| `BAD_REQUEST` | Invalid input |
-| `UNAUTHORIZED` | Missing or invalid token |
-| `FORBIDDEN` | Insufficient permissions |
-| `NOT_FOUND` | Resource does not exist |
-| `CONFLICT` | Resource already exists |
-| `INTERNAL_SERVER_ERROR` | Server error |
+| Status | Meaning |
+|--------|---------|
+| `400` | Invalid input |
+| `401` | Missing or invalid token |
+| `403` | No validated principal, or no organization |
+| `404` | Resource does not exist |
+| `409` | Slug or host already claimed |
+| `429` | Too many in-flight builds or deploys — retry |
+| `500` | Server error |
 
-## Rate Limits
+Every response carries `x-request-id`; quote it when reporting a problem.
 
-| Endpoint Type | Rate Limit |
-|--------------|------------|
-| Read operations | 100 requests/minute |
-| Write operations | 30 requests/minute |
-| Log streaming | 10 concurrent connections |
+## Concurrency Limits
 
-Rate limit headers are included in every response:
-
-```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 97
-X-RateLimit-Reset: 1709000000
-```
+Deploys, not reads, are what the platform bounds. Concurrent in-flight image
+deploys are capped per organization and concurrent builds are capped in the
+cluster; over the cap a deploy is refused `429` and is safe to retry. Reads are
+not rate-limited by the platform.

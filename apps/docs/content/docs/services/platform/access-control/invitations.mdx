@@ -85,20 +85,28 @@ hanzo org invite \
   --email carol@example.com --role admin
 ```
 
-Or via the API:
+## Invitations via the API
+
+An invitation is an **identity** object, so it lives in [Hanzo IAM](/docs/services/iam) — not in a second directory owned by the deploy plane. There is no invitation endpoint under `/v1/platform`; the per-email flow above is a Studio action.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `https://api.hanzo.ai/v1/iam/invitations` | List your org's invitations, newest first |
+| `POST` | `https://api.hanzo.ai/v1/iam/invitations` | Issue an invitation |
+| `POST` | `https://api.hanzo.ai/v1/iam/invitations/get` | One invitation |
+| `POST` | `https://api.hanzo.ai/v1/iam/invitations/update` | Change its role, quota, or expiry |
+| `POST` | `https://api.hanzo.ai/v1/iam/invitations/delete` | Withdraw it |
 
 ```bash
-curl -X POST https://app.platform.hanzo.ai/api/invitation.create \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "invitations": [
-      { "email": "alice@example.com", "role": "developer" },
-      { "email": "bob@example.com", "role": "developer" },
-      { "email": "carol@example.com", "role": "admin" }
-    ]
-  }'
+curl -fsS https://api.hanzo.ai/v1/iam/invitations \
+  -H "Authorization: Bearer $TOKEN"
 ```
+
+Which organization you see is taken from your credentials, never from the request — the gateway re-mints `X-Org-Id` from the bearer's `owner` claim. An IAM invitation is a redeemable **code** with a seat `quota` and an expiry, so one invitation can admit a whole team; it is not a list of email addresses. Field-by-field bodies are in the [Hanzo IAM reference](/docs/services/iam).
+
+<Callout type="warn">
+There is no `invitation.create` procedure and no `/api` prefix anywhere in Hanzo. `app.platform.hanzo.ai` redirects to `platform.hanzo.ai`, the Studio's browser UI — its `/v1/*` answers `401 Unauthorized` to every path, real or not. Programmatic calls go to `api.hanzo.ai`.
+</Callout>
 
 ## Removing Members
 

@@ -12,7 +12,15 @@ Hanzo PaaS has **one** API surface, on the **one** Hanzo API host.
 | Control plane | `https://api.hanzo.ai/v1/platform` | `Authorization: Bearer <iam-jwt>` |
 | Builds | `https://api.hanzo.ai/v1/runner` | `Authorization: Bearer <iam-jwt>` (org admin) or the fabric build token |
 
-`platform.hanzo.ai` is the **Studio** — the browser UI, not an API host. Every programmatic call goes to `api.hanzo.ai/v1/platform`; paths the Studio does not route fall through to its HTML shell with a `404`. There is no `x-api-key` header, no tRPC procedure surface, and no `/api` prefix anywhere in Hanzo.
+<Callout type="warn">
+**`platform.hanzo.ai` is the Studio — a browser UI. Do not call it programmatically.** It answers, which is what makes it a trap:
+
+- `platform.hanzo.ai/v1/<anything>` → `401 {"message":"Unauthorized"}` — the *same* answer for a path that does not exist, and the same answer when you present a valid bearer. It is a browser-session wall, not a challenge a token can satisfy, so a `401` there never means "get a better token". Only `/v1/health` answers `200`.
+- `platform.hanzo.ai/api/<anything>` → `404`, `text/html` — the Studio's page shell, not an error you can parse.
+- `app.platform.hanzo.ai` is the same origin one redirect away: it `301`s to `platform.hanzo.ai`, so every path above behaves identically there.
+
+The programmatic host is `api.hanzo.ai`, and it distinguishes: `api.hanzo.ai/v1/platform/projects` → `403` (real, needs org context), `api.hanzo.ai/v1/platform/zzz-bogus` → `404` (no such route). There is no `x-api-key` header, no tRPC procedure surface on this host, and no `/api` prefix on any Hanzo endpoint.
+</Callout>
 
 ## Authentication
 

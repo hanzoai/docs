@@ -89,18 +89,21 @@ Cluster permissions control **who** can deploy. [Environment protection](/docs/s
 
 ## API
 
-```bash
-# Grant deploy permission on a cluster
-curl -X POST https://app.platform.hanzo.ai/api/cluster.grantAccess \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "clusterId": "cluster_abc123",
-    "userId": "user_def456",
-    "permission": "deploy"
-  }'
+**Per-user cluster permissions have no REST endpoint.** Grants are set in the Studio, in the **Access** tab above. The Hanzo API host serves the cluster *object* — attach, scale, detach — not the per-user grants on it:
 
-# List permissions for a cluster
-curl https://app.platform.hanzo.ai/api/cluster.listAccess?clusterId=cluster_abc123 \
-  -H "Authorization: Bearer YOUR_TOKEN"
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` · `POST` | `https://api.hanzo.ai/v1/clusters` | List clusters / attach one by kubeconfig |
+| `DELETE` | `https://api.hanzo.ai/v1/clusters/{id}` | Detach a cluster |
+| `POST` | `https://api.hanzo.ai/v1/clusters/{id}/pools/{poolId}/scale` | Scale a node pool |
+
+```bash
+curl -fsS https://api.hanzo.ai/v1/clusters \
+  -H "Authorization: Bearer $TOKEN"
 ```
+
+Reads are already org-scoped: the gateway re-mints `X-Org-Id` from the bearer's `owner` claim, so a token only ever sees its own org's clusters. See the [Clusters API](/docs/services/platform/api/clusters).
+
+<Callout type="warn">
+There is no `cluster.grantAccess` / `cluster.listAccess` procedure, and no `/api` prefix anywhere in Hanzo. `app.platform.hanzo.ai` redirects to `platform.hanzo.ai`, which is the Studio's browser UI — its `/v1/*` answers `401 Unauthorized` to every path, real or not, so a bearer proves nothing there. The programmatic host is `api.hanzo.ai`.
+</Callout>
