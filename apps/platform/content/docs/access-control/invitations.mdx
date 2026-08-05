@@ -72,7 +72,7 @@ If the invitee did not receive the email, click **Resend** to send a fresh invit
 
 ## Invitation Expiry
 
-Invitations expire after **7 days**. Expired invitations can be resent from the Pending tab. The expiry period is not configurable.
+Invitations expire after **48 hours**. Expired invitations can be resent from the Pending tab. The expiry period is not configurable.
 
 ## Bulk Invitations
 
@@ -85,20 +85,20 @@ hanzo org invite \
   --email carol@example.com --role admin
 ```
 
-Or via the API:
+The API takes **one invitation per call**, so bulk over HTTP is a loop:
 
 ```bash
-curl -X POST https://app.platform.hanzo.ai/api/invitation.create \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "invitations": [
-      { "email": "alice@example.com", "role": "developer" },
-      { "email": "bob@example.com", "role": "developer" },
-      { "email": "carol@example.com", "role": "admin" }
-    ]
-  }'
+for who in alice:developer bob:developer carol:admin; do
+  curl -X POST https://api.hanzo.ai/v1/iam/add-membership \
+    -H "Authorization: Bearer YOUR_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{ \"email\": \"${who%%:*}@example.com\", \"role\": \"${who##*:}\" }"
+done
 ```
+
+The invitation lands in the organization the token is acting as — it is never
+named in the body. Owner is non-delegable: an invite with `"role": "owner"` is
+refused, as is a second pending invite to an address that already has one.
 
 ## Removing Members
 

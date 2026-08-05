@@ -1,0 +1,274 @@
+---
+title: Machines API
+description: Launch, inspect, and terminate metered machines and GPUs
+---
+
+A **machine** is a metered Linux instance owned by your organization. The same
+noun covers Visor-provisioned droplets, DOKS worker nodes, and BYO hardware that
+dialed in with `hanzo link` — they are deduped into one inventory, tagged by
+`provider`.
+
+## Base
+
+```
+https://api.hanzo.ai/v1
+```
+
+Ownership is the **validated principal's org** and is never read from the body,
+so a launch always lands in your own tenant and a machine is only ever visible to
+the tenant that owns it. Without a validated principal every route here answers
+`403`.
+
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/machines` | List every machine the org has |
+| `POST` | `/v1/machines` | Launch a machine, or price one with `dryRun` |
+| `GET` | `/v1/machines/{id}` | One machine |
+| `DELETE` | `/v1/machines/{id}` | Terminate a machine |
+| `GET` | `/v1/gpus` | One row per physical accelerator |
+| `GET` | `/v1/gpus/alerts` | GPU alerts |
+| `GET` | `/v1/compute/regions` | Regions a machine can launch into |
+| `GET` | `/v1/compute/sizes` | Sizes `size` accepts on a launch |
+| `GET` | `/v1/fleet/workers` | BYO machines only |
+| `GET` | `/v1/machines/agents` | Every agent ↔ machine binding |
+| `PUT` | `/v1/machines/{id}/agent` | Bind an agent to a machine |
+| `GET` | `/v1/machines/{id}/agent` | Read the binding |
+| `DELETE` | `/v1/machines/{id}/agent` | Unbind |
+
+`{id}` is the machine's **org-scoped name** — the stable key the routes address
+it by — not the ephemeral provider id.
+
+<Callout type="warn">
+There is no start, stop, restart, volume, snapshot, or web-terminal endpoint.
+A machine's lifecycle here is launch and terminate; for shell access use SSH to
+its `publicIp`. Do not write a client against verbs this table does not list —
+an unregistered method on a real path answers `404`.
+</Callout>
+
+## List Machines
+
+`GET /v1/machines`
+
+```bash
+curl https://api.hanzo.ai/v1/machines \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp"
+```
+
+**Response:**
+
+```json
+{
+  "machines": [
+    {
+      "id": "web-1",
+      "name": "Web 1",
+      "region": "sfo3",
+      "type": "s-2vcpu-4gb",
+      "status": "running",
+      "provider": "digitalocean",
+      "publicIp": "203.0.113.50",
+      "privateIp": "10.0.1.50",
+      "vcpu": 2,
+      "mem": "4 GB",
+      "createdTime": "2026-01-10T10:00:00Z"
+    }
+  ]
+}
+```
+
+A source that cannot answer is logged and skipped rather than failed: one wedged
+upstream must never hide the machines the other sources can see.
+
+**Fields:** `id`, `name`, `region`, `type` (the provider size slug), `status`,
+`provider`, `publicIp`, `privateIp`, `createdTime`, `vcpu`, `mem`, `gpu`,
+`image`, `os`. `mem` is system RAM and is absent when only a GPU slug is known,
+because a GPU slug's gigabytes are VRAM — never quietly re-labelled as RAM.
+
+## Get Machine
+
+`GET /v1/machines/{id}`
+
+```bash
+curl https://api.hanzo.ai/v1/machines/web-1 \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp"
+```
+
+**Response:**
+
+```json
+{
+  "id": "web-1",
+  "name": "Web 1",
+  "region": "sfo3",
+  "type": "s-2vcpu-4gb",
+  "status": "running",
+  "publicIp": "203.0.113.50",
+  "vcpu": 2
+}
+```
+
+## Launch a Machine
+
+`POST /v1/machines`
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/machines \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "ml-training",
+    "size": "gpu-h100x8-640gb",
+    "region": "nyc2"
+  }'
+```
+
+**Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `size` | string | Yes | A slug from `GET /v1/compute/sizes`. `instanceType` is an accepted alias |
+| `name` | string | Yes for a real launch | Machine name; optional for a quote |
+| `region` | string | No | A slug from `GET /v1/compute/regions` |
+| `dryRun` | boolean | No | Price it instead of launching it |
+
+**This one address has two response shapes**, which is the rule to know before
+you write a client:
+
+| `dryRun` | Status | Body |
+|----------|--------|------|
+| `true` | `200` | The upstream price quote, passed through verbatim. Nothing launched, nothing spent |
+| absent / `false` | `201` | The launched machine, as a machine object |
+
+<Callout type="warn">
+A launch spends real money. Send `dryRun: true` first to see the price.
+</Callout>
+
+Metering is the compute provider's: the launch fronts its resell endpoint, which
+owns the balance gate and the per-hour meter. A missing `size` is `400`; no
+validated principal is `403`.
+
+## Terminate a Machine
+
+`DELETE /v1/machines/{id}`
+
+```bash
+curl -X DELETE https://api.hanzo.ai/v1/machines/web-1 \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp"
+```
+
+**Response:** `204 No Content`
+
+The machine is identified as owner + name, and the owner is the validated
+principal — so a caller can only ever terminate its own tenant's machine.
+
+## GPUs
+
+`GET /v1/gpus`
+
+A GPU machine expands into **one row per physical accelerator**: a
+`gpu-h100x8` node genuinely holds eight H100s, so it lists as eight rows.
+
+```bash
+curl https://api.hanzo.ai/v1/gpus \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp"
+```
+
+**Response:**
+
+```json
+{
+  "gpus": [
+    {
+      "id": "gpu-1#0",
+      "name": "gpu-1",
+      "model": "H100",
+      "region": "nyc2",
+      "status": "running",
+      "machine": "gpu-1",
+      "provider": "digitalocean"
+    }
+  ]
+}
+```
+
+`model`, `region`, and `status` are read from the machine and its size slug.
+Live utilization is **not** reported here — the machine object carries none, and
+none is invented. Utilization for BYO workers that self-report it is at
+`GET /v1/fleet/samples`.
+
+`GET /v1/gpus/alerts` answers `{"alerts":[]}` when there is nothing to raise.
+
+## Launch Catalog
+
+```bash
+curl https://api.hanzo.ai/v1/compute/sizes \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp"
+
+curl https://api.hanzo.ai/v1/compute/regions \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp"
+```
+
+Both pass the provider's catalog through verbatim, so its shape stays the single
+source of truth. The catalog is **global**, not per-tenant: every org sees the
+same list. It is still authenticated, because it is what backs the launch drawer
+rather than public marketing copy.
+
+## Agent Bindings
+
+A machine can host at most one cloud Agent, so the binding is a to-one
+sub-resource: plural at the collection, singular at the member.
+
+```bash
+# Every binding in the org
+curl https://api.hanzo.ai/v1/machines/agents \
+  -H "Authorization: Bearer $HANZO_TOKEN" -H "X-Org-Id: acme-corp"
+
+# Bind — PUT, because re-binding the same agent is the state you asked for,
+# not a second binding
+curl -X PUT https://api.hanzo.ai/v1/machines/web-1/agent \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp" \
+  -H "Content-Type: application/json" \
+  -d '{ "agentName": "support-bot" }'
+
+# Read it
+curl https://api.hanzo.ai/v1/machines/web-1/agent \
+  -H "Authorization: Bearer $HANZO_TOKEN" -H "X-Org-Id: acme-corp"
+
+# Unbind
+curl -X DELETE https://api.hanzo.ai/v1/machines/web-1/agent \
+  -H "Authorization: Bearer $HANZO_TOKEN" -H "X-Org-Id: acme-corp"
+```
+
+**Response** from the collection:
+
+```json
+{
+  "agentBindings": [
+    {
+      "machineId": "drop-a",
+      "agentName": "bot-a",
+      "status": "running",
+      "publicIp": "203.0.113.10"
+    }
+  ]
+}
+```
+
+A machine plus an agent binding, created together, is a **bot** — see
+`/v1/compute/bots`.
+
+## Status
+
+`status` is reported by the provider and passed through; it is not normalized
+into a Hanzo-invented enum. Read it as a string, and treat anything other than
+the value you expect as "not ready yet" rather than switching exhaustively on it.

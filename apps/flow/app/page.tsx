@@ -185,7 +185,7 @@ export default function Page() {
               <pre className="overflow-x-auto p-6 text-sm font-mono leading-relaxed">
                 <code className="text-text-muted">
                   <span className="text-brand">curl</span>
-                  {' https://api.hanzo.ai/v1/flow/run/my-flow \\\n'}
+                  {' https://api.hanzo.ai/v1/flow/runs \\\n'}
                   {'  -H '}
                   <span className="text-green-400">
                     {'"Authorization: Bearer sk-..."'}
@@ -195,7 +195,14 @@ export default function Page() {
                   <span className="text-amber-300">{"'"}</span>
                   {'{\n'}
                   {'    '}
-                  <span className="text-blue-400">{'"input_value"'}</span>
+                  <span className="text-blue-400">{'"workflow"'}</span>
+                  {': '}
+                  <span className="text-green-400">
+                    {'"8f14e45f-..."'}
+                  </span>
+                  {',\n'}
+                  {'    '}
+                  <span className="text-blue-400">{'"input"'}</span>
                   {': '}
                   <span className="text-green-400">
                     {'"Hello, world!"'}

@@ -78,22 +78,25 @@ Build a retrieval-augmented chatbot in minutes:
 ### API Access
 
 ```bash
-# Run a flow
-curl -X POST https://api.hanzo.ai/v1/flow/run/:flow_id \
+# Run a workflow — synchronous, bounded by the product's five-minute ceiling
+curl -X POST https://api.hanzo.ai/v1/flow/runs \
   -H "Authorization: Bearer $HANZO_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "input_value": "What is Hanzo AI?",
-    "output_type": "chat",
-    "input_type": "chat"
+    "workflow": "8f14e45f-ceea-467a-9f5a-1c3d2b7e40aa",
+    "input": "What is Hanzo AI?"
   }'
 
-# List flows
+# List workflows
 curl https://api.hanzo.ai/v1/flow/workflows \
   -H "Authorization: Bearer $HANZO_TOKEN"
 
-# Get flow details
-curl https://api.hanzo.ai/v1/flow/workflows/:flow_id \
+# Get one workflow
+curl https://api.hanzo.ai/v1/flow/workflows/:workflow \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+
+# List past runs
+curl https://api.hanzo.ai/v1/flow/runs \
   -H "Authorization: Bearer $HANZO_TOKEN"
 ```
 

@@ -1,0 +1,312 @@
+---
+title: Clusters API
+description: Managed Kubernetes clusters, attached BYO clusters, and node pools
+---
+
+Two prefixes, one fleet. `/v1/k8s` is the **managed** Kubernetes lifecycle —
+provisioning a cluster on the house account. `/v1/clusters` is the **fleet view**
+that shows managed and bring-your-own clusters together, and where node pools are
+managed.
+
+## Base
+
+```
+https://api.hanzo.ai/v1
+```
+
+Every route is scoped to the caller's org, taken from the validated identity. No
+validated principal is `403`.
+
+## Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/clusters` | The org's whole fleet: managed + BYO |
+| `POST` | `/v1/clusters` | Attach a BYO cluster by kubeconfig |
+| `DELETE` | `/v1/clusters/{id}` | Detach a BYO cluster |
+| `POST` | `/v1/clusters/{clusterId}/pools` | Add a node pool |
+| `POST` | `/v1/clusters/{clusterId}/pools/{poolId}/scale` | Scale a pool |
+| `DELETE` | `/v1/clusters/{clusterId}/pools/{poolId}` | Delete a pool |
+| `GET` | `/v1/k8s/clusters` | Managed clusters |
+| `POST` | `/v1/k8s/clusters` | Provision a managed cluster |
+| `GET` | `/v1/k8s/clusters/{id}` | One managed cluster, with its nodes |
+| `DELETE` | `/v1/k8s/clusters/{id}` | Destroy a managed cluster |
+| `GET` | `/v1/k8s/nodes` | Fleet-wide worker nodes |
+
+<Callout type="warn">
+There is no `PATCH` or `PUT` on this surface, and no cluster-rename endpoint.
+Reads are `GET`, creates and scales are `POST`, removals are `DELETE`; anything
+else answers `404`.
+</Callout>
+
+## List Clusters
+
+`GET /v1/clusters`
+
+```bash
+curl https://api.hanzo.ai/v1/clusters \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp"
+```
+
+**Response:**
+
+```json
+{
+  "clusters": [
+    {
+      "doksClusterId": "cl-1",
+      "name": "prod",
+      "region": "nyc3",
+      "status": "running",
+      "kind": "managed",
+      "nodePools": [
+        { "poolId": "p-1", "name": "gpu", "size": "gpu-h100x8-640gb", "count": 2 }
+      ],
+      "nodeSize": "gpu-h100x8-640gb",
+      "nodeCount": 2
+    }
+  ]
+}
+```
+
+`kind` is `managed` for a provisioned cluster and `byo` for an attached one. The
+authoritative inventory is `nodePools`; `nodeSize` and `nodeCount` are the
+derived display fields the simple list uses.
+
+If a source did not answer, the response carries a `degraded` array naming it —
+so an empty `clusters` means "you have none" **only** when `degraded` is absent.
+A Visor outage costs the managed half only; the BYO half still lists.
+
+## Attach a BYO Cluster
+
+`POST /v1/clusters`
+
+Bring your own cluster by handing over its kubeconfig.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/clusters \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "on-prem-1",
+    "kubeconfig": "apiVersion: v1\nkind: Config\n...",
+    "provider": "on-prem",
+    "default": true
+  }'
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Fleet-local name, lower-cased. The key `DELETE` addresses it by |
+| `kubeconfig` | string | Yes | The cluster's kubeconfig, verbatim. A body without one is not an attach |
+| `provider` | string | No | Free-form label (`gke`, `on-prem`). Display only, never a routing key |
+| `default` | boolean | No | Make this the org's default cluster for scheduling |
+
+## Detach a BYO Cluster
+
+`DELETE /v1/clusters/{id}`
+
+```bash
+curl -X DELETE https://api.hanzo.ai/v1/clusters/on-prem-1 \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp"
+```
+
+**Response:**
+
+```json
+{ "detached": "on-prem-1" }
+```
+
+Detaching forgets the kubeconfig. It destroys nothing — the cluster is yours.
+
+## Provision a Managed Cluster
+
+`POST /v1/k8s/clusters`
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/k8s/clusters \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "prod",
+    "region": "nyc3",
+    "nodePool": { "name": "gpu", "size": "gpu-h100x8-640gb", "count": 2 }
+  }'
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Cluster name |
+| `region` | string | Yes | Provider region slug |
+| `version` | string | No | Kubernetes version slug; empty takes the provider default |
+| `nodePool.name` | string | No | Seed pool name; empty takes the provider default |
+| `nodePool.size` | string | Yes | Provider size slug for each node |
+| `nodePool.count` | number | Yes | Seed node count, at least 1 |
+
+**Response:** `201 Created`
+
+```json
+{
+  "doksClusterId": "cl-1",
+  "doClusterId": "cl-1",
+  "name": "prod",
+  "region": "nyc3",
+  "status": "provisioning",
+  "nodePools": [],
+  "nodeCount": 0,
+  "kind": "managed"
+}
+```
+
+<Callout type="warn">
+Creating and destroying a managed cluster is **admin-gated** — a SuperAdmin, or
+an OrgAdmin of your own org — because it spends real infrastructure on the house
+account. Reads are open to any member of the org.
+</Callout>
+
+Provisioning is asynchronous: the cluster comes back `provisioning` and becomes
+`running` once its nodes are ready.
+
+## Get a Managed Cluster
+
+`GET /v1/k8s/clusters/{id}`
+
+```bash
+curl https://api.hanzo.ai/v1/k8s/clusters/cl-1 \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp"
+```
+
+**Response:**
+
+```json
+{
+  "doksClusterId": "cl-1",
+  "name": "prod",
+  "region": "nyc3",
+  "status": "running",
+  "kind": "managed",
+  "nodePools": [
+    { "poolId": "p-1", "name": "gpu", "size": "gpu-h100x8-640gb", "count": 1 }
+  ],
+  "nodeSize": "gpu-h100x8-640gb",
+  "nodeCount": 1,
+  "nodes": [
+    { "id": "node-1", "name": "node-1", "status": "active" }
+  ]
+}
+```
+
+## Destroy a Managed Cluster
+
+`DELETE /v1/k8s/clusters/{id}`
+
+```bash
+curl -X DELETE https://api.hanzo.ai/v1/k8s/clusters/cl-1 \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp"
+```
+
+Admin-gated, and it destroys the nodes with it.
+
+## Node Pools
+
+A pool, not a node, is the unit of capacity: you add a pool and scale it to an
+absolute count.
+
+### Add a pool
+
+`POST /v1/clusters/{clusterId}/pools`
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/clusters/cl-1/pools \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "provider": "digitalocean",
+    "name": "workers",
+    "size": "s-4vcpu-8gb",
+    "count": 3,
+    "autoScale": true,
+    "minNodes": 3,
+    "maxNodes": 10
+  }'
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `provider` | string | Yes | The cloud the cluster lives on. Accepted in the body or as `?provider=` |
+| `name` | string | No | Pool name |
+| `size` | string | Yes | Provider size slug for each node |
+| `count` | number | Yes | Nodes the pool starts with |
+| `autoScale` | boolean | No | Turn on the provider's cluster autoscaler for this pool |
+| `minNodes`, `maxNodes` | number | No | Autoscaler bounds. Ignored unless `autoScale` is set |
+
+**Response:** `201 Created`, the pool as the provider reports it.
+
+### Scale a pool
+
+`POST /v1/clusters/{clusterId}/pools/{poolId}/scale`
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/clusters/cl-1/pools/p-1/scale \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp" \
+  -H "Content-Type: application/json" \
+  -d '{ "provider": "digitalocean", "count": 4 }'
+```
+
+`count` is the node count to scale **to** — an absolute target, never a delta,
+and never negative.
+
+### Delete a pool
+
+`DELETE /v1/clusters/{clusterId}/pools/{poolId}?provider=digitalocean`
+
+```bash
+curl -X DELETE "https://api.hanzo.ai/v1/clusters/cl-1/pools/p-1?provider=digitalocean" \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp"
+```
+
+<Callout type="warn">
+Deleting a pool removes its nodes. Workloads reschedule onto what is left, so
+confirm the remaining pools have the capacity first.
+</Callout>
+
+## Nodes
+
+`GET /v1/k8s/nodes`
+
+Every worker node across the org's clusters.
+
+```bash
+curl https://api.hanzo.ai/v1/k8s/nodes \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp"
+```
+
+**Response:**
+
+```json
+{
+  "nodes": [
+    {
+      "id": "node-1",
+      "name": "node-1",
+      "region": "nyc3",
+      "type": "s-4vcpu-8gb",
+      "status": "active",
+      "vcpu": 4
+    }
+  ]
+}
+```
+
+These same nodes also appear in [`GET /v1/machines`](/docs/api/vms), which is the
+one inventory of everything the org runs.

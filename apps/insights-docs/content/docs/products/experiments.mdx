@@ -24,11 +24,22 @@ Measure long-term impact by maintaining a permanent holdout group.
 
 ## Statistical Methods
 
-- **Frequentist**: p-values, confidence intervals, Bayesian-adjusted thresholds
-- **Bayesian**: Probability of being best, expected loss
-- **Sequential testing**: Stop early when significance is reached (reduces sample waste)
+`analyze` runs a **two-proportion z-test** against the control arm: each arm comes
+back with its exposed count, conversions, rate, lift versus control, the z
+statistic, a two-tailed p-value, and whether it clears alpha. Alpha defaults to
+0.05 (95% confidence) and is overridable per call.
 
-Hanzo Insights uses a **Bayesian approach by default** with a configurable significance threshold (default: 95%).
+Two properties worth knowing before you read a result:
+
+- Only **exposed** subjects count, and each is joined to its arm by re-evaluating
+  the assignment flag *at analysis time*. Analyze **before** you promote a winner —
+  analyzing afterwards re-buckets everyone into the promoted arm and collapses the
+  control to zero.
+- A degenerate comparison (an empty arm, no variance) answers z 0 and p 1 — not
+  significant, never an error. Arms with no data still appear, with zero exposed.
+
+The `winner` field in the response is **advisory**: the significant, control-beating
+arm with the highest rate, or empty when inconclusive. It promotes nothing.
 
 ## Setting Up an Experiment
 
@@ -42,18 +53,40 @@ Navigate to **Experiments** → **New Experiment**:
 
 ### 2. Create via API
 
+Experiments live on the unified `api.hanzo.ai/v1` plane. Your org and project come
+from the validated key — they are never body fields, so an experiment can only ever
+be filed under your own tenant.
+
 ```bash
-curl -X POST https://app.insights.hanzo.ai/api/projects/{project_id}/experiments/ \
-  -H "Authorization: Bearer $PERSONAL_API_KEY" \
+curl -X POST https://api.hanzo.ai/v1/experiments \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
+    "id": "checkout-button-color",
     "name": "Checkout Button Color Test",
-    "description": "Test green vs blue checkout button",
-    "feature_flag_key": "checkout-button-color",
-    "filters": {},
-    "metrics": [{"id": "purchase_completed", "type": "primary"}]
+    "metricEvent": "purchase_completed",
+    "subjectKind": "user",
+    "variants": [
+      {"key": "control", "weight": 50, "control": true, "payload": {"color": "blue"}},
+      {"key": "test",    "weight": 50, "payload": {"color": "green"}}
+    ]
   }'
 ```
+
+Creating **is** starting: the assignment flag is written live at 100% rollout with
+each variant weighted as declared, so the arms bucket subjects the moment this
+returns 201. `flagKey` defaults to `exp_<id>`; `exposureEvent` defaults to the SDK's
+`$feature_flag_called` marker. Weights that are all zero become an even split;
+otherwise they must sum to 100.
+
+| Task | Call |
+|------|------|
+| Create an experiment (and start it) | `POST /v1/experiments` |
+| List your org's experiments | `GET /v1/experiments` |
+| Read one experiment | `GET /v1/experiments/{id}` |
+| Which arm a subject is in | `GET /v1/experiments/{id}/assign?subject=user_123` |
+| Conversion, lift and significance | `POST /v1/experiments/{id}/analyze` |
+| Promote the winner to 100% | `POST /v1/experiments/{id}/decide` |
 
 ### 3. Integrate in Code
 
@@ -82,11 +115,18 @@ The experiment dashboard shows:
 ## Stopping an Experiment
 
 Stop when:
-1. Statistical significance is reached (green indicator)
+1. The leading arm's p-value clears alpha (green indicator)
 2. You've reached your minimum sample size
-3. A winner is declared with >95% probability
 
-**Ship the winner**: One-click to update the feature flag to 100% rollout.
+**Ship the winner**: one click in the dashboard, or `POST
+/v1/experiments/{id}/decide` with `{"winner": "test"}`. Either rewrites the
+assignment flag so that arm serves 100% and every other arm 0%, and stamps who
+decided. It takes effect immediately, and it needs an **org admin** — a stricter
+gate than the rest of the surface, because promoting is a flag write.
+
+Deciding is not terminal: a second call re-promotes a different arm. Nothing here
+restores the original split — that means writing the flag definition back through
+the flags plane.
 
 ## Self-Hosting Notes
 

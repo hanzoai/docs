@@ -9,12 +9,13 @@ Hanzo IAM can act as a **SAML 2.0 IdP**. This page covers SP configuration, Hanz
 
 The SP typically needs **Single Sign-On URL**, **Issuer**, and **Public Certificate**. Most SPs can fill these from the Hanzo IAM **XML Metadata URL** or by uploading the metadata file.
 
-Hanzo IAM metadata URL format: `<iam-endpoint>/api/saml/metadata?application=admin/<application-name>`
+Hanzo IAM metadata URL format: `<iam-endpoint>/v1/iam/saml/metadata?application=admin/<application-name>`
 
 Example: if Hanzo IAM is at `https://iam.hanzo.ai` and the application is `app-built-in`:
 
 ```text
-https://iam.hanzo.ai/api/saml/metadata?application=admin/app-built-in
+https://iam.hanzo.ai/v1/iam/saml/metadata?application=admin/app-built-in
+```
 
 The metadata URL is also on the application edit page; copy it and open in a browser to download the XML.
 
@@ -24,7 +25,7 @@ The metadata URL is also on the application edit page; copy it and open in a bro
 
 Hanzo IAM supports both GET and POST `SAMLResponse`. Configure the application in Hanzo IAM to match the `SAMLResponse` binding (GET or POST) that your SP supports.
 
-When integrating Hanzo IAM as a SAML IdP with external identity providers (like Azure AD), the `/api/acs` endpoint receives SAML responses. This endpoint is configured to accept cross-origin POST requests, allowing IdPs from different domains to send authentication data.
+When integrating Hanzo IAM as a SAML IdP with external identity providers (like Azure AD), the `/v1/iam/acs` endpoint receives SAML responses. It accepts **POST only**, and is configured to accept cross-origin POST requests so IdPs on other domains can post authentication data to it.
 
 :::info
 
@@ -111,7 +112,7 @@ import (
 )
 
 func main() {
-    res, err := http.Get("http://localhost:7001/api/saml/metadata?application=admin/app-built-in")
+    res, err := http.Get("http://localhost:7001/v1/iam/saml/metadata?application=admin/app-built-in")
     if err != nil {
         panic(err)
     }

@@ -82,13 +82,20 @@ An Admin cannot promote a member to Owner or demote an existing Owner. Only Owne
 
 ## Role via API
 
+A role belongs to a **membership**, not to a user — the same person can hold a
+different role in every organization they belong to — so the write addresses
+`memberId`. Every write on this surface is a `POST`; there is no `PATCH`.
+
 ```bash
 # Update a member's role
-curl -X PATCH https://app.platform.hanzo.ai/api/orgTeam.update \
+curl -X POST https://api.hanzo.ai/v1/iam/update-role \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "userId": "user_abc123",
+    "memberId": "mem_abc123",
     "role": "developer"
   }'
 ```
+
+Owner is nontransferable here: the call refuses any change into or out of Owner,
+and refuses to change your own role. Transfer ownership from the dashboard.
