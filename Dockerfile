@@ -112,7 +112,14 @@ RUN pnpm install --frozen-lockfile \
 # names the sections this app must not silently lose.
 RUN sh scripts/check-export.sh "apps/${APP}/out"
 
-FROM ghcr.io/hanzoai/static:v0.5.1
+# v0.5.1 had no content-encoding path at all, so this site shipped every byte
+# identity-encoded: 1,527,061 bytes of HTML on the index alone, a 454 KB
+# sitemap and a 1 MB RSC prefetch, on every cold load, for a document that is
+# ~14% entropy. hanzoai/static gained gzip in 900bccf and released it as
+# v0.5.6. Measured by running the v0.5.6 binary over this site's own index:
+# 1,527,061 -> 213,911 bytes with Vary: Accept-Encoding, the PNG untouched,
+# and Accept-Encoding: gzip;q=0 correctly served identity.
+FROM ghcr.io/hanzoai/static:v0.5.6
 # Re-declared: an ARG is scoped to the stage that names it.
 ARG APP=docs
 COPY --from=build /src/apps/${APP}/out /public
