@@ -1,41 +1,87 @@
 ---
 title: Authentication
-description: OAuth2 via Hanzo ID, API tokens, and bearer authentication
+description: OAuth2 via Hanzo ID, IAM API keys, and bearer authentication
 ---
 
-All API requests to Hanzo Platform require authentication. The platform supports OAuth2 via Hanzo ID and long-lived API tokens.
+Every call to `https://api.hanzo.ai/v1` carries a bearer token. There are two
+ways to get one, and they differ in who holds them, not in how they travel.
 
-## Authentication Methods
+| Credential | Issued by | Lifetime | Use |
+|------------|-----------|----------|-----|
+| **OAuth2 access token** | Hanzo ID (`hanzo.id`) | Short; refreshable | Dashboards, user-facing apps |
+| **IAM API key** | `POST /v1/iam/keys` | Until deleted | CI/CD, scripts, server-to-server |
 
-| Method | Lifetime | Use Case |
-|--------|----------|----------|
-| **OAuth2 Access Token** | 1 hour | Dashboard sessions, user-facing apps |
-| **API Token** | Until revoked | CI/CD, scripts, server-to-server |
+Both go in the same header:
 
-Both methods use the same `Authorization: Bearer <token>` header.
+```
+Authorization: Bearer <token>
+```
+
+## Identity carries the org
+
+The platform, compute, and IAM surfaces are all per-organization. The org is
+taken from the **validated** identity, never from a bare header: a request with
+no verified bearer is refused even if it sets `X-Org-Id`, because trusting the
+header alone would let an unauthenticated caller deploy into someone else's
+tenant.
+
+```bash
+curl https://api.hanzo.ai/v1/platform/projects \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "X-Org-Id: acme-corp"
+```
+
+With a valid bearer, `X-Org-Id` selects which of your orgs the call acts as; a
+token bound to exactly one org does not need it.
 
 ## OAuth2 via Hanzo ID
 
-Hanzo Platform uses [Hanzo ID](https://hanzo.id) as its identity provider. The OAuth2 Authorization Code flow is used for user authentication.
+[Hanzo ID](https://hanzo.id) is the identity provider. Do not hard-code its
+endpoints — read them from the discovery document, which is the authority:
 
-### Authorization Code Flow
+```bash
+curl https://api.hanzo.ai/.well-known/openid-configuration
+```
+
+It publishes, today:
+
+| Endpoint | URL |
+|----------|-----|
+| `issuer` | `https://hanzo.id` |
+| `authorization_endpoint` | `https://hanzo.id/v1/iam/oauth/authorize` |
+| `token_endpoint` | `https://hanzo.id/v1/iam/oauth/token` |
+| `userinfo_endpoint` | `https://hanzo.id/v1/iam/oauth/userinfo` |
+| `jwks_uri` | `https://hanzo.id/v1/iam/.well-known/jwks` |
+| `revocation_endpoint` | `https://hanzo.id/v1/iam/oauth/revoke` |
+| `introspection_endpoint` | `https://hanzo.id/v1/iam/oauth/introspect` |
+| `end_session_endpoint` | `https://hanzo.id/v1/iam/oauth/logout` |
+
+Supported grants: `authorization_code`, `refresh_token`, `client_credentials`,
+`password`, `urn:ietf:params:oauth:grant-type:token-exchange`, and
+`urn:ietf:params:oauth:grant-type:device_code`. The only response type is
+`code`; PKCE is `S256`. Scopes are `openid`, `email`, `profile`, `address`,
+`phone`, `offline_access`.
+
+### Authorization Code flow
 
 <Steps>
 
 ### Redirect to Hanzo ID
 
 ```
-https://hanzo.id/oauth/authorize?
+https://hanzo.id/v1/iam/oauth/authorize?
   client_id=YOUR_CLIENT_ID&
   redirect_uri=https://yourapp.com/callback&
   response_type=code&
-  scope=openid profile email&
+  scope=openid profile email offline_access&
+  code_challenge=BASE64URL_S256_OF_VERIFIER&
+  code_challenge_method=S256&
   state=RANDOM_STATE
 ```
 
 ### User authenticates
 
-The user logs in at Hanzo ID and approves access.
+The user signs in at Hanzo ID and approves access.
 
 ### Handle the callback
 
@@ -45,18 +91,17 @@ Hanzo ID redirects to your `redirect_uri` with an authorization code:
 https://yourapp.com/callback?code=AUTH_CODE&state=RANDOM_STATE
 ```
 
-### Exchange code for tokens
+### Exchange the code for tokens
 
 ```bash
-curl -X POST https://hanzo.id/oauth/token \
-  -H "Content-Type: application/json" \
-  -d '{
-    "client_id": "YOUR_CLIENT_ID",
-    "client_secret": "YOUR_CLIENT_SECRET",
-    "code": "AUTH_CODE",
-    "redirect_uri": "https://yourapp.com/callback",
-    "grant_type": "authorization_code"
-  }'
+curl -X POST https://hanzo.id/v1/iam/oauth/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d grant_type=authorization_code \
+  -d client_id=YOUR_CLIENT_ID \
+  -d client_secret=YOUR_CLIENT_SECRET \
+  -d code=AUTH_CODE \
+  -d code_verifier=YOUR_PKCE_VERIFIER \
+  -d redirect_uri=https://yourapp.com/callback
 ```
 
 **Response:**
@@ -72,89 +117,149 @@ curl -X POST https://hanzo.id/oauth/token \
 
 </Steps>
 
-### Refreshing Tokens
-
-Access tokens expire after 1 hour. Use the refresh token to obtain a new access token:
-
-```bash
-curl -X POST https://hanzo.id/oauth/token \
-  -H "Content-Type: application/json" \
-  -d '{
-    "client_id": "YOUR_CLIENT_ID",
-    "client_secret": "YOUR_CLIENT_SECRET",
-    "refresh_token": "YOUR_REFRESH_TOKEN",
-    "grant_type": "refresh_token"
-  }'
-```
-
-## API Tokens
-
-API tokens are long-lived credentials for programmatic access. They do not expire unless revoked.
-
-### Creating a Token
-
-<Tabs items={["Dashboard", "CLI"]}>
-  <Tab value="Dashboard">
-    Go to **Settings > API Tokens > Create Token**. Name the token and select its scope. The token is shown once -- copy it immediately.
-  </Tab>
-  <Tab value="CLI">
-    ```bash
-    hanzo token create --name "CI Pipeline" --scope "deploy:*"
-    # Output: tk_abc123def456...
-    ```
-  </Tab>
-</Tabs>
-
 <Callout type="warn">
-API tokens are shown only once at creation time. Store them securely. If lost, revoke the old token and create a new one.
+The token endpoint is **form-encoded**, per RFC 6749. A JSON body is not parsed:
+it answers `400 {"error":"invalid_request","error_description":"grant_type is
+required"}` even when the JSON does carry a `grant_type`.
 </Callout>
 
-### Using a Token
+### Refreshing a token
 
 ```bash
-curl https://app.platform.hanzo.ai/api/cluster.all \
-  -H "Authorization: Bearer tk_abc123def456"
+curl -X POST https://hanzo.id/v1/iam/oauth/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d grant_type=refresh_token \
+  -d client_id=YOUR_CLIENT_ID \
+  -d client_secret=YOUR_CLIENT_SECRET \
+  -d refresh_token=YOUR_REFRESH_TOKEN
 ```
 
-### Revoking a Token
+### Machine clients
+
+A backend with no user in the loop uses `client_credentials`:
 
 ```bash
-# Via CLI
-hanzo token revoke tk_abc123def456
-
-# Via API
-curl -X POST https://app.platform.hanzo.ai/api/user.revokeToken \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{ "tokenId": "tk_abc123def456" }'
+curl -X POST https://hanzo.id/v1/iam/oauth/token \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d grant_type=client_credentials \
+  -d client_id=YOUR_CLIENT_ID \
+  -d client_secret=YOUR_CLIENT_SECRET
 ```
 
-## Token Scopes
-
-Tokens can be scoped to limit access:
-
-| Scope | Access |
-|-------|--------|
-| `*` | Full access (default) |
-| `read:*` | Read-only across all resources |
-| `deploy:*` | Deploy to any cluster |
-| `deploy:cluster_abc` | Deploy to a specific cluster |
-| `admin:*` | Administrative operations |
-
-## Request Examples
+### Revoking
 
 ```bash
-# List organizations
-curl https://app.platform.hanzo.ai/v1/organization.all \
-  -H "Authorization: Bearer YOUR_TOKEN"
+curl -X POST https://hanzo.id/v1/iam/oauth/revoke \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d token=THE_TOKEN \
+  -d client_id=YOUR_CLIENT_ID \
+  -d client_secret=YOUR_CLIENT_SECRET
+```
 
-# Create a container
-curl -X POST https://app.platform.hanzo.ai/api/container.create \
-  -H "Authorization: Bearer YOUR_TOKEN" \
+## IAM API keys
+
+An API key is a long-lived credential minted by IAM. It has two halves: a
+publishable `pk-…` access key, and a confidential `sk-…` secret.
+
+| Operation | Request |
+|-----------|---------|
+| Create | `POST /v1/iam/keys` |
+| List | `GET /v1/iam/keys` |
+| Read one | `GET /v1/iam/keys/get` |
+| Rename / retarget | `POST /v1/iam/keys/update` |
+| Delete | `POST /v1/iam/keys/delete` |
+
+Reads are `GET` and writes are `POST` — there is no `PATCH`, `PUT`, or `DELETE`
+verb on this surface, and sending one gets a `404`.
+
+### Creating a key
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/iam/keys \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "web",
-    "image": "ghcr.io/myorg/myapp:latest",
-    "clusterId": "cluster_abc123"
+    "owner": "acme-corp",
+    "name": "ci-pipeline",
+    "displayName": "CI Pipeline",
+    "type": "Organization",
+    "organization": "acme-corp"
   }'
 ```
+
+**Response:**
+
+```json
+{
+  "owner": "acme-corp",
+  "name": "ci-pipeline",
+  "displayName": "CI Pipeline",
+  "type": "Organization",
+  "organization": "acme-corp",
+  "accessKey": "pk-...",
+  "accessSecret": "sk-...",
+  "state": "Active",
+  "createdTime": "2026-02-26T10:00:00Z"
+}
+```
+
+<Callout type="warn">
+`accessSecret` is returned **once**, at creation. Later reads mask it. Store it
+immediately; if you lose it, delete the key and mint a new one.
+</Callout>
+
+`(owner, name)` is the key's identity, so a name already in use is refused `409`
+rather than silently reissued — creating twice can never invalidate a key that is
+in production.
+
+### What a key is bound to
+
+Two orthogonal fields, both set at creation:
+
+| Field | Meaning |
+|-------|---------|
+| `type` | The principal the key acts as: `Organization`, `Application`, `User`, or `General` |
+| `scope` | The access class. Omitted (the default) mints a full key — a `pk-` half and a confidential `sk-` half. `"publish"` mints a **write-only publishable key**: a `pk-` half only, resolving to an org and never to a principal, so it is safe to ship in client JavaScript. |
+
+`scope` is fixed when the key is minted. An update can change what a key is
+called or what it points at, but never flips a secret key to publish scope, and
+never attaches a secret to a publishable one.
+
+### Listing and deleting
+
+```bash
+# List the org's keys (secrets masked)
+curl "https://api.hanzo.ai/v1/iam/keys?owner=acme-corp" \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+
+# Read one
+curl "https://api.hanzo.ai/v1/iam/keys/get?owner=acme-corp&name=ci-pipeline" \
+  -H "Authorization: Bearer $HANZO_TOKEN"
+
+# Delete
+curl -X POST https://api.hanzo.ai/v1/iam/keys/delete \
+  -H "Authorization: Bearer $HANZO_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{ "owner": "acme-corp", "name": "ci-pipeline" }'
+```
+
+## From the CLI
+
+```bash
+hanzo login          # browser sign-in against Hanzo ID
+hanzo auth token     # print the active access token, for piping into curl
+hanzo auth list      # stored identities, active one marked
+```
+
+```bash
+curl https://api.hanzo.ai/v1/platform/projects \
+  -H "Authorization: Bearer $(hanzo auth token)"
+```
+
+## Reading a refusal
+
+| Status | Meaning |
+|--------|---------|
+| `401` | No token, or a token IAM could not validate |
+| `403` | Validated, but no organization resolved — send `X-Org-Id`, or use a token bound to one org |
+| `404` | The path or the method is not served. Check the verb before assuming the resource is gone |

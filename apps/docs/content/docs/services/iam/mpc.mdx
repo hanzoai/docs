@@ -237,74 +237,40 @@ await session.signMessage('Hello')
 
 ## Integration with IAM
 
-MPC keys can be linked to IAM accounts:
+<Callout type="warn">
+Hanzo IAM has **no MPC endpoint**. There is nothing to link an MPC key to an IAM
+account with: the IAM route surface is OIDC/OAuth (`/v1/iam/oauth/*`), SCIM
+(`/v1/iam/scim/v2/*`), the entity CRUD, and native wallet sign-in
+(`/v1/iam/web3/nonce` + `/v1/iam/web3/verify`) — and no MPC route among them.
+</Callout>
+
+If what you want is **wallet-based sign-in**, that already exists and is not
+MPC-specific. IAM implements CAIP-122 / EIP-4361 (Sign-In with Ethereum): the
+server issues a single-use nonce and the exact message to sign, the client
+returns the signature, and IAM recovers the signer itself — never trusting a
+client-supplied address — and hands back a PKCE-bound authorization code.
 
 ```typescript
-// Link MPC key to IAM user
-await fetch('https://iam.hanzo.ai/api/link-mpc', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${accessToken}`,
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    publicKey: mpc.publicKey,
-    keyType: 'secp256k1',
-    scheme: '2-of-2'
-  })
-})
-
-// Now user can authenticate with MPC
-const authResult = await mpc.authenticate({
-  challenge: await getAuthChallenge()
-})
+// GET  /v1/iam/web3/nonce   → server-owned nonce + the exact message to sign
+// POST /v1/iam/web3/verify  → signature in, PKCE-bound authorization `code` out
 ```
 
-## API Reference
+Any key that can produce that signature works, MPC-backed or not. Use
+`@hanzo/iam`, which owns the paths and the PKCE exchange, rather than calling
+these by hand. See [Web3 authentication](/docs/services/web3).
 
-### POST /api/mpc/generate
+## Signing service
 
-Generate new MPC key pair.
-
-```bash
-curl -X POST https://kms.hanzo.ai/api/mpc/generate \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "userId": "user-123",
-    "keyType": "secp256k1",
-    "scheme": "2-of-2"
-  }'
-```
-
-### POST /api/mpc/sign
-
-Request MPC signature.
-
-```bash
-curl -X POST https://kms.hanzo.ai/api/mpc/sign \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "deviceShare": "...",
-    "messageHash": "0x...",
-    "keyId": "key-123"
-  }'
-```
-
-### POST /api/mpc/recover
-
-Initiate key recovery.
-
-```bash
-curl -X POST https://kms.hanzo.ai/api/mpc/recover \
-  -H "Content-Type: application/json" \
-  -d '{
-    "userId": "user-123",
-    "email": "user@example.com",
-    "recoveryMethod": "social"
-  }'
-```
+<Callout type="warn">
+There is **no public MPC HTTP API**. `kms.hanzo.ai` serves `/v1/kms/*` —
+`/v1/kms/secrets`, `/v1/kms/config`, `/v1/kms/orgs/…` — and nothing under
+`/v1/kms/mpc`. Signing is MPC-backed *internally*: the KMS talks to the MPC
+daemon over its own RPC, addressed by `CLOUD_KMS_MPC_ADDR` /
+`CLOUD_KMS_MPC_VAULT_ID`. Where that daemon is not reachable, signing fails
+closed with an explicit error — a signature is never fabricated. The
+`HanzoMPC` client shown above is the supported surface; the transport under it
+is not a documented endpoint.
+</Callout>
 
 ## Best Practices
 
