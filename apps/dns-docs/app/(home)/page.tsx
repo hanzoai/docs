@@ -93,7 +93,7 @@ export default function Page() {
                 <span className="text-xs text-fd-muted-foreground ml-2">terminal</span>
               </div>
               <pre className="p-4 text-sm overflow-x-auto font-mono">
-                <code>{`$ curl -X POST https://dns.hanzo.ai/api/v1/sync \\
+                <code>{`$ curl -X POST https://dns.hanzo.ai/v1/dns/sync \\
     -H "Authorization: Bearer $TOKEN" \\
     -d '{
       "zones": [{
