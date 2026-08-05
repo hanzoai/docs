@@ -1,8 +1,6 @@
 import Link from 'next/link';
 import { blog } from '@/lib/source';
 import { PathUtils } from '@hanzo/docs/core/source';
-import BannerImage from './banner.png';
-import Image from 'next/image';
 
 // Blog frontmatter type (matches source.config.ts schema)
 interface BlogData {
@@ -25,12 +23,18 @@ export default function Page() {
 
   return (
     <main className="mx-auto w-full max-w-page px-4 pb-12 md:py-12">
-      <div className="relative dark mb-4 aspect-[3.2] p-8 z-2 md:p-12">
-        <Image
-          src={BannerImage}
-          priority
-          alt="banner"
-          className="absolute inset-0 size-full -z-1 object-cover"
+      {/* The backdrop is the brand's own architectural grid — @hanzo/brand's
+          hero treatment, drawn in CSS. It replaced 2.2 MB of upstream orange
+          gradient art that came through the fork and matched no Hanzo palette. */}
+      <div className="relative dark mb-2 overflow-hidden rounded-2xl border border-fd-border bg-fd-card p-8 z-2 md:p-12">
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-1"
+          style={{
+            backgroundImage:
+              'linear-gradient(to right, rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.07) 1px, transparent 1px)',
+            backgroundSize: '50px 50px',
+          }}
         />
         <h1 className="mb-4 text-3xl text-landing-foreground font-mono font-medium">
           Hanzo Docs Blog

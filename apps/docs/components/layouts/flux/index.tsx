@@ -20,7 +20,7 @@ export function FluxLayout({ children }: { children: ReactNode }) {
         title: (
           <>
             {logo}
-            <span className="font-medium in-[.uwu]:hidden max-md:hidden">Hanzo Docs</span>
+            <span className="font-medium max-md:hidden">Hanzo Docs</span>
           </>
         ),
       }}

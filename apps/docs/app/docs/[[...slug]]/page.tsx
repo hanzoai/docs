@@ -4,7 +4,7 @@ import * as Twoslash from '@hanzo/docs-twoslash/ui';
 import { Callout } from '@hanzo/docs-base-ui/components/callout';
 import { TypeTable } from '@hanzo/docs-base-ui/components/type-table';
 import * as Preview from '@/components/preview';
-import { createMetadata, getPageImage } from '@/lib/metadata';
+import { createMetadata } from '@/lib/metadata';
 import { source } from '@/lib/source';
 import { Wrapper } from '@/components/preview/wrapper';
 import { Mermaid } from '@/components/mdx/mermaid';
@@ -177,21 +177,11 @@ export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): P
 
   const description = page.data.description ?? 'Hanzo AI Cloud documentation';
 
-  const image = {
-    url: getPageImage(page).url,
-    width: 1200,
-    height: 630,
-  };
-
   return createMetadata({
     title: page.data.title,
     description,
     openGraph: {
       url: `/docs/${page.slugs.join('/')}`,
-      images: [image],
-    },
-    twitter: {
-      images: [image],
     },
   });
 }
