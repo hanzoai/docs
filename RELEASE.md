@@ -218,7 +218,7 @@ unit does **not** require converting — a mirror with the unit builds on sync.
 **Credentials, org secrets on `hanzo-docs`:** `REGISTRY_TOKEN` (GHCR write on the
 `hanzoai` org) and `KMS_CLIENT_ID` / `KMS_CLIENT_SECRET`, which the build
 exchanges for the ingest key at run time. The ingest key itself is **not** a
-forge secret and must not become one — it lives in KMS at `deploy/EVENT_INGEST_KEY`
+forge secret and must not become one — it lives in KMS at `deploy/PUBLISHABLE_KEY`
 and the build reads it there. **Tag: the full 40-char SHA** — this lane and lane 1
 are the two that speak the shape universe already pins.
 

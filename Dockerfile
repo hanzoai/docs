@@ -57,18 +57,18 @@ ARG APP=docs
 # of six lanes, and the lane that produced the last live image was not that one,
 # so the guard never fired and the bundle shipped keyless.
 #
-# EVENT_INGEST_KEY is the name in KMS and on the --build-arg; NEXT_PUBLIC_ is
+# PUBLISHABLE_KEY is the name in KMS and on the --build-arg; NEXT_PUBLIC_ is
 # added here because that prefix is what makes Next inline it.
 #
 # Fail closed: an empty key builds, serves and looks correct while cloud files
 # every pageview under $public, which this org cannot read, and ingest answers
 # 200 either way. Refuse the artifact instead.
-ARG EVENT_INGEST_KEY=
-ENV NEXT_PUBLIC_EVENT_INGEST_KEY=$EVENT_INGEST_KEY
-RUN case "$EVENT_INGEST_KEY" in \
+ARG PUBLISHABLE_KEY=
+ENV NEXT_PUBLIC_PUBLISHABLE_KEY=$PUBLISHABLE_KEY
+RUN case "$PUBLISHABLE_KEY" in \
       pk-*) : ;; \
-      '')   echo "EVENT_INGEST_KEY is empty - pass --build-arg EVENT_INGEST_KEY=<pk-...> (KMS deploy/EVENT_INGEST_KEY, env prod)" >&2; exit 1 ;; \
-      *)    echo "EVENT_INGEST_KEY is not a publishable key (expected a pk- prefix)" >&2; exit 1 ;; \
+      '')   echo "PUBLISHABLE_KEY is empty - pass --build-arg PUBLISHABLE_KEY=<pk-...> (KMS deploy/PUBLISHABLE_KEY, env prod)" >&2; exit 1 ;; \
+      *)    echo "PUBLISHABLE_KEY is not a publishable key (expected a pk- prefix)" >&2; exit 1 ;; \
     esac
 # Install, build, and drop every intermediate IN ONE LAYER. Only `out/` survives.
 #
