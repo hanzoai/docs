@@ -36,7 +36,6 @@ export type Translations = {
   pageActionsOpen: string;
   pageActionsOpenGitHub: string;
   pageActionsViewMarkdown: string;
-  pageActionsOpenScira: string;
   pageActionsOpenChatGPT: string;
   pageActionsOpenClaude: string;
   pageActionsOpenCursor: string;
@@ -81,13 +80,13 @@ export const defaultTranslations: Translations = {
   pageActionsOpen: 'Open',
   pageActionsOpenGitHub: 'Open in GitHub',
   pageActionsViewMarkdown: 'View as Markdown',
-  pageActionsOpenScira: 'Open in Scira AI',
   pageActionsOpenChatGPT: 'Open in ChatGPT',
   pageActionsOpenClaude: 'Open in Claude',
   pageActionsOpenCursor: 'Open in Cursor',
   pageActionsOpenEnso: 'Edit with Enso',
   pageActionsOpenInLLMPrompt: 'Read {url}, I want to ask questions about it.',
-  pageActionsEditInLLMPrompt: 'Read {url}. I want to edit this page — propose concrete improvements and draft the revised text.',
+  pageActionsEditInLLMPrompt:
+    'Read {url}. I want to edit this page — propose concrete improvements and draft the revised text.',
   bannerClose: 'Close Banner',
   searchOpen: 'Open Search',
   searchClose: 'Close Search',

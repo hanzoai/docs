@@ -38,7 +38,6 @@ const ui = {
   pageActionsOpen: '開啟',
   pageActionsOpenGitHub: '在 GitHub 中開啟',
   pageActionsViewMarkdown: '以 Markdown 檢視',
-  pageActionsOpenScira: '在 Scira AI 中開啟',
   pageActionsOpenChatGPT: '在 ChatGPT 中開啟',
   pageActionsOpenClaude: '在 Claude 中開啟',
   pageActionsOpenCursor: '在 Cursor 中開啟',
