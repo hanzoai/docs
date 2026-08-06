@@ -71,7 +71,11 @@ export interface Document {
   description: string;
   server: string;
   securitySchemes: Record<string, any>;
+  /** Products docs.hanzo.ai publishes. Excludes `internal` — see isInternal. */
   products: Product[];
+  /** The operator surface, grouped the same way. Never published publicly. */
+  internal: Product[];
+  /** EVERY operation the document serves, internal ones included. */
   operations: Operation[];
   byId: Map<string, Operation>;
   /** Operations whose product could not be resolved from the document. */
@@ -79,6 +83,64 @@ export interface Document {
   /** Products with operations but no declared tag — nothing to write an intro from. */
   undeclared: Set<string>;
   raw: any;
+}
+
+/**
+ * The operator surface: what a public docs site does not publish.
+ *
+ * The document declares one `admin` tag, and tag, product and `/v1/admin` path
+ * prefix select the SAME 86 operations — so there is no heuristic here and no
+ * substring matching. The product IS the predicate.
+ *
+ * One operation outside that product belongs with it, and it is named rather
+ * than matched. `GET /v1/commerce/admin/catalog` is the catalogue projection
+ * carrying upstream cost and margin, and its own description says PLATFORM
+ * admin only: an org-level admin is refused 403 precisely so those economics
+ * stay in. The tempting rule — hide any path containing `admin` — would also
+ * have hidden `/v1/iam/admin/applications/upsert`, `/v1/iam/admin/provision`
+ * and `/v1/iam/admin/users/upsert`, which are the ORG administrator's own API:
+ * their prose is written in the second person ("a deployment can declare the
+ * applications it needs", "driven by one of your own services"), they are how a
+ * customer provisions declaratively, and they are customer-facing by design.
+ * Hiding a customer's provisioning API to hide one margin report is a worse
+ * error than the one being fixed.
+ *
+ * The real fix is upstream: an `x-internal` marker on the Go op would carry
+ * this decision in the same place the endpoint is written. The document has no
+ * such marker today — its only extension is `x-app`, on all 2305 operations —
+ * so until it does, the one exception is spelled out here with its reason.
+ */
+const INTERNAL_PRODUCT = 'admin';
+const INTERNAL_IDS = new Set(['get_v1_commerce_admin_catalog']);
+
+export const isInternal = (op: Operation): boolean =>
+  op.product === INTERNAL_PRODUCT || INTERNAL_IDS.has(op.id);
+
+/**
+ * The document with the operator surface taken out, for publishing.
+ *
+ * `public/openapi/hanzo.yaml` ships in the static export and is what the
+ * interactive reference at /reference renders, so filtering the generated pages
+ * while copying the document whole would have left all 86 operations one URL
+ * away — the pages hidden and the surface still public.
+ */
+export function publicDocument(doc: Document): any {
+  const raw = structuredClone(doc.raw);
+  const hidden = new Set(doc.internal.flatMap((p) => p.operations).map((o) => `${o.method} ${o.path}`));
+  for (const [path, item] of Object.entries<any>(raw.paths ?? {})) {
+    for (const method of METHODS) {
+      if (item?.[method] && hidden.has(`${method} ${path}`)) delete item[method];
+    }
+    if (!METHODS.some((m) => item?.[m])) delete raw.paths[path];
+  }
+  // Only a product with nothing left to publish loses its tag. `commerce` has
+  // one internal operation and 40-odd public ones, so its synopsis stays.
+  const published = new Set(doc.products.map((p) => p.name));
+  const gone = new Set(doc.internal.map((p) => p.name).filter((n) => !published.has(n)));
+  if (Array.isArray(raw.tags)) {
+    raw.tags = raw.tags.filter((t: any) => !gone.has(squash(String(t?.name ?? ''))));
+  }
+  return raw;
 }
 
 /** Resolve a `$ref` against the document. Non-refs pass through. */
@@ -247,6 +309,13 @@ export function loadDocument(file: string): Document {
   const order = (o: Operation) => `${o.tag} ${o.path} ${METHODS.indexOf(o.method)}`;
   for (const p of byName.values()) p.operations.sort((a, b) => order(a).localeCompare(order(b)));
 
+  /** The products, carrying only the operations that satisfy `keep`. */
+  const group = (keep: (o: Operation) => boolean): Product[] =>
+    [...byName.values()]
+      .map((p) => ({ ...p, operations: p.operations.filter(keep) }))
+      .filter((p) => p.operations.length > 0)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
   const info = raw.info ?? {};
   return {
     title: String(info.title ?? 'Hanzo API'),
@@ -256,9 +325,13 @@ export function loadDocument(file: string): Document {
     securitySchemes: raw.components?.securitySchemes ?? {},
     // Only products the document actually serves operations for. A tag with no
     // operations is not a product page — it is a tag we have not filled in yet.
-    products: [...byName.values()]
-      .filter((p) => p.operations.length > 0)
-      .sort((a, b) => a.name.localeCompare(b.name)),
+    //
+    // The same grouping, read twice through one predicate: what a public site
+    // publishes, and what it does not. `operations`, `byId` and `raw` stay
+    // COMPLETE — an operation being unpublishable is not the same as it not
+    // existing, and check-endpoints validates authored prose against `raw`.
+    products: group((o) => !isInternal(o)),
+    internal: group(isInternal),
     operations,
     byId,
     unresolved,

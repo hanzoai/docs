@@ -2,7 +2,14 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadDocument, type Document, type Operation, type Product } from './openapi-doc';
+import { stringify as stringifyYaml } from 'yaml';
+import {
+  loadDocument,
+  publicDocument,
+  type Document,
+  type Operation,
+  type Product,
+} from './openapi-doc';
 import { code, firstSentence, prose, text, yamlString } from './mdx';
 
 // The API reference, generated from THE document.
@@ -24,6 +31,20 @@ const DOCUMENT = path.join(APP_ROOT, 'openapi-specs/hanzo.yaml');
 const OUT_DIR = path.join(APP_ROOT, 'content/docs/openapi');
 const SERVICES_DIR = path.join(APP_ROOT, 'content/docs/services');
 const PUBLIC_COPY = path.join(APP_ROOT, 'public/openapi/hanzo.yaml');
+
+// Where the operator surface is rendered, and why it is not a repo.
+//
+// z asked for these 84 paths to live in hanzo-inc/docs at docs.admin.hanzo.ai.
+// That repo does not exist — hanzo-inc has 373 of them and none is `docs`
+// (`docs-template` and `hips-docs` do exist, so this is an absence, not a
+// permissions answer) — and inventing one is not this build's call to make.
+//
+// It cannot go anywhere under `content/`, because everything there is routed
+// and hanzo-docs/docs is a PUBLIC repository: committing the pages here would
+// move the leak rather than close it. So the pages are BUILT and gitignored —
+// real output a private site can be pointed at the day it has a home, and
+// nothing the public build reads or ships in the meantime.
+const INTERNAL_DIR = path.join(APP_ROOT, 'internal/openapi');
 
 // A few products document their concepts under a slug that differs from the
 // product name. Everything else resolves by looking for a guide on disk.
@@ -213,14 +234,14 @@ function renderProduct(p: Product, doc: Document): string {
   return L.join('\n');
 }
 
-function renderIndex(doc: Document): string {
-  const ops = doc.products.reduce((n, p) => n + p.operations.length, 0);
+function renderIndex(products: Product[], doc: Document): string {
+  const ops = products.reduce((n, p) => n + p.operations.length, 0);
   const L: string[] = [];
   L.push('---');
   L.push('title: API Reference');
   L.push(
     `description: ${yamlString(
-      `The unified REST API reference for every Hanzo product — ${doc.products.length} products, ${ops} operations, generated from the OpenAPI document.`,
+      `The unified REST API reference for every Hanzo product — ${products.length} products, ${ops} operations, generated from the OpenAPI document.`,
     )}`,
   );
   L.push('icon: BookOpen');
@@ -231,7 +252,7 @@ function renderIndex(doc: Document): string {
   L.push('# Hanzo API Reference');
   L.push('');
   L.push(
-    `One cloud, one credential. Every Hanzo product speaks REST over HTTPS, shares a single API key, and is documented here straight from the OpenAPI document that also generates the SDKs, the CLI and the MCP tools — **${doc.products.length} products, ${ops} operations**.`,
+    `One cloud, one credential. Every Hanzo product speaks REST over HTTPS, shares a single API key, and is documented here straight from the OpenAPI document that also generates the SDKs, the CLI and the MCP tools — **${products.length} products, ${ops} operations**.`,
   );
   L.push('');
   L.push('## Authentication');
@@ -249,7 +270,7 @@ function renderIndex(doc: Document): string {
   L.push('## Products');
   L.push('');
   L.push('<Cards>');
-  for (const p of doc.products) {
+  for (const p of products) {
     L.push(`  <Card title=${JSON.stringify(p.title)} href="/docs/openapi/${p.name}">`);
     L.push(`    ${text(firstSentence(p.description, 130))} · ${p.operations.length} operations`);
     L.push('  </Card>');
@@ -263,6 +284,48 @@ function renderIndex(doc: Document): string {
   return L.join('\n');
 }
 
+/** One reference: a page per product, an index, and the section's nav. */
+function writePages(dir: string, products: Product[], doc: Document): void {
+  fs.rmSync(dir, { recursive: true, force: true });
+  fs.mkdirSync(dir, { recursive: true });
+
+  // `index.mdx` is this folder's own page, at /docs/openapi. A product slugged
+  // `index` (Hanzo Index — full-text search) wants /docs/openapi/index, which is
+  // a different URL but the same filename, and writing it flat silently
+  // destroyed one or the other. A folder index resolves it: `index/index.mdx`
+  // serves /docs/openapi/index and leaves /docs/openapi alone.
+  const pageFile = (slug: string) =>
+    slug === 'index' ? path.join(dir, slug, 'index.mdx') : path.join(dir, `${slug}.mdx`);
+
+  for (const p of products) {
+    const f = pageFile(p.name);
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, renderProduct(p, doc));
+  }
+  fs.writeFileSync(path.join(dir, 'index.mdx'), renderIndex(products, doc));
+
+  // Every product got its own page, or the build is lying about its coverage.
+  const written = new Set(products.map((p) => pageFile(p.name)));
+  if (written.size !== products.length) {
+    throw new Error(
+      `[openapi] ${products.length} products collapsed onto ${written.size} files — two slugs share a path`,
+    );
+  }
+  fs.writeFileSync(
+    path.join(dir, 'meta.json'),
+    JSON.stringify(
+      {
+        title: 'API Reference',
+        description:
+          'REST API reference for every Hanzo product, generated from the OpenAPI document.',
+        pages: ['index', ...products.map((p) => p.name)],
+      },
+      null,
+      2,
+    ) + '\n',
+  );
+}
+
 // -------------------------------------------------------------------- main
 
 function syncDocument(): void {
@@ -273,7 +336,10 @@ function syncDocument(): void {
   }
 }
 
-export async function genOpenapiPages(out: string = OUT_DIR): Promise<void> {
+export async function genOpenapiPages(
+  out: string = OUT_DIR,
+  internalOut: string = INTERNAL_DIR,
+): Promise<void> {
   syncDocument();
   if (!fs.existsSync(DOCUMENT)) {
     throw new Error(
@@ -290,52 +356,22 @@ export async function genOpenapiPages(out: string = OUT_DIR): Promise<void> {
     );
   }
 
-  fs.rmSync(out, { recursive: true, force: true });
-  fs.mkdirSync(out, { recursive: true });
+  writePages(out, doc.products, doc);
 
-  // `index.mdx` is this folder's own page, at /docs/openapi. A product slugged
-  // `index` (Hanzo Index — full-text search) wants /docs/openapi/index, which is
-  // a different URL but the same filename, and writing it flat silently
-  // destroyed one or the other. A folder index resolves it: `index/index.mdx`
-  // serves /docs/openapi/index and leaves /docs/openapi alone.
-  const pageFile = (slug: string) =>
-    slug === 'index' ? path.join(out, slug, 'index.mdx') : path.join(out, `${slug}.mdx`);
+  // The operator surface is rendered too, just not here. 86 endpoints our own
+  // people run on are worth a page each; what they are not worth is being on
+  // docs.hanzo.ai. See INTERNAL_DIR for where they go and why it is not a repo.
+  if (doc.internal.length) writePages(internalOut, doc.internal, doc);
 
-  for (const p of doc.products) {
-    const f = pageFile(p.name);
-    fs.mkdirSync(path.dirname(f), { recursive: true });
-    fs.writeFileSync(f, renderProduct(p, doc));
-  }
-  fs.writeFileSync(path.join(out, 'index.mdx'), renderIndex(doc));
-
-  // Every product got its own page, or the build is lying about its coverage.
-  const written = new Set(doc.products.map((p) => pageFile(p.name)));
-  if (written.size !== doc.products.length) {
-    throw new Error(
-      `[openapi] ${doc.products.length} products collapsed onto ${written.size} files — two slugs share a path`,
-    );
-  }
-  fs.writeFileSync(
-    path.join(out, 'meta.json'),
-    JSON.stringify(
-      {
-        title: 'API Reference',
-        description:
-          'REST API reference for every Hanzo product, generated from the OpenAPI document.',
-        pages: ['index', ...doc.products.map((p) => p.name)],
-      },
-      null,
-      2,
-    ) + '\n',
-  );
-
-  // The interactive reference at /reference reads the same document. Copy it at
-  // build time rather than checking in a second one — one document, one copy.
-  // Only the real build publishes it: rendering into a scratch directory is a
-  // test reading the generator's output, not a site being served.
+  // The interactive reference at /reference reads the same document, so the
+  // document it reads is the published one. Copying the source whole — which is
+  // what this did — left every hidden operation one URL away at
+  // docs.hanzo.ai/openapi/hanzo.yaml: the pages filtered and the surface still
+  // public. Only the real build publishes it; rendering into a scratch
+  // directory is a test reading the generator's output, not a site served.
   if (out === OUT_DIR) {
     fs.mkdirSync(path.dirname(PUBLIC_COPY), { recursive: true });
-    fs.copyFileSync(DOCUMENT, PUBLIC_COPY);
+    fs.writeFileSync(PUBLIC_COPY, stringifyYaml(publicDocument(doc)));
   }
 
   const ops = doc.products.reduce((n, p) => n + p.operations.length, 0);
@@ -344,6 +380,14 @@ export async function genOpenapiPages(out: string = OUT_DIR): Promise<void> {
     `[openapi] ${doc.products.length} product pages, ${ops} operations, ` +
       `${doc.operations.filter((o) => o.description).length} carrying prose`,
   );
+  if (doc.internal.length) {
+    const held = doc.internal.reduce((n, p) => n + p.operations.length, 0);
+    console.log(
+      `[openapi] ${held} operations are the operator surface and are NOT published: ` +
+        `written to ${path.relative(APP_ROOT, internalOut)} (gitignored) and removed from ` +
+        `${path.relative(APP_ROOT, PUBLIC_COPY)}. They still want a private home — see INTERNAL_DIR.`,
+    );
+  }
   console.log(
     `[openapi] ${withSynopsis} products carry the owning package's synopsis; ` +
       `${doc.undeclared.size} are served but declare no tag ` +
