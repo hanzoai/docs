@@ -102,6 +102,26 @@ function paramTable(op: Operation): string[] {
 
 // ------------------------------------------------------------------- pages
 
+/**
+ * An operation's prose, with the sentence the heading carries printed once.
+ *
+ * `summary` is the first sentence of the owning Go doc comment and `description`
+ * is the whole comment, so 1543 of the 2254 operations carrying both have a
+ * description that opens with the summary VERBATIM — printing the summary as a
+ * heading and the description under it published that sentence twice. Where the
+ * description does not open with it the summary is a genuinely separate label
+ * and leads; where there is no description at all (51 operations) the summary is
+ * the only prose there is. Nothing the document wrote is dropped.
+ */
+function leadProse(op: Operation): string {
+  const flat = (s: string) => s.replace(/\s+/g, ' ').trim();
+  const summary = flat(op.summary);
+  const description = op.description.trim();
+  if (!summary) return description;
+  if (!description) return summary;
+  return flat(description).startsWith(summary) ? description : `${summary}\n\n${description}`;
+}
+
 function renderProduct(p: Product, doc: Document): string {
   const guide = guideHref(p.name);
   const L: string[] = [];
@@ -151,14 +171,27 @@ function renderProduct(p: Product, doc: Document): string {
     L.push(`## ${text(tag)}`);
     L.push('');
     for (const op of ops) {
-      L.push(`### ${text(op.summary || op.name)}`);
+      // The heading IS the endpoint.
+      //
+      // It was the summary, which is the first sentence of a Go doc comment —
+      // a sentence, not a label: 417 characters at its longest, and colliding
+      // 63 times across the document because neighbouring operations open the
+      // same way. The right rail is built from these headings, so the contents
+      // rendered as a column of wrapped paragraphs whose duplicate anchors
+      // landed on the wrong section. `METHOD /path` is the string a reader
+      // arrives holding, is unique on every page (measured: zero collisions),
+      // and is short enough to scan down — 41 characters at p90. It costs no
+      // room either: the same string was already printed on its own line
+      // directly underneath, and that is the line this replaces.
+      L.push(`### \`${op.method.toUpperCase()} ${code(op.path)}\``);
       L.push('');
-      L.push(
-        `\`${op.method.toUpperCase()} ${code(op.path)}\`${op.deprecated ? ' · **deprecated**' : ''}`,
-      );
-      L.push('');
-      if (op.description) {
-        L.push(prose(op.description));
+      if (op.deprecated) {
+        L.push('**Deprecated.**');
+        L.push('');
+      }
+      const lead = leadProse(op);
+      if (lead) {
+        L.push(prose(lead));
         L.push('');
       }
       L.push(...paramTable(op));
@@ -240,7 +273,7 @@ function syncDocument(): void {
   }
 }
 
-export async function genOpenapiPages(): Promise<void> {
+export async function genOpenapiPages(out: string = OUT_DIR): Promise<void> {
   syncDocument();
   if (!fs.existsSync(DOCUMENT)) {
     throw new Error(
@@ -257,8 +290,8 @@ export async function genOpenapiPages(): Promise<void> {
     );
   }
 
-  fs.rmSync(OUT_DIR, { recursive: true, force: true });
-  fs.mkdirSync(OUT_DIR, { recursive: true });
+  fs.rmSync(out, { recursive: true, force: true });
+  fs.mkdirSync(out, { recursive: true });
 
   // `index.mdx` is this folder's own page, at /docs/openapi. A product slugged
   // `index` (Hanzo Index — full-text search) wants /docs/openapi/index, which is
@@ -266,14 +299,14 @@ export async function genOpenapiPages(): Promise<void> {
   // destroyed one or the other. A folder index resolves it: `index/index.mdx`
   // serves /docs/openapi/index and leaves /docs/openapi alone.
   const pageFile = (slug: string) =>
-    slug === 'index' ? path.join(OUT_DIR, slug, 'index.mdx') : path.join(OUT_DIR, `${slug}.mdx`);
+    slug === 'index' ? path.join(out, slug, 'index.mdx') : path.join(out, `${slug}.mdx`);
 
   for (const p of doc.products) {
     const f = pageFile(p.name);
     fs.mkdirSync(path.dirname(f), { recursive: true });
     fs.writeFileSync(f, renderProduct(p, doc));
   }
-  fs.writeFileSync(path.join(OUT_DIR, 'index.mdx'), renderIndex(doc));
+  fs.writeFileSync(path.join(out, 'index.mdx'), renderIndex(doc));
 
   // Every product got its own page, or the build is lying about its coverage.
   const written = new Set(doc.products.map((p) => pageFile(p.name)));
@@ -283,7 +316,7 @@ export async function genOpenapiPages(): Promise<void> {
     );
   }
   fs.writeFileSync(
-    path.join(OUT_DIR, 'meta.json'),
+    path.join(out, 'meta.json'),
     JSON.stringify(
       {
         title: 'API Reference',
@@ -298,8 +331,12 @@ export async function genOpenapiPages(): Promise<void> {
 
   // The interactive reference at /reference reads the same document. Copy it at
   // build time rather than checking in a second one — one document, one copy.
-  fs.mkdirSync(path.dirname(PUBLIC_COPY), { recursive: true });
-  fs.copyFileSync(DOCUMENT, PUBLIC_COPY);
+  // Only the real build publishes it: rendering into a scratch directory is a
+  // test reading the generator's output, not a site being served.
+  if (out === OUT_DIR) {
+    fs.mkdirSync(path.dirname(PUBLIC_COPY), { recursive: true });
+    fs.copyFileSync(DOCUMENT, PUBLIC_COPY);
+  }
 
   const ops = doc.products.reduce((n, p) => n + p.operations.length, 0);
   const withSynopsis = doc.products.filter((p) => p.description).length;
