@@ -63,6 +63,39 @@ const meta = docsServicesMeta(SNAPSHOT, {
   extraSlugs: coverage.extra.slice().sort(), // preserve docs-only pages under "More"
 })
 
+/**
+ * Sidebar icon per category. The catalog owns the taxonomy; how a category is
+ * DRAWN is a docs concern, so the map lives here and not in @hanzo/products —
+ * otherwise presentation leaks into the product catalog. Names are lucide
+ * exports, resolved by `lucideIconsPlugin`.
+ */
+const CATEGORY_ICONS: Record<string, string> = {
+  AI: "Sparkles",
+  Compute: "Cpu",
+  Data: "Database",
+  Network: "Network",
+  Security: "ShieldCheck",
+  Observe: "Activity",
+  Platform: "Layers",
+  Web3: "Blocks",
+  Apps: "LayoutGrid",
+  Commerce: "ShoppingCart",
+  More: "Ellipsis",
+}
+
+// A new catalog category would otherwise ship a bare separator and nobody would
+// notice; say so instead of silently regressing the one thing this sweep fixed.
+meta.pages = meta.pages.map((page: string) => {
+  const match = /^---(?!\[)(.+)---$/.exec(page)
+  if (!match) return page
+  const icon = CATEGORY_ICONS[match[1]]
+  if (!icon) {
+    console.warn(`[gen-services-nav] category "${match[1]}" has no icon in CATEGORY_ICONS`)
+    return page
+  }
+  return `---[${icon}]${match[1]}---`
+})
+
 writeFileSync(join(servicesDir, "meta.json"), JSON.stringify(meta, null, 2) + "\n")
 
 const groups = meta.pages.filter((p) => p.startsWith("---")).length
