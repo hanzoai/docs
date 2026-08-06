@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { loadDocument } from './openapi-doc';
 import { toolKeys, toolOperations } from './openapi-surfaces';
 import { load } from './sync-mcp-tools';
-import { constraintsOf, genMcpPages } from './gen-mcp-pages';
+import { constraintsOf, genMcpPages, published } from './gen-mcp-pages';
 
 // THE MCP REFERENCE, held to its own claims.
 //
@@ -25,6 +25,11 @@ const catalog = load();
 const doc = loadDocument(path.join(import.meta.dirname, '../openapi-specs/hanzo.yaml'));
 /** The join every completeness assertion below reads through. */
 const mappedOps = toolOperations(doc, catalog.tools);
+// The reference documents the PUBLISHED tools, so the claims below are read
+// against the same list the generator writes — see published(). Reading the
+// door's whole answer here would fail every count by the 78 operator tools that
+// deliberately have no page.
+catalog.tools = published(catalog, mappedOps);
 
 let out: string;
 let pageOf: Map<string, string>;

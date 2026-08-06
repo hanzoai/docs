@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { loadDocument } from './openapi-doc';
+import { isInternal, loadDocument, publicDocument } from './openapi-doc';
 import { genOpenapiPages } from './gen-openapi-pages';
 
 // THE API REFERENCE, held to its own claims.
@@ -20,17 +20,27 @@ import { genOpenapiPages } from './gen-openapi-pages';
 //               sentence the document wrote for it survives onto the page
 
 const doc = loadDocument(path.join(import.meta.dirname, '../openapi-specs/hanzo.yaml'));
+/** What public/openapi/hanzo.yaml is written from — cloned once, it is 3.8 MB. */
+const shipped = publicDocument(doc);
 
 let pageOf: Map<string, string>;
+let internalOf: Map<string, string>;
+
+const read = (dir: string, products: { name: string }[]) => {
+  const m = new Map<string, string>();
+  for (const p of products) {
+    const f = p.name === 'index' ? path.join(dir, p.name, 'index.mdx') : path.join(dir, `${p.name}.mdx`);
+    m.set(p.name, fs.readFileSync(f, 'utf8'));
+  }
+  return m;
+};
 
 beforeAll(async () => {
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'openapi-ref-'));
-  await genOpenapiPages(out);
-  pageOf = new Map();
-  for (const p of doc.products) {
-    const f = p.name === 'index' ? path.join(out, p.name, 'index.mdx') : path.join(out, `${p.name}.mdx`);
-    pageOf.set(p.name, fs.readFileSync(f, 'utf8'));
-  }
+  const internal = fs.mkdtempSync(path.join(os.tmpdir(), 'openapi-internal-'));
+  await genOpenapiPages(out, internal);
+  pageOf = read(out, doc.products);
+  internalOf = read(internal, doc.internal);
 }, 180_000);
 
 /** `### ` headings, in page order. `## ` is the tag, a section within a page. */
@@ -181,5 +191,97 @@ describe('complete — the document survives onto the page', () => {
     const counted = doc.products.reduce((n, p) => n + p.operations.length, 0);
     const rendered = [...pageOf.values()].reduce((n, src) => n + headings(src).length, 0);
     expect(rendered).toBe(counted);
+  });
+});
+
+// The operator surface. z: "HIDE the admin shit? that is private only? don't
+// have that in our public docs?" — so no published page names one of these
+// routes, and no published document carries one.
+describe('withheld — the operator surface is not published', () => {
+  // "Documented here" means an entry: a heading, or a row in a parameter or
+  // body table. It deliberately does not mean "the characters appear on the
+  // page" — two public referrals operations CROSS-REFERENCE the sweep job in
+  // their own prose ("the sweep job (POST /v1/admin/referrals/sweep)"), and
+  // that sentence was written next to the Go handler. This generator authors
+  // nothing and rewrites nothing; editing it here would mean the page no longer
+  // says what the document says. That one belongs upstream, in the doc comment.
+  const documented = (src: string): string[] =>
+    spoken(src)
+      .split('\n')
+      .filter((l) => l.startsWith('### ') || l.startsWith('|'));
+
+  it('no published page gives a /v1/admin route an entry', () => {
+    const leaked: string[] = [];
+    for (const [name, src] of pageOf) {
+      for (const l of documented(src)) {
+        if (l.includes('/v1/admin')) leaked.push(`${name}: ${l.trim().slice(0, 90)}`);
+      }
+    }
+    expect(leaked).toEqual([]);
+  });
+
+  it('no published page gives an entry to an operation held back by name', () => {
+    const held = doc.operations.filter(isInternal);
+    const leaked: string[] = [];
+    for (const [name, src] of pageOf) {
+      const entries = documented(src);
+      for (const op of held) {
+        if (entries.some((l) => l.includes(op.path))) leaked.push(`${name}: ${op.path}`);
+      }
+    }
+    expect(leaked).toEqual([]);
+  });
+
+  // public/openapi/hanzo.yaml ships in the static export and is what /reference
+  // renders. Filtering the pages and copying the document whole would leave the
+  // whole surface one URL away.
+  // public/openapi/hanzo.yaml ships in the static export and is what /reference
+  // renders. Filtering the pages and copying the document whole would leave the
+  // whole surface one URL away.
+  it('the published document carries none of them', () => {
+    const paths = Object.keys(shipped.paths);
+    expect(paths.filter((p) => p.startsWith('/v1/admin'))).toEqual([]);
+    expect(paths).not.toContain('/v1/commerce/admin/catalog');
+    expect(shipped.tags.map((t: any) => t.name)).not.toContain('admin');
+    // Everything else survives — this is a projection, not a rewrite. 80 paths
+    // are wholly `/v1/admin`; the 81st is the one commerce route, whose only
+    // method was the held-back one.
+    expect(paths.length).toBe(Object.keys(doc.raw.paths).length - 81);
+  });
+});
+
+// The predicate is the `admin` PRODUCT plus one named operation, never a path
+// substring — `/v1/iam/admin/*` is the org administrator's own API and a
+// customer-facing one. This is the assertion that stops it being "simplified"
+// into a substring match later.
+describe('withheld — but only what is really the operator surface', () => {
+  it.each([
+    '/v1/iam/admin/applications/upsert',
+    '/v1/iam/admin/provision',
+    '/v1/iam/admin/users/upsert',
+  ])('still publishes %s', (route) => {
+    expect(Object.keys(shipped.paths)).toContain(route);
+    expect(spoken(pageOf.get('iam')!)).toContain(route);
+  });
+});
+
+describe('kept — the operator surface is documented, just not here', () => {
+  it('renders every held-back operation onto an internal page', () => {
+    const missing: string[] = [];
+    for (const p of doc.internal) {
+      const found = new Set(headings(internalOf.get(p.name)!));
+      for (const op of p.operations) {
+        if (!found.has(`\`${op.method.toUpperCase()} ${op.path}\``)) {
+          missing.push(`${p.name}: ${op.method.toUpperCase()} ${op.path}`);
+        }
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it('holds back every operation the document has and nothing more', () => {
+    const held = doc.internal.reduce((n, p) => n + p.operations.length, 0);
+    expect(held).toBe(doc.operations.filter(isInternal).length);
+    expect(held).toBe(87);
   });
 });

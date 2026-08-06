@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadDocument, type Document, type Operation } from './openapi-doc';
+import { isInternal, loadDocument, type Document, type Operation } from './openapi-doc';
 import { toolOperations } from './openapi-surfaces';
 import { load, MCP_DOOR, type McpCatalog, type McpTool } from './sync-mcp-tools';
 import { code, fence, firstSentence, prose, text, yamlString } from './mdx';
@@ -432,8 +432,29 @@ const curl = (body: string): string =>
 /** The product a tool is filed under, and the slug of its folder. */
 const productOf = (ops: Operation[] | undefined): string => (ops?.length ? ops[0].product : 'unmapped');
 
+/**
+ * The tools this reference publishes: the door's answer, less the operator
+ * surface.
+ *
+ * A tool is one call on one operation, so a tool whose operation is internal is
+ * internal. Without this the /v1/admin routes were printed in full on 78 tool
+ * pages, again in the catalogue and again in the section nav — the same leak the
+ * REST reference had, through a different door. The door still answers them to
+ * whoever is authorised to call them; what changes is only what docs.hanzo.ai
+ * publishes.
+ */
+export function published(cat: McpCatalog, mapped: Map<string, Operation[]>): McpTool[] {
+  return cat.tools.filter((t) => !(mapped.get(t.name) ?? []).some(isInternal));
+}
+
+// `meta.count` is what the DOOR answered and stays that; `tools.length` is what
+// this reference documents. Where they differ the stamp says so, so a reader
+// who counts the pages and compares is not left thinking one of them is wrong.
 const provenance = (cat: McpCatalog): string =>
   `Generated from \`tools/list\` on \`${cat.door}\` — ${cat.meta.count} tools captured ${cat.meta.captured}` +
+  (cat.meta.count > cat.tools.length
+    ? `, of which ${cat.tools.length} are documented here (the operator surface is not published)`
+    : '') +
   (cat.meta.source === 'snapshot' ? ' (this build read the vendored copy; the door was unreachable).' : '.');
 
 function renderTool(tool: McpTool, ops: Operation[] | undefined, cat: McpCatalog, doc: Document): string {
@@ -582,7 +603,7 @@ function renderTool(tool: McpTool, ops: Operation[] | undefined, cat: McpCatalog
   L.push('---');
   L.push('');
   L.push(
-    `[All ${cat.meta.count} tools](/docs/mcp-tools/all-tools) · [The door](/docs/mcp-tools) · [API reference](/docs/openapi)`,
+    `[All ${cat.tools.length} tools](/docs/mcp-tools/all-tools) · [The door](/docs/mcp-tools) · [API reference](/docs/openapi)`,
   );
   L.push('');
   L.push(provenance(cat));
@@ -627,7 +648,7 @@ function renderProductIndex(product: string, tools: McpTool[], cat: McpCatalog, 
   L.push('');
   L.push('---');
   L.push('');
-  L.push(`[All ${cat.meta.count} tools](/docs/mcp-tools/all-tools) · [The door](/docs/mcp-tools)`);
+  L.push(`[All ${cat.tools.length} tools](/docs/mcp-tools/all-tools) · [The door](/docs/mcp-tools)`);
   L.push('');
   L.push(provenance(cat));
   L.push('');
@@ -642,14 +663,14 @@ function renderCatalog(groups: Map<string, McpTool[]>, cat: McpCatalog, mapped: 
   L.push('title: Tool catalogue');
   L.push(
     `description: ${yamlString(
-      `Every one of the ${cat.meta.count} tools the Hanzo MCP door exposes, grouped by the product it calls.`,
+      `Every one of the ${cat.tools.length} tools documented here, grouped by the product it calls.`,
     )}`,
   );
   L.push('---');
   L.push('');
   const unmapped = groups.get('unmapped')?.length ?? 0;
   L.push(
-    `\`tools/list\` on \`${code(cat.door)}\` names **${cat.meta.count} tools** across **${
+    `This reference documents **${cat.tools.length} tools** from \`tools/list\` on \`${code(cat.door)}\`, across **${
       products.length - (unmapped ? 1 : 0)
     } products**` +
       (unmapped ? `, plus ${unmapped} the OpenAPI document does not describe` : '') +
@@ -782,8 +803,8 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
   L.push(
     'Every tool is a projection of the same OpenAPI document that generates the REST reference, the SDKs and the CLI. ' +
       (unmapped
-        ? `${cat.meta.count - unmapped} of the ${cat.meta.count} tools resolve to an operation in it, across ${groups.size - 1} products; ${unmapped} do not, and are [listed as such](/docs/mcp-tools/unmapped) rather than left out.`
-        : `Every one of the ${cat.meta.count} tools resolves to an operation in it, across ${groups.size} products.`),
+        ? `${cat.tools.length - unmapped} of the ${cat.tools.length} tools resolve to an operation in it, across ${groups.size - 1} products; ${unmapped} do not, and are [listed as such](/docs/mcp-tools/unmapped) rather than left out.`
+        : `Every one of the ${cat.tools.length} tools resolves to an operation in it, across ${groups.size} products.`),
   );
   L.push('');
   L.push(
@@ -902,6 +923,7 @@ export async function genMcpPages(outDir: string = OUT_DIR): Promise<{ pages: nu
   if (!cat.tools.length) throw new Error('[mcp-ref] the vendored tool list is empty');
   const doc = loadDocument(DOCUMENT);
   const mapped = toolOperations(doc, cat.tools);
+  cat.tools = published(cat, mapped);
 
   // Group by the product the tool calls; tools the document does not describe
   // get their own group rather than being dropped or filed under a guess.
@@ -960,7 +982,7 @@ export async function genMcpPages(outDir: string = OUT_DIR): Promise<{ pages: nu
     JSON.stringify(
       {
         title: 'Cloud MCP',
-        description: `The ${cat.meta.count} tools the Hanzo MCP door exposes, generated from tools/list.`,
+        description: `The ${cat.tools.length} tools documented here, generated from tools/list.`,
         icon: 'Plug',
         pages: ['index', 'all-tools', ...ordered.keys()],
       },
