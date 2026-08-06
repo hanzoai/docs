@@ -21,7 +21,13 @@ export default function Layout({ children }: LayoutProps<'/'>) {
           palette in literal white-on-neutral rather than fd- tokens, so a light
           theme would leave white cards on a white background. The switch stays
           on /docs, where the tokens do the work. */}
-      <Docs themeSwitch={{ enabled: false }}>{children}</Docs>
+      {/* The rail starts collapsed HERE only. The tree is still one click away
+          via the sidebar trigger, but the front door leads with the page, not
+          with 12 rows of nav — a reader who typed the domain has not yet asked
+          for the table of contents. /docs/** keeps it open, where they have. */}
+      <Docs themeSwitch={{ enabled: false }} sidebar={{ defaultCollapsed: true }}>
+        {children}
+      </Docs>
       <HanzoPreFooterCTA surface="hanzo.ai" />
       <Footer />
     </>

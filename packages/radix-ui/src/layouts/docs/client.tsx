@@ -77,7 +77,13 @@ export function LayoutBody(
 ) {
   const {
     nav: { enabled: navEnabled = true, transparentMode: navTransparentMode = 'none' } = {},
-    sidebar: { enabled: sidebarEnabled = true, defaultOpenLevel, prefetch, ...sidebarProps } = {},
+    sidebar: {
+      enabled: sidebarEnabled = true,
+      defaultOpenLevel,
+      defaultCollapsed,
+      prefetch,
+      ...sidebarProps
+    } = {},
     slots: defaultSlots,
     tabs,
     tabMode = 'auto',
@@ -115,7 +121,11 @@ export function LayoutBody(
           ...linkItems,
         }}
       >
-        <slots.sidebar.provider defaultOpenLevel={defaultOpenLevel} prefetch={prefetch}>
+        <slots.sidebar.provider
+          defaultOpenLevel={defaultOpenLevel}
+          defaultCollapsed={defaultCollapsed}
+          prefetch={prefetch}
+        >
           <slots.container {...containerProps}>
             {navEnabled && <slots.header />}
             {sidebarEnabled && <slots.sidebar.root {...sidebarProps} />}

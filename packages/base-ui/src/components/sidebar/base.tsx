@@ -54,6 +54,14 @@ export interface SidebarProviderProps {
   defaultOpenLevel?: number;
 
   /**
+   * Collapse the desktop rail on first render. The reader can still open it —
+   * this only picks the starting state.
+   *
+   * @defaultValue false
+   */
+  defaultCollapsed?: boolean;
+
+  /**
    * Prefetch links, default behaviour depends on your React.js framework.
    */
   prefetch?: boolean;
@@ -74,12 +82,13 @@ const FolderContext = createContext<{
 
 export function SidebarProvider({
   defaultOpenLevel = 0,
+  defaultCollapsed = false,
   prefetch,
   children,
 }: SidebarProviderProps) {
   const closeOnRedirect = useRef(true);
   const [open, setOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const pathname = usePathname();
   const mode: Mode = useMediaQuery('(width < 768px)') ? 'drawer' : 'full';
 
