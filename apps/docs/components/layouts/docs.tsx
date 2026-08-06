@@ -16,13 +16,18 @@ import { SidebarFilter } from '@/components/sidebar-filter';
 // the kind of detail that drifts silently.
 //
 // What a caller may vary is what is NOT spread over: the tree, the slots, the
-// nav title and the sidebar are fixed here, everything else in DocsLayoutProps
-// passes through.
+// nav title and the sidebar's CONTENT are fixed here, everything else in
+// DocsLayoutProps passes through. The one exception is the rail's starting
+// state, which is genuinely per-route — / opens collapsed, /docs/** does not —
+// so it is threaded as a narrow prop rather than by reopening `sidebar` whole.
+// Typed to that single field on purpose: nobody can clobber the banner or tabs.
 export function Docs({
   children,
+  sidebar,
   ...props
 }: Omit<DocsLayoutProps, 'tree' | 'slots' | 'nav' | 'sidebar' | 'children'> & {
   children: ReactNode;
+  sidebar?: Pick<NonNullable<DocsLayoutProps['sidebar']>, 'defaultCollapsed'>;
 }) {
   const base = baseOptions();
   // Title + path for every page, for the sidebar filter.
@@ -89,6 +94,7 @@ export function Docs({
             };
           },
         },
+        ...sidebar,
       }}
     >
       {children}
