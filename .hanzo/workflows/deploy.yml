@@ -105,6 +105,25 @@ jobs:
             '')   echo "::error::KMS returned no value for deploy/PUBLISHABLE_KEY (env=prod)"; exit 1 ;;
             *)    echo "::error::deploy/PUBLISHABLE_KEY is not a publishable key (expected a pk- prefix)"; exit 1 ;;
           esac
+          # Shape is not liveness. `pk-live-c886…` was sealed, non-empty and
+          # correctly prefixed, so it passed the case above AND the export grep
+          # below — and its PROJECT had been deleted, so the door answered 403
+          # and docs recorded nothing. This repo then rebuilt cleanly on 08-06
+          # and baked the same dead key again, because every check it runs asks
+          # whether a key is PRESENT and none asks whether it WORKS.
+          #
+          # An empty batch is a no-op the door still authenticates: 200 for a
+          # live key, 403 for one naming no project, 401 for one it cannot read.
+          # Fail closed on an answer, warn on no answer — an unreachable door is
+          # a fact about the network, not about the key.
+          code="$(curl -s -o /tmp/door.json -w '%{http_code}' --max-time 20 \
+            -X POST "https://api.hanzo.ai/v1/event?ingest_key=$key" \
+            -H 'content-type: application/json' -d '{"batch":[]}' || echo 000)"
+          case "$code" in
+            200) echo "the publishable key resolves at the ingest door (200)" ;;
+            000) echo "::warning::could not reach the ingest door; proceeding (network, not the key)" ;;
+            *)   echo "::error::deploy/PUBLISHABLE_KEY does not resolve: the door answered $code $(cat /tmp/door.json 2>/dev/null). Baking it ships docs that drops every event. Rotate the KMS value, then rebuild."; exit 1 ;;
+          esac
           echo "::add-mask::$key"
           echo "PUBLISHABLE_KEY=$key" >> "$GITHUB_ENV"
 
