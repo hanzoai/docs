@@ -27,9 +27,9 @@ const CLI_TABLE = path.join(APP_ROOT, 'openapi-specs/cli-commands.json');
 const OUT_DIR = path.join(APP_ROOT, 'content/docs/start');
 
 /**
- * Upstream's shape (hanzoai/openapi flows.yaml): a map of flow id to a summary,
- * the operationIds in CALL ORDER, and any notes a caller needs. Data only —
- * which routes a journey calls, never what they do.
+ * flows.yaml's shape: a map of flow id to a summary, the operationIds in CALL
+ * ORDER, and any notes a caller needs. Data only — which routes a journey calls,
+ * never what they do.
  */
 interface Flow {
   id: string;
