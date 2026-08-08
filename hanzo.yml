@@ -85,3 +85,14 @@ test:
 # the Dockerfile refuses to build. Same override console.hanzo.ai carries.
 kms:
   org: hanzo
+
+# GitOps auto-promotion: a successful docs build is smoked in an isolated pod and,
+# if it reaches readiness, its digest is committed to universe (charts/app/values/
+# hanzo/docs.yaml) — no set-image. Rolls forward on main only.
+deploy:
+  on: [main]
+  target:
+    cluster: hanzo-k8s
+    namespace: hanzo
+    operator: hanzo-operator
+    name: docs
