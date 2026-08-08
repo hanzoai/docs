@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stringify as stringifyYaml } from 'yaml';
 import {
+  DOCUMENT,
   loadDocument,
   publicDocument,
   type Document,
@@ -33,7 +34,6 @@ import { code, firstSentence, prose, text, yamlString } from './mdx';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
-const DOCUMENT = path.join(APP_ROOT, 'openapi-specs/openapi.yaml');
 const OUT_DIR = path.join(APP_ROOT, 'content/docs/openapi');
 const SERVICES_DIR = path.join(APP_ROOT, 'content/docs/services');
 const PUBLIC_COPY = path.join(APP_ROOT, 'public/openapi/openapi.yaml');
@@ -398,7 +398,7 @@ export async function genOpenapiPages(
     `[openapi] ${withSynopsis} products carry the owning package's synopsis; ` +
       `${doc.undeclared.size} are served but declare no tag ` +
       `(${doc.products.filter((p) => doc.undeclared.has(p.name)).reduce((n, p) => n + p.operations.length, 0)} operations) ` +
-      `— those want a tag in hanzoai/openapi`,
+      `— those want a tag in hanzoai/cloud`,
   );
 }
 

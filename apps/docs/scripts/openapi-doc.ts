@@ -1,9 +1,11 @@
 import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 
 // THE DOCUMENT.
 //
-// hanzoai/openapi `hanzo.yaml` is the one description of the Hanzo API. The
+// hanzoai/cloud `openapi.yaml` is the one description of the Hanzo API. The
 // reference, the flow pages, the SDKs, the CLI and the MCP tools are all
 // PROJECTIONS of it. Nothing about the API is written twice: if a page states
 // an endpoint's behaviour, that prose came from here.
@@ -11,6 +13,31 @@ import { parse as parseYaml } from 'yaml';
 // This module is the only reader. It resolves the document into products and
 // operations; every generator downstream consumes those values and never
 // re-parses YAML or re-invents the product rule.
+
+/**
+ * Where the document is, and the release it is at — read from here, never
+ * spelled again.
+ *
+ * Seven callers each carried their own `openapi-specs/<name>.yaml` literal.
+ * When the reference stopped rendering hanzoai/openapi's projection and started
+ * rendering cloud's document, one of those seven was edited; the other six kept
+ * naming a file that no longer exists, and the build's own guard — "no page may
+ * state an endpoint the document does not have" — was among them, so it threw
+ * ENOENT instead of checking anything. A path that is a value has one place to
+ * change; a path repeated is six chances to miss one.
+ */
+const SPECS = path.join(path.dirname(fileURLToPath(import.meta.url)), '../openapi-specs');
+export const DOCUMENT = path.join(SPECS, 'openapi.yaml');
+
+/** The cloud release the document was taken at, from `.spec-lock`. */
+export const release = (): string => {
+  try {
+    const lock = fs.readFileSync(path.join(SPECS, '.spec-lock'), 'utf8');
+    return (lock.match(/^ref=(.+)$/m)?.[1] ?? '').trim().slice(0, 9);
+  } catch {
+    return '';
+  }
+};
 
 export const METHODS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options'] as const;
 export type Method = (typeof METHODS)[number];

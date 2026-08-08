@@ -7,7 +7,7 @@ import { syncCliCommands } from './sync-cli-commands';
 import { syncMcpTools } from './sync-mcp-tools';
 import { syncProjectDocs } from './sync-project-docs';
 import { sanitizeMdx } from './sanitize-mdx';
-import { GENERATED, checkEndpoints } from './check-endpoints';
+import { checkEndpoints, report } from './check-endpoints';
 
 async function main() {
   // The document first, then its projections: the reference (one page per
@@ -34,20 +34,15 @@ async function main() {
   // compiles instead of falling back to the error boundary.
   sanitizeMdx();
 
-  // Last: no page may claim an endpoint the document does not have. A generated
-  // page that does is a bug in a generator above and fails the build; authored
-  // prose that does is reported, because the fix there is someone's editorial
-  // call, not the build's.
+  // Last: no page may claim an endpoint the document does not have — generated
+  // or authored, the same rule, because a reader running a curl cannot tell
+  // which kind of page they read it on.
   const { checked, unknown } = checkEndpoints();
-  const generated = unknown.filter(([f]) => GENERATED.some((d) => f.startsWith(d)));
-  if (generated.length) {
-    for (const [f, p] of generated.slice(0, 20)) console.error(`  ${f}: ${p}`);
-    throw new Error(`${generated.length} generated pages name endpoints the document does not have`);
+  if (unknown.length) {
+    report(unknown);
+    throw new Error(`${unknown.length} mentions name endpoints the document does not have`);
   }
-  console.log(
-    `[endpoints] ${checked} mentions checked, generated pages clean, ` +
-      `${unknown.length} in authored prose to reconcile`,
-  );
+  console.log(`[endpoints] ${checked} mentions checked, every one in the document`);
 }
 
 await main().catch((e) => {

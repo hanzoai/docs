@@ -5,6 +5,8 @@ description: Serverless compute platform for event-driven functions with auto-sc
 
 # Hanzo Functions
 
+> **API reference** · [Functions →](/docs/openapi/functions) — every endpoint, generated from the OpenAPI spec.
+
 Hanzo Functions is a serverless compute platform for deploying event-driven functions. Write in any language, deploy as an OCI container, and let the platform handle scaling, secrets, networking, and observability. Functions integrate natively with PubSub (event triggers), Tasks (activity execution), KMS (secrets injection), and IAM (scoped execution identity).
 
 **Endpoint:** `api.hanzo.ai/v1/functions/*`
@@ -159,31 +161,6 @@ hanzo fn logs on-order --follow
 
 # Invoke directly
 hanzo fn invoke on-order --data '{"id":"order-123","total":59.99}'
-```
-
-### Configuration
-
-```yaml
-# hanzo-functions.yaml
-functions:
-  - name: on-order
-    runtime: python3.12
-    handler: handler.on_order
-    trigger:
-      type: pubsub
-      subject: orders.created
-    environment:
-      ORDER_SERVICE_URL: https://api.hanzo.ai/v1/orders
-    secrets:
-      - PAYMENT_API_KEY
-    resources:
-      memory: 256Mi
-      cpu: 100m
-    scaling:
-      min: 0
-      max: 100
-      concurrency: 10
-      cooldown: 300s
 ```
 
 ## Triggers

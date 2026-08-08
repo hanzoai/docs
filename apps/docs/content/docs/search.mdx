@@ -21,36 +21,11 @@ curl -X POST https://api.hanzo.ai/v1/search/indexes \
 
 ## Index and Search
 
-Add documents as a JSON array (or NDJSON), then query.
-
-```bash
-# Add documents
-curl -X POST https://api.hanzo.ai/v1/search/indexes/products/documents \
-  -H "Authorization: Bearer hk-..." \
-  -H "Content-Type: application/json" \
-  -d '[
-    { "id": 1, "title": "Hanzo Agent SDK", "category": "AI", "price": 0 },
-    { "id": 2, "title": "Hanzo MCP Server", "category": "Infrastructure", "price": 49 }
-  ]'
-
-# Search with a filter
-curl -X POST https://api.hanzo.ai/v1/search/indexes/products/search \
-  -H "Authorization: Bearer hk-..." \
-  -d '{ "q": "agent", "filter": "category = AI AND price < 100", "limit": 10 }'
-```
+Documents go in as a JSON array (or NDJSON), and queries read them back.
 
 ## Hybrid Search
 
 Configure an embedder on the index, then blend keyword and semantic ranking with `semanticRatio` (`0.0` = pure keyword, `1.0` = pure vector).
-
-```bash
-curl -X POST https://api.hanzo.ai/v1/search/indexes/products/search \
-  -H "Authorization: Bearer hk-..." \
-  -d '{
-    "q": "tools for building AI agents",
-    "hybrid": { "semanticRatio": 0.5, "embedder": "default" }
-  }'
-```
 
 ## Features
 

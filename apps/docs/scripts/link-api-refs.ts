@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadDocument } from './openapi-doc';
+import { DOCUMENT, loadDocument } from './openapi-doc';
 
 // Cross-link the human guides to their API reference (the other half of the
 // bidirectional link — gen-openapi-pages.ts links reference -> guide). For every
@@ -22,7 +22,6 @@ import { loadDocument } from './openapi-doc';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
-const DOCUMENT = path.join(APP_ROOT, 'openapi-specs/hanzo.yaml');
 const CONTENT = path.join(APP_ROOT, 'content/docs');
 
 // Products whose guide lives at a top-level page rather than /docs/services/<svc>.

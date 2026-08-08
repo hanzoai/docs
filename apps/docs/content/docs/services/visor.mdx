@@ -5,8 +5,6 @@ description: VM and container runtime for AI workloads with GPU passthrough, liv
 
 # Hanzo Visor
 
-> **API reference** · [Hanzo Visor API →](/docs/openapi/visor) — every endpoint, generated from the OpenAPI spec.
-
 Hanzo Visor is a lightweight VM and container runtime purpose-built for AI infrastructure. It manages cloud machines, GPU-accelerated execution environments, remote desktop sessions, and environment provisioning. Visor integrates with Kubernetes as a CRI (Container Runtime Interface) provider and exposes a REST API for programmatic machine lifecycle management.
 
 ## Features
@@ -20,15 +18,6 @@ Hanzo Visor is a lightweight VM and container runtime purpose-built for AI infra
 - **Resource Quotas**: Per-tenant CPU, memory, GPU, and disk quotas with hard enforcement
 - **Remote Sessions**: RDP, SSH, and Telnet access via integrated Guacamole gateway
 - **Environment Templates**: Pre-built images for PyTorch, JAX, TensorRT, Candle, and more
-
-## Endpoints
-
-| Environment | URL |
-|-------------|-----|
-| API | `https://api.hanzo.ai/v1/visor/*` |
-| Gateway route | `api.hanzo.ai → visor:19000` |
-| Dashboard | `https://console.hanzo.ai/visor` |
-| Remote Desktop | `https://visor.hanzo.ai/guacamole` |
 
 ## Architecture
 
@@ -68,62 +57,6 @@ Hanzo Visor is a lightweight VM and container runtime purpose-built for AI infra
  +-------------------------------------+
 ```
 
-## Quick Start
-
-### List Machines
-
-```bash
-curl -H "Authorization: Bearer $HANZO_API_KEY" \
-  https://api.hanzo.ai/v1/visor/machines
-```
-
-### Create a VM
-
-```bash
-curl -X POST https://api.hanzo.ai/v1/visor/machines \
-  -H "Authorization: Bearer $HANZO_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "training-node-01",
-    "template": "pytorch-cuda12",
-    "resources": {
-      "vcpus": 8, "memory_gb": 32, "disk_gb": 200,
-      "gpus": 1, "gpu_type": "nvidia-a100"
-    }
-  }'
-```
-
-### Snapshot and Restore
-
-```bash
-# Snapshot
-curl -X POST https://api.hanzo.ai/v1/visor/machines/vm-abc123/snapshot \
-  -H "Authorization: Bearer $HANZO_API_KEY" \
-  -d '{"name": "checkpoint-epoch-50"}'
-
-# Restore to new machine
-curl -X POST https://api.hanzo.ai/v1/visor/machines \
-  -H "Authorization: Bearer $HANZO_API_KEY" \
-  -d '{"name": "restored-node", "snapshot_id": "snap-def456"}'
-```
-
-### Live Migrate
-
-```bash
-curl -X POST https://api.hanzo.ai/v1/visor/machines/vm-abc123/migrate \
-  -H "Authorization: Bearer $HANZO_API_KEY" \
-  -d '{"target_node": "node-gpu-04", "strategy": "live"}'
-```
-
-### Remote Session
-
-```bash
-curl -X POST https://api.hanzo.ai/v1/visor/machines/vm-abc123/session \
-  -H "Authorization: Bearer $HANZO_API_KEY" \
-  -d '{"protocol": "ssh", "user": "hanzo"}'
-# Returns: {"session_id": "sess-xyz", "url": "https://visor.hanzo.ai/guacamole/#/client/sess-xyz"}
-```
-
 ## Environment Templates
 
 | Template | Frameworks | GPU | Disk |
@@ -144,16 +77,6 @@ Visor uses VFIO for direct GPU assignment. IOMMU must be enabled on host nodes:
 
 ```bash
 dmesg | grep -i iommu          # Verify IOMMU
-curl -H "Authorization: Bearer $HANZO_API_KEY" \
-  https://api.hanzo.ai/v1/visor/gpus   # List available GPUs
-```
-
-### Resource Quotas
-
-```bash
-curl -X PUT https://api.hanzo.ai/v1/visor/quotas/org-hanzo \
-  -H "Authorization: Bearer $HANZO_API_KEY" \
-  -d '{"max_vcpus": 256, "max_memory_gb": 1024, "max_gpus": 16, "max_machines": 50}'
 ```
 
 ### Kubernetes CRI Integration

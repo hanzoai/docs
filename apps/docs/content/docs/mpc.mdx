@@ -20,26 +20,6 @@ MPC replaces a single secret key with a configurable **t-of-n** scheme (2-of-3, 
 
 MPC nodes form their own private BFT chain for cluster state, with **dual-certificate finality**: every state transition is sealed by both an Ed25519 (classical) and an ML-DSA-65 (post-quantum, FIPS 204) certificate. The managed cluster runs a 3-of-5 threshold.
 
-## Creating a Wallet and Signing
-
-Wallet and signing operations are served under `/v1/mpc` on the gateway. Authenticate with an API key (`hk-...`).
-
-```bash
-# Create a 2-of-3 secp256k1 wallet
-curl -X POST https://api.hanzo.ai/v1/mpc/wallets \
-  -H "Authorization: Bearer hk-..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "protocol": "cggmp21",
-    "curve": "secp256k1",
-    "threshold": 2,
-    "parties": 3,
-    "label": "eth-hot-wallet"
-  }'
-```
-
-Signing is O(t) -- it depends on the threshold, not the total party count -- so a 3-of-100 wallet signs as fast as a 3-of-3. For the full protocol matrix, resharing, and chain support, see [Hanzo MPC](/docs/services/mpc).
-
 ## Related
 
 - [KMS](/docs/kms) -- uses MPC as its threshold signing backend
