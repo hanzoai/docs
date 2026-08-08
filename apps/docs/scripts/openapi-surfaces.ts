@@ -165,11 +165,10 @@ export interface SdkLang {
 }
 
 /**
- * Package names come from upstream's SDK matrix (hanzoai/openapi sdks.yaml),
- * which is what actually drives the generator that publishes them — never from
- * a copy here. `@hanzo/sdk` became `hanzoai` upstream in one commit; a
- * hardcoded name would have gone stale that day and taught an install that
- * fails.
+ * Package names come from the SDK matrix (`openapi-specs/sdks.yaml`), which is
+ * what drives the generator that publishes them — never from a copy here.
+ * `@hanzo/sdk` became `hanzoai` in one commit; a hardcoded name would have gone
+ * stale that day and taught an install that fails.
  */
 const SDK_MATRIX: Record<string, any> = (() => {
   const f = new URL('../openapi-specs/sdks.yaml', import.meta.url).pathname;
@@ -300,7 +299,7 @@ const py = (v: any): string =>
 /**
  * THE TOOL-NAME RULE, in one place and read in both directions.
  *
- * The door names a tool for the operation's `operationId`, and hanzoai/openapi
+ * The door names a tool for the operation's `operationId`, and the document
  * publishes that id bare — `get_v1_tools` is `get_v1_tools`. That is the primary
  * key.
  *

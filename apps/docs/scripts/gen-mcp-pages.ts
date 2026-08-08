@@ -30,8 +30,8 @@ const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
 // to no operation. Pages that report such a tool name the release, so the
 // reader can tell "the document does not describe this" from "the copy we hold
 // does not describe this yet". The release is `.spec-lock`'s, the cloud commit
-// the document was taken at; it used to be `hanzo.pin`, which named a commit of
-// the projection this reference stopped reading.
+// the document was taken at; it used to be a pin on the projection this
+// reference stopped reading.
 const rel = release();
 const pinned = rel ? ` (pinned at \`${rel}\`)` : '';
 const OUT_DIR = path.join(APP_ROOT, 'content/docs/mcp-tools');
