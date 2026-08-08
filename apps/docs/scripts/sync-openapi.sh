@@ -17,9 +17,14 @@
 # diff arriving by surprise. The digest is checked: a pinned ref whose bytes
 # moved means someone moved a tag.
 #
-# `flows.yaml` and `sdks.yaml` still come from hanzoai/openapi at `hanzo.pin`,
-# and that is correct — neither is the document. flows.yaml is the six canonical
-# journeys and sdks.yaml is the per-language publishing matrix.
+# `flows.yaml` and `sdks.yaml` sit beside it, TRACKED and not fetched. Neither is
+# the document — flows.yaml is the six canonical journeys, sdks.yaml is the
+# per-language publishing matrix — but both used to be pulled from hanzoai/openapi
+# at a pin, and both drifted from cloud on that repo's clock. flows.yaml names
+# operationIds, and the pinned copy carried the PROJECTION's id scheme
+# (`get_v1_kv_name` for cloud's `get_v1_kv_by_name`), so three of its eleven ids
+# resolved to nothing and the flow pages could not be generated at all. A file
+# whose contents must agree with the document does not get a second upstream.
 #
 # Three sources for the document, tried in order, all yielding the same bytes:
 #
@@ -36,48 +41,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR="$SCRIPT_DIR/.."
 SPECS_DIR="$APP_DIR/openapi-specs"
-PIN_FILE="$SPECS_DIR/hanzo.pin"
 LOCK="$SPECS_DIR/.spec-lock"
 DOCUMENT="$SPECS_DIR/openapi.yaml"
-# flows.yaml names the six canonical journeys as operationIds, in call order.
-# Upstream owns it: the SDKs ship the same six as `examples/<flow>/`, and the
-# docs' four-surface pages are one more projection of the same list.
-FLOWS="$SPECS_DIR/flows.yaml"
-# sdks.yaml is the SDK matrix — the package names the docs print must be the
-# ones the generator actually publishes under.
-SDKS="$SPECS_DIR/sdks.yaml"
-
 mkdir -p "$SPECS_DIR"
-
-# Fetch one file from the pinned revision. $1 = repo-relative path, $2 = dest.
-fetch_pinned() {
-  [ -n "${TOKEN:-}" ] || return 1
-  curl -fsSL -H "Authorization: Bearer $TOKEN" \
-    "https://raw.githubusercontent.com/hanzoai/openapi/$PIN/$1" -o "$2" 2>/dev/null
-}
-
-if [ ! -f "$PIN_FILE" ]; then
-  echo "[openapi] no $PIN_FILE — nothing to pin to; keeping the committed snapshot"
-  exit 0
-fi
-PIN="$(tr -d '[:space:]' < "$PIN_FILE")"
-
-TOKEN="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
-if [ -z "$TOKEN" ] && command -v gh >/dev/null 2>&1; then
-  TOKEN="$(gh auth token 2>/dev/null || true)"
-fi
 
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
-
-# flows.yaml and sdks.yaml, from hanzoai/openapi at hanzo.pin. Neither is the
-# document; a miss here leaves the committed copy in place and is not fatal.
-for extra in flows.yaml sdks.yaml; do
-  if fetch_pinned "$extra" "$tmp"; then
-    install -m 0644 "$tmp" "$SPECS_DIR/$extra"
-    echo "[openapi] fetched $extra @ ${PIN:0:9}"
-  fi
-done
 
 REF="$(sed -n 's/^ref=//p' "$LOCK" 2>/dev/null || true)"
 WANT="$(sed -n 's/^sha256=//p' "$LOCK" 2>/dev/null || true)"
@@ -97,15 +66,24 @@ if [ -n "$REF" ] && [ -n "${FORGE_TOKEN:-}" ] && \
   exit 0
 fi
 
-SIBLING_DIR="$APP_DIR/../../../cloud"
-if [ -f "$SIBLING_DIR/openapi.yaml" ]; then
-  install -m 0644 "$SIBLING_DIR/openapi.yaml" "$DOCUMENT"
-  echo "[openapi] using the sibling hanzoai/cloud checkout ($(wc -c < "$DOCUMENT") bytes) — lock is $REF"
-  exit 0
+# A sibling checkout is a source of the SAME bytes, not a licence to build from
+# whatever is on someone's disk. It sits on whatever commit its owner left it on,
+# and installing that silently rebuilt the whole reference from an older release
+# while `.spec-lock` still claimed the pinned one. So it is digest-checked like
+# any other source, and a mismatch falls through to the committed snapshot.
+SIBLING="$APP_DIR/../../../cloud/openapi.yaml"
+if [ -f "$SIBLING" ]; then
+  got="$(sha256sum "$SIBLING" | cut -d' ' -f1)"
+  if [ -z "$WANT" ] || [ "$got" = "$WANT" ]; then
+    install -m 0644 "$SIBLING" "$DOCUMENT"
+    echo "[openapi] using the sibling hanzoai/cloud checkout ($(wc -c < "$DOCUMENT") bytes) @ $REF"
+    exit 0
+  fi
+  echo "[openapi] the sibling checkout is not at $REF ($got) — keeping the committed snapshot"
 fi
 
 if [ -f "$DOCUMENT" ]; then
-  echo "[openapi] no FORGE_TOKEN and no sibling checkout; building from the committed snapshot @ $REF"
+  echo "[openapi] building from the committed snapshot @ $REF"
   exit 0
 fi
 

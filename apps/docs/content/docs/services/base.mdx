@@ -25,7 +25,7 @@ Hanzo Base serves its API under `/v1`, not `/api`. Authentication is **IAM-nativ
 
 - **Auto-generated REST API**: Full CRUD for every collection under `/v1/collections/{name}/records`
 - **IAM-native auth**: Tokens issued by [Hanzo IAM](/docs/services/iam) and validated against its JWKS — users are not stored in Base
-- **Realtime**: Subscribe to record changes over SSE (`/v1/realtime`) or WebSocket (`/v1/realtime/ws`)
+- **Realtime**: Subscribe to record changes over SSE or WebSocket
 - **File storage**: Upload files to records; stored on local disk or [Hanzo S3](/docs/services/s3)
 - **Durable tasks & workflows**: A built-in task queue at `/v1/tasks`
 - **Per-user private KV**: A scoped key-value store at `/v1/private`
@@ -129,7 +129,7 @@ curl -X POST https://base.hanzo.ai/v1/collections \
 
 ## Realtime
 
-Subscribe to record changes over Server-Sent Events. Base also offers a WebSocket transport at `/v1/realtime/ws`.
+Subscribe to record changes over Server-Sent Events, or over a WebSocket transport.
 
 ```typescript
 import PocketBase from '@hanzoai/js-sdk' // wire-compatible client
@@ -142,7 +142,7 @@ base.collection('posts').subscribe('*', (e) => {
 })
 ```
 
-Under the hood: open `GET /v1/realtime` (the server returns a `clientId`), then `POST /v1/realtime` with `{ clientId, subscriptions: ["posts", "posts/RECORD_ID"] }`. Subscriptions are gated by each collection's list/view rules.
+Under the hood the client opens a stream, receives a `clientId`, and posts the subscriptions it wants (`posts`, `posts/RECORD_ID`). Subscriptions are gated by each collection's list/view rules.
 
 ## File Storage
 

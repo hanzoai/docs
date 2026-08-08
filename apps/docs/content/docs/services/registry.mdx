@@ -225,12 +225,6 @@ registry.hanzo.ai/my-org/models/llama-3-8b:v1.0.0-lora-sft  # Fine-tuned adapter
 
 Every image pushed to Hanzo Registry is automatically scanned for known CVEs. Scan results are available in the console and via API.
 
-```bash
-# View scan results for an image
-curl -s -H "Authorization: Bearer $HANZO_API_KEY" \
-  https://api.hanzo.ai/v1/registry/my-org/my-app/v1.0.0/vulnerabilities | jq .
-```
-
 Configure severity gates to block deployments with critical vulnerabilities:
 
 ```yaml
@@ -271,13 +265,6 @@ Registry access is managed through Hanzo IAM (`hanzo.id`). Permissions are scope
 | **Writer** | Push and pull images, manage tags |
 | **Admin** | All of the above plus delete images, configure policies |
 
-```bash
-# Grant a team read access to a namespace
-curl -X POST -H "Authorization: Bearer $HANZO_API_KEY" \
-  https://api.hanzo.ai/v1/registry/my-org/permissions \
-  -d '{"team": "ml-engineers", "role": "writer"}'
-```
-
 ## Pull-Through Cache
 
 Hanzo Registry can act as a transparent caching proxy for upstream registries. This reduces external bandwidth, improves pull latency, and provides resilience against upstream outages.
@@ -314,17 +301,7 @@ Hanzo Registry runs automated garbage collection to reclaim storage from:
 - Unreferenced blobs (layers no longer referenced by any manifest)
 - Expired cache entries (pull-through cache TTL)
 
-Garbage collection runs on a configurable schedule (default: daily at 03:00 UTC) and can also be triggered manually:
-
-```bash
-# Trigger garbage collection via API
-curl -X POST -H "Authorization: Bearer $HANZO_API_KEY" \
-  https://api.hanzo.ai/v1/registry/admin/gc
-
-# View GC history
-curl -s -H "Authorization: Bearer $HANZO_API_KEY" \
-  https://api.hanzo.ai/v1/registry/admin/gc/history | jq .
-```
+Garbage collection runs on a configurable schedule (default: daily at 03:00 UTC), and can also be triggered on demand.
 
 ## CI/CD Integration
 

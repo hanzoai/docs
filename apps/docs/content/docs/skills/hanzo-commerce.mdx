@@ -403,64 +403,6 @@ docker build --platform linux/amd64 -t ghcr.io/hanzoai/commerce:latest .
 | `INSIGHTS_ENABLED` | `false` | Hanzo Insights product analytics |
 | `ANALYTICS_ENABLED` | `false` | Umami-like web analytics |
 
-## API Endpoints
-
-### Core Commerce
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/v1/store` | GET/POST | Storefront listing/create |
-| `/v1/product` | CRUD | Products |
-| `/v1/variant` | CRUD | Product variants |
-| `/v1/collection` | CRUD | Product collections |
-| `/v1/cart` | CRUD | Shopping carts |
-| `/v1/order` | CRUD | Orders |
-| `/v1/checkout` | POST | Payment processing |
-| `/v1/checkout/sessions` | POST | Stripe Checkout sessions |
-| `/v1/subscription` | CRUD | Subscriptions |
-| `/v1/coupon` | CRUD | Coupon codes |
-| `/v1/promotion` | CRUD | Promotions |
-| `/v1/inventory` | CRUD | Inventory tracking |
-| `/v1/fulfillment` | CRUD | Order fulfillment |
-| `/v1/review` | CRUD | Product reviews |
-
-### Billing
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/v1/billing/balance` | GET | Balance by user + currency (cents) |
-| `/v1/billing/balance/all` | GET | All currency balances |
-| `/v1/billing/usage` | POST | Record API usage (withdraw) |
-| `/v1/billing/deposit` | POST | Create deposit transaction |
-| `/v1/billing/credit` | POST | Grant starter credit ($5, 30-day expiry) |
-| `/v1/billing/zap` | POST | Clear balance |
-
-### Analytics
-
-Commerce does not serve an analytics surface of its own — it is a *client* of
-the event spine. Every wire (single event, batch, identify, custom commerce
-event) goes to the one ingest door, dispatched by the shape of the body:
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/v1/event` | POST | The one ingest door — a bare event, a bare array, or a `{batch:[…]}` / `{events:[…]}` envelope. Batch is a body, not a path. |
-| `/v1/event.js` | GET | The tag that feeds the door, served from the same origin |
-| `/v1/analytics/overview` | GET | Read lens: totals for a range |
-| `/v1/analytics/timeseries` | GET | Read lens: bucketed series |
-| `/v1/analytics/top` | GET | Read lens: top-N breakdown |
-
-### Auth & Admin
-
-| Endpoint | Method | Purpose |
-|----------|--------|---------|
-| `/auth` | POST | OAuth2 password grant |
-| `/v1/account` | GET/POST | User account |
-| `/v1/user` | CRUD | User management (admin) |
-| `/v1/organization` | CRUD | Organization management |
-| `/v1/namespace` | CRUD | Namespace management (admin-only, authed) |
-| `/v1/accesstoken` | CRUD | API token management |
-| `/health` | GET | Health check |
-
 ## KMS Secret Management
 
 All payment credentials are stored in KMS. No fallback to org-stored fields.
@@ -480,28 +422,6 @@ All payment credentials are stored in KMS. No fallback to org-stored fields.
 **Hydration**: `kms.Hydrate(ctx, org)` populates all 25 provider credential fields. Called once after org resolution. Cache: 5min TTL, extends to 30min on KMS failure.
 
 **K8s**: Single "secret zero" (`commerce-kms-auth`) holds KMS Universal Auth credentials.
-
-## Checkout Sessions
-
-`POST /v1/checkout/sessions` -- public endpoint (no token auth).
-
-**Request**:
-```json
-{
-  "company": "acme",
-  "providerHint": "stripe",
-  "currency": "usd",
-  "org": "acme",
-  "customer": { "email": "user@example.com" },
-  "items": [{ "productId": "prod_xyz", "quantity": 1 }],
-  "successUrl": "https://acme.com/success",
-  "cancelUrl": "https://acme.com/cancel"
-}
-```
-
-**Response**: `{ "checkoutUrl": "https://checkout.stripe.com/...", "sessionId": "cs_..." }`
-
-Org resolved from `X-IAM-Org-Id` header or request body. Per-request Stripe client (multi-tenant safe).
 
 ## Cross-Compilation
 
