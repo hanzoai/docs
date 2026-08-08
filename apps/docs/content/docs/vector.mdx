@@ -27,28 +27,7 @@ curl -X POST https://api.hanzo.ai/v1/vector \
 
 ## Upsert and Search
 
-Insert points (a vector plus a JSON payload), then query for nearest neighbors with optional metadata filters.
-
-```bash
-# Upsert points
-curl -X PUT https://api.hanzo.ai/v1/vector/documents/points \
-  -H "Authorization: Bearer hk-..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "points": [
-      { "id": 1, "vector": [0.12, 0.04, "..."], "payload": { "category": "ai" } }
-    ]
-  }'
-
-# Search with a filter
-curl -X POST https://api.hanzo.ai/v1/vector/documents/points/search \
-  -H "Authorization: Bearer hk-..." \
-  -d '{
-    "vector": [0.11, 0.05, "..."],
-    "limit": 10,
-    "filter": { "must": [{ "key": "category", "match": { "value": "ai" } }] }
-  }'
-```
+A point is a vector plus a JSON payload; a query returns nearest neighbours, optionally filtered on that payload.
 
 Generate the vectors with [Embeddings](/docs/embeddings), then store them here. For full-text and hybrid keyword ranking, pair with [Search](/docs/search).
 

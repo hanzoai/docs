@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { isInternal, loadDocument, publicDocument } from './openapi-doc';
+import { DOCUMENT, isInternal, loadDocument, publicDocument } from './openapi-doc';
 import { genOpenapiPages } from './gen-openapi-pages';
 
 // THE API REFERENCE, held to its own claims.
@@ -19,7 +19,7 @@ import { genOpenapiPages } from './gen-openapi-pages';
 //   complete    every operation the document serves has an entry, and every
 //               sentence the document wrote for it survives onto the page
 
-const doc = loadDocument(path.join(import.meta.dirname, '../openapi-specs/hanzo.yaml'));
+const doc = loadDocument(DOCUMENT);
 /** What public/openapi/hanzo.yaml is written from — cloned once, it is 3.8 MB. */
 const shipped = publicDocument(doc);
 

@@ -131,15 +131,20 @@ at docs.hanzo.ai/docs/contributing/docs-architecture). Summary:
      `hanzo-docs/<team>` content repo mounted as a **git submodule** at
      `content/docs/<team>/`. Exemplar: `hanzo-docs/studio-docs` → `content/docs/studio/`.
   2. **Generated** (never hand-written, `.gitignore`d) → API reference from
-     `hanzoai/openapi` via `scripts/sync-openapi.sh` + `scripts/gen-openapi-pages.ts`
-     (source-derived: add a service spec, it appears next build); SDK reference
-     from the ZAP SDK generator into `content/docs/sdks/<lang>/`.
+     `hanzoai/cloud`'s `openapi.yaml` at the release `openapi-specs/.spec-lock`
+     pins, via `scripts/sync-openapi.sh` + `scripts/gen-openapi-pages.ts`
+     (source-derived: an endpoint's sentence is written next to its handler and
+     travels here unaltered); SDK reference from the ZAP SDK generator into
+     `content/docs/sdks/<lang>/`. Every reader of the document goes through
+     `scripts/openapi-doc.ts`, which owns the path — no script names the file.
   3. **Ported** (upstream OSS, mirrored with attribution, `.gitignore`d) →
      `scripts/sync-project-docs.ts` into `content/docs/projects/<upstream>/`.
      Port, don't re-author. Carry upstream LICENSE + NOTICE. GPL stays GPL.
 - **Repos:** `hanzo-docs/docs` = framework + hub (canonical; `hanzoai/docs`
   redirects here). `hanzo-docs/<team>` = authored content only, NO framework.
-  `hanzoai/openapi` = the API source of truth. All docs live in the `hanzo-docs`
+  `hanzoai/cloud` `openapi.yaml` = the API source of truth; `hanzoai/openapi`'s
+  `hanzo.yaml` was a projection of it on its own clock and this repo no longer
+  reads it. All docs live in the `hanzo-docs`
   org: the hub at `hanzo-docs/docs`, each team's content at `hanzo-docs/<team>`.
 - **Standalone vs hub:** default is a hub section. Standalone deploy only if ALL
   of: ≈150+ pages or fast OSS-upstream churn, independent versioning, direct

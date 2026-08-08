@@ -25,23 +25,6 @@ The response returns the SQL/HTTP endpoint and credentials.
 
 Datastore speaks SQL over HTTP (port `8123`) and the ClickHouse native protocol (port `9000`), so ClickHouse clients and drivers connect directly.
 
-```bash
-# Create a table (MergeTree family)
-curl https://api.hanzo.ai/v1/datastore/events/query \
-  -H "Authorization: Bearer hk-..." \
-  -d 'CREATE TABLE hits (
-        ts DateTime, user_id UInt64, path String, ms UInt32
-      ) ENGINE = MergeTree ORDER BY (ts, user_id)'
-
-# Aggregate
-curl https://api.hanzo.ai/v1/datastore/events/query \
-  -H "Authorization: Bearer hk-..." \
-  -d "SELECT path, count() AS hits, avg(ms) AS mean_ms
-      FROM hits
-      WHERE ts > now() - INTERVAL 1 DAY
-      GROUP BY path ORDER BY hits DESC LIMIT 20"
-```
-
 ## Features
 
 - MergeTree engine family with primary-key ordering, partitioning, and TTL

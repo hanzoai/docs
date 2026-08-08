@@ -10,7 +10,7 @@ description: Serverless PostgreSQL with pgvector, auto-scaling, instant branchin
 Hanzo SQL is a serverless PostgreSQL service purpose-built for AI infrastructure. It provides auto-scaling compute, instant database branching for development workflows, pgvector for embedding storage, connection pooling, automatic backups, and point-in-time recovery -- all managed as part of the Hanzo platform.
 
 **Endpoint:** `db.hanzo.ai`
-**Gateway:** `api.hanzo.ai/v1/db/*`
+**Gateway:** `api.hanzo.ai/v1/sql`
 **In-cluster:** `postgres.hanzo.svc:5432`
 **Version:** PostgreSQL 16 with pgvector 0.7+
 
@@ -178,29 +178,6 @@ Install:
 npm install pg
 ```
 
-### REST API
-
-Query your database over HTTP when a persistent connection is not practical:
-
-```bash
-# Execute a SQL query
-curl -X POST https://api.hanzo.ai/v1/db/query \
-  -H "Authorization: Bearer hk-your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "database": "mydb",
-    "query": "SELECT id, title FROM documents LIMIT 10"
-  }'
-
-# List databases
-curl -H "Authorization: Bearer hk-your-api-key" \
-  https://api.hanzo.ai/v1/db/databases
-
-# Get database info
-curl -H "Authorization: Bearer hk-your-api-key" \
-  https://api.hanzo.ai/v1/db/databases/mydb
-```
-
 ## pgvector -- Vector Embeddings
 
 Hanzo SQL includes pgvector for storing and querying vector embeddings directly alongside your relational data. No separate vector database required.
@@ -332,36 +309,10 @@ Recommended pool sizes per application:
 
 Database branches are copy-on-write clones that share storage with the parent until data diverges. Use them for development, staging, CI test runs, and schema previews.
 
-### Create a Branch
-
-```bash
-# Create a branch from the current state
-curl -X POST https://api.hanzo.ai/v1/db/branches \
-  -H "Authorization: Bearer hk-your-api-key" \
-  -d '{"database": "mydb", "name": "feature-auth-refactor"}'
-
-# Create a branch from a specific point in time
-curl -X POST https://api.hanzo.ai/v1/db/branches \
-  -H "Authorization: Bearer hk-your-api-key" \
-  -d '{"database": "mydb", "name": "debug-2026-02-20", "restore_to": "2026-02-20T15:30:00Z"}'
-```
-
 ### Connect to a Branch
 
 ```bash
 psql "postgresql://user:password@db.hanzo.ai:5432/mydb:feature-auth-refactor?sslmode=require"
-```
-
-### List and Delete Branches
-
-```bash
-# List all branches
-curl -H "Authorization: Bearer hk-your-api-key" \
-  https://api.hanzo.ai/v1/db/branches?database=mydb
-
-# Delete a branch
-curl -X DELETE https://api.hanzo.ai/v1/db/branches/feature-auth-refactor \
-  -H "Authorization: Bearer hk-your-api-key"
 ```
 
 ### Branch Workflow
@@ -392,43 +343,13 @@ Hanzo SQL continuously archives WAL (Write-Ahead Log) segments. No cron jobs or 
 
 ### Point-in-Time Recovery
 
-Restore a database to any second within the backup retention window:
-
-```bash
-# Restore to a specific timestamp
-curl -X POST https://api.hanzo.ai/v1/db/restore \
-  -H "Authorization: Bearer hk-your-api-key" \
-  -d '{
-    "database": "mydb",
-    "restore_to": "2026-02-20T14:30:00Z",
-    "target": "mydb-restored"
-  }'
-```
-
-The restored database appears as a new database. Verify its state before swapping with production.
-
-### Manual Snapshots
-
-Take an on-demand snapshot for pre-migration safety:
-
-```bash
-curl -X POST https://api.hanzo.ai/v1/db/snapshots \
-  -H "Authorization: Bearer hk-your-api-key" \
-  -d '{"database": "mydb", "label": "pre-migration-v42"}'
-```
+A database restores to any second within the backup retention window, and to an
+on-demand snapshot taken before a migration. A restore lands as a NEW database —
+verify its state before swapping it with production.
 
 ## Read Replicas
 
-Scale read-heavy workloads by routing queries to read replicas:
-
-```bash
-# Create a read replica
-curl -X POST https://api.hanzo.ai/v1/db/replicas \
-  -H "Authorization: Bearer hk-your-api-key" \
-  -d '{"database": "mydb", "name": "mydb-ro-1"}'
-```
-
-Connect applications to the read replica endpoint:
+Scale read-heavy workloads by routing queries to a read replica:
 
 ```
 # Read replica (eventually consistent)

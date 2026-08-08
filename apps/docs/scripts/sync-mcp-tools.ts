@@ -16,9 +16,8 @@ import { fileURLToPath } from 'node:url';
 //
 // Snapshot, like the document and the CLI table: fetched when reachable, and
 // the committed copy when not, so a builder with no egress still renders a
-// truthful reference. `meta.captured` records when the copy on disk was taken
-// and `meta.source` whether THIS build refreshed it, so every page can state
-// its own provenance instead of implying it is live.
+// truthful reference. `meta.captured` records when the copy on disk was taken,
+// which is what a page's provenance line states instead of implying it is live.
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
@@ -62,8 +61,6 @@ export interface McpCatalog {
     count: number;
     /** ISO date the list on disk was taken from the door. */
     captured: string;
-    /** `live` when this build reached the door, `snapshot` when it read the copy. */
-    source: 'live' | 'snapshot';
   };
   handshake?: McpHandshake;
   tools: McpTool[];
@@ -131,15 +128,14 @@ export async function syncMcpTools(): Promise<void> {
   const tools = await fetchTools();
   const have = fs.existsSync(OUT) ? load() : null;
 
-  const keep = (why: string): void => {
-    // Say it in the build log, loudly: this build's tool pages describe the
-    // door as it was, not as it is.
+  // Say it in the build log, loudly: this build's tool pages describe the door
+  // as it was, not as it is. And say it ONLY there. Stamping `source:
+  // "snapshot"` back into the vendored file rewrote a TRACKED 1.1 MB artefact
+  // on every offline build, so a developer with no network produced a one-flag
+  // diff that the next online build flipped straight back — churn that says
+  // nothing about the door and buries the changes that do.
+  const keep = (why: string): void =>
     console.log(`[mcp] ${why} — falling back to the vendored list: ${have!.meta.count} tools captured ${have!.meta.captured}`);
-    fs.writeFileSync(
-      OUT,
-      JSON.stringify({ ...have!, meta: { ...have!.meta, source: 'snapshot' } }, null, 0) + '\n',
-    );
-  };
 
   if (!tools) {
     if (!have) throw new Error(`[mcp] no tool list available and no snapshot at ${OUT}`);
@@ -164,7 +160,7 @@ export async function syncMcpTools(): Promise<void> {
   const handshake = readOnly ? await fetchHandshake(readOnly.name) : null;
   const catalog: McpCatalog = {
     door: MCP_DOOR,
-    meta: { count: tools.length, captured: new Date().toISOString().slice(0, 10), source: 'live' },
+    meta: { count: tools.length, captured: new Date().toISOString().slice(0, 10) },
     ...(handshake ?? have?.handshake ? { handshake: handshake ?? have!.handshake } : {}),
     tools,
   };
@@ -186,7 +182,6 @@ export function load(): McpCatalog {
     meta: {
       count: raw.meta?.count ?? tools.length,
       captured: raw.meta?.captured ?? 'an unrecorded date',
-      source: raw.meta?.source ?? 'snapshot',
     },
     ...(raw.handshake ? { handshake: raw.handshake as McpHandshake } : {}),
     tools,
