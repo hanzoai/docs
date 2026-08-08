@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isInternal, loadDocument, type Document, type Operation } from './openapi-doc';
+import { DOCUMENT, isInternal, loadDocument, release, type Document, type Operation } from './openapi-doc';
 import { toolOperations } from './openapi-surfaces';
 import { load, MCP_DOOR, type McpCatalog, type McpTool } from './sync-mcp-tools';
 import { code, fence, firstSentence, prose, text, yamlString } from './mdx';
@@ -15,7 +15,7 @@ import { code, fence, firstSentence, prose, text, yamlString } from './mdx';
 // `tools/call` envelope built from that same schema.
 //
 // Nothing here is written about a tool. Every sentence on a tool page came off
-// the wire in `tools/list`, exactly as the API reference comes off hanzo.yaml.
+// the wire in `tools/list`, exactly as the API reference comes off the document.
 // The one authored page is `index.mdx`, which explains what the door IS and how
 // to point a client at it — a concept, not a signature.
 //
@@ -25,24 +25,15 @@ import { code, fence, firstSentence, prose, text, yamlString } from './mdx';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
-const DOCUMENT = path.join(APP_ROOT, 'openapi-specs/hanzo.yaml');
-/**
- * The commit the document was pinned at.
- *
- * This reference joins a LIVE door against a PINNED document, so the two can
- * legitimately disagree — a route the door has renamed since the pin resolves
- * to no operation. Pages that report such a tool name the pin, so the reader
- * can tell "the document does not describe this" from "the copy we hold does
- * not describe this yet".
- */
-const DOCUMENT_PIN = (() => {
-  try {
-    return fs.readFileSync(path.join(APP_ROOT, 'openapi-specs/hanzo.pin'), 'utf8').trim().slice(0, 9);
-  } catch {
-    return '';
-  }
-})();
-const pinned = DOCUMENT_PIN ? ` (pinned at \`${DOCUMENT_PIN}\`)` : '';
+// This reference joins a LIVE door against a PINNED document, so the two can
+// legitimately disagree — a route the door has renamed since the pin resolves
+// to no operation. Pages that report such a tool name the release, so the
+// reader can tell "the document does not describe this" from "the copy we hold
+// does not describe this yet". The release is `.spec-lock`'s, the cloud commit
+// the document was taken at; it used to be `hanzo.pin`, which named a commit of
+// the projection this reference stopped reading.
+const rel = release();
+const pinned = rel ? ` (pinned at \`${rel}\`)` : '';
 const OUT_DIR = path.join(APP_ROOT, 'content/docs/mcp-tools');
 
 /** The client command that registers the door, over its streamable HTTP transport. */
@@ -429,8 +420,18 @@ const curl = (body: string): string =>
 
 // ------------------------------------------------------------------- pages
 
-/** The product a tool is filed under, and the slug of its folder. */
-const productOf = (ops: Operation[] | undefined): string => (ops?.length ? ops[0].product : 'unmapped');
+/**
+ * The product a tool is filed under, and the slug of its folder.
+ *
+ * A tool RESOLVES to an operation and still has no product when the operation
+ * is one the document serves outside `/v1/<product>` — `POST /collaborator/rpc/
+ * {documentid}` is idded `post_collaborator_rpc_by_documentid`, whose prefix is
+ * the verb, so the product rule refuses it rather than minting a product called
+ * Post. Reading "has an operation" as "has a product" wrote that page to the
+ * section's root instead of a folder: on disk, in no product, linked from no
+ * index, and invisible to every count that walks the folders.
+ */
+const productOf = (ops: Operation[] | undefined): string => ops?.[0]?.product || 'unmapped';
 
 /**
  * The tools this reference publishes: the door's answer, less the operator
@@ -455,7 +456,7 @@ const provenance = (cat: McpCatalog): string =>
   (cat.meta.count > cat.tools.length
     ? `, of which ${cat.tools.length} are documented here (the operator surface is not published)`
     : '') +
-  (cat.meta.source === 'snapshot' ? ' (this build read the vendored copy; the door was unreachable).' : '.');
+  '.';
 
 function renderTool(tool: McpTool, ops: Operation[] | undefined, cat: McpCatalog, doc: Document): string {
   const schema = tool.inputSchema ?? {};
@@ -1009,10 +1010,10 @@ export async function genMcpPages(outDir: string = OUT_DIR): Promise<{ pages: nu
   const withArgs = cat.tools.filter((t) => Object.keys(t.inputSchema?.properties ?? {}).length).length;
   console.log(
     `[mcp-ref] ${pages + 2} pages — ${cat.tools.length} tools across ${ordered.size} products, ` +
-      `${withArgs} declaring arguments, ${cat.tools.length - unmapped} mapped to an operation` +
-      (unmapped ? `, ${unmapped} the document does not describe` : ''),
+      `${withArgs} declaring arguments, ${cat.tools.length - unmapped} filed under a product` +
+      (unmapped ? `, ${unmapped} under none — the document gives their route no product` : ''),
   );
-  console.log(`[mcp-ref] tool list captured ${cat.meta.captured} (${cat.meta.source}), 0 orphans`);
+  console.log(`[mcp-ref] tool list captured ${cat.meta.captured}, 0 orphans`);
   return { pages: pages + 2, tools: cat.tools.length, unmapped };
 }
 

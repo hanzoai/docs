@@ -44,21 +44,7 @@ rows = await conn.fetch("SELECT id, title FROM documents LIMIT 10")
 
 ## Branches and Replicas
 
-Branches are copy-on-write clones that share storage with the parent until data diverges — near-instant regardless of database size. Use them for development, CI, and schema previews.
-
-```bash
-# Branch the current state
-curl -X POST https://api.hanzo.ai/v1/sql/app/branches \
-  -H "Authorization: Bearer hk-..." \
-  -d '{ "name": "feature-auth" }'
-
-# Add a read replica
-curl -X POST https://api.hanzo.ai/v1/sql/app/replicas \
-  -H "Authorization: Bearer hk-..." \
-  -d '{ "name": "app-ro-1" }'
-```
-
-Point read-heavy traffic at the replica endpoint; typical replication lag is under 100 ms.
+Branches are copy-on-write clones that share storage with the parent until data diverges — near-instant regardless of database size. Use them for development, CI, and schema previews. Read-heavy traffic points at a replica endpoint instead, where replication lag is typically under 100 ms.
 
 ## Features
 

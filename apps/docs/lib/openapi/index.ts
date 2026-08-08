@@ -5,7 +5,7 @@ import fs from 'node:fs';
 const isExport = process.env.NEXT_EXPORT === '1';
 // ONE document. The interactive loader reads exactly the file the static
 // reference is generated from, so dev and the export never disagree.
-const document = path.resolve('./openapi-specs/hanzo.yaml');
+const document = path.resolve('./openapi-specs/openapi.yaml');
 
 // Load the document when it is present (fetched by sync-openapi.sh). During
 // static export the generated API pages contain slugs with dots and deeply
