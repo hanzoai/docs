@@ -174,13 +174,28 @@ const firstSentence = (s: string): string => {
  * malformed we fall back to the `/v1/<product>` path segment rather than
  * inventing a product — and if neither resolves, the operation is reported as
  * unresolved instead of being silently dropped.
+ *
+ * AN HTTP METHOD IS NEVER A PRODUCT, and saying so is what this rule was missing.
+ * A route outside `/v1/<product>` — `/.well-known/jwks`, `/{org}/{repo}/git-upload-pack`,
+ * `/_/commerce/healthz` — is idded `get_well_known_jwks`, so its prefix is the
+ * word `get`. The final fallback returned that prefix whether or not it named
+ * anything, which minted six products called Get, Post, Put, Patch, Delete and
+ * Options, each with a synopsis-less page and dozens of unrelated routes filed
+ * under the verb they happen to use. The comment above already said the rule
+ * does not invent a product; the code did, and only for the operations no tag
+ * covers, which is exactly where nobody was looking.
+ *
+ * Refusing them sends those routes to `unresolved`, where the generator prints
+ * them — one honest line naming what hanzoai/cloud must tag, instead of six
+ * pages that look like products and are not.
  */
 function resolveProduct(id: string, path: string, known: (s: string) => boolean): string | null {
   const prefix = id.includes('_') ? id.slice(0, id.indexOf('_')) : '';
   if (prefix && known(prefix)) return prefix;
   const seg = path.split('/').filter(Boolean);
   if (seg[0] === 'v1' && seg[1] && known(seg[1])) return seg[1];
-  return prefix || null;
+  if (!prefix || (METHODS as readonly string[]).includes(prefix)) return null;
+  return prefix;
 }
 
 /**
