@@ -233,7 +233,6 @@ Canonical workspace packages and their paths:
 | `@hanzo/docs-language` | packages/language |
 | `@hanzo/docs-local-md` | packages/local-md |
 | `@hanzo/docs-sanity` | packages/sanity |
-| `@hanzo/docs-shadcn` | packages/shadcn |
 | `@hanzo/docs-vite` | packages/vite |
 | `@hanzo/docs-basehub` | packages/basehub |
 | `@hanzo/docs-mdx-remote` | packages/mdx-remote |
