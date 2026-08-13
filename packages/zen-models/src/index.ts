@@ -3,7 +3,8 @@
  *
  * "There should be one — and preferably only one — obvious way to do it."
  *
- * Every Hanzo site imports model definitions from this package.
+ * Zen is Zoo Labs Foundation's model family (https://zoo.industries); Hanzo
+ * serves it. Every Hanzo site imports model definitions from this package.
  * Never duplicate model specs elsewhere.
  */
 
