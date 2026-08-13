@@ -186,6 +186,7 @@ Let customers override the auto-detected region:
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { Select } from '@hanzo/gui'
 
 const regions = [
   { id: 'reg_us', label: 'USD $', flag: 'US' },
@@ -206,17 +207,22 @@ export function CurrencySelector({ currentRegionId }: { currentRegionId: string 
   }
 
   return (
-    <select
-      value={selected}
-      onChange={(e) => handleChange(e.target.value)}
-      className="border rounded px-2 py-1 text-sm"
-    >
-      {regions.map((r) => (
-        <option key={r.id} value={r.id}>
-          {r.flag} {r.label}
-        </option>
-      ))}
-    </select>
+    <Select value={selected} onValueChange={handleChange}>
+      <Select.Trigger size="$2">
+        <Select.Value placeholder="Region" />
+      </Select.Trigger>
+      <Select.Content>
+        <Select.Viewport>
+          {regions.map((r, i) => (
+            <Select.Item key={r.id} index={i} value={r.id}>
+              <Select.ItemText>
+                {r.flag} {r.label}
+              </Select.ItemText>
+            </Select.Item>
+          ))}
+        </Select.Viewport>
+      </Select.Content>
+    </Select>
   )
 }
 ```
