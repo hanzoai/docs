@@ -151,14 +151,21 @@ async function switchRegion(newRegion: Region) {
 Regions control whether prices include or exclude tax:
 
 ```tsx
+import { Text } from '@hanzo/gui'
+
 function PriceDisplay({ price, region }: { price: number; region: Region }) {
   const formatted = formatPrice(price, region.currency)
 
   return (
-    <span>
+    <Text>
       {formatted}
-      {region.taxInclusive && <span className="text-xs text-gray-500"> incl. tax</span>}
-    </span>
+      {region.taxInclusive && (
+        <Text fontSize="$1" theme="alt2">
+          {' '}
+          incl. tax
+        </Text>
+      )}
+    </Text>
   )
 }
 ```

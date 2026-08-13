@@ -139,6 +139,7 @@ console.log(order.fulfillment.downloads)
 
 ```tsx title="src/app/download/page.tsx"
 import { commerce } from '@/lib/commerce'
+import { Anchor, Card, H1, Paragraph, Text, YStack } from '@hanzo/gui'
 
 export default async function DownloadPage({
   searchParams,
@@ -148,28 +149,37 @@ export default async function DownloadPage({
   const order = await commerce.orders.getBySession(searchParams.session)
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-16">
-      <h1 className="text-3xl font-bold mb-6">Your Purchase</h1>
+    <YStack
+      maxWidth={640}
+      width="100%"
+      marginHorizontal="auto"
+      paddingHorizontal="$4"
+      paddingVertical="$10"
+      gap="$6"
+    >
+      <H1>Your Purchase</H1>
 
       {order.fulfillment.licenseKey && (
-        <div className="bg-gray-50 rounded-lg p-6 mb-6">
-          <p className="text-sm text-gray-500 mb-1">License Key</p>
-          <code className="text-lg font-mono">
+        <Card backgroundColor="$color2" borderRadius="$4" padding="$6" gap="$1">
+          <Paragraph size="$2" theme="alt2">
+            License Key
+          </Paragraph>
+          <Text fontFamily="$mono" fontSize="$6">
             {order.fulfillment.licenseKey}
-          </code>
-        </div>
+          </Text>
+        </Card>
       )}
 
-      {order.fulfillment.downloads?.map((file) => (
-        <a
-          key={file.filename}
-          href={file.url}
-          className="block border rounded-lg p-4 mb-3 hover:bg-gray-50"
-        >
-          {file.filename}
-        </a>
-      ))}
-    </main>
+      <YStack gap="$3">
+        {order.fulfillment.downloads?.map((file) => (
+          <Anchor key={file.filename} href={file.url} textDecorationLine="none">
+            <Card bordered padding="$4" hoverStyle={{ backgroundColor: '$color2' }}>
+              <Text>{file.filename}</Text>
+            </Card>
+          </Anchor>
+        ))}
+      </YStack>
+    </YStack>
   )
 }
 ```
