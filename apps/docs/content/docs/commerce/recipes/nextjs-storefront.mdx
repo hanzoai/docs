@@ -22,10 +22,14 @@ Build a fully functional e-commerce storefront using Next.js 14 App Router, Reac
 ## 1. Create the Project
 
 ```bash
-npx create-next-app@latest storefront --typescript --tailwind --app --src-dir
+npx create-next-app@latest storefront --typescript --app --src-dir
 cd storefront
-npm install @hanzo/commerce
+npm install @hanzo/commerce @hanzo/gui
 ```
+
+The storefront is styled with [`@hanzo/gui`](/docs/gui), so the same components
+render on the web, iOS and Android. Style lives in props on the component, not
+in class names.
 
 ## 2. Configure the SDK
 
@@ -54,6 +58,7 @@ Fetch products in a Server Component -- no client-side loading spinners needed.
 
 ```tsx title="src/app/products/page.tsx"
 import { commerce } from '@/lib/commerce'
+import { Card, H1, H2, Image, Paragraph, XStack, YStack } from '@hanzo/gui'
 import Link from 'next/link'
 
 export default async function ProductsPage() {
@@ -63,30 +68,41 @@ export default async function ProductsPage() {
   })
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">Products</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <YStack maxWidth={1280} width="100%" marginHorizontal="auto" padding="$4" gap="$8">
+      <H1>Products</H1>
+      {/* Stacks wrap instead of a CSS grid, so the same layout runs on native */}
+      <XStack flexWrap="wrap" gap="$6">
         {products.map((product) => (
-          <Link
-            key={product.id}
-            href={`/products/${product.slug}`}
-            className="group rounded-lg border p-4 hover:shadow-md transition"
-          >
-            {product.images?.[0] && (
-              <img
-                src={product.images[0].url}
-                alt={product.name}
-                className="w-full h-48 object-cover rounded mb-4"
-              />
-            )}
-            <h2 className="font-semibold">{product.name}</h2>
-            <p className="text-gray-600">
-              {(product.price / 100).toFixed(2)} {product.currency}
-            </p>
+          <Link key={product.id} href={`/products/${product.slug}`}>
+            <Card
+              bordered
+              padding="$4"
+              gap="$4"
+              width="100%"
+              $gtSm={{ width: 300 }}
+              hoverStyle={{ borderColor: '$borderColorHover' }}
+              pressStyle={{ scale: 0.98 }}
+              animation="quick"
+            >
+              {product.images?.[0] && (
+                <Image
+                  source={{ uri: product.images[0].url }}
+                  alt={product.name}
+                  width="100%"
+                  height={192}
+                  borderRadius="$4"
+                  objectFit="cover"
+                />
+              )}
+              <H2 size="$5">{product.name}</H2>
+              <Paragraph theme="alt2">
+                {(product.price / 100).toFixed(2)} {product.currency}
+              </Paragraph>
+            </Card>
           </Link>
         ))}
-      </div>
-    </main>
+      </XStack>
+    </YStack>
   )
 }
 ```
@@ -98,6 +114,7 @@ Use `generateStaticParams` for static generation of product pages.
 ```tsx title="src/app/products/[slug]/page.tsx"
 import { commerce } from '@/lib/commerce'
 import { AddToCartButton } from './add-to-cart-button'
+import { H1, Image, Label, Paragraph, Select, XStack, YStack } from '@hanzo/gui'
 import { notFound } from 'next/navigation'
 
 interface Props {
@@ -117,41 +134,52 @@ export default async function ProductPage({ params }: Props) {
   if (!product) notFound()
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8">
-      <div className="grid md:grid-cols-2 gap-8">
-        <div>
+    <YStack maxWidth={900} width="100%" marginHorizontal="auto" padding="$4">
+      <XStack flexWrap="wrap" gap="$8">
+        <YStack flex={1} minWidth={280}>
           {product.images?.[0] && (
-            <img
-              src={product.images[0].url}
+            <Image
+              source={{ uri: product.images[0].url }}
               alt={product.name}
-              className="w-full rounded-lg"
+              width="100%"
+              aspectRatio={1}
+              borderRadius="$4"
             />
           )}
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
-          <p className="text-2xl mb-4">
+        </YStack>
+        <YStack flex={1} minWidth={280} gap="$4">
+          <H1>{product.name}</H1>
+          <Paragraph size="$8">
             {(product.price / 100).toFixed(2)} {product.currency}
-          </p>
-          <p className="text-gray-600 mb-6">{product.description}</p>
+          </Paragraph>
+          <Paragraph theme="alt2">{product.description}</Paragraph>
 
           {product.variants && product.variants.length > 0 && (
-            <div className="mb-4">
-              <label className="block font-medium mb-2">Variant</label>
-              <select className="border rounded px-3 py-2 w-full">
-                {product.variants.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.title} -- {(v.price / 100).toFixed(2)} {product.currency}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <YStack gap="$2">
+              <Label>Variant</Label>
+              <Select defaultValue={product.variants[0].id}>
+                <Select.Trigger>
+                  <Select.Value placeholder="Choose a variant" />
+                </Select.Trigger>
+                <Select.Content>
+                  <Select.Viewport>
+                    {product.variants.map((v, i) => (
+                      <Select.Item key={v.id} index={i} value={v.id}>
+                        <Select.ItemText>
+                          {v.title} -- {(v.price / 100).toFixed(2)} {product.currency}
+                        </Select.ItemText>
+                      </Select.Item>
+                    ))}
+                  </Select.Viewport>
+                </Select.Content>
+              </Select>
+            </YStack>
           )}
 
           <AddToCartButton productId={product.id} />
-        </div>
-      </div>
-    </main>
+        </YStack>
+      </XStack>
+    </YStack>
   )
 }
 ```
@@ -228,17 +256,15 @@ export function useCart() {
 'use client'
 
 import { useCart } from '@/lib/cart-context'
+import { Button } from '@hanzo/gui'
 
 export function AddToCartButton({ productId }: { productId: string }) {
   const { addItem } = useCart()
 
   return (
-    <button
-      onClick={() => addItem(productId)}
-      className="w-full bg-black text-white py-3 rounded-lg hover:bg-gray-800 transition"
-    >
+    <Button theme="active" size="$5" width="100%" onPress={() => addItem(productId)}>
       Add to Cart
-    </button>
+    </Button>
   )
 }
 ```
@@ -299,6 +325,7 @@ export async function POST(req: NextRequest) {
 
 ```tsx title="src/app/order/confirmation/page.tsx"
 import { commerce } from '@/lib/commerce'
+import { H1, Paragraph, YStack } from '@hanzo/gui'
 
 interface Props {
   searchParams: { session: string }
@@ -308,13 +335,21 @@ export default async function ConfirmationPage({ searchParams }: Props) {
   const order = await commerce.orders.getBySession(searchParams.session)
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-16 text-center">
-      <h1 className="text-3xl font-bold mb-4">Order Confirmed</h1>
-      <p className="text-gray-600 mb-2">Order #{order.displayId}</p>
-      <p className="text-gray-600">
+    <YStack
+      maxWidth={640}
+      width="100%"
+      marginHorizontal="auto"
+      paddingHorizontal="$4"
+      paddingVertical="$10"
+      alignItems="center"
+      gap="$2"
+    >
+      <H1>Order Confirmed</H1>
+      <Paragraph theme="alt2">Order #{order.displayId}</Paragraph>
+      <Paragraph theme="alt2">
         Total: {(order.total / 100).toFixed(2)} {order.currency}
-      </p>
-    </main>
+      </Paragraph>
+    </YStack>
   )
 }
 ```

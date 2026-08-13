@@ -153,6 +153,7 @@ export default async function ConfirmationPage({
 
 import { useState } from 'react'
 import { useCart } from '@/components/cart-provider'
+import { Paragraph, Text, XStack, YStack } from '@hanzo/gui'
 
 type Step = 'address' | 'shipping' | 'payment' | 'confirmation'
 
@@ -160,22 +161,22 @@ export function CheckoutPage() {
   const { cart } = useCart()
   const [step, setStep] = useState<Step>('address')
 
-  if (!cart) return <p>No items in cart</p>
+  if (!cart) return <Paragraph>No items in cart</Paragraph>
 
   return (
-    <div>
-      <div className="flex gap-4 mb-8">
+    <YStack>
+      <XStack gap="$4" marginBottom="$8">
         {['address', 'shipping', 'payment', 'confirmation'].map(s => (
-          <span key={s} className={step === s ? 'font-bold' : 'text-gray-400'}>
+          <Text key={s} fontWeight={step === s ? '700' : '400'} theme={step === s ? null : 'alt2'}>
             {s.charAt(0).toUpperCase() + s.slice(1)}
-          </span>
+          </Text>
         ))}
-      </div>
+      </XStack>
 
       {step === 'address' && <AddressForm onNext={() => setStep('shipping')} />}
       {step === 'shipping' && <ShippingSelect onNext={() => setStep('payment')} />}
       {step === 'payment' && <CheckoutPayment cartId={cart.id} />}
-    </div>
+    </YStack>
   )
 }
 ```

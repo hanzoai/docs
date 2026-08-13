@@ -104,25 +104,27 @@ function VariantSelector({ product }: { product: Product }) {
 ## Product Images
 
 ```tsx
+import { Image, XStack, YStack } from '@hanzo/gui'
+
 function ProductGallery({ images }: { images: ProductImage[] }) {
   const [active, setActive] = useState(0)
 
   return (
-    <div>
-      <img
-        src={images[active].url}
+    <YStack>
+      <Image
+        source={{ uri: images[active].url }}
         alt={images[active].alt}
         width={600}
         height={600}
       />
-      <div className="flex gap-2 mt-4">
+      <XStack gap="$2" marginTop="$4">
         {images.map((img, i) => (
-          <button key={i} onClick={() => setActive(i)}>
-            <img src={img.url} alt={img.alt} width={80} height={80} />
-          </button>
+          <YStack key={i} tag="button" onPress={() => setActive(i)} pressStyle={{ opacity: 0.7 }}>
+            <Image source={{ uri: img.url }} alt={img.alt} width={80} height={80} />
+          </YStack>
         ))}
-      </div>
-    </div>
+      </XStack>
+    </YStack>
   )
 }
 ```
