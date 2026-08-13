@@ -1,7 +1,8 @@
 /**
  * @zenlm/models — The single source of truth for all Zen model definitions.
  *
- * Every Hanzo site (hanzo.ai, hanzo.industries, zenlm.org, etc.) imports from here.
+ * Zen is Zoo Labs Foundation's model family; Hanzo serves it. Every Hanzo site
+ * (hanzo.ai, hanzo.industries, zenlm.org, etc.) imports from here.
  * Never duplicate model specs elsewhere.
  *
  * Zen MoDE (Mixture of Diverse Experts) — Zen 5 architecture with deliberately
