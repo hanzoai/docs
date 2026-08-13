@@ -16,6 +16,15 @@ jobs:
     runs-on: hanzo-docs-build-linux-amd64
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The credential this checkout persists is the one `git push` below
+          # uses. The automatic token belongs to the Actions user, which holds
+          # no access on this repo, so main's protection answers every push
+          # `Not allowed to push to protected branch main` — the sync computed
+          # its prices, committed them, and dropped them on the floor daily.
+          # FORGE_TOKEN is the fleet's git.hanzo.ai write credential and is the
+          # identity every other write-back in the fleet already uses.
+          token: ${{ secrets.FORGE_TOKEN }}
 
       - uses: pnpm/action-setup@v4
 
