@@ -1,5 +1,6 @@
 #!/bin/bash
-# Fetch THE document: hanzoai/cloud `openapi.yaml`, from git.hanzo.ai.
+# Fetch THE document: cloud's `openapi.yaml`, from git.hanzo.ai at the ref and
+# from the repo `.spec-lock` names.
 #
 # THE REFERENCE RENDERS THE SAME DOCUMENT THE SDKS AND THE CLI ARE GENERATED
 # FROM. It used to render hanzoai/openapi's `hanzo.yaml` instead — a projection
@@ -26,10 +27,16 @@
 # resolved to nothing and the flow pages could not be generated at all. A file
 # whose contents must agree with the document does not get a second upstream.
 #
+# The repo is `hanzo-inc/cloud`, which is where the tree lives. `hanzoai/cloud`
+# still resolves — the forge 301s it here and `curl -L` follows with the header
+# intact — but a name that only works through a redirect is a name that stops
+# working the day the redirect is tidied up, and it reads like the public OSS
+# split, which is a different tree with a different document.
+#
 # Three sources for the document, tried in order, all yielding the same bytes:
 #
 #   1. git.hanzo.ai at the locked ref, when FORGE_TOKEN is set
-#   2. a sibling checkout of hanzoai/cloud at ../../../cloud, for offline work
+#   2. a sibling checkout of the cloud tree at ../../../cloud, for offline work
 #   3. the committed snapshot already in openapi-specs/
 #
 # Falling through to (3) is normal and safe: the snapshot IS the locked release,
@@ -50,15 +57,19 @@ trap 'rm -f "$tmp"' EXIT
 
 REF="$(sed -n 's/^ref=//p' "$LOCK" 2>/dev/null || true)"
 WANT="$(sed -n 's/^sha256=//p' "$LOCK" 2>/dev/null || true)"
+# The lock already names the repo; reading it here means the repo is stated once.
+# It was spelled again in the URL below, so moving the tree changed one of the two.
+REPO="$(sed -n 's/^repo=//p' "$LOCK" 2>/dev/null || true)"
+REPO="${REPO:-hanzo-inc/cloud}"
 
 # The forge serves its API at /v1/, NOT /api/v1/ — /api/v1 answers with a 404
 # that reads exactly like a rejected credential.
 if [ -n "$REF" ] && [ -n "${FORGE_TOKEN:-}" ] && \
    curl -fsSL -H "Authorization: token $FORGE_TOKEN" \
-     "https://git.hanzo.ai/v1/repos/hanzoai/cloud/raw/openapi.yaml?ref=$REF" -o "$tmp" 2>/dev/null; then
+     "https://git.hanzo.ai/v1/repos/$REPO/raw/openapi.yaml?ref=$REF" -o "$tmp" 2>/dev/null; then
   got="$(sha256sum "$tmp" | cut -d' ' -f1)"
   if [ -n "$WANT" ] && [ "$got" != "$WANT" ]; then
-    echo "[openapi] ERROR: hanzoai/cloud@$REF:openapi.yaml hashes to $got, but $LOCK says $WANT — the ref moved under this reference" >&2
+    echo "[openapi] ERROR: $REPO@$REF:openapi.yaml hashes to $got, but $LOCK says $WANT — the ref moved under this reference" >&2
     exit 1
   fi
   install -m 0644 "$tmp" "$DOCUMENT"
@@ -76,7 +87,7 @@ if [ -f "$SIBLING" ]; then
   got="$(sha256sum "$SIBLING" | cut -d' ' -f1)"
   if [ -z "$WANT" ] || [ "$got" = "$WANT" ]; then
     install -m 0644 "$SIBLING" "$DOCUMENT"
-    echo "[openapi] using the sibling hanzoai/cloud checkout ($(wc -c < "$DOCUMENT") bytes) @ $REF"
+    echo "[openapi] using the sibling cloud checkout ($(wc -c < "$DOCUMENT") bytes) @ $REF"
     exit 0
   fi
   echo "[openapi] the sibling checkout is not at $REF ($got) — keeping the committed snapshot"
