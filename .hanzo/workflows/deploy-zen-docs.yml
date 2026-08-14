@@ -25,7 +25,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 22, like the other nine deploy lanes here. pnpm/action-setup above
+          # fetches a pnpm that requires Node >= 22.13, so a 20 pin fails at THIS
+          # step — before install, before build — with "This version of pnpm
+          # requires at least Node.js v22.13".
+          node-version: 22
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
