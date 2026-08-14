@@ -1,0 +1,99 @@
+name: kms
+description: Read the Cloudflare deploy credentials out of Hanzo KMS.
+
+# Nine deploy lanes each carried their own copy of this — login, two reads, the
+# masks, the outputs — 35 identical lines apiece, hashing the same eight ways.
+# One copy per lane is one contract that drifts: when the org path turned out to
+# be answered by a different instance with a stale copy, the fix had to land in
+# nine files at once, and a tenth lane written tomorrow starts from whichever
+# copy got pasted.
+#
+# It also retries. `curl -fsS` treats a 503 as fatal, so a blip at kms.hanzo.ai
+# failed base-docs and bootnode-docs on a run whose build had already succeeded —
+# the door being briefly unreachable says nothing about the credential behind it.
+# 401/403 still fail at once: that is the credential actually being refused.
+#
+# FLAT path, and the org rides on the token. The /v1/kms/orgs/<org>/secrets/…
+# form is answered by a different instance whose copy is stale, and it nests the
+# value under .secret.value — a lane reading it fails closed while the real
+# secret sits there.
+
+inputs:
+  client-id:
+    description: KMS machine identity
+    required: true
+  client-secret:
+    description: KMS machine secret
+    required: true
+  endpoint:
+    description: KMS base
+    required: false
+    default: https://kms.hanzo.ai
+  env:
+    description: Secret environment
+    required: false
+    default: prod
+
+outputs:
+  cf-token:
+    description: CLOUDFLARE_API_TOKEN
+    value: ${{ steps.read.outputs.cf_token }}
+  cf-account:
+    description: CLOUDFLARE_ACCOUNT_ID
+    value: ${{ steps.read.outputs.cf_account }}
+
+runs:
+  using: composite
+  steps:
+    - id: read
+      shell: bash
+      env:
+        KMS_CLIENT_ID: ${{ inputs.client-id }}
+        KMS_CLIENT_SECRET: ${{ inputs.client-secret }}
+        KMS_ENDPOINT: ${{ inputs.endpoint }}
+        KMS_SECRET_ENV: ${{ inputs.env }}
+      run: |
+        set -euo pipefail
+
+        # Ask again only when the answer was "ask again" — a 5xx or a dead
+        # connection. Anything the door actually decided is returned as it is.
+        ask() {
+          local url="$1"; shift
+          local code body
+          for wait in 0 3 9 20; do
+            [ "$wait" = 0 ] || sleep "$wait"
+            body=$(curl -sS -m 20 -w '\n%{http_code}' "$url" "$@" 2>/dev/null || true)
+            code="${body##*$'\n'}"
+            case "$code" in
+              ''|000|5*) continue ;;
+              *) printf '%s' "${body%$'\n'*}"; return 0 ;;
+            esac
+          done
+          echo "::error::${url%%\?*} did not answer in four tries over 32s (last: ${code:-no response})"
+          return 1
+        }
+
+        token=$(ask "${KMS_ENDPOINT}/v1/kms/auth/login" \
+          -H 'Content-Type: application/json' \
+          -d "{\"clientId\":\"${KMS_CLIENT_ID}\",\"clientSecret\":\"${KMS_CLIENT_SECRET}\"}" \
+          | jq -r '.accessToken // empty')
+        if [ -z "${token}" ]; then
+          echo "::error::KMS refused this identity at ${KMS_ENDPOINT}/v1/kms/auth/login — check KMS_CLIENT_ID and KMS_CLIENT_SECRET"
+          exit 1
+        fi
+
+        get() {
+          ask "${KMS_ENDPOINT}/v1/kms/secrets/deploy/$1?env=${KMS_SECRET_ENV}" \
+            -H "Authorization: Bearer ${token}" | jq -r '.value // empty'
+        }
+        cf_token=$(get CLOUDFLARE_API_TOKEN)
+        cf_account=$(get CLOUDFLARE_ACCOUNT_ID)
+        if [ -z "${cf_token}" ] || [ -z "${cf_account}" ]; then
+          echo "::error::deploy/CLOUDFLARE_API_TOKEN or deploy/CLOUDFLARE_ACCOUNT_ID is empty at ${KMS_ENDPOINT} (env ${KMS_SECRET_ENV})"
+          exit 1
+        fi
+
+        echo "::add-mask::${cf_token}"
+        echo "::add-mask::${cf_account}"
+        echo "cf_token=${cf_token}" >> "$GITHUB_OUTPUT"
+        echo "cf_account=${cf_account}" >> "$GITHUB_OUTPUT"
