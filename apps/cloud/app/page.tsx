@@ -48,7 +48,7 @@ const features = [
     icon: BarChart3Icon,
     title: 'Usage Analytics',
     description:
-      'Real-time token usage, cost tracking, and performance metrics. Per-model, per-team breakdowns with ClickHouse-powered dashboards.',
+      'Real-time token usage, cost tracking, and performance metrics. Per-model, per-team breakdowns with Datastore-powered dashboards.',
   },
   {
     icon: UsersIcon,
@@ -287,7 +287,7 @@ export default function Page() {
                   {
                     icon: BarChart3Icon,
                     path: 'Analytics Pipeline',
-                    desc: 'Langfuse → ClickHouse → Dashboards',
+                    desc: 'Langfuse → Datastore → Dashboards',
                   },
                 ].map((step, i) => (
                   <div

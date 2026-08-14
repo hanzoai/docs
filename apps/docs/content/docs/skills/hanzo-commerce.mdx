@@ -13,11 +13,11 @@ Hanzo Commerce is the **core product** of Hanzo AI -- a multi-tenant e-commerce 
 
 - **Full e-commerce platform**: Products, variants, collections, carts, orders, checkout, fulfillment, shipping, tax, inventory, returns, disputes
 - **Multi-tenant**: Namespace-isolated per organization with per-org databases
-- **4 database backends**: SQLite (embedded, dev), PostgreSQL (production), MongoDB/FerretDB, ClickHouse (analytics)
+- **4 database backends**: SQLite (embedded, dev), PostgreSQL (production), MongoDB/FerretDB, Datastore (analytics)
 - **6 payment providers**: Stripe, Square, PayPal, Authorize.net, Braintree, Adyen + crypto (Bitcoin, Ethereum)
 - **Usage-based billing**: Ledger, credit grants, metering, tiered pricing, Temporal workflows
 - **AI-powered**: Product recommendations via vector search (sqlite-vec / pgvector / Qdrant)
-- **Event-driven**: NATS/JetStream pub/sub + ClickHouse analytics pipeline
+- **Event-driven**: NATS/JetStream pub/sub + Datastore analytics pipeline
 - **KMS-first secrets**: All payment credentials via KMS (kms.hanzo.ai), zero plaintext
 - **IAM integrated**: Dual auth -- legacy access tokens + hanzo.id OIDC JWT
 - **OpenAPI spec**: 88KB spec at `/openapi.yaml` covering all endpoints
@@ -29,7 +29,7 @@ Hanzo Commerce is the **core product** of Hanzo AI -- a multi-tenant e-commerce 
 | Language | Go 1.26, single binary |
 | HTTP | Gin web framework |
 | CLI | Cobra command framework |
-| Databases | SQLite + sqlite-vec, PostgreSQL + pgvector, MongoDB, ClickHouse |
+| Databases | SQLite + sqlite-vec, PostgreSQL + pgvector, MongoDB, Datastore |
 | KV Cache | Redis/Valkey (hanzoai/kv-go) |
 | Search | Meilisearch (hanzoai/search-go) |
 | Vector | Qdrant (hanzoai/vector-go) |
@@ -37,7 +37,7 @@ Hanzo Commerce is the **core product** of Hanzo AI -- a multi-tenant e-commerce 
 | Pub/Sub | NATS + JetStream (hanzoai/pubsub-go) |
 | Tasks | Temporal SDK (billing workflows) |
 | ORM | hanzoai/orm v0.3.1 (generic CRUD, mixin.Model[T]) |
-| Analytics | ClickHouse (hanzoai/datastore-go) |
+| Analytics | Datastore (hanzoai/datastore-go) |
 | Auth | hanzo.id OIDC + legacy access tokens |
 | Secrets | KMS (Hanzo KMS-compatible REST) |
 | Crypto | luxfi/crypto, luxfi/geth, btcsuite |
@@ -103,7 +103,7 @@ Use this skill when:
               +----------+  +---+---+  +----------+
               |             |       |              |
      +--------v---+  +-----v--+  +-v--------+  +--v--------+
-     | SQLite/PG  |  | Redis  |  | NATS     |  | ClickHouse|
+     | SQLite/PG  |  | Redis  |  | NATS     |  | Datastore|
      | (per-org)  |  | (cache)|  | (events) |  | (analytics|
      +------------+  +--------+  +----------+  +-----------+
               |
@@ -268,7 +268,7 @@ commerce/
     sqlite.go          SQLite + sqlite-vec (embedded, per-org)
     postgres.go        PostgreSQL + pgvector (production)
     mongo.go           MongoDB (alternative)
-    datastore.go       ClickHouse via hanzoai/datastore-go (analytics)
+    datastore.go       Datastore via hanzoai/datastore-go (analytics)
     db.go              Manager, interface, pool
     query.go           Query builder (PascalCase -> camelCase auto-conversion)
     model.go           Generic model interface
@@ -387,7 +387,7 @@ docker build --platform linux/amd64 -t ghcr.io/hanzoai/commerce:latest .
 | `S3_URL` | - | Hanzo S3 endpoint |
 | `PUBSUB_URL` | - | NATS URL |
 | `TASKS_URL` | - | Temporal URL |
-| `DATASTORE_URL` | - | ClickHouse DSN |
+| `DATASTORE_URL` | - | Datastore DSN |
 | `DOC_URL` | - | MongoDB URL |
 | `KMS_ENABLED` | `false` | Enable KMS secret management |
 | `KMS_URL` | - | KMS base URL |

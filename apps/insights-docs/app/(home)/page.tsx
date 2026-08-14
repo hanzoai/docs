@@ -423,7 +423,7 @@ const CORE_PRODUCTS = [
 
 const REASONS = [
   { icon: Lock,     title: 'Privacy by Default',   description: 'No third-party data sharing. IP addresses anonymized. DNT and GPC headers respected. Cookieless mode available.' },
-  { icon: Database, title: 'Full Data Ownership',   description: 'Your events live in your ClickHouse cluster. Query raw data directly with SQL. Export to BigQuery, Snowflake, or S3.' },
+  { icon: Database, title: 'Full Data Ownership',   description: 'Your events live in your Datastore cluster. Query raw data directly with SQL. Export to BigQuery, Snowflake, or S3.' },
   { icon: Shield,   title: 'GDPR / CCPA Compliant', description: 'Built-in consent management. One-click user data deletion API. Configurable data retention per table.' },
   { icon: Gauge,    title: 'No Usage Limits',       description: 'Track every event, forever. No event volume caps, no seat limits, no sampling. Your infrastructure, your scale.' },
   { icon: Clock,    title: 'Custom Retention',      description: 'Keep data as long as you need — or delete it on your schedule. Configurable TTL per event type and table.' },
@@ -433,7 +433,7 @@ const REASONS = [
 const STACK = [
   { icon: Server,   name: 'Django + Python',       role: 'Web Server & API',          description: 'Application server handling dashboards, feature flag evaluation, and REST/GraphQL APIs.', badge: 'Backend' },
   { icon: Code,     name: 'React Frontend',        role: 'Dashboard UI',              description: 'Fast single-page application for analytics dashboards, session replay, and experiment setup.', badge: 'Frontend' },
-  { icon: Database, name: 'ClickHouse',            role: 'hanzoai/datastore',         description: 'Column-oriented OLAP database. Aggregates billions of events in milliseconds.', badge: 'Analytics DB' },
+  { icon: Database, name: 'Datastore',            role: 'hanzoai/datastore',         description: 'Column-oriented OLAP database. Aggregates billions of events in milliseconds.', badge: 'Analytics DB' },
   { icon: Database, name: 'PostgreSQL',            role: 'hanzoai/sql',               description: 'Relational store for users, projects, feature flags, experiments, and surveys.', badge: 'App DB' },
   { icon: Zap,      name: 'Valkey / Redis',        role: 'hanzoai/kv',                description: 'High-performance caching, session storage, Celery task queue, and feature flag cache.', badge: 'Cache' },
   { icon: Radio,    name: 'Kafka',                 role: 'hanzoai/stream',            description: 'Event streaming backbone. Decouples high-throughput ingestion from storage.', badge: 'Streaming' },
