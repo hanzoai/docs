@@ -63,6 +63,18 @@ jobs:
           echo "cf_token=${cf_token}" >> "$GITHUB_OUTPUT"
           echo "cf_account=${cf_account}" >> "$GITHUB_OUTPUT"
 
+      # The project has to exist before a deploy can target it, and these two lanes
+      # only ever deployed — so the first deploy of a brand-new site failed on
+      # 'The Pages project "<name>" does not exist.' It sits AFTER the KMS read
+      # because it needs that token, and continue-on-error because on every run
+      # after the first the project is already there and create exits non-zero.
+      - name: Create Cloudflare Pages project (if needed)
+        continue-on-error: true
+        run: npx wrangler pages project create bootnode-docs --production-branch=main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ steps.kms.outputs.cf_token }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ steps.kms.outputs.cf_account }}
+
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy apps/bootnode-docs/out --project-name=bootnode-docs --commit-dirty=true
         env:
