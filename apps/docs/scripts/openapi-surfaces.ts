@@ -323,7 +323,10 @@ export const toolKeys = (op: Operation): [name: string, route: string] => [
  * than one operation is a name the document uses twice, and the door does not
  * say which it dispatches to.
  */
-export function toolOperations(doc: Document, tools: Iterable<{ name: string }>): Map<string, Operation[]> {
+export function toolOperations(
+  doc: Document,
+  tools: Iterable<{ name: string; inputSchema?: any }>,
+): Map<string, Operation[]> {
   const byName = new Map<string, Operation[]>();
   const byRoute = new Map<string, Operation[]>();
   for (const op of doc.operations) {
@@ -333,11 +336,37 @@ export function toolOperations(doc: Document, tools: Iterable<{ name: string }>)
   }
   const out = new Map<string, Operation[]>();
   for (const t of tools) {
+    // A GROUPED tool names a SUBSYSTEM, and carries its operations in the `op`
+    // enum. So the enum is the join, and it is tried FIRST: `account` is not an
+    // operationId, and asking the name map for one answers nothing — which is
+    // how a re-projected door turned every tool page into "the document does
+    // not describe this".
+    const named = toolOps(t).flatMap((id) => byName.get(id) ?? byRoute.get(id.toLowerCase()) ?? []);
+    if (named.length) {
+      out.set(t.name, named);
+      continue;
+    }
+    // A tool that IS an operation — the flat projection, and any door that
+    // still serves one. Same two keys as before, in the same order.
     const hit = byName.get(t.name) ?? byRoute.get(t.name.toLowerCase());
     if (hit) out.set(t.name, hit);
   }
   return out;
 }
+
+/**
+ * The operations a tool dispatches to, as the tool itself declares them.
+ *
+ * The grouped door publishes one tool per subsystem whose `op` argument is an
+ * enum of operationIds; a flat tool declares no such enum and names its one
+ * operation with its own name. Reading the enum is therefore the difference
+ * between "this tool runs 31 operations" and "this tool is unknown", and it is
+ * asked of the TOOL rather than inferred from its name.
+ */
+export const toolOps = (t: { name: string; inputSchema?: any }): string[] => {
+  const en = t.inputSchema?.properties?.op?.enum;
+  return Array.isArray(en) ? en.filter((v: unknown): v is string => typeof v === 'string') : [];
+};
 
 /**
  * The door exposes a SUBSET of the document, so whether a given operation has a
