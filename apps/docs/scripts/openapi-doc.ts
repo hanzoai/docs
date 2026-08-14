@@ -92,12 +92,34 @@ export interface Product {
   operations: Operation[];
 }
 
+/**
+ * One class of API key, as the document states it at `/v1/keys`.
+ *
+ * The class name is the product's own noun — it is the literal a caller sends
+ * as `{"type": …}` — and the prefix is what a key of that class is spelled
+ * with. `publishable` is not a judgement made here; it is the class the product
+ * NAMES publishable, which is the same word cloud's `PublishablePrefix` is
+ * named after.
+ */
+export interface KeyType {
+  /** The class as a caller names it: `secret`, `publishable`. */
+  name: string;
+  /** The spelling a key of this class carries: `sk-`, `pk-`. */
+  prefix: string;
+  /** What the document says the class is, verbatim from inside the parens. */
+  note: string;
+  /** True for the class the product calls publishable — the browser-safe one. */
+  publishable: boolean;
+}
+
 export interface Document {
   title: string;
   version: string;
   description: string;
   server: string;
   securitySchemes: Record<string, any>;
+  /** Every class of API key the document says `/v1/keys` mints — see keyTypes. */
+  keys: KeyType[];
   /** Products docs.hanzo.ai publishes. Excludes `internal` — see isInternal. */
   products: Product[];
   /** The operator surface, grouped the same way. Never published publicly. */
@@ -144,6 +166,17 @@ export const isInternal = (op: Operation): boolean =>
   op.product === INTERNAL_PRODUCT || INTERNAL_IDS.has(op.id);
 
 /**
+ * The key a server presents: the one class that is NOT publishable.
+ *
+ * Every generated page that shows a curl or an env var shows this one, and each
+ * used to spell it as a literal — three copies of a value the document states,
+ * which is how three generated pages came to teach a prefix cloud has never
+ * minted. Asking the document is one expression and cannot drift.
+ */
+export const secretKey = (doc: Document): KeyType =>
+  doc.keys.find((k) => !k.publishable) ?? doc.keys[0];
+
+/**
  * The document with the operator surface taken out, for publishing.
  *
  * `public/openapi/hanzo.yaml` ships in the static export and is what the
@@ -181,6 +214,91 @@ export function deref(raw: any, node: any, depth = 0): any {
     if (cur == null) return node;
   }
   return deref(raw, cur, depth + 1);
+}
+
+/**
+ * The classes of API key, read out of the document rather than restated.
+ *
+ * `/v1/keys` IS the key resource: one endpoint, and the class is a field on it.
+ * Its Go source spells each class beside its prefix — `"secret" (sk-, …)`,
+ * `"publishable" (pk-, …)` — zipdoc lifts those doc comments into this
+ * document, and this reads them back. So a page saying `sk-` is saying what the
+ * handler says, one hop away, instead of what someone remembered.
+ *
+ * The pairs are read from EVERY description the key resource carries and the
+ * readings must AGREE. Two doc comments state them today — the `type` field a
+ * caller sends and the `type` field they read back — written in different words
+ * at different places in cloud. Requiring agreement means a rename that lands in
+ * one of them and not the other stops the build here rather than publishing two
+ * answers.
+ *
+ * Refusing is the whole point of the exercise: an empty or contradictory reading
+ * throws, because a docs build that quietly published no key types would be the
+ * same failure — a reader who cannot learn which credential to ask for — wearing
+ * a green checkmark.
+ */
+const KEY_CLASS = /"?\b([a-z][a-z-]{2,20})"?\s*\((([a-z]{2,6})-)([,)][^)]*)?\)/g;
+
+export function keyTypes(raw: any): KeyType[] {
+  const item = raw?.paths?.['/v1/keys'];
+  if (!item) {
+    // Every generated page prints a bearer credential, so none of them can be
+    // written without knowing how one is spelled. Stopping here is the honest
+    // failure; the alternative is a whole site of curls with a blank key.
+    throw new Error('the document does not serve /v1/keys — no page can state how a key is spelled');
+  }
+
+  // Every sentence the key resource carries: its operations, their parameters,
+  // and the schemas they send and return. Naming one schema would tie this to a
+  // Go type name; walking what the path item reaches ties it to the resource.
+  const said: string[] = [];
+  const collect = (node: any, depth = 0) => {
+    // Reaches as far as deref does. At 6 the walk stopped one level short of
+    // components.schemas.keyTypeIn.properties.type.description — the field a
+    // caller actually POSTs, and the second place the document states a prefix.
+    // The agreement check below compares readings, so a cap that admits only
+    // one reading makes it a formality: a prefix renamed in the schema alone
+    // was accepted in silence, and renamed in the parameter alone it became
+    // published truth unopposed.
+    if (!node || typeof node !== 'object' || depth > 8) return;
+    const d = deref(raw, node, 0);
+    if (typeof d?.description === 'string') said.push(d.description);
+    for (const v of Object.values(d)) if (v && typeof v === 'object') collect(v, depth + 1);
+  };
+  collect(item);
+
+  // class -> prefix, and every reading of a class must give the same prefix.
+  const seen = new Map<string, KeyType>();
+  for (const text of said) {
+    for (const m of text.replace(/\s+/g, ' ').matchAll(KEY_CLASS)) {
+      const name = m[1];
+      const prefix = `${m[3]}-`;
+      const note = (m[4] ?? '').replace(/^[,)]\s*/, '').trim();
+      const prior = seen.get(name);
+      if (prior && prior.prefix !== prefix) {
+        throw new Error(
+          `the document spells the ${name} key both ${prior.prefix} and ${prefix} — cloud says it two ways`,
+        );
+      }
+      // Keep the longest note: the same pair is stated tersely in one place and
+      // with its reason in another, and the reason is the half worth publishing.
+      if (!prior || note.length > prior.note.length) {
+        seen.set(name, { name, prefix, note, publishable: name === 'publishable' });
+      }
+    }
+  }
+
+  const found = [...seen.values()];
+  if (found.length < 2) {
+    throw new Error(
+      `/v1/keys names ${found.length} key class(es) — the document stopped stating them, so no page can`,
+    );
+  }
+  if (!found.some((k) => k.publishable)) {
+    throw new Error('no key class is named publishable — nothing may be shipped in a browser');
+  }
+  // Publishable last: a reader meets the default before the exception.
+  return found.sort((a, b) => Number(a.publishable) - Number(b.publishable));
 }
 
 /** `agents` -> `Agents`; `Roles & Permissions` and `MFA` pass through. */
@@ -365,6 +483,7 @@ export function loadDocument(file: string): Document {
     description: firstSentence(info.description ?? ''),
     server: raw.servers?.[0]?.url ?? 'https://api.hanzo.ai',
     securitySchemes: raw.components?.securitySchemes ?? {},
+    keys: keyTypes(raw),
     // Only products the document actually serves operations for. A tag with no
     // operations is not a product page — it is a tag we have not filled in yet.
     //

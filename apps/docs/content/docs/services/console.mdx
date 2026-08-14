@@ -51,7 +51,7 @@ Ingestion:  Your App ──► SDK/HTTP ──► api.hanzo.ai/v1/console/* ─�
 
 ### 1. Get an API Key
 
-Sign in at `console.hanzo.ai` with Hanzo IAM SSO. Navigate to **Settings > API Keys** and create a new key. Keys are scoped to a project and prefixed with `sk-`.
+Sign in at `console.hanzo.ai` with Hanzo IAM SSO. Navigate to **Settings > API Keys** and create a key. Take a secret key (`sk-`) for server-side tracing; take a publishable key (`pk-`) for the browser SDK, which resolves only to your org and so is safe to ship.
 
 ### 2. Send a Trace
 
@@ -153,7 +153,7 @@ const response = await client.chat.completions.create({
 ```typescript
 import { ConsoleClient } from '@hanzo/ai/console'
 
-const console = new ConsoleClient({ publicKey: 'pk-your-api-key' })
+const console = new ConsoleClient({ publicKey: 'pk-your-key' })
 const trace = console.trace({ name: 'rag-pipeline' })
 
 const retrieval = trace.span({ name: 'retrieval', input: { query } })

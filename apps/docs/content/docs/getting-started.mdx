@@ -55,10 +55,12 @@ All resources -- API keys, models, usage logs -- are scoped to the active projec
 Your key will look like this:
 
 ```
-sk-proj-abc123def456...
+sk-abc123def456...
 ```
 
-The `sk-` prefix identifies it as a Hanzo secret key -- server-side only. See [API Keys](/docs/api-keys) for a full breakdown of key types and prefixes.
+The `sk-` prefix says this one is secret: it resolves to you, so it belongs on a
+server. The other prefix, `pk-`, resolves only to your organization and is the
+one you may put in a browser bundle. See [API Keys](/docs/api-keys).
 
 ## 5. Make Your First API Call
 
@@ -146,12 +148,14 @@ Building a funded startup? You may qualify for **up to $150,000 in credits** thr
 
 ## Key Types at a Glance
 
-| Prefix | Type | Purpose |
-|--------|------|---------|
-| `sk-*` | Secret Key | Server-side API access, and provider-level keys (e.g. upstream model providers). Scoped to a project or an org. Never expose client-side. |
-| `hz-*` | Widget Key | Client-side keys for browser widgets. Restricted scopes, safe to embed. |
+| Prefix | Type | Resolves to | Where it belongs |
+|--------|------|-------------|------------------|
+| `sk-*` | Secret | You | A server. It authenticates as you, so it can do anything you can. |
+| `pk-*` | Publishable | Your org | Anywhere, browser bundles included. It identifies, it does not authenticate. |
 
-See [API Keys](/docs/api-keys) for details on scopes, rotation, and production best practices.
+Two types, and that is the whole list — a key spelled any other way is refused at
+the door. See [API Keys](/docs/api-keys) for what each one can do, how to rotate
+them, and how to keep them out of your source tree.
 
 ## What Next?
 

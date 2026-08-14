@@ -1,83 +1,123 @@
 ---
 icon: KeyRound
 title: API Keys
-description: Key types, scopes, creation, rotation, and production best practices for Hanzo API keys.
+description: The two Hanzo key types, which one may ship in a browser, and how to create, rotate and revoke them.
 ---
 
 # API Keys
 
-Every request to the Hanzo platform is authenticated with a bearer token. This page covers the two key types, how to create and use them, and how to keep them safe.
+Every request to the Hanzo platform is authenticated with a bearer token. There
+are two kinds of key, they are not interchangeable, and the difference is what
+each one resolves to when the door reads it.
 
-## Key Types and Prefixes
+## The two types
 
-Hanzo uses key prefixes so you can identify a credential at a glance and catch accidental misuse.
+<include>../../generated/key-types.mdx</include>
 
-| Prefix | Type | Where to Use | Scope |
-|--------|------|--------------|-------|
-| `sk-*` | **Secret Key** | Server-side code, CI/CD, scripts, backend services | Project or org, fixed when the key is created. Never expose to clients. |
-| `hz-*` | **Widget Key** | Browser JavaScript, mobile apps | Project-level with restricted scopes. Safe to embed in client-side code. |
+### What each one resolves to
 
-### Secret Keys (`sk-*`)
+A **secret key** resolves to **you**. The door looks it up and gets your user
+row, which makes it session-equivalent: anything you can do in the console, a
+holder of your `sk-` can do over HTTP. That is why it belongs on a server and
+nowhere else.
 
-These are your primary credentials. One `sk-*` key gives access to all Hanzo services for the project it belongs to: AI API, search, storage, tasks, and everything else. An org-scoped `sk-*` key reaches further -- provider-level operations like configuring upstream LLM providers, managing billing integrations, and inter-service communication. Either way it carries privileges that must never leave your backend.
+A **publishable key** resolves to **your organization** and stops there — it
+never yields a principal, so it cannot read anything. It identifies; it does not
+authenticate. That is the property that makes it safe to ship in a browser
+bundle, and it is enforced at the door rather than promised: a `pk-` presented
+as a bearer credential is refused outright, no matter which endpoint it arrives
+at. One `pk-` covers analytics, product insights and error capture, which is why
+you do not need a separate key or a separate DSN for each.
 
-```bash
-# All Hanzo API calls use the same header format
-curl -H "Authorization: Bearer sk-proj-abc123..." https://api.hanzo.ai/v1/models
-```
+A publishable key minted alongside a project names that project rather than the
+organization, so beacons from two sites attribute separately. It is the same
+spelling and the same rules.
 
-### Widget Keys (`hz-*`)
+### They are two rows, not two halves of one key
 
-Widget keys are designed for client-side use. They have restricted scopes -- typically limited to chat completions and embeddings -- so that exposing them in browser code does not compromise your account.
+A user holds at most one key of each type, and IAM stores them as separate rows.
+So rotating the key in your browser bundle does not sign your servers out, and
+rotating your server key does not blank the analytics on your site. They fail
+independently, which is the point of having two.
 
-```html
-<!-- Safe to embed in frontend code -->
-<script>
-  const HANZO_KEY = 'hz-widget-abc123...'
-</script>
-```
+Asking for a type that does not exist is an error, not a default. The API will
+not hand you a secret key because you asked for something it did not recognize —
+handing an `sk-` to someone who wanted a browser key is exactly the accident the
+refusal exists to prevent.
 
-## Creating Keys
+## Creating keys
 
-### In the Console
+### In the console
 
 1. Go to [console.hanzo.ai](https://console.hanzo.ai)
-2. Select your **project**
-3. Click **API Keys** in the sidebar
-4. Click **Create Key**
-5. Choose the key type (`sk-*` API key or `hz-*` widget key)
-6. Optionally set:
-   - **Name** -- descriptive label (e.g. `prod-backend`, `staging-widget`)
-   - **Expiration** -- auto-expire after a set duration
-   - **Budget** -- monthly spend limit for LLM usage
-   - **Rate limit** -- requests per minute cap
-7. Copy the key immediately -- it will not be shown again
+2. Open **API Keys**
+3. Create a key and choose its type
+4. Copy a secret key immediately — it is shown once and never again
 
-Key issuance, budgets, and revocation are console operations — there is no public key-minting endpoint, by design: a credential that can mint credentials is the one thing you never want reachable over HTTP with a bearer token.
+A publishable key is the exception: you can read it back at any time, because it
+is public by construction and useless to you if you cannot.
 
-## Using Keys
+### Over the API
 
-All Hanzo APIs accept keys via the `Authorization` header with the `Bearer` scheme:
+Keys are one resource, `/v1/keys`, and the type is a field on it. There is no
+separate mint endpoint and no separate revoke endpoint — the HTTP method says
+which you mean.
+
+```bash
+# Mint (or rotate) a key. The response carries it once.
+curl -X POST https://api.hanzo.ai/v1/keys \
+  -H "Authorization: Bearer sk-your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"publishable"}'
+
+# List what you hold. No secret material comes back — a secret key is
+# represented by its prefix; a publishable key by its full value.
+curl https://api.hanzo.ai/v1/keys -H "Authorization: Bearer sk-your-key"
+
+# Revoke one type without touching the other.
+curl -X DELETE "https://api.hanzo.ai/v1/keys?type=publishable" \
+  -H "Authorization: Bearer sk-your-key"
+```
+
+Creating is how you rotate: you hold one key per type, so minting the same type
+again replaces it and the old credential stops working. Omitting `type` means
+`secret`, which is what every caller meant before publishable keys existed.
+
+Two things worth knowing before you automate this. A browser session must echo
+an anti-CSRF token — `GET /v1/csrf`, then send it back as `X-CSRF-Token` — while
+a bearer caller does not, because a bearer request cannot be forged by a
+cross-site page. And revocation reaches IAM immediately but the gateway caches
+key lookups for a few minutes, so a request that beat the cache may still be
+served.
+
+The full request and response shapes are in the [Keys
+reference](/docs/openapi/keys), generated from the same source as this page.
+
+## Using keys
+
+All Hanzo APIs take the key in the `Authorization` header with the `Bearer`
+scheme:
 
 ```
-Authorization: Bearer sk-proj-abc123...
+Authorization: Bearer sk-your-key
 ```
 
-Every service answers on the one host, `api.hanzo.ai`, under `/v1/<service>` — the same key works across all of them:
+Every service answers on one host, `api.hanzo.ai`, under `/v1/<service>` — the
+same key works across all of them:
 
 | Service | Path | Example |
 |---------|------|---------|
 | AI | `/v1/chat/completions`, `/v1/models`, `/v1/embeddings` | `api.hanzo.ai/v1/chat/completions` |
 | Search | `/v1/search` | `api.hanzo.ai/v1/search` |
-| Secrets | `/v1/kms` | `api.hanzo.ai/v1/kms/orgs/{org}/secrets` |
+| Secrets | `/v1/kms` | `api.hanzo.ai/v1/kms/secrets` |
 | Deploys | `/v1/platform` | `api.hanzo.ai/v1/platform/projects` |
 | Analytics | `/v1/analytics` | `api.hanzo.ai/v1/analytics/overview` |
 | Observability | `/v1/o11y` | `api.hanzo.ai/v1/o11y/status?product=cloud` |
-| Tasks | `tasks-api.hanzo.ai` | gRPC with metadata header |
+| Tasks | `/v1/tasks` | `api.hanzo.ai/v1/tasks/namespaces` |
 
-### SDK Configuration
+### SDK configuration
 
-All official SDKs accept the API key as a constructor parameter:
+All official SDKs accept the key as a constructor parameter:
 
 ```python
 # Python
@@ -101,19 +141,10 @@ Each client defaults to `https://api.hanzo.ai/v1`. A third-party HTTP client
 written against the chat-completions shape works too — point its base URL there
 and give it the same key.
 
-## Scopes
+## Spend and usage
 
-### Project-Level Keys
-
-A project-scoped key can only access resources within that project. Switching projects requires a different key.
-
-### Org-Level Keys
-
-An org-scoped key operates across all projects within an organization. These are used for administrative operations: managing projects, configuring providers, and accessing org-wide analytics.
-
-## Key Information and Usage
-
-Spend and usage for the calling credential come from the billing and analytics APIs — same host, same key:
+Spend for the calling credential comes from the billing and analytics APIs —
+same host, same key:
 
 ```bash
 # Current balance
@@ -143,44 +174,72 @@ curl https://api.hanzo.ai/v1/billing/usage \
 }
 ```
 
-For rolled-up request/token/spend counts across a range, use `GET /v1/analytics/overview?range=30d` — see [Analytics](/docs/services/analytics).
+For rolled-up request, token and spend counts across a range, use `GET
+https://api.hanzo.ai/v1/analytics/overview?range=30d` — see
+[Analytics](/docs/services/analytics).
 
-## Rotation Best Practices
+## Rotation
 
-1. **Rotate regularly** -- Set key expiration at creation time. 90 days is a reasonable default for production keys.
-2. **Use KMS for production** -- Store keys in [Hanzo KMS](/docs/services/kms) and sync them to your runtime environment via KMSSecret CRDs. Never hardcode keys in source or commit them to git.
-3. **Create before you revoke** -- Generate the replacement key, deploy it, verify it works, then revoke the old one. Zero-downtime rotation.
-4. **One key per service** -- Give each service or environment its own key. This limits blast radius and makes audit logs useful.
-5. **Set budgets** -- Every production key should have a monthly budget. This prevents runaway costs from bugs or abuse.
-6. **Monitor usage** -- Check `/v1/billing/usage` or the console dashboard regularly. Unusual spend patterns may indicate a leak.
+1. **Rotate on a schedule.** Ninety days is a reasonable default for a secret
+   key. A publishable key is public anyway; rotate it when you want to cut off a
+   site, not on a calendar.
+2. **Keep production keys in [KMS](/docs/services/kms).** Never in source, never
+   in a committed `.env`.
+3. **Mint before you revoke.** Mint the replacement, deploy it, watch it work,
+   then revoke. Note that minting the same type again IS the revoke — so for
+   zero-downtime you cut over between two identities, not two keys of one.
+4. **One identity per service.** Blast radius, and audit logs you can read.
+5. **Watch spend.** `/v1/billing/usage` or the console. An unfamiliar spend
+   pattern is what a leaked key looks like from the inside.
 
-### KMS Integration
+### KMS integration
 
-For production deployments, use Hanzo KMS to manage API keys as secrets:
+A `KMSSecret` syncs secrets out of Hanzo KMS into a Kubernetes Secret your pods
+already read. It authenticates as a machine identity, names a scope in KMS, and
+names the Secret it manages:
 
 ```yaml
-# KMSSecret CRD -- syncs a secret from Hanzo KMS into K8s
 apiVersion: secrets.lux.network/v1alpha1
 kind: KMSSecret
 metadata:
-  name: hanzo-api-key
+  name: api-kms-sync
+  namespace: acme
 spec:
-  secretStoreRef:
-    name: kms-hanzo
-  data:
-    - secretKey: HANZO_API_KEY
-      remoteRef:
-        secretPath: /prod/api-keys
-        secretKey: primary
+  hostAPI: https://kms.hanzo.ai
+  resyncInterval: 60
+  authentication:
+    universalAuth:
+      credentialsRef:
+        secretName: acme-iam-creds
+        secretNamespace: acme
+      secretsScope:
+        projectSlug: acme
+        envSlug: prod
+        secretsPath: /api
+        keys:
+          - HANZO_API_KEY
+  managedSecretReference:
+    creationPolicy: Orphan
+    secretName: api-secrets
+    secretNamespace: acme
+    secretType: Opaque
 ```
 
-## Revoking Keys
+`creationPolicy: Orphan` means deleting the CR leaves the Secret in place, so
+removing the sync does not take a running workload down with it.
 
-Revoke a key from the console: **Project → API Keys → Revoke**. Revocation is immediate — any in-flight request using the key fails with `401 Unauthorized`.
+## Revoking
 
-## Security Rules
+From the console: **API Keys → Revoke**. Over the API:
+`DELETE /v1/keys?type=secret`. IAM drops the credential immediately and calls
+made with it fail `401` once the gateway's cache lapses.
 
-- **Never commit keys to git.** Use environment variables or KMS.
-- **Never expose `sk-*` keys client-side.** Use `hz-*` widget keys for browser code.
-- **Always use HTTPS.** All Hanzo endpoints enforce TLS. Plain HTTP connections are rejected.
-- **Set the minimum scope needed.** If a service only needs LLM access, do not give it an org-level secret key.
+## Rules
+
+- **Never commit a key.** Environment variables or KMS.
+- **Never put a secret key in a browser.** It resolves to you. Use a publishable
+  key, which resolves to your org and cannot read.
+- **Always use HTTPS.** Every Hanzo endpoint enforces TLS; plain HTTP is
+  rejected.
+- **Ask for the type you need.** An unrecognized type is refused, so a typo
+  fails loudly instead of quietly handing you the more powerful key.
