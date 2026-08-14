@@ -9,7 +9,7 @@ Metrics are the numeric time series behind your product: request rates, token th
 
 ## Emitting metrics
 
-Push metrics through the OTLP endpoint on the gateway, or expose a Prometheus `/metrics` endpoint and let O11y scrape it. Either way the same `hk-*` key authenticates and `X-Org-Id` scopes the series.
+Push metrics through the OTLP endpoint on the gateway, or expose a Prometheus `/metrics` endpoint and let O11y scrape it. Either way the same `sk-*` key authenticates and `X-Org-Id` scopes the series.
 
 ```python
 from prometheus_client import Counter, Histogram
@@ -30,7 +30,7 @@ For OTLP, point your exporter at the gateway — metrics land at `POST /v1/metri
 
 ```bash
 export OTEL_EXPORTER_OTLP_ENDPOINT=https://api.hanzo.ai/v1
-export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer hk-...,X-Org-Id=org_123"
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer sk-...,X-Org-Id=org_123"
 ```
 
 ## Querying with PromQL
@@ -39,7 +39,7 @@ Query stored series with PromQL over REST:
 
 ```bash
 curl "https://api.hanzo.ai/v1/metrics/query" \
-  -H "Authorization: Bearer hk-..." \
+  -H "Authorization: Bearer sk-..." \
   --data-urlencode 'query=rate(inference_requests_total[5m])'
 ```
 

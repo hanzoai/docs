@@ -16,7 +16,7 @@ Hanzo Cloud is the core AI Cloud OS that powers `api.hanzo.ai`. It provides a un
 - **Knowledge Base**: RAG-powered document stores with vector embeddings
 - **Container Cloud**: Kubernetes application templates and management
 - **Outside Providers**: Connect Anthropic, OpenAI, Fireworks or DO-AI when a workflow needs a specific model
-- **IAM Authentication**: OAuth2/OIDC via Hanzo IAM, API keys (`hk-*`), widget keys (`hz-*`)
+- **IAM Authentication**: OAuth2/OIDC via Hanzo IAM, secret keys (`sk-*`), publishable keys (`pk-*`)
 - **Usage Billing**: Per-request metering via Hanzo Commerce API
 - **Rate Limiting**: Dynamic tier-based limits (free → enterprise)
 - **Node Management**: Remote infrastructure via VNC/RDP
@@ -66,7 +66,7 @@ Create an API key at [console.hanzo.ai](https://console.hanzo.ai).
 
 ```bash
 curl https://api.hanzo.ai/v1/chat/completions \
-  -H "Authorization: Bearer hk-your-api-key" \
+  -H "Authorization: Bearer sk-your-api-key" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "zen5-flash",
@@ -79,7 +79,7 @@ curl https://api.hanzo.ai/v1/chat/completions \
 ```typescript
 import Hanzo from '@hanzo/ai'
 
-const client = new Hanzo({ apiKey: 'hk-your-api-key' })
+const client = new Hanzo({ apiKey: 'sk-your-api-key' })
 
 const response = await client.chat.completions.create({
   model: 'zen5-flash',
@@ -101,20 +101,20 @@ Hanzo Cloud exposes three protocols for accessing AI services:
 
 ```bash
 curl https://api.hanzo.ai/v1/chat/completions \
-  -H "Authorization: Bearer hk-your-key" \
+  -H "Authorization: Bearer sk-your-key" \
   -d '{"model": "zen5-flash", "messages": [{"role": "user", "content": "Hello"}]}'
 ```
 
 `/v1/chat/completions`, `/v1/embeddings` and `/v1/models` take and return the
 chat-completions JSON shape, so an HTTP client already written against it works
 here once its base URL points at `https://api.hanzo.ai/v1` and it sends an
-`hk-*` key. Model ids do not carry across vendors — `zen5` and `enso` are Hanzo
+`sk-*` key. Model ids do not carry across vendors — `zen5` and `enso` are Hanzo
 models and resolve only here.
 
 ### MCP (Model Context Protocol)
 
 ```bash
-npx @hanzo/mcp --api-key hk-your-key
+npx @hanzo/mcp --api-key sk-your-key
 ```
 
 Or configure in your AI client's MCP settings:
@@ -124,7 +124,7 @@ Or configure in your AI client's MCP settings:
   "mcpServers": {
     "hanzo": {
       "command": "npx",
-      "args": ["@hanzo/mcp", "--api-key", "hk-your-key"]
+      "args": ["@hanzo/mcp", "--api-key", "sk-your-key"]
     }
   }
 }
@@ -147,10 +147,9 @@ Hanzo Cloud supports multiple auth methods:
 
 | Method | Format | Use Case |
 |--------|--------|----------|
-| IAM API Key | `hk-*` | Server-side API access |
+| Secret key | `sk-*` | Server-side API access, as the user who minted it |
+| Publishable key | `pk-*` | Browser bundles — analytics, product insights, error capture |
 | IAM JWT | Bearer token | User sessions via hanzo.id |
-| Provider Key | `sk-*` | Direct provider passthrough |
-| Widget Key | `hz-*` | Public-facing chat widgets |
 
 All auth flows integrate with [Hanzo IAM](/docs/services/iam) for identity management.
 
