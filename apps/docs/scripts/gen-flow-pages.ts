@@ -203,7 +203,7 @@ function renderIndex(flows: Flow[], doc: Document): string {
   L.push('## One credential');
   L.push('');
   L.push('```bash');
-  L.push('export HANZO_API_KEY=hk-...            # console.hanzo.ai');
+  L.push('export HANZO_API_KEY=sk-...            # console.hanzo.ai');
   L.push('hanzo auth login                       # or sign in through Hanzo IAM');
   L.push('```');
   L.push('');

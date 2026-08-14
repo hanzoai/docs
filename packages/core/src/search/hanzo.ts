@@ -84,7 +84,7 @@ export interface HanzoSyncOptions {
   index?: string;
 
   /**
-   * Admin API key (hk-* for cloud, master key for meilisearch).
+   * Admin API key (sk-* for cloud, master key for meilisearch).
    */
   apiKey: string;
 

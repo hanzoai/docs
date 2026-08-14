@@ -65,7 +65,7 @@ const DOORS = [
     external: false,
     cta: 'Read the API reference',
     lang: 'Request',
-    code: 'curl https://api.hanzo.ai/v1/chat/completions \\\n  -H "Authorization: Bearer hk-..." \\\n  -d \'{"model":"enso","messages":[...]}\'',
+    code: 'curl https://api.hanzo.ai/v1/chat/completions \\\n  -H "Authorization: Bearer sk-..." \\\n  -d \'{"model":"enso","messages":[...]}\'',
   },
 ] as const;
 
