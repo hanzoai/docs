@@ -1,0 +1,86 @@
+---
+icon: Radio
+title: Mission Control
+description: One board for every agent session your org is running — the live event stream, the subagent tree, and the four controls: pause, resume, stop, message.
+---
+
+# Mission Control
+
+Agents run from everywhere: the CLI, the console, chat, a bot. Mission Control is
+the one place all of them show up, live, with the controls to intervene.
+
+Open it at [console.hanzo.ai](https://console.hanzo.ai) → **Mission Control**. It
+is a view over the agent session plane, so everything below is available over the
+API too.
+
+## What a session is
+
+A session is the org-scoped row every surface hangs its activity off. It carries
+an **append-only event log** with a monotonic `seq`, and sessions form a **tree**:
+a session with a `parentSessionId` is a subagent and inherits the parent's
+`rootSessionId`, so one piece of work is one tree no matter how many agents it
+spawns.
+
+Status is `running`, `paused`, `done`, or `error`. Events are one of `message`,
+`tool-call`, `spawn`, `log`, `status`, or `control`. A session also records where
+it is running: `agent`, `host`, `cwd`, `repo`, and `target`.
+
+## List what is running
+
+```bash
+curl "https://api.hanzo.ai/v1/agents/sessions?status=running&limit=50" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Roots only by default. Pass `?parent=` or `?root=` to walk into a tree, or
+`?project=` to scope it. `limit` defaults to 100 and caps at 500.
+
+`GET /v1/agents/sessions/{id}` returns one session with its direct children and
+its 50 most recent events; `/tree` returns the whole tree; and
+`GET /v1/agents/sessions/stream` is a server-sent event stream of `session` and
+`event` frames with a keepalive every 25 seconds.
+
+## The four controls
+
+```bash
+# Ask a session to pause
+curl -X POST https://api.hanzo.ai/v1/agents/sessions/$ID/pause \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+# Send it a message mid-run
+curl -X POST https://api.hanzo.ai/v1/agents/sessions/$ID/message \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "message": "skip the migration, just report" }'
+```
+
+`resume` and `stop` are the same shape as `pause`. All four answer
+`{ command, event, forwarded }`.
+
+**A control command is an intent, not a state change.** This is the one thing to
+get right. A `200` means the command was durably recorded and delivered — not
+that the agent has paused. The status becomes `paused`, `done`, or `error` only
+when the surface actually running the agent reports it back with
+`PATCH /v1/agents/sessions/{id}`. An agent in the middle of a long tool call
+notices its next checkpoint, not your request.
+
+Delivery works by the running surface draining
+`GET /v1/agents/sessions/{id}/control?after={seq}` — which is why `forwarded` is
+`false`: the command is waiting to be picked up, and that is normal.
+
+Three more rules worth knowing:
+
+- **`stop` is the blunt one.** For a session backed by a durable workflow it
+  cancels rather than signals; any `message` you send with it becomes the
+  cancellation reason.
+- **`message` is the only command with a required body** — `message` (up to
+  16 KiB) or `payload`. Neither is a `400`.
+- **A finished session refuses every command** with `409`. A session id another
+  org owns answers `404`, exactly like one that never existed.
+
+## Related
+
+- [Agents](/docs/agents) — defining and running the agents that open these sessions
+- [Automations](/docs/automations) — durable flows, including steps that wait for a person
+- [Traces](/docs/traces) — the recorded execution behind a run
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

@@ -18,6 +18,18 @@ with tracer.start_as_current_span("chat.turn") as span:
     respond(message)
 ```
 
+## Read them
+
+```bash
+curl "https://api.hanzo.ai/v1/o11y/llm/sessions?limit=50" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Sessions are an aggregation over the same spans your traces are built from, which
+is why there is nothing to keep in sync. Filter with `start` and `end` (unix
+**milliseconds**; omit both for the last 24 hours), `sessionId`, `userId`,
+`model`, `name`, `traceId`, `offset`, and `limit`.
+
 ## Related
 
 - [Traces](/docs/traces) — the individual requests a session groups
