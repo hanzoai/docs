@@ -24,7 +24,9 @@ jobs:
           cache: pnpm
       - uses: oven-sh/setup-bun@v2
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build --filter bootnode-docs
+      - run: pnpm build --filter=bootnode-docs
+        env:
+          NODE_OPTIONS: '--max-old-space-size=8192'
 
       - name: Fetch CF credentials from KMS
         id: kms
