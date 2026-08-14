@@ -184,7 +184,7 @@ make logs-lux
 
 Three gin middlewares run in order before any request reaches a backend:
 
-1. **Auth middleware** (`auth_middleware.go`): Validates JWT via JWKS, checks billing via Commerce API (fail-open), injects `X-IAM-Org-Id`, `X-IAM-User-Id`, `X-IAM-User-Email` headers. API keys (`hk-*`, `sk-*`, `fw_*`, `hz_*`, `pk-*`) pass through without JWT validation.
+1. **Auth middleware** (`auth_middleware.go`): Validates JWT via JWKS, checks billing via Commerce API (fail-open), injects `X-IAM-Org-Id`, `X-IAM-User-Id`, `X-IAM-User-Email` headers. API keys (`sk-*`, `fw_*`, `hz_*`, `pk-*`) pass through without JWT validation.
 
 2. **Widget security** (`widget_security.go`): Per-IP rate limiting (10 req/min default) and origin validation for widget keys (`hz_*`). Prevents abuse of public-facing widget credentials.
 
@@ -392,8 +392,8 @@ sd.go                   # Service discovery registration
 | 429 Too Many Requests | Global or per-IP rate limit exceeded | Check `qos/ratelimit/router` in gateway.json; increase limits or add per-endpoint overrides |
 | 401 Unauthorized (JWT) | Invalid or expired JWT token | Verify token against `https://hanzo.id/.well-known/jwks`; check `AUTH_ISSUER` matches |
 | 402 Payment Required | User has zero or negative Commerce balance | Add funds; or disable billing with `BILLING_ENABLED=false` |
-| 403 Forbidden (widget) | Widget key (`hz_*`) used from unauthorized origin | Add origin to `AllowedOrigins` in `widget_security.go`; or use `hk-*` API key instead |
-| API key rejected | Key prefix not recognized | Recognized prefixes: `hk-`, `sk-`, `fw_`, `hz_`, `pk-` |
+| 403 Forbidden (widget) | Widget key (`hz_*`) used from unauthorized origin | Add origin to `AllowedOrigins` in `widget_security.go`; or use `sk-*` API key instead |
+| API key rejected | Key prefix not recognized | Recognized prefixes: `sk-`, `fw_`, `hz_`, `pk-` |
 | Route not found (404) | Endpoint not in gateway.json or host not in hostRoutes | Add endpoint to config or host to `router_engine.go` |
 | Config validation fails | JSON syntax error or schema violation | Run `make validate`; check against the v3 config schema |
 | WebSocket not connecting | Host not in `hostRoutes` | Add host entry; `httputil.ReverseProxy` handles WS natively |
