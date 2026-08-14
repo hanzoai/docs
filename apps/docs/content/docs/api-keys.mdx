@@ -83,6 +83,42 @@ Creating is how you rotate: you hold one key per type, so minting the same type
 again replaces it and the old credential stops working. Omitting `type` means
 `secret`, which is what every caller meant before publishable keys existed.
 
+## Limiting what a key may reach
+
+A key reaches whatever its holder reaches. For a key that lives in one deployed
+service that is more authority than the service needs, so a key can be narrowed
+to a model, a project or a product:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/keys \
+  -H "Authorization: Bearer sk-your-key" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"secret","limit":["model:zen5","project:acme"]}'
+```
+
+The entries are `kind:name`, and `kind:*` is the whole kind. Three kinds are
+enforced — `model`, `project` and `product` — and a kind outside that set is
+refused when you create the key rather than stored. A limit nothing consults
+would be worse than no limit: it would read as a restriction everywhere you
+look and be one nowhere.
+
+A limit **only ever narrows.** It cannot grant a key reach its holder does not
+have, so the worst a mistake costs is a call that should have worked. That is
+also why an omitted `limit` means unrestricted: every key issued before limits
+existed carries none, and a default that restricted would have revoked them all.
+
+Restriction is per kind. A key limited to a project is not thereby limited to
+zero models — naming one kind says nothing about the others, so adding a limit
+later cannot silently switch off something that was working.
+
+The limit belongs to the **credential, not the person**, which has two
+consequences worth stating plainly. Your session and your deploy key can carry
+different limits at the same time. And an admin's limited key is still limited:
+a restriction you could shed by being an admin would not be one.
+
+`GET /v1/keys` reports each key's `limit`, so you can see what a key reaches
+without minting a new one to find out.
+
 Two things worth knowing before you automate this. A browser session must echo
 an anti-CSRF token — `GET /v1/csrf`, then send it back as `X-CSRF-Token` — while
 a bearer caller does not, because a bearer request cannot be forged by a
