@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
 import { deref, type Document, type Operation, type Param, type Product } from './openapi-doc';
 import type { CliCommand } from './sync-cli-commands';
-import { MCP_DOOR, ops, type McpTool } from './sync-mcp-tools';
+import { MCP_DOOR, ops, readOp, type McpTool } from './sync-mcp-tools';
 import { load as loadClients } from './sync-sdk-clients';
-import { fence } from './mdx';
+import { fence, text } from './mdx';
 
 // THE FOUR SURFACES.
 //
@@ -337,10 +337,21 @@ const py = (v: any): string =>
  * "unknown tool" to. A key that keeps matching after the thing it names is gone
  * is worse than no key.
  */
-export const toolIndex = (tools: Iterable<McpTool>): Map<string, string> => {
-  const out = new Map<string, string>();
-  for (const t of tools) for (const op of ops(t)) if (!out.has(op)) out.set(op, t.name);
-  return out;
+export interface Door {
+  /** operationId -> the tool whose enum names it, where one does. */
+  index: Map<string, string>;
+  /** product name -> the tool of that name, where the door has one. */
+  byProduct: Map<string, McpTool>;
+}
+
+export const door = (tools: Iterable<McpTool>): Door => {
+  const index = new Map<string, string>();
+  const byProduct = new Map<string, McpTool>();
+  for (const t of tools) {
+    byProduct.set(t.name, t);
+    for (const op of ops(t)) if (!index.has(op)) index.set(op, t.name);
+  }
+  return { index, byProduct };
 };
 
 /**
@@ -370,9 +381,9 @@ export function toolOperations(doc: Document, tools: Iterable<McpTool>): Map<str
 export function mcp(
   op: Operation,
   doc: Document,
-  index: Map<string, string>,
+  d: Door,
 ): { tool: string; op: string; call: string } | null {
-  const tool = index.get(op.id);
+  const tool = d.index.get(op.id);
   if (!tool) return null;
   const input: Record<string, any> = {};
   for (const p of op.parameters.filter((x) => x.required)) input[p.name] = placeholder(p);
@@ -388,10 +399,10 @@ export function mcp(
   };
 }
 
-/** Ask the door what it calls an operation, and what that operation takes. */
-export const describeCall = (op: Operation): string =>
+/** Ask the door what an operation IT NAMES does, and what it takes. */
+export const describeCall = (op: string): string =>
   JSON.stringify(
-    { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'describe', arguments: { op: op.id } } },
+    { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'describe', arguments: { op } } },
     null,
     2,
   );
@@ -492,11 +503,11 @@ export function surfaces(
   op: Operation,
   doc: Document,
   table: Map<string, CliCommand>,
-  index: Map<string, string>,
+  d: Door,
 ): string[] {
   const L: string[] = [];
   const command = cli(op, doc, table);
-  const tool = mcp(op, doc, index);
+  const tool = mcp(op, doc, d);
 
   L.push("<Tabs items={['CLI', 'SDK', 'HTTP', 'MCP']}>");
 
@@ -540,19 +551,38 @@ export function surfaces(
       ),
     );
   } else {
-    // The door reaches far more than it names our way: it has its own verb for
-    // most operations and only `describe` resolves an operationId to it. Saying
-    // "no tool" would be false; printing a guessed name would be worse.
-    L.push(`The door names this operation with its own verb. Ask \`describe\` for it:`);
-    L.push('');
-    L.push(
-      ...fence(
-        'bash',
-        `curl -X POST ${MCP_DOOR} \\\n  -H "Content-Type: application/json" \\\n  -d '${describeCall(op)
-          .split('\n')
-          .join('\n     ')}'`,
-      ),
-    );
+    // The door has its own verb for most operations, and only the door knows
+    // which. `describe` was printed here for the operation itself, on the
+    // strength of two ids that happened to resolve — probed across five
+    // products, `get_kv`, `get_audit` and `get_agents` resolve while
+    // `get_models` and `get_billing_tier` answer `unknown tool`. So describing
+    // an id the door has not declared is a call that fails, and offering it
+    // taught two of five readers a dead end.
+    //
+    // What IS known is the tool that serves this product and the operations that
+    // tool declares. So the page teaches the door's own discovery — a real tool,
+    // a real op it names, a call that runs — instead of guessing at this one.
+    const own = d.byProduct.get(op.product);
+    const read = own && readOp(own);
+    if (own && read) {
+      L.push(
+        `The door reaches **${text(op.product)}** through the \`${own.name}\` tool, which names its ${ops(own).length} operations ` +
+          `with its own verbs — this one among them, under a name only the door declares. \`describe\` explains any of them:`,
+      );
+      L.push('');
+      L.push(
+        ...fence(
+          'bash',
+          `curl -X POST ${MCP_DOOR} \\\n  -H "Content-Type: application/json" \\\n  -d '${describeCall(read)
+            .split('\n')
+            .join('\n     ')}'`,
+        ),
+      );
+    } else {
+      L.push(
+        `The door declares no tool for **${text(op.product)}** — \`tools/list\` on \`${MCP_DOOR}\` names the products it does reach. Use HTTP or an SDK.`,
+      );
+    }
   }
   L.push('</Tab>');
 

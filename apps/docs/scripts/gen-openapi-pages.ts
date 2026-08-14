@@ -11,7 +11,7 @@ import {
   type Operation,
   type Product,
 } from './openapi-doc';
-import { firstCall, runnable, surfaces, toolIndex } from './openapi-surfaces';
+import { door, firstCall, runnable, surfaces, type Door } from './openapi-surfaces';
 import { load as loadDoor } from './sync-mcp-tools';
 import { loadCliTable, type CliCommand } from './sync-cli-commands';
 import { code, firstSentence, prose, text, yamlString } from './mdx';
@@ -166,7 +166,7 @@ function leadProse(op: Operation): string {
  * 184 pages to re-check every time a route moves; this one cannot fall behind
  * the document because it IS the document.
  */
-function quickstart(p: Product, doc: Document, table: Map<string, CliCommand>, index: Map<string, string>): string[] {
+function quickstart(p: Product, doc: Document, table: Map<string, CliCommand>, d: Door): string[] {
   const op = firstCall(p);
   const L: string[] = [];
 
@@ -185,7 +185,7 @@ function quickstart(p: Product, doc: Document, table: Map<string, CliCommand>, i
         `Then the first call. This one takes arguments — the placeholders are yours to fill. \`${op.method.toUpperCase()} ${code(op.path)}\`, operation \`${op.id}\`:`,
   );
   L.push('');
-  L.push(...surfaces(op, doc, table, index));
+  L.push(...surfaces(op, doc, table, d));
   L.push('');
 
   const shape = returns(op);
@@ -210,7 +210,7 @@ function renderProduct(
   p: Product,
   doc: Document,
   table: Map<string, CliCommand>,
-  index: Map<string, string>,
+  d: Door,
 ): string {
   const guide = guideHref(p.name);
   const L: string[] = [];
@@ -252,7 +252,7 @@ function renderProduct(
   L.push(`| **Auth** | \`Authorization: Bearer $HANZO_API_KEY\` |`);
   L.push('');
 
-  L.push(...quickstart(p, doc, table, index));
+  L.push(...quickstart(p, doc, table, d));
 
   const sections = new Map<string, Operation[]>();
   for (const op of p.operations) {
@@ -374,7 +374,7 @@ function writePages(
   products: Product[],
   doc: Document,
   table: Map<string, CliCommand>,
-  index: Map<string, string>,
+  d: Door,
 ): void {
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
@@ -390,7 +390,7 @@ function writePages(
   for (const p of products) {
     const f = pageFile(p.name);
     fs.mkdirSync(path.dirname(f), { recursive: true });
-    fs.writeFileSync(f, renderProduct(p, doc, table, index));
+    fs.writeFileSync(f, renderProduct(p, doc, table, d));
   }
   fs.writeFileSync(path.join(dir, 'index.mdx'), renderIndex(products, doc));
 
@@ -450,14 +450,14 @@ export async function genOpenapiPages(
   // own answer, read here once and handed down — the same two artefacts the flow
   // pages read, through the same two functions.
   const table = loadCliTable();
-  const index = toolIndex(loadDoor().tools);
+  const d = door(loadDoor().tools);
 
-  writePages(out, doc.products, doc, table, index);
+  writePages(out, doc.products, doc, table, d);
 
   // The operator surface is rendered too, just not here. 86 endpoints our own
   // people run on are worth a page each; what they are not worth is being on
   // docs.hanzo.ai. See INTERNAL_DIR for where they go and why it is not a repo.
-  if (doc.internal.length) writePages(internalOut, doc.internal, doc, table, index);
+  if (doc.internal.length) writePages(internalOut, doc.internal, doc, table, d);
 
   // The interactive reference at /reference reads the same document, so the
   // document it reads is the published one. Copying the source whole — which is

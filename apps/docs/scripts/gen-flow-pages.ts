@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 import { DOCUMENT, loadDocument, type Document, type Operation } from './openapi-doc';
-import { SDKS, mcp, surfaces, toolIndex } from './openapi-surfaces';
+import { SDKS, door, mcp, surfaces, type Door } from './openapi-surfaces';
 import { MCP_DOOR, load } from './sync-mcp-tools';
 import { loadCliTable, type CliCommand } from './sync-cli-commands';
 import { prose, text } from './mdx';
@@ -128,7 +128,7 @@ function renderFlow(
   ops: Operation[],
   doc: Document,
   table: Map<string, CliCommand>,
-  index: Map<string, string>,
+  d: Door,
   reach: number,
 ): string {
   const L: string[] = [];
@@ -157,7 +157,7 @@ function renderFlow(
       L.push('');
     }
     L.push(...signature(op));
-    L.push(...surfaces(op, doc, table, index));
+    L.push(...surfaces(op, doc, table, d));
     L.push('');
   }
 
@@ -221,8 +221,8 @@ export async function genFlowPages(): Promise<void> {
   }
   const doc = loadDocument(DOCUMENT);
   const flows = readFlows(FLOWS);
-  const door = load();
-  const index = toolIndex(door.tools);
+  const cat = load();
+  const d = door(cat.tools);
   const table = loadCliTable();
 
   fs.rmSync(OUT_DIR, { recursive: true, force: true });
@@ -242,9 +242,9 @@ export async function genFlowPages(): Promise<void> {
     total += ops.length;
     for (const op of ops) {
       if (table.has(`${op.method.toUpperCase()} ${op.path}`)) withCli++;
-      if (mcp(op, doc, index)) withMcp++;
+      if (mcp(op, doc, d)) withMcp++;
     }
-    fs.writeFileSync(path.join(OUT_DIR, `${flow.id}.mdx`), renderFlow(flow, ops, doc, table, index, door.meta.reach));
+    fs.writeFileSync(path.join(OUT_DIR, `${flow.id}.mdx`), renderFlow(flow, ops, doc, table, d, cat.meta.reach));
   }
   fs.writeFileSync(path.join(OUT_DIR, 'index.mdx'), renderIndex(flows, doc));
   fs.writeFileSync(
