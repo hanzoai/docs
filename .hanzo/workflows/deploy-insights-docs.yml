@@ -34,13 +34,6 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
 
-      - name: Create Cloudflare Pages project (if needed)
-        continue-on-error: true
-        run: npx wrangler pages project create insights-docs --production-branch=main
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ steps.kms.outputs.cf_token }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ steps.kms.outputs.cf_account }}
-
       - name: Fetch CF credentials from KMS
         id: kms
         env:
@@ -77,6 +70,13 @@ jobs:
           echo "::add-mask::${cf_account}"
           echo "cf_token=${cf_token}" >> "$GITHUB_OUTPUT"
           echo "cf_account=${cf_account}" >> "$GITHUB_OUTPUT"
+
+      - name: Create Cloudflare Pages project (if needed)
+        continue-on-error: true
+        run: npx wrangler pages project create insights-docs --production-branch=main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ steps.kms.outputs.cf_token }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ steps.kms.outputs.cf_account }}
 
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy apps/insights-docs/out --project-name=insights-docs --commit-dirty=true
