@@ -432,20 +432,33 @@ kubectl create secret generic mpc-encryption-keys \
 For production, store encryption keys in Hanzo KMS and sync via the KMS operator:
 
 ```yaml
-apiVersion: secrets.hanzo.ai/v1
+apiVersion: secrets.lux.network/v1alpha1
 kind: KMSSecret
 metadata:
-  name: mpc-encryption-keys
+  name: mpc-kms-sync
   namespace: mpc
 spec:
-  secretRef:
+  hostAPI: https://kms.hanzo.ai
+  resyncInterval: 60
+  authentication:
+    universalAuth:
+      credentialsRef:
+        secretName: mpc-iam-creds
+        secretNamespace: mpc
+      secretsScope:
+        projectSlug: hanzo
+        envSlug: prod
+        secretsPath: /mpc/encryption
+        keys:
+          - NODE_ENCRYPTION_KEY
+  managedSecretReference:
+    creationPolicy: Orphan
     secretName: mpc-encryption-keys
-  data:
-    - secretKey: node-key
-      remoteRef:
-        secretPath: /mpc/encryption
-        secretKey: NODE_ENCRYPTION_KEY
+    secretNamespace: mpc
+    secretType: Opaque
 ```
+
+Every field is in the [KMSSecret reference](/docs/services/kms/kmssecret-crd).
 
 ---
 

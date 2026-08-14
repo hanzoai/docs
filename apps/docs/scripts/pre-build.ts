@@ -3,11 +3,13 @@ import { genOpenapiPages } from './gen-openapi-pages';
 import { genFlowPages } from './gen-flow-pages';
 import { genMcpPages } from './gen-mcp-pages';
 import { genPricingPage } from './gen-pricing-page';
+import { genKeyTypes } from './gen-key-types';
 import { syncCliCommands } from './sync-cli-commands';
 import { syncSdkClients } from './sync-sdk-clients';
 import { syncProjectDocs } from './sync-project-docs';
 import { sanitizeMdx } from './sanitize-mdx';
 import { checkEndpoints, report } from './check-endpoints';
+import { checkKeys, report as reportKeys } from './check-keys';
 
 async function main() {
   // The document first, then its projections: the reference (one page per
@@ -33,6 +35,9 @@ async function main() {
   await genOpenapiPages();
   await genFlowPages();
   await genMcpPages();
+  // The key types the authentication page teaches. Also from the document, and
+  // BEFORE the checks below, because the check reads what it writes.
+  genKeyTypes();
   // The pricing page is the billing API's own answer, not the document's — it
   // reads /v1/pricing, so it neither needs nor blocks the three above.
   await genPricingPage();
@@ -56,6 +61,23 @@ async function main() {
     throw new Error(`${unknown.length} mentions name endpoints the document does not have`);
   }
   console.log(`[endpoints] ${checked} mentions checked, every one in the document`);
+
+  // The same rule for the credential, which a reader needs one step before the
+  // endpoint: no page may spell a key a way cloud does not mint, and the page
+  // that teaches the key types must teach all of them.
+  const keys = checkKeys();
+  if (keys.unknown.length) reportKeys(keys.unknown);
+  if (keys.missing.length) console.error(`   api-keys.mdx never teaches: ${keys.missing.join(', ')}`);
+  if (keys.unknown.length || keys.missing.length) {
+    throw new Error(
+      `${keys.unknown.length} mentions spell a key prefix cloud does not mint` +
+        (keys.missing.length ? `, and ${keys.missing.length} key type(s) go untaught` : ''),
+    );
+  }
+  console.log(
+    `[keys] ${keys.checked} credential literals checked against ` +
+      keys.keys.map((k) => k.prefix).join(' / '),
+  );
 }
 
 await main().catch((e) => {

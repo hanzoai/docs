@@ -1,7 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DOCUMENT, isInternal, loadDocument, release, type Document, type Operation } from './openapi-doc';
+import {
+  DOCUMENT,
+  isInternal,
+  loadDocument,
+  release,
+  secretKey,
+  type Document,
+  type Operation,
+} from './openapi-doc';
 import { toolOperations } from './openapi-surfaces';
 import { load, MCP_DOOR, ops as doorOps, readOp, type McpCatalog, type McpTool } from './sync-mcp-tools';
 import { code, fence, firstSentence, prose, text, yamlString } from './mdx';
@@ -871,7 +879,7 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
   L.push(
     ...fence(
       'bash',
-      `export HANZO_API_KEY=sk-...\ncurl -X POST ${cat.door} \\\n  -H "Authorization: Bearer $HANZO_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`,
+      `export HANZO_API_KEY=${secretKey(doc).prefix}...\ncurl -X POST ${cat.door} \\\n  -H "Authorization: Bearer $HANZO_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`,
     ),
   );
   L.push('');
