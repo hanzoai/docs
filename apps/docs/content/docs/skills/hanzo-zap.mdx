@@ -5,7 +5,7 @@ description: "Hanzo ZAP (`hanzoai/zap`) is a Go sidecar that bridges the ZAP pro
 
 ## Overview
 
-Hanzo ZAP (`hanzoai/zap`) is a **Go sidecar that bridges the ZAP protocol to backend infrastructure services**. It runs as a sidecar container alongside databases and caches, translating ZAP protocol calls from the Hanzo Gateway into native protocol calls against the co-located backend. Supports 4 modes: SQL (PostgreSQL via pgx), KV (Valkey/Redis), Datastore (ClickHouse native TCP), and DocumentDB (MongoDB wire protocol). ZAP's schema maps 1:1 with MCP (Model Context Protocol), so any service implementing the ZAP interface gets MCP tools and resources for free.
+Hanzo ZAP (`hanzoai/zap`) is a **Go sidecar that bridges the ZAP protocol to backend infrastructure services**. It runs as a sidecar container alongside databases and caches, translating ZAP protocol calls from the Hanzo Gateway into native protocol calls against the co-located backend. Supports 4 modes: SQL (PostgreSQL via pgx), KV (Valkey/Redis), Datastore (Datastore native TCP), and DocumentDB (MongoDB wire protocol). ZAP's schema maps 1:1 with MCP (Model Context Protocol), so any service implementing the ZAP interface gets MCP tools and resources for free.
 
 ### What it actually is
 
@@ -13,7 +13,7 @@ Hanzo ZAP (`hanzoai/zap`) is a **Go sidecar that bridges the ZAP protocol to bac
 - 4 backend proxies, each in `internal/`:
   - `sql/` -- PostgreSQL proxy (pgx v5 driver)
   - `kv/` -- Valkey/Redis proxy (hanzoai/kv-go v9)
-  - `datastore/` -- ClickHouse proxy (clickhouse-go v2, native TCP)
+  - `datastore/` -- Datastore proxy (clickhouse-go v2, native TCP)
   - `documentdb/` -- MongoDB/FerretDB proxy (mongo-driver v2)
 - MCP tool and resource definitions in `internal/mcp.go`
 - ZAP protocol implementation via `luxfi/zap` v0.2.0 (mDNS service discovery)
@@ -33,7 +33,7 @@ Any service implementing the ZAP interface gets MCP for free via the ZAP Gateway
 ## When to use
 
 - Deploying database sidecars in K8s for ZAP/MCP access
-- Adding MCP tool support to PostgreSQL, Redis, ClickHouse, or MongoDB
+- Adding MCP tool support to PostgreSQL, Redis, Datastore, or MongoDB
 - Building AI agents that need direct database access via MCP
 - Bridging Hanzo Gateway to backend infrastructure
 
@@ -76,7 +76,7 @@ hanzoai/zap/
     kv/
       proxy.go              # Valkey/Redis proxy (kv-go v9)
     datastore/
-      proxy.go              # ClickHouse proxy (clickhouse-go v2)
+      proxy.go              # Datastore proxy (clickhouse-go v2)
     documentdb/
       proxy.go              # MongoDB/FerretDB proxy (mongo-driver v2)
 ```
@@ -87,7 +87,7 @@ From `go.mod`:
 - `github.com/luxfi/zap` v0.2.0 -- ZAP protocol + mDNS discovery
 - `github.com/jackc/pgx/v5` v5.7.2 -- PostgreSQL driver
 - `github.com/hanzoai/kv-go/v9` v9.17.2-hanzo.1 -- Valkey/Redis client
-- `github.com/ClickHouse/clickhouse-go/v2` v2.43.0 -- ClickHouse native driver
+- `github.com/ClickHouse/clickhouse-go/v2` v2.43.0 -- Datastore native driver
 - `go.mongodb.org/mongo-driver/v2` v2.5.0 -- MongoDB driver
 
 ## MCP tools by mode
@@ -117,7 +117,7 @@ Resource: `hanzo://kv/info` -- server info and statistics
 
 | Tool | Description |
 |------|------------|
-| `datastore_query` | Execute ClickHouse SQL query, return JSON rows |
+| `datastore_query` | Execute Datastore SQL query, return JSON rows |
 | `datastore_exec` | Execute DDL/non-SELECT statement |
 | `datastore_insert` | Bulk insert rows via native batch protocol |
 | `datastore_tables` | List tables and metadata |
@@ -152,7 +152,7 @@ make build
 # KV mode (Valkey/Redis sidecar)
 ./bin/zap --mode kv --backend localhost:6379 --password secret
 
-# Datastore mode (ClickHouse sidecar)
+# Datastore mode (Datastore sidecar)
 ZAP_USER=default ZAP_DATABASE=default \
   ./bin/zap --mode datastore --backend localhost:9000
 
@@ -222,6 +222,6 @@ containers:
 - `hanzo/hanzo-database.md` -- Database configuration patterns
 - `hanzo/hanzo-sql.md` -- PostgreSQL (hanzoai/sql)
 - `hanzo/hanzo-kv.md` -- Valkey/Redis (hanzoai/kv)
-- `hanzo/hanzo-datastore.md` -- ClickHouse analytics
+- `hanzo/hanzo-datastore.md` -- Datastore analytics
 - `hanzo/hanzo-mcp.md` -- MCP tools (ZAP provides MCP for free)
 
