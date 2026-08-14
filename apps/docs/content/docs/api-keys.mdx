@@ -6,7 +6,7 @@ description: Key types, scopes, creation, rotation, and production best practice
 
 # API Keys
 
-Every request to the Hanzo platform is authenticated with a bearer token. This page covers the three key types, how to create and use them, and how to keep them safe.
+Every request to the Hanzo platform is authenticated with a bearer token. This page covers the two key types, how to create and use them, and how to keep them safe.
 
 ## Key Types and Prefixes
 
@@ -14,22 +14,17 @@ Hanzo uses key prefixes so you can identify a credential at a glance and catch a
 
 | Prefix | Type | Where to Use | Scope |
 |--------|------|--------------|-------|
-| `hk-*` | **API Key** | Server-side code, CI/CD, scripts | Project-level. Full access to APIs within the project's permissions. |
-| `sk-*` | **Secret Key** | Backend services, provider configuration | Org-level. Used for upstream provider credentials and internal service auth. Never expose to clients. |
+| `sk-*` | **Secret Key** | Server-side code, CI/CD, scripts, backend services | Project or org, fixed when the key is created. Never expose to clients. |
 | `hz-*` | **Widget Key** | Browser JavaScript, mobile apps | Project-level with restricted scopes. Safe to embed in client-side code. |
-
-### API Keys (`hk-*`)
-
-These are your primary credentials. One `hk-*` key gives access to all Hanzo services for the project it belongs to: AI API, search, storage, tasks, and everything else.
-
-```bash
-# All Hanzo API calls use the same header format
-curl -H "Authorization: Bearer hk-proj-abc123..." https://api.hanzo.ai/v1/models
-```
 
 ### Secret Keys (`sk-*`)
 
-Secret keys are org-scoped credentials used for provider-level operations: configuring upstream LLM providers, managing billing integrations, and inter-service communication. They carry elevated privileges and must never leave your backend.
+These are your primary credentials. One `sk-*` key gives access to all Hanzo services for the project it belongs to: AI API, search, storage, tasks, and everything else. An org-scoped `sk-*` key reaches further -- provider-level operations like configuring upstream LLM providers, managing billing integrations, and inter-service communication. Either way it carries privileges that must never leave your backend.
+
+```bash
+# All Hanzo API calls use the same header format
+curl -H "Authorization: Bearer sk-proj-abc123..." https://api.hanzo.ai/v1/models
+```
 
 ### Widget Keys (`hz-*`)
 
@@ -50,7 +45,7 @@ Widget keys are designed for client-side use. They have restricted scopes -- typ
 2. Select your **project**
 3. Click **API Keys** in the sidebar
 4. Click **Create Key**
-5. Choose the key type (`hk-*` API key or `hz-*` widget key)
+5. Choose the key type (`sk-*` API key or `hz-*` widget key)
 6. Optionally set:
    - **Name** -- descriptive label (e.g. `prod-backend`, `staging-widget`)
    - **Expiration** -- auto-expire after a set duration
@@ -65,7 +60,7 @@ Key issuance, budgets, and revocation are console operations — there is no pub
 All Hanzo APIs accept keys via the `Authorization` header with the `Bearer` scheme:
 
 ```
-Authorization: Bearer hk-proj-abc123...
+Authorization: Bearer sk-proj-abc123...
 ```
 
 Every service answers on the one host, `api.hanzo.ai`, under `/v1/<service>` — the same key works across all of them:
@@ -87,19 +82,19 @@ All official SDKs accept the API key as a constructor parameter:
 ```python
 # Python
 from hanzoai import Hanzo
-client = Hanzo(api_key="hk-your-key")
+client = Hanzo(api_key="sk-your-key")
 ```
 
 ```typescript
 // TypeScript
 import Hanzo from '@hanzo/ai'
-const client = new Hanzo({ apiKey: 'hk-your-key' })
+const client = new Hanzo({ apiKey: 'sk-your-key' })
 ```
 
 ```go
 // Go
 import "github.com/hanzoai/go-sdk"
-client := hanzo.NewClient(hanzo.WithAPIKey("hk-your-key"))
+client := hanzo.NewClient(hanzo.WithAPIKey("sk-your-key"))
 ```
 
 Each client defaults to `https://api.hanzo.ai/v1`. A third-party HTTP client
@@ -108,13 +103,13 @@ and give it the same key.
 
 ## Scopes
 
-### Project-Level Keys (`hk-*`, `hz-*`)
+### Project-Level Keys
 
-These keys are bound to a single project. They can only access resources within that project. Switching projects requires a different key.
+A project-scoped key can only access resources within that project. Switching projects requires a different key.
 
-### Org-Level Keys (`sk-*`)
+### Org-Level Keys
 
-These keys operate across all projects within an organization. They are used for administrative operations: managing projects, configuring providers, and accessing org-wide analytics.
+An org-scoped key operates across all projects within an organization. These are used for administrative operations: managing projects, configuring providers, and accessing org-wide analytics.
 
 ## Key Information and Usage
 
@@ -123,11 +118,11 @@ Spend and usage for the calling credential come from the billing and analytics A
 ```bash
 # Current balance
 curl https://api.hanzo.ai/v1/billing/balance \
-  -H "Authorization: Bearer hk-your-key"
+  -H "Authorization: Bearer sk-your-key"
 
 # Itemized metered usage
 curl https://api.hanzo.ai/v1/billing/usage \
-  -H "Authorization: Bearer hk-your-key"
+  -H "Authorization: Bearer sk-your-key"
 ```
 
 ```json
@@ -186,6 +181,6 @@ Revoke a key from the console: **Project → API Keys → Revoke**. Revocation i
 ## Security Rules
 
 - **Never commit keys to git.** Use environment variables or KMS.
-- **Never expose `hk-*` or `sk-*` keys client-side.** Use `hz-*` widget keys for browser code.
+- **Never expose `sk-*` keys client-side.** Use `hz-*` widget keys for browser code.
 - **Always use HTTPS.** All Hanzo endpoints enforce TLS. Plain HTTP connections are rejected.
 - **Set the minimum scope needed.** If a service only needs LLM access, do not give it an org-level secret key.

@@ -45,7 +45,7 @@ for k in ["/v1/projects","/v1/git","/v1/code","/v1/sites","/v1/templates","/v1/r
 
 ```bash
 curl -X POST https://api.hanzo.ai/v1/projects/fork \
-  -H "Authorization: Bearer hk-..." \
+  -H "Authorization: Bearer sk-..." \
   -H "X-Org-Id: org_a1b2c3" \
   -H "Content-Type: application/json" \
   -d '{ "template": "folio", "slug": "my-folio" }'
@@ -84,17 +84,17 @@ Publishing does not upload bytes. The builder's output already lives in Hanzo's 
 ```bash
 # create + activate in one call — the 99% path
 curl -X POST https://api.hanzo.ai/v1/sites/my-folio/publish \
-  -H "Authorization: Bearer hk-..." -H "X-Org-Id: org_a1b2c3" \
+  -H "Authorization: Bearer sk-..." -H "X-Org-Id: org_a1b2c3" \
   -H "Content-Type: application/json" \
   -d '{ "source": "builds/my-folio/out" }'
 
 # the rollback menu
 curl https://api.hanzo.ai/v1/sites/my-folio/releases \
-  -H "Authorization: Bearer hk-..." -H "X-Org-Id: org_a1b2c3"
+  -H "Authorization: Bearer sk-..." -H "X-Org-Id: org_a1b2c3"
 
 # rollback is the same flip, aimed at an older id. Nothing is rebuilt.
 curl -X POST https://api.hanzo.ai/v1/sites/my-folio/releases/rel_<id>/activate \
-  -H "Authorization: Bearer hk-..." -H "X-Org-Id: org_a1b2c3"
+  -H "Authorization: Bearer sk-..." -H "X-Org-Id: org_a1b2c3"
 ```
 
 `source` is a path **relative to your own org's storage**. The org segment comes from the validated principal and the bucket is server-owned and never appears in the request, so the worst a hostile source string can name is something your org already owns.

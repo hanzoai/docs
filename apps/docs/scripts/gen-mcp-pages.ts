@@ -788,7 +788,7 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
   L.push(
     ...fence(
       'bash',
-      `export HANZO_API_KEY=hk-...\ncurl -X POST ${cat.door} \\\n  -H "Authorization: Bearer $HANZO_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`,
+      `export HANZO_API_KEY=sk-...\ncurl -X POST ${cat.door} \\\n  -H "Authorization: Bearer $HANZO_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'`,
     ),
   );
   L.push('');
