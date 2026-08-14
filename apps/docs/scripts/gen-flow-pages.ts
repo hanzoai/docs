@@ -3,10 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 import { DOCUMENT, loadDocument, type Document, type Operation } from './openapi-doc';
-import { SDKS, cli, http, mcp } from './openapi-surfaces';
-import { MCP_DOOR, loadMcpTools } from './sync-mcp-tools';
-import type { CliCommand } from './sync-cli-commands';
-import { fence, prose, text } from './mdx';
+import { SDKS, mcp, surfaces, toolIndex } from './openapi-surfaces';
+import { MCP_DOOR, load } from './sync-mcp-tools';
+import { loadCliTable, type CliCommand } from './sync-cli-commands';
+import { prose, text } from './mdx';
 
 // SIX FLOWS, FOUR SURFACES.
 //
@@ -23,7 +23,6 @@ import { fence, prose, text } from './mdx';
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
 const FLOWS = path.join(APP_ROOT, 'openapi-specs/flows.yaml');
-const CLI_TABLE = path.join(APP_ROOT, 'openapi-specs/cli-commands.json');
 const OUT_DIR = path.join(APP_ROOT, 'content/docs/start');
 
 /**
@@ -57,8 +56,11 @@ function readFlows(file: string): Flow[] {
 /**
  * The MCP door is real and undeclared.
  *
- * `POST /v1/mcp` answers JSON-RPC `tools/list` with 730 tools — verified on the
- * wire. hanzo.yaml declares only `/v1/mcp/servers`, so the spec lane recorded
+ * `POST /v1/mcp` answers JSON-RPC `tools/list` — verified on the wire, and the
+ * count is passed in rather than written here, because it has already moved
+ * twice (833 flat tools, then 109 subsystem tools reaching 1384 operations) and
+ * a number in a sentence does not move with it.
+ * hanzo.yaml declares only `/v1/mcp/servers`, so the spec lane recorded
  * the door as "not routed": a true statement about the document and a false one
  * about the fleet. The docs must describe what actually answers, and must say
  * out loud that the document does not, so it gets declared instead of quietly
@@ -68,17 +70,17 @@ function readFlows(file: string): Flow[] {
  * path, `doc.raw.paths` contains it and the warning disappears on its own. It
  * cannot outlive the gap it describes.
  */
-function doorNotice(doc: Document): string[] {
+function doorNotice(doc: Document, reach: number): string[] {
   const declared = Object.keys(doc.raw.paths ?? {}).includes('/v1/mcp');
   if (declared) return [];
   return [
     `> **The MCP door is not in the OpenAPI document.** \`POST ${MCP_DOOR}\` answers` +
-      ' JSON-RPC 2.0 `tools/list` and `tools/call` — it is live and is what the MCP' +
-      ' column below calls. The document declares only `/v1/mcp/servers`, so this' +
-      ' route is undeclared and needs adding to hanzoai/cloud. Any note below' +
-      ' that calls it unrouted was written from the document, not the wire, and' +
-      ' is out of date. This notice is generated from the gap itself and will' +
-      ' vanish once the route is declared.',
+      ` JSON-RPC 2.0 \`tools/list\` and \`tools/call\`, reaching ${reach} operations —` +
+      ' it is live and is what the MCP column below calls. The document declares' +
+      ' only `/v1/mcp/servers`, so this route is undeclared and needs adding to' +
+      ' hanzoai/cloud. Any note below that calls it unrouted was written from the' +
+      ' document, not the wire, and is out of date. This notice is generated from' +
+      ' the gap itself and will vanish once the route is declared.',
     '',
   ];
 }
@@ -121,65 +123,13 @@ function signature(op: Operation): string[] {
   ];
 }
 
-/** One operation, four ways. */
-function surfaces(
-  op: Operation,
-  doc: Document,
-  table: Map<string, CliCommand>,
-  tools: Map<string, { name: string }>,
-): string[] {
-  const L: string[] = [];
-  const command = cli(op, doc, table);
-  const tool = mcp(op, doc, tools);
-
-  L.push('<Tabs items={[\'CLI\', \'SDK\', \'HTTP\', \'MCP\']}>');
-
-  L.push('<Tab value="CLI">');
-  if (command) {
-    L.push(...fence('bash', command));
-  } else {
-    L.push(
-      `\`hanzo\` has no subcommand for this operation — the CLI serves only what cloud's live route table confirms. Use HTTP or an SDK.`,
-    );
-  }
-  L.push('</Tab>');
-
-  L.push('<Tab value="SDK">');
-  L.push(`<Tabs items={[${SDKS.map((s) => `'${s.label}'`).join(', ')}]}>`);
-  for (const sdk of SDKS) {
-    L.push(`<Tab value="${sdk.label}">`);
-    L.push(...fence(sdk.lang, sdk.render(op, doc)));
-    L.push('</Tab>');
-  }
-  L.push('</Tabs>');
-  L.push('</Tab>');
-
-  L.push('<Tab value="HTTP">');
-  L.push(...fence('bash', http(op, doc)));
-  L.push('</Tab>');
-
-  L.push('<Tab value="MCP">');
-  if (tool) {
-    L.push(`Tool \`${tool.tool}\` — POST the JSON-RPC envelope to \`${MCP_DOOR}\`.`);
-    L.push('');
-    L.push(...fence('bash', `curl -X POST ${MCP_DOOR} \\\n  -H "Authorization: Bearer $HANZO_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '${tool.call.split('\n').join('\n     ')}'`));
-  } else {
-    L.push(
-      `The MCP door does not expose this operation as a tool. It answers \`tools/list\` at \`${MCP_DOOR}\` with the ones it does.`,
-    );
-  }
-  L.push('</Tab>');
-
-  L.push('</Tabs>');
-  return L;
-}
-
 function renderFlow(
   flow: Flow,
   ops: Operation[],
   doc: Document,
   table: Map<string, CliCommand>,
-  tools: Map<string, { name: string }>,
+  index: Map<string, string>,
+  reach: number,
 ): string {
   const L: string[] = [];
   L.push('---');
@@ -191,7 +141,7 @@ function renderFlow(
   L.push('');
   L.push(`**${text(flow.summary)}**`);
   L.push('');
-  L.push(...doorNotice(doc));
+  L.push(...doorNotice(doc, reach));
   if (flow.notes) {
     L.push(`> ${prose(flow.notes)}`);
     L.push('');
@@ -207,7 +157,7 @@ function renderFlow(
       L.push('');
     }
     L.push(...signature(op));
-    L.push(...surfaces(op, doc, table, tools));
+    L.push(...surfaces(op, doc, table, index));
     L.push('');
   }
 
@@ -271,13 +221,9 @@ export async function genFlowPages(): Promise<void> {
   }
   const doc = loadDocument(DOCUMENT);
   const flows = readFlows(FLOWS);
-  const tools = loadMcpTools();
-  const table = new Map<string, CliCommand>(
-    (fs.existsSync(CLI_TABLE)
-      ? (JSON.parse(fs.readFileSync(CLI_TABLE, 'utf8')) as CliCommand[])
-      : []
-    ).map((c) => [c.key, c]),
-  );
+  const door = load();
+  const index = toolIndex(door.tools);
+  const table = loadCliTable();
 
   fs.rmSync(OUT_DIR, { recursive: true, force: true });
   fs.mkdirSync(OUT_DIR, { recursive: true });
@@ -296,9 +242,9 @@ export async function genFlowPages(): Promise<void> {
     total += ops.length;
     for (const op of ops) {
       if (table.has(`${op.method.toUpperCase()} ${op.path}`)) withCli++;
-      if (mcp(op, doc, tools)) withMcp++;
+      if (mcp(op, doc, index)) withMcp++;
     }
-    fs.writeFileSync(path.join(OUT_DIR, `${flow.id}.mdx`), renderFlow(flow, ops, doc, table, tools));
+    fs.writeFileSync(path.join(OUT_DIR, `${flow.id}.mdx`), renderFlow(flow, ops, doc, table, index, door.meta.reach));
   }
   fs.writeFileSync(path.join(OUT_DIR, 'index.mdx'), renderIndex(flows, doc));
   fs.writeFileSync(

@@ -88,6 +88,20 @@ async function source(): Promise<string> {
   return '';
 }
 
+/**
+ * The vendored table, keyed the way every caller joins it: `METHOD /path`.
+ *
+ * The path and the key are this module's business, so they are stated here once
+ * rather than re-spelled by each generator that wants a command. The flow pages
+ * and every product's quickstart print the same command for the same operation
+ * because they read the same map, not because two readers agreed.
+ */
+export function loadCliTable(): Map<string, CliCommand> {
+  if (!fs.existsSync(OUT)) return new Map();
+  const rows = JSON.parse(fs.readFileSync(OUT, 'utf8')) as CliCommand[];
+  return new Map(rows.map((c) => [c.key, c]));
+}
+
 export async function syncCliCommands(): Promise<void> {
   const src = await source();
   if (!src) {

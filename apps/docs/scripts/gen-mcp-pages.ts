@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DOCUMENT, isInternal, loadDocument, release, type Document, type Operation } from './openapi-doc';
 import { toolOperations } from './openapi-surfaces';
-import { load, MCP_DOOR, type McpCatalog, type McpTool } from './sync-mcp-tools';
+import { load, MCP_DOOR, ops as doorOps, readOp, type McpCatalog, type McpTool } from './sync-mcp-tools';
 import { code, fence, firstSentence, prose, text, yamlString } from './mdx';
 
 // THE MCP REFERENCE, generated from the door.
@@ -232,7 +232,12 @@ function fieldTable(fields: Field[]): string[] {
  * would imply the answer is "none". Both are computed from the schemas in hand,
  * so the sentence narrows on its own the day the door starts publishing more.
  */
-function sourceNotice(schema: any, fields: Field[], ops: Operation[] | undefined): string[] {
+function sourceNotice(
+  schema: any,
+  fields: Field[],
+  ops: Operation[] | undefined,
+  con: Map<string, Constraint>,
+): string[] {
   if (!fields.length) return [];
   const props: Record<string, any> = schema?.properties ?? {};
   const doorHas = (k: string) => Object.values(props).some((p: any) => p?.[k] !== undefined);
@@ -256,14 +261,29 @@ function sourceNotice(schema: any, fields: Field[], ops: Operation[] | undefined
     );
     return L;
   }
+  // Whether the document contributed anything HERE, rather than whether it could.
+  // A subsystem tool's own fields are `op` and `input`; the operations declare
+  // the fields that go INSIDE `input`, so their names do not meet and every
+  // column on such a page is the door's. Claiming otherwise credited routes for
+  // a Required column they had no part in.
+  const joined = fields.some((f) => con.has(f.name));
   const routes = ops.map((o) => `\`${o.method.toUpperCase()} ${code(o.path)}\``);
+  if (!joined) {
+    L.push(
+      `\`tools/list\` declares ${conjoin(doorSays)} for each field and nothing further, and every column ` +
+        "above is the door's own. This tool takes an operation name and that operation's arguments, so what " +
+        'the document constrains is what goes inside `input`, field by field, on the operation you name — ' +
+        'ask `describe` for that. A `—` means the door does not constrain the field.',
+    );
+    return L;
+  }
   L.push(
     `\`tools/list\` declares ${conjoin(doorSays)} for each field and nothing further. ` +
       (filled.length
         ? `The ${conjoin(filled)} column${filled.length > 1 ? 's are' : ' is'} taken from ` +
           (routes.length === 1
             ? `${routes[0]}, the operation this tool dispatches to — the same declaration the REST API validates against. `
-            : `${conjoin(routes)} — the ${routes.length} operations the document names for this tool — and carries only what they agree on, since the door does not say which of them it dispatches to. `)
+            : `${conjoin(routes)} — the ${routes.length} operations the document names for this tool — and carries only what they agree on. `)
         : '') +
       `A \`—\` means neither the door nor ${routes.length === 1 ? 'that operation' : 'those operations'} constrains the field.`,
   );
@@ -407,6 +427,12 @@ export function callEnvelope(
   for (const name of minimal ? required : declared) {
     args[name] = sample(schema.properties![name], name, defs, con.get(name), invented, name);
   }
+  // A subsystem tool's `op` is the one argument the door itself enumerates, and
+  // the sample above never looked there — so the call a reader was invited to
+  // paste said `"op": "<op>"`, which the door answers `unknown tool: <op>` to.
+  // Print an operation the door names, and a READ, so the invitation is safe.
+  const read = readOp(tool);
+  if (read && read !== tool.name && 'op' in args) args.op = read;
   const body = JSON.stringify(
     { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: tool.name, arguments: args } },
     null,
@@ -431,21 +457,42 @@ const curl = (body: string): string =>
  * section's root instead of a folder: on disk, in no product, linked from no
  * index, and invisible to every count that walks the folders.
  */
-const productOf = (ops: Operation[] | undefined): string => ops?.[0]?.product || 'unmapped';
+/**
+ * The product a tool belongs under: the one MOST of its operations belong to.
+ *
+ * This took the FIRST operation's product, which was exact while a tool was one
+ * operation. A subsystem tool is many, and they do not all share a product —
+ * `provisioning` reaches kv, sql, s3 and vector — so the first one alphabetically
+ * decided the whole tool's home. The mode is the honest answer, and ties break on
+ * the name so the choice is stable between builds.
+ */
+function productOf(ops: Operation[] | undefined): string {
+  if (!ops?.length) return 'unmapped';
+  const n = new Map<string, number>();
+  for (const o of ops) n.set(o.product, (n.get(o.product) ?? 0) + 1);
+  return [...n.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0] || 'unmapped';
+}
 
 /**
  * The tools this reference publishes: the door's answer, less the operator
  * surface.
  *
- * A tool is one call on one operation, so a tool whose operation is internal is
- * internal. Without this the /v1/admin routes were printed in full on 78 tool
- * pages, again in the catalogue and again in the section nav — the same leak the
- * REST reference had, through a different door. The door still answers them to
- * whoever is authorised to call them; what changes is only what docs.hanzo.ai
- * publishes.
+ * A tool whose operations are ALL internal is internal. Without this the
+ * /v1/admin routes were printed in full on 78 tool pages, again in the catalogue
+ * and again in the section nav — the same leak the REST reference had, through a
+ * different door. The door still answers them to whoever is authorised to call
+ * them; what changes is only what docs.hanzo.ai publishes.
+ *
+ * `some` was right while a tool was one operation and is wrong now that a tool is
+ * a subsystem: one operator operation among thirty would have withdrawn the whole
+ * subsystem's page. `every` withholds exactly the tool that is nothing but the
+ * operator surface — which on this door is the one named `admin`, all 56 of it.
  */
 export function published(cat: McpCatalog, mapped: Map<string, Operation[]>): McpTool[] {
-  return cat.tools.filter((t) => !(mapped.get(t.name) ?? []).some(isInternal));
+  return cat.tools.filter((t) => {
+    const ops = mapped.get(t.name) ?? [];
+    return !ops.length || !ops.every(isInternal);
+  });
 }
 
 // `meta.count` is what the DOOR answered and stays that; `tools.length` is what
@@ -513,7 +560,7 @@ function renderTool(tool: McpTool, ops: Operation[] | undefined, cat: McpCatalog
     );
   } else {
     L.push(...fieldTable(fields));
-    L.push(...sourceNotice(schema, fields, ops));
+    L.push(...sourceNotice(schema, fields, ops, con));
   }
   // The gap, stated where a reader would otherwise be misled into an empty
   // object: the operation cannot run without these, and the door never names
@@ -579,11 +626,24 @@ function renderTool(tool: McpTool, ops: Operation[] | undefined, cat: McpCatalog
         'on this page comes from `tools/list`; there is no REST reference to link to until the two agree.',
     );
   } else {
-    if (ops.length > 1) {
+    // What the tool reaches, and what this page can name. The door dispatches a
+    // whole subsystem — `agents` reaches 25 operations — and names most of them
+    // with its own verb (`list_agents` for `get_agents`), which is not derivable
+    // from the document; only `describe` resolves those. So the table below is
+    // the ones the door names EXACTLY as the document ids them, and the sentence
+    // says how many it is out of. Before the door regrouped, a tool WAS one
+    // operation, and this said "the document uses this name for N operations and
+    // the door does not say which it dispatches to" — a sentence about a name
+    // collision, printed on a page about a subsystem, where it is simply untrue.
+    const reachable = doorOps(tool).length;
+    if (reachable > ops.length) {
       L.push(
-        `The document uses this name for ${ops.length} operations and the door does not say which it ` +
-          'dispatches to. Both are listed.',
+        `\`${code(tool.name)}\` dispatches to ${reachable} operations. ${ops.length} of them the door names exactly as the document ids ` +
+          `${ops.length === 1 ? 'it' : 'them'}, and ${ops.length === 1 ? 'that one is' : 'those are'} below; for the rest the door has its own verb, which \`describe\` resolves.`,
       );
+      L.push('');
+    } else if (ops.length > 1) {
+      L.push(`\`${code(tool.name)}\` dispatches to ${ops.length} operations.`);
       L.push('');
     }
     L.push('| Operation | Route | Product | Summary |');

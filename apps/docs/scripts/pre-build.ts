@@ -5,6 +5,7 @@ import { genMcpPages } from './gen-mcp-pages';
 import { genPricingPage } from './gen-pricing-page';
 import { syncCliCommands } from './sync-cli-commands';
 import { syncMcpTools } from './sync-mcp-tools';
+import { syncSdkClients } from './sync-sdk-clients';
 import { syncProjectDocs } from './sync-project-docs';
 import { sanitizeMdx } from './sanitize-mdx';
 import { checkEndpoints, report } from './check-endpoints';
@@ -17,6 +18,9 @@ async function main() {
   // run first.
   await syncCliCommands();
   await syncMcpTools();
+  // What the published clients call things — the SDK column says so where the
+  // method it prints is not one they carry yet.
+  await syncSdkClients();
   await genOpenapiPages();
   await genFlowPages();
   await genMcpPages();
