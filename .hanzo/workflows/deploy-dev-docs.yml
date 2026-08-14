@@ -1,31 +1,18 @@
 name: Deploy Dev Docs
 
-# dev-docs ships on the Hanzo Sites plane, not Cloudflare Pages.
-#
-# Not a preference — Cloudflare refuses to make the project:
-#
-#   A request to the Cloudflare API (/accounts/…/pages/projects) failed.
-#   You have reached the limit of projects you can have on your account.
-#   [code: 8000027]
-#
-# So dev-docs had nowhere to land: no project, and dev.hanzo.ai answering 404.
-# The other eight lanes here already have their projects and keep them; this is
-# the one that needed a first home, and the plane is where our static surfaces
-# live anyway — hanzo.ai, agency, logo, gallery and the lux sites all publish
-# through the same script.
+# dev-docs ships on the Hanzo Sites plane, served at dev-docs.hanzo.app.
 #
 #   pnpm build --filter=dev-docs  ->  apps/dev-docs/out  ->  sitedeploy
 #
-# The publish mechanics are in bin/sitedeploy in hanzoai/ci, reached through its
-# action: ensure-project, enqueue, presigned per-file upload, complete. It
-# self-provisions, so no create step and no account quota to run into.
+# sitedeploy is bin/sitedeploy in hanzoai/ci, reached through its action:
+# ensure-project, enqueue, presigned per-file upload, complete. It creates the
+# project itself, so this file has no create step.
 #
-# The deploy key lives in KMS and the action opens it there, so this file names
-# only the client identity — the same two secrets the Cloudflare lanes here use
-# to read their own credentials.
+# The deploy key is in KMS and the action reads it there; this file names only
+# the client identity that opens it.
 #
-# The site is served at dev-docs.hanzo.app. Pointing dev.hanzo.ai at it is an
-# ingress route in universe, the way every other host on the plane is routed.
+# A custom host is an ingress route in hanzo/universe,
+# charts/app/values/hanzo/static-sites.yaml.
 
 on:
   push:
@@ -59,8 +46,8 @@ jobs:
           NODE_OPTIONS: '--max-old-space-size=8192'
         timeout-minutes: 30
 
-      # An empty export would publish as an empty site, and complete prunes what
-      # the build dropped — so refuse before publishing rather than after.
+      # complete prunes whatever the build did not emit, so an empty export
+      # would empty the live site.
       - name: Refuse an empty export
         run: |
           set -euo pipefail
@@ -69,9 +56,9 @@ jobs:
           test -f apps/dev-docs/out/index.html || { echo "::error::apps/dev-docs/out/index.html is missing"; exit 1; }
           echo "export holds $n files"
 
-      # The 202 carries a prefix-scoped, expiring presigned grant, so nothing here
-      # holds a bucket key. Do NOT add SITES_S3_* — that is the standing shared
-      # credential the grant replaced, and it reaches every org's site.
+      # The 202 carries a prefix-scoped, expiring presigned grant, so no bucket
+      # key is held here. SITES_S3_* is a standing credential reaching every
+      # org's site; the grant replaces it.
       - name: Publish to the Sites plane
         uses: hanzoai/ci/.github/actions/sitedeploy@v1
         with:

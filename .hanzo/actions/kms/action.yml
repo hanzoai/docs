@@ -1,22 +1,15 @@
 name: kms
 description: Read the Cloudflare deploy credentials out of Hanzo KMS.
 
-# Nine deploy lanes each carried their own copy of this — login, two reads, the
-# masks, the outputs — 35 identical lines apiece, hashing the same eight ways.
-# One copy per lane is one contract that drifts: when the org path turned out to
-# be answered by a different instance with a stale copy, the fix had to land in
-# nine files at once, and a tenth lane written tomorrow starts from whichever
-# copy got pasted.
+# Every deploy lane reads its Cloudflare credentials here.
 #
-# It also retries. `curl -fsS` treats a 503 as fatal, so a blip at kms.hanzo.ai
-# failed base-docs and bootnode-docs on a run whose build had already succeeded —
-# the door being briefly unreachable says nothing about the credential behind it.
-# 401/403 still fail at once: that is the credential actually being refused.
+# Path is flat: /v1/kms/secrets/deploy/<NAME>?env=<env>, and the org comes from
+# the token. The /v1/kms/orgs/<org>/secrets/ form is served by a different
+# instance and nests the value under .secret.value.
 #
-# FLAT path, and the org rides on the token. The /v1/kms/orgs/<org>/secrets/…
-# form is answered by a different instance whose copy is stale, and it nests the
-# value under .secret.value — a lane reading it fails closed while the real
-# secret sits there.
+# Reads retry on 5xx and on a dropped connection, four tries over 32s. A 401 or
+# 403 fails at once: that is the credential being refused, not the door being
+# unreachable.
 
 inputs:
   client-id:
@@ -55,8 +48,8 @@ runs:
       run: |
         set -euo pipefail
 
-        # Ask again only when the answer was "ask again" — a 5xx or a dead
-        # connection. Anything the door actually decided is returned as it is.
+        # Retry only what is not an answer: a 5xx or a dead connection.
+        # Anything the door decided is returned as-is.
         ask() {
           local url="$1"; shift
           local code body
