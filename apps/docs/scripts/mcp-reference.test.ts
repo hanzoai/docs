@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { DOCUMENT, loadDocument } from './openapi-doc';
-import { toolIndex, toolOperations } from './openapi-surfaces';
+import { door, toolOperations } from './openapi-surfaces';
 import { load, ops as doorOps } from './sync-mcp-tools';
 import { constraintsOf, genMcpPages, published } from './gen-mcp-pages';
 
@@ -51,7 +51,7 @@ beforeAll(async () => {
 // cases are taken from the live door's own tools/list answer.
 describe('the tool -> operation rule', () => {
   it('names an operation only where a tool enumerates its operationId', () => {
-    const index = toolIndex(catalog.tools);
+    const index = door(catalog.tools).index;
     for (const [id, tool] of index) {
       const t = catalog.tools.find((x) => x.name === tool)!;
       expect(doorOps(t)).toContain(id);
