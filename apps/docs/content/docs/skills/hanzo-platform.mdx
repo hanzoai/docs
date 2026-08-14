@@ -159,18 +159,34 @@ IAM_USERINFO_URL=https://hanzo.id/oauth/userinfo
 Secrets are KMS-first — no plaintext in manifests:
 
 ```yaml
-# KMSSecret CRD for auto-sync
-apiVersion: kms.hanzo.ai/v1
+# KMSSecret CRD for auto-sync — full field list at
+# /docs/services/kms/kmssecret-crd
+apiVersion: secrets.lux.network/v1alpha1
 kind: KMSSecret
 metadata:
-  name: hanzo-paas
+  name: paas-kms-sync
+  namespace: hanzo
 spec:
-  project: hanzo-paas
-  environment: production
-  secrets:
-    - DOCKERHUB_USERNAME
-    - DOCKERHUB_TOKEN
-    - DIGITALOCEAN_ACCESS_TOKEN
+  hostAPI: https://kms.hanzo.ai
+  resyncInterval: 60
+  authentication:
+    universalAuth:
+      credentialsRef:
+        secretName: hanzo-paas-iam-creds
+        secretNamespace: hanzo
+      secretsScope:
+        projectSlug: hanzo-paas
+        envSlug: prod
+        secretsPath: /paas
+        keys:
+          - DOCKERHUB_USERNAME
+          - DOCKERHUB_TOKEN
+          - DIGITALOCEAN_ACCESS_TOKEN
+  managedSecretReference:
+    creationPolicy: Orphan
+    secretName: paas-secrets
+    secretNamespace: hanzo
+    secretType: Opaque
 ```
 
 ## White-Label / Self-Host

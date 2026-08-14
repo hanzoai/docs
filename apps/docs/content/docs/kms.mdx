@@ -39,16 +39,30 @@ For workloads on Kubernetes, the KMS operator syncs secrets into the cluster wit
 apiVersion: secrets.lux.network/v1alpha1
 kind: KMSSecret
 metadata:
-  name: hanzo-api-key
+  name: api-kms-sync
+  namespace: acme
 spec:
-  secretStoreRef:
-    name: kms-hanzo
-  data:
-    - secretKey: HANZO_API_KEY
-      remoteRef:
-        secretPath: /prod/api-keys
-        secretKey: primary
+  hostAPI: https://kms.hanzo.ai
+  resyncInterval: 60
+  authentication:
+    universalAuth:
+      credentialsRef:
+        secretName: acme-iam-creds
+        secretNamespace: acme
+      secretsScope:
+        projectSlug: acme
+        envSlug: prod
+        secretsPath: /api-keys
+        keys:
+          - HANZO_API_KEY
+  managedSecretReference:
+    creationPolicy: Orphan
+    secretName: api-secrets
+    secretNamespace: acme
+    secretType: Opaque
 ```
+
+Every field is in the [KMSSecret reference](/docs/services/kms/kmssecret-crd).
 
 ## Related
 

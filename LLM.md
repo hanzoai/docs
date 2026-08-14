@@ -137,6 +137,14 @@ at docs.hanzo.ai/docs/contributing/docs-architecture). Summary:
      travels here unaltered); SDK reference from the ZAP SDK generator into
      `content/docs/sdks/<lang>/`. Every reader of the document goes through
      `scripts/openapi-doc.ts`, which owns the path — no script names the file.
+     A generated MDX **fragment** is the third shape here, for a fact an authored
+     page needs mid-sentence: `scripts/gen-key-types.ts` writes
+     `generated/key-types.mdx` and `content/docs/api-keys.mdx` pulls it in with
+     `<include>`. It sits outside `content/` because source.config globs
+     `**/*.mdx` there and would give a fragment its own URL — and the path is
+     relative to the INCLUDING file, so from `content/docs/` it is
+     `../../generated/`. One directory short renders the page body empty with
+     the frontmatter and chrome intact, which looks like a working page.
   3. **Ported** (upstream OSS, mirrored with attribution, `.gitignore`d) →
      `scripts/sync-project-docs.ts` into `content/docs/projects/<upstream>/`.
      Port, don't re-author. Carry upstream LICENSE + NOTICE. GPL stays GPL.
@@ -160,6 +168,34 @@ insights-docs, platform, pulsar-docs, spec, tasks-docs, team, visor, zen-docs,
 zt-docs) predate the unified `content/docs/` model — migrate their content into
 `content/docs/<section>/` (or a `hanzo-docs/<team>` submodule) then archive the
 app.
+
+## Two build guards, and why prose needs them
+
+`scripts/pre-build.ts` ends with two checks that fail the build. Both exist for
+the same reason: a generated page cannot be wrong about the API, an authored one
+can, and a reader cannot tell which kind of page they are on.
+
+- **`check-endpoints.ts`** — no page may name a `/v1/…` route on `api.hanzo.ai`
+  that the document does not serve.
+- **`check-keys.ts`** — no page may spell an API key a way cloud does not mint,
+  and `api-keys.mdx` must teach every class the document carries. Both
+  directions, so renaming, adding or removing a key class in cloud stops the
+  build here instead of publishing a stale page.
+
+The key classes come from `Document.keys` (`openapi-doc.ts`), read out of the
+`/v1/keys` prose — cloud's own Go doc comments, lifted by zipdoc. `secretKey(doc)`
+is the one accessor generators use for "the key a server presents"; three of them
+had it as a literal, which is how three GENERATED pages came to teach `hk-`.
+
+**What was wrong:** docs.hanzo.ai documented three key types — `hk-` "API Key",
+`sk-` "Secret Key", `hz-` "Widget Key". Cloud mints two (`cloud.APIKeyPrefixes`:
+`pk-`, `sk-`) and refuses anything else, so a reader's first call failed asking
+for a key nobody can issue. `hk-`/`hz-` were on 149 files. Note the shape of the
+mistake: `sk-` was *present* and *described wrongly* (as an org-level provider
+credential; it resolves to the USER), so a find-and-replace would have left the
+page confidently wrong. Cloud's `apps/platform/secretshape.go` still lists `hk-`
+in its secret-DETECTION table — harmless, it only scans, but it is where the
+invention came from.
 
 ## Branch Convention
 
@@ -289,6 +325,33 @@ export const source = loader({
 import { DocsPage, DocsBody } from '@hanzo/docs-ui/layouts/docs/page';
 import defaultMdxComponents from '@hanzo/docs-ui/mdx';
 ```
+
+### The docs grid is three columns
+
+`layouts/docs/slots/container.tsx` (both UI packages — they are parallel forks,
+so a change to one without the other diverges them): `var(--fd-sidebar-col)
+minmax(0, 1fr) var(--fd-toc-width)`. Rails pin to the edges, the page takes what
+is between them.
+
+It was five columns, with `minmax(min-content, 1fr)` gutters centring a band
+capped at `--fd-layout-width`, and the sidebar AREA spanned the leading gutter as
+well as its own column. Measured on the live site at `/docs/api-keys`: at 1920
+the columns were `176.5 232 1052 268 176.5` and the nav — 232px, right-aligned in
+its area by `items-end` — began 176px from the left edge; at 2560 it began 496px
+in. The empty strip was inside the sidebar's own bordered, filled card, so every
+pixel a wider display gained went there. Now `232 1405 268` and `232 2045 268`,
+nav at x=0.
+
+`--fd-layout-width` no longer bounds this grid. It was doing two jobs at once —
+bounding the reading measure and bounding the band — and the page slot already
+owns the first (`max-w-[900px]`), so what was left was only the job that made the
+gap. The article therefore stays 900px and does not move; what moved is the nav
+(flush left) and the toc (flush right), and the page COLUMN absorbed the gutters.
+Widening the article past 900px is a separate typography decision, untaken.
+
+Narrow viewports are unchanged by construction: below `md`, `--fd-sidebar-width`
+is 0 and the sidebar is a fixed drawer outside the grid, and `--fd-toc-width` is
+0 until a toc exists.
 
 ### Layouts
 - `@hanzo/docs-ui/layouts/docs` - Standard docs layout

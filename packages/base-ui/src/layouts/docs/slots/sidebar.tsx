@@ -236,7 +236,11 @@ function SidebarContent({ ref: refProp, className, children, ...props }: Compone
               data-collapsed={collapsed}
               data-hovered={collapsed && hovered}
               className={cn(
-                'absolute flex flex-col w-full inset-s-0 inset-y-0 items-end bg-fd-card text-sm border-e duration-250 *:w-(--fd-sidebar-width)',
+                // No cross-axis alignment: the column IS --fd-sidebar-width now,
+                // so the nav fills it. `items-end` used to push the nav to the
+                // inner edge of a column that grew with the viewport, which is
+                // what left a widening empty strip inside the rail's own card.
+                'absolute flex flex-col w-full inset-s-0 inset-y-0 bg-fd-card text-sm border-e duration-250 *:w-(--fd-sidebar-width)',
                 collapsed && [
                   'inset-y-2 rounded-xl transition-transform border w-(--fd-sidebar-width)',
                   hovered
