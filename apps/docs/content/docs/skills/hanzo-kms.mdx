@@ -164,22 +164,34 @@ secret = client.get_secret(
 ### K8s Secret Sync (KMSSecret CRD)
 
 ```yaml
-apiVersion: kms.hanzo.ai/v1
+apiVersion: secrets.lux.network/v1alpha1
 kind: KMSSecret
 metadata:
-  name: my-app-secrets
+  name: my-app-kms-sync
   namespace: default
 spec:
-  project: hanzo-paas
-  environment: production
-  syncInterval: 5m
-  secretRef:
-    name: my-app-secrets  # K8s Secret to create/update
-  secrets:
-    - DATABASE_URL
-    - REDIS_URL
-    - HANZO_API_KEY
+  hostAPI: https://kms.hanzo.ai
+  resyncInterval: 60
+  authentication:
+    universalAuth:
+      credentialsRef:
+        secretName: my-app-iam-creds
+        secretNamespace: default
+      secretsScope:
+        projectSlug: hanzo-paas
+        envSlug: prod
+        secretsPath: /my-app
+        keys:
+          - DATABASE_URL
+          - HANZO_API_KEY
+  managedSecretReference:
+    creationPolicy: Orphan
+    secretName: my-app-secrets   # K8s Secret to create/update
+    secretNamespace: default
+    secretType: Opaque
 ```
+
+Every field is in the [KMSSecret reference](/docs/services/kms/kmssecret-crd).
 
 The KMS operator (`hanzoai/kms-operator`) watches KMSSecret resources and auto-syncs to K8s Secrets.
 

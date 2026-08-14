@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
-import { DOCUMENT, loadDocument, type Document, type Operation } from './openapi-doc';
+import { DOCUMENT, loadDocument, secretKey, type Document, type Operation } from './openapi-doc';
 import { SDKS, cli, http, mcp } from './openapi-surfaces';
 import { MCP_DOOR, loadMcpTools } from './sync-mcp-tools';
 import type { CliCommand } from './sync-cli-commands';
@@ -253,7 +253,7 @@ function renderIndex(flows: Flow[], doc: Document): string {
   L.push('## One credential');
   L.push('');
   L.push('```bash');
-  L.push('export HANZO_API_KEY=hk-...            # console.hanzo.ai');
+  L.push(`export HANZO_API_KEY=${secretKey(doc).prefix}...            # console.hanzo.ai`);
   L.push('hanzo auth login                       # or sign in through Hanzo IAM');
   L.push('```');
   L.push('');
