@@ -11,6 +11,9 @@ import {
   type Operation,
   type Product,
 } from './openapi-doc';
+import { firstCall, runnable, surfaces, toolIndex } from './openapi-surfaces';
+import { load as loadDoor } from './sync-mcp-tools';
+import { loadCliTable, type CliCommand } from './sync-cli-commands';
 import { code, firstSentence, prose, text, yamlString } from './mdx';
 
 // The API reference, generated from THE document.
@@ -149,7 +152,66 @@ function leadProse(op: Operation): string {
   return flat(description).startsWith(summary) ? description : `${summary}\n\n${description}`;
 }
 
-function renderProduct(p: Product, doc: Document): string {
+/**
+ * WHERE A PRODUCT TEACHES ITS FIRST CALL.
+ *
+ * A product page opened with a synopsis and 2,300 words of reference, and no
+ * reader could find the one line that starts them. So each page now opens with
+ * the same four things, in the same order, for all 188 of them: what it is, the
+ * credential, the first call on four surfaces, and what comes back.
+ *
+ * Nothing here is authored. The sentence is the owning package's synopsis, the
+ * call is `firstCall()`'s choice out of the document, and the four surfaces are
+ * the same renderer the flow pages use. 184 hand-written quickstarts would be
+ * 184 pages to re-check every time a route moves; this one cannot fall behind
+ * the document because it IS the document.
+ */
+function quickstart(p: Product, doc: Document, table: Map<string, CliCommand>, index: Map<string, string>): string[] {
+  const op = firstCall(p);
+  const L: string[] = [];
+
+  L.push('## Quickstart');
+  L.push('');
+  L.push('```bash');
+  L.push('export HANZO_API_KEY=hk-...   # console.hanzo.ai → API keys');
+  L.push('```');
+  L.push('');
+  L.push(
+    runnable(op)
+      ? `Then the first call — a read that needs nothing but the key. \`${op.method.toUpperCase()} ${code(op.path)}\`, operation \`${op.id}\`:`
+      : // Said plainly rather than papered over: this product's front door takes
+        // arguments, and a sample that pretended otherwise would fail on the
+        // reader's first attempt instead of on ours.
+        `Then the first call. This one takes arguments — the placeholders are yours to fill. \`${op.method.toUpperCase()} ${code(op.path)}\`, operation \`${op.id}\`:`,
+  );
+  L.push('');
+  L.push(...surfaces(op, doc, table, index));
+  L.push('');
+
+  const shape = returns(op);
+  if (shape) {
+    L.push(shape);
+    L.push('');
+  }
+  return L;
+}
+
+/** What comes back, named from the document's own success response. */
+function returns(op: Operation): string {
+  const s = op.success;
+  if (!s) return '';
+  const named = typeOf(s.schema);
+  const said = firstSentence(s.description, 140);
+  if (!named && !said) return '';
+  return `Answers \`${s.status}\`${named ? ` with \`${text(named)}\`` : ''}${said ? ` — ${text(said)}` : ''}.`;
+}
+
+function renderProduct(
+  p: Product,
+  doc: Document,
+  table: Map<string, CliCommand>,
+  index: Map<string, string>,
+): string {
   const guide = guideHref(p.name);
   const L: string[] = [];
 
@@ -166,6 +228,8 @@ function renderProduct(p: Product, doc: Document): string {
     )}`,
   );
   L.push('---');
+  L.push('');
+  L.push("import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs'");
   L.push('');
   L.push(
     synopsis
@@ -187,6 +251,8 @@ function renderProduct(p: Product, doc: Document): string {
   L.push(`| **Operations** | ${p.operations.length} |`);
   L.push(`| **Auth** | \`Authorization: Bearer $HANZO_API_KEY\` |`);
   L.push('');
+
+  L.push(...quickstart(p, doc, table, index));
 
   const sections = new Map<string, Operation[]>();
   for (const op of p.operations) {
@@ -273,6 +339,18 @@ function renderIndex(products: Product[], doc: Document): string {
     'Get a key at [console.hanzo.ai](https://console.hanzo.ai). New here? [Six flows, four surfaces](/docs/start) walks the same journeys as CLI, SDK, HTTP and MCP.',
   );
   L.push('');
+  L.push('## Start anywhere');
+  L.push('');
+  // The claim is counted, not asserted: `runnable` is the same predicate the
+  // pages are generated through, so this number cannot disagree with them.
+  const ready = products.filter((p) => runnable(firstCall(p))).length;
+  L.push(
+    `Every product page opens with a **Quickstart**: what the product is, in its own words, and its first call ` +
+      `shown as the CLI, an SDK, raw HTTP and an MCP tool. For ${ready} of the ${products.length} that first call is a read ` +
+      `that needs nothing but the key — paste it and it answers. The other ${products.length - ready} take an argument, ` +
+      'and say so rather than printing a sample that cannot run.',
+  );
+  L.push('');
   L.push('## Products');
   L.push('');
   L.push('<Cards>');
@@ -291,7 +369,13 @@ function renderIndex(products: Product[], doc: Document): string {
 }
 
 /** One reference: a page per product, an index, and the section's nav. */
-function writePages(dir: string, products: Product[], doc: Document): void {
+function writePages(
+  dir: string,
+  products: Product[],
+  doc: Document,
+  table: Map<string, CliCommand>,
+  index: Map<string, string>,
+): void {
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
 
@@ -306,7 +390,7 @@ function writePages(dir: string, products: Product[], doc: Document): void {
   for (const p of products) {
     const f = pageFile(p.name);
     fs.mkdirSync(path.dirname(f), { recursive: true });
-    fs.writeFileSync(f, renderProduct(p, doc));
+    fs.writeFileSync(f, renderProduct(p, doc, table, index));
   }
   fs.writeFileSync(path.join(dir, 'index.mdx'), renderIndex(products, doc));
 
@@ -362,12 +446,18 @@ export async function genOpenapiPages(
     );
   }
 
-  writePages(out, doc.products, doc);
+  // The quickstart's CLI and MCP columns are the CLI's own table and the door's
+  // own answer, read here once and handed down — the same two artefacts the flow
+  // pages read, through the same two functions.
+  const table = loadCliTable();
+  const index = toolIndex(loadDoor().tools);
+
+  writePages(out, doc.products, doc, table, index);
 
   // The operator surface is rendered too, just not here. 86 endpoints our own
   // people run on are worth a page each; what they are not worth is being on
   // docs.hanzo.ai. See INTERNAL_DIR for where they go and why it is not a repo.
-  if (doc.internal.length) writePages(internalOut, doc.internal, doc);
+  if (doc.internal.length) writePages(internalOut, doc.internal, doc, table, index);
 
   // The interactive reference at /reference reads the same document, so the
   // document it reads is the published one. Copying the source whole — which is

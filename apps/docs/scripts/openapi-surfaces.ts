@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
-import { deref, type Document, type Operation, type Param } from './openapi-doc';
+import { deref, type Document, type Operation, type Param, type Product } from './openapi-doc';
 import type { CliCommand } from './sync-cli-commands';
+import { MCP_DOOR, ops, type McpTool } from './sync-mcp-tools';
+import { load as loadClients } from './sync-sdk-clients';
+import { fence } from './mdx';
 
 // THE FOUR SURFACES.
 //
@@ -161,6 +164,12 @@ export interface SdkLang {
   label: string;
   /** Fence language for syntax highlighting. */
   lang: string;
+  /**
+   * The method this column will print for an operation, so a caller can ask
+   * whether a PUBLISHED client has it without re-deriving the name and drifting
+   * from what `render` actually writes.
+   */
+  method(op: Operation): string;
   render(op: Operation, doc: Document): string;
 }
 
@@ -191,6 +200,7 @@ const args = (op: Operation, doc: Document): { keys: string[]; body?: any } => {
 export const SDKS: SdkLang[] = [
   {
     id: 'typescript',
+    method: (op) => camelId(op.id),
     label: 'TypeScript',
     lang: 'ts',
     render(op, doc) {
@@ -210,6 +220,7 @@ export const SDKS: SdkLang[] = [
   },
   {
     id: 'python',
+    method: (op) => snakeId(op.id),
     label: 'Python',
     lang: 'python',
     render(op, doc) {
@@ -231,6 +242,7 @@ export const SDKS: SdkLang[] = [
   },
   {
     id: 'go',
+    method: (op) => pascalId(op.id),
     label: 'Go',
     lang: 'go',
     render(op, doc) {
@@ -250,6 +262,7 @@ export const SDKS: SdkLang[] = [
   },
   {
     id: 'rust',
+    method: (op) => snakeId(op.id),
     label: 'Rust',
     lang: 'rust',
     render(op, doc) {
@@ -267,6 +280,7 @@ export const SDKS: SdkLang[] = [
   },
   {
     id: 'java',
+    method: (op) => camelId(op.id),
     label: 'Java / Kotlin',
     lang: 'java',
     render(op, doc) {
@@ -297,73 +311,251 @@ const py = (v: any): string =>
 // -------------------------------------------------------------------- MCP
 
 /**
- * THE TOOL-NAME RULE, in one place and read in both directions.
+ * THE TOOL RULE, in one place and read in both directions.
  *
- * The door names a tool for the operation's `operationId`, and the document
- * publishes that id bare — `get_v1_tools` is `get_v1_tools`. That is the primary
- * key.
+ * The door is a SUBSYSTEM door: `tools/list` answers 109 tools — `agents`,
+ * `billing`, `iam` — and each declares an `op` enum naming the operations it
+ * dispatches to. So the unit a caller names is a pair, `{name: <subsystem>,
+ * arguments: {op, input}}`, not a tool per operation.
  *
- * Where an operationId spells a path parameter differently from the door
- * (`delete_v1_projects_by_slug` against the door's `delete_v1_projects_slug`)
- * the name misses, so the operation's method and path are a second key.
- * Measured against the live door: the name key resolves 802 of 833 tools and
- * the method+path key the rest.
+ * A tool OWNS an operation when its enum names that operation's `operationId`
+ * VERBATIM. Exact, nothing else — and measured on the live door: 470 of the
+ * document's 2480 operations are named that way, and not one is claimed by two
+ * tools, so the map needs no tie-break.
  *
- * Both directions use these keys, so "which operation is this tool?" and "does
- * this operation have a tool?" can never disagree.
+ * The door also names many operations by its OWN verb — `list_agents` where the
+ * document says `get_agents` — and those aliases are not derivable from the
+ * document (they are not a transformation of the id; the door's `describe` is
+ * the only thing that resolves them). We do not guess: an operation the enums do
+ * not name verbatim gets no call printed, and the page says to ask `describe`,
+ * which resolves an operationId whichever verb the door prefers for it.
+ *
+ * The rule this replaces keyed a tool by the operationId AND by a method+path
+ * slug. Under the flat door both were true; under this one the second key still
+ * matches — against tool names the door stopped serving twelve days ago — so it
+ * printed `get_v1_agents` as a tool for an operation the door now answers
+ * "unknown tool" to. A key that keeps matching after the thing it names is gone
+ * is worse than no key.
  */
-export const toolKeys = (op: Operation): [name: string, route: string] => [
-  op.name,
-  `${op.method}_${op.path.replace(/[{}]/g, '').split('/').filter(Boolean).join('_')}`.toLowerCase(),
-];
+export const toolIndex = (tools: Iterable<McpTool>): Map<string, string> => {
+  const out = new Map<string, string>();
+  for (const t of tools) for (const op of ops(t)) if (!out.has(op)) out.set(op, t.name);
+  return out;
+};
 
 /**
- * Every tool the door lists, resolved to the operations it can name. A tool
- * absent from the map is one the document does not describe; a tool with more
- * than one operation is a name the document uses twice, and the door does not
- * say which it dispatches to.
+ * Every tool the door lists, resolved to the operations it names. A tool absent
+ * from the map names none the document describes.
  */
-export function toolOperations(doc: Document, tools: Iterable<{ name: string }>): Map<string, Operation[]> {
-  const byName = new Map<string, Operation[]>();
-  const byRoute = new Map<string, Operation[]>();
-  for (const op of doc.operations) {
-    const [name, route] = toolKeys(op);
-    (byName.get(name) ?? byName.set(name, []).get(name)!).push(op);
-    (byRoute.get(route) ?? byRoute.set(route, []).get(route)!).push(op);
-  }
+export function toolOperations(doc: Document, tools: Iterable<McpTool>): Map<string, Operation[]> {
   const out = new Map<string, Operation[]>();
   for (const t of tools) {
-    const hit = byName.get(t.name) ?? byRoute.get(t.name.toLowerCase());
-    if (hit) out.set(t.name, hit);
+    const hit = ops(t)
+      .map((o) => doc.byId.get(o))
+      .filter((o): o is Operation => Boolean(o));
+    if (hit.length) out.set(t.name, hit);
   }
   return out;
 }
 
 /**
- * The door exposes a SUBSET of the document, so whether a given operation has a
- * tool is a question only the door answers. We look it up in the vendored list
- * and return null when it is absent, rather than printing a call that would
- * come back "unknown tool".
+ * The door exposes a SUBSET of the document, so whether a given operation can be
+ * called by name is a question only the door answers. We look it up in the
+ * vendored index and return null when it is absent, rather than printing a call
+ * that would come back "unknown tool".
  *
- * A `tools/call` carries every argument in ONE FLAT object — neither path nor
- * query binds — so there is no path/query/body split to model here.
+ * A `tools/call` carries every argument in ONE FLAT `input` object — neither
+ * path nor query binds — so there is no path/query/body split to model here.
  */
 export function mcp(
   op: Operation,
   doc: Document,
-  tools: Map<string, { name: string }>,
-): { tool: string; call: string } | null {
-  const tool = toolKeys(op).find((k) => tools.has(k));
+  index: Map<string, string>,
+): { tool: string; op: string; call: string } | null {
+  const tool = index.get(op.id);
   if (!tool) return null;
-  const argsObj: Record<string, any> = {};
-  for (const p of op.parameters.filter((x) => x.required)) argsObj[p.name] = placeholder(p);
-  Object.assign(argsObj, exampleBody(op, doc) ?? {});
+  const input: Record<string, any> = {};
+  for (const p of op.parameters.filter((x) => x.required)) input[p.name] = placeholder(p);
+  Object.assign(input, exampleBody(op, doc) ?? {});
   return {
     tool,
+    op: op.id,
     call: JSON.stringify(
-      { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: tool, arguments: argsObj } },
+      { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: tool, arguments: { op: op.id, input } } },
       null,
       2,
     ),
   };
+}
+
+/** Ask the door what it calls an operation, and what that operation takes. */
+export const describeCall = (op: Operation): string =>
+  JSON.stringify(
+    { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'describe', arguments: { op: op.id } } },
+    null,
+    2,
+  );
+
+// ------------------------------------------------------------- first call
+
+/**
+ * What a caller runs FIRST against a product, chosen by the document.
+ *
+ * A newcomer holds one thing: a key. So the first call is the operation that
+ * needs nothing else — a read, no path parameter, no required query, no body —
+ * and among those the shortest path, which is the collection at the product's
+ * root. `GET /v1/agents` before `GET /v1/agents/sessions/{id}/tree`.
+ *
+ * Ranked, never hand-picked, so a product added to the document arrives with a
+ * first call already chosen and nothing to remember. Measured on the document:
+ * 152 of 188 products have one that runs on a key alone; the other 36 lead with
+ * a POST or an id because that is genuinely their front door, and the page says
+ * so rather than pretending otherwise — see `runnable`.
+ */
+/**
+ * The path's OWN placeholders, not the declared parameter list.
+ *
+ * `GET /v1/videos/{id}` declares no `id` parameter, so counting declared path
+ * parameters scored it as needing nothing and the page taught it as a call that
+ * runs on a key alone — against a URL still carrying a brace. Probed live, it
+ * 404s, which is exactly what the reader would have got. What a URL needs filling
+ * in is a fact about the URL.
+ */
+const holes = (o: Operation): number => (o.path.match(/\{[^}]+\}/g) ?? []).length;
+
+const cost = (o: Operation): number =>
+  Math.max(holes(o), o.parameters.filter((p) => p.in === 'path').length) * 100 +
+  o.parameters.filter((p) => p.required && p.in !== 'path').length * 10 +
+  (o.body?.required ? 5 : 0);
+
+/** True when a key is the only thing this call needs. */
+export const runnable = (o: Operation): boolean => o.method === 'get' && cost(o) === 0;
+
+export function firstCall(p: Product): Operation {
+  const rank = (o: Operation) => [
+    o.deprecated ? 1 : 0,
+    o.method === 'get' ? 0 : 1,
+    cost(o),
+    o.path.split('/').length,
+    o.path.length,
+  ];
+  return [...p.operations].sort((a, b) => {
+    const x = rank(a);
+    const y = rank(b);
+    for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return x[i] - y[i];
+    return a.id.localeCompare(b.id);
+  })[0];
+}
+
+// ----------------------------------------------------------- client lag
+
+/**
+ * Said only when it is true of THIS operation: the published client does not
+ * carry the method the column above prints.
+ *
+ * A sample is a projection of the document; a published client is a projection
+ * of the document at ITS OWN lock, and cloud dropping the default version from
+ * its operationIds moved every name at once. So the column prints the method at
+ * the current release — which is the one that agrees with the endpoint, the
+ * operation id and the MCP door — and this line names the client that does not
+ * have it yet. It is computed from the two, so it cannot outlive the gap: the
+ * release that regenerates the clients deletes this sentence by itself.
+ */
+function clientLag(op: Operation): string {
+  const behind = loadClients().clients.filter((c) => {
+    const sdk = SDKS.find((s) => s.id === c.lang);
+    return sdk && c.methods.length && !c.methods.includes(sdk.method(op));
+  });
+  if (!behind.length) return '';
+  const named = behind
+    .map((c) => `\`${c.pkg}@${c.version}\` (${c.registry})`)
+    .join(' and ');
+  return (
+    `The method above is the one at the current release of the document. ${named} ` +
+    `${behind.length > 1 ? 'were' : 'was'} generated from an earlier release, where this operation carried a ` +
+    'different id, so it spells the method differently — regenerating the clients is what makes the two agree. ' +
+    '[SDKs →](/docs/sdks)'
+  );
+}
+
+// ---------------------------------------------------------------- surfaces
+
+/**
+ * ONE operation, four ways — the block itself, not just the strings in it.
+ *
+ * The flow pages and every product's quickstart show the same thing, so they
+ * render through the same function. Two callers of a copy is two renderers the
+ * day one of them learns something: when the door regrouped, a copy would have
+ * been fixed on the flows and left lying on 188 product pages.
+ */
+export function surfaces(
+  op: Operation,
+  doc: Document,
+  table: Map<string, CliCommand>,
+  index: Map<string, string>,
+): string[] {
+  const L: string[] = [];
+  const command = cli(op, doc, table);
+  const tool = mcp(op, doc, index);
+
+  L.push("<Tabs items={['CLI', 'SDK', 'HTTP', 'MCP']}>");
+
+  L.push('<Tab value="CLI">');
+  if (command) {
+    L.push(...fence('bash', command));
+  } else {
+    L.push(
+      '`hanzo` has no subcommand for this operation — the CLI serves only what cloud\'s live route table confirms. Use HTTP or an SDK.',
+    );
+  }
+  L.push('</Tab>');
+
+  L.push('<Tab value="SDK">');
+  L.push(`<Tabs items={[${SDKS.map((s) => `'${s.label}'`).join(', ')}]}>`);
+  for (const sdk of SDKS) {
+    L.push(`<Tab value="${sdk.label}">`);
+    L.push(...fence(sdk.lang, sdk.render(op, doc)));
+    L.push('</Tab>');
+  }
+  L.push('</Tabs>');
+  const lag = clientLag(op);
+  if (lag) {
+    L.push('');
+    L.push(lag);
+  }
+  L.push('</Tab>');
+
+  L.push('<Tab value="HTTP">');
+  L.push(...fence('bash', http(op, doc)));
+  L.push('</Tab>');
+
+  L.push('<Tab value="MCP">');
+  if (tool) {
+    L.push(`Tool \`${tool.tool}\`, op \`${tool.op}\` — POST the JSON-RPC envelope to \`${MCP_DOOR}\`.`);
+    L.push('');
+    L.push(
+      ...fence(
+        'bash',
+        `curl -X POST ${MCP_DOOR} \\\n  -H "Authorization: Bearer $HANZO_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '${tool.call.split('\n').join('\n     ')}'`,
+      ),
+    );
+  } else {
+    // The door reaches far more than it names our way: it has its own verb for
+    // most operations and only `describe` resolves an operationId to it. Saying
+    // "no tool" would be false; printing a guessed name would be worse.
+    L.push(`The door names this operation with its own verb. Ask \`describe\` for it:`);
+    L.push('');
+    L.push(
+      ...fence(
+        'bash',
+        `curl -X POST ${MCP_DOOR} \\\n  -H "Content-Type: application/json" \\\n  -d '${describeCall(op)
+          .split('\n')
+          .join('\n     ')}'`,
+      ),
+    );
+  }
+  L.push('</Tab>');
+
+  L.push('</Tabs>');
+  return L;
 }
