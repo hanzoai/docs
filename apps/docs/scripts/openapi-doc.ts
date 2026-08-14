@@ -59,7 +59,7 @@ export interface Body {
 export interface Operation {
   /** Product this page groups the operation under: its tag, else `/v1/<seg>`. */
   product: string;
-  /** Full operationId, e.g. `get_v1_tools`. */
+  /** Full operationId, e.g. `get_tools`. */
   id: string;
   /**
    * The MCP door's tool name for this operation, which is the operationId
@@ -160,7 +160,7 @@ export interface Document {
  * so until it does, the one exception is spelled out here with its reason.
  */
 const INTERNAL_PRODUCT = 'admin';
-const INTERNAL_IDS = new Set(['get_v1_commerce_admin_catalog']);
+const INTERNAL_IDS = new Set(['get_commerce_admin_catalog']);
 
 export const isInternal = (op: Operation): boolean =>
   op.product === INTERNAL_PRODUCT || INTERNAL_IDS.has(op.id);
