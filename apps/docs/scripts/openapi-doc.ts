@@ -138,10 +138,21 @@ export interface Document {
  * so until it does, the one exception is spelled out here with its reason.
  */
 const INTERNAL_PRODUCT = 'admin';
-const INTERNAL_IDS = new Set(['get_v1_commerce_admin_catalog']);
+
+/**
+ * Named by ROUTE, not by operationId.
+ *
+ * This was `get_v1_commerce_admin_catalog`, and cloud then dropped the default
+ * version from its ids — `_v1_` left 2011 of them in one release. The exception
+ * stopped matching, and the one operation the estate holds back for carrying
+ * upstream cost and margin went back to being published, quietly, on the next
+ * pin bump. A route is the thing that exists; an id is a naming convention over
+ * it, and conventions move.
+ */
+const INTERNAL_ROUTES = new Set(['get /v1/commerce/admin/catalog']);
 
 export const isInternal = (op: Operation): boolean =>
-  op.product === INTERNAL_PRODUCT || INTERNAL_IDS.has(op.id);
+  op.product === INTERNAL_PRODUCT || INTERNAL_ROUTES.has(`${op.method} ${op.path}`);
 
 /**
  * The document with the operator surface taken out, for publishing.
