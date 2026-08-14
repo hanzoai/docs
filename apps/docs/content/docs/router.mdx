@@ -1,0 +1,106 @@
+---
+icon: Route
+title: Router
+description: Ask for model "auto" and let policy pick — per-task model preferences, an org allowlist, a cost ceiling, and a savings-vs-quality dial, with stats that show what the choice was worth.
+---
+
+# Router
+
+Send `"model": "auto"` and the router picks a model per request instead of you
+pinning one. What it may pick is your org's policy: an ordered preference per
+task, an allowlist, a hard cost ceiling, and a dial between cheapest and best.
+
+## Read your policy
+
+```bash
+curl https://api.hanzo.ai/v1/router/policy \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+The response also carries `available` — the models servable for your org — and
+`hasOverride`, which is `false` while you are still on the platform default.
+
+## Set your policy
+
+```bash
+curl -X PUT https://api.hanzo.ai/v1/router/policy \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prefer": {
+      "code": ["zen5-coder", "enso"],
+      "cheap_chat": ["enso-flash"],
+      "default": ["enso-flash"]
+    },
+    "enabledModels": ["enso-flash", "enso", "zen5-coder"],
+    "costCeiling": 0.004,
+    "qualityBias": 0.4
+  }'
+```
+
+| Field | Meaning |
+|-------|---------|
+| `prefer` | Task tag → ordered model ids. **The first servable model wins.** `default` is the catch-all |
+| `enabledModels` | The ids the router may select at all. Empty means no restriction |
+| `costCeiling` | USD **per 1,000 tokens**. Candidates above it are dropped. `0` means no cap |
+| `qualityBias` | `0` = cheapest, `1` = best quality |
+
+Task tags are `code`, `reasoning`, `math`, `creative`, `vision`,
+`long_context`, `cheap_chat`, and `default`.
+
+Reading and writing policy is an **org-admin** action, and it is always scoped
+to the caller's own org. A single request can override the ceiling with an
+`X-Max-Cost` header. Sending empty `prefer`, `0` ceiling, and an empty allowlist
+clears your override and returns you to the platform default.
+
+Precedence is folded per task key: your org's setting, then the platform
+default, then the built-in — so setting `prefer.code` alone leaves every other
+task on the default.
+
+## See what it earned you
+
+```bash
+curl "https://api.hanzo.ai/v1/router/stats?hours=24" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+`stats` answers for a window (`?hours=` , default 24, or `?since=` as RFC3339)
+with `cost` (routed vs counterfactual index, `saved_pct`, the baseline model it
+compares against), `quality` (`reward_rate`, `learned_share`,
+`shadow_agreement`), `by_task`, `by_model`, `throughput`, and `retrain`.
+
+Two things to read correctly: the cost figures are **blended $/MTok indices, not
+billed dollars** — the routing ledger carries no token counts, so a saving is
+expressed as an index against a counterfactual, not as an invoice line. And the
+endpoint emits aggregates only; it never returns raw events or anything derived
+from prompts.
+
+`GET /v1/router/history?days=30` is the same story day by day, up to 90 days,
+with the retrain timeline beside it. Days with no traffic emit explicit zero
+rows rather than an interpolated line.
+
+## Defaults and contribution
+
+`GET /v1/router/defaults` returns the two booleans that decide whether auto
+routing is on for you at all: `auto_routing_active` and
+`default_session_routing`.
+
+Routing quality improves from feedback on how choices performed. That
+contribution is a toggle — `GET /v1/ai/training-contribution` to read it,
+`PATCH` to change it. What is collected is feature vectors: never prompt text,
+never raw requests.
+
+## Your routing data
+
+Two calls, both scoped to your own org:
+
+- `GET /v1/router/data` — export your routing records as JSONL
+- `DELETE /v1/router/data` — delete them
+
+## Related
+
+- [Models](/docs/models) — the ids you name in `prefer`
+- [Connections](/docs/connections) — serve models on your own provider account
+- [Pricing](/docs/pricing) — what the ceiling is measured against
+- [AI Accounts](/docs/ai-accounts) — usage across every surface you use
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`
