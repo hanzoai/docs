@@ -300,11 +300,11 @@ const py = (v: any): string =>
  * THE TOOL-NAME RULE, in one place and read in both directions.
  *
  * The door names a tool for the operation's `operationId`, and the document
- * publishes that id bare — `get_v1_tools` is `get_v1_tools`. That is the primary
+ * publishes that id bare — `get_tools` is `get_tools`. That is the primary
  * key.
  *
  * Where an operationId spells a path parameter differently from the door
- * (`delete_v1_projects_by_slug` against the door's `delete_v1_projects_slug`)
+ * (`delete_projects_by_slug` against the door's `delete_projects_slug`)
  * the name misses, so the operation's method and path are a second key.
  * Measured against the live door: the name key resolves 802 of 833 tools and
  * the method+path key the rest.
