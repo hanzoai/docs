@@ -1,28 +1,72 @@
 ---
 title: Score Configs
-description: Score definitions — data types, ranges, and categories that every score conforms to.
+description: Rubrics — the declared shape of a score. Fix a metric's data type, range, or categories once and every later write is checked against it.
 ---
 
 # Score Configs
 
-A score config is the schema for a [score](/docs/scores): its data type and its valid range or set of categories. Configs make scores consistent — a `helpfulness` numeric always runs 1–5, a `sentiment` categorical always uses the same labels. Served by [Hanzo O11y](/docs/o11y), tenant-scoped by org.
+A rubric is the schema for a [score](/docs/scores): its data type, and its valid
+range or set of categories. Rubrics are what keep a metric meaning the same thing
+across runs — a `helpfulness` score always on 1–5, a `sentiment` score always
+using the same labels.
+
+## Declare one
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/evals/rubrics \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "helpfulness",
+    "dataType": "NUMERIC",
+    "minValue": 1,
+    "maxValue": 5
+  }'
+```
+
+The `name` is the key: writing the same name again edits the rubric rather than
+creating a second one.
 
 ## Data types
 
 | `dataType` | Constraint fields | Use for |
 |------------|-------------------|---------|
 | `NUMERIC` | `minValue`, `maxValue` | Ratings and rubric scores (1–5, 0.0–1.0) |
-| `CATEGORICAL` | `categories[]` | Labeled buckets (`good` / `neutral` / `bad`) |
-| `BOOLEAN` | `categories[]` (True/False) | Pass/fail checks |
-| `TEXT` | — | Free-text judgments |
+| `CATEGORICAL` | `categories` | Labeled buckets |
+| `BOOLEAN` | — | Pass/fail checks. The value must be exactly `0` or `1` |
 
-Each entry in `categories` is a `{ label, value }` pair, so a categorical score carries a human-readable label and a numeric code for aggregation.
+`NUMERIC` is the default. `categories` is a plain list of strings:
 
-## Archiving
+```bash
+curl -X POST https://api.hanzo.ai/v1/evals/rubrics \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "sentiment",
+    "dataType": "CATEGORICAL",
+    "categories": ["positive", "neutral", "negative"]
+  }'
+```
 
-Archived configs stay attached to historical scores but are hidden from new scoring. A config is referenced by a score through its `configId`, and by an [annotation queue](/docs/annotation-queues) through `scoreConfigIds`.
+Categories are trimmed and de-duplicated, capped at 64 per rubric and 256
+characters each. A `CATEGORICAL` rubric with no categories, a non-finite bound,
+or `minValue` above `maxValue` is rejected with `400`.
+
+## What a rubric enforces
+
+Once declared, the rubric is authoritative at write time. It overrides whatever
+`dataType` the writer claims, so the same metric name cannot arrive as a number
+from one caller and a string from another. A value outside the bounds, or a
+category not in the set, is refused rather than stored.
+
+## List them
+
+```bash
+curl https://api.hanzo.ai/v1/evals/rubrics \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
 
 ## Related
 
-- [Scores](/docs/scores) — the values that conform to these configs
-- [Annotation Queues](/docs/annotation-queues) — queues score against a set of configs
+- [Scores](/docs/scores) — the values that conform to these rubrics
+- [Evals](/docs/evals) — runs that write scores against them
