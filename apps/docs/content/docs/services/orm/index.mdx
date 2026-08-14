@@ -52,7 +52,7 @@ db, err := orm.OpenSQLite(&ormdb.SQLiteDBConfig{
     Config: ormdb.SQLiteConfig{BusyTimeout: 5000, JournalMode: "WAL"},
 })
 
-// Or ZAP binary protocol (PostgreSQL, MongoDB, Redis, ClickHouse)
+// Or ZAP binary protocol (PostgreSQL, MongoDB, Redis, Datastore)
 db, err := orm.OpenZap(&ormdb.ZapConfig{
     Addr:    "localhost:9651",
     Backend: ormdb.ZapSQL,
@@ -141,7 +141,7 @@ for _, u := range active {
 │  ┌─────────┬───────────┼──────────┬────────────┐    │
 │  │ SQLite  │ ZAP Binary Protocol  │  Custom    │    │
 │  │ (WAL)   │ PostgreSQL│ MongoDB  │  Driver    │    │
-│  │         │ Redis     │ClickHouse│            │    │
+│  │         │ Redis     │Datastore │            │    │
 │  └─────────┴───────────┴──────────┴────────────┘    │
 └─────────────────────────────────────────────────────┘
 ```
@@ -168,7 +168,7 @@ for _, u := range active {
 | **Typed Queries** | `TypedQuery[T]` returns `[]*T` -- no type assertions |
 | **KV Cache** | Read-through caching with Memory LRU, Redis/Valkey, or no-op backends |
 | **SQLite Driver** | WAL mode, JSON storage, `json_extract` queries, `sqlite-vec` ready |
-| **ZAP Driver** | Binary protocol to PostgreSQL, MongoDB, Redis, ClickHouse via zap-sidecar |
+| **ZAP Driver** | Binary protocol to PostgreSQL, MongoDB, Redis, Datastore via zap-sidecar |
 | **Namespace Support** | Multi-tenant isolation with `SetNamespace` |
 | **Context Propagation** | `CreateCtx`, `UpdateCtx`, `DeleteCtx` for deadline/tracing support |
 | **Old-Entity Hooks** | `BeforeUpdate(old *T)` receives the previous state for diff-aware logic |
