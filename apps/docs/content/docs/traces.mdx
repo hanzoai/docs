@@ -9,11 +9,11 @@ A trace is one end-to-end request or agent run, broken into nested **observation
 
 ## Ingesting traces
 
-Point any OpenTelemetry SDK or collector at the gateway. Tenancy travels in the export headers: the `hk-*` key authenticates and `X-Org-Id` scopes the data to your org.
+Point any OpenTelemetry SDK or collector at the gateway. Tenancy travels in the export headers: the `sk-*` key authenticates and `X-Org-Id` scopes the data to your org.
 
 ```bash
 export OTEL_EXPORTER_OTLP_ENDPOINT=https://api.hanzo.ai/v1
-export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer hk-...,X-Org-Id=org_123"
+export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer sk-...,X-Org-Id=org_123"
 export OTEL_SERVICE_NAME=checkout-api
 export OTEL_RESOURCE_ATTRIBUTES="deployment.environment=production"
 ```
@@ -27,11 +27,11 @@ Traces are queried over REST. List endpoints return `{ data, meta }` with `page`
 ```bash
 # List recent traces
 curl "https://api.hanzo.ai/v1/o11y/traces?page=1&limit=50" \
-  -H "Authorization: Bearer hk-..."
+  -H "Authorization: Bearer sk-..."
 
 # Fetch one trace with its observations + scores
 curl https://api.hanzo.ai/v1/o11y/traces/tr_abc123 \
-  -H "Authorization: Bearer hk-..."
+  -H "Authorization: Bearer sk-..."
 ```
 
 ```json
@@ -66,4 +66,4 @@ Each trace carries request-level metadata and a list of observations. An observa
 - [Sessions](/docs/sessions) — traces grouped into multi-turn runs
 - [Scores](/docs/scores) — evaluations attached to traces and observations
 - [Logs](/docs/logs) and [Metrics](/docs/metrics) — the other two observability signals
-- [API Keys](/docs/api-keys) — creating the `hk-*` key these calls use
+- [API Keys](/docs/api-keys) — creating the `sk-*` key these calls use

@@ -263,7 +263,7 @@ function renderIndex(products: Product[], doc: Document): string {
   L.push('');
   L.push('## Authentication');
   L.push('');
-  L.push('Every product accepts the same bearer credential — a Hanzo IAM JWT or an `hk-` API key.');
+  L.push('Every product accepts the same bearer credential — a Hanzo IAM JWT or an `sk-` API key.');
   L.push('');
   L.push('```bash');
   L.push(`curl -H "Authorization: Bearer $HANZO_API_KEY" ${doc.server}/v1/models`);
