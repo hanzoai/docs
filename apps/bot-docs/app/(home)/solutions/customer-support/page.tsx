@@ -21,7 +21,7 @@ const capabilities = [
   { icon: HeartPulseIcon, title: 'Sentiment Analysis', desc: 'Detect frustrated customers in real-time and prioritize accordingly.' },
   { icon: ArrowUpRightIcon, title: 'Smart Escalation', desc: 'Seamlessly hand off to human agents with full conversation context.' },
   { icon: BookOpenIcon, title: 'Knowledge Base', desc: 'Train on your docs, FAQs, and past tickets for accurate answers.' },
-  { icon: ShieldCheckIcon, title: 'Secure & Compliant', desc: 'SOC 2 ready. Data encrypted at rest and in transit. Your data stays yours.' },
+  { icon: ShieldCheckIcon, title: 'Secure & Compliant', desc: 'SOC 2 Type II controls. Data encrypted at rest and in transit. Your data stays yours.' },
 ];
 
 const steps = [
