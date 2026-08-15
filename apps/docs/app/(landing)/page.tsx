@@ -238,16 +238,16 @@ export default function Page() {
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <CodeBlock
               code={`# Install the Hanzo CLI
-curl hanzo.sh | sh
+curl -fsSL hanzo.sh | sh
 
-# Log in (opens browser for OAuth)
-hanzo login
+# Sign in (opens a browser)
+hanzo auth login
 
 # You're ready — try some things:
-hanzo chat "Explain quantum computing"
+hanzo "explain quantum computing"
 hanzo models list
-hanzo keys create my-project
-hanzo deploy ./my-app`}
+hanzo projects list
+hanzo projects deploy my-app`}
               lang="bash"
               wrapper={{ title: 'Terminal' }}
             />

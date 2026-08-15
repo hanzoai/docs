@@ -111,11 +111,12 @@ hanzo deploy --branch main        # Deploy specific branch
 ### Authentication
 
 ```bash
-hanzo auth login          # Open browser for OAuth2 login
-hanzo auth logout         # Clear local credentials
-hanzo auth status         # Show current auth state
-hanzo auth token          # Print current access token
-hanzo auth whoami         # Show current user info
+hanzo auth login          # Sign in through Hanzo IAM (OIDC)
+hanzo auth logout         # Sign out one identity, or --all
+hanzo auth show           # The active identity and org
+hanzo auth list           # Every identity held, active one marked
+hanzo auth use            # Select the active identity
+hanzo auth token          # Print the active access token
 ```
 
 ### Commerce
@@ -173,14 +174,18 @@ jobs:
           hanzo deploy --env production --yes
 ```
 
-## Environment Variables
+## Configuration
+
+The CLI takes no credentials from the environment. Settings are TOML at
+`~/.config/hanzo/config.toml` (macOS: `~/Library/Application Support/hanzo/config.toml`),
+and credentials are a separate `0600` file that only `hanzo auth` writes.
 
 ```bash
-HANZO_API_KEY=your-api-key          # API authentication
-HANZO_BASE_URL=https://api.hanzo.ai # Override API base URL
-HANZO_CONFIG=~/.config/hanzo/config.toml  # Custom config path
-HANZO_LOG=debug                     # Enable debug logging
-HANZO_JSON=1                        # Always output JSON
+hanzo config list                # every setting
+hanzo config get network.active  # one dotted key
+hanzo config set code.theme auto
+
+hanzo --config ./other.toml ...  # a different file, this invocation only
 ```
 
 ## Troubleshooting
