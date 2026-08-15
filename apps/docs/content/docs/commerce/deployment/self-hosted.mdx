@@ -28,10 +28,10 @@ Deploy Hanzo Commerce directly on a Linux server without container orchestration
 # Update system
 sudo apt update && sudo apt upgrade -y
 
-# Install PostgreSQL
+# Install SQL
 sudo apt install -y postgresql postgresql-contrib
 
-# Install Redis
+# Install KV
 sudo apt install -y redis-server
 
 # Install Nginx
@@ -41,14 +41,14 @@ sudo apt install -y nginx
 sudo apt install -y certbot python3-certbot-nginx
 ```
 
-### Configure PostgreSQL
+### Configure SQL
 
 ```bash
 sudo -u postgres psql -c "CREATE USER commerce WITH PASSWORD 'your-secure-password';"
 sudo -u postgres psql -c "CREATE DATABASE commerce OWNER commerce;"
 ```
 
-### Configure Redis
+### Configure KV
 
 Edit `/etc/redis/redis.conf`:
 
@@ -58,7 +58,7 @@ maxmemory-policy allkeys-lru
 appendonly yes
 ```
 
-Restart Redis:
+Restart KV:
 
 ```bash
 sudo systemctl restart redis-server
@@ -287,7 +287,7 @@ sudo ufw enable
 
 ## 9. Backup Strategy
 
-### PostgreSQL Backups
+### SQL Backups
 
 Create a daily backup script:
 

@@ -173,7 +173,7 @@ For a 16GB laptop with 4GB allocated to the adapter pool, K-Merge keeps 6-8 zen-
                         └────────────┬─────────────────┘
                                      │
                         ┌────────────▼─────────────────┐
-                        │     Delta Cache (Redis)       │
+                        │     Delta Cache (KV   )       │
                         │  sign_bits + alpha per layer  │
                         │  ~9 GB per 72B variant        │
                         └────────────┬─────────────────┘
@@ -198,7 +198,7 @@ For a 16GB laptop with 4GB allocated to the adapter pool, K-Merge keeps 6-8 zen-
 
 ```
 
-The architecture keeps one base model loaded per GPU cluster. All variants share it. The delta cache fits in Redis (NVMe-backed), loading on demand in under 50ms. In practice, our top-5 variants stay hot in Redis memory; the remaining variants load from NVMe on first request.
+The architecture keeps one base model loaded per GPU cluster. All variants share it. The delta cache fits in KV (NVMe-backed), loading on demand in under 50ms. In practice, our top-5 variants stay hot in KV memory; the remaining variants load from NVMe on first request.
 
 ## GPU Memory Reduction
 

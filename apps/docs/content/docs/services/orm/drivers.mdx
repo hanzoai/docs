@@ -1,6 +1,6 @@
 ---
 title: Database Drivers
-description: SQLite, ZAP binary protocol (PostgreSQL, MongoDB, Redis, Datastore), and custom driver support.
+description: SQLite, ZAP binary protocol (SQL, DocumentDB, KV, Datastore), and custom driver support.
 ---
 
 # Database Drivers
@@ -16,9 +16,9 @@ Hanzo ORM uses a two-layer interface design. The `orm.DB` interface is minimal (
 | Backend | Constructor | Transport | Use Case |
 |---------|------------|-----------|----------|
 | SQLite | `orm.OpenSQLite` | Embedded | Single-node, development, edge |
-| PostgreSQL | `orm.OpenZap` + `ZapSQL` | ZAP binary | Production SQL |
+| SQL | `orm.OpenZap` + `ZapSQL` | ZAP binary | Production SQL |
 | MongoDB/FerretDB | `orm.OpenZap` + `ZapDocumentDB` | ZAP binary | Document storage |
-| Redis/Valkey | `orm.OpenZap` + `ZapKV` | ZAP binary | KV storage |
+| KV | `orm.OpenZap` + `ZapKV` | ZAP binary | KV storage |
 | Datastore | `orm.OpenZap` + `ZapDatastore` | ZAP binary | Analytics/columnar |
 | Custom | `orm.AdaptDB` | Any | Bring your own driver |
 
@@ -156,19 +156,19 @@ import (
     ormdb "github.com/hanzoai/orm/db"
 )
 
-// PostgreSQL via ZAP
+// SQL via ZAP
 db, err := orm.OpenZap(&ormdb.ZapConfig{
     Addr:    "localhost:9651",
     Backend: ormdb.ZapSQL,
 })
 
-// MongoDB via ZAP
+// DocumentDB via ZAP
 db, err := orm.OpenZap(&ormdb.ZapConfig{
     Addr:    "localhost:9651",
     Backend: ormdb.ZapDocumentDB,
 })
 
-// Redis/Valkey via ZAP
+// KV via ZAP
 db, err := orm.OpenZap(&ormdb.ZapConfig{
     Addr:    "localhost:9651",
     Backend: ormdb.ZapKV,
@@ -197,19 +197,19 @@ db, err := orm.OpenZap(&ormdb.ZapConfig{
 
 The ZAP driver translates ORM operations into backend-specific requests:
 
-**SQL backends** (PostgreSQL via ZapSQL):
+**SQL backends** (SQL via ZapSQL):
 - `Get` → `SELECT data FROM _entities WHERE id = $1 AND kind = $2`
 - `Put` → `INSERT ... ON CONFLICT DO UPDATE`
 - `Query` → `SELECT` with `json_extract` filters
 - `Delete` → Soft delete (`UPDATE SET deleted = true`)
 
-**Document backends** (MongoDB via ZapDocumentDB):
+**Document backends** (DocumentDB via ZapDocumentDB):
 - `Get` → `find` with `{_id, kind}` filter
 - `Put` → `update` with `$set` (upsert) or `insert`
-- `Query` → `find` with MongoDB query operators
+- `Query` → `find` with DocumentDB query operators
 - `Delete` → `update` with `{deleted: true}`
 
-**KV backends** (Redis/Valkey via ZapKV):
+**KV backends** (KV via ZapKV):
 - `Get` → `GET orm:kind:id`
 - `Put` → `SET orm:kind:id`
 - `Delete` → `DEL orm:kind:id`
@@ -229,7 +229,7 @@ The ZAP driver translates ORM operations into backend-specific requests:
 | **Scaling** | Single node | Multi-node, distributed |
 | **Use case** | Dev, edge, CLI tools | Production services |
 | **Performance** | Fast for small datasets | Better for large/concurrent workloads |
-| **Backends** | SQLite only | PostgreSQL, MongoDB, Redis, Datastore |
+| **Backends** | SQLite only | SQL, DocumentDB, KV, Datastore |
 
 ## Custom Drivers
 

@@ -20,7 +20,7 @@ Hanzo VM is an **open-source cloud operating system and virtual machine manageme
 
 - **Backend**: Go 1.26, Beego web framework, XORM (ORM)
 - **Frontend**: React, Node.js 18, Yarn
-- **Database**: PostgreSQL (default), MySQL, or any XORM-supported DB
+- **Database**: SQL (default), MySQL, or any XORM-supported DB
 - **Auth**: Hanzo IAM (Hanzo IAM Go SDK), Casbin RBAC
 - **RDP**: vmd (Guacamole daemon, `ghcr.io/hanzovm/vmd`)
 - **Image**: Multi-stage Docker (standard + all-in-one with MariaDB)
@@ -39,7 +39,7 @@ Repo: `hanzoai/vm` (Casvisor fork). Default branch: `master`.
 
 ## Hard requirements
 
-1. **PostgreSQL** (or MySQL) database accessible
+1. **SQL** (or MySQL) database accessible
 2. **Hanzo IAM** (Hanzo IAM) instance for authentication
 3. **Go 1.21+** for building from source (or Docker)
 4. **Node.js 18** + Yarn for frontend build
@@ -52,7 +52,7 @@ Repo: `hanzoai/vm` (Casvisor fork). Default branch: `master`.
 | Go Module | `github.com/hanzoai/vm` |
 | Go Version | 1.26 (build: 1.21) |
 | Config | `conf/app.conf` |
-| Database | PostgreSQL (`hanzo_vm`) |
+| Database | SQL (`hanzo_vm`) |
 | IAM Endpoint | `http://iam.hanzo.svc:8000` |
 | RDP Daemon | `ghcr.io/hanzovm/vmd` (port 4822) |
 | License | Apache-2.0 |
@@ -93,7 +93,7 @@ docker run -d -p 19000:19000 hanzo-vm-aio
 
 ```bash
 docker compose up -d
-# Starts hanzo-vm + PostgreSQL
+# Starts hanzo-vm + SQL
 # Access at http://localhost:19000
 ```
 
@@ -117,7 +117,7 @@ docker run --name vmd -d -p 4822:4822 ghcr.io/hanzovm/vmd
 │  └──────────────┘    └──────┬───────┘   │ GCP/libvirt  │  │
 │                             │           └──────────────┘  │
 │                      ┌──────┴───────┐                      │
-│                      │ PostgreSQL   │                      │
+│                      │ SQL          │                      │
 │                      │ (hanzo_vm)   │                      │
 │                      └──────────────┘                      │
 │                                                             │
@@ -154,7 +154,7 @@ docker run --name vmd -d -p 4822:4822 ghcr.io/hanzovm/vmd
 | `iamOrganization` | hanzo | IAM organization |
 | `iamApplication` | app-hanzo-vm | IAM application name |
 | `guacamoleEndpoint` | 127.0.0.1:4822 | vmd RDP endpoint |
-| `redisEndpoint` | - | Redis for sessions (optional, falls back to file) |
+| `redisEndpoint` | - | KV for sessions (optional, falls back to file) |
 
 ### Directory Structure
 
@@ -162,7 +162,7 @@ docker run --name vmd -d -p 4822:4822 ghcr.io/hanzovm/vmd
 vm/
   main.go                  # Entry point (Beego app)
   Dockerfile               # Multi-stage: vmd + Node frontend + Go backend
-  docker-compose.yml       # VM + PostgreSQL stack
+  docker-compose.yml       # VM + SQL stack
   build.sh                 # Build script
   go.mod                   # github.com/hanzoai/vm, Go 1.26
   conf/
@@ -230,16 +230,16 @@ dependency — Hanzo VM has no user table of its own.
 | Issue | Cause | Solution |
 |-------|-------|----------|
 | Login fails | IAM not reachable | Verify `iamEndpoint` in app.conf, check Hanzo IAM is running |
-| DB connection error | Wrong dataSourceName | Check PostgreSQL host/port/user in `conf/app.conf` |
+| DB connection error | Wrong dataSourceName | Check SQL host/port/user in `conf/app.conf` |
 | RDP not working | vmd not running | Start vmd container: `docker run -d -p 4822:4822 ghcr.io/hanzovm/vmd` |
 | Cloud provider errors | Wrong credentials | Verify cloud provider credentials in provider configuration |
 | Frontend 404 | Build not run | Run `cd web && yarn build` to generate `web/build/` |
-| Session expired | Redis not configured | Set `redisEndpoint` in app.conf or accept file-based sessions |
+| Session expired | KV not configured | Set `redisEndpoint` in app.conf or accept file-based sessions |
 
 ## Related Skills
 
 - `hanzo/hanzo-iam.md` - Authentication and RBAC (required dependency)
 - `hanzo/hanzo-platform.md` - PaaS deployment
 - `hanzo/hanzo-universe.md` - K8s infrastructure
-- `hanzo/hanzo-sql.md` - PostgreSQL database
+- `hanzo/hanzo-sql.md` - SQL database
 

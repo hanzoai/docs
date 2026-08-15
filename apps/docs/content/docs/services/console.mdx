@@ -32,7 +32,7 @@ Hanzo Console is the LLM engineering platform at the center of the Hanzo AI stac
 │                          │                                       │
 │                    Console API                                   │
 │            ┌─────────────┼─────────────┐                        │
-│      PostgreSQL     Datastore       Redis ──► Worker            │
+│      SQL     Datastore       KV           ──► Worker            │
 │      (metadata)     (analytics)     (queues)  (MQ 27+)         │
 └──────────────────────────────────────────────────────────────────┘
 
@@ -44,8 +44,8 @@ Ingestion:  Your App ──► SDK/HTTP ──► api.hanzo.ai/v1/console/* ─�
 | **Web** | `hanzoai/console:latest` | 3001 | Next.js 15 dashboard and API |
 | **Worker** | `ghcr.io/hanzoai/console-worker:latest` | -- | Hanzo MQ processor (27+ queues) |
 | **Datastore** | In-cluster | 9000 | Analytics storage (traces, scores, costs) |
-| **PostgreSQL** | In-cluster | 5432 | Metadata (prompts, datasets, projects, users) |
-| **Redis** | In-cluster | 6379 | Job queues, caching, pub/sub |
+| **SQL** | In-cluster | 5432 | Metadata (prompts, datasets, projects, users) |
+| **KV** | In-cluster | 6379 | Job queues, caching, pub/sub |
 
 ## Quick Start
 
@@ -193,7 +193,7 @@ response = openai_client.chat.completions.create(
 
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
+| `DATABASE_URL` | SQL connection string |
 | `DATASTORE_URL` | Datastore connection string |
 | `REDIS_URL` | Redis connection string |
 | `NEXTAUTH_URL` | Console public URL (`https://console.hanzo.ai`) |

@@ -20,7 +20,7 @@ Hanzo Explorer is an **EVM blockchain explorer** for inspecting and analyzing tr
 
 - **Backend**: Elixir 1.17.3 + OTP 27 (Phoenix framework)
 - **Database**: PostgreSQL 14+
-- **Cache**: Redis
+- **Cache**: KV
 - **Frontend**: Node.js 20.17 (separate Blockscout frontend)
 - **Indexer**: Custom blockchain indexer (Elixir)
 - **JSON-RPC**: ethereum_jsonrpc client for EVM nodes
@@ -44,7 +44,7 @@ Hanzo Explorer is an **EVM blockchain explorer** for inspecting and analyzing tr
 
 1. **Elixir 1.17+** with OTP 27
 2. **PostgreSQL 14+** for blockchain data storage
-3. **Redis** for caching
+3. **KV** for caching
 4. **Running EVM JSON-RPC node** (Lux, Geth, Erigon, etc.)
 5. **Node.js 20+** for frontend build
 
@@ -102,7 +102,7 @@ hanzoai/explorer/
     utils/                      Shared utilities
   config/                       Elixir configuration
   docker-compose/               Generic Docker configs
-    docker-compose.yml          Standard setup (Postgres, Redis, backend, frontend, nginx)
+    docker-compose.yml          Standard setup (SQL, KV, backend, frontend, nginx)
     erigon.yml                  Erigon JSON-RPC client config
     geth.yml                    Geth JSON-RPC client config
     hardhat-network.yml         HardHat dev network config
@@ -148,7 +148,7 @@ hanzoai/explorer/
 | `geth.yml` | Geth/Reth JSON-RPC backend |
 | `geth-clique-consensus.yml` | Geth with Clique PoA |
 | `hardhat-network.yml` | HardHat local dev network |
-| `external-db.yml` | Explorer with external PostgreSQL |
+| `external-db.yml` | Explorer with external SQL |
 | `external-backend.yml` | Frontend with external API |
 | `external-frontend.yml` | Backend with external frontend |
 | `microservices.yml` | All Rust microservices |
@@ -177,7 +177,7 @@ The `docker-luxnet/` directory contains Lux-specific configurations for connecti
 | Issue | Cause | Solution |
 |-------|-------|----------|
 | Indexer not syncing | Wrong JSON-RPC URL | Verify `ETHEREUM_JSONRPC_HTTP_URL` points to running node |
-| DB connection error | PostgreSQL not ready | Wait for DB startup or check `DATABASE_URL` |
+| DB connection error | SQL not ready | Wait for DB startup or check `DATABASE_URL` |
 | Frontend blank | API URL mismatch | Check `NEXT_PUBLIC_API_HOST` matches backend |
 | Linux localhost issue | Docker networking | Use `http://0.0.0.0/` instead of `http://127.0.0.1/` |
 

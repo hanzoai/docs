@@ -14,15 +14,15 @@ Hanzo Sentry is a **self-hosted Sentry 24.2.0 deployment** for error tracking an
 - **IAM integrated**: OIDC SSO login via hanzo.id (`app-sentry` client)
 - **Secrets via KMS**: All credentials synced from kms.hanzo.ai
 - **OTEL instrumented**: Exports traces to the shared OTEL collector
-- **Shared infrastructure**: Uses hanzo-sql (PostgreSQL) and shared Redis
+- **Shared infrastructure**: Uses hanzo-sql (SQL) and shared KV
 
 ### Tech Stack
 
 - **Backend**: Python 3.11 (Django 5.x, Celery, DRF)
 - **Frontend**: React + TypeScript (Webpack, Emotion CSS)
-- **Queue**: Celery via Redis (or RabbitMQ if configured)
-- **Database**: PostgreSQL via `hanzo-sql.hanzo.svc`
-- **Cache**: Redis via `redis.hanzo.svc`
+- **Queue**: Celery via KV (or RabbitMQ if configured)
+- **Database**: SQL via `hanzo-sql.hanzo.svc`
+- **Cache**: KV via `redis.hanzo.svc`
 - **Image**: `ghcr.io/hanzoai/sentry:latest`
 - **Base version**: Sentry 24.2.0 (FSL-1.0-Apache-2.0 license)
 
@@ -40,8 +40,8 @@ This is a **deployment**, not a Hanzo codebase: there is no `hanzoai/sentry` rep
 
 ## Hard requirements
 
-1. **PostgreSQL** via `hanzo-sql.hanzo.svc` (database `sentry`)
-2. **Redis** via `redis.hanzo.svc` (cache, queues, rate limits, buffers)
+1. **SQL** via `hanzo-sql.hanzo.svc` (database `sentry`)
+2. **KV** via `redis.hanzo.svc` (cache, queues, rate limits, buffers)
 3. **KMS** at kms.hanzo.ai for secret sync (secret-key, db-password, oidc-client-secret)
 4. **IAM** at hanzo.id with `app-sentry` OIDC client for SSO
 
@@ -58,7 +58,7 @@ This is a **deployment**, not a Hanzo codebase: there is no `hanzoai/sentry` rep
 | K8s namespace | `hanzo` |
 | Deployments | `sentry-web` (2 replicas), `sentry-worker` (2 replicas), `sentry-cron` (1 replica) |
 | Database | `hanzo-sql.hanzo.svc:5432/sentry` |
-| Redis | `redis.hanzo.svc:6379` |
+| KV | `redis.hanzo.svc:6379` |
 | Auth | OIDC SSO via hanzo.id (`app-sentry`) |
 | KMS project | `hanzo-k8s-epiq`, path `/sentry` |
 | Local clone | `~/work/hanzo/sentry/` |
@@ -179,7 +179,7 @@ services:
                   └──┬────────────┬─────────────┬────┘
                      │            │             │
               ┌──────▼──┐  ┌─────▼─────┐  ┌───▼────────┐
-              │ Postgres │  │   Redis   │  │ OTEL       │
+              │ SQL │  │   KV           │  │ OTEL       │
               │ hanzo-sql│  │  (shared) │  │ Collector  │
               └─────────┘  └───────────┘  └────────────┘
                      │            │
@@ -246,14 +246,14 @@ Required secrets: `secret-key`, `db-password`, `oidc-client-secret`, `commerce-a
 ### Environment Variables
 
 ```bash
-# Database (PostgreSQL)
+# Database (SQL)
 SENTRY_POSTGRES_HOST=hanzo-sql.hanzo.svc
 SENTRY_DB_NAME=sentry
 SENTRY_DB_USER=sentry
 SENTRY_DB_PASSWORD=<from KMS>
 SENTRY_DB_PORT=5432
 
-# Redis
+# KV
 SENTRY_REDIS_HOST=redis.hanzo.svc
 SENTRY_REDIS_PORT=6379
 
@@ -283,7 +283,7 @@ cd ~/work/hanzo/sentry
 # Python setup (uses direnv + pyenv, not uv — upstream pattern)
 make develop
 
-# Run dependent services (Postgres, Redis, Kafka, etc.)
+# Run dependent services (SQL, KV, Kafka, etc.)
 make run-dependent-services
 
 # Apply database migrations
@@ -310,7 +310,7 @@ make test-js
 | Redis connection error | Missing `SENTRY_REDIS_HOST` | Ensure `redis.hanzo.svc` is reachable in cluster |
 | `SENTRY_SECRET_KEY is undefined` | KMS sync not running | Verify `sentry-secrets` K8s secret exists in `hanzo` namespace |
 | Migration errors | DB not created | Run `sentry upgrade` to create tables and apply migrations |
-| Worker not processing | Celery not connected to broker | Check Redis connectivity or RabbitMQ config |
+| Worker not processing | Celery not connected to broker | Check KV connectivity or RabbitMQ config |
 | Health check failing | Sentry not fully started | Wait for `initialDelaySeconds` (60s); check logs for startup errors |
 | `npm ci` fails | Peer dep conflicts | Use `npm install` with `.npmrc` containing `legacy-peer-deps=true` |
 
@@ -320,4 +320,4 @@ make test-js
 - `hanzo/hanzo-id.md` - IAM and OIDC SSO configuration
 - `hanzo/hanzo-kms.md` - Secret management via KMSSecret CRDs
 - `hanzo/hanzo-universe.md` - Production K8s infrastructure and manifests
-- `hanzo/hanzo-database.md` - Shared PostgreSQL (hanzo-sql)
+- `hanzo/hanzo-database.md` - Shared SQL (hanzo-sql)

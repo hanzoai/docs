@@ -22,8 +22,8 @@ Hanzo IAM is the **server-side identity and access management service** for the 
 
 - **Backend**: Go 1.26, Beego v2 web framework, xorm ORM
 - **Frontend (admin UI)**: React 18, Ant Design 5, craco, pnpm
-- **Database**: PostgreSQL (primary), MySQL, SQLite (embedded)
-- **Session store**: Redis/Valkey (auto-discovers `hanzo-kv` or `redis` in K8s)
+- **Database**: SQL (primary), MySQL, SQLite (embedded)
+- **Session store**: KV (auto-discovers `hanzo-kv` or `redis` in K8s)
 - **Auth libraries**: casbin/casbin v2, go-webauthn, go-jose, gosaml2, go-ldap
 - **Identity providers**: markbates/goth + custom implementations in `idp/` directory
 - **Image**: `ghcr.io/hanzoai/iam:latest`
@@ -46,8 +46,8 @@ For **client-side OAuth flows** (login UI, token extraction, redirect handling),
 
 ## Hard requirements
 
-1. **PostgreSQL** (or MySQL/SQLite) database
-2. **Redis/Valkey** for session storage (optional -- falls back to file sessions)
+1. **SQL** (or MySQL/SQLite) database
+2. **KV** for session storage (optional -- falls back to file sessions)
 3. **init_data.json** for bootstrap organizations, applications, and admin user
 4. **TLS termination** via Caddy, ingress, or reverse proxy for production
 
@@ -203,7 +203,7 @@ curl -X POST "https://api.hanzo.ai/v1/iam/update-user" \
 ├──────────────┬──────────────┬──────────────┬─────────────────┤
 │  40+ IdPs    │  Casbin RBAC │  MCP Server  │  WAF (Coraza)  │
 ├──────────────┴──────────────┴──────────────┴─────────────────┤
-│  PostgreSQL/MySQL/SQLite  │  Redis/Valkey  │  File Storage   │
+│  SQL/MySQL/SQLite  │  KV                   │  File Storage   │
 └───────────────────────────┴────────────────┴─────────────────┘
          ↑                        ↑                    ↑
   ┌──────┴──────┐          ┌──────┴──────┐     ┌──────┴──────┐
@@ -219,7 +219,7 @@ iam/
 ├── main.go              # Entry point (Beego bootstrap, filter chain)
 ├── conf/                # Configuration files (INI format)
 │   ├── app.conf         # Active config (gitignored in prod)
-│   ├── app.dev.conf     # Docker dev (PostgreSQL)
+│   ├── app.dev.conf     # Docker dev (SQL       )
 │   ├── app.prod.conf    # Production (hanzo.id)
 │   ├── app.staging.conf # Staging (stg.hanzo.id)
 │   └── waf.conf         # Coraza WAF rules
@@ -296,9 +296,9 @@ The `main.go` registers Beego filters in this order:
 8. `RecordMessage` (BeforeRouter) -- audit logging
 9. `FieldValidationFilter` (BeforeRouter) -- input validation
 
-### Redis Auto-Discovery
+### KV Auto-Discovery
 
-The server auto-discovers Redis in Kubernetes by trying DNS lookups for `hanzo-kv` and `redis` service names. Falls back to file-based sessions if no Redis is available.
+The server auto-discovers KV in Kubernetes by trying DNS lookups for `hanzo-kv` and `redis` service names. Falls back to file-based sessions if no KV is available.
 
 ### Init Data
 
@@ -394,9 +394,9 @@ SMTP_USER=noreply@hanzo.ai
 SMTP_PASSWORD=<email-password>
 ```
 
-### MySQL vs PostgreSQL
+### MySQL vs SQL
 
-**PostgreSQL** (recommended):
+**SQL** (recommended):
 ```ini
 driverName = postgres
 dataSourceName = user=hanzo password=xxx host=postgres port=5432 sslmode=disable dbname=hanzo_iam
@@ -412,7 +412,7 @@ dbName = hanzo_iam
 ## Makefile Commands
 
 ```bash
-make dev          # Start local dev with Docker Compose (PostgreSQL)
+make dev          # Start local dev with Docker Compose (SQL)
 make dev-down     # Stop local dev
 make run          # Run Go server locally (go run)
 make backend      # Build Go binary to bin/manager
@@ -530,7 +530,7 @@ IAM runs on the hanzo-k8s cluster at `24.199.76.156`:
 
 ### CI/CD
 
-- **Build**: Go tests with PostgreSQL, frontend build (pnpm), Go build with race detection, gofumpt lint, Cypress E2E
+- **Build**: Go tests with SQL, frontend build (pnpm), Go build with race detection, gofumpt lint, Cypress E2E
 - **Release**: Semantic versioning, GitHub Release, Docker push to `ghcr.io/hanzoai/iam`
 - **Deploy**: Push to main triggers multi-arch Docker build (amd64/arm64) and SSH deploy
 
@@ -550,7 +550,7 @@ curl -f http://localhost:8000/healthz
 | Code flow rejected | Empty grant_type xorm bug | Use implicit flow (`response_type=token`) |
 | initData overwrites on restart | `initDataNewOnly=false` | Set `initDataNewOnly=true` in conf |
 | App owner queries fail | Apps under `owner=admin` not org | WHERE `owner='admin'` not org name |
-| Redis not found | No Redis endpoint configured | Auto-discovers `hanzo-kv` or `redis` DNS; set `redisEndpoint` explicitly |
+| KV not found | No KV endpoint configured | Auto-discovers `hanzo-kv` or `redis` DNS; set `redisEndpoint` explicitly |
 | LDAP not starting | Port 389 in use | Check `ldapServerPort` in conf |
 | WAF blocking requests | Coraza rules too strict | Adjust `conf/waf.conf` |
 

@@ -5,13 +5,13 @@ description: "Hanzo ZAP (`hanzoai/zap`) is a Go sidecar that bridges the ZAP pro
 
 ## Overview
 
-Hanzo ZAP (`hanzoai/zap`) is a **Go sidecar that bridges the ZAP protocol to backend infrastructure services**. It runs alongside databases and caches, translating ZAP protocol calls from the Hanzo Gateway into native protocol calls against the co-located backend. Supports 4 modes: SQL (PostgreSQL via pgx), KV (Valkey/Redis), Datastore (native TCP), and DocumentDB (MongoDB wire protocol). ZAP's schema maps 1:1 with MCP (Model Context Protocol), so any service implementing the ZAP interface gets MCP tools and resources for free.
+Hanzo ZAP (`hanzoai/zap`) is a **Go sidecar that bridges the ZAP protocol to backend infrastructure services**. It runs alongside databases and caches, translating ZAP protocol calls from the Hanzo Gateway into native protocol calls against the co-located backend. Supports 4 modes: SQL (SQL via pgx), KV (KV), Datastore (native TCP), and DocumentDB (DocumentDB wire protocol). ZAP's schema maps 1:1 with MCP (Model Context Protocol), so any service implementing the ZAP interface gets MCP tools and resources for free.
 
 ### What it actually is
 
 - Single Go binary (`bin/zap`) with mode flag selecting the backend
 - 4 backend proxies, each in `internal/`:
-  - `sql/` -- PostgreSQL proxy (pgx v5 driver)
+  - `sql/` -- SQL proxy (pgx v5 driver)
   - `kv/` -- Valkey/Redis proxy (hanzoai/kv-go v9)
   - `datastore/` -- Datastore proxy (native TCP)
   - `documentdb/` -- MongoDB/FerretDB proxy (mongo-driver v2)
@@ -33,7 +33,7 @@ Any service implementing the ZAP interface gets MCP for free via the ZAP Gateway
 ## When to use
 
 - Deploying database sidecars in K8s for ZAP/MCP access
-- Adding MCP tool support to PostgreSQL, Redis, Datastore, or MongoDB
+- Adding MCP tool support to SQL, KV, Datastore, or DocumentDB
 - Building AI agents that need direct database access via MCP
 - Bridging Hanzo Gateway to backend infrastructure
 
@@ -72,7 +72,7 @@ hanzoai/zap/
   internal/
     mcp.go                  # MCP tool/resource definitions for all backends
     sql/
-      proxy.go              # PostgreSQL proxy (pgx v5)
+      proxy.go              # SQL proxy (pgx v5)
     kv/
       proxy.go              # Valkey/Redis proxy (kv-go v9)
     datastore/
@@ -85,7 +85,7 @@ hanzoai/zap/
 
 From `go.mod`:
 - `github.com/luxfi/zap` v0.2.0 -- ZAP protocol + mDNS discovery
-- `github.com/jackc/pgx/v5` v5.7.2 -- PostgreSQL driver
+- `github.com/jackc/pgx/v5` v5.7.2 -- SQL driver
 - `github.com/hanzoai/kv-go/v9` v9.17.2-hanzo.1 -- Valkey/Redis client
 - `github.com/hanzo-ds/go` -- Datastore native driver
 - `go.mongodb.org/mongo-driver/v2` v2.5.0 -- MongoDB driver
@@ -98,7 +98,7 @@ From `go.mod`:
 |------|------------|
 | `sql_query` | Execute read-only SQL SELECT, return JSON rows |
 | `sql_exec` | Execute write SQL (INSERT/UPDATE/DELETE), return affected rows |
-| `sql_health` | Check PostgreSQL connection health |
+| `sql_health` | Check SQL connection health |
 
 Resource: `hanzo://sql/schema` -- database schema (tables, columns, indexes)
 
@@ -109,7 +109,7 @@ Resource: `hanzo://sql/schema` -- database schema (tables, columns, indexes)
 | `kv_get` | Get value by key |
 | `kv_set` | Set key-value pair (optional TTL) |
 | `kv_mget` | Get multiple values by keys |
-| `kv_cmd` | Execute arbitrary Valkey/Redis command |
+| `kv_cmd` | Execute arbitrary KV command |
 
 Resource: `hanzo://kv/info` -- server info and statistics
 
@@ -146,10 +146,10 @@ git clone https://github.com/hanzoai/zap.git
 cd zap
 make build
 
-# SQL mode (PostgreSQL sidecar)
+# SQL mode (SQL sidecar)
 ./bin/zap --mode sql --backend "postgres://user:pass@localhost:5432/db"
 
-# KV mode (Valkey/Redis sidecar)
+# KV mode (KV sidecar)
 ./bin/zap --mode kv --backend localhost:6379 --password secret
 
 # Datastore mode
@@ -220,8 +220,8 @@ containers:
 
 - `hanzo/hanzo-orm.md` -- Go ORM that uses ZAP as a backend
 - `hanzo/hanzo-database.md` -- Database configuration patterns
-- `hanzo/hanzo-sql.md` -- PostgreSQL (hanzoai/sql)
-- `hanzo/hanzo-kv.md` -- Valkey/Redis (hanzoai/kv)
+- `hanzo/hanzo-sql.md` -- SQL (hanzoai/sql)
+- `hanzo/hanzo-kv.md` -- KV (hanzoai/kv)
 - `hanzo/hanzo-datastore.md` -- Datastore analytics
 - `hanzo/hanzo-mcp.md` -- MCP tools (ZAP provides MCP for free)
 

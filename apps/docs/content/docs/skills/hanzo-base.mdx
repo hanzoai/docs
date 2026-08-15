@@ -1,16 +1,16 @@
 ---
 title: "Hanzo Base - Open Source Backend for Any App"
-description: "Hanzo Base is an open source Go backend that provides a complete application backend in a single binary. It includes embedded SQLite and PostgreSQL databases with realtime subscriptions, built-in f..."
+description: "Hanzo Base is an open source Go backend that provides a complete application backend in a single binary. It includes embedded SQLite and SQL databases with realtime subscriptions, built-in f..."
 ---
 
 ## Overview
 
-Hanzo Base is an **open source Go backend** that provides a complete application backend in a single binary. It includes embedded SQLite and PostgreSQL databases with realtime subscriptions, built-in file and user management, an Admin dashboard UI, REST and GraphQL APIs, CRDT-based collaboration, and a JavaScript plugin VM. Go module: `github.com/hanzoai/base`.
+Hanzo Base is an **open source Go backend** that provides a complete application backend in a single binary. It includes embedded SQLite and SQL databases with realtime subscriptions, built-in file and user management, an Admin dashboard UI, REST and GraphQL APIs, CRDT-based collaboration, and a JavaScript plugin VM. Go module: `github.com/hanzoai/base`.
 
 ### Why Hanzo Base?
 
 - **Single binary**: Entire backend compiles to one portable executable (CGO_ENABLED=0)
-- **Embedded databases**: In-memory, SQL (SQLite via modernc, PostgreSQL via pgx), and vector DB with realtime subscriptions
+- **Embedded databases**: In-memory, SQL (SQLite via modernc, SQL via pgx), and vector DB with realtime subscriptions
 - **Built-in auth**: Users, OAuth2, OTP, MFA, password reset, email verification, superuser management
 - **Admin dashboard**: Svelte/Vite SPA embedded in the Go binary
 - **JavaScript hooks**: Extend with JS via embedded Goja VM (no separate Node.js process)
@@ -20,7 +20,7 @@ Hanzo Base is an **open source Go backend** that provides a complete application
 
 ### Tech Stack
 
-- **Backend**: Go 1.26, cobra CLI, embedded SQLite (modernc.org/sqlite), PostgreSQL (pgx/v5)
+- **Backend**: Go 1.26, cobra CLI, embedded SQLite (modernc.org/sqlite), SQL (pgx/v5)
 - **Admin UI**: Svelte 4, Vite 5, CodeMirror, Chart.js
 - **JS SDK**: `@hanzoai/base` v0.1.0 (TypeScript, tsup)
 - **React SDK**: `@hanzoai/base-react` v0.1.0 (React hooks)
@@ -44,7 +44,7 @@ Repo: `hanzoai/base`. License: MIT.
 
 1. **Go 1.24+** for building from source
 2. **Node 18+** for Admin UI development only
-3. No external database required (SQLite embedded); PostgreSQL optional via plugins
+3. No external database required (SQLite embedded); SQL optional via plugins
 
 ## Quick reference
 
@@ -136,7 +136,7 @@ docker run -d \
 │  │ (CRUD)  │ │ (OAuth2) │ │ (S3/local)    │ │
 │  └─────────┘ └──────────┘ └───────────────┘ │
 ├──────────────────────────────────────────────┤
-│  SQLite (default) │ PostgreSQL (cloudsql)    │
+│  SQLite (default) │ SQL        (cloudsql)    │
 └──────────────────────────────────────────────┘
 ```
 
@@ -155,7 +155,7 @@ base/
   plugins/
     jsvm/              # JavaScript VM (Goja) for hooks and migrations
     migratecmd/        # Migration CLI command
-    cloudsql/          # Serverless PostgreSQL (per-tenant)
+    cloudsql/          # Serverless SQL (per-tenant)
     functions/         # OpenFaaS serverless functions
     platform/          # Multi-tenant IAM + KMS integration
     scheduler/         # Cron/scheduled tasks
@@ -200,7 +200,7 @@ Plugins extend Base via hooks on the `core.App` interface:
 |--------|---------|
 | `jsvm` | JavaScript hooks and migrations via Goja VM |
 | `migratecmd` | Database migration CLI commands |
-| `cloudsql` | Serverless PostgreSQL per-tenant provisioning |
+| `cloudsql` | Serverless SQL per-tenant provisioning |
 | `functions` | OpenFaaS serverless function integration |
 | `platform` | Multi-tenant IAM (hanzo.id) + KMS (kms.hanzo.ai) |
 | `scheduler` | Cron-based scheduled tasks |

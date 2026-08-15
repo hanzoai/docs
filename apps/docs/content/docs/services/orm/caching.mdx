@@ -1,6 +1,6 @@
 ---
 title: Caching
-description: Read-through KV cache with memory LRU and Redis/Valkey backends.
+description: Read-through KV cache with memory LRU and KV backends.
 ---
 
 # Caching
@@ -12,7 +12,7 @@ Hanzo ORM includes a built-in cache layer that sits between your application and
 | Backend | Import | Use Case |
 |---------|--------|----------|
 | **Memory LRU** | `orm.NewMemoryCache(...)` | Single-process apps, development, testing |
-| **Redis/Valkey** | `orm.NewKVCache(...)` | Multi-process, distributed apps |
+| **KV** | `orm.NewKVCache(...)` | Multi-process, distributed apps |
 | **No-op** | `orm.NewNoopCache()` | Disable caching (default) |
 
 ## Configuration
@@ -27,7 +27,7 @@ cache := orm.NewMemoryCache(orm.MemoryCacheConfig{
 })
 ```
 
-### Redis/Valkey Cache
+### KV Cache
 
 ```go
 import kv "github.com/hanzoai/kv-go/v9"
@@ -154,8 +154,8 @@ orm:tenant-b:user:123   (Tenant B's user — different data)
 
 | Operation | Without Cache | With Cache (hit) |
 |-----------|--------------|-------------------|
-| Get by ID | ~1-5ms (SQLite) | < 0.1ms (memory) / < 1ms (Redis) |
-| Query (10 results) | ~5-20ms | < 0.5ms (memory) / < 2ms (Redis) |
+| Get by ID | ~1-5ms (SQLite) | < 0.1ms (memory) / < 1ms (KV) |
+| Query (10 results) | ~5-20ms | < 0.5ms (memory) / < 2ms (KV) |
 | Write | ~2-10ms | ~2-10ms + invalidation overhead |
 
 Cache is most effective for read-heavy workloads with predictable access patterns.

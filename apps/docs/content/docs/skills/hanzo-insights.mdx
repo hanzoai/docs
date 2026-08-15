@@ -1,11 +1,11 @@
 ---
 title: "Hanzo Insights - Product Analytics Platform"
-description: "Hanzo Insights is a full product analytics platform — product analytics, feature flags, session recording, A/B testing, heatmaps, LLM analytics, error tracking, surveys and its own query language (InsightsQL), on Datastore and PostgreSQL."
+description: "Hanzo Insights is a full product analytics platform — product analytics, feature flags, session recording, A/B testing, heatmaps, LLM analytics, error tracking, surveys and its own query language (InsightsQL), on Datastore and SQL."
 ---
 
 ## Overview
 
-Hanzo Insights is a **full product analytics platform** with product analytics, feature flags, session recording, A/B testing, heatmaps, LLM analytics, error tracking, surveys, web analytics, and a custom query language (InsightsQL). Polyglot monorepo: Django/Python backend, React/TypeScript frontend, Rust high-performance services, Go livestream server. Datastore for event storage, PostgreSQL for metadata, Kafka for event streaming, Redis for caching. Self-hostable with Docker Compose or K8s.
+Hanzo Insights is a **full product analytics platform** with product analytics, feature flags, session recording, A/B testing, heatmaps, LLM analytics, error tracking, surveys, web analytics, and a custom query language (InsightsQL). Polyglot monorepo: Django/Python backend, React/TypeScript frontend, Rust high-performance services, Go livestream server. Datastore for event storage, SQL for metadata, Kafka for event streaming, KV for caching. Self-hostable with Docker Compose or K8s.
 
 ### Why Hanzo Insights?
 
@@ -24,7 +24,7 @@ Hanzo Insights is a **full product analytics platform** with product analytics, 
 - **Rust services**: axum, rdkafka, sqlx, datastore (workspace with 30+ crates)
 - **Livestream**: Go service for real-time event streaming
 - **Query engine**: InsightsQL (ANTLR4 grammar -> Python3 + C++ targets)
-- **Databases**: Datastore (events), PostgreSQL (metadata), Kafka (streaming), Redis (cache)
+- **Databases**: Datastore (events), SQL (metadata), Kafka (streaming), KV (cache)
 - **Task queue**: Celery + Temporal (batch exports, async workflows)
 - **Data pipelines**: Dagster (orchestration), dlt (data loading)
 - **Build**: pnpm workspace + Turborepo (JS), uv (Python), Cargo workspace (Rust)
@@ -44,15 +44,15 @@ Repo: `hanzoai/insights`. License: MIT.
 - Error tracking with sourcemap support
 - Web analytics (privacy-first alternative to GA)
 - User surveys and feedback collection
-- Data warehouse querying (Snowflake, BigQuery, Postgres, S3)
+- Data warehouse querying (Snowflake, BigQuery, SQL, S3)
 - Self-hosted analytics with full data ownership
 
 ## Hard requirements
 
 1. **Datastore** for event storage (columnar analytics)
-2. **PostgreSQL** for metadata and Django ORM
+2. **SQL** for metadata and Django ORM
 3. **Kafka** (Redpanda) for event streaming pipeline
-4. **Redis** for caching and task queues
+4. **KV** for caching and task queues
 5. **Object storage** (Hanzo S3, or any S3-compatible endpoint) for session recordings and batch exports
 
 ## Quick reference
@@ -203,7 +203,7 @@ The `docker-compose.hobby.yml` runs the complete stack:
 - `worker`: Celery worker
 - `plugins`: Node.js plugin server
 - `db`: PostgreSQL (`ghcr.io/hanzoai/sql`)
-- `kv`: Redis
+- `kv`: KV
 - `datastore`: Datastore
 - `kafka`: Redpanda
 - `capture`: Rust event capture

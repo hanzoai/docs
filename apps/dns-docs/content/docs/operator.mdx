@@ -1,9 +1,9 @@
 ---
 title: DNS Operator
-description: Kubernetes operator for DNS reconciliation between PostgreSQL, CoreDNS, and Cloudflare.
+description: Kubernetes operator for DNS reconciliation between SQL, CoreDNS, and Cloudflare.
 ---
 
-The DNS Operator is a Kubernetes controller that bridges PostgreSQL (source of truth), CoreDNS (authoritative DNS), and Cloudflare (edge DNS). It watches for changes and reconciles state across all three systems.
+The DNS Operator is a Kubernetes controller that bridges SQL (source of truth), CoreDNS (authoritative DNS), and Cloudflare (edge DNS). It watches for changes and reconciles state across all three systems.
 
 ## Custom Resource Definitions
 
@@ -102,14 +102,14 @@ Syncs records marked with `syncToCloudflare: true` to Cloudflare:
 3. Creates/updates/deletes corresponding Cloudflare records via CF API
 4. Stores `cloudflareRecordId` in record status for tracking
 
-### PostgreSQL Watcher
+### SQL Watcher
 
-Polls PostgreSQL for changes and creates/updates CRDs:
+Polls SQL for changes and creates/updates CRDs:
 
-1. Connects to PostgreSQL using the `DnsConnector` configuration
+1. Connects to SQL using the `DnsConnector` configuration
 2. Polls for new/updated/deleted zones and records
 3. Creates or updates corresponding `DnsZone` and `DnsRecord` CRDs
-4. Ensures CRD state matches PostgreSQL state
+4. Ensures CRD state matches SQL state
 
 ## Deployment
 

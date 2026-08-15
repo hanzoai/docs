@@ -1,24 +1,24 @@
 ---
 title: Hanzo MQ
-description: High-performance message queue and job processing built on Hanzo KV (Redis Streams) with reliable delivery, priority queues, and dead letter support.
+description: High-performance message queue and job processing built on Hanzo KV (KV Streams) with reliable delivery, priority queues, and dead letter support.
 ---
 
 # Hanzo MQ
 
 > **API reference** · [Hanzo MQ API →](/docs/openapi/mq) — every endpoint, generated from the OpenAPI spec.
 
-Hanzo MQ (`@hanzo/mq`) is a distributed message queue and job processing system built on top of [Hanzo KV](/docs/services/kv) (Redis/Valkey-compatible). It provides reliable, at-least-once delivery with priority queues, delayed jobs, dead letter queues, rate limiting, and parent-child job dependencies -- all backed by atomic Lua scripts running on Redis Streams.
+Hanzo MQ (`@hanzo/mq`) is a distributed message queue and job processing system built on top of [Hanzo KV](/docs/services/kv) (KV-compatible). It provides reliable, at-least-once delivery with priority queues, delayed jobs, dead letter queues, rate limiting, and parent-child job dependencies -- all backed by atomic Lua scripts running on KV Streams.
 
 **Package:** `@hanzo/mq` (v5.70.0)
-**Protocol:** Redis Streams-based
-**Backend:** Hanzo KV / Valkey / Redis
+**Protocol:** KV Streams-based
+**Backend:** Hanzo KV / KV
 **Source:** [github.com/hanzoai/mq](https://github.com/hanzoai/mq)
 
 ## Features
 
 | Feature | Description |
 |---------|-------------|
-| **Redis Streams Backend** | All operations use atomic Lua scripts on Redis Streams for consistency |
+| **KV Streams Backend** | All operations use atomic Lua scripts on KV Streams for consistency |
 | **At-Least-Once Delivery** | Jobs are locked during processing and reclaimed on worker failure |
 | **Priority Queues** | 2,097,152 priority levels (0 = highest) with O(log n) insertion |
 | **Delayed Jobs** | Schedule jobs to execute after a specified delay in milliseconds |
@@ -30,7 +30,7 @@ Hanzo MQ (`@hanzo/mq`) is a distributed message queue and job processing system 
 | **Job Deduplication** | Debounce and throttle duplicate jobs by custom ID |
 | **Sandboxed Workers** | Isolate job processing in child processes or worker threads |
 | **Pause/Resume** | Pause and resume queues without losing jobs |
-| **Global Events** | Real-time event streaming for job lifecycle via Redis Streams |
+| **Global Events** | Real-time event streaming for job lifecycle via KV Streams |
 | **Backoff Strategies** | Built-in exponential and fixed backoff, plus custom strategies |
 | **Telemetry** | OpenTelemetry-compatible tracing for job spans |
 | **Multi-Language** | SDKs for TypeScript, Python, Elixir, and PHP |
@@ -50,7 +50,7 @@ Hanzo MQ (`@hanzo/mq`) is a distributed message queue and job processing system 
         │              │               │
         v              v               v
 ┌─────────────────────────────────────────────────────────────────┐
-│  Hanzo KV (Redis Streams)                                       │
+│  Hanzo KV (KV    Streams)                                       │
 │                                                                 │
 │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐           │
 │  │ waiting │  │ delayed │  │ active  │  │ events  │           │
@@ -216,7 +216,7 @@ events.on('progress', ({ jobId, data }) => {
 
 ## Consumer Groups
 
-Multiple workers consuming the same queue name form an implicit consumer group. Hanzo MQ uses atomic Redis operations to ensure each job is delivered to exactly one worker at a time.
+Multiple workers consuming the same queue name form an implicit consumer group. Hanzo MQ uses atomic KV operations to ensure each job is delivered to exactly one worker at a time.
 
 ```ts
 import { Worker } from '@hanzo/mq';
@@ -400,7 +400,7 @@ const worker = new Worker('api-calls', async (job) => {
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `connection` | `ConnectionOptions` | `localhost:6379` | Hanzo KV / Redis connection |
+| `connection` | `ConnectionOptions` | `localhost:6379` | Hanzo KV / KV connection |
 | `prefix` | `string` | `"bull"` | Key prefix for all queue keys |
 | `defaultJobOptions` | `JobOptions` | `{}` | Default options applied to all jobs |
 | `streams.events.maxLen` | `number` | `10000` | Max events in the event stream |
@@ -494,8 +494,8 @@ Hanzo MQ automatically detects the backend database engine and adapts its behavi
 
 | Backend | Detection | Notes |
 |---------|-----------|-------|
-| **Redis** 6.2+ | `INFO server` response contains `redis_version` | Full feature support |
-| **Valkey** 7.2+ | `INFO server` response contains `valkey_version` | Recommended for Hanzo KV deployments |
+| **KV** 6.2+ | `INFO server` response contains `redis_version` | Full feature support |
+| **KV** 7.2+ | `INFO server` response contains `valkey_version` | Recommended for Hanzo KV deployments |
 | **Dragonfly** | `INFO server` response contains `dragonfly_version` | Supported with minor limitations on Lua script caching |
 
 Detection happens automatically on first connection. No configuration needed -- MQ reads the `INFO server` response and adjusts internal command usage (e.g., `WAITAOF` availability, cluster slot handling) based on the detected engine.
@@ -560,7 +560,7 @@ Community-maintained SDKs are available in the `elixir/` and `php/` directories 
 
 <Cards>
   <Card title="KV" href="/docs/services/kv">
-    The Redis-compatible key-value store that powers MQ's backend storage
+    The KV-compatible key-value store that powers MQ's backend storage
   </Card>
   <Card title="Stream" href="/docs/services/stream">
     Kafka-compatible streaming gateway over Hanzo PubSub
