@@ -280,7 +280,7 @@ Insights.capture('button_clicked', {
               price="Custom"
               period="contact us"
               description="Dedicated cluster, unlimited events, compliance, and SLA."
-              features={['Unlimited events', 'Dedicated infrastructure', 'Unlimited retention', 'Custom SLA', 'HIPAA / SOC2 ready', 'Dedicated support']}
+              features={['Unlimited events', 'Dedicated infrastructure', 'Unlimited retention', 'Custom SLA', 'Certification scoped per engagement', 'Dedicated support']}
               cta="Contact Sales"
               ctaHref="https://hanzo.ai"
               ctaExternal
