@@ -3,7 +3,7 @@ title: Architecture
 description: System design, data flow, and component interactions in Hanzo DNS.
 ---
 
-Hanzo DNS is a multi-tenant DNS management system with PostgreSQL as the source of truth, CoreDNS as the authoritative resolver, and Cloudflare at the edge.
+Hanzo DNS is a multi-tenant DNS management system with SQL as the source of truth, CoreDNS as the authoritative resolver, and Cloudflare at the edge.
 
 ## System Overview
 
@@ -15,7 +15,7 @@ Hanzo DNS is a multi-tenant DNS management system with PostgreSQL as the source 
 └──────────────┬──────────────────────────────────────────┘
                │ tRPC (org-scoped)
 ┌──────────────▼──────────────────────────────────────────┐
-│  PostgreSQL (Prisma)                                     │
+│  SQL        (Prisma)                                     │
 │  DnsZone, DnsRecord, DnsAuditLog — scoped by orgId      │
 └──────┬─────────────────────────────┬────────────────────┘
        │                             │
@@ -46,15 +46,15 @@ The Console provides the user-facing interface for DNS management. It's implemen
 - `features/dns/hooks.ts` — React Query hooks with cache invalidation
 - `features/dns/components/` — Dashboard, zone list, record table, forms
 
-### PostgreSQL (Source of Truth)
+### SQL (Source of Truth)
 
-All DNS state lives in PostgreSQL, managed by Prisma:
+All DNS state lives in SQL, managed by Prisma:
 
 - **DnsZone** — Zone metadata, org scoping, CF zone linkage
 - **DnsRecord** — DNS records with CF sync flag and tracking
 - **DnsAuditLog** — Change history with user attribution
 
-PostgreSQL is the **single source of truth**. CoreDNS and Cloudflare are derived views that are reconciled by the operator.
+SQL is the **single source of truth**. CoreDNS and Cloudflare are derived views that are reconciled by the operator.
 
 ### DNS Operator (Reconciliation)
 
@@ -63,7 +63,7 @@ A Kubernetes operator written in Go with controller-runtime. It has four control
 1. **DnsZone Controller** — Syncs zone records to CoreDNS via `/v1/dns/sync`
 2. **DnsRecord Controller** — Validates records and triggers zone re-sync
 3. **Cloudflare Controller** — Pushes records with `syncToCloudflare` to CF API
-4. **PostgreSQL Watcher** — Polls PG for changes and creates/updates CRDs
+4. **SQL Watcher** — Polls PG for changes and creates/updates CRDs
 
 ### CoreDNS (Authoritative DNS)
 
@@ -83,7 +83,7 @@ Cloudflare provides edge DNS resolution for public zones. Records are pushed via
 ### Record Creation
 
 ```
-User → Console UI → tRPC createRecord → PostgreSQL INSERT
+User → Console UI → tRPC createRecord → SQL INSERT
                                               ↓
                               Audit log entry created
                                               ↓
@@ -107,9 +107,9 @@ Client → :53 query → CoreDNS hanzodns plugin
 
 ## Design Decisions
 
-### Why PostgreSQL as Source of Truth?
+### Why SQL as Source of Truth?
 
-- Console already uses Prisma/PostgreSQL — no new infrastructure
+- Console already uses Prisma/SQL — no new infrastructure
 - Relational model fits zone/record hierarchy naturally
 - ACID transactions for consistent audit logging
 - Prisma migrations for schema evolution

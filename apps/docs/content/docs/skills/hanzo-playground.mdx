@@ -13,7 +13,7 @@ Hanzo Playground is a **Kubernetes-style control plane for AI bots**. It provide
 - **Workflow DAGs**: Compose multi-bot workflows with dependency tracking and observability
 - **Memory scopes**: Global, bot, session, and run-scoped memory synced by control plane
 - **Cryptographic identity**: W3C DID/VC for every bot execution (opt-in audit trails)
-- **Dual storage**: SQLite/BoltDB for local dev, PostgreSQL for production
+- **Dual storage**: SQLite/BoltDB for local dev, SQL for production
 - **Cloud provisioning**: Provision agents as K8s pods (Linux) or VMs via Visor (Mac/Windows)
 - **Embedded Web UI**: React/TypeScript admin dashboard served from the Go binary
 - **Multi-SDK**: Python (FastAPI), Go, and TypeScript SDKs for building bots
@@ -25,7 +25,7 @@ Hanzo Playground is a **Kubernetes-style control plane for AI bots**. It provide
 - **Go SDK**: Native Go bot builder with skills registration
 - **TypeScript SDK**: TypeScript bot client
 - **Web UI**: React 18, TypeScript, Vite, Tailwind CSS, Radix UI
-- **Database**: SQLite/BoltDB (local), PostgreSQL (cloud), Goose migrations
+- **Database**: SQLite/BoltDB (local), SQL (cloud), Goose migrations
 - **Version**: 0.1.41-rc.197
 - **Image**: `ghcr.io/hanzoai/playground:latest`
 - **Production**: `playground.hanzo.bot` (alias: `app.hanzo.bot`)
@@ -71,7 +71,7 @@ control-plane/
     server/                    # HTTP server (Gin), middleware, routing
     handlers/                  # REST/gRPC request handlers
     services/                  # Business logic (workflow, bot registry, DID/VC)
-    storage/                   # Data layer (SQLite/BoltDB, PostgreSQL)
+    storage/                   # Data layer (SQLite/BoltDB, SQL)
     cloud/                     # Cloud provisioning (K8s + Visor)
     mcp/                       # Model Context Protocol integration
     encryption/                # Cryptographic primitives (DID/VC)
@@ -95,10 +95,10 @@ deployments/
 cd control-plane
 go run ./cmd/playground dev
 # Runs at http://localhost:8080, UI at http://localhost:8080/ui/
-# Uses SQLite + BoltDB (no PostgreSQL needed)
+# Uses SQLite + BoltDB (no SQL needed)
 ```
 
-### Cloud Mode (PostgreSQL)
+### Cloud Mode (SQL)
 
 ```bash
 cd control-plane
@@ -210,8 +210,8 @@ Linux agents run as K8s pods (agent + operative sidecar). Mac/Windows agents use
 | Mode | Backend | Use Case |
 |------|---------|----------|
 | `local` | SQLite + BoltDB | Development, testing |
-| `postgresql` | PostgreSQL | Production, cloud |
-| `cloud` | PostgreSQL | Distributed deployments |
+| `postgresql` | SQL | Production, cloud |
+| `cloud` | SQL | Distributed deployments |
 
 ## Build and Test
 
@@ -249,8 +249,8 @@ LOG_LEVEL=info                          # debug, info, warn, error
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| Control plane won't start | Bad DATABASE_URL | Check PostgreSQL connection string |
-| Migrations fail | PostgreSQL not running | Start PostgreSQL, verify connection |
+| Control plane won't start | Bad DATABASE_URL | Check SQL connection string |
+| Migrations fail | SQL not running | Start SQL, verify connection |
 | Bot can't connect | Wrong server URL | Set `PLAYGROUND_URL=http://localhost:8080` |
 | UI not loading | Dev server not running | Run both Vite dev server and control plane |
 | DB pool exhausted | Too many connections | Increase `PLAYGROUND_STORAGE_POSTGRES_MAX_CONNECTIONS` |

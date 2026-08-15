@@ -5,7 +5,7 @@ description: "Hanzo Reconciliation is an automated transaction matching engine t
 
 ## Overview
 
-Hanzo Reconciliation is an **automated transaction matching engine** that compares ledger balances against payment provider data to verify financial consistency and identify discrepancies. It runs as a standalone HTTP service backed by PostgreSQL, with policies that define how and when to reconcile ledger and payment data. Part of the Hanzo treasury stack.
+Hanzo Reconciliation is an **automated transaction matching engine** that compares ledger balances against payment provider data to verify financial consistency and identify discrepancies. It runs as a standalone HTTP service backed by SQL, with policies that define how and when to reconcile ledger and payment data. Part of the Hanzo treasury stack.
 
 ### Why Hanzo Reconciliation?
 
@@ -20,12 +20,12 @@ Hanzo Reconciliation is an **automated transaction matching engine** that compar
 
 - **Language**: Go 1.24
 - **HTTP**: go-chi/chi v5
-- **ORM**: uptrace/bun (PostgreSQL via pgdialect)
+- **ORM**: uptrace/bun (SQL via pgdialect)
 - **DI**: uber/fx
 - **CLI**: spf13/cobra
 - **Auth**: OAuth2 client credentials (Formance SDK)
 - **Observability**: OpenTelemetry (traces + metrics)
-- **Testing**: testify + gomock + dockertest (PostgreSQL integration tests)
+- **Testing**: testify + gomock + dockertest (SQL integration tests)
 - **Build**: goreleaser + Earthly
 
 ### OSS Base
@@ -54,7 +54,7 @@ lux/treasury      On-chain treasury, MPC/KMS wallets
 
 ## Hard requirements
 
-1. **PostgreSQL** (v12+) for policy and reconciliation result storage
+1. **SQL** (v12+) for policy and reconciliation result storage
 2. **Formance Stack** (ledger + payments services) for data sources
 3. **Go 1.24+** for building from source
 
@@ -183,7 +183,7 @@ reconciliation version    # Print version info
 --stack-client-id     OAuth2 client ID for stack API
 --stack-client-secret OAuth2 client secret for stack API
 --auto-migrate        Auto-run database migrations on startup
---postgres-uri        PostgreSQL connection string
+--postgres-uri        SQL connection string
 ```
 
 ## Directory structure
@@ -226,7 +226,7 @@ github.com/hanzoai/reconciliation/
             ping.go                  # Database health check
             utils.go                 # Query utilities
             migrations/              # SQL migration files
-            main_test.go             # Test harness (dockertest PostgreSQL)
+            main_test.go             # Test harness (dockertest SQL)
             policy_test.go           # Policy storage tests
             reconciliations_test.go  # Reconciliation storage tests
 ```
@@ -235,7 +235,7 @@ github.com/hanzoai/reconciliation/
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| Connection refused on startup | PostgreSQL not reachable | Check `--postgres-uri` and network |
+| Connection refused on startup | SQL not reachable | Check `--postgres-uri` and network |
 | Migration fails | Schema conflicts | Run `reconciliation migrate` standalone first |
 | OAuth2 token error | Wrong stack credentials | Verify `--stack-client-id` and `--stack-client-secret` |
 | Empty drift balances | No matching transactions | Check `ledgerQuery` filter matches actual ledger data |

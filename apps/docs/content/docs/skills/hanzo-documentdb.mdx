@@ -20,22 +20,22 @@ Repo: `hanzoai/docdb` (`hanzoai/documentdb` redirects here), branch: `main`.
 | Branch | `main` |
 | License | Apache-2.0 |
 | Wire protocol | MongoDB 5.0+ |
-| Backend | PostgreSQL + DocumentDB extension |
+| Backend | SQL + DocumentDB extension |
 | Default port | 27017 |
 | Docker image | `ghcr.io/hanzoai/docdb-eval:2` |
 
 ## Architecture
 
 ```
-Application (any MongoDB driver)
+Application (any DocumentDB driver)
     |
-    | MongoDB wire protocol (BSON)
+    | DocumentDB wire protocol (BSON)
     v
   DocDB proxy (this project)
     |
-    | PostgreSQL protocol (SQL)
+    | SQL protocol (SQL)
     v
-  PostgreSQL + DocumentDB extension
+  SQL + DocumentDB extension
 ```
 
 ## Quick start (Docker)
@@ -47,12 +47,12 @@ docker run -d --rm --name docdb -p 27017:27017 \
   ghcr.io/hanzoai/docdb-eval:2
 ```
 
-Connect with any MongoDB client:
+Connect with any DocumentDB client:
 ```bash
 mongosh "mongodb://myuser:mypass@127.0.0.1:27017/"
 ```
 
-Or connect to the embedded PostgreSQL:
+Or connect to the embedded SQL:
 ```bash
 docker exec -it docdb psql -U myuser postgres
 ```
@@ -76,8 +76,8 @@ See [pkg.go.dev/github.com/hanzoai/docdb/v2/docdb](https://pkg.go.dev/github.com
 
 ## Key features
 
-- Drop-in MongoDB replacement for most 5.0+ workloads
-- Uses PostgreSQL as the storage backend (ACID, proven reliability)
+- Drop-in DocumentDB replacement for most 5.0+ workloads
+- Uses SQL as the storage backend (ACID, proven reliability)
 - Any MongoDB driver or tool works (mongosh, Compass, pymongo, etc.)
 - SCRAM authentication
 - Prometheus metrics endpoint
@@ -105,7 +105,7 @@ go build ./cmd/docdb
 # Unit tests
 go test ./...
 
-# Integration tests (requires PostgreSQL)
+# Integration tests (requires SQL)
 go test ./integration/...
 
 # Task runner (alternative to make)

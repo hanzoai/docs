@@ -103,7 +103,7 @@ Use this skill when:
               +----------+  +---+---+  +----------+
               |             |       |              |
      +--------v---+  +-----v--+  +-v--------+  +--v--------+
-     | SQLite/PG  |  | Redis  |  | NATS     |  | Datastore|
+     | SQLite/PG  |  | KV  |  | NATS     |  | Datastore|
      | (per-org)  |  | (cache)|  | (events) |  | (analytics|
      +------------+  +--------+  +----------+  +-----------+
               |
@@ -117,7 +117,7 @@ Use this skill when:
 
 - **Namespace-based**: `Organization.Name` IS the namespace
 - Per-org SQLite databases: `{COMMERCE_DIR}/orgs/{orgName}/data.db`
-- Per-org PostgreSQL: tenant_id column isolation
+- Per-org SQL: tenant_id column isolation
 - `middleware.Namespace()` sets context namespace for all downstream queries
 - `"platform"` org returns empty namespace (admin bypass, documented)
 - Dual auth: legacy access tokens (org-bound) + IAM JWT (OIDC/JWKS via hanzo.id)
@@ -267,7 +267,7 @@ commerce/
   db/                  Database Backends
     sqlite.go          SQLite + sqlite-vec (embedded, per-org)
     postgres.go        PostgreSQL + pgvector (production)
-    mongo.go           MongoDB (alternative)
+    mongo.go           DocumentDB (alternative)
     datastore.go       Datastore via hanzoai/datastore-go (analytics)
     db.go              Manager, interface, pool
     query.go           Query builder (PascalCase -> camelCase auto-conversion)
@@ -284,7 +284,7 @@ commerce/
 
   infra/               Infrastructure Clients
     infra.go           Manager (connect, health, close)
-    kv.go              Redis/Valkey client
+    kv.go              KV client
     search.go          Meilisearch client
     vector.go          Qdrant vector client
     storage.go         S3 storage client (hanzoai/storage-go)
@@ -360,7 +360,7 @@ commerce/
 # Development (SQLite, local)
 go run cmd/commerce/main.go serve --dev
 
-# Production (PostgreSQL)
+# Production (SQL)
 SQL_URL=postgresql://user:pass@host:5432/commerce \
   KMS_ENABLED=true KMS_URL=http://kms:8080 \
   ./commerce serve 0.0.0.0:8001
@@ -380,15 +380,15 @@ docker build --platform linux/amd64 -t ghcr.io/hanzoai/commerce:latest .
 | `COMMERCE_SECRET` | `change-me-in-production` | Encryption secret |
 | `COMMERCE_HTTP` | `127.0.0.1:8090` | Listen address |
 | `COMMERCE_DEV` | `false` | Development mode |
-| `SQL_URL` | - | PostgreSQL DSN (production) |
-| `KV_URL` | - | Redis/Valkey URL |
+| `SQL_URL` | - | SQL DSN (production) |
+| `KV_URL` | - | KV URL |
 | `SEARCH_URL` | - | Meilisearch URL |
 | `VECTOR_URL` | - | Qdrant URL |
 | `S3_URL` | - | Hanzo S3 endpoint |
 | `PUBSUB_URL` | - | NATS URL |
 | `TASKS_URL` | - | Temporal URL |
 | `DATASTORE_URL` | - | Datastore DSN |
-| `DOC_URL` | - | MongoDB URL |
+| `DOC_URL` | - | DocumentDB URL |
 | `KMS_ENABLED` | `false` | Enable KMS secret management |
 | `KMS_URL` | - | KMS base URL |
 | `KMS_CLIENT_ID` | - | KMS Universal Auth client ID |

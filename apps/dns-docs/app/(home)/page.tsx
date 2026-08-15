@@ -205,7 +205,7 @@ createRecord({
             K8s Operator
           </h3>
           <p className="text-fd-muted-foreground mb-4">
-            Kubernetes operator bridges PostgreSQL, CoreDNS, and Cloudflare.
+            Kubernetes operator bridges SQL, CoreDNS, and Cloudflare.
             Three CRDs for declarative DNS management.
           </p>
           <pre className="bg-fd-muted/30 rounded-lg p-3 text-xs overflow-x-auto font-mono">

@@ -72,7 +72,7 @@ const features = [
     icon: ZapIcon,
     title: 'Rate Limiting & Caching',
     description:
-      'Intelligent response caching with Redis. Global and per-key rate limits. Automatic retry with exponential backoff.',
+      'Intelligent response caching with KV. Global and per-key rate limits. Automatic retry with exponential backoff.',
   },
 ];
 

@@ -85,7 +85,7 @@ export default async function Page() {
           </h1>
           <p className="text-lg text-fd-muted-foreground max-w-2xl mb-8">
             Auth, database, realtime subscriptions, file storage, and server-side functions
-            compiled into a single Go binary. SQLite locally, PostgreSQL in production.
+            compiled into a single Go binary. SQLite locally, SQL in production.
             REST API auto-generated from your schema.
           </p>
           <div className="flex flex-row items-center justify-center gap-4 flex-wrap w-fit">
@@ -145,7 +145,7 @@ $ `}<span className="text-fd-foreground">curl localhost:8090/v1/collections/task
             Database
           </h3>
           <p className="text-fd-muted-foreground mb-4">
-            SQLite for local dev, PostgreSQL for production. REST API auto-generated
+            SQLite for local dev, SQL for production. REST API auto-generated
             from your schema with filtering, sorting, pagination, and relation expansion.
           </p>
           <pre className="bg-fd-muted/30 rounded-lg p-3 text-xs overflow-x-auto font-mono">
@@ -388,7 +388,7 @@ base.collection('messages')
                 <h4 className="font-medium text-lg">Production</h4>
               </div>
               <p className="text-fd-muted-foreground text-sm mb-4">
-                PostgreSQL backend, horizontal replicas, K8s-native. Same binary, different config.
+                SQL backend, horizontal replicas, K8s-native. Same binary, different config.
               </p>
               <pre className="bg-fd-muted/30 rounded-lg p-3 text-xs font-mono">
 {`# Kubernetes deployment

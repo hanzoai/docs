@@ -8,7 +8,7 @@ Hanzo DNS integrates with Cloudflare to provide edge DNS resolution, DDoS protec
 ## How It Works
 
 ```
-PostgreSQL (source of truth)
+SQL (source of truth)
     ↓ DNS Operator watches for changes
     ↓
     ├── CoreDNS (authoritative, internal)
@@ -18,7 +18,7 @@ PostgreSQL (source of truth)
         CF API → global anycast network
 ```
 
-1. Records are created in PostgreSQL via the Console or tRPC API
+1. Records are created in SQL via the Console or tRPC API
 2. The DNS Operator watches for records with `syncToCloudflare: true`
 3. Operator pushes those records to the Cloudflare API
 4. Cloudflare serves them from its global edge network
@@ -79,10 +79,10 @@ Hanzo manages the following zones through Cloudflare:
 
 The DNS Operator runs a continuous reconciliation loop:
 
-1. **Poll**: Check PostgreSQL for records with `syncToCloudflare: true`
+1. **Poll**: Check SQL for records with `syncToCloudflare: true`
 2. **Diff**: Compare against current Cloudflare state
 3. **Apply**: Create, update, or delete CF records to match source of truth
-4. **Track**: Store `cloudflareRecordId` back in PostgreSQL for future updates
+4. **Track**: Store `cloudflareRecordId` back in SQL for future updates
 
 The operator handles:
 - Creating new CF records
@@ -94,7 +94,7 @@ The operator handles:
 
 The legacy `dns-sync.sh` script is replaced by the operator-driven reconciliation. Existing zone YAML files in `hanzo/dns/zones/` serve as the migration source:
 
-1. Import zone YAML data into PostgreSQL
+1. Import zone YAML data into SQL
 2. Verify records match current Cloudflare state
 3. Enable operator reconciliation
 4. Deprecate zone YAMLs and dns-sync.sh

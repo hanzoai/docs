@@ -22,7 +22,7 @@ Hanzo O11y is a **full-stack observability platform** for logs, metrics, and tra
 - **Frontend**: React 18, TypeScript, Vite (rolldown-vite), Ant Design, `@hanzo/ui`, `@hanzo/insights`
 - **Telemetry Store**: Datastore (`ghcr.io/hanzoai/datastore`)
 - **Ingestion**: OpenTelemetry Collector fork (`ghcr.io/hanzoai/otel-collector`)
-- **Metadata Store**: SQLite (community) or PostgreSQL (enterprise)
+- **Metadata Store**: SQLite (community) or SQL (enterprise)
 - **Auth**: JWT tokens (built-in), OIDC + SAML (enterprise), OpenFGA for authz
 - **Tests**: Go (`go test -race ./...`), Frontend (Jest), Integration (Python/uv/pytest)
 
@@ -76,7 +76,7 @@ Hanzo O11y is a **full-stack observability platform** for logs, metrics, and tra
                                                       │
 ┌──────────────┐     ┌───────────────────┐            │
 │  Frontend    │────>│  O11y Backend     │────────────┘
-│  (React/Vite)│     │  (Go, :8080)      │────> SQLite/PostgreSQL
+│  (React/Vite)│     │  (Go, :8080)      │────> SQLite/SQL       
 └──────────────┘     └───────────────────┘      (metadata, users, alerts)
 ```
 
@@ -85,7 +85,7 @@ Hanzo O11y is a **full-stack observability platform** for logs, metrics, and tra
 1. Applications instrumented with OpenTelemetry SDKs send traces, metrics, and logs to the OTel Collector
 2. OTel Collector processes and exports to Datastore databases: `observe_traces`, `observe_metrics`, `observe_logs`, `observe_meter`, `observe_metadata`
 3. The Go backend queries Datastore for telemetry data and serves the React frontend
-4. SQLite (or PostgreSQL in enterprise) stores metadata: users, orgs, dashboards, alerts, saved views
+4. SQLite (or SQL in enterprise) stores metadata: users, orgs, dashboards, alerts, saved views
 
 ### Directory Structure
 
@@ -98,12 +98,12 @@ pkg/
   apiserver/       # HTTP API server (Gin/gorilla-mux)
   authn/           # Authentication (JWT)
   authz/           # Authorization
-  cache/           # In-memory or Redis cache
+  cache/           # In-memory or KV cache
   prometheus/      # PromQL query engine
   querier/         # Query layer over Datastore
   query-service/   # Legacy query service
   querybuilder/    # Query builder for UI
-  sqlstore/        # SQLite/PostgreSQL metadata store
+  sqlstore/        # SQLite/SQL metadata store
   telemetrylogs/   # Log query handlers
   telemetrymetrics/# Metric query handlers
   telemetrytraces/ # Trace query handlers
@@ -248,7 +248,7 @@ All languages supported by OpenTelemetry work: Java, Python, Node.js, Go, .NET, 
 | Fine-grained RBAC (OpenFGA) | No | Yes |
 | Anomaly Detection | No | Yes |
 | Multi-tenant Gateway | No | Yes |
-| PostgreSQL metadata store | No | Yes |
+| SQL metadata store | No | Yes |
 
 ## Troubleshooting
 

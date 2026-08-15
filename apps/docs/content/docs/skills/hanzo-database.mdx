@@ -1,5 +1,5 @@
 ---
-title: "Hanzo Database - PostgreSQL, Redis & Vector Storage"
+title: "Hanzo Database - SQL, KV & Vector Storage"
 description: "Hanzo Database covers the PostgreSQL (with pgvector), Redis/Valkey, MongoDB, and Hanzo S3 configurations used across the Hanzo ecosystem — all running in-cluster on K8s, no managed database services."
 ---
 
@@ -11,15 +11,15 @@ Hanzo Database covers the PostgreSQL (with pgvector), Redis, MongoDB, and Hanzo 
 
 - **Cost**: 5-10x cheaper than managed DBs at scale
 - **Latency**: Same-cluster networking, no external hops
-- **Control**: Full PostgreSQL config, extensions, versions
+- **Control**: Full SQL config, extensions, versions
 - **Consistency**: Same setup across all environments
 
 ## When to use
 
-- Configuring PostgreSQL for Hanzo services
+- Configuring SQL for Hanzo services
 - Setting up pgvector for AI embeddings
-- Redis caching, sessions, and job queues
-- MongoDB for document storage (Chat)
+- KV caching, sessions, and job queues
+- DocumentDB for document storage (Chat)
 - Database troubleshooting and maintenance
 
 ## Quick reference
@@ -27,8 +27,8 @@ Hanzo Database covers the PostgreSQL (with pgvector), Redis, MongoDB, and Hanzo 
 | Database | Port | Image | Use Case |
 |----------|------|-------|----------|
 | PostgreSQL | 5432 | `postgres:16` | Primary RDBMS, pgvector |
-| Redis | 6379 | `redis:7-alpine` | Cache, sessions, BullMQ queues |
-| MongoDB | 27017 | `mongo:7` | Document storage (Chat) |
+| KV | 6379 | `redis:7-alpine` | Cache, sessions, BullMQ queues |
+| DocumentDB | 27017 | `mongo:7` | Document storage (Chat) |
 | Hanzo S3 | 9000 | `ghcr.io/hanzoai/s3` | S3-compatible object storage |
 
 ## Production Layout
@@ -37,7 +37,7 @@ Hanzo Database covers the PostgreSQL (with pgvector), Redis, MongoDB, and Hanzo 
 
 | Service | Database | Host |
 |---------|----------|------|
-| `postgres.hanzo.svc` | — | Shared PostgreSQL instance |
+| `postgres.hanzo.svc` | — | Shared SQL instance |
 | ↳ | `iam` | Hanzo IAM (hanzo.id) |
 | ↳ | `cloud` | Cloud dashboard |
 | ↳ | `console` | Observability |
@@ -49,7 +49,7 @@ Hanzo Database covers the PostgreSQL (with pgvector), Redis, MongoDB, and Hanzo 
 
 | Service | Database | Host |
 |---------|----------|------|
-| `postgres.hanzo.svc` | — | Shared PostgreSQL instance |
+| `postgres.hanzo.svc` | — | Shared SQL instance |
 | ↳ | `cloud` | Lux Cloud |
 | ↳ | `commerce` | Commerce API |
 | ↳ | `console` | Console |
@@ -170,7 +170,7 @@ rows, _ := conn.Query(ctx,
 )
 ```
 
-## Redis Patterns
+## KV Patterns
 
 ```bash
 # Connection
