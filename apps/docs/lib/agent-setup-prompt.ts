@@ -39,16 +39,16 @@ Complete all applicable steps yourself by running commands directly. Do not ask 
 
 If the \`hanzo\` command is not already available, install it:
 
+### macOS or Linux
+
+\`\`\`sh
+curl -fsSL hanzo.sh/cli | sh
+\`\`\`
+
 ### macOS with Homebrew
 
 \`\`\`sh
 brew install hanzoai/tap/hanzo
-\`\`\`
-
-### macOS or Linux
-
-\`\`\`sh
-curl -fsSL https://get.hanzo.ai/cli | sh
 \`\`\`
 
 Do not run both installation methods.
@@ -62,7 +62,7 @@ hanzo version
 Authenticate with Hanzo:
 
 \`\`\`sh
-hanzo login
+hanzo auth login
 \`\`\`
 
 This opens a browser for OAuth. Allow the user to complete that browser interaction, then continue automatically.
