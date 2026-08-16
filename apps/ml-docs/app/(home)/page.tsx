@@ -452,7 +452,7 @@ export default function Page() {
       <nav className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-14">
         {[
           { href: 'https://app.hanzo.bot', icon: UsersIcon, label: 'Dashboard', sub: 'Launch app.hanzo.bot', className: 'border-[rgba(255,77,77,0.25)] bg-[rgba(255,77,77,0.06)] hover:border-brand hover:shadow-[0_12px_40px_rgba(255,77,77,0.25)]' },
-          { href: 'https://discord.gg/hanzo', icon: MessageCircleIcon, label: 'Discord', sub: 'Join community', className: 'hover:border-[#5865F2] hover:shadow-[0_12px_40px_rgba(88,101,242,0.2)]' },
+          { href: 'https://discord.gg/CJCyAsm9Vr', icon: MessageCircleIcon, label: 'Discord', sub: 'Join community', className: 'hover:border-[#5865F2] hover:shadow-[0_12px_40px_rgba(88,101,242,0.2)]' },
           { href: 'https://github.com/hanzoai/bot', icon: GlobeIcon, label: 'GitHub', sub: 'View source', className: 'hover:border-fd-foreground hover:shadow-[0_12px_40px_rgba(240,244,255,0.1)]' },
           { href: '/docs', icon: BookOpenIcon, label: 'Docs', sub: 'Get started', className: 'hover:border-[#00e5cc] hover:shadow-[0_12px_40px_rgba(0,229,204,0.15)]' },
         ].map((cta) => {
