@@ -42,6 +42,29 @@ const ADD_COMMAND = `claude mcp add --transport http hanzo-cloud ${MCP_DOOR}`;
 /** Slugs this section spends on its own pages, so no product folder may take them. */
 const RESERVED = new Set(['index', 'all-tools']);
 
+/** Slugs a product folder spends on its own files, so no tool page may take them. */
+const RESERVED_PAGE = new Set(['index', 'meta']);
+
+/**
+ * What a name is published as when it is one a container has already spent.
+ * Two halves of one rule: the RESERVED sets say which slugs are taken, this says
+ * what to publish instead — so the next collision is a line of data, not a
+ * change to the code below.
+ *
+ * `index` is both a product and the tool that covers it, and `index` is what a
+ * section and a folder each call their own landing page. It manages indexes
+ * (`/v1/index/indexes`), so the plural is the product's own noun and not a
+ * suffix invented to dodge the clash.
+ */
+const SLUG = new Map([['index', 'indexes']]);
+
+/** The slug a product or tool is published under. */
+export const slugOf = (name: string): string => SLUG.get(name) ?? name;
+
+/** The one place that knows the shape of a URL in this section. */
+const productHref = (product: string): string => `/docs/mcp-tools/${slugOf(product)}`;
+const toolHref = (product: string, tool: string): string => `${productHref(product)}/${slugOf(tool)}`;
+
 // ------------------------------------------------------------------ schema
 
 /** A `$ref` into the tool's own `$defs`, as the door writes them. */
@@ -699,7 +722,7 @@ function renderProductIndex(product: string, tools: McpTool[], cat: McpCatalog, 
     const ops = mapped.get(t.name);
     const req = fieldsOf(t.inputSchema ?? {}, constraintsOf(ops)).filter((f) => f.required);
     L.push(
-      `| [\`${code(t.name)}\`](/docs/mcp-tools/${product}/${t.name}) | ${
+      `| [\`${code(t.name)}\`](${toolHref(product, t.name)}) | ${
         ops?.length ? `\`${ops[0].method.toUpperCase()} ${code(ops[0].path)}\`` : '—'
       } | ${Object.keys(t.inputSchema?.properties ?? {}).length} | ${
         req.length ? req.map((f) => `\`${code(f.name)}\``).join(', ') : '—'
@@ -742,7 +765,7 @@ function renderCatalog(groups: Map<string, McpTool[]>, cat: McpCatalog, mapped: 
   L.push('|---|---|---|');
   for (const p of products) {
     L.push(
-      `| [${text(p)}](/docs/mcp-tools/${p}) | ${groups.get(p)!.length} | ${
+      `| [${text(p)}](${productHref(p)}) | ${groups.get(p)!.length} | ${
         p === 'unmapped' ? 'not described by the OpenAPI document' : `[API reference](/docs/openapi/${p})`
       } |`,
     );
@@ -756,7 +779,7 @@ function renderCatalog(groups: Map<string, McpTool[]>, cat: McpCatalog, mapped: 
     for (const t of groups.get(p)!) {
       const ops = mapped.get(t.name);
       L.push(
-        `| [\`${code(t.name)}\`](/docs/mcp-tools/${p}/${t.name}) | ${
+        `| [\`${code(t.name)}\`](${toolHref(p, t.name)}) | ${
           ops?.length ? `\`${ops[0].method.toUpperCase()} ${code(ops[0].path)}\`` : '—'
         } | ${text(firstSentence(t.description, 110))} |`,
       );
@@ -1004,17 +1027,19 @@ export async function genMcpPages(outDir: string = OUT_DIR): Promise<{ pages: nu
   // URL, and one would silently win. `catalog` is a real product in the
   // document, which is why the tool listing is not called that. Fail loudly if
   // a future product takes one of the two names this section reserves.
-  const clash = [...ordered.keys()].filter((p) => RESERVED.has(p));
+  const clash = [...ordered.keys()].filter((p) => RESERVED.has(slugOf(p)));
   if (clash.length) {
     throw new Error(
-      `[mcp-ref] product ${clash.join(', ')} collides with this section's own page — rename the page, not the product`,
+      `[mcp-ref] product ${clash.join(', ')} still resolves to a slug this section reserves — give it one in SLUG`,
     );
   }
   // Same hazard one level down: a tool named `index` would be written over its
   // own product's index page, and the folder would lose a tool without a word.
-  const shadow = cat.tools.filter((t) => t.name === 'index' || t.name === 'meta');
+  const shadow = cat.tools.filter((t) => RESERVED_PAGE.has(slugOf(t.name)));
   if (shadow.length) {
-    throw new Error(`[mcp-ref] tool ${shadow.map((t) => t.name).join(', ')} would overwrite a folder page`);
+    throw new Error(
+      `[mcp-ref] tool ${shadow.map((t) => t.name).join(', ')} still resolves to a slug its folder reserves — give it one in SLUG`,
+    );
   }
 
   fs.rmSync(outDir, { recursive: true, force: true });
@@ -1022,16 +1047,16 @@ export async function genMcpPages(outDir: string = OUT_DIR): Promise<{ pages: nu
 
   let pages = 0;
   for (const [product, tools] of ordered) {
-    const dir = path.join(outDir, product);
+    const dir = path.join(outDir, slugOf(product));
     fs.mkdirSync(dir, { recursive: true });
     for (const t of tools) {
-      fs.writeFileSync(path.join(dir, `${t.name}.mdx`), renderTool(t, mapped.get(t.name), cat, doc));
+      fs.writeFileSync(path.join(dir, `${slugOf(t.name)}.mdx`), renderTool(t, mapped.get(t.name), cat, doc));
       pages++;
     }
     fs.writeFileSync(path.join(dir, 'index.mdx'), renderProductIndex(product, tools, cat, mapped));
     fs.writeFileSync(
       path.join(dir, 'meta.json'),
-      JSON.stringify({ title: product, pages: ['index', ...tools.map((t) => t.name)] }, null, 2) + '\n',
+      JSON.stringify({ title: slugOf(product), pages: ['index', ...tools.map((t) => slugOf(t.name))] }, null, 2) + '\n',
     );
     pages++;
   }
@@ -1045,7 +1070,7 @@ export async function genMcpPages(outDir: string = OUT_DIR): Promise<{ pages: nu
         title: 'Cloud MCP',
         description: `The ${cat.tools.length} tools documented here, generated from tools/list.`,
         icon: 'Plug',
-        pages: ['index', 'all-tools', ...ordered.keys()],
+        pages: ['index', 'all-tools', ...[...ordered.keys()].map(slugOf)],
       },
       null,
       2,
@@ -1055,7 +1080,7 @@ export async function genMcpPages(outDir: string = OUT_DIR): Promise<{ pages: nu
   // Every tool got a page, and every page is reachable from the catalogue: the
   // two properties this reference claims, checked rather than asserted.
   const written = new Set<string>();
-  for (const [product, tools] of ordered) for (const t of tools) written.add(`${product}/${t.name}`);
+  for (const [product, tools] of ordered) for (const t of tools) written.add(`${slugOf(product)}/${slugOf(t.name)}`);
   if (written.size !== cat.tools.length) {
     throw new Error(
       `[mcp-ref] ${cat.tools.length} tools collapsed onto ${written.size} pages — two tools share a path`,
