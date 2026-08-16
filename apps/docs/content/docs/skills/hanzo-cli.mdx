@@ -1,112 +1,83 @@
 ---
 title: "Hanzo CLI"
-description: "Hybrid Rust+Node+Python command-line tool providing unified access to all Hanzo services with project scaffolding, local development, deployment, and authentication."
+description: "The hanzo command — one native binary that reaches every product of the Hanzo cloud, with authentication, local settings and an AI coding session built in."
 ---
 
 ## Overview
 
-Hanzo CLI is a **hybrid Rust+Node+Python command-line tool** — a single CLI that provides unified access to all Hanzo services. Handles project scaffolding, local development, deployment, authentication, and proxies to TypeScript tooling (docs, MDX, UI, MCP) when needed.
+Hanzo CLI is a **single native binary** written in Rust. Every product of the
+cloud is a command group, and each group's subcommands are that product's
+operations — generated from the same contract the API, the SDKs and the MCP
+tools serve. So the CLI never lags the API: a new endpoint is a new subcommand.
 
-### Why Hanzo CLI?
+A first word the CLI does not recognize is read as a **task**, and starts an AI
+coding session on it.
 
-- **Polyglot**: Rust binary core with Node.js and Python SDK proxying
-- **Unified interface**: All Hanzo services from one tool
-- **TOML config**: Human-readable configuration at `~/.config/hanzo/config.toml`
-- **Project scaffolding**: Init new projects with templates
-- **Dev server**: Local development with hot reload
-- **Deploy**: Push to Hanzo Platform from terminal
-- **Scriptable**: JSON output with `--json`
+The full command reference lives at
+[CLI Reference](/docs/services/platform/getting-started/cli); this page is the
+skill summary.
 
 ## When to use
 
-- Scaffolding new Hanzo projects
-- Running local development servers
-- Building and deploying applications
-- Authentication and API key management
-- Running agents and commerce backends
-- Proxying to TypeScript SDK tooling (docs, MCP, etc.)
+- Signing in and holding several identities at once
+- Reaching any cloud product from a terminal or a CI job
+- Managing projects, deployments, clusters, logs, keys and secrets
+- Running an org's agents
+- Starting a coding session on a repo
 
 ## Quick reference
 
 | Item | Value |
 |------|-------|
-| Binary | `hanzo` (Rust + Node + Python) |
+| Binary | `hanzo` (Rust, no runtime required) |
 | Repo | `github.com/hanzoai/cli` |
+| Install | `curl -fsSL hanzo.sh/cli \| sh` |
+| npm | `@hanzo/cli` (downloads the same binary) |
 | Config | `~/.config/hanzo/config.toml` |
-| Auth | OAuth2 via browser |
-| Install | `cargo install hanzo-cli` or download binary |
+| Credentials | separate `0600` file, written only by `hanzo auth` |
+| Auth | Hanzo IAM over OIDC |
+| API | `https://api.hanzo.ai`, paths under `/v1/` |
 
 ## Installation
 
 ```bash
-# From cargo (Rust)
-cargo install hanzo-cli
+curl -fsSL hanzo.sh/cli | sh
+```
 
-# From release binary (macOS)
-curl -L https://github.com/hanzoai/cli/releases/latest/download/hanzo-darwin-arm64 -o /usr/local/bin/hanzo
-chmod +x /usr/local/bin/hanzo
+The binary is verified against its published sha256 and lands in `~/.local/bin`.
+On macOS you can use the tap instead:
 
-# From release binary (Linux)
-curl -L https://github.com/hanzoai/cli/releases/latest/download/hanzo-linux-amd64 -o /usr/local/bin/hanzo
-chmod +x /usr/local/bin/hanzo
+```bash
+brew install hanzoai/tap/hanzo
+```
 
-# Verify
+Releases publish `hanzo-<os>-<arch>.tar.gz` beside a `.sha256` for every
+platform, so a CI job can fetch and verify one directly.
+
+```bash
 hanzo --version
 hanzo --help
 ```
 
-## Configuration
+## Shape
 
-```toml
-# ~/.config/hanzo/config.toml
-
-[auth]
-token = "..."
-refresh_token = "..."
-expires_at = "2026-04-01T00:00:00Z"
-
-[defaults]
-org = "hanzo"
-project = "my-app"
-environment = "production"
-
-[api]
-base_url = "https://api.hanzo.ai"
-iam_url = "https://hanzo.id"
-
-[sdk]
-# Polyglot SDK runtime paths (auto-detected)
-python = "~/.local/bin/python3"
-go = "~/go/bin/go"
-node = "~/.local/bin/node"
+```bash
+hanzo GROUP COMMAND [FLAGS]     # a product operation
+hanzo "fix the failing test"    # a task — starts a coding session
 ```
+
+`hanzo --help` lists every group; `hanzo <group> --help` lists its verbs.
+
+Global flags, valid on every subcommand:
+
+| Flag | Description |
+|------|-------------|
+| `-c`, `--config <FILE>` | Use a different config file for this invocation |
+| `-v`, `--verbose` | Increase logging verbosity (repeat for more) |
+| `-V`, `--version` | Print the CLI version |
+| `--help` | This page, or a subcommand's own help |
 
 ## Commands
-
-### Project Scaffolding
-
-```bash
-hanzo init                        # Interactive project setup
-hanzo init --template next        # From template (next, fastapi, go, rust)
-hanzo init --template commerce    # E-commerce project scaffold
-```
-
-### Local Development
-
-```bash
-hanzo dev                         # Start dev server (auto-detect framework)
-hanzo dev --port 3000             # Custom port
-hanzo run                         # Run project (production mode)
-```
-
-### Build & Deploy
-
-```bash
-hanzo build                       # Build project
-hanzo deploy                      # Deploy to Hanzo Platform
-hanzo deploy --env production     # Deploy to specific environment
-hanzo deploy --branch main        # Deploy specific branch
-```
 
 ### Authentication
 
@@ -119,59 +90,51 @@ hanzo auth use            # Select the active identity
 hanzo auth token          # Print the active access token
 ```
 
-### Commerce
+For CI, sign in without an interactive browser and keep the credential off the
+command line — `--token -` reads it from stdin, never from argv:
 
 ```bash
-hanzo commerce init               # Initialize commerce backend
-hanzo commerce serve              # Start commerce API server
+printf '%s' "$CI_SECRET" | hanzo auth login --provider hanzo --token -
 ```
 
-### Agent
+### Projects and deploys
 
 ```bash
-hanzo agent run my-agent.py       # Run agent via Python SDK
-hanzo agent list                  # List registered agents
+hanzo projects list                    # Every project the org owns
+hanzo projects get <slug>              # Settings, live URL, current deployment
+hanzo init my-app --template typescript  # Scaffold locally (rust | python | typescript)
+hanzo projects deploy <slug>           # Deploy a build
+hanzo projects deployments list <slug> # History, newest first
+hanzo projects purge <slug>            # Flush the edge cache
 ```
 
-### TypeScript Proxy Commands
-
-The CLI transparently proxies to TypeScript SDK tooling:
+### Agents
 
 ```bash
-# Docs tooling (proxies to @hanzo/docs-cli)
-hanzo docs init                   # Initialize docs project
-hanzo docs dev                    # Docs dev server
-
-# MDX processing (proxies to @hanzo/docs-mdx)
-hanzo mdx build                   # Build MDX content
-
-# UI components (proxies to @hanzo/docs-ui)
-hanzo ui init                     # Initialize UI project
-
-# MCP server (proxies to @hanzo/mcp)
-hanzo mcp serve                   # Start MCP server
-hanzo mcp list                    # List available MCP tools
+hanzo agents list             # Every agent defined in the org
+hanzo agents run <ref>        # Run one and get the recorded run back
+hanzo agents runs <ref>       # Past runs
+hanzo agents create           # Define one: model, instructions, tools
 ```
 
-## CI/CD Integration
+### Coding sessions
 
-```yaml
-# .github/workflows/deploy.yml
-jobs:
-  deploy:
-    steps:
-      - uses: actions/checkout@v4
+```bash
+hanzo code                    # Start a session on our own dev agent
+hanzo dev                     # Same, spelled shorter
+hanzo desktop                 # Point an agent at the desktop and browser
+```
 
-      - name: Install Hanzo CLI
-        run: |
-          curl -L https://github.com/hanzoai/cli/releases/latest/download/hanzo-linux-amd64 -o /usr/local/bin/hanzo
-          chmod +x /usr/local/bin/hanzo
+### Everything else
 
-      - name: Deploy
-        env:
-          HANZO_API_KEY: ${{ secrets.HANZO_API_KEY }}
-        run: |
-          hanzo deploy --env production --yes
+```bash
+hanzo clusters list           # Managed and attached BYO clusters
+hanzo logs query              # Search the org's logs
+hanzo keys get                # API keys the caller holds
+hanzo kms secrets list        # Secrets, from KMS
+hanzo mcp servers list        # MCP servers registered for the org
+hanzo commerce catalog        # Commerce, one verb per operation
+hanzo status                  # The whole cloud in one screen
 ```
 
 ## Configuration
@@ -192,16 +155,15 @@ hanzo --config ./other.toml ...  # a different file, this invocation only
 
 | Issue | Cause | Solution |
 |-------|-------|----------|
-| `hanzo: command not found` | Not in PATH | Add binary to PATH or install via cargo |
+| `hanzo: command not found` | `~/.local/bin` not on PATH | Add it, or re-run the installer |
+| A command starts a coding session | The first word is not a group | Check `hanzo --help` for the real group name |
 | Auth fails | Token expired | `hanzo auth login` |
-| Deploy fails | No project linked | Run `hanzo init` first |
-| TS proxy fails | Missing Node.js | Install Node.js 18+ |
-| Python proxy fails | Missing Python | Install Python 3.12+ |
-| Config not found | Wrong path | Check `~/.config/hanzo/config.toml` |
+| Wrong org on a command | Another identity is active | `hanzo auth list`, then `hanzo auth use` |
+| Config not found | Wrong path | `hanzo config list` prints what it reads |
 
 ## Related Skills
 
-- `hanzo/hanzo-platform.md` - PaaS (CLI deploys here)
+- `hanzo/hanzo-platform.md` - PaaS (the CLI deploys here)
 - `hanzo/hanzo-kms.md` - Secret management backend
-- `hanzo/hanzo-chat.md` - Chat API
-- `hanzo/hanzo-dev.md` - Terminal AI coding agent (different tool — dev is AI agent, CLI is service management)
+- `hanzo/hanzo-id.md` - IAM (the CLI authenticates here)
+- `hanzo/hanzo-dev.md` - Terminal AI coding agent (a separate binary)
