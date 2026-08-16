@@ -4,7 +4,6 @@ import { genFlowPages } from './gen-flow-pages';
 import { genMcpPages } from './gen-mcp-pages';
 import { genPricingPage } from './gen-pricing-page';
 import { syncCliCommands } from './sync-cli-commands';
-import { syncMcpTools } from './sync-mcp-tools';
 import { syncSdkClients } from './sync-sdk-clients';
 import { syncProjectDocs } from './sync-project-docs';
 import { sanitizeMdx } from './sanitize-mdx';
@@ -13,11 +12,21 @@ import { checkEndpoints, report } from './check-endpoints';
 async function main() {
   // The document first, then its projections: the reference (one page per
   // product), the six flows (each shown four ways), and the MCP reference (one
-  // page per tool). Flows need both the document and the CLI's command table,
-  // and both flows and the MCP reference need the door's answer, so the syncs
-  // run first.
+  // page per tool). Flows need the document and the CLI's command table, so that
+  // sync runs first — it reads a PINNED commit, so it is still a function of
+  // this one.
+  //
+  // The MCP tool list is NOT synced here. It is vendored
+  // (openapi-specs/mcp-tools.json) and refreshed by `pnpm sync:mcp`, a commit
+  // someone makes and someone reads. Calling the live door from the build made
+  // the site a function of a running service instead of this commit: the door
+  // gained a tool named `index`, that name is one this section spends on its own
+  // landing page, and the collision gate — correctly — failed every build from
+  // that moment, on commits that had already gone green hours earlier. A build
+  // that cannot be reproduced from its own commit cannot be trusted when it is
+  // red OR when it is green, and a tool list that changes under us should arrive
+  // as a diff a human approves, which is where a name collision is cheap to see.
   await syncCliCommands();
-  await syncMcpTools();
   // What the published clients call things — the SDK column says so where the
   // method it prints is not one they carry yet.
   await syncSdkClients();

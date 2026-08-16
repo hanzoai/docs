@@ -5,7 +5,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { DOCUMENT, loadDocument } from './openapi-doc';
 import { door, toolOperations } from './openapi-surfaces';
 import { load, ops as doorOps } from './sync-mcp-tools';
-import { constraintsOf, genMcpPages, published } from './gen-mcp-pages';
+import { constraintsOf, genMcpPages, published, slugOf } from './gen-mcp-pages';
 
 // THE MCP REFERENCE, held to its own claims.
 //
@@ -113,7 +113,7 @@ describe('complete — every declared field is enumerated', () => {
   it('names every property, and every $defs type, in the page', () => {
     const missing: string[] = [];
     for (const t of catalog.tools) {
-      const src = pageOf.get(t.name)!;
+      const src = pageOf.get(slugOf(t.name))!;
       for (const f of Object.keys(t.inputSchema?.properties ?? {})) {
         if (!src.includes(`| \`${f}\` |`)) missing.push(`${t.name}.${f}`);
       }
@@ -130,7 +130,7 @@ describe('complete — every declared field is enumerated', () => {
     // printed them without saying so would imply the door declares them.
     const withFields = catalog.tools.filter((t) => Object.keys(t.inputSchema?.properties ?? {}).length);
     expect(withFields.length).toBeGreaterThan(0);
-    const silent = withFields.filter((t) => !pageOf.get(t.name)!.includes('and nothing further'));
+    const silent = withFields.filter((t) => !pageOf.get(slugOf(t.name))!.includes('and nothing further'));
     expect(silent).toEqual([]);
   });
 
@@ -154,7 +154,7 @@ describe('complete — every declared field is enumerated', () => {
       );
       if (!required.length) continue;
       marked.push(t.name);
-      const src = pageOf.get(t.name)!;
+      const src = pageOf.get(slugOf(t.name))!;
       for (const n of required) {
         const row = src.split('\n').find((l) => l.startsWith(`| \`${n}\` |`));
         if (!row?.includes('**yes**')) wrong.push(`${t.name}.${n}`);
@@ -176,7 +176,7 @@ describe('complete — every declared field is enumerated', () => {
         const vals = con.get(n)?.enum ?? [];
         if (!vals.length) continue;
         checked++;
-        const row = pageOf.get(t.name)!.split('\n').find((l) => l.startsWith(`| \`${n}\` |`));
+        const row = pageOf.get(slugOf(t.name))!.split('\n').find((l) => l.startsWith(`| \`${n}\` |`));
         for (const v of vals) {
           const bare = v.startsWith('"') ? v.slice(1, -1) : v;
           if (!row?.includes(`\`${bare}\``)) missing.push(`${t.name}.${n} = ${v}`);
@@ -204,7 +204,7 @@ describe('complete — every declared field is enumerated', () => {
         const obj = p?.properties ? p : p?.items?.properties ? p.items : null;
         if (!obj) continue;
         checked++;
-        const src = pageOf.get(t.name)!;
+        const src = pageOf.get(slugOf(t.name))!;
         if (!src.includes(`### ${n}`)) missing.push(`${t.name}.${n}: no table`);
         for (const f of Object.keys(obj.properties)) {
           if (!src.includes(`| \`${f}\` |`)) missing.push(`${t.name}.${n}.${f}`);
@@ -231,7 +231,7 @@ describe('complete — every declared field is enumerated', () => {
       const absent = [...con.entries()].filter(([n, c]) => c.required && !(n in props)).map(([n]) => n);
       if (!absent.length) continue;
       checked++;
-      const src = pageOf.get(t.name)!;
+      const src = pageOf.get(slugOf(t.name))!;
       for (const n of absent) {
         if (!src.includes(`does not declare on this tool`) || !src.includes(`\`${n}\``))
           silent.push(`${t.name}.${n}`);
@@ -246,7 +246,7 @@ describe('exemplified — every page carries a call that parses', () => {
   it('emits a valid tools/call envelope naming the tool', () => {
     const bad: string[] = [];
     for (const t of catalog.tools) {
-      const body = pageOf.get(t.name)!.match(/-d '([\s\S]*?)'\n```/)?.[1];
+      const body = pageOf.get(slugOf(t.name))!.match(/-d '([\s\S]*?)'\n```/)?.[1];
       if (!body) {
         bad.push(`${t.name}: no envelope`);
         continue;
@@ -314,7 +314,7 @@ describe('exemplified — every page carries a call that parses', () => {
     const quiet: string[] = [];
     let checked = 0;
     for (const t of catalog.tools) {
-      const src = pageOf.get(t.name)!;
+      const src = pageOf.get(slugOf(t.name))!;
       const schema = t.inputSchema ?? {};
       const con = constraintsOf(mappedOps.get(t.name));
       const args = JSON.parse(
@@ -349,7 +349,7 @@ describe('exemplified — every page carries a call that parses', () => {
     let checked = 0;
     for (const t of catalog.tools) {
       const con = constraintsOf(mappedOps.get(t.name));
-      const body = pageOf.get(t.name)!.match(/-d '([\s\S]*?)'\n```/)?.[1];
+      const body = pageOf.get(slugOf(t.name))!.match(/-d '([\s\S]*?)'\n```/)?.[1];
       const args = JSON.parse(body!.replace(/\n {5}/g, '\n')).params.arguments ?? {};
       for (const [n, v] of Object.entries(args)) {
         const vals = con.get(n)?.enum ?? [];
