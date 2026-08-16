@@ -139,28 +139,30 @@ export default defineFunction({
 ### CLI
 
 ```bash
-# Deploy a function from source
-hanzo fn deploy --name on-order \
-  --trigger pubsub:orders.created \
+# Publish a function from source
+hanzo functions create --name on-order \
   --runtime python3.12 \
-  --source ./handler.py \
-  --secrets PAYMENT_API_KEY
+  --handler handler.handle \
+  --code ./handler.py \
+  --env-names PAYMENT_API_KEY
 
-# Deploy from a container image
-hanzo fn deploy --name processor \
-  --trigger http:POST:/process \
+# Publish from a container image
+hanzo functions create --name processor \
   --image ghcr.io/myorg/processor:v1.2.0 \
-  --concurrency 50 \
-  --min-scale 1
+  --memory-limit 512Mi \
+  --timeout-sec 30
 
-# List deployed functions
-hanzo fn list
+# List published functions
+hanzo functions list
 
-# View logs
-hanzo fn logs on-order --follow
+# The output of a function's most recent run
+hanzo functions logs on-order
 
 # Invoke directly
-hanzo fn invoke on-order --data '{"id":"order-123","total":59.99}'
+hanzo functions invoke on-order --input '{"id":"order-123","total":59.99}'
+
+# What triggers are wired
+hanzo functions triggers
 ```
 
 ## Triggers
