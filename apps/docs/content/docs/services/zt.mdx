@@ -92,14 +92,14 @@ Every workload, SDK client, and service in the Hanzo mesh is identified by a str
 
 ### 1. Install the CLI
 
-```bash
-curl -fsSL hanzo.sh/cli | sh
-```
+The `zt` CLI ships with Hanzo ZT itself — it is not part of the `hanzo` CLI.
+Build it from [hanzoai/zt](https://github.com/hanzoai/zt); the local development
+tutorial in that repo has the steps.
 
 ### 2. Login to the Controller
 
 ```bash
-hanzo zt login https://zt-api.hanzo.ai:443 \
+zt edge login https://zt-api.hanzo.ai:443 \
   --username admin \
   --password "$ZT_ADMIN_PASSWORD"
 ```
@@ -108,28 +108,28 @@ hanzo zt login https://zt-api.hanzo.ai:443 \
 
 ```bash
 # Create a new identity for your service
-hanzo zt create identity my-service \
+zt edge create identity my-service \
   --role-attributes "services,backend"
 
 # Enroll the identity (generates certificate)
-hanzo zt create enrollment otter my-service -o my-service.jwt
-hanzo zt enroll --jwt my-service.jwt --out my-service.json
+zt edge create enrollment ott my-service -o my-service.jwt
+zt edge enroll --jwt my-service.jwt --out my-service.json
 ```
 
 ### 4. Create a Service and Policy
 
 ```bash
 # Define a service (e.g., expose a local HTTP server)
-hanzo zt create service my-api \
+zt edge create service my-api \
   --role-attributes "api-services"
 
 # Allow 'backend' identities to host (bind) the service
-hanzo zt create service-policy my-api-bind Bind \
+zt edge create service-policy my-api-bind Bind \
   --identity-roles '#backend' \
   --service-roles '@my-api'
 
 # Allow 'frontend' identities to connect (dial) the service
-hanzo zt create service-policy my-api-dial Dial \
+zt edge create service-policy my-api-dial Dial \
   --identity-roles '#frontend' \
   --service-roles '@my-api'
 ```
@@ -166,11 +166,11 @@ Attributes are tags attached to identities. Policies reference attributes (prefi
 
 ```bash
 # Tag identities
-hanzo zt update identity my-service \
+zt edge update identity my-service \
   --role-attributes "production,backend,team-infra"
 
 # Policy references attributes, not names
-hanzo zt create service-policy prod-access Dial \
+zt edge create service-policy prod-access Dial \
   --identity-roles '#production,#backend' \
   --service-roles '#internal-apis'
 ```
@@ -193,13 +193,13 @@ Hanzo ZT operates as a zero-trust service mesh. Services are logical names, not 
 
 ```bash
 # Create a service backed by a local TCP server
-hanzo zt create config my-api-intercept intercept.v1 \
+zt edge create config my-api-intercept intercept.v1 \
   '{"protocols":["tcp"],"addresses":["my-api.hanzo.internal"],"portRanges":[{"low":443,"high":443}]}'
 
-hanzo zt create config my-api-host host.v1 \
+zt edge create config my-api-host host.v1 \
   '{"protocol":"tcp","address":"localhost","port":8080}'
 
-hanzo zt create service my-api \
+zt edge create service my-api \
   --configs my-api-intercept,my-api-host \
   --role-attributes "api-services"
 ```
@@ -402,7 +402,7 @@ zrok provides instant, ephemeral tunnels through the ZT mesh. Share a local port
 
 ```bash
 # Share localhost:3000 through the ZT mesh
-hanzo zt share private localhost:3000
+zrok share private localhost:3000
 
 # Output: Access your share at: <share-token>
 ```
@@ -411,7 +411,7 @@ hanzo zt share private localhost:3000
 
 ```bash
 # From any enrolled identity
-hanzo zt access private <share-token>
+zrok access private <share-token>
 # Proxies to localhost:9090 by default
 ```
 
