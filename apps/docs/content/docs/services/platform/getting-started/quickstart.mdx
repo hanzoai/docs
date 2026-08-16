@@ -39,8 +39,11 @@ Navigate to **Clusters** and click **Add Cluster**. Choose your orchestrator:
 Run the agent install command on any machine with `kubectl` access:
 
 ```bash
-hanzo cluster add --name my-cluster --type kubernetes
+hanzo clusters create --name my-cluster --kubeconfig ./kubeconfig.yaml
 ```
+
+The kubeconfig is validated and sealed into KMS before the cluster joins the
+fleet.
 
 The command outputs a `kubectl apply` manifest that installs the Hanzo agent
 into the `hanzo-system` namespace. The agent connects outbound to the
@@ -50,9 +53,8 @@ platform -- no inbound firewall rules needed.
 <Tab value="Docker Swarm">
 On a Swarm manager node:
 
-```bash
-hanzo cluster add --name my-cluster --type swarm
-```
+Attach it from **Clusters > Add Cluster** in the dashboard; the CLI's
+`clusters create` takes a kubeconfig and so covers Kubernetes only.
 
 The agent runs as a Swarm service and reports node/service state to the
 platform.
@@ -61,9 +63,7 @@ platform.
 <Tab value="Docker Compose">
 On the target host:
 
-```bash
-hanzo cluster add --name my-cluster --type compose
-```
+Attach it from **Clusters > Add Cluster** in the dashboard, as for Swarm.
 
 The agent runs as a container alongside your Compose stacks.
 </Tab>
@@ -109,7 +109,7 @@ git push origin main
 
 ```bash
 # Or deploy from the CLI
-hanzo deploy --project my-project --image ghcr.io/yourorg/app:latest
+hanzo projects deploy my-project
 ```
 </Tab>
 </Tabs>
@@ -123,7 +123,7 @@ the health check passes, your app is live.
 
 ```bash
 # Or check from the terminal
-hanzo logs --project my-project --service app --follow
+hanzo logs query
 ```
 </Step>
 
