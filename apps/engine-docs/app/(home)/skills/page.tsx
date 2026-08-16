@@ -127,7 +127,7 @@ export default function SkillsPage() {
             View Source
           </a>
           <a
-            href="https://discord.gg/hanzo"
+            href="https://discord.gg/CJCyAsm9Vr"
             target="_blank"
             rel="noopener noreferrer"
             className="px-6 py-3 rounded-xl font-semibold text-[#5865F2] border border-[#5865F2] bg-[rgba(88,101,242,0.15)] no-underline transition-all hover:-translate-y-0.5 hover:bg-[rgba(88,101,242,0.25)]"
