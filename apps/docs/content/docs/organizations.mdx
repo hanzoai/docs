@@ -26,8 +26,8 @@ Every resource in Hanzo is scoped to exactly one organization:
 | Resource | Scoped To |
 |----------|-----------|
 | **Projects** | Organization |
-| **API Keys** (`hk-*`, `hz-*`) | Project (within an org) |
-| **Secret Keys** (`sk-*`) | Organization |
+| **Secret keys** (`sk-*`) | The member who minted it — one per user |
+| **Publishable keys** (`pk-*`) | Organization, or the project it was minted with |
 | **Usage & Billing** | Organization |
 | **Team Members** | Organization |
 | **KMS Secrets** | Organization + project |
@@ -89,9 +89,12 @@ For more on tasks, see [Hanzo Tasks](/docs/tasks).
 
 When using OIDC tokens (from OAuth login), the organization is embedded in the JWT `owner` claim. The API gateway reads this claim and scopes all requests to that organization.
 
-When using API keys (`hk-*`), the organization is determined by the project the key belongs to. No additional header is needed.
+A secret key (`sk-*`) resolves to the member who minted it, so requests scope to
+that member's organization. A publishable key (`pk-*`) resolves to the
+organization itself — or to the project it was minted with. Either way no
+additional header is needed.
 
-For administrative operations that span an organization (e.g. listing all projects), use an org-level secret key (`sk-*`):
+For administrative operations that span an organization (e.g. listing all projects), use a secret key (`sk-*`) held by a member with the rights to do it:
 
 ```bash
 curl -H "Authorization: Bearer sk-org-abc123..." \
@@ -176,25 +179,6 @@ SaaS Platform
 ```
 
 Each tenant's data, API keys, and workflows are fully isolated. The platform's control plane uses org-level secret keys to manage all tenants.
-
-## Programmatic Org Management
-
-Use the Console API to create and manage organizations programmatically:
-
-```bash
-# Create a new organization
-curl -X POST https://api.hanzo.ai/v1/organizations \
-  -H "Authorization: Bearer sk-your-admin-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "New Client Org",
-    "slug": "new-client"
-  }'
-
-# List organizations you belong to
-curl https://api.hanzo.ai/v1/organizations \
-  -H "Authorization: Bearer sk-your-admin-key"
-```
 
 ## Related
 

@@ -1,0 +1,114 @@
+---
+icon: Activity
+title: Observations
+description: Every model call your app makes, as a row — model, provider, tokens, cost, and latency — queryable across traces, sessions, and users.
+---
+
+# Observations
+
+A trace is the whole request; an **observation** is one model call inside it. If
+you want to ask "which model answered, how many tokens did it cost, and how long
+did it take" across everything your app did today, observations are the row you
+query.
+
+## The shape of one
+
+| Field | |
+|-------|---|
+| `id` | The span this observation is projected from |
+| `traceId` | The trace it belongs to |
+| `parentObservationId` | Its parent, which is how nesting is expressed |
+| `type` | What kind of call it was — `GENERATION` when unspecified, otherwise the operation name uppercased, e.g. `CHAT`, `EMBEDDINGS`, `TOOL` |
+| `name` | The span name |
+| `startTime`, `latencyMs` | When it began and how long it took |
+| `model`, `provider` | Which model answered, and whose |
+| `promptTokens`, `completionTokens`, `totalTokens` | Usage. `totalTokens` is the sum |
+| `totalCost` | Cost attributed to this call |
+| `sessionId`, `userId` | Who it was for, and which conversation |
+| `serviceName` | Which of your services emitted it |
+| `statusCode` | The span status |
+
+Observations are computed from your spans rather than stored as a separate
+record, which is why there is nothing to keep in sync: the trace, the session
+rollup, and the user rollup are all views of the same spans.
+
+## Producing them
+
+**There is no create endpoint.** An observation exists because your application
+emitted an OpenTelemetry span carrying `gen_ai.*` attributes — that is the whole
+contract. `gen_ai.system` is the marker: a span without it is an ordinary span
+and never appears here.
+
+```python
+from opentelemetry import trace
+
+tracer = trace.get_tracer("checkout-api")
+
+with tracer.start_as_current_span("summarize") as span:
+    span.set_attribute("gen_ai.system", "hanzo")
+    span.set_attribute("gen_ai.operation.name", "chat")
+    span.set_attribute("gen_ai.request.model", "enso-flash")
+    span.set_attribute("session.id", session_id)
+    span.set_attribute("user.id", user_id)
+
+    result = call_the_model()
+
+    span.set_attribute("gen_ai.response.model", result.model)
+    span.set_attribute("gen_ai.usage.input_tokens", result.usage.prompt_tokens)
+    span.set_attribute("gen_ai.usage.output_tokens", result.usage.completion_tokens)
+```
+
+`gen_ai.response.model` wins over `gen_ai.request.model` when both are present,
+so a request routed to a different model reports the one that actually answered.
+`totalTokens` is computed from the two token attributes rather than read, so you
+never have to send it.
+
+Spans reach Hanzo from your instrumented services; see [Traces](/docs/traces) for
+the span surface itself.
+
+Your org is stamped on arrival from your credential — never read off the wire —
+so an observation can only ever land in your own tenant.
+
+## Query them
+
+```bash
+curl "https://api.hanzo.ai/v1/o11y/llm/observations?model=enso-flash&limit=50" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+```json
+{
+  "status": "success",
+  "data": {
+    "items": [
+      {
+        "id": "0a91...", "traceId": "7c33...", "type": "CHAT",
+        "name": "summarize", "model": "enso-flash", "provider": "hanzo",
+        "promptTokens": 812, "completionTokens": 96, "totalTokens": 908,
+        "latencyMs": 1840, "sessionId": "sess_9f", "userId": "u_42"
+      }
+    ],
+    "offset": 0,
+    "limit": 50
+  }
+}
+```
+
+Filters: `start` and `end` (unix **milliseconds**; omit both for the last 24
+hours), `traceId`, `sessionId`, `userId`, `name`, `model`, plus `offset` and
+`limit`. `limit` defaults to 50 and caps at 200. Newest first.
+
+The same nine filters work on the three sibling views, which aggregate the same
+spans differently:
+
+- `GET /v1/o11y/llm/traces` — one row per request
+- `GET /v1/o11y/llm/sessions` — one row per conversation
+- `GET /v1/o11y/llm/users` — one row per end user
+
+## Related
+
+- [Traces](/docs/traces) — the request an observation sits inside
+- [Sessions](/docs/sessions) — observations grouped into a conversation
+- [Evals](/docs/evals) — score the generations you find here
+- [O11y](/docs/o11y) — logs and metrics beside these spans
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

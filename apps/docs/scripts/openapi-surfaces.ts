@@ -165,11 +165,10 @@ export interface SdkLang {
 }
 
 /**
- * Package names come from upstream's SDK matrix (hanzoai/openapi sdks.yaml),
- * which is what actually drives the generator that publishes them — never from
- * a copy here. `@hanzo/sdk` became `hanzoai` upstream in one commit; a
- * hardcoded name would have gone stale that day and taught an install that
- * fails.
+ * Package names come from the SDK matrix (`openapi-specs/sdks.yaml`), which is
+ * what drives the generator that publishes them — never from a copy here.
+ * `@hanzo/sdk` became `hanzoai` in one commit; a hardcoded name would have gone
+ * stale that day and taught an install that fails.
  */
 const SDK_MATRIX: Record<string, any> = (() => {
   const f = new URL('../openapi-specs/sdks.yaml', import.meta.url).pathname;
@@ -300,12 +299,12 @@ const py = (v: any): string =>
 /**
  * THE TOOL-NAME RULE, in one place and read in both directions.
  *
- * The door names a tool for the operation's `operationId`, and hanzoai/openapi
- * publishes that id bare — `get_v1_tools` is `get_v1_tools`. That is the primary
+ * The door names a tool for the operation's `operationId`, and the document
+ * publishes that id bare — `get_tools` is `get_tools`. That is the primary
  * key.
  *
  * Where an operationId spells a path parameter differently from the door
- * (`delete_v1_projects_by_slug` against the door's `delete_v1_projects_slug`)
+ * (`delete_projects_by_slug` against the door's `delete_projects_slug`)
  * the name misses, so the operation's method and path are a second key.
  * Measured against the live door: the name key resolves 802 of 833 tools and
  * the method+path key the rest.
@@ -324,7 +323,10 @@ export const toolKeys = (op: Operation): [name: string, route: string] => [
  * than one operation is a name the document uses twice, and the door does not
  * say which it dispatches to.
  */
-export function toolOperations(doc: Document, tools: Iterable<{ name: string }>): Map<string, Operation[]> {
+export function toolOperations(
+  doc: Document,
+  tools: Iterable<{ name: string; inputSchema?: any }>,
+): Map<string, Operation[]> {
   const byName = new Map<string, Operation[]>();
   const byRoute = new Map<string, Operation[]>();
   for (const op of doc.operations) {
@@ -334,11 +336,37 @@ export function toolOperations(doc: Document, tools: Iterable<{ name: string }>)
   }
   const out = new Map<string, Operation[]>();
   for (const t of tools) {
+    // A GROUPED tool names a SUBSYSTEM, and carries its operations in the `op`
+    // enum. So the enum is the join, and it is tried FIRST: `account` is not an
+    // operationId, and asking the name map for one answers nothing — which is
+    // how a re-projected door turned every tool page into "the document does
+    // not describe this".
+    const named = toolOps(t).flatMap((id) => byName.get(id) ?? byRoute.get(id.toLowerCase()) ?? []);
+    if (named.length) {
+      out.set(t.name, named);
+      continue;
+    }
+    // A tool that IS an operation — the flat projection, and any door that
+    // still serves one. Same two keys as before, in the same order.
     const hit = byName.get(t.name) ?? byRoute.get(t.name.toLowerCase());
     if (hit) out.set(t.name, hit);
   }
   return out;
 }
+
+/**
+ * The operations a tool dispatches to, as the tool itself declares them.
+ *
+ * The grouped door publishes one tool per subsystem whose `op` argument is an
+ * enum of operationIds; a flat tool declares no such enum and names its one
+ * operation with its own name. Reading the enum is therefore the difference
+ * between "this tool runs 31 operations" and "this tool is unknown", and it is
+ * asked of the TOOL rather than inferred from its name.
+ */
+export const toolOps = (t: { name: string; inputSchema?: any }): string[] => {
+  const en = t.inputSchema?.properties?.op?.enum;
+  return Array.isArray(en) ? en.filter((v: unknown): v is string => typeof v === 'string') : [];
+};
 
 /**
  * The door exposes a SUBSET of the document, so whether a given operation has a

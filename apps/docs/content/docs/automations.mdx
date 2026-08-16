@@ -1,0 +1,175 @@
+---
+icon: Zap
+title: Automations
+description: Durable automation flows — a trigger, a chain of steps, and runs that survive a restart, including a step that pauses for a human and resumes days later.
+---
+
+# Automations
+
+An automation is a **flow**: one trigger and a chain of steps. Flows run on a
+durable engine, so a run that is mid-flight when a process restarts continues
+where it left off — and a step that waits for a human can wait for as long as
+that takes.
+
+## The shape of a flow
+
+A flow is a container; its steps live on a **version**. Editing produces a new
+draft version, and the version a run executes stays put until you publish. That
+separation is what lets you edit a live automation without disturbing the runs
+already going through it.
+
+| | |
+|---|---|
+| **Flow** | Org-scoped, `ENABLED` or `DISABLED`, optionally pinned to a published version |
+| **Version** | One editable revision: a display name, the trigger, and the step chain. `DRAFT` or `LOCKED` |
+| **Trigger** | The root. Fires on a schedule (`POLLING`), on an event (`WEBHOOK`), or only when you say so (`MANUAL`) |
+| **Step** | A connector action or a code step, chained by `nextAction` |
+| **Run** | One execution: `QUEUED`, `RUNNING`, `PAUSED`, `SUCCEEDED`, `FAILED`, `CANCELED`, or `TIMEOUT` |
+
+## Create a flow
+
+One call creates the flow and its first draft version. A new flow is created
+**disabled** — nothing fires until you enable it.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/automations/flows \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "displayName": "Nightly sync",
+    "trigger": {
+      "name": "trigger",
+      "type": "PIECE_TRIGGER",
+      "displayName": "Start",
+      "valid": true,
+      "strategy": "MANUAL",
+      "settings": { "pieceName": "core", "triggerName": "manual", "input": {} }
+    }
+  }'
+```
+
+`trigger` is optional — a flow may be created empty and given one later.
+
+## Add steps
+
+Steps are added one operation at a time against the flow's latest version:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/automations/flows/$FLOW_ID/operations \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "ADD_ACTION",
+    "request": {
+      "name": "notify",
+      "type": "PIECE",
+      "displayName": "Post to Slack",
+      "valid": true,
+      "settings": { "pieceName": "slack", "actionName": "send_message", "input": {} }
+    }
+  }'
+```
+
+Operation types are `ADD_ACTION`, `UPDATE_ACTION`, `DELETE_ACTION`,
+`MOVE_ACTION`, `UPDATE_TRIGGER`, `CHANGE_NAME`, and `CHANGE_STATUS`. Every
+operation returns the updated version — except `CHANGE_STATUS`, which returns
+the flow. The whole tree is revalidated after each one, so a long sequence of
+edits cannot creep past the limits.
+
+Edits land on the latest version only. Pin the version a run should use with
+`PATCH /v1/automations/flows/{id}` and `publishedVersionId`; an empty string
+clears the pin and returns to "latest wins".
+
+## Enable and run
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/automations/flows/$FLOW_ID/enable \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Enabling arms the trigger: a `POLLING` trigger gets its cron schedule, a webhook
+trigger gets a subscription, a `MANUAL` trigger arms nothing. Disabling drops
+both and leaves in-flight runs alone.
+
+Three ways a run starts:
+
+```bash
+# 1. By hand
+curl -X POST https://api.hanzo.ai/v1/automations/flows/$FLOW_ID/run \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+# 2. By event — matches every flow whose trigger is this (source, event)
+curl -X POST https://api.hanzo.ai/v1/automations/hooks/github/push \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "X-Idempotency-Key: 9f2c..." \
+  -H "Content-Type: application/json" \
+  -d '{ "repo": "acme/api", "ref": "refs/heads/main" }'
+```
+
+...and third, a cron tick from the schedule armed at enable.
+
+The event door answers `{ "matched": n }` and threads the payload into the run as
+`{{trigger.*}}` with every key intact. It is **authenticated and org-scoped** —
+it is not a public webhook URL to hand to a third party. Reposting the same event
+collapses to one run: `X-Idempotency-Key` if you send one, otherwise a hash of
+the body. `X-Causation-Depth` bounds a flow that triggers a flow at 8 hops.
+
+Before any run id is minted, the engine checks per-org concurrency (32), a
+budget of 300 run-starts per rolling minute, and your balance. Over any of them,
+no run starts and no id is burned.
+
+## Watch runs
+
+```bash
+curl "https://api.hanzo.ai/v1/automations/runs?flowId=$FLOW_ID&limit=20" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+`GET /v1/automations/runs/{id}` refreshes a non-terminal run from the engine
+before answering, so it shows live progress rather than the last write.
+
+## Wait for a human
+
+A `core.wait_for_approval` step is a durable pause — the run stops and holds.
+Deliver the decision when it arrives:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/automations/runs/$RUN_ID/resume \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "approved": true, "by": "dana" }'
+```
+
+The body is delivered verbatim as that step's output, so the steps after it read
+it as input. An empty body resumes with no payload. Up to 64 KiB.
+
+## Connectors
+
+`GET /v1/automations/connectors` returns the browsable catalogue — the same list
+for every tenant, used to discover what exists. (`/v1/automations/pieces` is an
+older alias for the identical response.)
+
+The actions that **execute inside a flow** today are a focused set: `core`
+(`http_request`, `delay`, `code`, `wait_for_approval`, plus the `schedule` and
+`manual` triggers), `slack`, `github`, and `google`. Browsing the catalogue is
+not the same as a step being runnable — check the step executes before you build
+a flow around it.
+
+Connector credentials are not configured here. They are resolved per-org from
+[KMS](/docs/kms) when a step dispatches.
+
+## Limits
+
+256 steps per flow · 512 KiB serialized trigger tree · 2,048 bytes per text
+field · 64 KiB resume payload · list `limit` defaults to 200, caps at 1,000.
+
+Only the linear chain of connector and code steps executes today. Router and
+loop nodes can be stored but are not run.
+
+## Related
+
+- [Tasks](/docs/tasks) — the durable execution underneath
+- [Mission Control](/docs/mission-control) — the same idea for agent sessions
+- [Agents](/docs/agents) — an agent as the thing a flow calls
+- [KMS](/docs/kms) — where connector credentials live
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

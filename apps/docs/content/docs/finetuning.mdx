@@ -1,0 +1,146 @@
+---
+icon: Sparkles
+title: Fine-tuning
+description: Train an open-weight model on your own data — LoRA, QLoRA, or a full fine-tune on Hanzo GPUs, then deploy the result as a model id on api.hanzo.ai.
+---
+
+# Fine-tuning
+
+Pick a base model, point at a dataset, and Hanzo runs the training job on its own
+GPUs. When it succeeds you deploy the checkpoint and it becomes a model id you
+call like any other.
+
+Fine-tuning runs from **[console.hanzo.ai](https://console.hanzo.ai) →
+Fine-tuning**. The operations below are that surface's contract; they
+authenticate with your console session rather than an `hk-` key.
+
+## Choosing a base
+
+Any Hugging Face causal LM works — training runs a transformers + PEFT + TRL
+image, so an arbitrary repo id resolves to a generic runtime. Eight bases ship
+with tuned runtimes and are the ones to reach for first:
+
+| Base | Params |
+|------|--------|
+| `meta-llama/Llama-3.2-1B-Instruct` | 1.2B — fast and cheap, good for a first run |
+| `meta-llama/Llama-3.2-3B-Instruct` | 3.2B |
+| `meta-llama/Llama-3.1-8B-Instruct` | 8.0B — best quality/cost for most tasks |
+| `Qwen/Qwen2.5-1.5B-Instruct` | 1.5B |
+| `Qwen/Qwen2.5-7B-Instruct` | 7.6B |
+| `mistralai/Mistral-7B-Instruct-v0.3` | 7.2B |
+| `google/gemma-2-2b-it` | 2.6B |
+| `google/gemma-2-9b-it` | 9.2B |
+
+Base models and datasets are searched through Hugging Face from
+`GET /v1/finetune/hf/models`, `/hf/datasets`, and `/hf/repo`. The Hugging Face
+token is resolved server-side from [KMS](/docs/kms), so gated and private repos
+resolve without your browser ever holding a token.
+
+## Method and preset
+
+`method` picks how much of the model moves:
+
+| Method | What it does |
+|--------|--------------|
+| `qlora` | 4-bit quantized LoRA. Most memory-efficient, and the **default** |
+| `lora` | Low-rank adapters in 16-bit |
+| `full` | Updates all weights |
+
+`task` is `instruct` (default), `chat`, or `completion`. `preset` is
+`recommended` (default), `balanced` — one extra epoch — or `aggressive`, which
+adds two epochs, raises the learning rate by half, and doubles LoRA rank and
+alpha.
+
+## Quote before you run
+
+`GET /v1/finetune/presets` returns the catalogue — base models, methods, tasks,
+presets, and GPUs. Add a selection and it also returns a **recommendation**: the
+GPU type and count, the hyperparameters, estimated minutes, and estimated cost.
+
+```
+GET /v1/finetune/presets?baseModel=meta-llama/Llama-3.1-8B-Instruct
+                        &method=qlora&task=instruct&preset=recommended
+                        &datasetExamples=5000
+```
+
+One rate table drives both the quote and the bill:
+
+| GPU | VRAM | Rate |
+|-----|------|------|
+| RTX 4090 | 24 GB | $0.50 / hr |
+| L40S | 48 GB | $1.10 / hr |
+| A100 | 40 GB | $1.50 / hr |
+| A100 | 80 GB | $2.00 / hr |
+| H100 | 80 GB | $3.50 / hr |
+| H200 | 141 GB | $4.50 / hr |
+
+GPU-hours are metered once, when the job reaches a terminal state, and the clock
+starts when the job actually begins running — **queue time is never billed**.
+
+## Create a job
+
+`POST /v1/finetune/jobs`. `baseModel` and `dataset` are the only required
+fields; everything else falls back to the recommendation.
+
+```json
+{
+  "displayName": "support-tone-v2",
+  "baseModel": "meta-llama/Llama-3.1-8B-Instruct",
+  "dataset": "my-org/support-transcripts",
+  "method": "qlora",
+  "task": "instruct",
+  "preset": "recommended",
+  "datasetExamples": 5000
+}
+```
+
+Supply `hyperparams` to override the recommendation wholesale:
+`epochs`, `learningRate`, `batchSize`, `gradAccum`, `maxSeqLen`, `loraRank`,
+`loraAlpha`, `loraDropout`, `quant4bit`, `gradientCheckpointing`,
+`warmupRatio`, `weightDecay`. `gpuType`, `gpuCount`, and `numNodes` override the
+recommended hardware.
+
+The job name is derived server-side from the base model plus a random suffix,
+and the checkpoint URI is assigned for you.
+
+If the cluster refuses the submission, the job is still saved — with
+`status: "failed"` and the reason in `error` — rather than disappearing into an
+error response. On success the status is `queued`.
+
+## Watch it
+
+`GET /v1/finetune/jobs` lists your jobs and refreshes the live status of every
+non-terminal one from the cluster on each read; `GET /v1/finetune/job?name=` reads
+one. A job carries `status`, `progress` (0–100), `message`, `gpuSeconds`,
+`costCents`, `startedTime`, and `finishedTime`. Terminal states are `succeeded`,
+`failed`, and `cancelled`.
+
+`POST /v1/finetune/cancel` tears down the run, meters the GPU-hours used so far,
+and marks the job `cancelled`.
+
+## Deploy the result
+
+`POST /v1/finetune/deploy` serves the checkpoint and registers it as a routable
+model id on `api.hanzo.ai` — from then on it is just another string in `model`.
+
+Deploy refuses unless the job **succeeded**, and refuses up front if the cluster
+advertises no accelerators, rather than registering a model whose every call
+would fail. Re-deploying updates in place.
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "llama-3-1-8b-instruct-quiet-river",
+    "messages": [{ "role": "user", "content": "Draft a refund reply." }]
+  }'
+```
+
+## Related
+
+- [Inference](/docs/inference) — deploy and serve a model you built elsewhere
+- [Models](/docs/models) — the catalogue your deployed model joins
+- [GPUs](/docs/gpus) — the accelerators these jobs run on
+- [Evals](/docs/evals) — check the tuned model actually beats the base
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

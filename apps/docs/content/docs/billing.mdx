@@ -16,7 +16,7 @@ Your organization spends from a **cloud-credit balance**. Every billable request
 ```bash
 # Check your organization's credit balance
 curl https://api.hanzo.ai/v1/billing/balance \
-  -H "Authorization: Bearer hk-..."
+  -H "Authorization: Bearer sk-..."
 ```
 
 ```json
@@ -45,7 +45,7 @@ Most Hanzo products are **usage-based**: you pay for what you consume -- tokens 
 ```bash
 # Metered usage for the current period, by product and model
 curl "https://api.hanzo.ai/v1/billing/usage?period=current" \
-  -H "Authorization: Bearer hk-..."
+  -H "Authorization: Bearer sk-..."
 ```
 
 Prices are published in the pricing catalog, which the console's Plans & Pricing view reads live:
@@ -64,7 +64,7 @@ At the close of each billing cycle, usage and subscription charges are rolled in
 ```bash
 # List invoices for your organization
 curl https://api.hanzo.ai/v1/billing/invoices \
-  -H "Authorization: Bearer hk-..."
+  -H "Authorization: Bearer sk-..."
 ```
 
 Each invoice lists line items, the period covered, credits applied, and the amount due. The console's Cost view renders the same data with per-product breakdowns.
@@ -72,20 +72,6 @@ Each invoice lists line items, the period covered, credits applied, and the amou
 ## Payment Methods
 
 Saved **payment methods** fund credit top-ups and subscription renewals. For security, only non-sensitive fields are ever returned -- card brand, last four digits, and expiry. Full card numbers and processor tokens never leave the payment processor and are never exposed by the API.
-
-```bash
-# List saved payment methods (masked)
-curl https://api.hanzo.ai/v1/billing/payment-methods \
-  -H "Authorization: Bearer hk-..."
-```
-
-```json
-{
-  "payment_methods": [
-    { "id": "pm_...", "brand": "visa", "last4": "4242", "exp": "12/28", "default": true }
-  ]
-}
-```
 
 Adding or removing a method happens in the billing portal, where the card is captured directly by the payment processor (Square).
 

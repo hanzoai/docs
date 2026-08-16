@@ -291,7 +291,7 @@ export default function HomePage() {
 
 from hanzoai import Hanzo
 
-client = Hanzo(api_key="hk-...")
+client = Hanzo(api_key="sk-...")
 r = client.chat.completions.create(
     model="zen5",
     messages=[{"role": "user", "content": "Hello!"}],
@@ -304,7 +304,7 @@ print(r.choices[0].message.content)`}</code></pre>
               <Terminal className="h-3.5 w-3.5" /> curl
             </div>
             <pre className="p-5 text-sm overflow-x-auto"><code>{`curl https://api.hanzo.ai/v1/chat/completions \\
-  -H "Authorization: Bearer hk-..." \\
+  -H "Authorization: Bearer sk-..." \\
   -H "Content-Type: application/json" \\
   -d '{
     "model": "zen5",

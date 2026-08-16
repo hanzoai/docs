@@ -19,28 +19,33 @@ curl -X POST https://api.hanzo.ai/v1/evals/datasets \
   }'
 ```
 
+The `name` is the key — POSTing it again edits the dataset and leaves its items
+untouched.
+
 ## Add items
 
-Each item carries an `input` and an `expectedOutput`; `metadata` is free-form and travels with the item into every run.
+Each item carries an `input` and an `expectedOutput` — raw JSON, up to 64 KiB
+each — plus free-form `metadata` that travels with the item into every run.
 
 ```bash
-curl -X POST https://api.hanzo.ai/v1/evals/dataset-items \
+curl -X POST https://api.hanzo.ai/v1/evals/datasets/support-qa/items \
   -H "Authorization: Bearer hk-..." \
   -H "Content-Type: application/json" \
   -d '{
-    "datasetName": "support-qa",
-    "input": "How do I rotate an API key?",
-    "expectedOutput": "Create a new key, deploy it, then revoke the old one.",
-    "metadata": { "topic": "api-keys" }
+    "input": { "question": "How do I rotate an API key?" },
+    "expectedOutput": "Points at the console key page and warns about in-flight requests.",
+    "status": "ACTIVE"
   }'
 ```
 
-Items are versioned by dataset, so a run always evaluates against a known snapshot. List datasets and items with the matching `GET` routes:
+`status` is `ACTIVE` (the default) or `ARCHIVED`. A run evaluates active items
+only, so archiving retires an item without breaking the runs that already
+reference it. Supply your own `id` to make the write idempotent — the same id in
+the same dataset replaces in place.
 
-```bash
-curl https://api.hanzo.ai/v1/evals/datasets \
-  -H "Authorization: Bearer hk-..."
-```
+List them with `GET /v1/evals/datasets/support-qa/items`, which includes archived
+items; `GET /v1/evals/datasets/support-qa` returns the dataset with a live item
+count.
 
 ## Run against a model
 
@@ -48,6 +53,7 @@ A dataset becomes useful when you run it. Pass the dataset name to an [experimen
 
 ## Related
 
+- [Evals](/docs/evals) — the full run-and-score workflow
 - [Experiments](/docs/experiments) — dataset runs, comparisons, and analytics
 - [Scores](/docs/scores) — the per-item results a run produces
 - [Prompts](/docs/prompts) — version the prompt an experiment evaluates

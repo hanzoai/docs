@@ -88,6 +88,7 @@ export const useCart = () => useContext(CartContext)
 'use client'
 
 import { useCart } from '@/components/cart-provider'
+import { Button } from '@hanzo/gui'
 
 export function AddToCartButton({ variantId }: { variantId: string }) {
   const { addItem } = useCart()
@@ -100,9 +101,9 @@ export function AddToCartButton({ variantId }: { variantId: string }) {
   }
 
   return (
-    <button onClick={handleClick} disabled={loading}>
+    <Button onPress={handleClick} disabled={loading}>
       {loading ? 'Adding...' : 'Add to Cart'}
-    </button>
+    </Button>
   )
 }
 ```
@@ -113,37 +114,42 @@ export function AddToCartButton({ variantId }: { variantId: string }) {
 'use client'
 
 import { useCart } from '@/components/cart-provider'
+import { Button, Input, Paragraph, Separator, XStack, YStack } from '@hanzo/gui'
 
 export function CartDrawer() {
   const { cart, removeItem, updateQuantity } = useCart()
-  if (!cart || cart.items.length === 0) return <p>Your cart is empty</p>
+  if (!cart || cart.items.length === 0) return <Paragraph>Your cart is empty</Paragraph>
 
   return (
-    <div>
+    <YStack>
       {cart.items.map(item => (
-        <div key={item.id} className="flex justify-between py-4">
-          <div>
-            <p className="font-medium">{item.productName}</p>
-            <p className="text-sm text-gray-500">
+        <XStack key={item.id} justifyContent="space-between" paddingVertical="$4" gap="$4">
+          <YStack>
+            <Paragraph fontWeight="500">{item.productName}</Paragraph>
+            <Paragraph size="$2" theme="alt2">
               ${(item.unitPrice / 100).toFixed(2)} x {item.quantity}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="number" min={1} value={item.quantity}
-              onChange={e => updateQuantity(item.id, parseInt(e.target.value))}
-              className="w-16 border rounded px-2"
+            </Paragraph>
+          </YStack>
+          <XStack alignItems="center" gap="$2">
+            <Input
+              width={64}
+              keyboardType="number-pad"
+              value={String(item.quantity)}
+              onChangeText={value => updateQuantity(item.id, parseInt(value, 10))}
             />
-            <button onClick={() => removeItem(item.id)}>Remove</button>
-          </div>
-        </div>
+            <Button size="$2" onPress={() => removeItem(item.id)}>Remove</Button>
+          </XStack>
+        </XStack>
       ))}
-      <div className="border-t pt-4 mt-4">
-        <p>Subtotal: ${(cart.subtotal / 100).toFixed(2)}</p>
-        {cart.discount > 0 && <p>Discount: -${(cart.discount / 100).toFixed(2)}</p>}
-        <p className="font-bold">Total: ${(cart.total / 100).toFixed(2)}</p>
-      </div>
-    </div>
+      <Separator marginTop="$4" />
+      <YStack paddingTop="$4">
+        <Paragraph>Subtotal: ${(cart.subtotal / 100).toFixed(2)}</Paragraph>
+        {cart.discount > 0 && (
+          <Paragraph>Discount: -${(cart.discount / 100).toFixed(2)}</Paragraph>
+        )}
+        <Paragraph fontWeight="700">Total: ${(cart.total / 100).toFixed(2)}</Paragraph>
+      </YStack>
+    </YStack>
   )
 }
 ```
@@ -155,14 +161,14 @@ export function CartDrawer() {
 
 import { useState } from 'react'
 import { useCart } from '@/components/cart-provider'
+import { Button, Form, Input, Paragraph } from '@hanzo/gui'
 
 export function CouponForm() {
   const { applyCoupon } = useCart()
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleSubmit() {
     try {
       await applyCoupon(code)
       setCode('')
@@ -173,11 +179,17 @@ export function CouponForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <input value={code} onChange={e => setCode(e.target.value)} placeholder="Coupon code" />
-      <button type="submit">Apply</button>
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-    </form>
+    <Form onSubmit={handleSubmit} gap="$2">
+      <Input value={code} onChangeText={setCode} placeholder="Coupon code" />
+      <Form.Trigger asChild>
+        <Button>Apply</Button>
+      </Form.Trigger>
+      {error && (
+        <Paragraph size="$2" color="$red10">
+          {error}
+        </Paragraph>
+      )}
+    </Form>
   )
 }
 ```

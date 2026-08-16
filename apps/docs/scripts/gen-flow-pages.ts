@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
-import { loadDocument, type Document, type Operation } from './openapi-doc';
+import { DOCUMENT, loadDocument, secretKey, type Document, type Operation } from './openapi-doc';
 import { SDKS, cli, http, mcp } from './openapi-surfaces';
 import { MCP_DOOR, loadMcpTools } from './sync-mcp-tools';
 import type { CliCommand } from './sync-cli-commands';
@@ -22,15 +22,14 @@ import { fence, prose, text } from './mdx';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
-const DOCUMENT = path.join(APP_ROOT, 'openapi-specs/hanzo.yaml');
 const FLOWS = path.join(APP_ROOT, 'openapi-specs/flows.yaml');
 const CLI_TABLE = path.join(APP_ROOT, 'openapi-specs/cli-commands.json');
 const OUT_DIR = path.join(APP_ROOT, 'content/docs/start');
 
 /**
- * Upstream's shape (hanzoai/openapi flows.yaml): a map of flow id to a summary,
- * the operationIds in CALL ORDER, and any notes a caller needs. Data only —
- * which routes a journey calls, never what they do.
+ * flows.yaml's shape: a map of flow id to a summary, the operationIds in CALL
+ * ORDER, and any notes a caller needs. Data only — which routes a journey calls,
+ * never what they do.
  */
 interface Flow {
   id: string;
@@ -76,7 +75,7 @@ function doorNotice(doc: Document): string[] {
     `> **The MCP door is not in the OpenAPI document.** \`POST ${MCP_DOOR}\` answers` +
       ' JSON-RPC 2.0 `tools/list` and `tools/call` — it is live and is what the MCP' +
       ' column below calls. The document declares only `/v1/mcp/servers`, so this' +
-      ' route is undeclared and needs adding to hanzoai/openapi. Any note below' +
+      ' route is undeclared and needs adding to hanzoai/cloud. Any note below' +
       ' that calls it unrouted was written from the document, not the wire, and' +
       ' is out of date. This notice is generated from the gap itself and will' +
       ' vanish once the route is declared.',
@@ -254,7 +253,7 @@ function renderIndex(flows: Flow[], doc: Document): string {
   L.push('## One credential');
   L.push('');
   L.push('```bash');
-  L.push('export HANZO_API_KEY=hk-...            # console.hanzo.ai');
+  L.push(`export HANZO_API_KEY=${secretKey(doc).prefix}...            # console.hanzo.ai`);
   L.push('hanzo auth login                       # or sign in through Hanzo IAM');
   L.push('```');
   L.push('');

@@ -87,48 +87,8 @@ hanzo vm launch \
   --name train-sfo3
 ```
 
-```bash
-# Or straight against the control plane
-curl -X POST https://api.hanzo.ai/v1/visor/machines \
-  -H "Authorization: Bearer hk-..." \
-  -H "Content-Type: application/json" \
-  -d '{"size":"gpu-h100x1-80gb","region":"sfo3","name":"infer-0"}'
-```
-
 Each cluster's nodes become your [machines](/docs/machines); the operator reconciles them
 into the running fleet and starts metering when they report online.
-
-## Inventory & telemetry
-
-List every GPU with live telemetry — model, cluster, region, utilization, memory,
-temperature, and power — through the control plane:
-
-```bash
-curl https://api.hanzo.ai/v1/gpu \
-  -H "Authorization: Bearer hk-..."
-```
-
-```json
-{
-  "gpus": [
-    {
-      "id": "gpu-0",
-      "model": "H100",
-      "cluster": "train-sfo3",
-      "region": "sfo3",
-      "status": "online",
-      "utilization": 87,
-      "memoryUtil": 74,
-      "temperature": 61,
-      "power": 640
-    }
-  ]
-}
-```
-
-Fields the platform does not report render as `—` in the console rather than a
-fabricated value. Alerts and scheduling pools are available at `/v1/gpu/alerts` and
-`/v1/gpu/pools`.
 
 ## Billing
 

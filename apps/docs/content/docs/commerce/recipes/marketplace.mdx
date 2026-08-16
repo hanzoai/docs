@@ -229,6 +229,7 @@ Vendors get a scoped view of their business:
 
 ```tsx title="src/app/vendor/dashboard/page.tsx"
 import { vendorCommerce } from '@/lib/vendor-commerce'
+import { H1, H2, XStack, YStack } from '@hanzo/gui'
 
 export default async function VendorDashboard() {
   const [orders, products, balance] = await Promise.all([
@@ -238,21 +239,21 @@ export default async function VendorDashboard() {
   ])
 
   return (
-    <main className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Vendor Dashboard</h1>
+    <YStack maxWidth={1100} width="100%" marginHorizontal="auto" padding="$4" gap="$6">
+      <H1 size="$8">Vendor Dashboard</H1>
 
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <XStack flexWrap="wrap" gap="$4">
         <StatCard title="Products" value={products.total} />
         <StatCard title="Orders" value={orders.total} />
         <StatCard
           title="Balance"
           value={`$${(balance.available / 100).toFixed(2)}`}
         />
-      </div>
+      </XStack>
 
-      <h2 className="text-xl font-semibold mb-4">Recent Orders</h2>
+      <H2 size="$6">Recent Orders</H2>
       <OrdersTable orders={orders.data} />
-    </main>
+    </YStack>
   )
 }
 ```

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { camelId, pascalId, pascalTag, snakeId } from './openapi-surfaces';
+import { camelId, pascalId, pascalTag, snakeId, toolOperations, toolOps } from './openapi-surfaces';
 
 // The SDK surface printed in the docs must be the surface openapi-generator
 // actually emits. These cases are lifted verbatim from the checked-in generated
@@ -70,5 +70,48 @@ describe('operationId -> method name', () => {
     expect(camelId(id)).toBe(camel);
     expect(pascalId(id)).toBe(pascal);
     expect(snakeId(id)).toBe(snake);
+  });
+});
+
+// A GROUPED TOOL NAMES A SUBSYSTEM, NOT AN OPERATION.
+//
+// The door re-projected: it used to publish one tool per operation, so the tool
+// name WAS the operationId and the join was a name lookup. It now publishes one
+// tool per subsystem carrying its operations in an `op` enum — `account` is not
+// an operationId, so a name lookup answers nothing and every tool page would
+// read "the document does not describe this".
+//
+// The enum is therefore the join, tried first. The name path stays for a door
+// that still serves the flat shape, and this pins BOTH so neither can be
+// dropped as dead code while the fleet is mid-projection.
+describe('the tool -> operation join reads the shape the door serves', () => {
+  const opWith = (id: string, method: any, p: string): any => ({
+    product: 'x', id, name: id, tag: 'x', method, path: p,
+    summary: '', description: '', parameters: [], deprecated: false,
+  });
+  const doc: any = { operations: [opWith('get_keys', 'get', '/v1/keys'), opWith('post_keys', 'post', '/v1/keys')] };
+
+  it('resolves a grouped tool through its op enum', () => {
+    const grouped = { name: 'account', inputSchema: { properties: { op: { enum: ['get_keys', 'post_keys'] } } } };
+    const m = toolOperations(doc, [grouped]);
+    expect(m.get('account')?.map((o: any) => o.id).sort()).toEqual(['get_keys', 'post_keys']);
+  });
+
+  it('still resolves a flat tool by its own name', () => {
+    const m = toolOperations(doc, [{ name: 'get_keys' }]);
+    expect(m.get('get_keys')?.map((o: any) => o.id)).toEqual(['get_keys']);
+  });
+
+  it('names no operation for a tool whose enum the document does not carry', () => {
+    // The reference joins a LIVE door to a PINNED document, so a door ahead of
+    // the pin legitimately names ids the document lacks. That must read as
+    // unmapped, never as a wrong operation.
+    const m = toolOperations(doc, [{ name: 'admission', inputSchema: { properties: { op: { enum: ['get_flag_waitlist'] } } } }]);
+    expect(m.has('admission')).toBe(false);
+  });
+
+  it('reads the enum off the tool rather than guessing from its name', () => {
+    expect(toolOps({ name: 'account', inputSchema: { properties: { op: { enum: ['get_keys'] } } } })).toEqual(['get_keys']);
+    expect(toolOps({ name: 'describe' })).toEqual([]);
   });
 });

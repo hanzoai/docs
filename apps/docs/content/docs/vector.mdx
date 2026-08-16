@@ -13,7 +13,7 @@ A collection is a logical resource in the shared Hanzo Vector backend, scoped to
 
 ```bash
 curl -X POST https://api.hanzo.ai/v1/vector \
-  -H "Authorization: Bearer hk-..." \
+  -H "Authorization: Bearer sk-..." \
   -H "X-Org-Id: org_a1b2c3" \
   -H "Content-Type: application/json" \
   -d '{
@@ -27,28 +27,7 @@ curl -X POST https://api.hanzo.ai/v1/vector \
 
 ## Upsert and Search
 
-Insert points (a vector plus a JSON payload), then query for nearest neighbors with optional metadata filters.
-
-```bash
-# Upsert points
-curl -X PUT https://api.hanzo.ai/v1/vector/documents/points \
-  -H "Authorization: Bearer hk-..." \
-  -H "Content-Type: application/json" \
-  -d '{
-    "points": [
-      { "id": 1, "vector": [0.12, 0.04, "..."], "payload": { "category": "ai" } }
-    ]
-  }'
-
-# Search with a filter
-curl -X POST https://api.hanzo.ai/v1/vector/documents/points/search \
-  -H "Authorization: Bearer hk-..." \
-  -d '{
-    "vector": [0.11, 0.05, "..."],
-    "limit": 10,
-    "filter": { "must": [{ "key": "category", "match": { "value": "ai" } }] }
-  }'
-```
+A point is a vector plus a JSON payload; a query returns nearest neighbours, optionally filtered on that payload.
 
 Generate the vectors with [Embeddings](/docs/embeddings), then store them here. For full-text and hybrid keyword ranking, pair with [Search](/docs/search).
 
@@ -67,5 +46,5 @@ The backend is API-compatible with Qdrant, so any Qdrant client works against yo
 - [Hanzo Vector service reference](/docs/services/vector) — full collection, points, and snapshot API
 - [Embeddings](/docs/embeddings) — generate the vectors you store here
 - [Search](/docs/search) — full-text and hybrid indexes
-- [API Keys](/docs/api-keys) — authenticate with `hk-` keys
+- [API Keys](/docs/api-keys) — authenticate with `sk-` keys
 - [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

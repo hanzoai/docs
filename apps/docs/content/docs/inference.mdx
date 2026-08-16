@@ -1,0 +1,106 @@
+---
+icon: Cpu
+title: Inference
+description: Serve your own model on Hanzo — deploy a checkpoint, get a private predict endpoint in your org's namespace, and call it with the same key as the rest of the platform.
+---
+
+# Inference
+
+There are two ways to run a model on Hanzo, and which one you want depends on
+whose model it is.
+
+- **A model from the catalogue** — call [`/v1/chat/completions`](/docs/llm) with
+  its id. Nothing to deploy; see [Models](/docs/models).
+- **A model of your own** — a checkpoint in object storage or on Hugging Face.
+  Deploy it here and it gets a predict endpoint in your org's own namespace.
+
+This page is the second one.
+
+## Deploy a model
+
+`POST /v1/ml/models` takes a name, a serving spec, and optional labels. The
+spec is a KServe `InferenceService` spec and is relayed as given, so anything
+KServe can serve is deployable without this layer needing to understand it.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/ml/models \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "sentiment",
+    "spec": {
+      "predictor": {
+        "model": {
+          "modelFormat": { "name": "sklearn" },
+          "storageUri": "s3://my-bucket/sentiment/v3"
+        }
+      }
+    }
+  }'
+```
+
+`name` must be a DNS-1123 label — lowercase alphanumerics and hyphens. A name
+already taken in your namespace is a `409`.
+
+`modelFormat.name` is the serving runtime. The console offers `sklearn`,
+`xgboost`, `tensorflow`, `pytorch`, `triton`, and `huggingface`. `storageUri`
+points at the checkpoint — `s3://`, `gs://`, or `hf://org/model`.
+
+Your balance is authorized **before** anything is created, so an unfunded org
+cannot start GPU compute and be billed for it afterwards. An unfunded org gets
+`402` and no namespace is touched.
+
+## Call it
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/ml/models/sentiment/predict \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{ "inputs": [ { "name": "input-0", "shape": [1], "datatype": "BYTES", "data": ["a fine day"] } ] }'
+```
+
+The request body, the response body, the status code, and the `Content-Type`
+pass through unchanged in both directions. The shape is the **KServe v2
+inference protocol**, which means your runtime decides it, not Hanzo — a
+model-side error surfaces as the model's own error rather than a paraphrase of
+it.
+
+The v2 model name defaults to the resource name. A runtime serving several
+models picks one with `?model=`.
+
+A model that exists but has no serving address yet answers `503 not ready` —
+deployed and serving are not the same state.
+
+## Manage it
+
+| Call | Does |
+|------|------|
+| `GET /v1/ml/models` | Every model your org has deployed |
+| `GET /v1/ml/models/{name}` | One model: its spec plus live serving status, which is where readiness and the address appear |
+| `PATCH /v1/ml/models/{name}` | JSON merge patch — change image, replicas, or resource requests without tearing the deployment down |
+| `DELETE /v1/ml/models/{name}` | Removes the `InferenceService`; the model stops answering |
+
+A `PATCH` body is relayed to Kubernetes verbatim, with merge-patch semantics as
+written: `null` removes a field, and a list is replaced whole rather than
+merged. A patch Kubernetes rejects comes back `422` with its reason.
+
+## Isolation
+
+Deployments land in a namespace derived from your validated org and project —
+never from a field in the request — and the mapping is injective in both, so two
+tenants can never share a namespace. A name another org owns answers `404`,
+exactly as an unknown name does, so probing teaches nothing.
+
+## In the console
+
+[console.hanzo.ai](https://console.hanzo.ai) → **Inference** lists your deployed
+endpoints beside the managed catalogue, with per-endpoint health and a log view
+built from the usage ledger — one row per billed call.
+
+## Related
+
+- [Fine-tuning](/docs/finetuning) — train a model here, then deploy the result
+- [Models](/docs/models) — the managed catalogue and its ids
+- [AI API](/docs/llm) — chat, embeddings, and the rest of `/v1`
+- [GPUs](/docs/gpus) — the accelerators underneath
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

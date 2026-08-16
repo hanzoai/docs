@@ -1,6 +1,6 @@
 ---
 title: Database Drivers
-description: SQLite, ZAP binary protocol (PostgreSQL, MongoDB, Redis, ClickHouse), and custom driver support.
+description: SQLite, ZAP binary protocol (PostgreSQL, MongoDB, Redis, Datastore), and custom driver support.
 ---
 
 # Database Drivers
@@ -19,7 +19,7 @@ Hanzo ORM uses a two-layer interface design. The `orm.DB` interface is minimal (
 | PostgreSQL | `orm.OpenZap` + `ZapSQL` | ZAP binary | Production SQL |
 | MongoDB/FerretDB | `orm.OpenZap` + `ZapDocumentDB` | ZAP binary | Document storage |
 | Redis/Valkey | `orm.OpenZap` + `ZapKV` | ZAP binary | KV storage |
-| ClickHouse | `orm.OpenZap` + `ZapDatastore` | ZAP binary | Analytics/columnar |
+| Datastore | `orm.OpenZap` + `ZapDatastore` | ZAP binary | Analytics/columnar |
 | Custom | `orm.AdaptDB` | Any | Bring your own driver |
 
 ## SQLite
@@ -174,7 +174,7 @@ db, err := orm.OpenZap(&ormdb.ZapConfig{
     Backend: ormdb.ZapKV,
 })
 
-// ClickHouse via ZAP
+// Datastore via ZAP
 db, err := orm.OpenZap(&ormdb.ZapConfig{
     Addr:    "localhost:9651",
     Backend: ormdb.ZapDatastore,
@@ -229,7 +229,7 @@ The ZAP driver translates ORM operations into backend-specific requests:
 | **Scaling** | Single node | Multi-node, distributed |
 | **Use case** | Dev, edge, CLI tools | Production services |
 | **Performance** | Fast for small datasets | Better for large/concurrent workloads |
-| **Backends** | SQLite only | PostgreSQL, MongoDB, Redis, ClickHouse |
+| **Backends** | SQLite only | PostgreSQL, MongoDB, Redis, Datastore |
 
 ## Custom Drivers
 

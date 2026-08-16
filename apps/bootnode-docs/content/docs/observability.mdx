@@ -1,6 +1,6 @@
 ---
 title: Observability
-description: Platform health, metrics, alerts, logs, and service maps. Powered by ClickHouse, Loki, OTEL Collector, and Grafana.
+description: Platform health, metrics, alerts, logs, and service maps. Powered by Datastore, Loki, OTEL Collector, and Grafana.
 ---
 
 Bootnode provides native observability for all blockchain infrastructure. Health checks, metrics, alerts, log aggregation, and service dependency maps.
@@ -8,7 +8,7 @@ Bootnode provides native observability for all blockchain infrastructure. Health
 ## Architecture
 
 ```
-Bootnode API → OTEL Collector → ClickHouse (traces + metrics)
+Bootnode API → OTEL Collector → Datastore (traces + metrics)
                     ↓
              Loki (container logs via Promtail)
                     ↓
@@ -16,9 +16,9 @@ Bootnode API → OTEL Collector → ClickHouse (traces + metrics)
 ```
 
 - **Traces**: OpenTelemetry SDK with OTLP gRPC export
-- **Metrics**: ClickHouse `api_usage` table (rps, latency percentiles, error rate)
+- **Metrics**: Datastore `api_usage` table (rps, latency percentiles, error rate)
 - **Logs**: Loki with LogQL queries across all `bootnode` namespace containers
-- **Dashboards**: Grafana with ClickHouse plugin
+- **Dashboards**: Grafana with Datastore plugin
 
 ## Health Overview
 
@@ -48,7 +48,7 @@ GET /v1/o11y/health
 GET /v1/o11y/metrics
 ```
 
-Queries ClickHouse for real-time platform metrics:
+Queries Datastore for real-time platform metrics:
 
 ```json title="Response"
 {

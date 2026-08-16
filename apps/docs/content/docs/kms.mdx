@@ -12,7 +12,7 @@ Hanzo KMS is the secrets control plane for the platform. It stores and rotates s
 | Type | Description |
 |------|-------------|
 | **Secrets** | Static key-value secrets (API keys, tokens, connection strings), versioned with full history and rollback. |
-| **Dynamic secrets** | Short-lived, auto-rotating credentials for PostgreSQL, MySQL, MongoDB, Redis, and ClickHouse. |
+| **Dynamic secrets** | Short-lived, auto-rotating credentials for PostgreSQL, MySQL, MongoDB, Redis, and Datastore. |
 | **Encryption keys** | Symmetric and asymmetric keys for encrypt/decrypt and wrap/unwrap operations. |
 | **Signing keys** | Keys backed by [Hanzo MPC](/docs/mpc) threshold signatures for custody and validator signing. |
 | **Certificates** | PKI certificate lifecycle with CA integration. |
@@ -21,12 +21,12 @@ KMS is zero-knowledge by design: values are encrypted at rest, access is governe
 
 ## Secrets and Cryptographic Operations
 
-Secrets and key operations are served under `/v1/kms` on the gateway, or directly at `kms.hanzo.ai`. Authenticate with an API key (`hk-...`).
+Secrets and key operations are served under `/v1/kms` on the gateway, or directly at `kms.hanzo.ai`. Authenticate with an API key (`sk-...`).
 
 ```bash
 # Read a secret from an environment path
 curl "https://api.hanzo.ai/v1/kms/secrets?environment=production&path=/api-keys" \
-  -H "Authorization: Bearer hk-..."
+  -H "Authorization: Bearer sk-..."
 ```
 
 Keys never leave the boundary. For signing and threshold operations, KMS delegates to MPC and returns only the signature -- the private key material is split across independent nodes and never reconstructed.
@@ -39,20 +39,34 @@ For workloads on Kubernetes, the KMS operator syncs secrets into the cluster wit
 apiVersion: secrets.lux.network/v1alpha1
 kind: KMSSecret
 metadata:
-  name: hanzo-api-key
+  name: api-kms-sync
+  namespace: acme
 spec:
-  secretStoreRef:
-    name: kms-hanzo
-  data:
-    - secretKey: HANZO_API_KEY
-      remoteRef:
-        secretPath: /prod/api-keys
-        secretKey: primary
+  hostAPI: https://kms.hanzo.ai
+  resyncInterval: 60
+  authentication:
+    universalAuth:
+      credentialsRef:
+        secretName: acme-iam-creds
+        secretNamespace: acme
+      secretsScope:
+        projectSlug: acme
+        envSlug: prod
+        secretsPath: /api-keys
+        keys:
+          - HANZO_API_KEY
+  managedSecretReference:
+    creationPolicy: Orphan
+    secretName: api-secrets
+    secretNamespace: acme
+    secretType: Opaque
 ```
+
+Every field is in the [KMSSecret reference](/docs/services/kms/kmssecret-crd).
 
 ## Related
 
-- [API Keys](/docs/api-keys) -- store and rotate `hk-` keys in KMS for production
+- [API Keys](/docs/api-keys) -- store and rotate `sk-` keys in KMS for production
 - [MPC](/docs/mpc) -- threshold signing backend for KMS-managed keys
 - [IAM](/docs/iam) -- identity that authorizes KMS access
 - [Zero Trust](/docs/zero-trust) -- private access to services that consume secrets

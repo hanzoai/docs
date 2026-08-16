@@ -48,7 +48,7 @@ const features = [
     icon: BarChart3Icon,
     title: 'Usage Analytics',
     description:
-      'Real-time token usage, cost tracking, and performance metrics. Per-model, per-team breakdowns with ClickHouse-powered dashboards.',
+      'Real-time token usage, cost tracking, and performance metrics. Per-model, per-team breakdowns with Datastore-powered dashboards.',
   },
   {
     icon: UsersIcon,
@@ -66,7 +66,7 @@ const features = [
     icon: ShieldCheckIcon,
     title: 'Security & Compliance',
     description:
-      'End-to-end encryption, audit logs, and SOC 2 compliance. PII redaction and content filtering built in.',
+      'End-to-end encryption, audit logs, and SOC 2 Type II controls. PII redaction and content filtering built in.',
   },
   {
     icon: ZapIcon,
@@ -79,7 +79,7 @@ const features = [
 const stats = [
   { value: 'enso + Zen', label: 'First-Party Models' },
   { value: '<50ms', label: 'Added Latency' },
-  { value: '99.9%', label: 'Uptime SLA' },
+  { value: 'Multi-region', label: 'Automated failover' },
   { value: '5000', label: 'Req/s Capacity' },
 ];
 
@@ -287,7 +287,7 @@ export default function Page() {
                   {
                     icon: BarChart3Icon,
                     path: 'Analytics Pipeline',
-                    desc: 'Langfuse → ClickHouse → Dashboards',
+                    desc: 'Langfuse → Datastore → Dashboards',
                   },
                 ].map((step, i) => (
                   <div
