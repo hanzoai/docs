@@ -32,18 +32,18 @@ Hanzo Console is the LLM engineering platform at the center of the Hanzo AI stac
 │                          │                                       │
 │                    Console API                                   │
 │            ┌─────────────┼─────────────┐                        │
-│      PostgreSQL     ClickHouse      Redis ──► Worker            │
+│      PostgreSQL     Datastore       Redis ──► Worker            │
 │      (metadata)     (analytics)     (queues)  (MQ 27+)         │
 └──────────────────────────────────────────────────────────────────┘
 
-Ingestion:  Your App ──► SDK/HTTP ──► api.hanzo.ai/v1/console/* ──► ClickHouse
+Ingestion:  Your App ──► SDK/HTTP ──► api.hanzo.ai/v1/console/* ──► Datastore 
 ```
 
 | Component | Image | Port | Purpose |
 |-----------|-------|------|---------|
 | **Web** | `hanzoai/console:latest` | 3001 | Next.js 15 dashboard and API |
 | **Worker** | `ghcr.io/hanzoai/console-worker:latest` | -- | Hanzo MQ processor (27+ queues) |
-| **ClickHouse** | In-cluster | 9000 | Analytics storage (traces, scores, costs) |
+| **Datastore** | In-cluster | 9000 | Analytics storage (traces, scores, costs) |
 | **PostgreSQL** | In-cluster | 5432 | Metadata (prompts, datasets, projects, users) |
 | **Redis** | In-cluster | 6379 | Job queues, caching, pub/sub |
 
@@ -51,43 +51,11 @@ Ingestion:  Your App ──► SDK/HTTP ──► api.hanzo.ai/v1/console/* ─�
 
 ### 1. Get an API Key
 
-Sign in at `console.hanzo.ai` with Hanzo IAM SSO. Navigate to **Settings > API Keys** and create a new key. Keys are scoped to a project and prefixed with `hk-`.
+Sign in at `console.hanzo.ai` with Hanzo IAM SSO. Navigate to **Settings > API Keys** and create a key. Take a secret key (`sk-`) for server-side tracing; take a publishable key (`pk-`) for the browser SDK, which resolves only to your org and so is safe to ship.
 
-### 2. Send Your First Trace
+### 2. Send a Trace
 
-```bash
-curl -X POST https://api.hanzo.ai/v1/console/ingestion \
-  -H "Authorization: Bearer hk-your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "batch": [
-      {
-        "type": "trace-create",
-        "id": "trace-001",
-        "timestamp": "2026-02-22T00:00:00Z",
-        "body": {
-          "name": "my-first-trace",
-          "input": {"query": "What is Hanzo Console?"},
-          "output": {"answer": "An LLM engineering platform."},
-          "metadata": {"env": "production"}
-        }
-      },
-      {
-        "type": "generation-create",
-        "id": "gen-001",
-        "timestamp": "2026-02-22T00:00:01Z",
-        "body": {
-          "traceId": "trace-001",
-          "name": "llm-call",
-          "model": "zen5",
-          "input": [{"role": "user", "content": "What is Hanzo Console?"}],
-          "output": {"role": "assistant", "content": "An LLM engineering platform."},
-          "usage": {"inputTokens": 12, "outputTokens": 8}
-        }
-      }
-    ]
-  }'
-```
+Point an SDK at the key — see [SDK Integration](#sdk-integration) below.
 
 ### 3. View in Dashboard
 
@@ -122,7 +90,7 @@ Open `console.hanzo.ai`, select your project, and click **Traces**. Your trace a
 ```python
 from hanzoai import Hanzo
 
-client = Hanzo(api_key="hk-your-api-key", trace=True)
+client = Hanzo(api_key="sk-your-api-key", trace=True)
 
 # Every call is traced automatically
 response = client.chat.completions.create(
@@ -171,7 +139,7 @@ response = client.chat.completions.create(
 ```typescript
 import Hanzo from '@hanzo/ai'
 
-const client = new Hanzo({ apiKey: 'hk-your-api-key', trace: true })
+const client = new Hanzo({ apiKey: 'sk-your-api-key', trace: true })
 
 const response = await client.chat.completions.create({
   model: 'zen5',
@@ -185,7 +153,7 @@ const response = await client.chat.completions.create({
 ```typescript
 import { ConsoleClient } from '@hanzo/ai/console'
 
-const console = new ConsoleClient({ publicKey: 'hk-your-api-key' })
+const console = new ConsoleClient({ publicKey: 'pk-your-key' })
 const trace = console.trace({ name: 'rag-pipeline' })
 
 const retrieval = trace.span({ name: 'retrieval', input: { query } })
@@ -219,81 +187,6 @@ response = openai_client.chat.completions.create(
 )
 ```
 
-## API Reference
-
-All endpoints are under `api.hanzo.ai/v1/console/`.
-
-### Ingestion
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/ingestion` | Batch ingest traces, spans, generations, scores, events |
-
-Batch event types: `trace-create`, `span-create`, `span-update`, `generation-create`, `generation-update`, `score-create`, `event-create`.
-
-### Traces
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/traces` | List traces with filtering and pagination |
-| `GET` | `/traces/:id` | Get trace with all nested spans |
-
-### Prompts
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/prompts` | List all prompts |
-| `GET` | `/prompts/:name` | Get prompt by name (latest or specific version) |
-| `POST` | `/prompts` | Create or update a prompt |
-
-```bash
-curl -X POST https://api.hanzo.ai/v1/console/prompts \
-  -H "Authorization: Bearer hk-your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "qa-system",
-    "prompt": "Answer based on context.\n\nContext: {{context}}\nQuestion: {{question}}",
-    "config": {"model": "zen5", "temperature": 0.2},
-    "labels": ["production"]
-  }'
-```
-
-### Scores
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/scores` | Attach a score to a trace or generation |
-| `GET` | `/scores` | List scores with filtering |
-
-### Datasets
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/datasets` | List datasets |
-| `POST` | `/datasets` | Create a dataset |
-| `POST` | `/datasets/:id/items` | Add items to a dataset |
-| `POST` | `/datasets/:id/runs` | Execute an evaluation run |
-
-### Sessions and Metrics
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/sessions` | List sessions |
-| `GET` | `/sessions/:id` | Get session with all traces |
-| `GET` | `/metrics/daily` | Daily aggregated metrics (cost, latency, volume) |
-| `GET` | `/metrics/usage` | Token usage breakdown by model |
-
-### Evaluators
-
-| Evaluator | Type | Description |
-|-----------|------|-------------|
-| `llm-as-judge` | LLM | Configurable LLM scores outputs on custom criteria |
-| `cosine-similarity` | Numeric | Embedding similarity between output and reference |
-| `contains` | Boolean | Checks output contains expected substrings |
-| `regex-match` | Boolean | Matches output against regex patterns |
-| `json-validity` | Boolean | Validates JSON structure |
-| `custom` | Function | User-defined scoring via webhook |
-
 ## Configuration
 
 ### Required Environment Variables
@@ -301,7 +194,7 @@ curl -X POST https://api.hanzo.ai/v1/console/prompts \
 | Variable | Description |
 |----------|-------------|
 | `DATABASE_URL` | PostgreSQL connection string |
-| `CLICKHOUSE_URL` | ClickHouse connection string |
+| `DATASTORE_URL` | Datastore connection string |
 | `REDIS_URL` | Redis connection string |
 | `NEXTAUTH_URL` | Console public URL (`https://console.hanzo.ai`) |
 | `NEXTAUTH_SECRET` | NextAuth session encryption key |
@@ -312,12 +205,12 @@ curl -X POST https://api.hanzo.ai/v1/console/prompts \
 
 Optional: `HANZO_S3_EVENT_UPLOAD_ENDPOINT`, `HANZO_S3_EVENT_UPLOAD_BUCKET` (`hanzo-events`), `HANZO_S3_MEDIA_UPLOAD_BUCKET` (`hanzo-media`), `HANZO_INIT_ORG_IDS`, `HANZO_INIT_USER_EMAIL`, `HANZO_INIT_PROJECT_ORG_ID`, `AGENTS_API_URL`.
 
-### ClickHouse Migrations
+### Datastore Migrations
 
 34 migrations managed by `golang-migrate`. Database must be named `console` (not `hanzo`).
 
 ```bash
-kubectl port-forward svc/clickhouse 9000:9000 -n hanzo
+kubectl port-forward svc/datastore 9000:9000 -n hanzo
 migrate -path ./migrations -database "clickhouse://localhost:9000/console" up
 ```
 

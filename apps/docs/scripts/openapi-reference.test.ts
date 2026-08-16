@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { isInternal, loadDocument, publicDocument } from './openapi-doc';
+import { DOCUMENT, isInternal, loadDocument, publicDocument } from './openapi-doc';
 import { genOpenapiPages } from './gen-openapi-pages';
 
 // THE API REFERENCE, held to its own claims.
@@ -19,7 +19,7 @@ import { genOpenapiPages } from './gen-openapi-pages';
 //   complete    every operation the document serves has an entry, and every
 //               sentence the document wrote for it survives onto the page
 
-const doc = loadDocument(path.join(import.meta.dirname, '../openapi-specs/hanzo.yaml'));
+const doc = loadDocument(DOCUMENT);
 /** What public/openapi/hanzo.yaml is written from — cloned once, it is 3.8 MB. */
 const shipped = publicDocument(doc);
 
@@ -283,5 +283,43 @@ describe('kept — the operator surface is documented, just not here', () => {
     const held = doc.internal.reduce((n, p) => n + p.operations.length, 0);
     expect(held).toBe(doc.operations.filter(isInternal).length);
     expect(held).toBe(87);
+  });
+});
+
+// A NAMED EXCEPTION MUST NAME SOMETHING THE DOCUMENT SERVES.
+//
+// `INTERNAL_IDS` is the one operation hidden by id rather than by product, and
+// it is hidden because its description carries upstream cost and margin. It is
+// spelled as a literal, so it rots the moment the document renames the id —
+// and it did: cloud dropped `_v1_` from 2011 operationIds and the entry kept
+// naming `get_v1_commerce_admin_catalog`, an id nothing serves. The reference
+// then published the margin report, and nothing said so, because a Set that
+// matches nothing looks exactly like a Set that matches nothing yet.
+//
+// This is the cheap half of what the comment above `INTERNAL_IDS` asks for: an
+// `x-internal` marker on the Go op is the real fix, but until it exists a
+// hidden id that stopped existing must fail the build rather than publish.
+describe('the internal exception list', () => {
+  it('names only operations the document actually serves', () => {
+    const hidden = doc.operations.filter((op) => isInternal(op));
+    const byProduct = hidden.filter((op) => op.product === 'admin');
+    const byId = hidden.filter((op) => op.product !== 'admin');
+
+    // The by-id exception exists and resolves. Zero here means the list has
+    // gone stale — which is indistinguishable from "there is no exception"
+    // unless something asserts it.
+    expect(byId.length).toBeGreaterThan(0);
+    expect(byProduct.length).toBeGreaterThan(0);
+
+    // And the thing it hides is the one it was written to hide.
+    expect(byId.map((op) => op.id)).toContain('get_commerce_admin_catalog');
+
+    // The margin report must not appear in what ships publicly.
+    const shippedIds = new Set(
+      Object.values(shipped.paths ?? {}).flatMap((item: any) =>
+        Object.values(item ?? {}).map((op: any) => op?.operationId).filter(Boolean),
+      ),
+    );
+    expect(shippedIds.has('get_commerce_admin_catalog')).toBe(false);
   });
 });

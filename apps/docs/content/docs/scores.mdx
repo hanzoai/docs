@@ -1,58 +1,70 @@
 ---
 title: Scores
-description: Evaluation scores from feedback, graders, and review — attached to traces, observations, and sessions.
+description: Evaluation scores attached to traces, runs, datasets, and items — from an LLM judge, from a human, or from your users.
 ---
 
 # Scores
 
-A score is a judgment attached to a [trace](/docs/traces), observation, or [session](/docs/sessions): a thumbs-up from a user, a grade from an automated evaluator, or a rating from a human reviewer. Scores are the measurable output of evaluation. Served by [Hanzo O11y](/docs/o11y), tenant-scoped by org.
+A score is a judgment attached to something you recorded: a grade from an
+automated judge, a rating from a reviewer, or a thumbs-up from a user. Scores are
+the measurable output of evaluation.
 
 ## Anatomy of a score
 
-Every score has a data type and a source, and points at what it grades. Its shape is governed by a [score config](/docs/score-configs) referenced through `configId`.
-
 | Field | Description |
 |-------|-------------|
-| `name` | The metric, e.g. `helpfulness`, `hallucination` |
-| `value` | Numeric value (also used for boolean 0/1 and category codes) |
-| `stringValue` | The category label or free-text value |
-| `dataType` | `NUMERIC`, `CATEGORICAL`, `BOOLEAN`, or `TEXT` |
-| `source` | `API` (feedback), `EVAL` (graders), `ANNOTATION` (review) |
-| `traceId` / `observationId` / `sessionId` | What the score is attached to |
-| `comment` | Optional reviewer note |
+| `name` | The metric, e.g. `helpfulness`, `tone`. **Required** |
+| `value` | The numeric value — also used for boolean `0` / `1` |
+| `stringValue` | The category label, for a categorical score |
+| `dataType` | `NUMERIC`, `CATEGORICAL`, or `BOOLEAN` |
+| `traceId` / `runName` / `datasetName` / `datasetItemId` | What it is attached to |
+| `comment` | Optional note, up to 2,000 characters |
 
-## Listing scores
+## Write one
 
 ```bash
-curl "https://api.hanzo.ai/v1/o11y/scores?page=1&limit=50" \
-  -H "Authorization: Bearer hk-..."
+curl -X POST https://api.hanzo.ai/v1/evals/scores \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "helpfulness",
+    "dataType": "NUMERIC",
+    "value": 4,
+    "traceId": "tr_71ab",
+    "comment": "Answered, but buried the actual step."
+  }'
 ```
 
-```json
-{
-  "data": [
-    {
-      "id": "sc_1",
-      "name": "helpfulness",
-      "value": 4,
-      "dataType": "NUMERIC",
-      "source": "ANNOTATION",
-      "traceId": "tr_abc123",
-      "configId": "cfg_help"
-    }
-  ],
-  "meta": { "page": 1, "limit": 50, "totalItems": 1, "totalPages": 1 }
-}
+## Read them
+
+```bash
+curl "https://api.hanzo.ai/v1/evals/scores?name=helpfulness&limit=100" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
 ```
+
+Filter by `name`, `runName`, `traceId`, and `limit`.
+
+## Keeping them consistent
+
+Declare the metric's shape once as a [rubric](/docs/score-configs) and every
+later write is checked against it: a `NUMERIC` value must fall inside the
+declared bounds, a `BOOLEAN` must be exactly `0` or `1`, and a `CATEGORICAL`
+`stringValue` must be one of the declared categories. A rubric also **overrides**
+whatever `dataType` a writer claims, so one metric cannot end up with two shapes.
 
 ## Where scores come from
 
-- **`API`** — end-user feedback (thumbs up/down, star ratings) sent from your app.
-- **`EVAL`** — automated graders, including LLM-as-judge, produced by [experiment](/docs/experiments) runs.
-- **`ANNOTATION`** — human review through [annotation queues](/docs/annotation-queues).
+- **An [eval run](/docs/evals)** — the LLM judge scores every item and writes the
+  result, along with a trace per item.
+- **Your application** — user feedback, written through the same endpoint.
+- **A reviewer** — a person grading recorded output by hand.
+
+Scores attached to spans through the observability plane are read separately at
+`GET /v1/o11y/llm/scores`, alongside [observations](/docs/observations).
 
 ## Related
 
-- [Score Configs](/docs/score-configs) — the definitions scores conform to
-- [Annotation Queues](/docs/annotation-queues) — human review that emits scores
-- [Experiments](/docs/experiments) — graded dataset runs that emit scores
+- [Evals](/docs/evals) — the runs that produce most scores
+- [Score Configs](/docs/score-configs) — the rubrics scores conform to
+- [Traces](/docs/traces) — what a score usually points at
+- [Experiments](/docs/experiments) — comparing scored runs

@@ -43,11 +43,11 @@ Three things follow from "one and only one way":
 |------|-------|-------------|
 | **`hanzo-docs/docs`** | The framework (`@hanzo/docs-*` packages) **and** the hub app (`apps/docs`). Canonical — `hanzoai/docs` redirects here. | Team-owned content that wants its own release cadence. |
 | **`hanzo-docs/<team>`** | *Authored* content only — MDX + `meta.json` + `LICENSE`/`NOTICE`. No framework, no build config. | Any Next.js/Fumadocs wiring. It is content, not a site. |
-| **`hanzoai/openapi`** | The OpenAPI 3.1 spec for every service. Source of truth for **all** API reference. | Hand-written prose reference. |
+| **`hanzoai/cloud`** | `openapi.yaml` — the one description of the API, emitted from the handlers. Source of truth for **all** API reference. | Hand-written prose reference. |
 
 All docs live in the **`hanzo-docs`** org: the hub + framework at
 `hanzo-docs/docs`, each team's content at `hanzo-docs/<team>`. The API source of
-truth stays with the code, at `hanzoai/openapi`. A `hanzo-docs/<team>` repo (any
+truth stays with the code, at `hanzoai/cloud`. A `hanzo-docs/<team>` repo (any
 but `docs`) that carries a framework `package.json` has drifted — fix it.
 
 ## The three content mechanisms
@@ -77,12 +77,14 @@ API reference and SDK reference are **generated** from a machine-readable source
 and are `.gitignore`d build artifacts. Editing a generated page is forbidden;
 edit the source.
 
-- **API reference** ← `hanzoai/openapi`. `scripts/sync-openapi.sh` copies every
-  `<service>/openapi.yaml` into `openapi-specs/` (source-derived — no hardcoded
-  service list; adding a service to `hanzoai/openapi` makes it appear on the
-  next build). `scripts/gen-openapi-pages.ts` renders one static MDX page per
-  spec into `content/docs/openapi/<service>.mdx`, cross-linked to the matching
-  prose guide. **38 reference pages from 36 specs today, zero hand-authored.**
+- **API reference** ← `hanzoai/cloud` `openapi.yaml`, at the release
+  `openapi-specs/.spec-lock` pins. `scripts/sync-openapi.sh` fetches that one
+  file — digest-checked, from the forge or a sibling checkout, else the
+  committed snapshot — and `scripts/gen-openapi-pages.ts` renders one page per
+  product tag into `content/docs/openapi/<product>.mdx`, cross-linked to the
+  matching prose guide. Every count on those pages is the document's own, and
+  the reference used to render a projection of it published on its own clock:
+  two descriptions of one API, disagreeing by nineteen releases.
 - **SDK reference** ← the ZAP SDK generator (per language). Generated MDX lands
   in `content/docs/sdks/<lang>/`. The slot exists (`python`, `typescript`, `go`,
   `rust`, `c`); the generator writes into it. Do not hand-author SDK method
@@ -136,7 +138,8 @@ One framework, four brands, resolved at request time.
 
 Writing a guide for an existing product? Add MDX under its
 `content/docs/<section>/` (or its `hanzo-docs/<team>` submodule). Documenting an
-API? Don't — update `hanzoai/openapi` and it regenerates. Documenting an SDK?
+API? Don't — the sentence lives next to the handler in `hanzoai/cloud`, and the
+page regenerates from it. Documenting an SDK?
 Don't — the ZAP generator emits it. Bringing a fork's upstream manual? Add the
 repo to `sync-project-docs` config; it mirrors with attribution. Nothing else is
 a supported way to add docs.

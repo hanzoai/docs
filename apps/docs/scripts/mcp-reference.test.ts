@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { loadDocument } from './openapi-doc';
+import { DOCUMENT, loadDocument } from './openapi-doc';
 import { toolKeys, toolOperations } from './openapi-surfaces';
 import { load } from './sync-mcp-tools';
 import { constraintsOf, genMcpPages, published } from './gen-mcp-pages';
@@ -22,7 +22,7 @@ import { constraintsOf, genMcpPages, published } from './gen-mcp-pages';
 // but a property of gen-mcp-pages: no sentence about a tool is written there.
 
 const catalog = load();
-const doc = loadDocument(path.join(import.meta.dirname, '../openapi-specs/hanzo.yaml'));
+const doc = loadDocument(DOCUMENT);
 /** The join every completeness assertion below reads through. */
 const mappedOps = toolOperations(doc, catalog.tools);
 // The reference documents the PUBLISHED tools, so the claims below are read
@@ -51,8 +51,8 @@ beforeAll(async () => {
 // cases are taken from the live door's own tools/list answer.
 describe('the tool -> operation rule', () => {
   it('keys an operation by its name and by its route', () => {
-    const op = doc.operations.find((o) => o.id === 'patch_v1_agents_targets_id')!;
-    expect(toolKeys(op)).toEqual(['patch_v1_agents_targets_id', 'patch_v1_agents_targets_id']);
+    const op = doc.operations.find((o) => o.id === 'patch_v1_agents_targets_by_id')!;
+    expect(toolKeys(op)).toEqual(['patch_v1_agents_targets_by_id', 'patch_v1_agents_targets_id']);
   });
 
   it('keys a route whose operationId spells a parameter differently', () => {

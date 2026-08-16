@@ -17,7 +17,7 @@ Databases are scoped to your organization. Creating one returns a ready-to-use c
 
 ```bash
 curl -X POST https://api.hanzo.ai/v1/sql \
-  -H "Authorization: Bearer hk-..." \
+  -H "Authorization: Bearer sk-..." \
   -H "X-Org-Id: org_a1b2c3" \
   -H "Content-Type: application/json" \
   -d '{ "name": "app", "region": "us-east" }'
@@ -44,21 +44,7 @@ rows = await conn.fetch("SELECT id, title FROM documents LIMIT 10")
 
 ## Branches and Replicas
 
-Branches are copy-on-write clones that share storage with the parent until data diverges — near-instant regardless of database size. Use them for development, CI, and schema previews.
-
-```bash
-# Branch the current state
-curl -X POST https://api.hanzo.ai/v1/sql/app/branches \
-  -H "Authorization: Bearer hk-..." \
-  -d '{ "name": "feature-auth" }'
-
-# Add a read replica
-curl -X POST https://api.hanzo.ai/v1/sql/app/replicas \
-  -H "Authorization: Bearer hk-..." \
-  -d '{ "name": "app-ro-1" }'
-```
-
-Point read-heavy traffic at the replica endpoint; typical replication lag is under 100 ms.
+Branches are copy-on-write clones that share storage with the parent until data diverges — near-instant regardless of database size. Use them for development, CI, and schema previews. Read-heavy traffic points at a replica endpoint instead, where replication lag is typically under 100 ms.
 
 ## Features
 
@@ -73,7 +59,7 @@ Point read-heavy traffic at the replica endpoint; typical replication lag is und
 - [Hanzo DB engine reference](/docs/services/sql) — pooling modes, PITR, and pgvector indexing
 - [Vector](/docs/vector) — a dedicated vector database for embedding-first workloads
 - [DocDB](/docs/docdb) — MongoDB-compatible document storage
-- [API Keys](/docs/api-keys) — authenticate with `hk-` keys
+- [API Keys](/docs/api-keys) — authenticate with `sk-` keys
 - [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`
 
 {/* domain-index */}

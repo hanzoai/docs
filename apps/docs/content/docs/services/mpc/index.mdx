@@ -117,36 +117,6 @@ Response (ECDSA):
 
 </Steps>
 
-## Core Endpoints
-
-All under `https://mpc.hanzo.ai/v1`.
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| `POST` | `/v1/mpc/wallets` | Create a wallet (DKG); `{ "protocol": "cggmp21" \| "frost" }` |
-| `GET` | `/v1/wallets/{id}/addresses` | Derived chain addresses for a wallet |
-| `POST` | `/v1/mpc/wallets/{id}/sessions` | Open a signing session |
-| `GET` | `/v1/mpc/wallets/{id}/sessions` | List sessions |
-| `POST` | `/v1/mpc/sign` | Threshold-sign a message (requires `sessionId`) |
-| `POST` | `/v1/wallets/{id}/reshare` | Proactive share refresh / change t-of-n |
-| `GET` | `/v1/status` · `/v1/info` | Cluster status and capabilities |
-| `GET` | `/healthz` | Liveness (no auth) |
-
-A single wallet derives addresses for many chains:
-
-```bash
-curl https://mpc.hanzo.ai/v1/wallets/$WALLET_ID/addresses \
-  -H "Authorization: Bearer $IAM_ACCESS_TOKEN"
-```
-
-```json
-{
-  "ethereum": "0x742d35Cc6634C0532925a3b844Bc9e7595f2bD18",
-  "bitcoin": "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-  "solana": "7nYBzS3Yz5mY8Qm4iXqz1bWmHnf8QpHq3xWv6Yc9aBcD"
-}
-```
-
 ## Proactive Share Refresh
 
 Rotate the key shares without changing the public key or any on-chain address. Old shares become useless after a refresh, so a share compromised in a past epoch cannot be combined with current shares.
@@ -189,9 +159,6 @@ The REST custody API above is a facade over this same backend.
 ## Next Steps
 
 <Cards>
-  <Card title="API Reference" href="/docs/services/mpc/api">
-    Complete REST API: wallets, sessions, signing, resharing
-  </Card>
   <Card title="Protocols" href="/docs/services/mpc/protocols">
     CGGMP21, FROST, LSS, and BLS threshold schemes
   </Card>

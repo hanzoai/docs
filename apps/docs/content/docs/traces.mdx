@@ -1,69 +1,102 @@
 ---
 title: Traces
-description: Distributed traces across all services — OpenTelemetry-compatible, correlated with logs, metrics, and scores.
+description: One end-to-end request or agent run, broken into spans — appended by your services, read back as a waterfall or rolled up per model call.
 ---
 
 # Traces
 
-A trace is one end-to-end request or agent run, broken into nested **observations** — spans, LLM generations, tool calls, and events. Traces are OpenTelemetry-compatible on the wire and served by [Hanzo O11y](/docs/o11y), tenant-scoped by org.
+A trace is one end-to-end request or agent run, made of nested **spans**. A span
+is a unit of work with a start, an end, a name, and attributes; the parent links
+between them are what turn a pile of spans into a waterfall.
 
-## Ingesting traces
+There are two ways to read a trace, and which you want depends on the question.
+For "what happened, in what order, and how long did each part take", read spans.
+For "which model answered and what did it cost", read
+[observations](/docs/observations).
 
-Point any OpenTelemetry SDK or collector at the gateway. Tenancy travels in the export headers: the `hk-*` key authenticates and `X-Org-Id` scopes the data to your org.
-
-```bash
-export OTEL_EXPORTER_OTLP_ENDPOINT=https://api.hanzo.ai/v1
-export OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer hk-...,X-Org-Id=org_123"
-export OTEL_SERVICE_NAME=checkout-api
-export OTEL_RESOURCE_ATTRIBUTES="deployment.environment=production"
-```
-
-Spans emitted from your service are received at `POST /v1/traces` (OTLP over HTTP) and stitched into traces automatically using W3C Trace Context propagation.
-
-## Reading traces
-
-Traces are queried over REST. List endpoints return `{ data, meta }` with `page`, `limit`, `totalItems`, and `totalPages`; the detail endpoint returns the full trace with its observations and scores inline.
+## Append spans
 
 ```bash
-# List recent traces
-curl "https://api.hanzo.ai/v1/o11y/traces?page=1&limit=50" \
-  -H "Authorization: Bearer hk-..."
-
-# Fetch one trace with its observations + scores
-curl https://api.hanzo.ai/v1/o11y/traces/tr_abc123 \
-  -H "Authorization: Bearer hk-..."
+curl -X POST https://api.hanzo.ai/v1/traces/write \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "spans": [
+      {
+        "traceId": "7c33a1f0",
+        "spanId": "0a91",
+        "parentId": "",
+        "name": "checkout",
+        "startNs": 1760000000000000000,
+        "endNs": 1760000001840000000,
+        "attrs": { "service.name": "checkout-api", "user.id": "u_42" }
+      }
+    ]
+  }'
 ```
 
-```json
-{
-  "id": "tr_abc123",
-  "name": "chat.completion",
-  "userId": "u_42",
-  "sessionId": "sess_9f",
-  "latency": 1.84,
-  "totalCost": 0.0021,
-  "tags": ["prod", "support"],
-  "observations": ["ob_1", "ob_2"],
-  "scores": ["sc_1"]
-}
+Answers `{ "written": 1 }`. Times are **nanoseconds** since the Unix epoch. Every
+span is indexed by its trace id as it lands, which is what makes the waterfall
+read possible without a second store.
+
+Retention is a bounded ring of 1,048,576 spans per org — past that the oldest are
+evicted. A long-lived trace can therefore lose its early spans while its later
+ones survive, so treat a waterfall read as best-effort against retention.
+
+## Read one trace
+
+```bash
+curl "https://api.hanzo.ai/v1/traces/trace?id=7c33a1f0" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
 ```
 
-## Anatomy of a trace
+Answers `{ spans }` — every span your org holds for that id, in the order they
+were appended, which is exactly what a waterfall renders. There is no time range
+and no limit: a trace is addressed by id or not at all.
 
-Each trace carries request-level metadata and a list of observations. An observation is typed, so a flame graph can distinguish an LLM call from a retrieval step.
+An id with no spans answers an **empty list, never a `404`** — the store cannot
+tell a trace that never existed from one whose spans retention has already
+dropped, so it does not pretend to.
 
-| Field | Description |
-|-------|-------------|
-| `latency` | End-to-end duration in seconds |
-| `totalCost` | Total cost in USD across all generations |
-| `userId` | Attribution for [per-user analytics](/docs/o11y) |
-| `sessionId` | Groups the trace into a [session](/docs/sessions) |
-| `observations` | Child spans — `GENERATION`, `SPAN`, `EVENT`, `AGENT`, `TOOL`, `CHAIN`, `RETRIEVER` |
-| `scores` | Attached [evaluation scores](/docs/scores) |
+## Scan recent spans
+
+```bash
+curl "https://api.hanzo.ai/v1/traces/query?limit=100" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Answers `{ count, spans }`, newest first, filtered on each span's start time.
+`start` and `end` are nanosecond bounds, where `0` — which is also what an
+absent or unparseable value becomes — means unbounded. `limit` defaults to 100.
+
+This lists **spans, not traces**: several spans of one trace each take a slot
+against `limit`. Assembling one trace is the call above.
+
+`GET /v1/traces/health` reports how many spans this deployment currently holds
+for your org.
+
+## The model's-eye view
+
+For traces that contain model calls, the observability plane rolls the same
+activity up per request, per conversation, and per end user:
+
+```bash
+curl "https://api.hanzo.ai/v1/o11y/llm/traces?limit=50" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Filter with `start` and `end` (unix **milliseconds**), `traceId`, `sessionId`,
+`userId`, `name`, `model`, `offset`, and `limit`. The same nine filters work on
+`/v1/o11y/llm/observations`, `/llm/sessions`, and `/llm/users`.
+
+Set `session.id` and `user.id` as span attributes and those rollups group
+themselves — see [Observations](/docs/observations) for the full attribute
+contract.
 
 ## Related
 
-- [Sessions](/docs/sessions) — traces grouped into multi-turn runs
-- [Scores](/docs/scores) — evaluations attached to traces and observations
-- [Logs](/docs/logs) and [Metrics](/docs/metrics) — the other two observability signals
-- [API Keys](/docs/api-keys) — creating the `hk-*` key these calls use
+- [Observations](/docs/observations) — the individual model calls inside a trace
+- [Sessions](/docs/sessions) — traces grouped into one conversation
+- [Scores](/docs/scores) — evaluations attached to a trace
+- [Logs](/docs/logs) and [Metrics](/docs/metrics) — the other two signals
+- [API Reference](/docs/openapi) — every endpoint at `api.hanzo.ai`

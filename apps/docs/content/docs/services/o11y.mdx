@@ -84,17 +84,6 @@ There is no separately-addressable Prometheus, Loki, or OTLP port on the public 
 
 ## Quick Start
 
-### Send Metrics via OTLP
-
-```bash
-# Ingest telemetry
-curl -X POST https://api.hanzo.ai/v1/o11y/ingestion \
-  -H "Authorization: Bearer $HANZO_TOKEN" \
-  -H "Content-Type: application/json" \
-  --data-binary @batch.json
-# → {"accepted":1,"dropped":0}
-```
-
 ### Read a service's health
 
 `product` names the service you are asking about, and is required:
@@ -140,7 +129,6 @@ curl -fsS "https://api.hanzo.ai/v1/o11y/query_range?query=sum(up)&start=1&end=2&
 | `GET` | `/v1/o11y/logs?product=` | Log lines with a cursor |
 | `GET` | `/v1/o11y/traces` | Trace list |
 | `GET` | `/v1/o11y/query` · `/v1/o11y/query_range` | PromQL instant / range |
-| `POST` | `/v1/o11y/ingestion` | Telemetry ingest |
 | `GET` | `/v1/o11y/sessions` · `/v1/o11y/annotation-queues` | Session replay, review queues |
 
 `/v1/o11y/vm/*` is fleet-wide platform infrastructure health and is restricted to platform administrators — a normal org bearer gets `403`.
@@ -213,21 +201,6 @@ inference_requests.labels(model="qwen3-4b", status="ok").inc()
 
 O11y aggregates logs from all Hanzo services via Loki. Logs are structured as JSON and enriched with K8s metadata (namespace, pod, container, node) automatically.
 
-```bash
-# Push logs through the one o11y door
-curl -X POST https://api.hanzo.ai/v1/o11y/ingestion \
-  -H "Authorization: Bearer $HANZO_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "streams": [{
-      "stream": { "service": "my-app", "level": "error" },
-      "values": [
-        ["1708646400000000000", "{\"msg\":\"connection timeout\",\"host\":\"db-01\"}"]
-      ]
-    }]
-  }'
-```
-
 ### LogQL Queries
 
 ```bash
@@ -263,34 +236,6 @@ O11y collects distributed traces via the OpenTelemetry Collector and stores them
 # Query traces
 curl -fsS "https://api.hanzo.ai/v1/o11y/traces" \
   -H "Authorization: Bearer $HANZO_TOKEN"
-```
-
-### SDK Instrumentation
-
-```python
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-
-# Configure exporter
-exporter = OTLPSpanExporter(
-    endpoint="https://api.hanzo.ai/v1/o11y/ingestion",
-    headers={"Authorization": f"Bearer {HANZO_TOKEN}"}
-)
-
-provider = TracerProvider()
-provider.add_span_processor(BatchSpanProcessor(exporter))
-trace.set_tracer_provider(provider)
-
-tracer = trace.get_tracer("my-service")
-
-# Create spans
-with tracer.start_as_current_span("process_request") as span:
-    span.set_attribute("model", "qwen3-4b")
-    span.set_attribute("tokens.input", 1024)
-    result = process(request)
-    span.set_attribute("tokens.output", len(result.tokens))
 ```
 
 ### Trace Pipeline
@@ -454,7 +399,6 @@ Sidecar proxies automatically emit RED metrics (Rate, Errors, Duration) for all 
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP ingest endpoint | `https://api.hanzo.ai/v1/o11y/ingestion` |
 | `OTEL_EXPORTER_OTLP_HEADERS` | Auth headers for OTLP | - |
 | `OTEL_SERVICE_NAME` | Service name for telemetry | - |
 | `OTEL_RESOURCE_ATTRIBUTES` | Additional resource attributes | - |

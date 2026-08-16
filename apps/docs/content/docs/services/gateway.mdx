@@ -30,7 +30,7 @@ Both endpoints terminate TLS via Cloudflare (Hanzo) or DigitalOcean Load Balance
 ## Features
 
 - **Inference**: `/v1/*` — chat, embeddings, images and audio, served by Hanzo Engine and Cloud Backend
-- **Routing**: One gateway fans out to 15+ backend services across 133+ endpoints (Cloud, Commerce, IAM, Analytics, Agents, Bot, Operative, KMS, Web3, Infra, Console, Team, Billing)
+- **Routing**: One gateway fans out to every product Cloud serves. Which ones, and at what addresses, is `openapi.yaml` — the document Cloud emits from its own route table, and the same one the SDKs, the CLI and the MCP tool list are generated from. A count written here would be a fourth answer that drifts.
 - **Rate Limiting**: Per-IP and global rate limits on every endpoint, enforced at the gateway layer before requests reach backends
 - **Circuit Breakers**: Automatic backend failure isolation prevents cascading failures across services
 - **Passthrough Encoding**: All traffic uses `no-op` encoding -- the gateway never transforms request or response bodies
@@ -379,7 +379,7 @@ make logs-lux
 
 ```
 configs/
-  hanzo/gateway.json    # Hanzo API Gateway (15+ services)
+  hanzo/gateway.json    # Hanzo API Gateway (every product Cloud serves)
   lux/gateway.json      # Lux blockchain RPC (14 endpoints)
 k8s/
   hanzo/                # deployment, service, ingress

@@ -4,8 +4,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stringify as stringifyYaml } from 'yaml';
 import {
+  DOCUMENT,
   loadDocument,
   publicDocument,
+  secretKey,
   type Document,
   type Operation,
   type Product,
@@ -14,12 +16,18 @@ import { code, firstSentence, prose, text, yamlString } from './mdx';
 
 // The API reference, generated from THE document.
 //
-// hanzoai/openapi `hanzo.yaml` describes every Hanzo endpoint once. This script
-// renders one page per product tag: the tag's description — the owning package's
-// doc synopsis — is the product's intro, and each operation's entry is its own
-// prose and schema out of the document. Nothing here is authored; if a sentence
-// about an endpoint appears on docs.hanzo.ai, it was written next to the code
-// and travelled here through hanzo.yaml.
+// hanzoai/cloud's `openapi.yaml` describes every Hanzo endpoint once, and it is
+// the same document the SDKs, the CLI and the MCP tools are projections of. This
+// script renders one page per product tag: the tag's description — the owning
+// package's doc synopsis — is the product's intro, and each operation's entry is
+// its own prose and schema out of the document. Nothing here is authored; if a
+// sentence about an endpoint appears on docs.hanzo.ai, it was written next to
+// the code and travelled here unaltered.
+//
+// Every count on every page is the document's own — `p.operations.length`, never
+// a literal — so a number here cannot disagree with the API. What it CAN
+// disagree with is the release, and that is what `openapi-specs/.spec-lock`
+// pins.
 //
 // Static MDX, not the runtime <APIPage>: the site ships as a static export
 // (NEXT_EXPORT=1), which disables the interactive loader (lib/openapi/index.ts).
@@ -27,10 +35,9 @@ import { code, firstSentence, prose, text, yamlString } from './mdx';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
-const DOCUMENT = path.join(APP_ROOT, 'openapi-specs/hanzo.yaml');
 const OUT_DIR = path.join(APP_ROOT, 'content/docs/openapi');
 const SERVICES_DIR = path.join(APP_ROOT, 'content/docs/services');
-const PUBLIC_COPY = path.join(APP_ROOT, 'public/openapi/hanzo.yaml');
+const PUBLIC_COPY = path.join(APP_ROOT, 'public/openapi/openapi.yaml');
 
 // Where the operator surface is rendered, and why it is not a repo.
 //
@@ -257,7 +264,9 @@ function renderIndex(products: Product[], doc: Document): string {
   L.push('');
   L.push('## Authentication');
   L.push('');
-  L.push('Every product accepts the same bearer credential — a Hanzo IAM JWT or an `hk-` API key.');
+  L.push(
+    `Every product accepts the same bearer credential — a Hanzo IAM JWT or a \`${secretKey(doc).prefix}\` secret key.`,
+  );
   L.push('');
   L.push('```bash');
   L.push(`curl -H "Authorization: Bearer $HANZO_API_KEY" ${doc.server}/v1/models`);
@@ -392,7 +401,7 @@ export async function genOpenapiPages(
     `[openapi] ${withSynopsis} products carry the owning package's synopsis; ` +
       `${doc.undeclared.size} are served but declare no tag ` +
       `(${doc.products.filter((p) => doc.undeclared.has(p.name)).reduce((n, p) => n + p.operations.length, 0)} operations) ` +
-      `— those want a tag in hanzoai/openapi`,
+      `— those want a tag in hanzoai/cloud`,
   );
 }
 

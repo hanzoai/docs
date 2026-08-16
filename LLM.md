@@ -131,15 +131,28 @@ at docs.hanzo.ai/docs/contributing/docs-architecture). Summary:
      `hanzo-docs/<team>` content repo mounted as a **git submodule** at
      `content/docs/<team>/`. Exemplar: `hanzo-docs/studio-docs` → `content/docs/studio/`.
   2. **Generated** (never hand-written, `.gitignore`d) → API reference from
-     `hanzoai/openapi` via `scripts/sync-openapi.sh` + `scripts/gen-openapi-pages.ts`
-     (source-derived: add a service spec, it appears next build); SDK reference
-     from the ZAP SDK generator into `content/docs/sdks/<lang>/`.
+     `hanzoai/cloud`'s `openapi.yaml` at the release `openapi-specs/.spec-lock`
+     pins, via `scripts/sync-openapi.sh` + `scripts/gen-openapi-pages.ts`
+     (source-derived: an endpoint's sentence is written next to its handler and
+     travels here unaltered); SDK reference from the ZAP SDK generator into
+     `content/docs/sdks/<lang>/`. Every reader of the document goes through
+     `scripts/openapi-doc.ts`, which owns the path — no script names the file.
+     A generated MDX **fragment** is the third shape here, for a fact an authored
+     page needs mid-sentence: `scripts/gen-key-types.ts` writes
+     `generated/key-types.mdx` and `content/docs/api-keys.mdx` pulls it in with
+     `<include>`. It sits outside `content/` because source.config globs
+     `**/*.mdx` there and would give a fragment its own URL — and the path is
+     relative to the INCLUDING file, so from `content/docs/` it is
+     `../../generated/`. One directory short renders the page body empty with
+     the frontmatter and chrome intact, which looks like a working page.
   3. **Ported** (upstream OSS, mirrored with attribution, `.gitignore`d) →
      `scripts/sync-project-docs.ts` into `content/docs/projects/<upstream>/`.
      Port, don't re-author. Carry upstream LICENSE + NOTICE. GPL stays GPL.
 - **Repos:** `hanzo-docs/docs` = framework + hub (canonical; `hanzoai/docs`
   redirects here). `hanzo-docs/<team>` = authored content only, NO framework.
-  `hanzoai/openapi` = the API source of truth. All docs live in the `hanzo-docs`
+  `hanzoai/cloud` `openapi.yaml` = the API source of truth; `hanzoai/openapi`'s
+  `hanzo.yaml` was a projection of it on its own clock and this repo no longer
+  reads it. All docs live in the `hanzo-docs`
   org: the hub at `hanzo-docs/docs`, each team's content at `hanzo-docs/<team>`.
 - **Standalone vs hub:** default is a hub section. Standalone deploy only if ALL
   of: ≈150+ pages or fast OSS-upstream churn, independent versioning, direct
@@ -155,6 +168,34 @@ insights-docs, platform, pulsar-docs, spec, tasks-docs, team, visor, zen-docs,
 zt-docs) predate the unified `content/docs/` model — migrate their content into
 `content/docs/<section>/` (or a `hanzo-docs/<team>` submodule) then archive the
 app.
+
+## Two build guards, and why prose needs them
+
+`scripts/pre-build.ts` ends with two checks that fail the build. Both exist for
+the same reason: a generated page cannot be wrong about the API, an authored one
+can, and a reader cannot tell which kind of page they are on.
+
+- **`check-endpoints.ts`** — no page may name a `/v1/…` route on `api.hanzo.ai`
+  that the document does not serve.
+- **`check-keys.ts`** — no page may spell an API key a way cloud does not mint,
+  and `api-keys.mdx` must teach every class the document carries. Both
+  directions, so renaming, adding or removing a key class in cloud stops the
+  build here instead of publishing a stale page.
+
+The key classes come from `Document.keys` (`openapi-doc.ts`), read out of the
+`/v1/keys` prose — cloud's own Go doc comments, lifted by zipdoc. `secretKey(doc)`
+is the one accessor generators use for "the key a server presents"; three of them
+had it as a literal, which is how three GENERATED pages came to teach `hk-`.
+
+**What was wrong:** docs.hanzo.ai documented three key types — `hk-` "API Key",
+`sk-` "Secret Key", `hz-` "Widget Key". Cloud mints two (`cloud.APIKeyPrefixes`:
+`pk-`, `sk-`) and refuses anything else, so a reader's first call failed asking
+for a key nobody can issue. `hk-`/`hz-` were on 149 files. Note the shape of the
+mistake: `sk-` was *present* and *described wrongly* (as an org-level provider
+credential; it resolves to the USER), so a find-and-replace would have left the
+page confidently wrong. Cloud's `apps/platform/secretshape.go` still lists `hk-`
+in its secret-DETECTION table — harmless, it only scans, but it is where the
+invention came from.
 
 ## Branch Convention
 
@@ -228,7 +269,6 @@ Canonical workspace packages and their paths:
 | `@hanzo/docs-language` | packages/language |
 | `@hanzo/docs-local-md` | packages/local-md |
 | `@hanzo/docs-sanity` | packages/sanity |
-| `@hanzo/docs-shadcn` | packages/shadcn |
 | `@hanzo/docs-vite` | packages/vite |
 | `@hanzo/docs-basehub` | packages/basehub |
 | `@hanzo/docs-mdx-remote` | packages/mdx-remote |
@@ -286,6 +326,33 @@ import { DocsPage, DocsBody } from '@hanzo/docs-ui/layouts/docs/page';
 import defaultMdxComponents from '@hanzo/docs-ui/mdx';
 ```
 
+### The docs grid is three columns
+
+`layouts/docs/slots/container.tsx` (both UI packages — they are parallel forks,
+so a change to one without the other diverges them): `var(--fd-sidebar-col)
+minmax(0, 1fr) var(--fd-toc-width)`. Rails pin to the edges, the page takes what
+is between them.
+
+It was five columns, with `minmax(min-content, 1fr)` gutters centring a band
+capped at `--fd-layout-width`, and the sidebar AREA spanned the leading gutter as
+well as its own column. Measured on the live site at `/docs/api-keys`: at 1920
+the columns were `176.5 232 1052 268 176.5` and the nav — 232px, right-aligned in
+its area by `items-end` — began 176px from the left edge; at 2560 it began 496px
+in. The empty strip was inside the sidebar's own bordered, filled card, so every
+pixel a wider display gained went there. Now `232 1405 268` and `232 2045 268`,
+nav at x=0.
+
+`--fd-layout-width` no longer bounds this grid. It was doing two jobs at once —
+bounding the reading measure and bounding the band — and the page slot already
+owns the first (`max-w-[900px]`), so what was left was only the job that made the
+gap. The article therefore stays 900px and does not move; what moved is the nav
+(flush left) and the toc (flush right), and the page COLUMN absorbed the gutters.
+Widening the article past 900px is a separate typography decision, untaken.
+
+Narrow viewports are unchanged by construction: below `md`, `--fd-sidebar-width`
+is 0 and the sidebar is a fixed drawer outside the grid, and `--fd-toc-width` is
+0 until a toc exists.
+
 ### Layouts
 - `@hanzo/docs-ui/layouts/docs` - Standard docs layout
 - `@hanzo/docs-ui/layouts/home` - Homepage layout
@@ -310,8 +377,79 @@ Build tool: `tsdown` (all packages except `hanzo-docs` wrapper which uses `tsup`
 
 - Next.js 15-16+ with App Router
 - React 19+
-- Tailwind CSS 4+
+- Tailwind CSS 4+ (see "UI framework debt" — this is the thing being removed)
 - pnpm 10+
+
+## UI framework debt — where the tailwind actually is
+
+House rule is that `@hanzo/gui` is the only UI framework: it compiles to React
+Native, so an app built on it runs on web, iOS and Android. Tailwind classes and
+Radix primitives are DOM-only and cap an app at the browser. This repo is the
+furthest thing from compliant, and the reason is structural, so measure before
+planning anything.
+
+**Tailwind here is LIVE, not inert.** 21 apps each carry a real
+`postcss.config.mjs` with `@tailwindcss/postcss`, 60 CSS entrypoints begin
+`@import "tailwindcss"`, and 66 package.json files declare a tailwind dep. Two of
+those entrypoints — `packages/radix-ui/css/style.css` and
+`packages/base-ui/css/style.css` — ship inside the published npm tarballs, so the
+framework's *product* is tailwind. Counted with a utility-token regex over tracked
+files: **39,433 class tokens across 537 source files.**
+
+**The blocker is that the UI layer is two parallel forks of Fumadocs.**
+`packages/radix-ui` publishes as `@hanzo/docs-ui` (Radix) and `packages/base-ui`
+as `@hanzo/docs-base-ui` (Base UI) — ~110 files / 13.5k lines each, the same
+components twice, kept in step by `.cursor/skills/radix-base-ui-sync`. Both names
+are banned by the house rule, `apps/docs` depends on **both at once**, and every
+app and example in the workspace consumes them. Complying means rebuilding that
+layer once on `@hanzo/gui` and deleting both — a Fumadocs rewrite, not a patch.
+Do not start it piecemeal: swapping one primitive inside a component whose markup
+is still tailwind lowers a grep count and changes nothing real.
+
+**Radix → @hanzo/gui primitive map** (checked against `~/work/hanzo/gui/pkgs/ui`,
+not guessed). Present: `presence`→`animate-presence`, `popover`, `select`,
+`dialog`, `accordion`, `tabs`, `collapsible`, `tooltip`, `direction`→
+`core/use-direction`. **Genuinely missing: `navigation-menu` and `scroll-area`**
+(`scroll-view` is the React Native scroller, not a custom-scrollbar area). Those
+two must be built in `@hanzo/gui` before `packages/radix-ui` can be retired.
+`collapsible` exists but `apps/gui-docs` has no page for it — a docs gap here,
+not a missing primitive.
+
+**`@zenlm/ui` ships classes that style nothing.** `packages/zenlm-ui` publishes
+`dist/` as JS + d.ts with **no CSS at all**, declares no tailwind dep and has no
+postcss config, yet styles its four components entirely with tailwind utilities
+(and shadcn's `bg-muted` / `text-muted-foreground` tokens). Inside `apps/zen-docs`
+they happen to resolve because that app compiles tailwind; for any other npm
+consumer they are dead strings. Note `apps/zen-docs` pins `@zenlm/ui: ^1.0.6` from
+the registry, not `workspace:*`, so pnpm 11 (`link-workspace-packages` defaults to
+false) serves the published tarball — editing `packages/zenlm-ui` does not change
+what zen-docs renders until a release. Converting it to `@hanzo/gui` style props
+is the highest-value next increment and fixes the inertness by construction,
+because style props travel with the component.
+
+**Out of scope when counting:** `content/docs/projects/**` is gitignored and
+regenerated by `sync-project-docs.ts` from upstream repos, so tailwind there is
+upstream's and edits are overwritten. Two more grep hits are not tailwind at all —
+the Java/Spring IAM guide uses **Bootstrap** in a Thymeleaf template, and the IAM
+login-customization guide uses custom class names with their own `<style>` blocks.
+
+**Shadcn is gone** (`packages/shadcn` + `examples/next-shadcn` deleted). It
+existed to emit `npx shadcn@latest add ...` into rendered docs, which puts a
+DOM-only library in the reader's app.
+
+**Authored docs are converted.** The commerce recipes/storefront pages and
+`zen5.mdx` teach `@hanzo/gui` now. Keep it that way: a snippet teaching tailwind
+produces tailwind in someone's app, so examples count as shipping surface.
+
+### Baseline when touching this repo
+
+`pnpm types:check` is **not green and never was**: 50 of 72 tasks fail at rest.
+`npx vitest run` is 13 failed / 203 passed. Judge a change by the *delta* against
+those sets, not by a clean run you will never get. And `docs#types:check` failing
+tells you nothing about whether a page renders — MDX compile errors do not surface
+in tsc. `zen5.mdx` typechecked clean while the loader skipped the entire page
+(`<50ms` in a table parses as a JSX tag; fence such values in backticks). Run the
+app and look at it.
 
 ## Landing Apps (Moved Out)
 
