@@ -1,31 +1,28 @@
 ---
 title: "Hanzo SDK"
-description: "Hanzo SDK is a unified multi-language SDK and CLI (`@hanzo/cli`) that wraps Python, TypeScript, Rust, and Go implementations into a single `hanzo` command. Published as an npm package with optional..."
+description: "The multi-language SDK monorepo — Python, TypeScript, Rust and Go implementations of the Hanzo client in one repo, tested for feature parity across all four."
 ---
 
 ## Overview
 
-Hanzo SDK is a **unified multi-language SDK and CLI** (`@hanzo/cli`) that wraps Python, TypeScript, Rust, and Go implementations into a single `hanzo` command. Published as an npm package with optional Rust native bindings via napi-rs. Version 0.1.0.
+Hanzo SDK is the **multi-language SDK monorepo**: Python, TypeScript, Rust and Go implementations of the Hanzo client in one repo, with optional Rust native bindings via napi-rs and integration tests that hold the four to the same behaviour.
 
 ### How This Differs from Individual SDKs
 
 The individual SDK repos (`python-sdk`, `js-sdk`, `go-sdk`, `rust-sdk`) are **Stainless-generated API clients** focused on typed HTTP wrappers for `api.hanzo.ai`. This unified SDK is different:
 
-- **CLI-first**: Provides the `hanzo` CLI binary with subcommands (`node`, `agent`, `mcp`, `net`, `dev`, `auth`, `config`)
 - **Multi-language monorepo**: All four language implementations in one repo (`src/py/`, `src/js/`, `src/rs/`, `src/go/`)
-- **Operational commands**: `hanzo node start`, `hanzo agent run`, `hanzo mcp serve`, `hanzo net status` -- not just API calls
 - **Native bindings**: Rust compiled to `.node` via napi-rs for performance-critical paths, with JS fallback
 - **Cross-language testing**: Integration tests verify feature parity across all implementations
 
-The individual SDKs are what you `import` in application code. This SDK is what you `install` as a developer tool.
+The individual SDKs are what you `import` in application code. This SDK is the multi-language source they are generated and tested against.
 
 ### Tech Stack
 
-- **Primary**: TypeScript (CLI and JS client, compiled to `dist/`)
+- **Primary**: TypeScript (JS client, compiled to `dist/`)
 - **Rust**: Native bindings via napi-rs (`src/rs/`, optional)
 - **Python**: `hanzo` PyPI package (`src/py/`, pyproject.toml)
 - **Go**: `github.com/hanzoai/sdk` module (`src/go/`)
-- **CLI**: Commander.js with chalk, inquirer, ora
 - **Build**: npm + tsc + cargo (multi-stage)
 - **Tests**: Jest (JS), pytest (Python), cargo test (Rust), go test (Go)
 
@@ -35,10 +32,9 @@ Repo: `hanzoai/sdk` (298MB -- large due to committed `node_modules` and `dist`).
 
 ## When to use
 
-- Installing the `hanzo` CLI for local development
-- Running AI nodes, agents, or MCP servers from the command line
-- Developing against all Hanzo services from a single entry point
+- Working on the SDK implementations themselves
 - Cross-language SDK feature parity testing
+- Building the native bindings
 
 ## When NOT to use
 
@@ -50,17 +46,13 @@ Repo: `hanzoai/sdk` (298MB -- large due to committed `node_modules` and `dist`).
 
 ## Hard requirements
 
-1. **Node.js >= 16** for the CLI
-2. **npm** for installation (published as `@hanzo/cli`)
-3. **Rust toolchain** optional (for native bindings, falls back to JS)
+1. **Node.js >= 16** to build the TypeScript implementation
+2. **Rust toolchain** optional (for native bindings, falls back to JS)
 
 ## Quick reference
 
 | Item | Value |
 |------|-------|
-| npm Package | `@hanzo/cli` |
-| Version | `0.1.0` |
-| Binary | `hanzo` |
 | Repo | `github.com/hanzoai/sdk` |
 | Branch | `main` |
 | License | MIT |
@@ -69,7 +61,7 @@ Repo: `hanzoai/sdk` (298MB -- large due to committed `node_modules` and `dist`).
 
 ```
 sdk/
-  package.json            # @hanzo/cli, commander, axios, chalk
+  package.json            # commander, axios, chalk
   Makefile                # Build/test all languages
   tsconfig.json
   jest.config.js
@@ -85,13 +77,13 @@ sdk/
       mcp.ts              # MCP server operations
       node.ts             # Node operations
       commands/
-        agent.ts          # hanzo agent {run,list,stop,logs}
-        auth.ts           # hanzo auth {login,logout,status,token}
-        config.ts         # hanzo config {get,set,list,reset}
-        dev.ts            # hanzo dev {start,stop,status}
-        mcp.ts            # hanzo mcp {serve,list,install}
-        net.ts            # hanzo net {status,peers,connect}
-        node.ts           # hanzo node {start,stop,status,logs}
+        agent.ts
+        auth.ts
+        config.ts
+        dev.ts
+        mcp.ts
+        net.ts
+        node.ts
     py/
       pyproject.toml      # hanzo PyPI package
       hanzo/              # Python package
@@ -107,49 +99,14 @@ sdk/
     postinstall.js        # Optional native binding setup
 ```
 
-## CLI Commands
+## CLI
 
-All commands work identically across all language implementations:
+The `hanzo` command is **not** built here. It is a separate native binary from
+`hanzoai/cli`, published to npm as `@hanzo/cli` and installed with
+`curl -fsSL hanzo.sh/cli | sh`. Its commands are documented in the
+[CLI Reference](/docs/services/platform/getting-started/cli).
 
-```bash
-# Node management
-hanzo node start          # Start local AI node
-hanzo node stop           # Stop node
-hanzo node status         # Node status
-hanzo node logs           # View node logs
-
-# Agent operations
-hanzo agent run           # Run AI agents
-hanzo agent list          # List running agents
-hanzo agent stop          # Stop an agent
-hanzo agent logs          # Agent logs
-
-# MCP server
-hanzo mcp serve           # Start MCP server
-hanzo mcp list            # List available tools
-hanzo mcp install         # Install MCP tools
-
-# Network
-hanzo net status          # Network status
-hanzo net peers           # List peers
-hanzo net connect         # Connect to peer
-
-# Development
-hanzo dev start           # Start dev environment
-hanzo dev stop            # Stop dev environment
-
-# Auth
-hanzo auth login          # Authenticate with Hanzo
-hanzo auth logout         # Log out
-hanzo auth status         # Check auth status
-hanzo auth token          # Show current token
-
-# Config
-hanzo config get <key>    # Get config value
-hanzo config set <k> <v>  # Set config value
-hanzo config list         # List all config
-hanzo config reset        # Reset to defaults
-```
+This repo holds the multi-language SDK sources that application code imports.
 
 ## Development
 
@@ -197,13 +154,10 @@ make cd-publish-go        # go mod tidy + git tag
 
 ## Maturity Note
 
-This is an early-stage unification effort (v0.1.0). The individual language SDKs (`python-sdk`, `js-sdk`, `go-sdk`, `rust-sdk`) are more mature and production-ready. Use this SDK primarily for:
-
-- The `hanzo` CLI
-- Development tooling
-- Cross-language testing
-
-For production application code, prefer the individual SDKs.
+This is an early-stage unification effort. The individual language SDKs
+(`python-sdk`, `js-sdk`, `go-sdk`, `rust-sdk`) are more mature and
+production-ready, and are what application code should import. This repo is for
+development tooling and cross-language testing.
 
 ## Related Skills
 
@@ -211,6 +165,6 @@ For production application code, prefer the individual SDKs.
 - `hanzo/js-sdk.md` - Production TypeScript SDK (`@hanzo/sdk`)
 - `hanzo/go-sdk.md` - Production Go SDK (`github.com/hanzoai/go-sdk`)
 - `hanzo/rust-sdk.md` - Production Rust SDK
-- `hanzo/hanzo-cli.md` - CLI tooling docs
+- `hanzo/hanzo-cli.md` - The `hanzo` CLI (a separate binary)
 - `hanzo/hanzo-mcp.md` - MCP tools and server
 
