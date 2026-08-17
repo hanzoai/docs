@@ -72,6 +72,13 @@ jobs:
           echo "cf_token=${cf_token}" >> "$GITHUB_OUTPUT"
           echo "cf_account=${cf_account}" >> "$GITHUB_OUTPUT"
 
+      - name: Create Cloudflare Pages project (if needed)
+        continue-on-error: true
+        run: npx wrangler pages project create dev-docs --production-branch=main
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ steps.kms.outputs.cf_token }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ steps.kms.outputs.cf_account }}
+
       - name: Deploy to Cloudflare Pages
         working-directory: apps/dev-docs
         run: pnpm dlx wrangler pages deploy out --project-name=dev-docs --commit-dirty=true
