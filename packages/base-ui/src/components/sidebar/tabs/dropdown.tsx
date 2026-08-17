@@ -71,12 +71,19 @@ export function SidebarTabsDropdown({
               onClick={onClick}
               {...item.props}
               className={cn(
-                'flex items-center gap-2 rounded-lg p-1.5 hover:bg-fd-accent hover:text-fd-accent-foreground',
+                // The row starts at the start edge and says so. Left is where a
+                // list of names is read from, and every option here is one name
+                // over one description, so the eye should travel down a single
+                // column rather than hunt for each label's own indent.
+                'flex items-center justify-start text-start gap-2 rounded-lg p-1.5 hover:bg-fd-accent hover:text-fd-accent-foreground',
                 item.props?.className,
               )}
             >
-              <div className="shrink-0 size-9 md:mb-auto md:size-5 empty:hidden">{item.icon}</div>
-              <div>
+              {/* The icon KEEPS ITS COLUMN when an option has no icon. Collapsing
+                  the slot moved that option's label a whole icon-width left of
+                  its neighbours, which is the ragged edge this list showed. */}
+              <div className="shrink-0 size-9 md:mb-auto md:size-5">{item.icon}</div>
+              <div className="min-w-0">
                 <p className="text-sm font-medium leading-none">{item.title}</p>
                 <p className="text-[0.8125rem] text-fd-muted-foreground mt-1 empty:hidden">
                   {item.description}
