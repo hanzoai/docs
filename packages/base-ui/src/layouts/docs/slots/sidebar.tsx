@@ -257,7 +257,12 @@ function SidebarContent({ ref: refProp, className, children, ...props }: Compone
           <div
             data-sidebar-panel=""
             className={cn(
-              'fixed flex top-[calc(--spacing(4)+var(--fd-docs-row-3))] inset-s-4 shadow-lg transition-opacity rounded-xl p-0.5 border bg-fd-muted text-fd-muted-foreground z-10',
+              // Above the header (z-30), not under it. This floats at inset-s-4
+              // and is 66px wide, so it reaches x=82; the header's grid column
+              // starts where the leading gutter ends, which on a collapsed rail
+              // is x=60. At z-10 the header's blurred ground painted over the
+              // last 22px and cut the search trigger in half.
+              'fixed flex top-[calc(--spacing(4)+var(--fd-docs-row-3))] inset-s-4 shadow-lg transition-opacity rounded-xl p-0.5 border bg-fd-muted text-fd-muted-foreground z-40',
               (!collapsed || hovered) && 'pointer-events-none opacity-0',
             )}
           >
