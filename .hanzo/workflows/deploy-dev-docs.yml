@@ -2,9 +2,9 @@ name: Deploy Dev Docs
 
 # dev-docs ships on the Hanzo Sites plane, served at dev-docs.hanzo.app.
 #
-#   pnpm build --filter=dev-docs  ->  apps/dev-docs/out  ->  sitedeploy
+#   pnpm build --filter=dev-docs  ->  apps/dev-docs/out  ->  site
 #
-# sitedeploy is bin/sitedeploy in hanzoai/ci, reached through its action:
+# site is bin/site in hanzoai/ci, reached through its action:
 # ensure-project, enqueue, presigned per-file upload, complete. It creates the
 # project itself, so this file has no create step.
 #
@@ -60,7 +60,7 @@ jobs:
       # key is held here. SITES_S3_* is a standing credential reaching every
       # org's site; the grant replaces it.
       - name: Publish to the Sites plane
-        uses: hanzoai/ci/.github/actions/sitedeploy@v1
+        uses: hanzoai/ci/.github/actions/site@v1
         with:
           slug: dev-docs
           dir: apps/dev-docs/out
