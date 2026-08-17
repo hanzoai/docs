@@ -500,11 +500,11 @@ function SidebarTabsDropdown({
               onClick={onClick}
               {...item.props}
               className={cn(
-                'flex items-center gap-2 rounded-lg p-1.5 hover:bg-fd-accent hover:text-fd-accent-foreground',
+                'flex items-center justify-start text-start gap-2 rounded-lg p-1.5 hover:bg-fd-accent hover:text-fd-accent-foreground',
                 item.props?.className,
               )}
             >
-              <div className="shrink-0 size-9 md:mb-auto md:size-5 empty:hidden">{item.icon}</div>
+              <div className="shrink-0 size-9 md:mb-auto md:size-5">{item.icon}</div>
               <div>
                 <p className="text-sm font-medium leading-none">{item.title}</p>
                 <p className="text-[0.8125rem] text-fd-muted-foreground mt-1 empty:hidden">
