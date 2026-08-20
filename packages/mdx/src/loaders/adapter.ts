@@ -222,10 +222,18 @@ export function toWebpack(loader: Loader): WebpackLoader {
       } else if (filePath.endsWith('.yaml') || filePath.endsWith('.yml')) {
         fallback = 'export default {};';
       } else {
+        // The fallback has to satisfy the same module contract a compiled page
+        // does, or it only moves the crash downstream: `_markdown` is what
+        // getText('processed') reads, so omitting it turned every page that
+        // walks the whole corpus — llms.txt, llms-full.txt, the per-page
+        // markdown twins — into a build failure at export time, blaming a
+        // collection option that was already enabled. A page that did not
+        // compile has no content; '' says exactly that.
         fallback = [
           `export const frontmatter = {};`,
           `export const toc = [];`,
           `export const structuredData = { headings: [], contents: [] };`,
+          `export const _markdown = '';`,
           `export default function ErrorPage() {`,
           `  return null;`,
           `}`,

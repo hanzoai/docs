@@ -5,7 +5,7 @@ import { Callout } from '@hanzo/docs-base-ui/components/callout';
 import { TypeTable } from '@hanzo/docs-base-ui/components/type-table';
 import * as Preview from '@/components/preview';
 import { createMetadata } from '@/lib/metadata';
-import { source } from '@/lib/source';
+import { getPageMarkdownUrl, source } from '@/lib/source';
 import { Wrapper } from '@/components/preview/wrapper';
 import { Mermaid } from '@/components/mdx/mermaid';
 import { PageFeedback, PageFeedbackBlock } from '@/components/feedback';
@@ -87,9 +87,9 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
       <h1 className="text-[1.75em] font-semibold">{page.data.title}</h1>
       <p className="text-lg text-fd-muted-foreground mb-2">{page.data.description}</p>
       <div className="flex flex-row flex-wrap gap-2 items-center border-b pb-6">
-        <MarkdownCopyButton markdownUrl={`${page.url}.mdx`} />
+        <MarkdownCopyButton markdownUrl={getPageMarkdownUrl(page).url} />
         <ViewOptionsPopover
-          markdownUrl={`${page.url}.mdx`}
+          markdownUrl={getPageMarkdownUrl(page).url}
           githubUrl={`https://github.com/${owner}/${repo}/blob/dev/apps/docs/content/docs/${page.path}`}
         />
       </div>
