@@ -61,3 +61,16 @@ export const blog = loader(createSource(blogPosts, []), {
 
 export type Page = (typeof source)['$inferPage'];
 export type Meta = (typeof source)['$inferMeta'];
+
+// Where a page's markdown twin lives. Its own namespace rather than
+// `${page.url}.mdx`, because a dotted suffix on the docs route is not a route
+// this app can express — which is why the Copy Markdown and View Markdown
+// buttons shipped pointing at 404s. A trailing `content.md` segment IS
+// expressible, so the route below prerenders under `output: 'export'`.
+export const docsContentRoute = '/llms.mdx/docs';
+
+export function getPageMarkdownUrl(page: Page) {
+  const segments = [...page.slugs, 'content.md'];
+
+  return { segments, url: `${docsContentRoute}/${segments.join('/')}` };
+}
