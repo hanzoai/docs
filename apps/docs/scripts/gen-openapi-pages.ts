@@ -174,7 +174,7 @@ function quickstart(p: Product, doc: Document, table: Map<string, CliCommand>, d
   L.push('## Quickstart');
   L.push('');
   L.push('```bash');
-  L.push('export HANZO_API_KEY=hk-...   # console.hanzo.ai → API keys');
+  L.push(`export HANZO_API_KEY=${secretKey(doc).prefix}...   # console.hanzo.ai → API keys`);
   L.push('```');
   L.push('');
   L.push(
