@@ -1,0 +1,141 @@
+---
+title: Lago
+description: Lago meters usage and turns it into invoices. Here /v1/billing raises and collects the invoice, /v1/usage takes the samples, and /v1/pricing is the rate card.
+---
+
+Lago is a billing engine: you define what you charge for, feed it usage, and it
+produces invoices and collects them. Three capabilities cover the same ground —
+`/v1/billing` (45 operations) for invoices, subscriptions and prepaid credit,
+`/v1/usage` (11) for what was consumed, `/v1/pricing` (25) for the rate card.
+
+## Nouns
+
+| Lago | Hanzo |
+|---|---|
+| `https://api.getlago.com/api/v1` | `https://api.hanzo.ai/v1` |
+| Customer | `userId` — the customer billed, within the caller's own org. Required |
+| `client.invoices().create(...)` | `POST /v1/billing/invoices` — `userId`, `currency`, and `lines` |
+| Finalizing a draft | `POST /v1/billing/invoices/{id}/issue` |
+| Collecting payment | `POST /v1/billing/invoices/{id}/collect` — credits, then balance, then card |
+| Voiding | `POST /v1/billing/invoices/{id}/void` |
+| The invoice PDF | `GET /v1/billing/invoices/{id}/pdf` |
+| Wallet | `GET /v1/billing/credit-balance`, and `/breakdown` for where it came from |
+| Wallet transactions | `GET /v1/billing/transactions` |
+| Topping a wallet up | `POST /v1/billing/topup` — a saved card — or `POST /v1/billing/crypto/deposit` |
+| Plan | `GET /v1/billing/plans` — the public catalogue |
+| Subscription | `GET /v1/billing/subscriptions`, with `/cancel` and `/reactivate` |
+| Current usage on a subscription | `GET /v1/billing/usage` · `GET /v1/billing/usage/rollup` |
+| `client.events().create(...)` | `POST /v1/usage` — a batch of consumption samples |
+| Usage alerts and thresholds | `GET /v1/billing/alerts` · `POST /v1/billing/alerts` — spend caps and rate limits |
+
+`amount` on a line is its total in whole cents; `quantity` and `unitPrice` are
+the metered detail beside it. There is no total field to send — the subtotal and
+the amount due are computed from the lines, because a total that disagreed with
+its own lines would have to be believed or ignored. `userId` is required: an
+invoice with no addressee is not an invoice.
+
+Status runs draft → open → paid, with void and uncollectible beside it. A draft
+is not collectible; issuing moves it to open and assigns the invoice number.
+`collect` draws from credits, then balance, then a saved card, in that order.
+
+## The call
+
+Lago, recording usage:
+
+```python
+import os
+from lago_python_client import Client
+from lago_python_client.models import Event
+
+client = Client(api_key=os.environ["LAGO_API_KEY"])
+
+client.events().create(Event(
+    transaction_id="tx-1",
+    external_subscription_id="sub-1",
+    code="api_calls",
+    properties={"units": 12},
+))
+```
+
+Hanzo, raising and collecting an invoice:
+
+```bash
+# 1. Draft. Answers the row with subtotalCents, amountDueCents and a number.
+INV=$(curl -sS -X POST https://api.hanzo.ai/v1/billing/invoices \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "userId": "usr_7f3a",
+    "currency": "usd",
+    "customerEmail": "ada@example.com",
+    "lines": [
+      {
+        "description": "API calls, March",
+        "quantity": 12000,
+        "unitPrice": 1,
+        "amount": 12000
+      }
+    ]
+  }' | jq -r .id)
+
+# 2. Issue it, which makes it collectible.
+curl -sS -X POST "https://api.hanzo.ai/v1/billing/invoices/$INV/issue" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+# 3. Collect: credits, then balance, then card.
+curl -sS -X POST "https://api.hanzo.ai/v1/billing/invoices/$INV/collect" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+What is left, as one number and as a breakdown:
+
+```bash
+curl -sS https://api.hanzo.ai/v1/billing/credit-balance \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+curl -sS https://api.hanzo.ai/v1/billing/credit-balance/breakdown \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+## What does not carry
+
+This is the migration with the largest gap, and it is a gap of direction. Lago
+is a billing engine you configure and point at your own product. `/v1/billing` is
+the platform's own billing, with an invoice you can raise on top of it. What
+follows is not a list of missing endpoints so much as the shape of that
+difference.
+
+**No billable metrics.** There is no object where you declare a metric, an
+aggregation type and a field to aggregate, and no engine that turns events into
+charges against it. Nothing computes an invoice from usage on your behalf — you
+compute the line and post it.
+
+**No plan authoring.** `GET /v1/billing/plans` is the catalogue you can
+subscribe to, not a place to define one. Graduated, package, volume and
+percentage pricing, charge models, add-ons, coupons, taxes and credit notes have
+no counterpart.
+
+**`/v1/pricing` is a rate card, not your rate card.** Twenty-five operations,
+twenty-four of them reads: what this platform charges for models, compute,
+storage, IAM, hosting and per-use tools. It is not a place to publish prices for
+your own customers.
+
+**`POST /v1/usage` is not a general event endpoint.** Lago's `/events` takes any
+`code` with any `properties`, keyed to a subscription. This takes consumption
+samples with a fixed shape — provider, plan, account, token counts, cost in
+cents, a window — and answers 202 with `{accepted, stored}`. There is no
+`transaction_id`, no `external_subscription_id` and no `code`. A metric you
+invented does not have a field to land in.
+
+**No customer objects.** There is no `external_customer_id`, and no customer
+record to attach subscriptions, wallets and coupons to. An invoice carries a
+`userId` within the caller's own org and an optional `customerEmail`, and that
+is the whole model of a customer.
+
+**No self-hosting.** Lago is open source and you can run the whole engine.
+`api.hanzo.ai` is the hosted plane.
+
+**Spend caps are a safety control, not a plan feature.** Writing one at
+`/v1/billing/alerts` requires an org admin: a member who could delete a cap could
+uncap the org's spend, and a member who could set a one-cent enforcing cap could
+deny the whole org.

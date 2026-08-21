@@ -1,0 +1,116 @@
+---
+title: Twilio
+description: Twilio holds phone numbers and moves messages over them. Three capabilities answer it — /v1/tel for the carrier, /v1/notify for transactional delivery, /v1/channels for chat.
+---
+
+Twilio is three products wearing one account: numbers and the calls and texts
+over them, transactional delivery through a provider you configure, and chat on
+somebody else's transport. Each has its own address here — `/v1/tel` (10
+operations), `/v1/notify` (4), `/v1/channels` (7).
+
+## Nouns
+
+| Twilio | Hanzo |
+|---|---|
+| Account SID and auth token | One key. `Authorization: Bearer $HANZO_API_KEY` |
+| `POST /2010-04-01/Accounts/{sid}/Messages.json` | `POST /v1/tel/messages` — `from`, `to`, `text`, `media` |
+| `POST .../Calls.json` | `POST /v1/tel/calls` — `from`, `to`, `agent`, `record`, `webhook` |
+| `GET .../AvailablePhoneNumbers/{Country}/Local.json` | `GET /v1/tel/numbers/available?Country=&Area=&Type=&Limit=` |
+| `POST .../IncomingPhoneNumbers.json` | `POST /v1/tel/numbers` — `e164` |
+| Releasing a number | `DELETE /v1/tel/numbers/{id}` |
+| Message and call logs | `GET /v1/tel/messages` · `GET /v1/tel/calls` |
+| Hanging up a live call | `DELETE /v1/tel/calls/{id}` |
+| TwiML answering a call | `agent` — the Hanzo assistant that answers it |
+| Twilio Email or SendGrid | `POST /v1/notify/send/email?sync=true` |
+| A transactional SMS through your own Twilio account | `POST /v1/notify/send/sms?sync=true` |
+| Conversations on chat transports | `POST /v1/channels/{channel}/send` — `discord`, `slack`, `teams`, `telegram` |
+
+`/v1/tel` is the carrier: numbers the org bought, and traffic over them.
+`/v1/notify` is delivery through the org's *own* provider credential, read from
+KMS — naming no provider picks the one that is actually configured (Twilio, then
+Plivo for SMS; Twilio Email, then SMTP for email) and fails closed when none is.
+If you are keeping your Twilio account and only moving the code, `/v1/notify` is
+the shorter migration.
+
+## The call
+
+Twilio:
+
+```bash
+curl -X POST "https://api.twilio.com/2010-04-01/Accounts/$TWILIO_ACCOUNT_SID/Messages.json" \
+  -u "$TWILIO_ACCOUNT_SID:$TWILIO_AUTH_TOKEN" \
+  --data-urlencode "From=+15017250604" \
+  --data-urlencode "To=+15558675309" \
+  --data-urlencode "Body=Hello from Twilio!"
+```
+
+Hanzo, from a number the org holds:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/tel/messages \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "from": "+15017250604",
+    "to": "+15558675309",
+    "text": "Hello from Hanzo!"
+  }'
+```
+
+Buying the number first:
+
+```bash
+# What the carrier has.
+curl -sS "https://api.hanzo.ai/v1/tel/numbers/available?Country=US&Area=415&Limit=5" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+# Take one. Provisioning happens with the carrier first and is recorded second,
+# so a row here means a number the org really holds.
+curl -sS -X POST https://api.hanzo.ai/v1/tel/numbers \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"e164": "+14155550142"}'
+```
+
+Dialling, with an assistant to answer:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/tel/calls \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"from": "+15017250604", "to": "+15558675309", "agent": "support", "record": true}'
+```
+
+The call is refused up front when no assistant plane is configured, because a
+call that connects to silence has already cost the person who answered it.
+
+## What does not carry
+
+**No TwiML.** Twilio hands control of a live call to a markup document —
+`<Say>`, `<Gather>`, `<Dial>` — fetched from your server. There is no markup
+here. A call is answered by an `agent`, and `webhook` is where events go. An IVR
+expressed as TwiML has to be re-expressed as an assistant.
+
+**`from` must be a number the org holds.** Twilio will send from a Messaging
+Service, an alphanumeric sender id, or a pool. Here the sender is one of the
+org's own numbers and nothing else.
+
+**No status callbacks per message.** The message body is `from`, `to`, `text` and
+`media` — there is no `StatusCallback` field. Delivery state is the `status` on
+the row, read back with `GET /v1/tel/messages`.
+
+**No WhatsApp and no RCS.** `/v1/channels` covers Discord, Slack, Teams and
+Telegram. All four render text today, so attachments and actions in the send
+envelope may not appear as you expect.
+
+**No subaccounts, no Messaging Services, no regions or edges.** Tenancy is the
+org in the key. There is no account tree to mirror and no `region`/`edge` to
+select.
+
+**No Verify.** Twilio Verify mints a code, delivers it, and checks it back.
+`/v1/notify` delivers a message you composed. Identity flows belong to
+[IAM](/docs/openapi/iam), not to the sender.
+
+**`sync=true` is required on notify.** An async dispatch answers 503 — the queue
+plane that would run it is owned elsewhere. It rides as `?sync=true` on the URL,
+which binds over the body.

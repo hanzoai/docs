@@ -1,0 +1,99 @@
+---
+title: Composio
+description: Composio gives an agent authenticated tools across third-party apps. Here that is /v1/integrations for the org's credential, /v1/connectors for a user's own, and /v1/tools for the actions they reach.
+---
+
+Composio holds OAuth credentials for third-party apps and hands an agent the
+actions those credentials reach. Two capabilities answer it: `/v1/integrations`
+(40 operations) holds the credential an **org** connects, `/v1/connectors` (8)
+holds the one a **user** connects, and every action either one reaches shows up
+in `/v1/tools`.
+
+## Nouns
+
+| Composio | Hanzo |
+|---|---|
+| Toolkit — an app such as GitHub or Slack | Provider — `GET /v1/integrations/{provider}` returns one with this org's connection status |
+| Auth config — the OAuth app you register per toolkit | The deployment's own provider configuration. A connect against a provider it lacks answers 503 |
+| Connected account, shared by a team | Connection — `POST /v1/integrations/{provider}/connect` |
+| Connected account, one per end user | Connector — `GET /v1/connectors`, rows keyed by (org, user) |
+| `userId` passed on every call | The validated principal in the key |
+| Tool | Tool — `GET /v1/tools`, one flat set across every source, each with an `inputSchema` |
+| Executing a tool | `POST /v1/tools/call` |
+| A session's hosted MCP endpoint | `POST /v1/mcp` |
+| Disconnecting an account | `POST /v1/integrations/{provider}/disconnect`, which deletes the custodied secret and the row |
+
+Two scopes, not one. Composio scopes a connected account by the `userId` you
+pass; here the scope is structural. An `/v1/integrations` connection belongs to
+the org and every member reaches it. A `/v1/connectors` row belongs to one
+person and is invisible to everyone else, including their own org's admins. Pick
+by who owns the account, not by a field.
+
+## The call
+
+Composio, connecting a user and handing their tools to an agent:
+
+```ts
+import { Composio } from '@composio/core'
+import { OpenAIAgentsProvider } from '@composio/openai-agents'
+
+const composio = new Composio({ provider: new OpenAIAgentsProvider() })
+
+const session = await composio.create('user_123')
+const tools = await session.tools()
+```
+
+Hanzo — connect, discover, dispatch:
+
+```bash
+# 1. Acquire the org's GitHub credential. With no `token` in the body this
+#    begins OAuth and answers an `authorizeUrl` to send the person to.
+curl -X POST https://api.hanzo.ai/v1/integrations/github/connect \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+
+# 2. What the org can now call. Each row carries a name, an inputSchema,
+#    its source, and whether it is switched on.
+curl "https://api.hanzo.ai/v1/tools?activated=true" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+# 3. Dispatch one, by the name step 2 printed.
+curl -X POST https://api.hanzo.ai/v1/tools/call \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"NAME_FROM_STEP_2","arguments":{}}'
+```
+
+If the credential is a personal access token you already hold, put it in the
+body as `token` and the connect seals it directly instead of starting OAuth.
+
+An agent framework that speaks MCP does not need steps 2 and 3: point it at
+`https://api.hanzo.ai/v1/mcp` with the same key.
+
+## What does not carry
+
+**The catalogue is a different shape.** Composio's is its product: pre-built
+toolkits across a large set of apps, the same for every customer.
+`GET /v1/tools` returns what *this* org can reach — the platform's own
+operations, the actions of its connected providers, its authored skills, its
+agents and functions, and the tools of every external MCP server it
+registered. Check `GET /v1/integrations` for the
+providers this deployment carries before you plan a cutover. A provider that is
+not there is added by registering its MCP server with `POST /v1/mcp/servers`, not
+by waiting for a catalog entry.
+
+**Triggers have no equivalent.** Composio subscribes you to events inside the
+third-party app — a new Gmail message, a closed GitHub issue. `/v1/webhooks`
+delivers Hanzo's own events, not the provider's. Inbound app events you keep
+yourself: register the webhook with the provider and take the delivery.
+
+**Tool names differ.** Composio slugs are stable identifiers you can hardcode.
+Here a tool's existence, its price and its activation are rows, not code, so the
+callable set is only knowable once the caller is. Read `GET /v1/tools` at
+startup rather than compiling a list in.
+
+**Custom tools go in differently.** Composio lets you register your own tool
+against its execution plane. Here you publish it as an MCP server and register
+that server on the org; the tool then appears in the same listing, from the
+source `mcp`.

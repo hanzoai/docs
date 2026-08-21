@@ -1,0 +1,89 @@
+---
+title: Doppler
+description: Doppler holds an organisation's secrets and hands them to services. Here that is /v1/kms — five operations, sealed at rest, scoped to the org in your key.
+---
+
+Doppler stores secrets for a team and serves them to the things that need them.
+`/v1/kms` (5 operations) is the custody half of that: store a secret sealed, list
+what you hold, and exchange a machine credential for a token.
+
+## Nouns
+
+| Doppler | Hanzo |
+|---|---|
+| Workplace | Your org, taken from the validated key. Never a field in the request |
+| Project | `path` — an optional subpath beneath the org's root |
+| Config — `dev`, `stg`, `prd` | `env` — required on every write, no default |
+| Secret | Secret — `POST /v1/kms/secrets`, body `path`, `name`, `env`, `value` |
+| `GET /v3/configs/config/secrets` | `GET /v1/kms/secrets` — metadata, never a value |
+| Service token | A machine credential, exchanged at `POST /v1/kms/auth/login` for a bearer token |
+| Access control per config | Org membership reads; org admin writes |
+
+A machine credential holds no org membership, so it is never an org admin: it
+can read what it was issued for and cannot replace a secret.
+
+## The call
+
+Doppler, listing and setting:
+
+```bash
+curl -sS "https://api.doppler.com/v3/configs/config/secrets?project=backend&config=prd" \
+  -H "Authorization: Bearer $DOPPLER_TOKEN"
+
+curl -sS -X POST https://api.doppler.com/v3/configs/config/secrets \
+  -H "Authorization: Bearer $DOPPLER_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "project": "backend",
+    "config": "prd",
+    "secrets": {"SIGNING_SECRET": "s3cr3t"}
+  }'
+```
+
+Hanzo:
+
+```bash
+curl -sS "https://api.hanzo.ai/v1/kms/secrets?path=backend&env=prd" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+curl -sS -X POST https://api.hanzo.ai/v1/kms/secrets \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "path": "backend",
+    "env": "prd",
+    "name": "SIGNING_SECRET",
+    "value": "s3cr3t"
+  }'
+```
+
+One secret per write, not a map. The receipt confirms the name and environment
+that were written and does not echo the value: a fresh per-secret data key seals
+it, that key is wrapped by the master key, and plaintext never reaches disk.
+
+There is no org in the path. The store root is derived from the org claim in the
+key, so a caller has no way to name another tenant's namespace — not "is refused
+if it tries", but has no way to write it down.
+
+## What does not carry
+
+**Writes need an environment, and it has no default.** A read may fall back to
+the default environment; a write must not, because `env` is part of the storage
+key. A silently defaulted write would land in a bucket the readers never
+look in and the stale value would keep being served, so the write fails loudly
+instead. Port every `config` to an explicit `env`.
+
+**No value comes back here.** `GET /v1/kms/secrets` enumerates what is held —
+the listing is structurally incapable of emitting a value, and there is no
+download route beside it. Doppler's habit of pulling a whole config at boot and
+exporting it into the process does not port, and nor does `doppler run --`.
+
+**No config inheritance.** Doppler branches a config off another and inherits
+what it does not override. `path` and `env` are flat coordinates. A value that
+two environments share is written twice.
+
+**No sync integrations.** Doppler pushes a config into AWS, Vercel, GitHub
+Actions and the rest. Nothing here pushes a secret outward.
+
+**No rollback.** Each secret carries a version, and a write replaces the current
+one. There is no route that reads an earlier version back.

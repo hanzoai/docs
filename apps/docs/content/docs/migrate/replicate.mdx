@@ -1,0 +1,114 @@
+---
+title: Replicate
+description: Replicate runs models behind an HTTP call and hosts your own on its hardware. Here the catalogue answers the first and /v1/ml answers the second.
+---
+
+Replicate does two things: it runs somebody else's model for you, and it hosts
+yours. The first is the model catalogue — `GET /v1/models` and the OpenAI-shaped
+endpoints that call it. The second is `/v1/ml` (7 operations), which deploys a
+model into your org's own namespace and runs inference against it.
+
+## Nouns
+
+| Replicate | Hanzo |
+|---|---|
+| `replicate.run("owner/model", input={...})` | The endpoint for that modality: `POST /v1/chat/completions`, `POST /v1/images/generations`, `POST /v1/audio/speech` |
+| Model catalogue at replicate.com/explore | `GET /v1/models`, and the [catalogue page](/docs/openapi/ai) |
+| Prediction — an object you create, poll, then read | The response. One call, one answer |
+| Deployment — your model on your hardware | `POST /v1/ml/models`, a KServe `InferenceService` spec relayed as given |
+| `POST https://api.replicate.com/v1/predictions` | `POST /v1/ml/models/{name}/predict` |
+| Reading a deployment | `GET /v1/ml/models/{name}` · `GET /v1/ml/models` |
+| Training a fine-tune | `POST /v1/finetune/jobs`, then `POST /v1/finetune/deploy` |
+| Cog — the packaging format | A KServe serving runtime |
+| Hardware selector on a deployment | The `spec` you submit. `GET /v1/ml/health` says whether the cluster holds a runtime to run it |
+
+## The call
+
+Replicate, running a hosted model:
+
+```python
+import replicate  # REPLICATE_API_TOKEN in the environment
+
+outputs = replicate.run(
+    "black-forest-labs/flux-schnell",
+    input={"prompt": "astronaut riding a rocket like a horse"},
+)
+for i, output in enumerate(outputs):
+    with open(f"output_{i}.webp", "wb") as f:
+        f.write(output.read())
+```
+
+Hanzo, same job:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/images/generations \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "zen-image",
+    "prompt": "astronaut riding a rocket like a horse"
+  }'
+```
+
+For your own model, deploy it and call it:
+
+```bash
+# Deploy. `name` must be a DNS-1123 label; `spec` is the InferenceService spec,
+# relayed to Kubernetes unchanged.
+curl -X POST https://api.hanzo.ai/v1/ml/models \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "iris",
+    "spec": {
+      "predictor": {
+        "model": {
+          "modelFormat": {"name": "sklearn"},
+          "storageUri": "s3://models/iris"
+        }
+      }
+    }
+  }'
+
+# Infer. The body is the KServe v2 inference protocol — the runtime decides its
+# shape, not this API — and the predictor's reply comes back byte for byte.
+curl -X POST https://api.hanzo.ai/v1/ml/models/iris/predict \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "inputs": [{
+      "name": "input-0",
+      "shape": [1, 4],
+      "datatype": "FP32",
+      "data": [[5.1, 3.5, 1.4, 0.2]]
+    }]
+  }'
+```
+
+## What does not carry
+
+**There is no prediction object.** No id, no `urls.get`, no `urls.cancel`, no
+poll loop, no webhook when it finishes. A predict call blocks and answers. Code
+that models a Replicate prediction as a state machine collapses to a function
+call — which is a simplification, but it also means you cannot fire a long job
+and come back for it later.
+
+**Community models by `owner/name` do not resolve.** Replicate's catalogue is
+open: anyone pushes a model and you call it by its handle. `GET /v1/models`
+returns the models this gateway serves. A model you need that is not there you
+deploy yourself through `/v1/ml`, from an image and a storage URI.
+
+**Cog is not the packaging format.** `POST /v1/ml/models` takes a KServe
+`InferenceService` spec, so what you package for is a KServe serving runtime.
+A `cog.yaml` does not port; a `predict.py` behind a KServe runtime does the
+same work.
+
+**Deploying costs money before it runs.** The balance check happens before a
+namespace or a resource exists, and it fails closed — an unfunded org is refused
+rather than started and billed. A submission fee is debited on success and GPU
+time is metered separately.
+
+**A model that exists is not a model that serves.** A deploy that Kubernetes
+accepted but has not scheduled answers `503 not ready` on predict rather than a
+connection error. Poll `GET /v1/ml/models/{name}` for the live status instead of
+assuming a 201 means ready.

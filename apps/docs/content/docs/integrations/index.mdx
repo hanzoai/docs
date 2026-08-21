@@ -16,14 +16,14 @@ The parameter has four spellings — `baseURL`, `base_url`, `api_base`, and a fe
 
 **Key.** `Authorization: Bearer sk-...`. A framework's `apiKey` or `api_key` parameter sets that header. Tenancy comes from the key — `sk-` resolves to a user, `pk-` to an org — so there is no header to add and no id to pass. [Where keys come from →](/docs/api-keys)
 
-**Routes.** Two request shapes on the one host:
+**Routes.** The OpenAI shape and the Anthropic shape, on the one host:
 
-| Route | Shape | Reached by |
-| --- | --- | --- |
-| `POST /v1/chat/completions` | OpenAI chat | where every snippet below lands, but one |
-| `POST /v1/responses` | OpenAI responses | Pydantic AI, the OpenAI Agents SDK, Agno and the Vercel AI SDK, each on a sibling constructor |
-| `POST /v1/messages` | Anthropic messages | the Claude Agent SDK |
-| `POST /v1/embeddings` | OpenAI embeddings | retrieval, wherever a framework indexes |
+| Route | Reached by |
+| --- | --- |
+| `POST /v1/chat/completions` | where every snippet below lands, but one |
+| `POST /v1/responses` | Pydantic AI, the OpenAI Agents SDK, Agno and the Vercel AI SDK, each on a sibling constructor |
+| `POST /v1/messages` | the Claude Agent SDK |
+| `POST /v1/embeddings` | retrieval, wherever a framework indexes |
 
 Each page below says which one its snippet lands on.
 
@@ -35,13 +35,13 @@ Each page below says which one its snippet lands on.
 curl -s https://api.hanzo.ai/v1/models | jq -r '.data[].id'
 ```
 
-Pass the `id` through verbatim as the framework's model name — `zen5`, `claude-sonnet-4-6`, `gpt-5.5`. Every record carries `context_window` and `pricing`; `supports_tools` and `supports_vision` appear on the models where the router declares them, and an absent field is undeclared rather than false.
+Pass the `id` through verbatim as the framework's model name — `zen5`, `claude-sonnet-4-6`, `gpt-5.5`. Every record carries `id`, `owned_by` and `premium`; `pricing` and `context_window` are on nearly all of them; `supports_tools` and `supports_vision` on a handful. An absent field is undeclared, not false.
 
 Some frameworks want those same facts restated in their own constructor — AutoGen's `model_info`, LlamaIndex's `is_chat_model` — and the page says so where it applies.
 
 ## Tools
 
-Hanzo's own tools are one MCP endpoint — `POST https://api.hanzo.ai/v1/mcp`, streamable HTTP, the same bearer key. Fifteen of the sixteen frameworks consume MCP tools directly and each page shows the wiring. [The tool catalogue →](/docs/mcp-tools)
+Hanzo's own tools are one MCP endpoint — `POST https://api.hanzo.ai/v1/mcp`, streamable HTTP, the same bearer key. Every framework below reaches it; fifteen own an MCP client, and DSPy converts another SDK's tools into its own. Each page shows the wiring. [The tool catalogue →](/docs/mcp-tools)
 
 ## The frameworks
 

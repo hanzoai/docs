@@ -1,0 +1,98 @@
+---
+title: Tavily
+description: Tavily searches the live web and pulls pages back as text for agents. Here that is /v1/websearch for the search and /v1/crawl for the page.
+---
+
+Tavily gives an agent two primitives: search the live web, and read a page.
+`/v1/websearch` (6 operations) answers the first and `/v1/crawl` (1) answers the
+second, with `/v1/scrape` (1) beside it for callers that already speak the
+firecrawl envelope.
+
+## Nouns
+
+| Tavily | Hanzo |
+|---|---|
+| `client.search(query)` | `POST /v1/websearch` — `q`, and `language` to narrow the locale |
+| `POST https://api.tavily.com/search` | `POST https://api.hanzo.ai/v1/websearch` |
+| A result's `title`, `url`, `content` | The same three, plus `engine` — which engine found it |
+| A SearXNG-shaped client you already wrote | `GET /v1/websearch/search?q=` — the `/search?format=json` envelope, unchanged |
+| `client.extract(urls)` | `POST /v1/crawl` — one URL, answered as markdown |
+| `raw_content` | `data.markdown` |
+| `failed_results` | `success: false` with the reason in `error`, at 200 |
+| A firecrawl-shaped client | `POST /v1/scrape` — `{success, data: {markdown, metadata}}` |
+
+Search takes a validated principal and nothing else. The results are public web
+pages, identical for every caller, so there is no tenant to scope and nothing
+that can leak between orgs.
+
+## The call
+
+Tavily:
+
+```python
+from tavily import TavilyClient
+
+client = TavilyClient(api_key="tvly-YOUR_API_KEY")
+
+response = client.search("Who is Leo Messi?")
+for result in response["results"]:
+    print(result["title"], result["url"])
+
+extracted = client.extract(urls=["https://en.wikipedia.org/wiki/Lionel_Messi"])
+print(extracted["results"][0]["raw_content"])
+```
+
+Hanzo:
+
+```bash
+# Search. Answers {query, number_of_results, results:[{url, title, content, engine}]}.
+curl -X POST https://api.hanzo.ai/v1/websearch \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"q": "Who is Leo Messi?"}'
+
+# Read one page. Answers {success, data:{url, title, markdown, metadata}, error}.
+curl -X POST https://api.hanzo.ai/v1/crawl \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"url": "https://en.wikipedia.org/wiki/Lionel_Messi"}'
+```
+
+Both fail soft and both fail soft in a checkable way. An engine that errors,
+times out, or is served a bot-challenge page contributes zero results and never
+fails the call, so an empty `results` means nothing was found rather than
+something broke — and the array is always present, never null. A page that could
+not be fetched answers 200 with `success: false`, so read `success` before you
+read `data`, and keep non-2xx for your own mistakes.
+
+## What does not carry
+
+**A search result's `content` is the engine's snippet, not the page.** Tavily
+gives you extracted page text in the search response. Here search returns
+snippets and reading the page is a second call to `/v1/crawl`. An agent loop
+that assumed one round trip needs two.
+
+**No answer, no context string.** `include_answer`, `qna_search` and
+`get_search_context` fold search and a model into one call. Search returns
+results. Compose the answer yourself with `POST /v1/chat/completions` over the
+results you got.
+
+**No crawl and no map.** `client.crawl()` walks a site to a depth and
+`client.map()` returns its structure. `POST /v1/crawl` fetches exactly one URL —
+batching would make the answer a partial-failure envelope every caller then has
+to unpack. Walking a site is a loop you write.
+
+**No research task.** `client.research()` is an agent: it plans, searches, reads
+and writes a cited report, and you poll a `request_id` for it. There is no
+equivalent single call. `/v1/research` is a different thing under a similar name
+— an append-only record of experiments and artifacts an org has run, useful for
+*keeping* what a research loop produced, not for producing it.
+
+**No search options.** There is no `search_depth`, `topic`, `max_results`,
+`include_domains` or `exclude_domains`. Engines run concurrently, hits are merged
+and deduplicated by normalised URL, and the list is capped at 30. Ranking is
+deterministic rather than scored: the first configured engine's hits lead.
+
+**`/v1/scrape` is not the one to reach for.** It is the service-to-service door
+and takes the shared service key as its `Authorization` Bearer — a validated
+principal does not substitute for it. Use `/v1/crawl`, which takes either.

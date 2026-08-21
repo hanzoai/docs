@@ -1,0 +1,120 @@
+---
+title: AgentMail
+description: AgentMail gives an agent its own mailbox. Here /v1/notify sends and /v1/channels carries the conversation — but there is no mailbox, so read the last section first.
+---
+
+AgentMail gives an agent an email address of its own: it sends, receives,
+threads and replies. Two capabilities answer parts of that — `/v1/notify` (4
+operations) delivers transactional email through the org's own provider
+credential, and `/v1/channels` (7) is the conversation plane, inbound and
+outbound. Neither is a mailbox. If inbound email is the reason you use
+AgentMail, read [what does not carry](#what-does-not-carry) before anything else.
+
+## Nouns
+
+| AgentMail | Hanzo |
+|---|---|
+| `client.inboxes.messages.send(...)` | `POST /v1/notify/send/email?sync=true` — `to`, `subject`, `body` |
+| The API key scoped to one inbox | The org in your key |
+| `client.inboxes.messages.list(...)` | `GET /v1/channels/inbox` — a cursor feed of what people sent the org's bots |
+| The pagination cursor | `since`, an integer cursor. Pass the returned `cursor` back |
+| `client.inboxes.messages.reply(...)` | `POST /v1/channels/{channel}/send` with `replyTo` |
+| Which surfaces the agent can reach | `GET /v1/channels` — every channel, and whether it can send right now |
+| A message's `from`, `to`, `subject`, `text` | The notify body's `to`, `subject`, `body`; the inbox envelope's `sender`, `room`, `text` |
+
+The delivery credential is the org's own, read from KMS. Naming no provider
+picks the one that is actually configured — Twilio Email, then SMTP for email —
+and fails closed when none is.
+
+## The call
+
+AgentMail — an inbox, then a message from it:
+
+```python
+from agentmail import AgentMail
+
+client = AgentMail(api_key="<token>")
+
+inbox = client.inboxes.create()
+client.inboxes.messages.send(
+    inbox_id=inbox.inbox_id,
+    to=["ada@example.com"],
+    subject="Your report is ready",
+    text="It is attached.",
+)
+
+for message in client.inboxes.messages.list(inbox_id=inbox.inbox_id).messages:
+    print(message.subject)
+```
+
+Hanzo — send, and read the conversation feed:
+
+```bash
+# Send. `sync=true` is required and rides on the URL, which binds over the body.
+curl -X POST "https://api.hanzo.ai/v1/notify/send/email?sync=true" \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "to": ["ada@example.com"],
+    "subject": "Your report is ready",
+    "body": "It is attached."
+  }'
+
+# Read what people have sent the org's bots. Oldest first; pass the returned
+# cursor back as `since` for only what has arrived since.
+curl -sS "https://api.hanzo.ai/v1/channels/inbox?limit=100" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+# Answer one, on the transport it came in on.
+curl -X POST https://api.hanzo.ai/v1/channels/slack/send \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "room": {"id": "C0123456789"},
+    "text": "Your report is ready.",
+    "idempotency": "report-42"
+  }'
+```
+
+One recipient answers the bare `{message_id, status}` outcome; several answer an
+`{items: [...]}` envelope. A terminal provider failure is a 200 whose `status` is
+`failed` with the reason in `error`, never a transport error — so check `status`.
+
+Sending is at-most-once only if you ask for it. Pass an `idempotency` string on a
+channel send and a replay answers 200 with the prior receipt instead of sending
+twice, while a send that fails releases the key so you can re-attempt.
+
+## What does not carry
+
+**There is no mailbox.** No address is allocated, and there is nothing to
+allocate one from. `client.inboxes.create()` has no counterpart: `/v1/notify` is
+a sender, not an account.
+
+**No inbound email.** `GET /v1/channels/inbox` is a feed of chat — Discord,
+Slack, Teams and Telegram — not mail. Nothing on this surface receives an email,
+so an agent that reads its own replies keeps its existing mail path.
+
+**No threads, no drafts, no attachments on send.** AgentMail models threads,
+drafts, forwarding and attachment retrieval. `notify` takes recipients, a
+subject and a body. Chat replies thread by `replyTo` on the transport's own
+terms.
+
+**No labels, no search, no batch operations.** There is no
+`messages.search`, no `batch_update` and no label model.
+
+**No websockets and no per-inbox events.** AgentMail streams message events.
+The inbox here is a cursor feed you poll: pass the returned `cursor` back as
+`since`.
+
+**A bot must be spoken to first.** A room the org has not bound is 403, and a
+room whose route the bot has never learned is 409 — meaning someone has to
+message the bot there before you can send into it. There is also an access
+policy per channel at `GET /v1/channels/allowlist`, and pairing requests to
+approve at `GET /v1/channels/pairing`.
+
+**All four transports render text today.** Attachments and actions are in the
+send envelope, and they may not appear as you expect.
+
+**Async delivery is refused, not queued.** `sync=true` is required on notify;
+anything else answers 503, because the queue plane that would run an async
+dispatch is owned elsewhere.

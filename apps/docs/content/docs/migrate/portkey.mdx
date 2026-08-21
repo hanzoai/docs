@@ -1,0 +1,115 @@
+---
+title: Portkey
+description: Portkey fronts many model providers behind one OpenAI-shaped call with routing and fallbacks. Here that is /v1/chat/completions on the gateway, /v1/ai for providers and model-routes, and /v1/router for policy.
+---
+
+Portkey puts one OpenAI-shaped endpoint in front of many providers and decides
+which one a request goes to. The gateway call is `POST /v1/chat/completions`;
+the configuration behind it is `/v1/ai` (208 operations — providers, model-routes,
+usages) and `/v1/router` (30 — policy, defaults, rewards, stats).
+
+## Nouns
+
+| Portkey | Hanzo |
+|---|---|
+| Gateway base URL `https://api.portkey.ai/v1` | `https://api.hanzo.ai/v1` |
+| `portkey.chat.completions.create` | `POST /v1/chat/completions`, the same OpenAI body |
+| Virtual key — a provider credential in Portkey's vault | Provider — `GET /v1/ai/providers` · `POST /v1/ai/providers` |
+| Config — fallback, load balance, conditional routing | Router policy — `GET /v1/router/policy` · `PUT /v1/router/policy` |
+| Pinning one model to one provider | Model-route — `GET /v1/ai/routes` · `POST /v1/ai/routes` |
+| `x-portkey-provider` header, or a provider-prefixed model | The `model` field alone. `GET /v1/models` lists what resolves |
+| Automatic routing across models | A model id: `router:general` routes the request itself |
+| Logs and analytics | `GET /v1/ai/usages` · `GET /v1/router/stats` · `GET /v1/billing/usage` |
+| Budget and rate limits on a key | `GET /v1/billing/alerts` · `POST /v1/billing/alerts` |
+| Prompt templates | `GET /v1/prompts` |
+
+`GET /v1/models` does not authenticate. The catalogue is the same for everyone,
+so you can read it before you have a key — the `Authorization` header only
+annotates which gated models your org may call.
+
+## The call
+
+Portkey, through its SDK:
+
+```python
+import os
+from portkey_ai import Portkey
+
+portkey = Portkey(
+    api_key=os.environ["PORTKEY_API_KEY"],
+    virtual_key="VIRTUAL_KEY",
+)
+
+chat = portkey.chat.completions.create(
+    model="gpt-4o-mini",
+    messages=[{"role": "user", "content": "Say this is a test"}],
+)
+print(chat.choices[0].message.content)
+```
+
+Hanzo, through the OpenAI SDK you already have:
+
+```python
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=os.environ["HANZO_API_KEY"],
+    base_url="https://api.hanzo.ai/v1",
+)
+
+chat = client.chat.completions.create(
+    model="zen5",
+    messages=[{"role": "user", "content": "Say this is a test"}],
+)
+print(chat.choices[0].message.content)
+```
+
+Or over HTTP, with the routing decision left to the platform:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "router:general",
+    "messages": [{"role": "user", "content": "Say this is a test"}]
+  }'
+```
+
+Read what routing did:
+
+```bash
+curl "https://api.hanzo.ai/v1/router/stats?hours=24" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+`?scope=platform` on the same route answers a public aggregate across all orgs —
+rates, shares, per-model counts and the cost ratio, never absolute spend or org
+identity. Without it you get your own org, with the absolute figures.
+
+## What does not carry
+
+**Per-request routing headers.** Portkey carries a config or a provider on
+`x-portkey-*` headers, so two requests from one client can take different
+strategies. Here routing configuration is org state at `/v1/router/policy` and
+`/v1/ai/routes`, and the per-request lever is the `model` field. If you were
+switching strategy per request, encode the strategy as a model-route and select
+it by name.
+
+**Semantic caching.** Portkey caches responses by similarity. There is no cache
+control on this endpoint; a repeated question is a repeated call.
+
+**Guardrails.** Portkey runs input and output checks inside the gateway hop.
+Nothing on `/v1/chat/completions` does that. `zen-guard` is a model in the
+catalogue you can call yourself, which is a step in your code rather than a hop
+in the gateway.
+
+**Self-hosting the gateway.** Portkey's gateway is open source and you can run
+it beside your app. `api.hanzo.ai` is the hosted plane.
+
+**Your own provider keys.** Portkey's virtual keys wrap credentials you already
+bought from OpenAI or Anthropic. Registering a provider with `POST
+/v1/ai/providers` is how you bring your own, but the default is the opposite:
+the catalogue is already served, billed through `/v1/billing`, and needs no
+upstream account.

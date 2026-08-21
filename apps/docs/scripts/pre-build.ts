@@ -11,6 +11,7 @@ import { syncProjectDocs } from './sync-project-docs';
 import { sanitizeMdx } from './sanitize-mdx';
 import { syncHips } from './sync-hips';
 import { checkCapabilities, report as reportCapabilities } from './check-capabilities';
+import { checkRoutes, report as reportRoutes } from './check-routes';
 import { checkEndpoints, report } from './check-endpoints';
 import { checkKeys, report as reportKeys } from './check-keys';
 
@@ -75,6 +76,18 @@ async function main() {
     );
   }
   console.log(`[capabilities] ${caps.served} served, every one grouped and paged`);
+
+  // And the sidebar reaches everything: a section nobody listed still publishes
+  // and still answers, it is simply unreachable -- which is how two whole
+  // sections shipped invisible during the rebuild that added this check.
+  const routes = checkRoutes();
+  if (routes.unlisted.length || routes.dangling.length) {
+    reportRoutes(routes);
+    throw new Error(
+      `${routes.unlisted.length + routes.dangling.length} disagreements between the sidebar and the pages`,
+    );
+  }
+  console.log(`[routes] ${routes.checked} entries, every section listed and every entry present`);
 
   // Then: no page may claim an endpoint the document does not have — generated
   // or authored, the same rule, because a reader running a curl cannot tell
