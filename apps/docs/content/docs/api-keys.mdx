@@ -59,23 +59,23 @@ is public by construction and useless to you if you cannot.
 
 ### Over the API
 
-Keys are one resource, `/v1/keys`, and the type is a field on it. There is no
+Keys are one resource, `/v1/account/keys`, and the type is a field on it. There is no
 separate mint endpoint and no separate revoke endpoint — the HTTP method says
 which you mean.
 
 ```bash
 # Mint (or rotate) a key. The response carries it once.
-curl -X POST https://api.hanzo.ai/v1/keys \
+curl -X POST https://api.hanzo.ai/v1/account/keys \
   -H "Authorization: Bearer sk-your-key" \
   -H "Content-Type: application/json" \
   -d '{"type":"publishable"}'
 
 # List what you hold. No secret material comes back — a secret key is
 # represented by its prefix; a publishable key by its full value.
-curl https://api.hanzo.ai/v1/keys -H "Authorization: Bearer sk-your-key"
+curl https://api.hanzo.ai/v1/account/keys -H "Authorization: Bearer sk-your-key"
 
 # Revoke one type without touching the other.
-curl -X DELETE "https://api.hanzo.ai/v1/keys?type=publishable" \
+curl -X DELETE "https://api.hanzo.ai/v1/account/keys?type=publishable" \
   -H "Authorization: Bearer sk-your-key"
 ```
 
@@ -90,7 +90,7 @@ service that is more authority than the service needs, so a key can be narrowed
 to a model, a project or a product:
 
 ```bash
-curl -X POST https://api.hanzo.ai/v1/keys \
+curl -X POST https://api.hanzo.ai/v1/account/keys \
   -H "Authorization: Bearer sk-your-key" \
   -H "Content-Type: application/json" \
   -d '{"type":"secret","limit":["model:zen5","project:acme"]}'
@@ -116,7 +116,7 @@ consequences worth stating plainly. Your session and your deploy key can carry
 different limits at the same time. And an admin's limited key is still limited:
 a restriction you could shed by being an admin would not be one.
 
-`GET /v1/keys` reports each key's `limit`, so you can see what a key reaches
+`GET /v1/account/keys` reports each key's `limit`, so you can see what a key reaches
 without minting a new one to find out.
 
 Two things worth knowing before you automate this. A browser session must echo
@@ -267,7 +267,7 @@ removing the sync does not take a running workload down with it.
 ## Revoking
 
 From the console: **API Keys → Revoke**. Over the API:
-`DELETE /v1/keys?type=secret`. IAM drops the credential immediately and calls
+`DELETE /v1/account/keys?type=secret`. IAM drops the credential immediately and calls
 made with it fail `401` once the gateway's cache lapses.
 
 ## Rules

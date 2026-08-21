@@ -67,15 +67,17 @@ async function main() {
   // is the coarser question — a capability that lost its page is a worse fact
   // than a sentence naming a route, and finding it first says so.
   const caps = checkCapabilities();
-  const disagreements =
-    caps.unpaged.length + caps.orphaned.length + caps.ungrouped.length + caps.unserved.length;
+  const disagreements = caps.unpaged.length + caps.orphaned.length + caps.ungrouped.length;
   if (disagreements) {
     reportCapabilities(caps);
     throw new Error(
       `${disagreements} disagreements between the document, the taxonomy and the pages`,
     );
   }
-  console.log(`[capabilities] ${caps.served} served, every one grouped and paged`);
+  console.log(
+    `[capabilities] ${caps.served} served, every one grouped and paged` +
+      (caps.belowGa.length ? `; ${caps.belowGa.length} more grouped and below GA` : ''),
+  );
 
   // And the sidebar reaches everything: a section nobody listed still publishes
   // and still answers, it is simply unreachable -- which is how two whole

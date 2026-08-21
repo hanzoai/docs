@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -161,15 +162,40 @@ export function corpus(files: Map<string, string>, pin: string): Corpus {
   return { pin, capabilities };
 }
 
-async function sources(pin: string): Promise<Map<string, string>> {
+/**
+ * The corpus AT THE PIN, from a sibling checkout's git — not its working tree.
+ *
+ * A sibling checkout sits on whatever commit its owner left it on, and reading
+ * its files means the pin names one corpus while the pages render another. The
+ * document sync learned this the expensive way: it installed a sibling's bytes
+ * silently while `.spec-lock` still claimed the pinned release. So the files are
+ * read out of git by ref, which makes the pin the thing that decides and a dirty
+ * or half-rebased neighbour harmless.
+ */
+function fromGit(repo: string, pin: string): Map<string, string> {
   const files = new Map<string, string>();
-  if (fs.existsSync(SIBLING)) {
-    for (const name of fs.readdirSync(SIBLING)) {
-      if (name.endsWith('.md')) files.set(name, fs.readFileSync(path.join(SIBLING, name), 'utf8'));
-    }
-    console.log(`[hips] using the sibling checkout (${files.size} HIPs)`);
-    return files;
+  const at = (args: string[]): string =>
+    execFileSync('git', ['-C', repo, ...args], { encoding: 'utf8', maxBuffer: 1 << 28 });
+  for (const name of at(['ls-tree', '--name-only', `${pin}:HIPs`]).split('\n')) {
+    if (name.endsWith('.md')) files.set(name, at(['show', `${pin}:HIPs/${name}`]));
   }
+  return files;
+}
+
+async function sources(pin: string): Promise<Map<string, string>> {
+  const repo = path.resolve(SIBLING, '..');
+  if (pin && fs.existsSync(path.join(repo, '.git'))) {
+    try {
+      const files = fromGit(repo, pin);
+      if (files.size) {
+        console.log(`[hips] read ${files.size} HIPs from the sibling repo @ ${pin.slice(0, 9)}`);
+        return files;
+      }
+    } catch {
+      /* the pin is not in that checkout — fall through */
+    }
+  }
+  const files = new Map<string, string>();
   if (!pin) return files;
   // No listing endpoint without a token, so the index the corpus keeps of
   // itself is what names the files to fetch.

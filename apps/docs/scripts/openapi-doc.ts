@@ -268,7 +268,7 @@ export function deref(raw: any, node: any, depth = 0): any {
 /**
  * The classes of API key, read out of the document rather than restated.
  *
- * `/v1/keys` IS the key resource: one endpoint, and the class is a field on it.
+ * The key resource is one endpoint and the class is a field on it.
  * Its Go source spells each class beside its prefix — `"secret" (sk-, …)`,
  * `"publishable" (pk-, …)` — zipdoc lifts those doc comments into this
  * document, and this reads them back. So a page saying `sk-` is saying what the
@@ -288,14 +288,43 @@ export function deref(raw: any, node: any, depth = 0): any {
  */
 const KEY_CLASS = /"?\b([a-z][a-z-]{2,20})"?\s*\((([a-z]{2,6})-)([,)][^)]*)?\)/g;
 
+/**
+ * WHERE THE KEY RESOURCE IS: found, not spelled.
+ *
+ * This read `/v1/keys` literally, and cloud folded the address under the
+ * capability that owns it — `/v1/account/keys` — so the whole build stopped on
+ * a document that states the key classes perfectly well, one segment over. An
+ * address is not an identity; that is the same lesson the capability rule
+ * learned, and this was the last place still spelling one.
+ *
+ * The resource is identified by what it IS: a collection called `keys`, at the
+ * root or one capability deep, whose own prose names the classes. Candidates are
+ * read in order and the first that names a publishable class and at least two
+ * classes wins — which is a property of the answer, so a neighbour like
+ * `/v1/o11y/gateway/ingestion_keys` cannot be mistaken for it.
+ */
+const KEY_RESOURCE = /^\/v1\/(?:[a-z0-9-]+\/)?keys$/;
+
 export function keyTypes(raw: any): KeyType[] {
-  const item = raw?.paths?.['/v1/keys'];
-  if (!item) {
+  const candidates = Object.keys(raw?.paths ?? {}).filter((p) => KEY_RESOURCE.test(p)).sort();
+  if (!candidates.length) {
     // Every generated page prints a bearer credential, so none of them can be
     // written without knowing how one is spelled. Stopping here is the honest
     // failure; the alternative is a whole site of curls with a blank key.
-    throw new Error('the document does not serve /v1/keys — no page can state how a key is spelled');
+    throw new Error('the document serves no `keys` collection — no page can state how a key is spelled');
   }
+  for (const at of candidates) {
+    const found = readKeyTypes(raw, raw.paths[at]);
+    if (found.length >= 2 && found.some((k) => k.publishable)) return found;
+  }
+  throw new Error(
+    `none of ${candidates.join(', ')} names a publishable key class and a second one — ` +
+      'the document stopped stating them, so no page can',
+  );
+}
+
+function readKeyTypes(raw: any, item: any): KeyType[] {
+  if (!item) return [];
 
   // Every sentence the key resource carries: its operations, their parameters,
   // and the schemas they send and return. Naming one schema would tie this to a
@@ -330,17 +359,11 @@ export function keyTypes(raw: any): KeyType[] {
     }
   }
 
-  const found = [...seen.values()];
-  if (found.length < 2) {
-    throw new Error(
-      `/v1/keys names ${found.length} key class(es) — the document stopped stating them, so no page can`,
-    );
-  }
-  if (!found.some((k) => k.publishable)) {
-    throw new Error('no key class is named publishable — nothing may be shipped in a browser');
-  }
   // Publishable last: a reader meets the default before the exception.
-  return found.sort((a, b) => Number(a.publishable) - Number(b.publishable));
+  // Whether this is ENOUGH — two classes, one of them publishable — is the
+  // caller's question, because it is what decides which candidate is the key
+  // resource at all.
+  return [...seen.values()].sort((a, b) => Number(a.publishable) - Number(b.publishable));
 }
 
 /**
