@@ -6,24 +6,12 @@
 # demonstrate. This file is what makes "the same six" a fact rather than six
 # repos independently remembering to agree.
 #
-# `operations` are operationIds in the document, in call order. That is the part a
+# `operations` are operationIds in hanzo.yaml, in call order. That is the part a
 # language cannot fudge: test_flows.py asserts every id here exists in the
 # published document, so a route that stops being served breaks THIS gate — one
-# place — instead of breaking six SDKs quietly and separately.
-#
-# This file is TRACKED here and reconciled against the document, not fetched.
-# It used to be pulled from hanzoai/openapi at a pin, and that pin carried the
-# projection's OWN id scheme: `get_v1_kv_name` where cloud emitted
-# `get_v1_kv_by_name`, `get_v1_agents_ref_runs` where cloud emitted
-# `get_v1_agents_by_ref_runs`. Three of eleven ids named nothing, so the flow
-# pages could not build at all — a list of journeys pinned to a second document
-# drifts from the first by construction.
-#
-# The ids below carry no `v1` because cloud stopped putting the default version
-# in them — `get_v1_keys` became `get_keys`, 2011 ids in one release. That is the
-# convention this file follows, and the one gate above catches the day it moves
-# again: an id that names nothing fails the build here, once, instead of in six
-# SDKs separately.
+# place — instead of breaking six SDKs quietly and separately. Since hanzo.yaml
+# is now derived from hanzo-inc/cloud's own emission, an id here is a served
+# operation by construction, and there is no way to name one that is not.
 #
 # Existing in the spec is necessary and not sufficient: an id can resolve and
 # still 404 on the wire. Every flow below was PROBED at api.hanzo.ai, and where
@@ -63,13 +51,26 @@ flows:
     # GET /v1/iam/whoami and GET /v1/iam/account (both {"status":"error",
     # "msg":"please sign in first"}, 200) — and a `hello` built on any of them
     # prints a cheerful identity for a key that would 403 everywhere else.
-    operations: [get_keys]
+    #
+    # get_models comes FIRST and needs no key: the document now declares a
+    # `bearer` scheme, applies it to every operation, and exempts exactly four
+    # with `security: []` — get_models, get_models_providers, get_commands,
+    # get_openapi.json. So "which routes are open" is a fact an SDK can read
+    # rather than a probe result recorded in this file, and hello can open with
+    # a call that SUCCEEDS for a reader who has no credential at all. It is a
+    # reachability line, not the identity proof; get_keys is still that.
+    operations: [get_models, get_keys]
     notes: >-
       Verified with a nonsense-sibling control: GET /v1/keys answers 403
       {"code":"forbidden","error":"sign in to manage API keys"} with NO key and
       with a bogus one, while GET /v1/keys-zzq9 answers 404 — so the 403 is this
       route refusing, not a wildcard door. With a real key it returns the
       caller's own keys. An SDK's hello must be the call that says no.
+
+
+      Both halves are what makes the flow readable: an unreachable gateway and a
+      rejected credential both end in "no", and only the open call separates
+      them.
 
 
       This replaces bot_authMe (GET /v1/bot/auth/me), which no longer resolves:
@@ -83,10 +84,23 @@ flows:
     summary: One completion.
     operations: [post_chat_completions]
     notes: >-
-      POST /v1/chat/completions, the gateway's own inference route. Non-streaming
-      on purpose — streaming is a different transport (SSE) that the generated
-      clients return as an opaque body, so demonstrating it here would teach the
-      wrong shape. Print choices[0].message.content.
+      POST /v1/chat/completions, the gateway's own inference route. The id lost
+      its `v1` when the default version left the operationId; the address did
+      not move.
+
+
+      The document states that address and NOT its shape — no requestBody and no
+      responses — so a generated method takes no prompt and hands back an opaque
+      body. No language can ship this as an example that runs, and python,
+      typescript and go each ship five. The flow keeps its place here because
+      the operation is served: the day cloud's handler declares its In and Out
+      types, the sixth example returns everywhere at once with nothing left to
+      decide.
+
+
+      Non-streaming when it does. Streaming is a different transport (SSE) that
+      the generated clients return as an opaque body, so demonstrating it here
+      would teach the wrong shape. Print choices[0].message.content.
 
   money:
     summary: Balance, then the usage that moved it.
@@ -108,17 +122,15 @@ flows:
     notes: >-
       The delete belongs in the language's finally/defer, so a failed read still
       cleans up instead of leaving the store for the next run to collide with.
-      This is the provisioning plane, and it is one plane: `/v1/instances/{engine}`
-      carries the same four verbs for kv, sql, docdb, datastore, s3, search and
-      vector, so an example written against one engine reads as the example for
-      the other six. It moved there from `/v1/kv`, and the pair — a provisioning
-      address per engine, or one address that takes the engine — is exactly the
-      kind of choice a reader should only have to learn once.
-
-
-      The VALUE plane (/v1/kv/keys/{key}) was authored in kv/openapi.yaml and
-      mounted nowhere; that spec is deleted and the addresses went with it. What
-      a store holds is reached at the store's own endpoint, from its metadata.
+      This is the provisioning plane — create a KV STORE, read it, drop it — at
+      its served address, /v1/instances/kv. The bare /v1/kv spellings are the
+      legacy dialect the binary itself tags compat, and the publication drops a
+      compat operation by that declaration — so the day this file named them it
+      would have named ids the published document does not have, which is
+      exactly what test_flows.py went red on. Probed at api.hanzo.ai:
+      GET /v1/instances/kv answers 403 while /v1/instances/kv-zzq9 answers 404,
+      which is the existence proof this file requires (auth runs before the
+      handler; only a mounted route can refuse).
 
   agent:
     summary: Create an agent, run it, read the run back.
@@ -150,7 +162,7 @@ flows:
       generated method. An example may not reach for an address the document
       does not carry: that is a hand-rolled HTTP call inside a generated client,
       the exact drift these SDKs exist to prevent. `POST /v1/mcp` returns here
-      the release cloud declares it (LLM.md, "Handed to hanzoai/cloud").
+      the release cloud declares it (LLM.md, "Handed to hanzo-inc/cloud").
 
 
       Note for whoever writes that declaration: JSON-RPC reports failure INSIDE a
