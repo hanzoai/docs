@@ -7,7 +7,7 @@ import { parse as parseYaml } from 'yaml';
 //
 // A capability's identity comes from the document — the tag on its operations.
 // What the document does not say is which DOMAIN it belongs under when a reader
-// is shown all 116 at once, because that is presentation, and presentation has
+// is shown all of them at once, because that is presentation, and presentation has
 // no source in a router. hanzoai/openapi's `capabilities.yaml` is where that one
 // editorial decision lives, and this module is the only reader of it.
 //
@@ -72,9 +72,9 @@ export function domains(file: string = CAPABILITIES): Domain[] {
  * `/.well-known/`, a co-resident claims requests on another app's router, and a
  * stream consumer mounts nothing at all. None of those appears in an OpenAPI
  * document, because a document describes HTTP operations and these are not HTTP
- * operations — so a set derived from the document alone is missing nine
- * capabilities `manifest/apps.go` ships, and a reader who has heard of `kafka`
- * finds nothing and concludes we do not have it.
+ * operations — so a set derived from the document alone is missing every
+ * capability `manifest/apps.go` ships this way, and a reader who has heard of
+ * `kafka` finds nothing and concludes we do not have it.
  *
  * Named for the value, not for a verb: pubsub's own package doc says ONE bus,
  * MANY doors, so a door is what this is a map of. (`reach` was the first name
@@ -100,7 +100,7 @@ export function doors(file: string = CAPABILITIES): Map<string, string> {
  * Capability -> domain, and the order a sidebar walks them in.
  *
  * The order is the FILE's: domains as written, capabilities as written within
- * each. Alphabetising 116 names is the arrangement that carries no information
+ * each. Alphabetising the whole list is the arrangement that carries no information
  * — it puts `admission` above `ai` and `zt` beside nothing — and the file's
  * order is the only one anybody decided.
  */

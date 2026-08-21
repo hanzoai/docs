@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   DOCUMENT,
+  canonical,
   isInternal,
   loadDocument,
   release,
@@ -704,7 +705,7 @@ function renderTool(tool: McpTool, ops: Operation[] | undefined, cat: McpCatalog
 }
 
 /** One page per product folder, so no tool page is more than one click deep. */
-function renderProductIndex(product: string, tools: McpTool[], cat: McpCatalog, mapped: Map<string, Operation[]>): string {
+function renderProductIndex(product: string, tools: McpTool[], cat: McpCatalog, mapped: Map<string, Operation[]>, doc: Document): string {
   const L: string[] = [];
   const known = product !== 'unmapped';
   L.push('---');
@@ -720,7 +721,11 @@ function renderProductIndex(product: string, tools: McpTool[], cat: McpCatalog, 
   L.push('');
   L.push(
     known
-      ? `The ${tools.length} tool${tools.length === 1 ? '' : 's'} \`tools/list\` names for **${text(product)}**. Each dispatches to an operation in the [${text(product)} API reference](/docs/openapi/${product}).`
+      ? `The ${tools.length} tool${tools.length === 1 ? '' : 's'} \`tools/list\` names for **${text(product)}**. Each dispatches to an operation${
+          canonical(doc, product)
+            ? ` in the [${text(product)} API reference](/docs/openapi/${canonical(doc, product)})`
+            : ' on api.hanzo.ai'
+        }.`
       : `The door lists ${tools.length} tool${tools.length === 1 ? '' : 's'} that resolve to no operation in the copy of the OpenAPI document this build holds${pinned}. Each is either a route the document has yet to declare or one the door has renamed since the pin; both are documented from \`tools/list\` alone rather than left out.`,
   );
   L.push('');
@@ -748,7 +753,7 @@ function renderProductIndex(product: string, tools: McpTool[], cat: McpCatalog, 
 }
 
 /** Every tool, grouped, linked. The reachability guarantee for the whole set. */
-function renderCatalog(groups: Map<string, McpTool[]>, cat: McpCatalog, mapped: Map<string, Operation[]>): string {
+function renderCatalog(groups: Map<string, McpTool[]>, cat: McpCatalog, mapped: Map<string, Operation[]>, doc: Document): string {
   const L: string[] = [];
   const products = [...groups.keys()];
   L.push('---');
@@ -774,7 +779,9 @@ function renderCatalog(groups: Map<string, McpTool[]>, cat: McpCatalog, mapped: 
   for (const p of products) {
     L.push(
       `| [${text(p)}](${productHref(p)}) | ${groups.get(p)!.length} | ${
-        p === 'unmapped' ? 'not described by the OpenAPI document' : `[API reference](/docs/openapi/${p})`
+        p === 'unmapped' || !canonical(doc, p)
+          ? 'not described by the OpenAPI document'
+          : `[API reference](/docs/openapi/${canonical(doc, p)})`
       } |`,
     );
   }
@@ -1061,7 +1068,7 @@ export async function genMcpPages(outDir: string = OUT_DIR): Promise<{ pages: nu
       fs.writeFileSync(path.join(dir, `${slugOf(t.name)}.mdx`), renderTool(t, mapped.get(t.name), cat, doc));
       pages++;
     }
-    fs.writeFileSync(path.join(dir, 'index.mdx'), renderProductIndex(product, tools, cat, mapped));
+    fs.writeFileSync(path.join(dir, 'index.mdx'), renderProductIndex(product, tools, cat, mapped, doc));
     fs.writeFileSync(
       path.join(dir, 'meta.json'),
       JSON.stringify({ title: slugOf(product), pages: ['index', ...tools.map((t) => slugOf(t.name))] }, null, 2) + '\n',
@@ -1069,7 +1076,7 @@ export async function genMcpPages(outDir: string = OUT_DIR): Promise<{ pages: nu
     pages++;
   }
 
-  fs.writeFileSync(path.join(outDir, 'all-tools.mdx'), renderCatalog(ordered, cat, mapped));
+  fs.writeFileSync(path.join(outDir, 'all-tools.mdx'), renderCatalog(ordered, cat, mapped, doc));
   fs.writeFileSync(path.join(outDir, 'index.mdx'), renderIndex(cat, doc, ordered, unmapped));
   fs.writeFileSync(
     path.join(outDir, 'meta.json'),

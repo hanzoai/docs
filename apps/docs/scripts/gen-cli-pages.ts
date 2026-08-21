@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DOCUMENT, loadDocument, opHref, type Document, type Operation } from './openapi-doc';
+import { DOCUMENT, canonical, loadDocument, opHref, type Document, type Operation } from './openapi-doc';
 import { cli } from './openapi-surfaces';
 import { loadCliTable, type CliCommand } from './sync-cli-commands';
 import { domains, icon } from './capabilities';
@@ -56,7 +56,7 @@ function groups(doc: Document, table: Map<string, CliCommand>): Group[] {
   return [...out.values()];
 }
 
-function renderGroup(g: Group): string {
+function renderGroup(g: Group, doc: Document): string {
   const L: string[] = [];
   L.push('---');
   L.push(`title: ${yamlString(g.title)}`);
@@ -71,9 +71,13 @@ function renderGroup(g: Group): string {
     L.push(text(firstSentence(g.description, 400)));
     L.push('');
   }
+  // The CLI names a capability at ITS lock, which can be a spelling the
+  // document has since swept. Link only where a page exists; a group whose name
+  // resolves to nothing gets the count and no dead link.
+  const ref = canonical(doc, g.name);
   L.push(
-    `\`${g.rows.length}\` command${g.rows.length === 1 ? '' : 's'} · ` +
-      `[API reference →](/docs/openapi/${g.name})`,
+    `\`${g.rows.length}\` command${g.rows.length === 1 ? '' : 's'}` +
+      (ref ? ` · [API reference →](/docs/openapi/${ref})` : ''),
   );
   L.push('');
   L.push('| Command | Calls | What it does |');
@@ -187,7 +191,7 @@ export async function genCliPages(): Promise<void> {
   for (const g of gs) {
     const folder = path.join(OUT_DIR, g.name);
     fs.mkdirSync(folder, { recursive: true });
-    fs.writeFileSync(path.join(folder, 'index.mdx'), renderGroup(g));
+    fs.writeFileSync(path.join(folder, 'index.mdx'), renderGroup(g, doc));
     fs.writeFileSync(
       path.join(folder, 'meta.json'),
       JSON.stringify({ title: g.title, pages: ['index'] }, null, 2) + '\n',

@@ -413,6 +413,63 @@ const WRITTEN: Record<string, string> = {
   zt: 'ZT',
 };
 
+/**
+ * The other ways a capability's name can be spelled.
+ *
+ * cloud aliases a capability's singular and plural at the router, so both reach
+ * it; only the canonical one is published. A projection pinned before a sweep
+ * holds the other, so anything joining a projection to the document has to try
+ * them — and has to try them CORRECTLY: `sandbox` pluralises to `sandboxes`,
+ * not `sandboxs`, and getting that wrong reports a gap that does not exist,
+ * which is a worse answer than no answer.
+ *
+ * Candidates, not one string, because which direction the sweep went is not
+ * knowable here and does not need to be: the caller keeps whichever candidate
+ * the document actually carries.
+ */
+export function spellings(name: string): string[] {
+  const sibilant = /(?:s|x|z|ch|sh)$/.test(name);
+  const out = [
+    name.endsWith('es') ? name.slice(0, -2) : '',
+    name.endsWith('s') ? name.slice(0, -1) : '',
+    sibilant ? `${name}es` : `${name}s`,
+  ];
+  return out.filter((v) => v && v !== name);
+}
+
+/**
+ * A PROJECTION'S name for a capability, resolved to the DOCUMENT'S name.
+ *
+ * The CLI's command table and the MCP door's tool list are each generated from
+ * cloud at their own lock, so each can spell a capability the way cloud spelled
+ * it then. When cloud swept its addresses to the singular, `hanzo sandboxes`
+ * and the `sandboxes` tool went on saying `sandboxes` while the document said
+ * `sandbox` — and every "API reference →" link those pages emit pointed at a
+ * page that no longer exists.
+ *
+ * cloud answers at BOTH spellings, so the projections are not wrong, they are
+ * early. What is wrong is publishing a link to a page nobody wrote. A name that
+ * resolves to nothing returns undefined, and the caller says where the operation
+ * lives instead of linking into a 404.
+ *
+ * This is a resolver, not a rename table: it holds no list of names and needs no
+ * edit when the next sweep lands.
+ */
+export function canonical(doc: Document, name: string): string | undefined {
+  const served = new Set(doc.products.map((p) => p.name));
+  if (served.has(name)) return name;
+  return spellings(name).find((v) => served.has(v));
+}
+
+/** The same address under the capability's other spellings. Only the capability
+ *  segment moves; everything after it is that capability's own address space. */
+export function aliases(p: string): string[] {
+  const m = /^\/v1\/([a-z0-9]+)(\/.*)?$/.exec(p);
+  if (!m) return [];
+  const [, name, rest = ''] = m;
+  return spellings(name).map((n) => `/v1/${n}${rest}`);
+}
+
 /** `agents` -> `Agents`; `kms` -> `KMS`; `Roles & Permissions` passes through. */
 export const titleCase = (name: string): string =>
   WRITTEN[name.toLowerCase()] ??
@@ -556,7 +613,11 @@ export function loadDocument(file: string): Document {
     }
   }
 
-  const order = (o: Operation) => `${o.tag} ${o.path} ${METHODS.indexOf(o.method)}`;
+  // \0 as the separator, written as the ESCAPE and not as the byte: a literal
+  // NUL in the source makes the whole file read as binary, so `grep` skips it
+  // silently and a diff shows "Binary files differ" instead of the change.
+  // Same value at run time, and the file stays text.
+  const order = (o: Operation) => `${o.tag}\0${o.path}\0${METHODS.indexOf(o.method)}`;
   for (const p of byName.values()) p.operations.sort((a, b) => order(a).localeCompare(order(b)));
 
   /** The products, carrying only the operations that satisfy `keep`. */

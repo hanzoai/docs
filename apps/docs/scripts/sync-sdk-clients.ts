@@ -153,15 +153,25 @@ export async function syncSdkClients(): Promise<void> {
     OUT,
     JSON.stringify({ captured: new Date().toISOString().slice(0, 10), clients }, null, 0) + '\n',
   );
+  cached = undefined; // the file just moved under the cache
   console.log(
     `[sdk] ${clients.map((c) => `${c.pkg}@${c.version} (${c.registry}, ${c.methods.length} methods)`).join(', ')}`,
   );
 }
 
+/**
+ * Read once. Every operation page asks whether the published clients declare its
+ * method, so this is called per operation — twice, now that the capability table
+ * asks too — and a fresh parse each time is 2,248 reads of the same file to
+ * answer the same question. The file does not change during a build.
+ */
+let cached: SdkClients | undefined;
+
 export function load(): SdkClients {
-  if (!fs.existsSync(OUT)) return { captured: '', clients: [] };
+  if (cached) return cached;
+  if (!fs.existsSync(OUT)) return (cached = { captured: '', clients: [] });
   const raw = JSON.parse(fs.readFileSync(OUT, 'utf8'));
-  return { captured: String(raw.captured ?? ''), clients: raw.clients ?? [] };
+  return (cached = { captured: String(raw.captured ?? ''), clients: raw.clients ?? [] });
 }
 
 if (import.meta.main) {

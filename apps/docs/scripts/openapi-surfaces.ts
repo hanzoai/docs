@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { parse as parseYaml } from 'yaml';
-import { deref, type Document, type Operation, type Param, type Product } from './openapi-doc';
+import { aliases, deref, spellings, type Document, type Operation, type Param, type Product } from './openapi-doc';
 import type { CliCommand } from './sync-cli-commands';
 import { MCP_DOOR, ops, readOp, type McpTool } from './sync-mcp-tools';
 import { load as loadClients } from './sync-sdk-clients';
@@ -139,8 +139,17 @@ export function http(op: Operation, doc: Document): string {
  * serve an operation, this returns null and the page says so instead of
  * printing a command that would not run.
  */
+export function command(op: Operation, table: Map<string, CliCommand>): CliCommand | undefined {
+  const verb = op.method.toUpperCase();
+  for (const p of [op.path, ...aliases(op.path)]) {
+    const hit = table.get(`${verb} ${p}`);
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
 export function cli(op: Operation, doc: Document, table: Map<string, CliCommand>): string | null {
-  const cmd = table.get(`${op.method.toUpperCase()} ${op.path}`);
+  const cmd = command(op, table);
   if (!cmd) return null;
   const words = ['hanzo', cmd.product, ...cmd.nodes, cmd.verb];
   for (const name of cmd.params) {
@@ -355,6 +364,53 @@ export const door = (tools: Iterable<McpTool>): Door => {
 };
 
 /**
+ * THE TOOL THAT SERVES A CAPABILITY — asked of the door, not of the name.
+ *
+ * The door groups its tools its own way, and the obvious join — look for a tool
+ * CALLED `s3` — answers "there is none" for a capability the door serves
+ * perfectly well under another word. Measured against the vendored list, `s3` is
+ * served by `storage` and `network` by `zt`; a name lookup reports both as
+ * unreachable from MCP and sends the reader to HTTP for a call the door already
+ * takes.
+ *
+ * So the name is the FIRST question and never the only one. What settles it is
+ * the operationId index: whichever tool names this capability's operations IS
+ * the tool that serves it, whatever it is called. That join is exact, needs no
+ * alias, and survives any renaming on either side — the two vocabularies meet at
+ * the operation, which is the one thing both of them spell the same way.
+ *
+ * `named` is the count under the DOCUMENT's own ids. A door may serve an
+ * operation under a verb of its own, so `named` is a floor on what is reachable
+ * and never a ceiling, and a page that prints it says which it is.
+ */
+export interface Server {
+  tool: McpTool;
+  /**
+   * Of this capability's operations, those the door names by the DOCUMENT's own
+   * id — through any tool, because a caller who has the id can call it wherever
+   * the door filed it. This is the reachability number; `tool` is the separate
+   * question of who to address, and the two are kept apart on purpose.
+   */
+  named: number;
+}
+
+export function server(p: Product, d: Door): Server | undefined {
+  const named = p.operations.filter((o) => d.index.has(o.id)).length;
+  const mine = (t: McpTool): number =>
+    p.operations.filter((o) => d.index.get(o.id) === t.name).length;
+  const byName = d.byProduct.get(p.name) ?? spellings(p.name).map((n) => d.byProduct.get(n)).find(Boolean);
+  if (byName) return { tool: byName, named };
+  // Nothing is called this. Ask which tool answers for it instead.
+  let best: McpTool | undefined;
+  let most = 0;
+  for (const t of d.byProduct.values()) {
+    const n = mine(t);
+    if (n > most) [best, most] = [t, n];
+  }
+  return best ? { tool: best, named } : undefined;
+}
+
+/**
  * Every tool the door lists, resolved to the operations it names. A tool absent
  * from the map names none the document describes.
  */
@@ -472,18 +528,40 @@ export function firstCall(p: Product): Operation {
  * have it yet. It is computed from the two, so it cannot outlive the gap: the
  * release that regenerates the clients deletes this sentence by itself.
  */
-function clientLag(op: Operation): string {
-  const behind = loadClients().clients.filter((c) => {
+/**
+ * The published clients that do NOT declare a method for this operation.
+ *
+ * Two readers, one definition: the note under an operation's SDK tab that says
+ * which client lags, and the capability table's SDK column, which counts the
+ * operations every client can already call. They were never allowed to disagree
+ * — the note said `hanzoai@8.5.89` is behind on an operation while the table
+ * above it printed that same operation as a method the reader has.
+ *
+ * A client declaring NO methods is a registry that had a bad day, not a client
+ * that lost them, so it is not counted as behind — the same rule the sync uses
+ * when it keeps the vendored copy.
+ */
+const declared = new WeakMap<object, Set<string>>();
+
+export function behind(op: Operation): { pkg: string; version: string; registry: string }[] {
+  return loadClients().clients.filter((c) => {
     const sdk = SDKS.find((s) => s.id === c.lang);
-    return sdk && c.methods.length && !c.methods.includes(sdk.method(op));
+    if (!sdk || !c.methods.length) return false;
+    let have = declared.get(c);
+    if (!have) declared.set(c, (have = new Set(c.methods)));
+    return !have.has(sdk.method(op));
   });
-  if (!behind.length) return '';
-  const named = behind
+}
+
+function clientLag(op: Operation): string {
+  const lagging = behind(op);
+  if (!lagging.length) return '';
+  const named = lagging
     .map((c) => `\`${c.pkg}@${c.version}\` (${c.registry})`)
     .join(' and ');
   return (
     `The method above is the one at the current release of the document. ${named} ` +
-    `${behind.length > 1 ? 'were' : 'was'} generated from an earlier release, where this operation carried a ` +
+    `${lagging.length > 1 ? 'were' : 'was'} generated from an earlier release, where this operation carried a ` +
     'different id, so it spells the method differently — regenerating the clients is what makes the two agree. ' +
     '[SDKs →](/docs/sdks)'
   );
@@ -562,11 +640,12 @@ export function surfaces(
     // What IS known is the tool that serves this product and the operations that
     // tool declares. So the page teaches the door's own discovery — a real tool,
     // a real op it names, a call that runs — instead of guessing at this one.
-    const own = d.byProduct.get(op.product);
-    const read = own && readOp(own);
-    if (own && read) {
+    const own = doc.products.find((p) => p.name === op.product);
+    const serving = own && server(own, d);
+    const read = serving && readOp(serving.tool);
+    if (serving && read) {
       L.push(
-        `The door reaches **${text(op.product)}** through the \`${own.name}\` tool, which names its ${ops(own).length} operations ` +
+        `The door reaches **${text(op.product)}** through the \`${serving.tool.name}\` tool, which names its ${ops(serving.tool).length} operations ` +
           `with its own verbs — this one among them, under a name only the door declares. \`describe\` explains any of them:`,
       );
       L.push('');
