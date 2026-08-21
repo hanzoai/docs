@@ -1,0 +1,55 @@
+---
+title: AutoGen
+description: "OpenAIChatCompletionClient takes base_url, and model_info alongside it whenever the model name is not one OpenAI serves."
+---
+
+`OpenAIChatCompletionClient` takes **`base_url`**, documented as required when the model is not hosted on OpenAI. The part that catches people: any model name the SDK does not recognise also needs **`model_info`**, and without it the client raises rather than calling.
+
+```bash
+pip install "autogen-ext[openai]"
+```
+
+```python
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelFamily
+
+client = OpenAIChatCompletionClient(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    model_info={
+        "vision": False,
+        "function_calling": True,
+        "json_output": True,
+        "family": ModelFamily.UNKNOWN,
+        "structured_output": True,
+    },
+)
+
+# ... use the client, then release it
+await client.close()
+```
+
+Lands on `POST /v1/chat/completions`.
+
+Fill `model_info` from the model's own record in `GET /v1/models`: `supports_vision` maps to `vision`, `supports_tools` to `function_calling`. AutoGen's reference states plainly that this client is not tested against non-OpenAI models, so treat a capability you have not exercised as absent.
+
+## MCP
+
+The URL is the `url` field of `StreamableHttpServerParams`.
+
+```python
+from autogen_ext.tools.mcp import StreamableHttpMcpToolAdapter, StreamableHttpServerParams
+
+params = StreamableHttpServerParams(
+    url="https://api.hanzo.ai/v1/mcp",
+    headers={"Authorization": "Bearer sk-..."},
+    timeout=30.0,
+    sse_read_timeout=300.0,
+    terminate_on_close=True,
+)
+
+adapter = await StreamableHttpMcpToolAdapter.from_server_params(params, "describe")
+```
+
+`StdioServerParams` and `SseServerParams` are the siblings; `mcp_server_tools()` builds every tool on a server in one call rather than one adapter at a time.

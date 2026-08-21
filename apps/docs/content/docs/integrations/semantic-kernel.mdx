@@ -1,0 +1,63 @@
+---
+title: Semantic Kernel
+description: ".NET takes endpoint as a Uri behind an experimental pragma. Python has no such parameter — hand it an AsyncOpenAI client."
+---
+
+The parameter differs by language, and a single answer would be wrong for one of them.
+
+## .NET
+
+`AddOpenAIChatCompletion` takes **`endpoint`**, a `Uri`. Custom endpoints on the OpenAI connector are experimental, so the `SKEXP0010` warning has to be suppressed or the build fails.
+
+```csharp
+using Microsoft.SemanticKernel;
+
+#pragma warning disable SKEXP0010
+
+IKernelBuilder builder = Kernel.CreateBuilder();
+builder.AddOpenAIChatCompletion(
+    modelId: "zen5",
+    apiKey: "sk-...",
+    endpoint: new Uri("https://api.hanzo.ai/v1")
+);
+
+Kernel kernel = builder.Build();
+```
+
+The same overload exists on `builder.Services` for dependency injection, and as `new OpenAIChatCompletionService(..., endpoint: new Uri(...))`.
+
+## Python
+
+`OpenAIChatCompletion` has no base-URL parameter. Its arguments are `ai_model_id`, `service_id`, `api_key`, `org_id`, `default_headers`, `async_client`, `env_file_path`, `env_file_encoding` and `instruction_role`. The way in is **`async_client`** — build the OpenAI client yourself and hand it over.
+
+```python
+from openai import AsyncOpenAI
+from semantic_kernel import Kernel
+from semantic_kernel.connectors.ai.open_ai import OpenAIChatCompletion
+
+kernel = Kernel()
+kernel.add_service(OpenAIChatCompletion(
+    ai_model_id="zen5",
+    async_client=AsyncOpenAI(base_url="https://api.hanzo.ai/v1", api_key="sk-..."),
+))
+```
+
+Both land on `POST /v1/chat/completions`.
+
+## MCP
+
+Python ships `MCPStreamableHttpPlugin` in `semantic_kernel.connectors.mcp`. The URL is the `url` parameter, and the plugin is an async context manager.
+
+```python
+from semantic_kernel.connectors.mcp import MCPStreamableHttpPlugin
+
+async with MCPStreamableHttpPlugin(
+    name="hanzo",
+    description="Hanzo cloud tools",
+    url="https://api.hanzo.ai/v1/mcp",
+    headers={"Authorization": "Bearer sk-..."},
+) as plugin:
+    kernel.add_plugin(plugin)
+```
+
+`MCPStdioPlugin` and `MCPSsePlugin` are the siblings, on the same `url` parameter. Outside a context manager, call `await plugin.connect()` yourself.
