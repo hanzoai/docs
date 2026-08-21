@@ -1,0 +1,100 @@
+---
+title: Sandboxes
+description: The one compute primitive — a lease on a pod that runs somebody else's code. Four classes, two ways to end one, and no pool.
+---
+
+import { Callout } from '@hanzo/docs-ui/components/callout'
+
+**After this page you can run untrusted code and know exactly when it stops
+costing you money.**
+
+## One primitive
+
+A sandbox is a pod under a runtime boundary with a toolchain already in it, its
+own filesystem, and a **lease** that ends it. There is one object and one
+lifetime — a throwaway Python run and a multi-hour coding session are the same
+thing with different bounds.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/sandboxes/lease \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"class":"exec"}'
+```
+
+```bash
+hanzo sandboxes list
+```
+
+Every other operation acts on the sandbox that call returns.
+
+## Four classes
+
+A closed set. Empty means `exec`.
+
+| Class | What it is | Working directory | Lives for |
+|---|---|---|---|
+| `exec` | throwaway; keeps nothing | `/mnt/data` | seconds to minutes |
+| `dev` | coding, with the project disk attached | `/work` | hours |
+| `desktop` | `dev` plus a screen | `/work` | hours |
+| `android` | `desktop` plus a phone on that screen | `/work` | hours |
+
+Every class but `exec` **requires** a project, and a project has **one live
+sandbox at a time** — a second lease over a project that already has one is
+refused by name rather than silently giving you a second machine.
+
+You may *request* a runtime (`gvisor` or `kata-fc`); the owner decides, and the
+answer tells you what you actually got.
+
+## Two verbs for ending, and the difference matters
+
+<Callout>
+**`stop` ends the work. `end` ends the resource.** A run that went wrong is
+still readable after `stop`, which is the whole reason they are two verbs.
+</Callout>
+
+Beyond that, `ttlSec` bounds the lease, and a reaper runs every minute: it ends
+expired leases and sleeps sandboxes idle for more than an hour. There is **no
+pool** — a sandbox is created for a lease and deleted at its end, and names are
+never reused, so a stale id can never reach somebody else's machine.
+
+## What the pod can do
+
+Not what you can. Your credential never reaches the pod. A lease is handed one
+short-lived token, obtained by token exchange against your identity, acting as
+the `hanzo-sandbox` client, expiring with the lease, with no refresh token. The
+pod carries no cluster credential of its own.
+
+Isolation is physical: a sandbox store is one file per org.
+
+## exec: a session *is* a sandbox
+
+[exec](/docs/openapi/exec) runs a whole program in one call, in thirteen
+languages — `py`, `js`, `ts`, `bash`, `r`, `php`, `go`, `rs`, `c`, `cpp`,
+`java`, `d`, `f90`.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/exec \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"language":"py","code":"print(6*7)"}'
+```
+
+It owns no store and no lifetime of its own — the session id it returns *is* a
+sandbox id. A non-zero exit is a **`200` with stderr**, not an error status:
+the call succeeded, the program failed, and those are different facts. Pass the
+same `session_id` again to keep the filesystem between runs.
+
+## Where it meets agents
+
+`POST /v1/sandboxes/run` narrates into a named session, and its output appends
+to that session's live log — the one an [agent](/docs/concepts/agents) session
+stream is already watching. That is the seam between the two: a sandbox does the
+work, a session is the record of it.
+
+## Next
+
+- **[Sandboxes reference](/docs/openapi/sandboxes)** — lease, exec, fs, terminal,
+  screen.
+- **[exec](/docs/openapi/exec)** — the code interpreter.
+- **[Agents](/docs/concepts/agents)** — what usually holds the lease.

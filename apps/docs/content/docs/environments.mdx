@@ -1,0 +1,91 @@
+---
+icon: Layers
+title: Environments
+description: An environment is derived from the apps that point at it — there is nothing to create. How production, staging and previews actually work.
+---
+
+import { Callout } from '@hanzo/docs-ui/components/callout'
+
+**After this page you know why there is no "create environment" call, and what
+to do instead.**
+
+## An environment is a label, not a resource
+
+An application names the target it deploys to. If it names nothing, it is
+`production`. That label is the whole of the model.
+
+<Callout>
+**An environment is derived, not stored.** There is nothing to create and
+nothing to delete, and an environment exists exactly as long as an application
+points at it.
+</Callout>
+
+So the read is an aggregate, not a table:
+
+```bash
+curl https://api.hanzo.ai/v1/platform/environments \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+It answers with the distinct targets your applications name, each one carrying
+the apps that target it, a rolled-up status, and when it last changed. The
+environment's name *is* its identity — it has no id of its own. Each is bucketed
+for display as `production`, `staging`, `development` or `custom`, but that is a
+bucket over your free-text label, not an enum you pick from.
+
+This is why the answer to "how do I add a staging environment?" is: deploy an
+app with `environment: staging`. It exists from that moment, and it stops
+existing when the last app pointing at it goes away.
+
+## Environment variables are a different noun
+
+Same word, different thing. Variables belong to one application, and they are
+written as a **whole set**:
+
+```
+PUT /v1/platform/projects/{project}/apps/{app}/env
+```
+
+<Callout type="warn">
+This **replaces**, it does not merge. A variable absent from the body is gone.
+</Callout>
+
+Keys match `^[A-Za-z_][A-Za-z0-9_]*$`. A value marked `secret: true` is sealed
+into [KMS](/docs/openapi/kms) and blanked in the database — if KMS is
+unreachable the write **fails** rather than storing plaintext. And it does not
+restart anything: running pods keep the environment they started with until
+their next deploy or restart.
+
+## Previews are the real promotion story
+
+A branch on its own URL is stronger than a shared staging label, and it is a
+first-class application rather than a mode:
+
+- `POST /v1/platform/projects/{project}/apps/{app}/preview` — puts a branch on
+  its own URL as an application named `<app>-<branch>`, in the same project and
+  the same tenant namespace, with its own default host. It is completely
+  isolated from production.
+- `POST /v1/platform/projects/{project}/apps/{app}/promote` — moves it forward.
+- `POST /v1/platform/projects/{project}/apps/{app}/rollback` — moves it back.
+
+## Sites version differently
+
+A [site project](/docs/concepts/projects) does not use environments at all. It
+has **releases**: every deploy is a release, and any release can be made live
+again.
+
+```bash
+hanzo projects list
+```
+
+Deploy, then activate a release to roll forward or back —
+`/v1/projects/{slug}/releases/{release}/activate`. That is a different and
+simpler model than the container plane's, and the two words are worth keeping
+apart.
+
+## Next
+
+- **[Platform](/docs/openapi/platform)** — the container plane: projects, apps,
+  builds, deploys, domains.
+- **[Projects](/docs/concepts/projects)** — the two things called "project".
+- **[KMS](/docs/openapi/kms)** — where a secret variable goes.

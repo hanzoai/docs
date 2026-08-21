@@ -66,6 +66,37 @@ export function domains(file: string = CAPABILITIES): Domain[] {
 }
 
 /**
+ * The door a capability answers on when it is NOT a `/v1` address.
+ *
+ * A wire adaptor binds a port, a discovery convention answers under
+ * `/.well-known/`, a co-resident claims requests on another app's router, and a
+ * stream consumer mounts nothing at all. None of those appears in an OpenAPI
+ * document, because a document describes HTTP operations and these are not HTTP
+ * operations — so a set derived from the document alone is missing nine
+ * capabilities `manifest/apps.go` ships, and a reader who has heard of `kafka`
+ * finds nothing and concludes we do not have it.
+ *
+ * Named for the value, not for a verb: pubsub's own package doc says ONE bus,
+ * MANY doors, so a door is what this is a map of. (`reach` was the first name
+ * and it already means something else one module over — the COUNT of operations
+ * an MCP door answers. One word, two meanings, in one directory.)
+ *
+ * Read in two directions, which is why it is one map rather than a list:
+ *
+ *   • a name here the document does NOT serve gets a page written from this line
+ *     — the line IS the page's subject.
+ *   • a name here the document DOES serve keeps its generated page and gains the
+ *     line, because `pubsub` answering at `/v1/pubsub` AND on `:4222` is one
+ *     capability with two doors, not two capabilities.
+ */
+export function doors(file: string = CAPABILITIES): Map<string, string> {
+  const raw = parseYaml(fs.readFileSync(file, 'utf8'));
+  const out = new Map<string, string>();
+  for (const [k, v] of Object.entries(raw?.doors ?? {})) out.set(String(k), String(v).trim());
+  return out;
+}
+
+/**
  * Capability -> domain, and the order a sidebar walks them in.
  *
  * The order is the FILE's: domains as written, capabilities as written within

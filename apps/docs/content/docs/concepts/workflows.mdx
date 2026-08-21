@@ -1,0 +1,87 @@
+---
+title: Workflows
+description: Work that runs itself — on a schedule, on a webhook, or on a canvas. And why an unbounded loop is the thing the design bounds against.
+---
+
+import { Callout } from '@hanzo/docs-ui/components/callout'
+
+**After this page you know which of the four "run it for me" capabilities you
+want, and why none of them is called a loop.**
+
+## Four, and they do not overlap
+
+| | What it is | Address |
+|---|---|---|
+| **[auto](/docs/openapi/auto)** | workflows that run themselves, on a schedule or a webhook | `/v1/auto` |
+| **[flow](/docs/openapi/flow)** | an agent workflow built on a visual canvas | `/v1/flow` |
+| **[tasks](/docs/openapi/tasks)** | the durable async queue underneath | `/v1/tasks` |
+| **[agents](/docs/concepts/agents)** | a model deciding what to do next | `/v1/agents` |
+
+Pick by who decides the next step. **auto** and **flow**: you did, in advance.
+**agents**: the model does, at runtime. **tasks** is the queue the other three
+put work on, not something you usually reach for directly.
+
+## auto — schedule or event
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/auto/flows \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"nightly-digest"}'
+```
+
+A flow is enabled or disabled, versioned, and run — by its schedule, by a hook,
+or by hand at `/v1/auto/flows/{id}/run`. Every execution is a **run** you read
+back at `/v1/auto/runs`, and a run that stopped for input resumes at
+`/v1/auto/runs/{id}/resume`.
+
+The inbound door is `POST /v1/auto/hooks/{source}/{event}`. Unlike a provider's
+public webhook URL it is authenticated and org-scoped. It answers `{"matched":n}`
+— **zero matches is a success**, because "nothing was listening" is a fact, not
+an error. Send `X-Idempotency-Key` (or let it hash the content) and a hammer of
+identical posts collapses to one run.
+
+## Why there is no "loop"
+
+<Callout type="warn">
+There is no loop primitive, and that is deliberate. A surface that turns one
+event into runs, and lets a run emit an event, **is a loop generator holding
+your credentials.**
+</Callout>
+
+So the bounds are not operational knobs bolted on afterwards — they are the
+specification:
+
+- a **budget** per flow,
+- a **concurrency bound**,
+- and a **causation depth**, propagated as `X-Causation-Depth`, so a firing that
+  a flow itself caused is bounded rather than compounding.
+
+If you came here looking for "loops", this is the thing you wanted: repeated
+work, with the runaway case made structurally impossible instead of documented
+as a warning.
+
+## flow — the canvas
+
+[flow](/docs/openapi/flow) is a visual canvas for agent workflows: build it,
+run it, read every run. Four operations — `/v1/flow/workflows`,
+`/v1/flow/workflows/{workflow}`, `/v1/flow/runs`, `/v1/flow/status`.
+
+The product itself lives outside the cloud door; what the door adds is exactly
+three things — identity, the tenant boundary, and the unified surface. It
+deliberately contributes no data model of its own, which is why its surface is
+four operations rather than forty.
+
+## Getting work in
+
+- an **event** → [webhooks](/docs/webhooks) delivers it out,
+  `/v1/auto/hooks/{source}/{event}` brings it in;
+- a **schedule** → a five-field cron on the flow, or on an
+  [agent](/docs/concepts/agents) that runs continuously;
+- a **queue** → [tasks](/docs/openapi/tasks), for work you enqueue yourself.
+
+## Next
+
+- **[Auto](/docs/openapi/auto)** — flows, runs, connectors, hooks.
+- **[Events](/docs/events)** — what fires them.
+- **[Agents](/docs/concepts/agents)** — when the next step is a decision.

@@ -1,0 +1,112 @@
+---
+icon: Webhook
+title: Webhooks
+description: Register an https endpoint, pick events by subject wildcard, and verify the HMAC signature on every delivery.
+---
+
+import { Callout } from '@hanzo/docs-ui/components/callout'
+
+**After this page you can receive Hanzo events on your own server and prove each
+one came from us.**
+
+A webhook is two orthogonal halves: a registry you write, and a dispatcher that
+consumes the platform bus and POSTs to you. It owns no stream of its own —
+the producer lives with the data.
+
+## Register an endpoint
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/webhooks \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+       "url": "https://acme.example/hooks/hanzo",
+       "events": ["commerce.order.>"],
+       "description": "order pipeline"
+     }'
+```
+
+```bash
+hanzo webhooks list
+```
+
+The URL **must** be `https://` — anything else is refused at create.
+
+## Picking events
+
+Subjects are hierarchical and `>` matches the rest of a subject, so
+`commerce.order.>` selects the whole order family rather than one event you have
+to keep adding to. Two streams are available today:
+
+- `commerce.>` — the ledger and storefront.
+- `event.>` — the [product analytics](/docs/events) plane.
+
+Each event's org is resolved from the envelope's own tenant field, and only that
+org's active subscriptions match. A subscription cannot see another tenant's
+traffic.
+
+## Verifying a delivery
+
+Every POST carries three headers:
+
+| Header | What it is |
+|---|---|
+| `X-Webhook-Signature` | `t=<unix>,v1=<hex>` |
+| `X-Webhook-Event` | the subject that matched |
+| `X-Webhook-Delivery` | a UUID, stable across an attempt group |
+
+`v1` is the **HMAC-SHA256 of `"<t>.<body>"`** under your endpoint's secret. The
+timestamp is inside the signed string, so a captured body cannot be replayed
+under a fresh one — compare `t` against your own clock and reject what is too
+old.
+
+```python
+import hashlib, hmac
+
+def verify(secret: str, header: str, body: bytes) -> bool:
+    parts = dict(p.split("=", 1) for p in header.split(","))
+    signed = f"{parts['t']}.{body.decode()}".encode()
+    want = hmac.new(secret.encode(), signed, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(want, parts["v1"])
+```
+
+<Callout>
+The secret is 256 random bits with a `whsec_` prefix, so a leak is greppable. It
+is minted server-side and leaves the server **exactly twice** — when you create
+the endpoint and when you rotate it at `/v1/webhooks/{id}/secret`. Every other
+read is redacted. Rotation takes effect immediately.
+</Callout>
+
+## Delivery, and what we do not do
+
+- **Three attempts**, 1s then 5s apart, each POST bounded by a 10s timeout.
+  Non-2xx or a timeout is a failed attempt.
+- **At most once per attempt group.**
+- **No auto-disable and no dead-letter queue.** Every outcome — success and
+  failure alike — is a row you read back:
+
+```
+GET /v1/webhooks/{id}/deliveries
+```
+
+That is a deliberate trade: an endpoint that breaks for an hour is not silently
+switched off behind your back, and the record of what happened is the queue.
+
+Test without waiting for real traffic:
+
+```
+POST /v1/webhooks/{id}/test
+```
+
+## Availability
+
+The registry always mounts. The dispatcher is best-effort against the bus, so if
+the bus is down it reconnects in the background — it must not take
+`/v1/webhooks` down with it. You can always register, list and rotate.
+
+## Next
+
+- **[Events](/docs/events)** — the inbound half, and what publishes `event.>`.
+- **[Webhooks reference](/docs/openapi/webhooks)** — every operation, generated.
+- **[Auto](/docs/openapi/auto)** — if what you want is to *run* something on an
+  event rather than receive it on your own server.

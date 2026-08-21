@@ -1,0 +1,113 @@
+---
+title: Multitenancy
+description: The org is the one tenancy boundary. How a credential becomes a tenant at the edge, and why the answer is never re-decided behind it.
+---
+
+import { Callout } from '@hanzo/docs-ui/components/callout'
+
+**After this page you know which org a call will act on, and why you cannot
+change that from the client.**
+
+## One primitive: the org
+
+An **org** is the tenant. It is the boundary every store is isolated on — for
+most capabilities, physically: a different org is a different database file. A
+**member** is a person's membership row in an org. A **project** is a scope
+inside one.
+
+There is no second tenancy concept. A team, a workspace and a project are all
+scopes *inside* an org, never alternatives to it.
+
+## How a request becomes a tenant
+
+At the edge, and only there. The edge deletes every identity header the client
+sent, validates the credential against [IAM](/docs/openapi/iam), and mints a
+fresh set from verified claims. Nothing behind the edge re-decides it.
+
+| Header | What it means |
+|---|---|
+| `X-Org-Id` | the org being **acted on** |
+| `X-Project-Id` | the project narrowing it; absent means the default |
+| `X-User-Id` · `X-User-Name` · `X-User-Email` | the principal |
+| `X-User-Owner` | the org the principal **belongs to** |
+| `X-User-IsAdmin` | platform sudo — member of the reserved `admin` org |
+| `X-User-IsOrgAdmin` | administers their **own** org; not platform authority |
+| `X-Request-Id` | ties the hops together |
+
+<Callout type="warn">
+Sending any of these yourself does nothing. They are deleted and re-minted on
+every request, which is what makes them trustworthy behind the edge.
+</Callout>
+
+### Where the org comes from
+
+Three cases, in order:
+
+1. **A machine key** — the org comes from the token subject.
+2. **An application token** — the app *is* the principal, and its org is fixed.
+3. **A person** — the org comes from the signed membership claim on their token.
+   Their home org is the first entry, by construction.
+
+A request that resolves to no org **fails closed**. Every org-scoped read and
+write answers 403 rather than falling back to something plausible.
+
+<Callout>
+It is not the `owner` claim. IAM stamps the *application's* org into `owner`, so
+the same person signing in through two applications carries two different
+`owner` values — reading tenancy out of it was a real privilege-escalation bug,
+and it is closed.
+</Callout>
+
+## Two admin scopes, never conflated
+
+- **Org admin** — administers their own org: its members, its applications, its
+  sub-orgs. This is self-service and it is the 99% path. It carries no platform
+  authority.
+- **SuperAdmin** — membership of the reserved `admin` org. The only cross-tenant
+  scope, and the only identity allowed at the operator surface.
+
+Conflating them is privilege escalation, which is why they are two headers and
+not one flag. You add a SuperAdmin by **creating** a user in the `admin` org —
+never by promoting an existing org user, which would duplicate an identity and
+break separation of duties.
+
+## Orgs can nest
+
+An org may name one parent. The relation is a forest, at most 8 deep, and
+authority flows **downward only** — a parent can act on a child, a child can
+never act on a parent. It is not a storage merge: each org keeps its own stores.
+
+This is how a reseller holds customer orgs, and how a company holds a subsidiary.
+
+## Doing it
+
+Create an org:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/account/orgs \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"acme"}'
+```
+
+Your first org moves you into it as its admin. Creating a second one does not
+move you — a move would strip your existing membership and orphan the org you
+were in.
+
+The registry, members, roles and permissions all live in IAM:
+
+```bash
+hanzo iam organizations get
+```
+
+`/v1/iam/organizations` · `/v1/iam/memberships` · `/v1/iam/roles` ·
+`/v1/iam/permissions` · `/v1/iam/projects` · `/v1/iam/workspaces`, plus SCIM at
+`/v1/iam/scim/v2/Users` for directory-driven provisioning.
+
+## Next
+
+- **[IAM](/docs/openapi/iam)** — users, orgs, roles, applications, tokens.
+- **[Authz](/docs/openapi/authz)** — the permission check itself.
+- **[Projects](/docs/concepts/projects)** — the scope inside an org, and the
+  other thing with the same name.
+- **[Authentication](/docs/api-keys)** — what each kind of key resolves to.

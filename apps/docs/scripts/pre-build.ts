@@ -67,11 +67,12 @@ async function main() {
   // is the coarser question — a capability that lost its page is a worse fact
   // than a sentence naming a route, and finding it first says so.
   const caps = checkCapabilities();
-  const disagreements = caps.unpaged.length + caps.orphaned.length + caps.ungrouped.length;
+  const disagreements =
+    caps.unpaged.length + caps.orphaned.length + caps.ungrouped.length + caps.dangling.length;
   if (disagreements) {
     reportCapabilities(caps);
     throw new Error(
-      `${disagreements} disagreements between the document, the taxonomy and the pages`,
+      `${disagreements} disagreements between the document, the taxonomy, the pages and the links into them`,
     );
   }
   console.log(

@@ -1,10 +1,10 @@
 ---
 icon: KeyRound
-title: API Keys
-description: The two Hanzo key types, which one may ship in a browser, and how to create, rotate and revoke them.
+title: Authentication
+description: How a request proves who it is — the two Hanzo key types, which one may ship in a browser, and how to create, rotate and revoke them.
 ---
 
-# API Keys
+# Authentication
 
 Every request to the Hanzo platform is authenticated with a bearer token. There
 are two kinds of key, they are not interchangeable, and the difference is what
@@ -26,7 +26,7 @@ never yields a principal, so it cannot read anything. It identifies; it does not
 authenticate. That is the property that makes it safe to ship in a browser
 bundle, and it is enforced at the door rather than promised: a `pk-` presented
 as a bearer credential is refused outright, no matter which endpoint it arrives
-at. One `pk-` covers analytics, product insights and error capture, which is why
+at. One `pk-` covers events, product insights and error capture, which is why
 you do not need a separate key or a separate DSN for each.
 
 A publishable key minted alongside a project names that project rather than the
@@ -37,7 +37,7 @@ spelling and the same rules.
 
 A user holds at most one key of each type, and IAM stores them as separate rows.
 So rotating the key in your browser bundle does not sign your servers out, and
-rotating your server key does not blank the analytics on your site. They fail
+rotating your server key does not blank the event stream on your site. They fail
 independently, which is the point of having two.
 
 Asking for a type that does not exist is an error, not a default. The API will
@@ -147,7 +147,7 @@ same key works across all of them:
 | Search | `/v1/search` | `api.hanzo.ai/v1/search` |
 | Secrets | `/v1/kms` | `api.hanzo.ai/v1/kms/secrets` |
 | Deploys | `/v1/platform` | `api.hanzo.ai/v1/platform/projects` |
-| Analytics | `/v1/analytics` | `api.hanzo.ai/v1/analytics/overview` |
+| Events | `/v1/event` | `api.hanzo.ai/v1/event/overview` |
 | Observability | `/v1/o11y` | `api.hanzo.ai/v1/o11y/status?product=cloud` |
 | Tasks | `/v1/tasks` | `api.hanzo.ai/v1/tasks/namespaces` |
 
@@ -179,7 +179,7 @@ and give it the same key.
 
 ## Spend and usage
 
-Spend for the calling credential comes from the billing and analytics APIs —
+Spend for the calling credential comes from the billing and event APIs —
 same host, same key:
 
 ```bash
@@ -211,8 +211,8 @@ curl https://api.hanzo.ai/v1/billing/usage \
 ```
 
 For rolled-up request, token and spend counts across a range, use `GET
-https://api.hanzo.ai/v1/analytics/overview?range=30d` — see
-[Analytics](/docs/openapi/analytics).
+https://api.hanzo.ai/v1/event/overview?range=30d` — see
+[Events](/docs/openapi/event).
 
 ## Rotation
 

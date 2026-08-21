@@ -1,0 +1,102 @@
+---
+title: Agents
+description: An agent is a definition; a session is a run you can steer and replay. One flow is one tree, and a command is an intent rather than a state change.
+---
+
+import { Callout } from '@hanzo/docs-ui/components/callout'
+
+**After this page you can define an agent, watch it work, and steer it while it
+runs.**
+
+## Two nouns
+
+An **agent** is a definition: a model, a system prompt, and a set of tool names.
+A **session** is a live run — the row every surface hangs its activity off,
+whether that surface is the CLI, the console, chat or a bot.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"triage","model":"zen-1","instructions":"Triage inbound issues.","tools":["search"]}'
+```
+
+```bash
+hanzo agents list
+```
+
+The name is unique in your org and matches
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`. A model you name is checked against the
+gateway's served catalogue **at define time** — a typo is refused now rather
+than at 3am on the first run. An agent that runs continuously must carry a
+five-field cron schedule, and counts against a per-org cap.
+
+## One flow is one tree
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents/sessions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"agent":"triage"}'
+```
+
+A session carrying a `parentSessionId` becomes a **subagent** of that session
+and inherits its root. So a fan-out of ten subagents is not ten unrelated runs —
+it is one tree, and `/v1/agents/sessions/{id}/tree` returns the whole graph in a
+single read, each node carrying its own event count.
+
+Listing returns **root sessions only** unless you ask to descend. Status is one
+of `running`, `paused`, `done`, `error`.
+
+## Steering a running session
+
+Four commands, all under `/v1/agents/sessions/{id}`: `message`, `pause`,
+`resume`, `stop`.
+
+<Callout>
+**A command is an intent, not a state change.** Nothing in that call writes the
+session's status. A `200` means the command was durably recorded and delivered —
+the agent decides when to act on it.
+</Callout>
+
+That is what makes steering work across machines. A `hanzo code` session started
+on your laptop consumes commands the dashboard posted, by polling
+`/v1/agents/sessions/{id}/control` — commands newer than a cursor, oldest first,
+never redelivered once applied.
+
+Two refusals worth knowing: a **finished** session refuses every command with
+`409`, and an id belonging to another tenant is `404` — no org steers another's
+agents, and the 404 does not confirm the id exists.
+
+`stop` is the exception that really cancels rather than signalling.
+
+## Watching
+
+```
+GET /v1/agents/sessions/stream
+```
+
+Server-sent events: `session` frames and `event` frames, narrowed with `?root=`.
+It is org-scoped and fails closed — the bus filters on tenant before fan-out. A
+subscriber more than 256 frames behind is dropped rather than allowed to stall
+the stream, and a `: ping` arrives every 25 seconds so a dead connection is
+visible.
+
+Turns are recorded at `/v1/agents/sessions/{id}/events` — message, tool call,
+spawn, log, status, control — each answering with a monotonic `seq`. Nothing is
+lost, so a run can be replayed after it finishes.
+
+## What an agent reaches
+
+- **Tools** — [tools](/docs/openapi/tools) is the per-tenant tool plane an agent
+  calls through.
+- **Compute** — a [sandbox](/docs/concepts/sandboxes) lease.
+- **Knowledge** — [memory](/docs/concepts/memory).
+- **Models** — [ai](/docs/openapi/ai), the inference door.
+
+## Next
+
+- **[Agents reference](/docs/openapi/agents)** — every operation, generated.
+- **[Sandboxes](/docs/concepts/sandboxes)** — where the work runs.
+- **[Memory](/docs/concepts/memory)** — what it knows.
+- **[Workflows](/docs/concepts/workflows)** — running one without being asked.

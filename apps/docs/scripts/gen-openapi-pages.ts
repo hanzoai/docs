@@ -10,16 +10,17 @@ import {
   opSlug,
   publicDocument,
   secretKey,
+  titleCase,
   type Document,
   type Operation,
   type Product,
 } from './openapi-doc';
 import { fields, type Field } from './openapi-schema';
-import { door, firstCall, runnable, surfaces, type Door } from './openapi-surfaces';
-import { load as loadDoor } from './sync-mcp-tools';
+import { door, firstCall, pascalTag, runnable, surfaces, type Door } from './openapi-surfaces';
+import { MCP_DOOR, load as loadDoor, ops } from './sync-mcp-tools';
 import { loadCliTable, type CliCommand } from './sync-cli-commands';
 import { loadCorpus, type Corpus, type Hip } from './sync-hips';
-import { domains, icon } from './capabilities';
+import { domains, doors, icon } from './capabilities';
 import { code, firstSentence, prose, text, yamlString } from './mdx';
 
 // The API reference, generated from THE document.
@@ -247,6 +248,65 @@ function leadProse(op: Operation): string {
  * 184 pages to re-check every time a route moves; this one cannot fall behind
  * the document because it IS the document.
  */
+/**
+ * THE FOUR SURFACES, COUNTED.
+ *
+ * One name reaches this capability four ways — the address, the command group,
+ * the client class, the MCP tool — and HIP-0139 is the reason they are the same
+ * word. What HIP-0139 does not promise is that all four are FINISHED at the same
+ * moment: the CLI folds a document it pins on its own clock, and the MCP door
+ * declares its own verbs for operations it chooses to name.
+ *
+ * So this is a count, not a claim. Every number is a join performed here against
+ * the artefact that surface actually ships — cloud's document, the CLI's
+ * committed command table, the door's `tools/list` answer — and where a join
+ * yields nothing the row says none rather than omitting itself. A reader asking
+ * "can I drive this from the CLI?" gets a number; a reader who gets no row would
+ * assume yes.
+ *
+ * The quickstart below then shows ONE operation through all four, so the table
+ * says how much is reachable and the block says what reaching it looks like.
+ */
+function reachTable(p: Product, table: Map<string, CliCommand>, d: Door): string[] {
+  const commands = p.operations.filter((o) =>
+    table.has(`${o.method.toUpperCase()} ${o.path}`),
+  ).length;
+  const group = p.operations
+    .map((o) => table.get(`${o.method.toUpperCase()} ${o.path}`)?.product)
+    .find(Boolean);
+  const tool = d.byProduct.get(p.name);
+  const named = p.operations.filter((o) => d.index.get(o.id)).length;
+  const n = p.operations.length;
+
+  const L: string[] = ['## Four surfaces', ''];
+  L.push('| Surface | Reaches this capability as | Coverage |');
+  L.push('|---|---|---|');
+  L.push(`| **REST** | \`${code(p.name)}\` at its own prefix | ${n} operation${n === 1 ? '' : 's'} |`);
+  L.push(
+    `| **CLI** | ${group ? `\`hanzo ${code(group)} …\`` : '—'} | ${
+      commands
+        ? `${commands} of ${n}${commands < n ? ' — the CLI pins the document on its own clock' : ''}`
+        : 'none yet'
+    } |`,
+  );
+  L.push(
+    `| **SDK** | \`${code(pascalTag(p.name))}Api\` in every published client | ${n} method${n === 1 ? '' : 's'} |`,
+  );
+  L.push(
+    `| **MCP** | ${tool ? `tool \`${code(tool.name)}\` on \`${MCP_DOOR}\`` : '—'} | ${
+      tool
+        ? `${ops(tool).length} operation${ops(tool).length === 1 ? '' : 's'}${
+            named < ops(tool).length
+              ? `, ${named} under the document's own id — ask \`describe\` for the rest`
+              : ''
+          }`
+        : 'none yet'
+    } |`,
+  );
+  L.push('');
+  return L;
+}
+
 function quickstart(p: Product, doc: Document, table: Map<string, CliCommand>, d: Door): string[] {
   const op = firstCall(p);
   const L: string[] = [];
@@ -443,6 +503,65 @@ function specification(name: string, hips: Corpus): string[] {
   return L;
 }
 
+/**
+ * A capability the public document does not carry.
+ *
+ * Nine of them ship in `manifest/apps.go`. Their page has no Endpoints table and
+ * must not pretend to: an empty table reads as a broken product, and a generated
+ * sample would be a call that cannot run.
+ *
+ * The REASON differs, and the page must not flatten it into one. Seven answer on
+ * something a document cannot describe — a port, a `/.well-known/` convention,
+ * another app's router, a stream. Two, `admin` and `plugins`, serve ordinary
+ * HTTP at `/v1/admin/*` and are withheld on purpose, because the operator
+ * surface is not a customer's. Saying "this serves no HTTP operations" on the
+ * admin page would be false, and false in the direction that matters: it would
+ * tell an operator the console does not exist.
+ *
+ * So the sentence states only what is true of all nine — it is not in the public
+ * contract, it is GA, and here is the door — and the door line, written per
+ * capability in `capabilities.yaml`, carries the specific why.
+ */
+function renderReached(name: string, door: string, hips: Corpus): string {
+  // The SAME title rule every other capability page is titled by — `amqp` is
+  // AMQP and `dns` is DNS because openapi-doc's WRITTEN map says so, not
+  // because a second rule here happens to agree with it today.
+  const title = titleCase(name);
+  const L: string[] = [];
+  L.push('---');
+  L.push(`title: ${yamlString(title)}`);
+  L.push(`description: ${yamlString(`${title} — reached at ${door.split(' — ')[0]}; not in the public REST contract.`)}`);
+  L.push('---');
+  L.push('');
+  L.push(
+    `**${text(title)}** ships in every Hanzo cloud. It carries no operations in the public API ` +
+      'document, so it has no generated REST reference — it is reached another way.',
+  );
+  L.push('');
+  L.push(`> [All capabilities →](/docs/openapi) · [How the four surfaces line up →](/docs/start)`);
+  L.push('');
+  L.push('| | |');
+  L.push('|---|---|');
+  L.push(`| **Reached at** | ${text(door)} |`);
+  L.push(`| **In the public contract** | no — see below |`);
+  L.push('');
+  L.push('## Why there is no reference here');
+  L.push('');
+  L.push(
+    'This reference is generated from the public API document, one page per operation. This ' +
+      'capability contributes no operation to that document — which is a fact about its door, not ' +
+      'about whether it is finished. It is GA and it runs in every deployment. ' +
+      `It is reached at ${text(door)}.`,
+  );
+  L.push('');
+  L.push(...specification(name, hips));
+  L.push('---');
+  L.push('');
+  L.push('[All Hanzo capabilities](/docs/openapi) · [Interactive reference](/reference)');
+  L.push('');
+  return L.join('\n');
+}
+
 function renderProduct(
   p: Product,
   doc: Document,
@@ -486,9 +605,16 @@ function renderProduct(
   L.push(`| **Base URL** | \`${doc.server}\` |`);
   L.push(`| **Operations** | ${p.operations.length} |`);
   L.push(`| **Auth** | \`Authorization: Bearer $HANZO_API_KEY\` |`);
+  // A second door, where there is one. `pubsub` answers at `/v1/pubsub` AND on
+  // `:4222`; printing only the first describes half the capability to the half
+  // of its readers who came for a NATS client.
+  const second = doors().get(p.name);
+  if (second) L.push(`| **Also reached at** | ${text(second)} |`);
   L.push('');
 
   L.push(...specification(p.name, hips));
+
+  L.push(...reachTable(p, table, d));
 
   L.push(...quickstart(p, doc, table, d));
 
@@ -530,27 +656,36 @@ function renderProduct(
   return L.join('\n');
 }
 
-function renderIndex(products: Product[], doc: Document): string {
+function renderIndex(products: Product[], doc: Document, reached: string[] = []): string {
   const ops = products.reduce((n, p) => n + p.operations.length, 0);
+  const total = products.length + reached.length;
   const L: string[] = [];
   L.push('---');
-  L.push('title: API Reference');
+  L.push('title: Capabilities');
   L.push(
     `description: ${yamlString(
-      `The unified REST API reference for every Hanzo product — ${products.length} products, ${ops} operations, generated from the OpenAPI document.`,
+      `Every Hanzo capability — ${total} of them, ${ops} operations, generated from the OpenAPI document.`,
     )}`,
   );
-  L.push('icon: BookOpen');
+  L.push('icon: Boxes');
   L.push('---');
   L.push('');
   L.push("import { Cards, Card } from '@hanzo/docs-base-ui/components/card'");
   L.push('');
-  L.push('# Hanzo API Reference');
+  L.push('# Every capability');
   L.push('');
   L.push(
-    `One cloud, one credential. Every Hanzo product speaks REST over HTTPS, shares a single API key, and is documented here straight from the OpenAPI document that also generates the SDKs, the CLI and the MCP tools — **${products.length} products, ${ops} operations**.`,
+    `One cloud, one credential. **${total} capabilities**, and each is one word that names the same thing everywhere — its address, its command group, its client class, its MCP tool, this page and its HIP. ${products.length} of them speak REST over HTTPS and carry **${ops} operations**, generated straight from the OpenAPI document that also generates the SDKs, the CLI and the MCP tools.`,
   );
   L.push('');
+  if (reached.length) {
+    L.push(
+      `The other ${reached.length} carry no operation in it. Most answer somewhere a document cannot describe — a port, a \`/.well-known/\` convention, ` +
+        `another app's router, a stream — and two are the operator surface, which serves ordinary HTTP and is withheld because its audience is not a customer. ` +
+        `All ${reached.length} are GA and run in every deployment; each page names its own door and prints no endpoint table it does not have.`,
+    );
+    L.push('');
+  }
   L.push('## Authentication');
   L.push('');
   L.push(
@@ -577,16 +712,35 @@ function renderIndex(products: Product[], doc: Document): string {
       'and say so rather than printing a sample that cannot run.',
   );
   L.push('');
-  L.push('## Products');
-  L.push('');
-  L.push('<Cards>');
-  for (const p of products) {
-    L.push(`  <Card title=${JSON.stringify(p.title)} href="/docs/openapi/${p.name}">`);
-    L.push(`    ${text(firstSentence(p.description, 130))} · ${p.operations.length} operations`);
-    L.push('  </Card>');
+  // GROUPED, because ungrouped is the one arrangement nobody chose. 124 cards
+  // in one list is a wall a reader scrolls past; nine headings is a question
+  // they answer in one look and then a card they click. Same taxonomy as the
+  // sidebar, read from the same file, so the two cannot show different shapes.
+  const off = doors();
+  const by = new Map(products.map((p) => [p.name, p]));
+  for (const d of domains()) {
+    const names = d.tags.filter((t) => by.has(t) || (off.has(t) && reached.includes(t)));
+    if (!names.length) continue;
+    L.push(`## ${d.title}`);
+    L.push('');
+    if (d.role) {
+      L.push(`${text(d.role)} — ${names.length} capabilities.`);
+      L.push('');
+    }
+    L.push('<Cards>');
+    for (const n of names) {
+      const p = by.get(n);
+      L.push(`  <Card title=${JSON.stringify(p ? p.title : titleCase(n))} href="/docs/openapi/${n}">`);
+      L.push(
+        p
+          ? `    ${text(firstSentence(p.description, 130))} · ${p.operations.length} operations`
+          : `    ${text(off.get(n) ?? '')}`,
+      );
+      L.push('  </Card>');
+    }
+    L.push('</Cards>');
+    L.push('');
   }
-  L.push('</Cards>');
-  L.push('');
   L.push('---');
   L.push('');
   L.push('Prefer to click? The [interactive reference](/reference) renders the same document.');
@@ -609,8 +763,8 @@ function renderIndex(products: Product[], doc: Document): string {
  * capability that is not grouped fails the build, rather than landing in an
  * "Other" heading nobody meant to create.
  */
-function sidebar(products: Product[]): string[] {
-  const have = new Set(products.map((p) => p.name));
+function sidebar(products: Product[], reached: string[] = []): string[] {
+  const have = new Set([...products.map((p) => p.name), ...reached]);
   const out: string[] = [];
   for (const d of domains()) {
     const names = d.tags.filter((t) => have.has(t));
@@ -629,7 +783,7 @@ function writePages(
   table: Map<string, CliCommand>,
   d: Door,
   hips: Corpus,
-): void {
+): string[] {
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
 
@@ -679,28 +833,76 @@ function writePages(
     // The operations are routed but NOT in the sidebar: 2,344 leaves under 179
     // products is a tree nobody navigates. The product page's endpoint table is
     // their index, and it is the better one — it states what each call does.
+    // An EMPTY list, which is not the same as no list.
+    //
+    // No `pages` at all means "every file here", and every file here is this
+    // capability's operations — 381 of them under o11y. An empty one means "none
+    // of them", which is the intent, and it leaves the folder's own index.mdx as
+    // the folder's landing page. Naming `index` did suppress the operations, but
+    // it also moved the capability page from being the folder to being a child
+    // OF the folder, so the sidebar showed `Projects > Projects` 124 times.
     fs.writeFileSync(
       path.join(folder, 'meta.json'),
-      JSON.stringify({ title: p.title, description: firstSentence(p.description, 160), pages: ['index'] }, null, 2) +
+      JSON.stringify({ title: p.title, description: firstSentence(p.description, 160), pages: [] }, null, 2) +
         '\n',
     );
   }
-  fs.writeFileSync(path.join(dir, 'index.mdx'), renderIndex(products, doc));
+  // The capabilities that answer off `/v1`, written from `doors:` rather than
+  // from operations they do not have. Only in the published tree: the operator
+  // surface is generated into its own directory and has no taxonomy to place
+  // them under.
+  const reached: string[] = [];
+  if (dir === OUT_DIR) {
+    const have = new Set(products.map((p) => p.name));
+    for (const [name, door] of doors()) {
+      if (have.has(name)) continue;
+      const folder = path.join(dir, name);
+      fs.mkdirSync(folder, { recursive: true });
+      fs.writeFileSync(path.join(folder, 'index.mdx'), renderReached(name, door, hips));
+      fs.writeFileSync(
+        path.join(folder, 'meta.json'),
+        JSON.stringify(
+          { title: titleCase(name), description: door, pages: [] },
+          null,
+          2,
+        ) + '\n',
+      );
+      reached.push(name);
+    }
+  }
+
+  fs.writeFileSync(path.join(dir, 'index.mdx'), renderIndex(products, doc, reached));
 
   fs.writeFileSync(
     path.join(dir, 'meta.json'),
     JSON.stringify(
       {
-        title: 'API Reference',
+        title: 'Capabilities',
         description:
-          'REST API reference for every Hanzo capability, generated from the OpenAPI document.',
-        pages: ['index', ...sidebar(products)],
+          'Every Hanzo capability, grouped — what each one is, its four surfaces, and its generated reference.',
+        // NOT led by 'index', and this section is the one place that matters.
+        //
+        // A folder's own `index.mdx` becomes its landing page automatically —
+        // the tree builder resolves it before it reads `pages` at all. Listing
+        // it is therefore redundant everywhere and WRONG here, because a name in
+        // `pages` resolves to a FOLDER first and only then to a file: `index` is
+        // Hanzo Index, a capability with a folder of its own. So the entry did
+        // not name this section's landing page as intended — it named the
+        // capability a second time, and published it twice, once under Data
+        // where it belongs and once above the first domain heading where it read
+        // as the section's own page.
+        pages: sidebar(products, reached),
       },
       null,
       2,
     ) + '\n',
   );
-  console.log(`[openapi] ${products.length} products, ${ops} operation pages -> ${path.relative(APP_ROOT, dir)}`);
+  console.log(
+    `[openapi] ${products.length} products, ${ops} operation pages` +
+      (reached.length ? `, ${reached.length} reached off /v1 (${reached.join(', ')})` : '') +
+      ` -> ${path.relative(APP_ROOT, dir)}`,
+  );
+  return reached;
 }
 
 // -------------------------------------------------------------------- main
@@ -727,14 +929,15 @@ function syncDocument(): void {
  * fragment, for the same reason — a client component cannot read the document at
  * runtime, so the build hands it the answer.
  */
-function writeSections(products: Product[]): void {
+function writeSections(products: Product[], reached: string[] = []): void {
   const by = new Map(products.map((p) => [p.name, p]));
+  const off = new Set(reached);
   const groups = domains()
     .map((d) => ({
       label: d.title,
       items: d.tags
-        .filter((t) => by.has(t))
-        .map((t) => ({ name: by.get(t)!.title, route: `/docs/openapi/${t}` })),
+        .filter((t) => by.has(t) || off.has(t))
+        .map((t) => ({ name: by.get(t)?.title ?? titleCase(t), route: `/docs/openapi/${t}` })),
     }))
     .filter((g) => g.items.length > 0);
 
@@ -777,8 +980,8 @@ export async function genOpenapiPages(
   const d = door(loadDoor().tools);
   const hips = loadCorpus();
 
-  writePages(out, doc.products, doc, table, d, hips);
-  if (out === OUT_DIR) writeSections(doc.products);
+  const reached = writePages(out, doc.products, doc, table, d, hips);
+  if (out === OUT_DIR) writeSections(doc.products, reached);
 
   // The operator surface is rendered too, just not here. 86 endpoints our own
   // people run on are worth a page each; what they are not worth is being on

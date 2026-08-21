@@ -14,9 +14,11 @@
 #     publish. A new product is a name somebody has to place, and letting one
 #     default into a bucket is how 235 tags once ended up ungrouped while the
 #     doc site rendered four.
-#   • a name grouped here that the document does NOT carry FAILS too. Nothing
-#     serves it, so nothing can be filed under it — and a name that outlives its
-#     routes is exactly the drift this repo was rebuilt to make impossible.
+#   • a name grouped here that the document does NOT carry FAILS too — unless it
+#     is named under `doors:` below, which is the whole of the exception and says
+#     why. Nothing else serves it, so nothing can be filed under it, and a name
+#     that outlives its routes is exactly the drift this repo was rebuilt to make
+#     impossible.
 #
 # So the list below cannot describe an API other than the one that is served. It
 # can only be a worse or better arrangement of the one that is.
@@ -24,8 +26,14 @@
 # `tags:` are the tags OPERATIONS CARRY in cloud's public document, and a tag is
 # the CAPABILITY that serves the operation — the app, one word, the same word
 # that names its Go package, its plugin binary, its address prefix, its client
-# class, its tool, its command group, its page and its HIP (HIP-0139). An app
-# that still answers at an address not named for it is listed in cloud's
+# class, its tool, its command group, its page and its HIP (HIP-0139). The word
+# is copied from `manifest/apps.go`, singular where that is singular and plural
+# where that is plural, because the manifest is the row a router reads and this
+# file is a picture of it. A rename there is a rename here on the same day: this
+# revision carried six — `automations`→`auto`, `campaign`→`campaign`,
+# `dataset`→`dataset`, `link`→`link`, `storage`→`s3`, `zt`→`network` — and
+# dropped `analytics`, `bot` and `product`, which name nothing cloud serves.
+# An app that still answers at an address not named for it is listed in cloud's
 # `openapi/misfiled.txt`, a ratchet that only shrinks; nothing about that is
 # expressible here, and nothing here should try.
 
@@ -39,8 +47,9 @@ domains:
     # `dataset`, `label` and `reference` are the three stores the risk engine
     # decides from — the evidence, the verdicts people attached to it, and the
     # published lookup data no org could derive alone. They file with risk.
-    tags: [iam, account, authz, kms, security, entitlements, audit, compliance,
-           risk, dataset, label, reference, validators, wallets, team]
+    tags: [iam, account, authz, kms, security, entitlement, audit,
+           compliance, risk, dataset, label, reference, validator, wallets,
+           team]
 
   - id: intelligence
     title: "Intelligence"
@@ -49,33 +58,42 @@ domains:
     # wire (chat, completions, embeddings, messages, models, images, audio,
     # videos, responses, rerank): those paths are fixed by the vendor SDKs that
     # hard-code them, and they are ai's and nobody else's (HIP-0139 §3.2).
+    # `zen` rides ai's own router rather than an address of its own, and
+    # `skills` answers at `/.well-known/`, not `/v1` — see `doors:`.
     # `exec` runs code in a sandbox lease; `sandboxes` is the lease. `tools`
     # is the per-tenant tool plane an agent calls through; `lsp` is code
     # intelligence over a repository, which is why it files beside `code`.
-    tags: [ai, engine, ml, agents, evals, benchmark, research, prompts, exec,
-           sandboxes, tools, ask, code, lsp, translate]
+    tags: [ai, zen, engine, ml, agents, skills, eval, benchmark, research,
+           prompts, exec, sandboxes, tools, ask, code, lsp, translate]
 
   - id: data
     title: "Data"
     role: "the stores every capability writes to and reads from"
-    # `provisioning` hands out managed datastore instances; `storage` is the
-    # object store's bucket plane (it answers at /v1/s3 because S3 is a protocol
-    # every client already speaks). `product` is the search and vector
-    # catalogue; `knowledge` the knowledge base; `index` the in-binary index
-    # speaking the Meilisearch dialect. `taxonomy` is the classification other
-    # capabilities look terms up in, `catalog` the cross-org corpus of
+    # `provisioning` hands out managed datastore instances; `s3` is the object
+    # store's bucket plane (it answers at /v1/s3 because S3 is a protocol every
+    # client already speaks). `kv` is a bucket of values with history: it rides
+    # the same embedded plane the bus does but publishes and subscribes to
+    # nothing, so it is a store and files as one. `graph` resolves entities and
+    # walks neighbours; `knowledge` is the knowledge base; `index` the in-binary
+    # index speaking the Meilisearch dialect. `taxonomy` is the classification
+    # other capabilities look terms up in, `catalog` the cross-org corpus of
     # everything the fleet has built.
-    tags: [base, provisioning, storage, product, search, index, knowledge,
+    tags: [base, provisioning, s3, kv, graph, search, index, knowledge,
            catalog, taxonomy, sync, crawl, websearch]
 
   - id: streams
     title: "Streams"
     role: "messaging · durable tasks · async orchestration"
+    # ONE bus, MANY doors. `pubsub` runs the embedded JetStream node and serves
+    # it over HTTP; `kafka` and `amqp` are wire adaptors onto that same node, so
+    # a standard producer or a standard RabbitMQ client works unchanged and no
+    # second broker exists to lose a message between. `mq` is the managed queue
+    # product over the same plane.
     # `tel` is the carrier leg of the delivery `notify` names: the numbers SMS
     # leaves from and the calls that share the carrier with it. `integrations`
     # holds a user's own credentials to outside systems (connectors) and the
     # providers the fleet connects to; `channels` is one inbox across them.
-    tags: [tasks, pubsub, mq, notify, tel, automations, flow, webhooks,
+    tags: [tasks, pubsub, kafka, amqp, mq, notify, tel, auto, flow, webhooks,
            channels, destinations, integrations]
 
   - id: observability
@@ -84,8 +102,10 @@ domains:
     # `openapi` is the document itself and its projections (the command palette,
     # the agent door) — the capability that describes the others. `metrics` is
     # the native metrics, logs and traces store; `o11y` the full observability
-    # plane over it. `leaderboard` is usage ranked across an org.
-    tags: [o11y, metrics, analytics, usage, leaderboard, openapi]
+    # plane over it. `event` is the product-analytics plane: ingest, replay,
+    # timeseries and the browser tag that feeds them. `leaderboard` is usage
+    # ranked across an org.
+    tags: [o11y, metrics, event, usage, leaderboard, openapi]
 
   - id: commerce
     title: "Commerce"
@@ -93,29 +113,36 @@ domains:
     # `commerce` is the ledger and the storefront; `billing` the customer's
     # balance and invoices read over it; `treasury` the reserve behind every
     # payout; `plan` the plan catalog; `pricing` what each unit costs.
-    tags: [commerce, billing, treasury, plan, pricing, allowance, marketplace, books,
-           captable, crm, referrals, affiliates, authors, licensing, x402,
-           marketing, campaign, ads, experiments]
+    # `allowance` is the standing grant a caller spends against and `rollingcap`
+    # the trailing-window ceiling on top of it. `catalogsync` is the reverse
+    # edge of the storefront loop — see `doors:` for both.
+    tags: [commerce, catalogsync, billing, treasury, plan, pricing,
+           allowance, rollingcap, marketplace, books, captable, crm,
+           referral, affiliate, author, licensing, x402, marketing, campaign,
+           ads, experiment]
 
   - id: platform
     title: "Platform"
     role: "the cloud fabric — deploy · provision · route · host"
-    # `visor` is the compute plane — machines, GPUs, clusters, the BYO fleet.
-    # `zt` is the zero-trust overlay: networks and the mesh. `admission` is the
-    # waitlist a flag admits an org through, so it files with flags.
+    # `visor` is the compute plane — machines, GPUs, clusters, the BYO fleet;
+    # `node` the machines it invokes across. `network` is the zero-trust overlay
+    # and the routers and services on it. `domain` is a name you own and `dns`
+    # the zones and records behind it. `admission` is the waitlist a flag admits
+    # an org through, so it files with flags. `admin` and `plugins` are the
+    # operator surface — real, SuperAdmin-only, and not published; see `doors:`.
     tags: [platform, deploy, projects, registry, gateway, ingress, domain,
-           cloudflare, visor, zt, flags, admission]
+           dns, cloudflare, visor, node, network, flags, admission, admin,
+           plugins]
 
   - id: applications
     title: "Applications"
     role: "the user-facing surfaces built on all of the above"
     # `todo` is a list a person keeps — a surface. It is NOT streams' `tasks`,
-    # the durable async queue; two words, two things. `bot` is the org's own
-    # connected machines; `bots` a bot run on a surface. `link` is short links,
-    # answering at /v1/links.
-    tags: [git, templates, blueprint, bot, bots, world, todo, framework,
-           content, guide, help, meet, share, social, link, esign, dataroom,
-           company, legal, prefs, settings, functions, sbom, seo]
+    # the durable async queue; two words, two things. `bot` is a bot run on a
+    # surface. `link` is short links and the devices that follow them.
+    tags: [git, templates, blueprint, bot, world, todo, framework, content,
+           guide, help, meet, share, social, link, esign, dataroom, company,
+           legal, pref, settings, functions, sbom, seo]
 
   - id: chain
     title: "Chain"
@@ -125,3 +152,35 @@ domains:
     # Platform — that is the fabric this cloud RUNS on, and a chain is something
     # it TALKS TO.
     tags: [web3, explorer]
+
+# doors — the capabilities that are GA and are NOT at a `/v1` address.
+#
+# Nine of them, and every one is real, running and reachable. What they are not
+# is REST: a wire adaptor binds a port, a discovery convention answers under
+# `/.well-known/`, a co-resident claims requests on another app's router, a
+# consumer reads a stream and mounts nothing, and the operator surface is served
+# but deliberately absent from the customer contract.
+#
+# They are listed because the alternative is worse in both directions. Leaving
+# them out publishes eight domains that quietly disagree with `manifest/apps.go`,
+# so a reader who has heard of `kafka` finds nothing and concludes we do not have
+# it. Filing them as ordinary capabilities would publish a page whose Endpoints
+# table is empty, which reads as a product that is broken rather than one that is
+# reached another way.
+#
+# So the line here IS the page's subject: what it is, and the door it answers on.
+# `check-capabilities` reads this list to know that a page under one of these
+# names is expected rather than orphaned, and the reference generator reads it to
+# write that page. A name here that cloud stops shipping is a name with no row in
+# `manifest/apps.go`, which is the same failure as any other stale entry.
+doors:
+  pubsub: ":4222 — the embedded NATS/JetStream node itself, under the HTTP door at /v1/pubsub"
+  kafka: ":9092 — the Kafka binary protocol, translated onto the same JetStream node"
+  amqp: ":5672 — AMQP 0-9-1, translated onto the same JetStream node"
+  skills: "/.well-known/agent-skills/ — the Agent Skills discovery convention, GET-only"
+  zen: "co-resident on ai's router — it claims zen-SKU requests and passes the rest on"
+  dns: "/v1/dns — a relay onto the DNS control plane that owns the zone store"
+  catalogsync: "the COMMERCE stream — an in-process consumer; it mounts no route"
+  rollingcap: "the ai gate — a trailing-window spend cap installed as a hook; it mounts no route"
+  admin: "/v1/admin — the operator surface, SuperAdmin-only and not in the public contract"
+  plugins: "/v1/admin/plugins — the operator's view of which capabilities are enabled"

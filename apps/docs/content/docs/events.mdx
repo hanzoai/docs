@@ -1,0 +1,103 @@
+---
+icon: Radio
+title: Events
+description: One ingest door that dispatches on the shape of the body, what each credential may write, and the receipt every wire gets back.
+---
+
+import { Callout } from '@hanzo/docs-ui/components/callout'
+
+**After this page you can send an event from a browser, a server or an existing
+SDK, and read what happened to it.**
+
+An event is a product fact — somebody did something. You send it to one door,
+and you read it back through lenses.
+
+## One door, dispatched by shape
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/event \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"event":"order_placed","properties":{"total":4200}}'
+```
+
+The same address takes a bare event object, a bare array, a `{"batch":[…]}`
+wrapper, an `{"events":[…]}` wrapper, and the PostHog wire. It dispatches on the
+**shape of the body**, never on a second path.
+
+<Callout>
+**A batch is a body, not a path.** There is no `/v1/event/batch` — an array
+already is one.
+</Callout>
+
+Bounds are stated rather than discovered: over 64 KiB is a `413`, more than 50
+events is a `400`, and per-IP and per-peer ceilings answer `429`. A request
+carrying `DNT: 1` or `Sec-GPC: 1` stores nothing and says so.
+
+## The receipt
+
+Every wire gets the same answer:
+
+```json
+{ "accepted": 3, "dropped": 1 }
+```
+
+The two always total what you sent. `200` means at least one event landed, and a
+nonzero `dropped` beside a nonzero `accepted` is a **partial** batch, never a
+failed one — so a client retries the difference rather than the whole thing.
+
+## The credential decides what you may write
+
+This is the part worth reading twice, because it is what makes browser ingest
+safe.
+
+| Credential | Writes | Reads |
+|---|---|---|
+| A validated bearer, or an org secret key | full fidelity | yes |
+| A **publishable** `pk-` key | full fidelity | **nothing** |
+| A Hanzo Team workspace token | reduced — see below | scoped |
+
+A publishable key is deliberately not a secret. It resolves *which tenant* and
+nothing more, and it can read nothing at all — so a leaked one lets a stranger
+write into your stream and never read out of it. It travels on
+`Authorization: Bearer`, on `x-hanzo-ingest-key`, or as `?ingest_key=` for
+`navigator.sendBeacon`, which cannot set a header.
+
+A workspace token writes through a projection: narrowed to pageviews, errors and
+a closed autocapture vocabulary (`$click`, `$input`, `$change`, `$submit`,
+`$view`), every name resolved through a server-owned table, stripped of revenue
+and identity fields. It cannot name the person.
+
+## Reading it back
+
+`/v1/event/overview`, `/timeseries`, `/top`, `/errors` and `/insights/events`
+are the lenses. `/v1/event/tag.js` is the hosted browser tag, served beside the
+door so the tag and the wire cannot drift apart. `/v1/event/replay` takes
+session-recorder snapshots.
+
+Two Sentry-compatible wires — `/v1/event/{project}/envelope` and
+`/{project}/store` — are relayed byte-for-byte to [o11y](/docs/openapi/o11y).
+Their `project` is the DSN's project id and is **not** a Hanzo IAM project.
+
+## Four planes, and why they are four
+
+Named once so you stop wondering which one to reach for:
+
+- **[event](/docs/openapi/event)** — the product fact, admitted at the beacon
+  door. This page.
+- **[metrics](/docs/openapi/metrics)** — the deployment's own logs, metrics and
+  traces.
+- **[o11y](/docs/openapi/o11y)** — the full observability plane over that store,
+  and the owner of the `event.*` schema.
+- **[usage](/docs/openapi/usage)** — the metered record you are billed on.
+
+## Getting events out
+
+Events land on the platform bus, and two capabilities carry them onward:
+
+- **[Webhooks](/docs/webhooks)** — the outbound half. Subscribe to
+  `event.>` or `commerce.order.>` and each match is POSTed to your endpoint,
+  signed.
+- **[Auto](/docs/openapi/auto)** — turn an event into a workflow run.
+  `/v1/auto/hooks/{source}/{event}` is the inbound counterpart, and unlike a
+  provider's public webhook URL it is authenticated and org-scoped.
