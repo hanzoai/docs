@@ -19,6 +19,7 @@ import { door, firstCall, runnable, surfaces, type Door } from './openapi-surfac
 import { load as loadDoor } from './sync-mcp-tools';
 import { loadCliTable, type CliCommand } from './sync-cli-commands';
 import { loadCorpus, type Corpus, type Hip } from './sync-hips';
+import { domains, icon } from './capabilities';
 import { code, firstSentence, prose, text, yamlString } from './mdx';
 
 // The API reference, generated from THE document.
@@ -43,7 +44,6 @@ import { code, firstSentence, prose, text, yamlString } from './mdx';
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
 const OUT_DIR = path.join(APP_ROOT, 'content/docs/openapi');
-const SERVICES_DIR = path.join(APP_ROOT, 'content/docs/services');
 // Served at /openapi/<name>, under the name the lock gives the document, so the
 // bytes a reader downloads and the bytes the pages were built from are one file
 // with one name.
@@ -63,30 +63,15 @@ const PUBLIC_COPY = path.join(APP_ROOT, 'public/openapi', path.basename(DOCUMENT
 // nothing the public build reads or ships in the meantime.
 const INTERNAL_DIR = path.join(APP_ROOT, 'internal/openapi');
 
-// A few products document their concepts under a slug that differs from the
-// product name. Everything else resolves by looking for a guide on disk.
-const GUIDE_OVERRIDES: Record<string, string> = {
-  ai: '/docs/llm',
-  app: '/docs/services/paas',
-  evals: '/docs/experiments',
-};
-
-function guideHref(svc: string): string | null {
-  if (GUIDE_OVERRIDES[svc]) return GUIDE_OVERRIDES[svc];
-  // `services/index.mdx` is the SECTION LANDING, not a guide for a product
-  // called "index". The document does serve a product named index (full-text
-  // search), and matching it here pointed the Index reference at the whole
-  // services catalogue — via /docs/services/index, which is not even a route:
-  // the file renders at /docs/services.
-  if (svc === 'index') return null;
-  if (
-    fs.existsSync(path.join(SERVICES_DIR, `${svc}.mdx`)) ||
-    fs.existsSync(path.join(SERVICES_DIR, svc, 'index.mdx'))
-  ) {
-    return `/docs/services/${svc}`;
-  }
-  return null;
-}
+// A capability's page IS its guide.
+//
+// This used to look for a hand-written page under `content/docs/services/<name>`
+// and link to it as "Guide & examples", with three overrides where the authored
+// slug differed from the product name. That surface is gone: 454 pages
+// describing capabilities in prose written beside no code, which is the copy the
+// generated page replaces rather than links to. What a reader wanted from it —
+// what the capability is, what it costs, what it publishes — is the HIP, and it
+// is now ON this page.
 
 // ------------------------------------------------------------------ schema
 
@@ -459,7 +444,6 @@ function renderProduct(
   d: Door,
   hips: Corpus,
 ): string {
-  const guide = guideHref(p.name);
   const L: string[] = [];
 
   // The product's intro IS the tag description — the owning package's synopsis.
@@ -486,7 +470,6 @@ function renderProduct(
   L.push('');
 
   const nav = [
-    ...(guide ? [`[Guide & examples →](${guide})`] : []),
     '[All API references →](/docs/openapi)',
     '[Six flows, four surfaces →](/docs/start)',
   ];
@@ -533,7 +516,6 @@ function renderProduct(
   L.push('');
   L.push(
     [
-      ...(guide ? [`[${text(p.title)} guide](${guide})`] : []),
       '[All Hanzo APIs](/docs/openapi)',
       '[Interactive reference](/reference)',
     ].join(' · '),
@@ -607,6 +589,33 @@ function renderIndex(products: Product[], doc: Document): string {
 }
 
 /** One reference: a page per product, an index, and the section's nav. */
+/**
+ * THE SIDEBAR: nine domains, capabilities in the order the taxonomy writes them.
+ *
+ * 116 names in one alphabetical list is the arrangement that carries no
+ * information — `admission` above `ai`, `zt` beside nothing — and it is the one
+ * arrangement nobody chose. `capabilities.yaml` is where the choice was made, so
+ * the sidebar reads it: domains as separators, capabilities in file order
+ * beneath their own.
+ *
+ * `check-capabilities` proves the two sets are the same set, in both directions,
+ * before this runs. So there is no fallback bucket here and no need for one: a
+ * capability that is not grouped fails the build, rather than landing in an
+ * "Other" heading nobody meant to create.
+ */
+function sidebar(products: Product[]): string[] {
+  const have = new Set(products.map((p) => p.name));
+  const out: string[] = [];
+  for (const d of domains()) {
+    const names = d.tags.filter((t) => have.has(t));
+    if (!names.length) continue;
+    const mark = icon(d.id);
+    out.push(`---${mark ? `[${mark}]` : ''}${d.title}---`);
+    out.push(...names);
+  }
+  return out;
+}
+
 function writePages(
   dir: string,
   products: Product[],
@@ -678,8 +687,8 @@ function writePages(
       {
         title: 'API Reference',
         description:
-          'REST API reference for every Hanzo product, generated from the OpenAPI document.',
-        pages: ['index', ...products.map((p) => p.name)],
+          'REST API reference for every Hanzo capability, generated from the OpenAPI document.',
+        pages: ['index', ...sidebar(products)],
       },
       null,
       2,

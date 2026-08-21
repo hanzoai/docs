@@ -107,9 +107,27 @@ export function sections(src: string): Section[] {
   return out;
 }
 
+/**
+ * A HIP that declares a capability it does not specify.
+ *
+ * HIP-0106 is The Hanzo Plugin Contract — the standard every plugin conforms
+ * to — and it carries `capability: usage`. `usage` is "what your org ran and
+ * what it cost"; the contract is not its specification, and rendering it as one
+ * put 30 KB about plugin conformance, including the platform key contract, on
+ * the usage reference. HIP-0139 §6 says one capability, one HIP; `coverage.py`
+ * counts this as covering `usage`, which is how the ratchet came to be
+ * satisfied by a HIP about something else.
+ *
+ * Named here with its reason rather than matched by a rule, because there is no
+ * property of the text that separates a contract from a specification. The fix
+ * is upstream: drop the `capability:` line from HIP-0106 and write one for
+ * `usage`. The day that lands this set is empty and this comment goes with it.
+ */
+const NOT_A_SPECIFICATION = new Set(['0106']);
+
 export function parseHip(src: string, file: string): { hip: Hip; capabilities: string[] } | null {
   const fm = front(src);
-  if (!fm.capability) return null;
+  if (!fm.capability || NOT_A_SPECIFICATION.has((fm.hip ?? '').trim())) return null;
   return {
     hip: {
       hip: fm.hip ?? '',

@@ -8,6 +8,8 @@ import { syncCliCommands } from './sync-cli-commands';
 import { syncSdkClients } from './sync-sdk-clients';
 import { syncProjectDocs } from './sync-project-docs';
 import { sanitizeMdx } from './sanitize-mdx';
+import { syncHips } from './sync-hips';
+import { checkCapabilities, report as reportCapabilities } from './check-capabilities';
 import { checkEndpoints, report } from './check-endpoints';
 import { checkKeys, report as reportKeys } from './check-keys';
 
@@ -29,6 +31,9 @@ async function main() {
   // red OR when it is green, and a tool list that changes under us should arrive
   // as a diff a human approves, which is where a name collision is cheap to see.
   await syncCliCommands();
+  // The specification each capability carries, from hanzoai/hips at a pin. Read
+  // by the reference below, so it is refreshed before the pages are written.
+  await syncHips();
   // What the published clients call things — the SDK column says so where the
   // method it prints is not one they carry yet.
   await syncSdkClients();
@@ -52,7 +57,22 @@ async function main() {
   // compiles instead of falling back to the error boundary.
   sanitizeMdx();
 
-  // Last: no page may claim an endpoint the document does not have — generated
+  // The capability set is one set: what the document serves, what the taxonomy
+  // groups, and what has a page. Checked before the endpoint guard because it
+  // is the coarser question — a capability that lost its page is a worse fact
+  // than a sentence naming a route, and finding it first says so.
+  const caps = checkCapabilities();
+  const disagreements =
+    caps.unpaged.length + caps.orphaned.length + caps.ungrouped.length + caps.unserved.length;
+  if (disagreements) {
+    reportCapabilities(caps);
+    throw new Error(
+      `${disagreements} disagreements between the document, the taxonomy and the pages`,
+    );
+  }
+  console.log(`[capabilities] ${caps.served} served, every one grouped and paged`);
+
+  // Then: no page may claim an endpoint the document does not have — generated
   // or authored, the same rule, because a reader running a curl cannot tell
   // which kind of page they read it on.
   const { checked, unknown } = checkEndpoints();

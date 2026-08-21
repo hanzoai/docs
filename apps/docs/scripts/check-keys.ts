@@ -83,6 +83,22 @@ const ASSIGNED = (n: string) =>
 const NAMED = (n: string) =>
   new RegExp(String.raw`(?:\`|")([a-z]{${n}}-)(\*|\.\.\.)?(?:\`|")`, 'g');
 
+/**
+ * Two letters and a hyphen that are NOT a credential.
+ *
+ * The shape rule is derived, not chosen — a Hanzo key prefix is as many letters
+ * as the document's prefixes have — and a derived shape collides with any other
+ * namespace built the same way. `hd-` is the framework's DocType prefix
+ * (HIP-1131 writes the support desk's records as `hd-*`), so a page describing
+ * them spells something that reads exactly like a key and is not one.
+ *
+ * Named, with its reason, rather than weakening the rule. The obvious
+ * alternative — stop matching the glob form — cannot be taken: `sk-*` and `pk-*`
+ * are how the real prefixes are taught on six pages, so dropping the glob would
+ * blind the guard to the spelling it exists to check.
+ */
+const NOT_A_CREDENTIAL = new Set(['hd-']);
+
 /** The prefix lengths the document uses, as a regex quantifier: `2`, or `2,4`. */
 export function prefixShape(keys: KeyType[]): string {
   const lens = [...new Set(keys.map((k) => k.prefix.replace('-', '').length))].sort((a, b) => a - b);
@@ -131,7 +147,10 @@ function compiled(file: string, depth = 0): string {
 export function prefixesIn(src: string, shape: string): Set<string> {
   const found = new Set<string>();
   for (const re of [PRESENTED(shape), ASSIGNED(shape), NAMED(shape)]) {
-    for (const m of src.matchAll(re)) found.add(m[1].toLowerCase());
+    for (const m of src.matchAll(re)) {
+      const prefix = m[1].toLowerCase();
+      if (!NOT_A_CREDENTIAL.has(prefix)) found.add(prefix);
+    }
   }
   return found;
 }
