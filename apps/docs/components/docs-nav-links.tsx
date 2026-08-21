@@ -23,9 +23,15 @@ export function DocsNavLinks() {
         .filter((item) => item.type !== 'icon' && 'url' in item)
         .map((item) => {
           const url = String((item as { url: string }).url);
-          // `nested-url` semantics: /docs/api is active on /docs/api/anything, so a
-          // reader deep in a section can still see which surface they are in.
-          const active = pathname === url || pathname.startsWith(`${url}/`);
+          // Each item says how it matches, and this honours it rather than
+          // assuming. `nested-url` keeps a section lit while the reader is
+          // anywhere inside it; `url` is exact, which is what /docs needs — it
+          // prefixes every page here and would otherwise never be off.
+          const mode = (item as { active?: string }).active ?? 'nested-url';
+          const active =
+            mode === 'url'
+              ? pathname === url
+              : pathname === url || pathname.startsWith(`${url}/`);
 
           return (
             <Link
