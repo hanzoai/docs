@@ -61,14 +61,34 @@ function listed(dir: string): string[] | null {
   }
 }
 
-/** What a folder actually holds: pages by basename, plus subdirectories. */
+/** Whether a directory holds any page at all, at any depth. */
+function routes(dir: string): boolean {
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (e.isFile() && e.name.endsWith('.mdx')) return true;
+    if (e.isDirectory() && routes(path.join(dir, e.name))) return true;
+  }
+  return false;
+}
+
+/**
+ * What a folder actually holds: pages by basename, plus subdirectories that
+ * hold a page.
+ *
+ * A directory with no page beneath it routes nothing, so there is nothing for a
+ * sidebar to name -- and deleting a section leaves exactly that: empty parents
+ * git does not remove because it only tracks files. Counting those as unlisted
+ * asks someone to add a husk to the sidebar or notice it is a husk, which is a
+ * question about the filesystem, not about the docs.
+ */
 function onDisk(dir: string): { names: string[]; dirs: string[] } {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   return {
     names: entries
       .filter((e) => e.isFile() && e.name.endsWith('.mdx') && e.name !== 'index.mdx')
       .map((e) => e.name.slice(0, -4)),
-    dirs: entries.filter((e) => e.isDirectory()).map((e) => e.name),
+    dirs: entries
+      .filter((e) => e.isDirectory() && routes(path.join(dir, e.name)))
+      .map((e) => e.name),
   };
 }
 
@@ -92,7 +112,14 @@ export function checkRoutes(): Routes {
         const named = new Set(meta);
         for (const name of here) if (!named.has(name)) unlisted.push(name);
       }
-      const have = new Set(here);
+      // Dangling is measured against what EXISTS, not against what routes. A
+      // submodule that a checkout did not recurse into is an empty directory,
+      // and the sidebar naming it is right -- the pages arrive with the
+      // submodule. `export.require` is what proves those pages actually shipped.
+      const have = new Set([
+        ...here,
+        ...fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name),
+      ]);
       for (const name of meta) {
         if (name === 'index') continue;
         if (!have.has(name)) dangling.push(path.join(rel, name));
