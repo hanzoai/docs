@@ -58,12 +58,12 @@ flows:
     # get_openapi.json. So "which routes are open" is a fact an SDK can read
     # rather than a probe result recorded in this file, and hello can open with
     # a call that SUCCEEDS for a reader who has no credential at all. It is a
-    # reachability line, not the identity proof; get_keys is still that.
-    operations: [get_models, get_keys]
+    # reachability line, not the identity proof; get_account_keys is still that.
+    operations: [get_models, get_account_keys]
     notes: >-
-      Verified with a nonsense-sibling control: GET /v1/keys answers 403
+      Verified with a nonsense-sibling control: GET /v1/account/keys answers 403
       {"code":"forbidden","error":"sign in to manage API keys"} with NO key and
-      with a bogus one, while GET /v1/keys-zzq9 answers 404 — so the 403 is this
+      with a bogus one, while GET /v1/account/keys-zzq9 answers 404 — so the 403 is this
       route refusing, not a wildcard door. With a real key it returns the
       caller's own keys. An SDK's hello must be the call that says no.
 
@@ -118,17 +118,17 @@ flows:
 
   store:
     summary: KV round-trip — create a store, read it back, delete it.
-    operations: [post_instances_kv, get_instances_kv_by_name, delete_instances_kv_by_name]
+    operations: [post_provisioning_kv, get_provisioning_kv_by_name, delete_provisioning_kv_by_name]
     notes: >-
       The delete belongs in the language's finally/defer, so a failed read still
       cleans up instead of leaving the store for the next run to collide with.
       This is the provisioning plane — create a KV STORE, read it, drop it — at
-      its served address, /v1/instances/kv. The bare /v1/kv spellings are the
+      its served address, /v1/provisioning/kv. The bare /v1/kv spellings are the
       legacy dialect the binary itself tags compat, and the publication drops a
       compat operation by that declaration — so the day this file named them it
       would have named ids the published document does not have, which is
       exactly what test_flows.py went red on. Probed at api.hanzo.ai:
-      GET /v1/instances/kv answers 403 while /v1/instances/kv-zzq9 answers 404,
+      GET /v1/provisioning/kv answers 403 while /v1/provisioning/kv-zzq9 answers 404,
       which is the existence proof this file requires (auth runs before the
       handler; only a mounted route can refuse).
 
