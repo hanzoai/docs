@@ -43,7 +43,10 @@ const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
 const OUT_DIR = path.join(APP_ROOT, 'content/docs/openapi');
 const SERVICES_DIR = path.join(APP_ROOT, 'content/docs/services');
-const PUBLIC_COPY = path.join(APP_ROOT, 'public/openapi/openapi.yaml');
+// Served at /openapi/<name>, under the name the lock gives the document, so the
+// bytes a reader downloads and the bytes the pages were built from are one file
+// with one name.
+const PUBLIC_COPY = path.join(APP_ROOT, 'public/openapi', path.basename(DOCUMENT));
 
 // Where the operator surface is rendered, and why it is not a repo.
 //
@@ -440,40 +443,31 @@ function renderProduct(
 
   L.push(...quickstart(p, doc, table, d));
 
-  const sections = new Map<string, Operation[]>();
-  for (const op of p.operations) {
-    if (!sections.has(op.tag)) sections.set(op.tag, []);
-    sections.get(op.tag)!.push(op);
-  }
-
-  // THE PRODUCT PAGE IS AN INDEX, NOT A COPY.
+  // THE CAPABILITY PAGE IS AN INDEX, NOT A COPY.
   //
   // It used to carry every operation's prose and tables, which made `ai` 2,030
   // lines and gave 208 routes one shared URL. Each operation now has its own
   // page, so printing the prose again here would publish the same sentences at
   // two addresses — the reader picks the wrong one and a search engine picks
   // for them. What belongs here is the part a page of its own cannot give: the
-  // whole product at a glance, in the order the document declares it.
-  // A product whose operations all carry one tag — its own name — needs no
-  // section heading: `## kms` above the only table on a page titled KMS says
-  // nothing. Where the document does group a product into several tags, those
-  // groupings are real and are printed as written.
-  const grouped = sections.size > 1;
-  for (const [tag, ops] of [...sections.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
-    L.push(`## ${grouped ? text(tag) : 'Endpoints'}`);
-    L.push('');
-    L.push('| Endpoint | What it does |');
-    L.push('|---|---|');
-    for (const op of ops) {
-      const said = firstSentence(op.summary || op.description, 150);
-      L.push(
-        `| [\`${op.method.toUpperCase()} ${code(op.path)}\`](${opHref(op)}) | ${
-          op.deprecated ? '**Deprecated.** ' : ''
-        }${text(said)} |`,
-      );
-    }
-    L.push('');
+  // whole capability at a glance, in the order the document declares it.
+  //
+  // One table, never sub-sections. A capability's operations all carry one tag
+  // — its own name, which is what selected them — so a heading above the table
+  // could only repeat the page title.
+  L.push('## Endpoints');
+  L.push('');
+  L.push('| Endpoint | What it does |');
+  L.push('|---|---|');
+  for (const op of p.operations) {
+    const said = firstSentence(op.summary || op.description, 150);
+    L.push(
+      `| [\`${op.method.toUpperCase()} ${code(op.path)}\`](${opHref(op)}) | ${
+        op.deprecated ? '**Deprecated.** ' : ''
+      }${text(said)} |`,
+    );
   }
+  L.push('');
 
   L.push('---');
   L.push('');
