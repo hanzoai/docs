@@ -307,9 +307,9 @@ describe('kept — the operator surface is documented, just not here', () => {
     expect(missing).toEqual([]);
   });
 
-  // The COUNT is the pin's, not this file's: `openapi.yaml` holds 87 operator
-  // routes and `public.yaml` holds the one cloud has not finished moving, so a
-  // literal here fails on a re-pin that changed nothing. What must hold either
+  // The COUNT is the pin's, not this file's: cloud's `private.yaml` holds 87
+  // operator routes and `openapi.yaml` holds the one cloud has not finished
+  // moving, so a literal here fails on a re-pin that changed nothing. What must hold either
   // way is that the split is exhaustive — everything `isInternal` names is held
   // back, and nothing else is.
   it('holds back every operation the document has and nothing more', () => {
