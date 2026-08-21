@@ -28,11 +28,11 @@ import {
 } from '@hanzo/docs-base-ui/components/ui/card';
 import { CodeBlock } from '@/components/code-block';
 
-/* -- The eight domains -- category-first, mirrors the console shell --------- */
+/* -- The nine domains -- category-first, mirrors the console shell ---------- */
 
 const domains = [
   {
-    name: 'Identity & Trust',
+    name: 'Identity & trust',
     desc: 'Who someone is, what they may touch, and where secrets stay safe. IAM, AuthZ, KMS, MPC, Zero-Trust.',
     icon: Shield,
     href: '/docs/openapi/iam',
@@ -84,8 +84,15 @@ const domains = [
     name: 'Applications',
     desc: 'The finished products people use every day. Chat, Studio, Dev, Integrations, Apps.',
     icon: LayoutGrid,
-    href: '/docs/chat',
+    href: '/docs/openapi/git',
     tag: 'Apps',
+  },
+  {
+    name: 'Chain',
+    desc: 'The networks the cloud speaks to — enumerate them, call one, read a holder\'s balances. Web3, Explorer.',
+    icon: Globe,
+    href: '/docs/openapi/web3',
+    tag: 'Chain',
   },
 ];
 
@@ -270,7 +277,7 @@ print(response.choices[0].message.content)`}
           </div>
         </section>
 
-        {/* -- Eight domains -- category-first ------------------------------ */}
+        {/* -- Nine domains -- category-first ------------------------------- */}
         <section>
           <h2 className="text-3xl font-bold tracking-tight mb-3">
             One binary. The whole platform.
@@ -278,7 +285,7 @@ print(response.choices[0].message.content)`}
           <p className="text-neutral-300 text-sm mb-8">
             Every capability has one name and one route. Browse by domain — click any card to go deep.
           </p>
-          <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {domains.map((item) => {
               const isExternal = !!(item as { external?: boolean }).external;
               const linkProps = isExternal

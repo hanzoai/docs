@@ -253,7 +253,9 @@ export async function genFlowPages(): Promise<void> {
       {
         title: 'Start',
         description: 'Six journeys, each shown as CLI, SDK, HTTP and MCP.',
-        pages: ['index', ...flows.map((f) => f.id)],
+        // Not led by `index` — this folder's own `index.mdx` is its landing
+        // page already, and naming it publishes `Start > Start`.
+        pages: flows.map((f) => f.id),
       },
       null,
       2,

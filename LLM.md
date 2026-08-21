@@ -106,13 +106,30 @@ at docs.hanzo.ai/docs/contributing/docs-architecture). Summary:
 - **docs.hanzo.ai is the hub.** ONE Fumadocs build (`apps/docs`) → ONE CF Pages
   project `hanzo-docs`. The federated per-section deploy is **retired** (stale
   origins 530'd). Do not reintroduce per-section builds.
-- **IA is category-first (V8 · Open Edition, HIP-0127).** The docs sidebar
-  (`content/docs/meta.json`) is grouped by the **eight movements** — Identity &
-  Trust · Intelligence · Data · Streams · Observability · Commerce · Platform ·
-  Applications — the exact taxonomy in `~/work/hanzo/openapi/capabilities.yaml`
-  (`domains`, 67 capabilities). Movements are icon-bearing separators
+- **IA is two levels of separator, and one word each.** The ROOT sidebar
+  (`content/docs/meta.json`) is nine sections a developer walks in order — Get
+  started · Concepts · Capabilities · Reference · Build with · Surfaces ·
+  Programs · Integrate · Open source. Inside Capabilities
+  (`content/docs/openapi/meta.json`, generated) is the second level: the nine
+  DOMAINS — Identity & Trust · Intelligence · Data · Streams · Observability ·
+  Commerce · Platform · Applications · Chain — from `apps/docs/openapi-specs/
+  capabilities.yaml`, which is tracked HERE and is the one editorial decision
+  left in this repo. Both levels are icon-bearing separators
   (`---[Icon]Name---`, resolved by `lucideIconsPlugin`), NOT folder moves —
-  files stay flat so URLs/openapi back-links don't break. **API reference and
+  files stay flat so URLs/openapi back-links don't break.
+  **Counts are never written twice.** How many capabilities there are is a fact
+  about cloud's document, printed by the generator on `/docs/openapi`; authored
+  prose links to it rather than restating a number that goes stale the next time
+  cloud ships. `check-capabilities` is what holds the taxonomy, the document and
+  the pages to one set.
+  **No stutter.** A folder's own `index.mdx` is already its landing page — the
+  tree builder resolves it before it reads `pages`. Naming `index` in `pages`
+  demotes the page to a child of the folder carrying the folder's own name, so
+  the sidebar reads `Agents > Agents`; 191 folders named it and 188 of them
+  carried the same title, so that is how many rows said it twice. Same rule one
+  level down: a folder wrapping exactly ONE page is a folder that should not
+  exist, which is why a single-tool MCP product is published as a page and not a
+  directory. **API reference and
   SDKs are separated surfaces** (`/docs/openapi`, `/docs/sdks`) reached via the
   top nav (`components/layouts/shared.tsx`), deliberately NOT in the root
   sidebar descent. The landing (`app/(landing)/page.tsx` — its own route group,
@@ -121,7 +138,8 @@ at docs.hanzo.ai/docs/contributing/docs-architecture). Summary:
   (`content/docs/index.mdx`) lead with the decentralized spine ("the AI cloud
   you can run yourself"); `content/docs/network.mdx` = self-host/hanzo.network,
   `content/docs/architecture/philosophy.mdx` = the engineering pedagogy. Landing
-  breadth stats trace to real sources: 67/8 (`capabilities.yaml`), 157 models
+  breadth stats trace to real sources: the domains from `capabilities.yaml` and
+  the capability count from cloud's document, 157 models
   (`ai/conf/models.yaml`), 706 connectors (`cloud/clients/automations/catalog/
   catalog.json`), 6 SDK langs (`openapi/CLAUDE.md`). Count from data, never invent.
 - **One canonical home per doc.** Content enters the single build via exactly one

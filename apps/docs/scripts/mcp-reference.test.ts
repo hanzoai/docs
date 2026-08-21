@@ -38,12 +38,26 @@ beforeAll(async () => {
   out = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-ref-'));
   await genMcpPages(out);
   pageOf = new Map();
-  for (const product of fs.readdirSync(out, { withFileTypes: true }).filter((e) => e.isDirectory())) {
-    for (const f of fs.readdirSync(path.join(out, product.name))) {
-      if (f.endsWith('.mdx') && f !== 'index.mdx') {
-        pageOf.set(f.slice(0, -4), fs.readFileSync(path.join(out, product.name, f), 'utf8'));
+  // A tool page sits at the section root when its product has only that one
+  // tool, and inside the product folder otherwise. Keyed by tool slug either
+  // way, because where a page lives is a nav decision and every claim below is
+  // about the page's CONTENT.
+  const section = new Set(['index', 'all-tools']);
+  for (const e of fs.readdirSync(out, { withFileTypes: true })) {
+    if (e.isDirectory()) {
+      for (const f of fs.readdirSync(path.join(out, e.name))) {
+        if (f.endsWith('.mdx') && f !== 'index.mdx') {
+          pageOf.set(f.slice(0, -4), fs.readFileSync(path.join(out, e.name, f), 'utf8'));
+        }
       }
+      continue;
     }
+    if (!e.name.endsWith('.mdx') || section.has(e.name.slice(0, -4))) continue;
+    // The file is named for the PRODUCT; the one tool under it may be named
+    // something else (`network` publishes `zt`), so the key comes from the page.
+    const src = fs.readFileSync(path.join(out, e.name), 'utf8');
+    const tool = src.match(/^\| \*\*Tool\*\* \| `([^`]+)` \|/m)?.[1] ?? e.name.slice(0, -4);
+    pageOf.set(slugOf(tool), src);
   }
 }, 120_000);
 
@@ -373,7 +387,7 @@ describe('exemplified — every page carries a call that parses', () => {
 });
 
 describe('reachable — no orphans', () => {
-  it('links every tool page from the catalogue and from its product index', () => {
+  it('links every tool page from the catalogue, and from its product index where there is one', () => {
     const catalogSrc = fs.readFileSync(path.join(out, 'all-tools.mdx'), 'utf8');
     const orphans: string[] = [];
     for (const product of fs.readdirSync(out, { withFileTypes: true }).filter((e) => e.isDirectory())) {
@@ -388,14 +402,31 @@ describe('reachable — no orphans', () => {
         if (!meta.pages.includes(name)) orphans.push(`${name}: not in the nav`);
       }
     }
+    // A single-tool product has no folder and no index — the tool page IS the
+    // product page — so the catalogue is the only place that must link it, and
+    // the section nav is the only nav that must carry it.
+    const meta = JSON.parse(fs.readFileSync(path.join(out, 'meta.json'), 'utf8'));
+    for (const f of fs.readdirSync(out, { withFileTypes: true })) {
+      if (f.isDirectory() || !f.name.endsWith('.mdx')) continue;
+      const name = f.name.slice(0, -4);
+      if (name === 'index' || name === 'all-tools') continue;
+      if (!catalogSrc.includes(`(/docs/mcp-tools/${name})`)) orphans.push(`${name}: not in the catalogue`);
+      if (!meta.pages.includes(name)) orphans.push(`${name}: not in the nav`);
+    }
     expect(orphans).toEqual([]);
   });
 
-  it('lists every product folder in the section nav', () => {
+  it('lists every product in the section nav, folder or page', () => {
     const meta = JSON.parse(fs.readFileSync(path.join(out, 'meta.json'), 'utf8'));
-    const dirs = fs.readdirSync(out, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name);
-    expect(dirs.filter((d) => !meta.pages.includes(d))).toEqual([]);
-    expect(meta.pages.slice(0, 2)).toEqual(['index', 'all-tools']);
+    const entries = fs
+      .readdirSync(out, { withFileTypes: true })
+      .map((e) => (e.isDirectory() ? e.name : e.name.replace(/\.mdx$/, '')))
+      .filter((n) => n !== 'index' && n !== 'meta.json' && n !== 'all-tools');
+    expect(entries.filter((d) => !meta.pages.includes(d))).toEqual([]);
+    // `index` is NOT listed: a folder's own index.mdx is already its landing
+    // page, and naming it publishes `Cloud MCP > Cloud MCP`.
+    expect(meta.pages[0]).toEqual('all-tools');
+    expect(meta.pages).not.toContain('index');
   });
 });
 

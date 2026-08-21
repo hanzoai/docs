@@ -8,6 +8,7 @@ import {
   loadDocument,
   release,
   secretKey,
+  titleCase,
   type Document,
   type Operation,
 } from './openapi-doc';
@@ -67,12 +68,39 @@ const RESERVED_PAGE = new Set(['index', 'meta']);
  */
 const SLUG = new Map([['index', 'indexes']]);
 
+/**
+ * A capability's human title, read from the ONE place that knows it.
+ *
+ * `Product.title` is the tag's `x-displayName` and falls back to title case, so
+ * `iam` reads IAM and `websearch` reads Websearch — the same string the CLI
+ * reference and the API reference put in their sidebars. This section used to
+ * write the raw slug instead, which is how `Reference` came to hold `CLI >
+ * Affiliate` beside `Cloud MCP > affiliate`: one capability, two spellings, in
+ * two children of one section. `unmapped` is not a product and falls through to
+ * title case, which is what it should read as.
+ */
+const titleOf = (product: string, doc: Document): string =>
+  doc.products.find((p) => p.name === product)?.title ?? titleCase(product);
+
 /** The slug a product or tool is published under. */
 export const slugOf = (name: string): string => SLUG.get(name) ?? name;
 
 /** The one place that knows the shape of a URL in this section. */
 const productHref = (product: string): string => `/docs/mcp-tools/${slugOf(product)}`;
-const toolHref = (product: string, tool: string): string => `${productHref(product)}/${slugOf(tool)}`;
+
+/**
+ * Where a tool's page lives, which depends on how many tools its product has.
+ *
+ * A product with ONE tool IS one page, at the product's own address. The door
+ * publishes one action-routed tool per capability, so 80 of 81 products are in
+ * that case: wrapping each in a folder bought a nav entry whose only child
+ * carried the folder's own name — `Agents > agents` — and an index page whose
+ * whole body was a one-row table linking to the page directly beneath it. A
+ * folder is for when there is more than one thing in it; `unmapped` is the one
+ * product where that is true.
+ */
+const toolHref = (product: string, tool: string, siblings: number): string =>
+  siblings === 1 ? productHref(product) : `${productHref(product)}/${slugOf(tool)}`;
 
 // ------------------------------------------------------------------ schema
 
@@ -537,7 +565,14 @@ const provenance = (cat: McpCatalog): string =>
     : '') +
   '.';
 
-function renderTool(tool: McpTool, ops: Operation[] | undefined, cat: McpCatalog, doc: Document): string {
+function renderTool(
+  tool: McpTool,
+  ops: Operation[] | undefined,
+  cat: McpCatalog,
+  doc: Document,
+  /** The sidebar title, when the page stands as its product rather than under it. */
+  title?: string,
+): string {
   const schema = tool.inputSchema ?? {};
   const con = constraintsOf(ops);
   const fields = fieldsOf(schema, con);
@@ -545,7 +580,7 @@ function renderTool(tool: McpTool, ops: Operation[] | undefined, cat: McpCatalog
   const L: string[] = [];
 
   L.push('---');
-  L.push(`title: ${yamlString(tool.name)}`);
+  L.push(`title: ${yamlString(title ?? tool.name)}`);
   L.push(
     `description: ${yamlString(
       firstSentence(tool.description) || `An MCP tool on the Hanzo cloud door.`,
@@ -709,7 +744,7 @@ function renderProductIndex(product: string, tools: McpTool[], cat: McpCatalog, 
   const L: string[] = [];
   const known = product !== 'unmapped';
   L.push('---');
-  L.push(`title: ${yamlString(product)}`);
+  L.push(`title: ${yamlString(titleOf(product, doc))}`);
   L.push(
     `description: ${yamlString(
       known
@@ -735,7 +770,7 @@ function renderProductIndex(product: string, tools: McpTool[], cat: McpCatalog, 
     const ops = mapped.get(t.name);
     const req = fieldsOf(t.inputSchema ?? {}, constraintsOf(ops)).filter((f) => f.required);
     L.push(
-      `| [\`${code(t.name)}\`](${toolHref(product, t.name)}) | ${
+      `| [\`${code(t.name)}\`](${toolHref(product, t.name, tools.length)}) | ${
         ops?.length ? `\`${ops[0].method.toUpperCase()} ${code(ops[0].path)}\`` : '—'
       } | ${Object.keys(t.inputSchema?.properties ?? {}).length} | ${
         req.length ? req.map((f) => `\`${code(f.name)}\``).join(', ') : '—'
@@ -794,7 +829,7 @@ function renderCatalog(groups: Map<string, McpTool[]>, cat: McpCatalog, mapped: 
     for (const t of groups.get(p)!) {
       const ops = mapped.get(t.name);
       L.push(
-        `| [\`${code(t.name)}\`](${toolHref(p, t.name)}) | ${
+        `| [\`${code(t.name)}\`](${toolHref(p, t.name, groups.get(p)!.length)}) | ${
           ops?.length ? `\`${ops[0].method.toUpperCase()} ${code(ops[0].path)}\`` : '—'
         } | ${text(firstSentence(t.description, 110))} |`,
       );
@@ -1062,6 +1097,21 @@ export async function genMcpPages(outDir: string = OUT_DIR): Promise<{ pages: nu
 
   let pages = 0;
   for (const [product, tools] of ordered) {
+    // ONE TOOL IS ONE PAGE. The door publishes one action-routed tool per
+    // capability, so all but one product arrives here with a single tool named
+    // for it. A folder around that is two pages where there is one thing: a nav
+    // entry whose only child repeats the folder's own name, and an index whose
+    // body is a one-row table linking down to it. The tool page IS the product
+    // page, at the product's address, titled with the capability's name — the
+    // same string the CLI reference and the API reference use.
+    if (tools.length === 1) {
+      fs.writeFileSync(
+        path.join(outDir, `${slugOf(product)}.mdx`),
+        renderTool(tools[0], mapped.get(tools[0].name), cat, doc, titleOf(product, doc)),
+      );
+      pages++;
+      continue;
+    }
     const dir = path.join(outDir, slugOf(product));
     fs.mkdirSync(dir, { recursive: true });
     for (const t of tools) {
@@ -1069,9 +1119,12 @@ export async function genMcpPages(outDir: string = OUT_DIR): Promise<{ pages: nu
       pages++;
     }
     fs.writeFileSync(path.join(dir, 'index.mdx'), renderProductIndex(product, tools, cat, mapped, doc));
+    // Not led by `index`: the folder's own `index.mdx` is already its landing
+    // page, resolved before `pages` is read. Naming it demotes the page to a
+    // child of the folder that carries the folder's own name.
     fs.writeFileSync(
       path.join(dir, 'meta.json'),
-      JSON.stringify({ title: slugOf(product), pages: ['index', ...tools.map((t) => slugOf(t.name))] }, null, 2) + '\n',
+      JSON.stringify({ title: titleOf(product, doc), pages: tools.map((t) => slugOf(t.name)) }, null, 2) + '\n',
     );
     pages++;
   }
@@ -1085,7 +1138,7 @@ export async function genMcpPages(outDir: string = OUT_DIR): Promise<{ pages: nu
         title: 'Cloud MCP',
         description: `The ${cat.tools.length} tools documented here, generated from tools/list.`,
         icon: 'Plug',
-        pages: ['index', 'all-tools', ...[...ordered.keys()].map(slugOf)],
+        pages: ['all-tools', ...[...ordered.keys()].map(slugOf)],
       },
       null,
       2,
@@ -1095,7 +1148,8 @@ export async function genMcpPages(outDir: string = OUT_DIR): Promise<{ pages: nu
   // Every tool got a page, and every page is reachable from the catalogue: the
   // two properties this reference claims, checked rather than asserted.
   const written = new Set<string>();
-  for (const [product, tools] of ordered) for (const t of tools) written.add(`${slugOf(product)}/${slugOf(t.name)}`);
+  for (const [product, tools] of ordered)
+    for (const t of tools) written.add(toolHref(product, t.name, tools.length).slice('/docs/mcp-tools/'.length));
   if (written.size !== cat.tools.length) {
     throw new Error(
       `[mcp-ref] ${cat.tools.length} tools collapsed onto ${written.size} pages — two tools share a path`,

@@ -929,10 +929,18 @@ function writePages(
     // the folder's landing page. Naming `index` did suppress the operations, but
     // it also moved the capability page from being the folder to being a child
     // OF the folder, so the sidebar showed `Projects > Projects` 124 times.
+    // `collapsible: false` because there is nothing to collapse. A folder is
+    // collapsible by default, and the sidebar draws a chevron on every one of
+    // them — so an empty `pages` list published 123 rows each offering to open
+    // something and opening nothing. Saying it holds no children is what makes
+    // the row read as the link it is.
     fs.writeFileSync(
       path.join(folder, 'meta.json'),
-      JSON.stringify({ title: p.title, description: firstSentence(p.description, 160), pages: [] }, null, 2) +
-        '\n',
+      JSON.stringify(
+        { title: p.title, description: firstSentence(p.description, 160), pages: [], collapsible: false },
+        null,
+        2,
+      ) + '\n',
     );
   }
   // The capabilities that answer off `/v1`, written from `doors:` rather than
@@ -950,7 +958,7 @@ function writePages(
       fs.writeFileSync(
         path.join(folder, 'meta.json'),
         JSON.stringify(
-          { title: titleCase(name), description: door, pages: [] },
+          { title: titleCase(name), description: door, pages: [], collapsible: false },
           null,
           2,
         ) + '\n',
@@ -968,7 +976,13 @@ function writePages(
     path.join(dir, 'meta.json'),
     JSON.stringify(
       {
-        title: 'Capabilities',
+        // NOT 'Capabilities'. The root sidebar already heads this group with
+        // that word and the same Boxes icon, so a folder repeating it rendered
+        // two near-identical rows one above the other — the reader sees the
+        // name twice and neither row says anything the other did not. The
+        // folder's job is the one thing the heading does not state: how the
+        // capabilities are arranged. The page keeps its own title.
+        title: 'By domain',
         description:
           'Every Hanzo capability, grouped — what each one is, its four surfaces, and its generated reference.',
         // NOT led by 'index', and this section is the one place that matters.

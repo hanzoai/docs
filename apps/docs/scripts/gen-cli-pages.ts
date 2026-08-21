@@ -192,9 +192,15 @@ export async function genCliPages(): Promise<void> {
     const folder = path.join(OUT_DIR, g.name);
     fs.mkdirSync(folder, { recursive: true });
     fs.writeFileSync(path.join(folder, 'index.mdx'), renderGroup(g, doc));
+    // `pages: []`, never `['index']` — the same shape the reference uses, for
+    // the same reason. A folder's own `index.mdx` is already its landing page;
+    // the tree builder resolves it before it reads `pages`. Naming it demotes
+    // the page from BEING the folder to being a child OF it, so the sidebar
+    // reads `Agents > Agents` — once per capability. Empty means "no children",
+    // which is true: this folder holds one page.
     fs.writeFileSync(
       path.join(folder, 'meta.json'),
-      JSON.stringify({ title: g.title, pages: ['index'] }, null, 2) + '\n',
+      JSON.stringify({ title: g.title, pages: [], collapsible: false }, null, 2) + '\n',
     );
   }
   fs.writeFileSync(
@@ -207,7 +213,12 @@ export async function genCliPages(): Promise<void> {
       {
         title: 'CLI',
         description: "The `hanzo` command line, one page per capability.",
-        pages: ['index', ...sidebar(gs)],
+        // Not led by `index`, and here it is worse than redundant: a name in
+        // `pages` resolves to a FOLDER before it resolves to a file, and `index`
+        // is Hanzo Index — a capability with a folder of its own. The entry
+        // published that capability twice and left this section with no landing
+        // page at all.
+        pages: sidebar(gs),
       },
       null,
       2,
