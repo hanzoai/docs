@@ -61,15 +61,19 @@ WANT="$(sed -n 's/^sha256=//p' "$LOCK" 2>/dev/null || true)"
 # It was spelled again in the URL below, so moving the tree changed one of the two.
 REPO="$(sed -n 's/^repo=//p' "$LOCK" 2>/dev/null || true)"
 REPO="${REPO:-hanzo-inc/cloud}"
+# The lock names WHICH document of that repo this reference is a projection of
+# — openapi.yaml (everything served) or public.yaml (the customer contract).
+DOC_PATH="$(sed -n 's/^path=//p' "$LOCK" 2>/dev/null || true)"
+DOC_PATH="${DOC_PATH:-openapi.yaml}"
 
 # The forge serves its API at /v1/, NOT /api/v1/ — /api/v1 answers with a 404
 # that reads exactly like a rejected credential.
 if [ -n "$REF" ] && [ -n "${FORGE_TOKEN:-}" ] && \
    curl -fsSL -H "Authorization: token $FORGE_TOKEN" \
-     "https://git.hanzo.ai/v1/repos/$REPO/raw/openapi.yaml?ref=$REF" -o "$tmp" 2>/dev/null; then
+     "https://git.hanzo.ai/v1/repos/$REPO/raw/$DOC_PATH?ref=$REF" -o "$tmp" 2>/dev/null; then
   got="$(sha256sum "$tmp" | cut -d' ' -f1)"
   if [ -n "$WANT" ] && [ "$got" != "$WANT" ]; then
-    echo "[openapi] ERROR: $REPO@$REF:openapi.yaml hashes to $got, but $LOCK says $WANT — the ref moved under this reference" >&2
+    echo "[openapi] ERROR: $REPO@$REF:$DOC_PATH hashes to $got, but $LOCK says $WANT — the ref moved under this reference" >&2
     exit 1
   fi
   install -m 0644 "$tmp" "$DOCUMENT"
@@ -82,7 +86,7 @@ fi
 # and installing that silently rebuilt the whole reference from an older release
 # while `.spec-lock` still claimed the pinned one. So it is digest-checked like
 # any other source, and a mismatch falls through to the committed snapshot.
-SIBLING="$APP_DIR/../../../cloud/openapi.yaml"
+SIBLING="$APP_DIR/../../../cloud/$DOC_PATH"
 if [ -f "$SIBLING" ]; then
   got="$(sha256sum "$SIBLING" | cut -d' ' -f1)"
   if [ -z "$WANT" ] || [ "$got" = "$WANT" ]; then

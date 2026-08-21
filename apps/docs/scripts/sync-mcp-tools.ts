@@ -30,7 +30,9 @@ const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
 const OUT = path.join(APP_ROOT, 'openapi-specs/mcp-tools.json');
 
 /** The live JSON-RPC door. It is NOT declared in hanzo.yaml — see doorNotice. */
-export const MCP_DOOR = 'https://api.hanzo.ai/v1/mcp';
+// HANZO_MCP_DOOR points the capture at another host — a local cloud binary
+// serving the contract a release has not shipped yet — and nothing else.
+export const MCP_DOOR = process.env.HANZO_MCP_DOOR ?? 'https://api.hanzo.ai/v1/mcp';
 
 export interface McpTool {
   name: string;

@@ -104,16 +104,21 @@ flows:
 
   store:
     summary: KV round-trip — create a store, read it back, delete it.
-    operations: [post_kv, get_kv_by_name, delete_kv_by_name]
+    operations: [post_instances_kv, get_instances_kv_by_name, delete_instances_kv_by_name]
     notes: >-
       The delete belongs in the language's finally/defer, so a failed read still
       cleans up instead of leaving the store for the next run to collide with.
-      This is the provisioning plane — create a KV STORE, read it, drop it — and
-      it is here because it is the one cloud registers. The VALUE plane
-      (/v1/kv/keys/{key}) was authored in kv/openapi.yaml and mounted nowhere;
-      that spec is deleted and the addresses went with it. apps/provisioning
-      registers exactly `/v1/kv`, `/v1/kv/:name` and nothing else, which the
-      document now says without anyone having to remember it.
+      This is the provisioning plane, and it is one plane: `/v1/instances/{engine}`
+      carries the same four verbs for kv, sql, docdb, datastore, s3, search and
+      vector, so an example written against one engine reads as the example for
+      the other six. It moved there from `/v1/kv`, and the pair — a provisioning
+      address per engine, or one address that takes the engine — is exactly the
+      kind of choice a reader should only have to learn once.
+
+
+      The VALUE plane (/v1/kv/keys/{key}) was authored in kv/openapi.yaml and
+      mounted nowhere; that spec is deleted and the addresses went with it. What
+      a store holds is reached at the store's own endpoint, from its metadata.
 
   agent:
     summary: Create an agent, run it, read the run back.
