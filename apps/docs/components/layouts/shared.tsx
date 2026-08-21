@@ -16,7 +16,7 @@ import { HanzoDocsIcon } from '@/app/layout.client';
 export const linkItems: LinkItemType[] = [
   {
     text: 'API',
-    url: '/docs/api',
+    url: '/docs/openapi',
     active: 'nested-url',
   },
   {
