@@ -434,7 +434,7 @@ const STACK = [
   { icon: Server,   name: 'Django + Python',       role: 'Web Server & API',          description: 'Application server handling dashboards, feature flag evaluation, and REST/GraphQL APIs.', badge: 'Backend' },
   { icon: Code,     name: 'React Frontend',        role: 'Dashboard UI',              description: 'Fast single-page application for analytics dashboards, session replay, and experiment setup.', badge: 'Frontend' },
   { icon: Database, name: 'Datastore',            role: 'hanzoai/datastore',         description: 'Column-oriented OLAP database. Aggregates billions of events in milliseconds.', badge: 'Analytics DB' },
-  { icon: Database, name: 'PostgreSQL',            role: 'hanzoai/sql',               description: 'Relational store for users, projects, feature flags, experiments, and surveys.', badge: 'App DB' },
+  { icon: Database, name: 'Hanzo SQL',             role: 'hanzoai/sql',               description: 'Relational store for users, projects, feature flags, experiments, and surveys.', badge: 'App DB' },
   { icon: Zap,      name: 'Valkey / Redis',        role: 'hanzoai/kv',                description: 'High-performance caching, session storage, Celery task queue, and feature flag cache.', badge: 'Cache' },
   { icon: Radio,    name: 'Kafka',                 role: 'hanzoai/stream',            description: 'Event streaming backbone. Decouples high-throughput ingestion from storage.', badge: 'Streaming' },
   { icon: Cpu,      name: 'Rust Capture Service',  role: 'High-Throughput Ingestion', description: 'Zero-copy event capture. Handles millions of events per second with minimal latency.', badge: 'Capture' },
