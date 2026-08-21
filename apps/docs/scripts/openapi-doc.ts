@@ -382,6 +382,7 @@ function readKeyTypes(raw: any, item: any): KeyType[] {
  */
 const WRITTEN: Record<string, string> = {
   ai: 'AI',
+  amqp: 'AMQP',
   api: 'API',
   cli: 'CLI',
   crm: 'CRM',
@@ -413,7 +414,7 @@ const WRITTEN: Record<string, string> = {
 };
 
 /** `agents` -> `Agents`; `kms` -> `KMS`; `Roles & Permissions` passes through. */
-const titleCase = (name: string): string =>
+export const titleCase = (name: string): string =>
   WRITTEN[name.toLowerCase()] ??
   (/^[a-z]/.test(name) ? name[0].toUpperCase() + name.slice(1) : name);
 

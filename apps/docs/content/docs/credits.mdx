@@ -1,0 +1,92 @@
+---
+icon: Wallet
+title: Credits & billing
+description: What a credit is, how a call draws one down, where the balance lives, and what happens when it reaches zero.
+---
+
+import { Callout } from '@hanzo/docs-ui/components/callout'
+
+**After this page you know what you are spending, where to read it, and what
+happens when it runs out.**
+
+There is no seat licence and no minimum. You hold a balance, every metered call
+draws it down at a published rate, and an account that sends nothing is charged
+nothing.
+
+## The four nouns
+
+Money is four capabilities, and they do not overlap.
+
+| | What it answers | Address |
+|---|---|---|
+| **[Pricing](/docs/openapi/pricing)** | what a unit costs, before you spend it | `/v1/pricing` |
+| **[Usage](/docs/openapi/usage)** | what you actually consumed | `/v1/usage` |
+| **[Billing](/docs/openapi/billing)** | your balance, credits and invoices | `/v1/billing` |
+| **[Commerce](/docs/openapi/commerce)** | the ledger every one of the above reads | `/v1/commerce` |
+
+Read them in that order and the whole economy is one sentence: **pricing** says
+the rate, **usage** says the quantity, **billing** says the money, and
+**commerce** is the ledger the other three are lenses onto.
+
+## Reading your balance
+
+```bash
+hanzo billing balance
+```
+
+```bash
+curl https://api.hanzo.ai/v1/billing/balance \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Credits are bought — or granted — at `https://api.hanzo.ai/v1/billing/credits`,
+and every draw-down is a ledger entry, so the balance is never a number somebody
+maintained by hand. What you consumed is a separate read, because consumption
+and money are separate questions:
+
+```bash
+hanzo usage summary
+```
+
+## Two ceilings, and they are not the same
+
+<Callout>
+A **balance** is what you have. An **allowance** and a **cap** are what you are
+permitted to spend out of it. Confusing the three is the usual reason a call
+gets refused while the balance still looks healthy.
+</Callout>
+
+- **[Allowance](/docs/openapi/allowance)** — a standing grant a caller spends
+  against, at `/v1/allowance`. It is how an org hands a project, a key or a
+  member a budget without handing over the whole balance.
+- **Rolling cap** — a trailing-window ceiling on AI spend, applied at the
+  inference gate. It resets continuously rather than at a boundary: spend older
+  than the window drops out of the trailing sum, so there is no monthly cliff
+  and no midnight reset. It has no address of its own — it is a hook on the
+  gate, which is why its [page](/docs/openapi/rollingcap) has no endpoints.
+
+## What happens at zero
+
+A metered call is refused. It is refused at the gate, before the work happens,
+so you are never billed for a call that was going to fail — and the refusal
+names the reason rather than returning a generic error, so a client can tell
+"out of credit" from "bad key" without guessing. Reads that cost nothing keep
+answering: you can always check a balance you cannot spend.
+
+## Which calls cost anything
+
+Most do not. A capability declares its price beside its code — free, flat, or
+metered — and the free ones are the majority: listing your projects, reading a
+webhook's deliveries, fetching your own profile. What is metered is what
+consumes a real resource — inference tokens, sandbox seconds, an outbound SMS, a
+crawled page.
+
+Every capability page states its own answer, and [Pricing](/docs/pricing)
+carries the rate table for every model and tool.
+
+## Next
+
+- **[Pricing](/docs/pricing)** — the rates, per million tokens and per call.
+- **[Usage](/docs/openapi/usage)** — the reporting API.
+- **[Authentication](/docs/api-keys)** — a key can be limited to one model, one
+  project or one capability, which is the other half of controlling spend.

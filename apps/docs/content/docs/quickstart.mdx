@@ -1,0 +1,152 @@
+---
+icon: Rocket
+title: Quickstart
+description: Install the CLI, log in, and make your first call — then see that same call as an SDK method, raw HTTP and an MCP tool.
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs'
+import { Callout } from '@hanzo/docs-ui/components/callout'
+
+**After this page you have a working credential and one call that answered.**
+
+Hanzo is one cloud behind one key. Every capability — inference, identity,
+storage, money, agents — answers at `https://api.hanzo.ai`, and the CLI, the
+SDKs and the MCP tools are all generated from the same description of it. So
+there is nothing to wire up per service: get a key once and everything is
+reachable.
+
+## 1. Install
+
+<Tabs items={['Script', 'Homebrew', 'npm', 'From source']}>
+<Tab value="Script">
+```bash
+curl -fsSL https://hanzo.sh | sh
+```
+
+Installs into `~/.local/bin`. `https://hanzo.sh/cli` installs the CLI alone.
+</Tab>
+<Tab value="Homebrew">
+```bash
+brew install hanzoai/tap/hanzo
+```
+</Tab>
+<Tab value="npm">
+```bash
+npm i -g @hanzo/cli
+```
+
+The package is `@hanzo/cli`. Unscoped `hanzo` on npm and PyPI is somebody
+else's project.
+</Tab>
+<Tab value="From source">
+```bash
+git clone https://github.com/hanzoai/cli && cd cli && cargo install --path .
+```
+</Tab>
+</Tabs>
+
+```bash
+hanzo version
+```
+
+## 2. Log in
+
+```bash
+hanzo auth login
+```
+
+That opens a browser against [hanzo.id](https://hanzo.id), Hanzo's identity
+provider, and stores the resulting credential locally. `hanzo auth show` prints
+who you are; `hanzo auth list` shows every identity on this machine and
+`hanzo auth use` switches between them.
+
+<Callout type="warn">
+There is no `hanzo login`. A bare word the CLI does not recognise starts a
+coding session about that word, so `hanzo login` would open an agent and ask it
+about logging in.
+</Callout>
+
+For a server, mint a key instead of logging a person in: **console.hanzo.ai →
+API keys**. A secret key resolves to *you*, so it belongs on a server and never
+in a browser — [Authentication](/docs/api-keys) is the whole rule.
+
+```bash
+export HANZO_API_KEY=sk-...
+```
+
+## 3. Your first call
+
+The catalogue of models the gateway currently serves. It is a read, it needs
+nothing but the key, and it is the same operation on all four surfaces.
+
+<Tabs items={['CLI', 'SDK', 'HTTP', 'MCP']}>
+<Tab value="CLI">
+```bash
+hanzo models list
+```
+</Tab>
+<Tab value="SDK">
+```ts
+import { Configuration, AIApi } from 'hanzoai';
+
+const api = new AIApi(new Configuration({ accessToken: process.env.HANZO_API_KEY }));
+const { data } = await api.getModels();
+```
+</Tab>
+<Tab value="HTTP">
+```bash
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+</Tab>
+<Tab value="MCP">
+```bash
+curl -X POST https://api.hanzo.ai/v1/mcp \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+One door, one tool per capability. `tools/call` names the capability and the
+operation; `describe` explains any operation's input.
+</Tab>
+</Tabs>
+
+## 4. Something that costs money
+
+```bash
+hanzo chat completions --model zen-1 --messages '[{"role":"user","content":"hello"}]'
+```
+
+Then read what it drew down:
+
+```bash
+hanzo billing balance
+hanzo usage summary
+```
+
+[Credits & billing](/docs/credits) explains what a credit is and what happens at
+zero; [Pricing](/docs/pricing) is the rate for every model and tool.
+
+## 5. Run the whole cloud yourself
+
+The same binary that serves `api.hanzo.ai` runs on your machine:
+
+```bash
+hanzo up cloud
+```
+
+Bare `hanzo up` is the same thing — `cloud` is the default. Name one service to
+run it alone: `hanzo up iam`, `hanzo up kms`, `hanzo up gateway`, `hanzo up
+storage`, `hanzo up pubsub`. See [Run your own](/docs/network) for what that
+means and what it needs.
+
+## Where to go next
+
+- **[Six flows, four surfaces](/docs/start)** — hello, chat, money, store, agent,
+  tools. The whole product in miniature, each journey shown four ways.
+- **[Concepts](/docs/concepts)** — orgs, projects, sandboxes, agents, memory and
+  workflows. Read these once and the rest of the API explains itself.
+- **[Capabilities](/docs/openapi)** — all of them, grouped. Each page says what
+  the capability is, how to reach it from all four surfaces, and links its
+  specification.

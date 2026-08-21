@@ -1,0 +1,91 @@
+---
+title: Memory
+description: What an agent remembers and who else can read it — one org-scoped store for the team wiki and agent memory, plus a per-user recall surface.
+---
+
+import { Callout } from '@hanzo/docs-ui/components/callout'
+
+**After this page you know where to put something an agent should remember, and
+who will be able to read it back.**
+
+<Callout>
+There is no capability called **Brain**. There are two real memory surfaces with
+different scopes, and picking the wrong one is the usual way a memory ends up
+invisible to the agent that needed it.
+</Callout>
+
+## Org memory: knowledge
+
+[knowledge](/docs/openapi/knowledge) is the one that matters for teams. Wiki
+pages a person writes, memories an agent files, and documents a connector
+ingests are **one document store**, indexed into that org's own vector namespace
+on every save.
+
+That is the whole design decision: human wiki and agent memory are one store
+indexed once, so an agent retrieves exactly what the team can read — no more,
+and no less.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/knowledge/search \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"how do we handle refunds"}'
+```
+
+This is the retrieval entry point: an agent asking *what does this org know
+about X*, answered from the org's own namespace. Both the collection and the
+payload filter are pinned to the caller's org, so a query cannot reach another
+tenant's documents even by accident. If the index is unreachable it answers
+empty with `degraded: true` rather than a 5xx — a degraded answer is a fact the
+caller can act on; a 500 is not.
+
+Beyond search: `/v1/knowledge/import` for bulk, and
+`/v1/knowledge/connectors` to keep an outside source in sync.
+
+## Personal memory: recall
+
+The [ai](/docs/openapi/ai) capability carries a per-**user** memory surface, for
+context injection into a conversation:
+
+```
+POST /v1/ai/memory/remember
+POST /v1/ai/memory/recall
+POST /v1/ai/memory/search
+GET  /v1/ai/memory/list
+GET  /v1/ai/memory/facts
+```
+
+`recall` ranks semantically when you pass a query and returns the most recent
+when you do not. Everything here is scoped to the **authenticated user**, not
+the org — it is the assistant remembering *you*, not the company remembering
+something.
+
+Use it for preferences and conversational continuity. Use `knowledge` for
+anything a colleague should also be able to find.
+
+## The rest of the retrieval family
+
+Memory is one of five stores, and they compose rather than compete:
+
+| | What it holds | Ask it |
+|---|---|---|
+| **[knowledge](/docs/openapi/knowledge)** | documents + vectors, per org | what do we know about X |
+| **[index](/docs/openapi/index)** | a full-text index | which document contains this word |
+| **[search](/docs/openapi/search)** | both of the above, fused | one ranked answer |
+| **[graph](/docs/openapi/graph)** | entities and relations, as assertions | how is X connected to Y |
+| **[dataset](/docs/openapi/dataset)** | versioned immutable snapshots | what did this look like then |
+
+`search` is usually the one you want: `POST /v1/search` fuses the lexical index
+and the knowledge vector index into a single ranked result, so you do not choose
+between keyword and meaning.
+
+`graph` is worth knowing about because of what it stores: not facts, but
+**assertions** — somebody, at some moment, from some evidence, asserted that
+this thing stands in that relation to that other thing. That makes disagreement
+representable instead of a write conflict.
+
+## Next
+
+- **[Knowledge](/docs/openapi/knowledge)** — the org store.
+- **[Search](/docs/openapi/search)** — fused retrieval.
+- **[Agents](/docs/concepts/agents)** — what does the remembering.

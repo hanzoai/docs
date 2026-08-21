@@ -1,0 +1,97 @@
+---
+title: Projects
+description: Two different things are called a project — a site you deploy and a scope inside an org. Which one you have decides which API you want.
+---
+
+import { Callout } from '@hanzo/docs-ui/components/callout'
+
+**After this page you will never call the wrong one.**
+
+<Callout type="warn">
+**"Project" names two things.** A *site project* is something you deploy. An
+*IAM project* is a scope inside an org. They have different addresses, different
+lifecycles and different owners. The specs keep them apart; so should you.
+</Callout>
+
+## The site project — where a site lives
+
+A handle a build is deployed and served under.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/projects \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"acme-marketing"}'
+```
+
+```bash
+hanzo projects list
+```
+
+The **slug** is the load-bearing part. It becomes the object-store key segment,
+the public host `<slug>.hanzo.app`, and the handle every later call addresses.
+It matches `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$`, reserved labels are refused,
+and it is unique **per org** — the same slug in someone else's org is irrelevant
+to you. A public hostname, on the other hand, is globally unique and
+first-come.
+
+Creating one also provisions a data space and a canonical git repo, both
+best-effort. It answers `201` in `draft`.
+
+Its lifecycle is **releases**, not environments:
+
+```
+POST /v1/projects/{slug}/deploy
+GET  /v1/projects/{slug}/releases
+POST /v1/projects/{slug}/releases/{release}/activate
+```
+
+Every deploy is a release and any release can be made live again, so rollback is
+the same operation as roll-forward. Custom hostnames are verified at
+`/v1/projects/{slug}/domains/{host}/verify`.
+
+Publishing publicly is free; `visibility: private` is the paid feature.
+
+## The IAM project — a scope inside an org
+
+The scope people pick between when their work is separated by product or client
+rather than by team. It is created and deleted **only** at `/v1/iam/projects`,
+and it rides on a request as the validated `X-Project-Id`.
+
+```
+GET /v1/iam/projects
+```
+
+You never create one anywhere else. `/v1/platform/projects` is a *projection* —
+the project plus what the container plane has put under it — and it says so
+outright. Applications live under it:
+
+```
+/v1/platform/projects/{project}/apps/{app}
+/v1/platform/projects/{project}/apps/{app}/env
+/v1/platform/projects/{project}/apps/{app}/preview
+```
+
+An API key can be scoped to one IAM project, which is the usual way to keep a
+staging key from touching production data.
+
+## Telling them apart
+
+| | Site project | IAM project |
+|---|---|---|
+| **What it is** | a deployed site | a scope inside an org |
+| **Created at** | `/v1/projects` | `/v1/iam/projects` |
+| **Identified by** | a slug, unique per org | an id, carried as `X-Project-Id` |
+| **Versioned by** | releases | nothing — it is a boundary |
+| **Capability** | [projects](/docs/openapi/projects) | [iam](/docs/openapi/iam) |
+
+Rule of thumb: **if you are deploying bytes, it is a site project. If you are
+scoping permissions, it is an IAM project.**
+
+## Next
+
+- **[Projects reference](/docs/openapi/projects)** — every operation on a site.
+- **[Platform](/docs/openapi/platform)** — the container plane, and what lives
+  under an IAM project.
+- **[Environments](/docs/environments)** — why there is no environment resource.
+- **[Multitenancy](/docs/concepts/multitenancy)** — the org both sit inside.
