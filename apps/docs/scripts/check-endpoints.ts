@@ -87,7 +87,7 @@ const names = (a: string[], b: string[]): boolean => {
  *
  * A handful of apps are mounted as one catch-all relay -- `app.All("/v1/bot/*")`
  * and friends -- so cloud's own document describes them as a single path with a
- * `{wildcard1}` segment and no typed operation beneath it. `public.yaml` drops
+ * `{wildcard1}` segment and no typed operation beneath it. `openapi.yaml` drops
  * those, because a wildcard is not a contract: there is nothing to state about
  * parameters, request or response. The routes are still live, and a HIP that
  * specifies one writes real examples against it -- HIP-0074 documents

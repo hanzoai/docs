@@ -63,8 +63,11 @@ WANT="$(sed -n 's/^sha256=//p' "$LOCK" 2>/dev/null || true)"
 # It was spelled again in the URL below, so moving the tree changed one of the two.
 REPO="$(sed -n 's/^repo=//p' "$LOCK" 2>/dev/null || true)"
 REPO="${REPO:-hanzo-inc/cloud}"
-# The lock names WHICH document of that repo this reference is a projection of
-# — openapi.yaml (everything served) or public.yaml (the customer contract).
+# The lock names WHICH document of that repo this reference is a projection of.
+# The default is the one docs wants — openapi.yaml, cloud's CUSTOMER contract —
+# so the lock states it only when it means something else (private.yaml is
+# everything the fleet serves, admin family and staged capabilities included, and
+# no public page is generated from it).
 DOC_PATH="$(sed -n 's/^path=//p' "$LOCK" 2>/dev/null || true)"
 DOC_PATH="${DOC_PATH:-openapi.yaml}"
 DOCUMENT="$SPECS_DIR/$DOC_PATH"
