@@ -1,0 +1,119 @@
+---
+title: GoDaddy
+description: GoDaddy sells and holds domains. Here that is /v1/domain — seven operations covering availability, search, purchase, renewal and transfer.
+---
+
+GoDaddy is a registrar: it prices a name, sells it to you, and keeps it
+registered. `/v1/domain` (7 operations) does the same five things — check,
+search, buy, renew, transfer — plus list what you own and report whether the
+registrar is reachable.
+
+## Nouns
+
+| GoDaddy | Hanzo |
+|---|---|
+| `GET /v3/domains/check-availability?domain=` | `GET /v1/domain/availability?domain=` |
+| Alternate-TLD suggestions | `GET /v1/domain/search?q=`, narrowed by `tld` |
+| `POST /v3/domains/registration-quotes` — locking a price | No quote step. `register` answers the `quote` it bought at |
+| `quoteToken` | Nothing. There is no token to carry between calls |
+| `POST /v3/domains/registrations` | `POST /v1/domain/register` — `domain`, `years`, `contacts` |
+| `GET /v3/domains/registrations/{registrationId}` — poll to `COMPLETED` | Nothing to poll. The register call answers the ownership record |
+| `GET /v1/domains` (their v1) | `GET /v1/domain/domains` |
+| `POST /v1/domains/{domain}/renew` (their v1) | `POST /v1/domain/renew` — `domain`, `years` |
+| Transfer with an auth code (their v1) | `POST /v1/domain/transfer` — `domain`, `authCode`, `years` |
+| `{"currencyCode": "USD", "value": 1199}` | `priceCents` and `renewalPriceCents`, with `currency` |
+| Registrant, admin, tech and billing contacts | `contacts.registrant`, `.admin`, `.tech`, `.billing` |
+
+Availability, search, register, renew and transfer all answer the same quote
+shape, so the price you see when checking is the price shape you get when buying.
+
+## The call
+
+GoDaddy — four calls, because the price is locked between two of them:
+
+```bash
+# 1. Check.
+curl -sS "https://api.godaddy.com/v3/domains/check-availability?domain=example.com" \
+  -H "Authorization: Bearer $GODADDY_PAT"
+
+# 2. Lock a price. Answers a quoteToken with an expiry.
+curl -sS -X POST https://api.godaddy.com/v3/domains/registration-quotes \
+  -H "Authorization: Bearer $GODADDY_PAT" \
+  -H 'Content-Type: application/json' \
+  -d '{"domain": "example.com", "period": 1}'
+
+# 3. Execute, against that token, with recorded consent.
+curl -sS -X POST https://api.godaddy.com/v3/domains/registrations \
+  -H "Authorization: Bearer $GODADDY_PAT" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "quoteToken": "qt_abc123",
+    "domain": "example.com",
+    "period": 1,
+    "consent": {"agreedAt": "2026-01-15T10:30:00.000Z", "agreementTypes": ["API_DPA"]}
+  }'
+
+# 4. Poll until COMPLETED or FAILED.
+curl -sS https://api.godaddy.com/v3/domains/registrations/reg_xyz789 \
+  -H "Authorization: Bearer $GODADDY_PAT"
+```
+
+Hanzo — two:
+
+```bash
+# 1. Check. Answers purchasable, premium, first-term and renewal price in cents.
+curl -sS "https://api.hanzo.ai/v1/domain/availability?domain=example.com" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+# 2. Buy. Answers the ownership record together with the quote it was bought at.
+curl -sS -X POST https://api.hanzo.ai/v1/domain/register \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "domain": "example.com",
+    "years": 1,
+    "contacts": {
+      "registrant": {
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "email": "ada@example.com",
+        "phone": "+12125550100",
+        "address1": "251 W 30th St",
+        "city": "New York",
+        "state": "NY",
+        "zip": "10001",
+        "country": "US"
+      }
+    }
+  }'
+```
+
+The record carries `domain`, `expiresAt`, `nameservers`, `priceCents`,
+`costCents` and the org that owns it. Renewal answers the updated record with its
+new expiry alongside `paidCents`.
+
+`GET /v1/domain/health` reports registrar reachability without flattering it: it
+is `ok` only when the wholesale credentials are actually present.
+
+## What does not carry
+
+**No DNS.** GoDaddy manages the zone as well as the registration — records,
+nameserver changes, forwarding. `/v1/domain` registers and holds names. The
+ownership record reports `nameservers`, and there is no route here that sets
+them or edits a record.
+
+**No contact updates after the fact.** Contacts go in at registration. There is
+no later edit, so get the registrant right the first time.
+
+**No privacy toggle and no domain forwarding.**
+
+**No quote token and no idempotency key.** GoDaddy separates pricing from
+purchase so a price cannot move underneath you, and requires an
+`Idempotency-Key` on the registration so a retry cannot double-buy. Neither
+exists here: `register` prices and buys in one call, and it answers the quote it
+used so you can see what you paid. A retry after a timeout is a second attempt at
+a purchase, so check `GET /v1/domain/domains` before you send one.
+
+**No async operation to follow.** GoDaddy answers 202 and hands you a poll URL.
+`register` answers when the registration is done or it does not answer at all.

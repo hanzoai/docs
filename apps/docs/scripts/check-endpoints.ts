@@ -82,6 +82,42 @@ const names = (a: string[], b: string[]): boolean => {
   return a.length <= b.length;
 };
 
+/**
+ * Addresses cloud SERVES but cannot declare, so the public contract omits them.
+ *
+ * A handful of apps are mounted as one catch-all relay -- `app.All("/v1/bot/*")`
+ * and friends -- so cloud's own document describes them as a single path with a
+ * `{wildcard1}` segment and no typed operation beneath it. `public.yaml` drops
+ * those, because a wildcard is not a contract: there is nothing to state about
+ * parameters, request or response. The routes are still live, and a HIP that
+ * specifies one writes real examples against it -- HIP-0074 documents
+ * `GET /v1/sbom/{ref}` and shows a filled-in call -- which this guard then read
+ * as an invented address on a generated page.
+ *
+ * Listed as prefixes, read off cloud's internal document at the pinned ref, so
+ * the set is a fact about the fleet rather than a hole someone widened to make a
+ * build pass. `/v1/admin/...` is deliberately absent: the operator surface is
+ * not published, so a page naming it is a real finding.
+ *
+ * Each entry disappears when cloud gives that app a typed route. That is the
+ * fix -- a wildcard relay is undocumentable by construction, and every one of
+ * these is a product whose API cannot be generated, described or called from a
+ * client until it has one.
+ */
+const RELAYS = [
+  '/v1/bot/',
+  '/v1/catalog/entries/',
+  '/v1/cloudflare/ai/run/',
+  '/v1/deploy/account/can-i/',
+  '/v1/dns/',
+  '/v1/download/',
+  '/v1/kms/secrets/',
+  '/v1/sbom/',
+  '/v1/sentinel/',
+  '/v1/tasks/',
+  '/v1/team/billing/ui/',
+];
+
 export function checkEndpoints(): { checked: number; unknown: Array<[string, string]> } {
   const doc = loadDocument(DOCUMENT);
   // Only `/v1` routes, because only those are what a page's `/v1/...` can mean.
@@ -105,6 +141,7 @@ export function checkEndpoints(): { checked: number; unknown: Array<[string, str
       checked++;
       const mention = segments(raw);
       if (paths.some((p) => names(mention, p))) continue;
+      if (RELAYS.some((prefix) => raw.startsWith(prefix))) continue;
       unknown.push([rel, raw]);
     }
   }

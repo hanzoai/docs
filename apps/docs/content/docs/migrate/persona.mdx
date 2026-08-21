@@ -1,0 +1,107 @@
+---
+title: Persona
+description: Persona verifies who someone is. Here that is /v1/compliance — seventeen operations over subjects, verifications, reviewer decisions and the org's posture.
+---
+
+Persona runs identity verification: you describe a person or a business, it
+takes them through a flow, and you read a decision. `/v1/compliance` (17
+operations) is the same shape — subjects, verifications against a wired provider,
+a human decision when one is needed, and an honest read of where the org stands.
+
+## Nouns
+
+| Persona | Hanzo |
+|---|---|
+| Account — the party you verify | Subject — `POST /v1/compliance/subjects` |
+| `reference-id` | `ref` — the org's own opaque external id |
+| Individual / business | `kind` — `individual` (KYC) or `business` (KYB) |
+| Inquiry — one run against a template | Verification — `POST /v1/compliance/verifications` |
+| `inquiry-template-id` | Nothing to name. The wired provider owns the flow |
+| The hosted flow link you redirect to | `verifyUrl` on the verification |
+| `GET /api/v1/inquiries/{id}` | `GET /v1/compliance/verifications/{id}` |
+| Approving or declining an inquiry | `POST /v1/compliance/verifications/{id}/decision` |
+| Re-reading an inquiry after the fact | `POST /v1/compliance/verifications/{id}/refresh` |
+| The inquiry webhook | `POST /v1/compliance/verifications/webhook`, HMAC over the raw bytes |
+| Dashboard counts | `GET /v1/compliance/status` — the wired provider and a per-status tally |
+| The combined queue | `GET /v1/compliance/records` |
+| Audit trail | `GET /v1/compliance/audit` |
+
+Beside the two, `/v1/compliance/accreditation` records a subject's *asserted*
+standing and a reviewer's decision on it — a second kind of check, on the same
+subject, with no Persona counterpart.
+
+## The call
+
+Persona, creating an inquiry against a template:
+
+```bash
+curl -X POST https://api.withpersona.com/api/v1/inquiries \
+  -H "Authorization: Bearer $PERSONA_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "data": {
+      "attributes": {
+        "inquiry-template-id": "itmpl_p8ANAJy9iqadm2buF2xcVgqH",
+        "reference-id": "user-42"
+      }
+    }
+  }'
+```
+
+Hanzo — the subject can be created inline, so this is one call:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/compliance/verifications \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "kind": "individual",
+    "name": "Ada Lovelace",
+    "email": "ada@example.com",
+    "ref": "user-42"
+  }'
+```
+
+The answer carries `id`, `subjectId`, `provider`, `status` and `verifyUrl` —
+send the person to `verifyUrl` and read the check back by id. Pass `subjectId`
+instead of the contact fields to verify a subject you already recorded.
+
+Two ways the decision arrives. The provider pushes it to
+`POST /v1/compliance/verifications/webhook`, or you pull it with
+`POST /v1/compliance/verifications/{id}/refresh`.
+
+## What does not carry
+
+**The webhook carries no decision.** A valid HMAC signature cannot set a status.
+The signed reference says *which* check to re-read, and the status is then pulled
+from the wired provider, which stays the source of truth. A body that asserts
+"passed" changes nothing. If your Persona integration trusted the event payload,
+that logic goes away — read the check back instead.
+
+**Starting a verification never yields a verified one.** A fresh start is
+provider-reported and non-terminal, and a provider error is a 502 rather than a
+failed verification. With no real provider configured a check stays pending, and
+the only route to a passing status is the role-gated reviewer decision, which
+records `reviewer_confirmed` — distinct from a provider's own verdict, and
+attributed to the reviewer who made it.
+
+**No templates and no flow builder.** Persona's inquiry templates compose the
+steps: government id, selfie, database check, in whatever order you drew. There
+is no template object and no step list. The wired provider owns the flow.
+
+**No report types.** Watchlist, PEP, adverse media, email risk, phone risk,
+device and behaviour reports are separate Persona objects you request and read.
+None of them exists here. A verification has a status; it does not decompose into
+reports.
+
+**No JSON:API envelope.** No `data.attributes`, no `included`, no relationships.
+Plain JSON objects.
+
+**Listing a subject gives you less than you asked for, deliberately.**
+`GET /v1/compliance/subjects` answers PII-minimized summaries — kind, ref,
+whether an email is on file, and when it was recorded, but no name and no email.
+`GET /v1/compliance/subjects/{id}` is the only surface that returns contact PII.
+A screen that rendered a table of names from a list call has to fetch each row.
+
+**No cases, no transactions, no graph.** Persona's case management and
+transaction monitoring have no counterpart.

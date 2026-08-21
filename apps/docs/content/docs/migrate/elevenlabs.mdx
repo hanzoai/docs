@@ -1,0 +1,104 @@
+---
+title: ElevenLabs
+description: ElevenLabs synthesizes speech and transcribes it back. Here that is /v1/audio — five operations, OpenAI-shaped for speech and transcription.
+---
+
+ElevenLabs turns text into speech, and audio back into text, with sound effects
+and music beside it. `/v1/audio` (5 operations) covers the same four verbs:
+`speech` and `transcriptions` in the OpenAI shape, and `voice`, `music` and
+`foley` for the Zen family's own.
+
+## Nouns
+
+| ElevenLabs | Hanzo |
+|---|---|
+| `client.text_to_speech.convert(...)` | `POST /v1/audio/speech` — `model`, `input`, optional `voice` |
+| `POST /v1/text-to-speech/{voice_id}` | The same route; the voice is a body field, not a path segment |
+| `model_id`, e.g. `eleven_v3` | `model`, e.g. `qwen3-tts-voicedesign` |
+| `output_format`, e.g. `mp3_44100_128` | `response_format` — `mp3` by default |
+| `client.speech_to_text.convert(...)` | `POST /v1/audio/transcriptions` — multipart `file` and `model`, with `language` and `response_format` |
+| `client.text_to_sound_effects.convert(...)` | `POST /v1/audio/foley` |
+| `client.music.compose(...)` | `POST /v1/audio/music` |
+| The Zen-native speech verb | `POST /v1/audio/voice`, with `zen-voice` |
+| `xi-api-key` header | `Authorization: Bearer $HANZO_API_KEY` |
+
+`model` resolves to its provider through the same routing every other modality
+uses, so a node you registered as a TTS provider is reached the same way a hosted
+one is.
+
+## The call
+
+ElevenLabs:
+
+```python
+from elevenlabs.client import ElevenLabs
+
+elevenlabs = ElevenLabs()   # ELEVENLABS_API_KEY in the environment
+
+audio = elevenlabs.text_to_speech.convert(
+    text="The first move is what sets everything in motion.",
+    voice_id="JBFqnCBsd6RMkjVDRZzb",
+    model_id="eleven_v3",
+    output_format="mp3_44100_128",
+)
+with open("out.mp3", "wb") as f:
+    for chunk in audio:
+        f.write(chunk)
+```
+
+Hanzo — the bytes stream straight back, so write them to a file:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/audio/speech \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "qwen3-tts-voicedesign",
+    "input": "The first move is what sets everything in motion.",
+    "response_format": "mp3"
+  }' \
+  -o out.mp3
+```
+
+`model` and `input` are the only required fields. `voice` is optional and is
+carried to the provider when set. Because the body is OpenAI's, an OpenAI client
+pointed at `https://api.hanzo.ai/v1` reaches this endpoint with no other change.
+
+Transcription is the mirror of it — multipart, `file` and `model`, where the
+model is one of the whisper family:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/audio/transcriptions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -F file=@out.mp3 \
+  -F model=whisper-1
+```
+
+Read `GET /v1/models` for the ids this gateway currently resolves for each
+modality, rather than hardcoding one.
+
+## What does not carry
+
+**No voice library.** ElevenLabs' catalogue of voices, `voices.search()`,
+per-voice settings, voice design and instant or professional cloning have no
+equivalent. `voice` is an optional string carried to the provider; there is no
+route that lists what it accepts, and there is nothing that creates a voice.
+
+**Only two of the five operations are shaped like OpenAI's.** `speech` and
+`transcriptions` are. `voice`, `music` and `foley` are Zen-native verbs and
+reject a non-Zen model, so they are not a drop-in for an ElevenLabs client.
+
+**Speech input is capped at 4096 characters.** Longer text is refused rather
+than truncated. Chunk it yourself.
+
+**No word-level timestamps, no alignment, no dubbing, no voice changer.**
+`convert_with_timestamps`, the dubbing API and the speech-to-speech endpoints
+have nothing on this side.
+
+**A publishable key is refused here.** `/v1/audio/speech` requires a secret key.
+That is not a general rule about the platform — it is this endpoint, because it
+synthesizes billable audio, and a publishable key lives in browsers.
+
+**No real-time socket.** ElevenLabs streams synthesis over a WebSocket for
+conversational latency. This is a request and a response, with the audio bytes
+streamed back on it.

@@ -13,7 +13,6 @@ export const revalidate = false;
 export async function GET() {
   const pages = await Promise.all(source.getPages().map(getLLMText));
 
-  // getLLMText returns '' for openapi pages, which have no prose to give.
   return new Response(pages.filter(Boolean).join('\n\n'), {
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },
   });

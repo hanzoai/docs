@@ -1,0 +1,129 @@
+---
+title: Amazon SQS
+description: SQS is a queue between services. Here that is /v1/mq for durable streams and consumers, and /v1/pubsub for the publish itself.
+---
+
+SQS holds messages between a producer and a worker. Two capabilities answer it:
+`/v1/mq` (15 operations) owns the durable half — streams, their consumers and
+their retained messages — and `/v1/pubsub` (8) owns the send, plus a request
+that waits for one reply.
+
+## Nouns
+
+| Amazon SQS | Hanzo |
+|---|---|
+| Queue | Stream — `POST /v1/mq/stream`, named, capturing one or more subjects |
+| Queue URL | The stream's name, in the path |
+| `SendMessage` | `POST /v1/pubsub/publish` — `subject`, `data`, `headers` |
+| Consumer group, implied by who polls | Consumer — `POST /v1/mq/stream/{stream}/consumer`, durable and named |
+| `ReceiveMessage` | `POST /v1/mq/stream/{stream}/consumer/{name}/next` |
+| `MaxNumberOfMessages` | `batch` |
+| `WaitTimeSeconds` (long poll) | `expires`, or `no_wait` to skip the wait |
+| `MessageDeduplicationId` | A `Nats-Msg-Id` header. A repeat inside the window answers `duplicate` |
+| `PurgeQueue` | `POST /v1/mq/stream/{name}/purge` |
+| `DeleteQueue` | `DELETE /v1/mq/stream/{name}` |
+| Retention period | `max_age` on the stream, with `max_msgs` and `max_bytes` beside it |
+| Standard queue semantics | `retention: "limits"` — every consumer gets its own copy |
+| One worker takes each message | `retention: "workqueue"` — the message leaves when any consumer takes it |
+| Message attributes | `headers`, one string value per name |
+| Peeking without consuming | `GET /v1/mq/stream/{name}/message`, by sequence or by newest on a subject |
+
+There is no account id and no region. Streams live in the org's namespace,
+derived from the key.
+
+## The call
+
+SQS, through boto3:
+
+```python
+import boto3
+
+sqs = boto3.client("sqs")
+queue = sqs.create_queue(QueueName="orders")["QueueUrl"]
+
+sqs.send_message(QueueUrl=queue, MessageBody='{"id": 1}')
+
+received = sqs.receive_message(QueueUrl=queue, MaxNumberOfMessages=10, WaitTimeSeconds=20)
+for message in received.get("Messages", []):
+    handle(message["Body"])
+    sqs.delete_message(QueueUrl=queue, ReceiptHandle=message["ReceiptHandle"])
+```
+
+Hanzo:
+
+```bash
+# 1. The stream. `workqueue` is the queue discipline: one taker per message.
+curl -X POST https://api.hanzo.ai/v1/mq/stream \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "orders",
+    "subjects": ["orders.>"],
+    "retention": "workqueue",
+    "storage": "file"
+  }'
+
+# 2. A durable consumer to pull with.
+curl -X POST https://api.hanzo.ai/v1/mq/stream/orders/consumer \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "durable_name": "worker",
+    "filter_subject": "orders.>",
+    "ack_policy": "explicit",
+    "ack_wait": "30s"
+  }'
+
+# 3. Send. The receipt names the stream and sequence once storage has it.
+curl -X POST https://api.hanzo.ai/v1/pubsub/publish \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "subject": "orders.created",
+    "data": "{\"id\": 1}",
+    "headers": {"Nats-Msg-Id": "order-1"}
+  }'
+
+# 4. Pull a batch.
+curl -X POST https://api.hanzo.ai/v1/mq/stream/orders/consumer/worker/next \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"batch": 10, "expires": "20s"}'
+```
+
+`data` is carried verbatim as UTF-8 text — usually JSON, as above.
+
+## What does not carry
+
+**The pull acknowledges.** This is the one to read twice. `next` acknowledges
+what it delivers, so the broker will not redeliver it. There is no
+`DeleteMessage` after your handler succeeds, and no `ReceiptHandle` to hold. If
+the worker dies between the pull and the work, that batch is gone. SQS's
+delete-after-work loop does not port over HTTP; explicit acknowledgement lives on
+the NATS port, which is where a worker that needs at-least-once should sit.
+
+**No visibility timeout in the HTTP flow.** `ack_wait` is real consumer
+configuration and it governs redelivery for a client that acknowledges
+explicitly. It changes nothing about the pull above, which has already acked.
+
+**No dead-letter queue.** `max_deliver` caps attempts on the consumer, and there
+is no redrive policy and no queue to redrive into. A poison message stops being
+delivered; it does not move.
+
+**No FIFO queues and no message groups.** There is no `MessageGroupId`, so
+there is no per-group serialisation. Ordering is the stream's sequence, and
+deduplication is `Nats-Msg-Id` within the stream's window.
+
+**No delay queues.** There is no `DelaySeconds` and no per-message timer.
+
+**A publish nobody captures is not retained.** When a stream captures the
+subject, the write is durable and the receipt carries `stream` and `seq`. When
+nothing captures it, the message goes out to current subscribers and the receipt
+is bare `{ok}` — delivered to whoever was listening, stored nowhere. Create the
+stream before you publish to its subject, and check `stream` in the receipt.
+
+**Binary payloads.** `data` is text. Encode binary yourself, or use the NATS
+port.
+
+**No queue-level IAM policy.** Access is the org in the key. There is no
+per-queue policy document and no cross-account grant.

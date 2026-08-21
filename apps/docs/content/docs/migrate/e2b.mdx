@@ -1,0 +1,110 @@
+---
+title: E2B
+description: E2B leases isolated sandboxes for code an agent wrote. Here that is /v1/sandboxes, with /v1/exec for the one-shot snippet case.
+---
+
+E2B leases an isolated computer, runs code in it, and gives you its filesystem.
+`/v1/sandboxes` (19 operations) is the same thing: lease, run, read, write, end.
+`POST /v1/exec` is the short path — one snippet, one answer, no lease to manage.
+
+## Nouns
+
+| E2B | Hanzo |
+|---|---|
+| `Sandbox.create()` | `POST /v1/sandboxes/lease` |
+| The sandbox id you reconnect with | `id` in the lease answer, passed in every later body |
+| `sandbox.commands.run(cmd)` | `POST /v1/sandboxes/run` |
+| `sandbox.files.write(path, bytes)` | `POST /v1/sandboxes/write`, `data` base64 |
+| `sandbox.files.read(path)` | `POST /v1/sandboxes/read`, `data` base64, or `entries` for a directory |
+| `sandbox.kill()` | `POST /v1/sandboxes/end` |
+| `timeoutMs` / `timeout` | `ttlSec` on the lease |
+| Template | `class` — `exec`, `dev`, `desktop` or `android` — with `image` to override its default |
+| Persistent template data | `project` on the lease, which names the volume the work persists on |
+| `@e2b/code-interpreter` `runCode()` | `POST /v1/exec` with `lang` and `code` |
+| Interactive terminal (PTY) | `POST /v1/sandboxes/{id}/terminal/ticket`, then the socket at `/v1/sandboxes/{id}/terminal/ws` |
+| Desktop stream | `POST /v1/sandboxes/{id}/screen/ticket`, then `/v1/sandboxes/{id}/screen/ws` |
+| Listing your sandboxes | `GET /v1/sandboxes` |
+
+`dev` and `desktop` require a `project`; `exec` does not.
+
+## The call
+
+E2B:
+
+```python
+from e2b import Sandbox   # E2B_API_KEY in the environment
+
+with Sandbox.create(timeout=60) as sandbox:
+    sandbox.files.write("/home/user/main.py", b"print(1 + 1)")
+    result = sandbox.commands.run("python /home/user/main.py")
+    print(result.stdout)
+```
+
+Hanzo:
+
+```bash
+# 1. Lease. The answer carries id, class, runtime, status and workdir.
+SB=$(curl -sS -X POST https://api.hanzo.ai/v1/sandboxes/lease \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"class":"exec","ttlSec":60}' | jq -r .id)
+
+# 2. Write. `data` is base64.
+curl -sS -X POST https://api.hanzo.ai/v1/sandboxes/write \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d "{\"id\":\"$SB\",\"path\":\"main.py\",\"data\":\"$(printf 'print(1 + 1)' | base64 -w0)\"}"
+
+# 3. Run. Answers exitCode, stdout, stderr.
+curl -sS -X POST https://api.hanzo.ai/v1/sandboxes/run \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d "{\"id\":\"$SB\",\"command\":\"python main.py\"}"
+
+# 4. Release it.
+curl -sS -X POST https://api.hanzo.ai/v1/sandboxes/end \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d "{\"id\":\"$SB\"}"
+```
+
+If all you want is one snippet, skip the lease entirely:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/exec \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"lang":"python","code":"print(1 + 1)"}'
+```
+
+A non-zero exit is a 200 carrying a failed program. "The tests failed" and "the
+sandbox is broken" are different facts and they get different status codes.
+
+Pass a `session` name to `run` and the command's output is appended to that
+session's live log as it is produced, so a long agentic run can be watched
+rather than waited on.
+
+## What does not carry
+
+**No snapshots and no forking.** E2B pauses a sandbox with its full state and
+boots new ones from that state. Leasing the same `id` again resumes a lease that
+is still running, which is reattachment, not restoration. When a lease ends,
+the sandbox is gone; `purge` on the end call decides whether the project volume
+goes with it.
+
+**No template build.** E2B builds a template from your Dockerfile and caches it.
+Here `image` on the lease overrides the class default, so you bring a container
+image you built elsewhere. There is no template registry to push to.
+
+**No environment variables on the lease.** The lease body is `class`, `id`,
+`project`, `runtime` and `ttlSec` — nothing else. Set variables in the command
+you run.
+
+**No lifecycle events, metrics or OTel export.** E2B emits sandbox lifecycle
+webhooks and per-sandbox metrics. `GET /v1/sandboxes` answers from the org's own
+store rather than the cluster, so a sandbox whose pod has died still appears with
+the status it was last known to have — deliberate, because a lease you are being
+charged for should not vanish from the list.
+
+**No SSH and no git methods.** The terminal is a WebSocket behind a ticket. Git
+work is a command you run, like any other.
