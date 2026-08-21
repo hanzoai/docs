@@ -177,6 +177,34 @@ export const isInternal = (op: Operation): boolean =>
   op.product === INTERNAL_PRODUCT || INTERNAL_ROUTES.has(`${op.method} ${op.path}`);
 
 /**
+ * WHERE AN OPERATION'S PAGE LIVES.
+ *
+ * The address is the identity: an operationId reads `<verb>_<product>_<rest>`,
+ * and the page already sits under the product, so the product infix is dropped
+ * — `get_ads_campaigns_by_id` under `ads` is `get-campaigns-by-id`. Measured on
+ * the whole document: 2,344 operations, zero collisions, because operationIds
+ * are unique and removing one constant infix inside one product cannot merge
+ * two of them.
+ *
+ * The alternative — keeping the id whole — spells the product twice in every
+ * URL (`/docs/openapi/ads/get-ads-campaigns-by-id`). A reader types the shorter
+ * one, and a search engine reads the repetition as keyword padding.
+ */
+export const opSlug = (op: Operation): string => {
+  const parts = op.id.split('_');
+  const at = parts.indexOf(op.product);
+  const kept = at > 0 ? [parts[0], ...parts.slice(at + 1)] : parts;
+  return kept
+    .join('-')
+    .replace(/[^a-zA-Z0-9-]/g, '')
+    .replace(/-{2,}/g, '-')
+    .toLowerCase();
+};
+
+/** The operation's own page, under its product. */
+export const opHref = (op: Operation): string => `/docs/openapi/${op.product}/${opSlug(op)}`;
+
+/**
  * The key a server presents: the one class that is NOT publishable.
  *
  * Every generated page that shows a curl or an env var shows this one, and each
@@ -305,9 +333,56 @@ export function keyTypes(raw: any): KeyType[] {
   return found.sort((a, b) => Number(a.publishable) - Number(b.publishable));
 }
 
-/** `agents` -> `Agents`; `Roles & Permissions` and `MFA` pass through. */
+/**
+ * HOW A PRODUCT'S NAME IS WRITTEN.
+ *
+ * Capitalising the first letter is right for a word (`agents` -> `Agents`) and
+ * wrong for an initialism: it published `Kms`, `Iam`, `Ai`, `Mq` and `O11y` as
+ * the titles of the five products most often searched for by their initials.
+ * Whether a name is a word or an initialism is not a property of its letters,
+ * so it cannot be derived — it has to be stated.
+ *
+ * Its real home is the document: an OpenAPI tag may carry `x-displayName`, and
+ * none of hanzo.yaml's 182 tags does. Until cloud writes them there, this is
+ * the one place that knows, and every generator reads it through `Product.title`
+ * rather than spelling a name of its own.
+ */
+const WRITTEN: Record<string, string> = {
+  ai: 'AI',
+  api: 'API',
+  cli: 'CLI',
+  crm: 'CRM',
+  csrf: 'CSRF',
+  dns: 'DNS',
+  gpus: 'GPUs',
+  iam: 'IAM',
+  k8s: 'K8s',
+  kb: 'KB',
+  kms: 'KMS',
+  kv: 'KV',
+  llm: 'LLM',
+  mcp: 'MCP',
+  ml: 'ML',
+  mpc: 'MPC',
+  mq: 'MQ',
+  o11y: 'O11y',
+  rag: 'RAG',
+  rpc: 'RPC',
+  s3: 'S3',
+  sbom: 'SBOM',
+  sdk: 'SDK',
+  seo: 'SEO',
+  seso: 'SESO',
+  sql: 'SQL',
+  ssh: 'SSH',
+  x402: 'x402',
+  zt: 'ZT',
+};
+
+/** `agents` -> `Agents`; `kms` -> `KMS`; `Roles & Permissions` passes through. */
 const titleCase = (name: string): string =>
-  /^[a-z]/.test(name) ? name[0].toUpperCase() + name.slice(1) : name;
+  WRITTEN[name.toLowerCase()] ??
+  (/^[a-z]/.test(name) ? name[0].toUpperCase() + name.slice(1) : name);
 
 const firstSentence = (s: string): string => {
   const t = String(s ?? '').replace(/\s+/g, ' ').trim();

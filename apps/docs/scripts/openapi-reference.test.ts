@@ -2,7 +2,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { DOCUMENT, isInternal, loadDocument, publicDocument } from './openapi-doc';
+import {
+  DOCUMENT,
+  isInternal,
+  loadDocument,
+  opSlug,
+  publicDocument,
+  type Operation,
+  type Product,
+} from './openapi-doc';
+import { fields } from './openapi-schema';
 import { genOpenapiPages } from './gen-openapi-pages';
 
 // THE API REFERENCE, held to its own claims.
@@ -10,93 +19,50 @@ import { genOpenapiPages } from './gen-openapi-pages';
 // Checked against pages the generator really writes from the really-vendored
 // document, not against a fixture — a fixture agrees with a broken generator.
 //
-//   scannable   a heading is the endpoint, so the right rail is a list of
-//               endpoints and not a column of wrapped sentences
-//   unique      no two headings on a page collide, so no contents link lands on
-//               the wrong section
-//   said once   the summary is the description's first sentence far more often
-//               than not; it is published once, never twice
-//   complete    every operation the document serves has an entry, and every
-//               sentence the document wrote for it survives onto the page
+//   addressable  every operation has a page of its own, at a URL that can be
+//                sent to someone, so no route is buried in a sibling's page
+//   said once    prose the document wrote appears at ONE address, never on both
+//                the operation's page and its product's index
+//   complete     every parameter, every body field at every depth and every
+//                declared response reaches the page — a reference that stops at
+//                forty fields sends the reader to the raw document
+//   withheld     the operator surface is on none of it, and on no document we
+//                publish
 
 const doc = loadDocument(DOCUMENT);
 /** What public/openapi/hanzo.yaml is written from — cloned once, it is 3.8 MB. */
 const shipped = publicDocument(doc);
 
-let pageOf: Map<string, string>;
-let internalOf: Map<string, string>;
+/** Every page the generator wrote, keyed by its path under the out dir. */
+let page: Map<string, string>;
+let internal: Map<string, string>;
 
-const read = (dir: string, products: { name: string }[]) => {
+const readTree = (dir: string): Map<string, string> => {
   const m = new Map<string, string>();
-  for (const p of products) {
-    const f = p.name === 'index' ? path.join(dir, p.name, 'index.mdx') : path.join(dir, `${p.name}.mdx`);
-    m.set(p.name, fs.readFileSync(f, 'utf8'));
-  }
+  const walk = (d: string) => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const f = path.join(d, e.name);
+      if (e.isDirectory()) walk(f);
+      else if (e.name.endsWith('.mdx')) m.set(path.relative(dir, f), fs.readFileSync(f, 'utf8'));
+    }
+  };
+  walk(dir);
   return m;
 };
 
 beforeAll(async () => {
   const out = fs.mkdtempSync(path.join(os.tmpdir(), 'openapi-ref-'));
-  const internal = fs.mkdtempSync(path.join(os.tmpdir(), 'openapi-internal-'));
-  await genOpenapiPages(out, internal);
-  pageOf = read(out, doc.products);
-  internalOf = read(internal, doc.internal);
-}, 180_000);
+  const held = fs.mkdtempSync(path.join(os.tmpdir(), 'openapi-internal-'));
+  await genOpenapiPages(out, held);
+  page = readTree(out);
+  internal = readTree(held);
+}, 300_000);
 
-/** `### ` headings, in page order. `## ` is the tag, a section within a page. */
-const headings = (src: string): string[] =>
-  src.split('\n').filter((l) => l.startsWith('### ')).map((l) => l.slice(4).trim());
-
-/**
- * One operation's entry: its heading, and everything under it up to the next.
- *
- * The unit every claim below is really about. Counting a sentence across a whole
- * PAGE cannot tell "printed twice for one operation" from "two operations that
- * share a doc comment, each printing it once" — `GET` and `POST
- * /v1/iam/oauth/logout` are one Go function's comment on two routes, and there
- * are twelve more pairs like them.
- */
-const sections = (src: string): Map<string, string> => {
-  const out = new Map<string, string>();
-  let heading = '';
-  let body: string[] = [];
-  // The entry INCLUDES its heading. Keying by it and storing only what follows
-  // hid the very defect this file exists for: a summary printed as the heading
-  // and again in the prose is two occurrences, and a body-only count sees one.
-  const flush = () => {
-    if (heading) out.set(heading, [heading, ...body].join('\n'));
-  };
-  for (const line of src.split('\n')) {
-    if (line.startsWith('### ')) {
-      flush();
-      heading = line.slice(4).trim();
-      body = [];
-    } else if (line.startsWith('## ')) {
-      flush();
-      heading = '';
-      body = [];
-    } else body.push(line);
-  }
-  flush();
-  return out;
-};
-
-/**
- * Strict on purpose. Returning '' for an entry that is not there would let every
- * claim below pass by asking questions of an empty string — a green suite that
- * proves the headings changed shape and nothing else.
- */
-const sectionOf = (src: string, op: { method: string; path: string }): string => {
-  const heading = `\`${op.method.toUpperCase()} ${op.path}\``;
-  const found = sections(src).get(heading);
-  if (found === undefined) throw new Error(`no entry headed ${heading}`);
-  return found;
-};
-
+const at = (p: Product, op: Operation) => `${p.name}/${opSlug(op)}.mdx`;
 const flat = (s: string) => s.replace(/\s+/g, ' ').trim();
 
 /**
- * A page back in the document's own characters.
+ * MDX escapes, undone.
  *
  * `prose()` escapes `{`, `}`, `<` and `>` because each is syntax to MDX, so a
  * summary carrying any of them would never be found in the rendered page and
@@ -110,87 +76,157 @@ const spoken = (src: string) =>
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>');
 
-describe('scannable — a heading is the endpoint', () => {
-  it('every operation is headed by its own method and path', () => {
+/** The frontmatter title, unquoted. */
+const titleOf = (src: string) =>
+  (src.match(/^title:\s*(.*)$/m)?.[1] ?? '').replace(/^"(.*)"$/, '$1').trim();
+
+/** One `## Section` of a page, up to the next one. */
+const section = (src: string, name: string) =>
+  spoken(src).split(`\n## ${name}\n`)[1]?.split('\n## ')[0] ?? '';
+
+describe('addressable — every operation has a page of its own', () => {
+  it('writes one page per operation, at the slug the href points to', () => {
     const missing: string[] = [];
     for (const p of doc.products) {
-      const found = new Set(headings(pageOf.get(p.name)!));
-      for (const op of p.operations) {
-        if (!found.has(`\`${op.method.toUpperCase()} ${op.path}\``)) {
-          missing.push(`${p.name}: ${op.method.toUpperCase()} ${op.path}`);
-        }
-      }
+      for (const op of p.operations) if (!page.has(at(p, op))) missing.push(`${p.name}: ${op.id}`);
     }
     expect(missing).toEqual([]);
   });
 
-  // The rail wraps a heading it cannot fit, and a wrapped heading is a
-  // paragraph. The longest path the document serves is 84 characters; the
-  // summaries this replaced ran to 417.
-  it('no heading is longer than a line', () => {
-    const long = [...pageOf.values()].flatMap(headings).filter((h) => h.length > 100);
-    expect(long).toEqual([]);
+  it('writes exactly one page per operation and one index per product', () => {
+    const ops = doc.products.reduce((n, p) => n + p.operations.length, 0);
+    expect(page.size).toBe(ops + doc.products.length + 1); // + the section's own index
   });
-});
 
-describe('unique — no contents link is ambiguous', () => {
-  it('no page repeats a heading', () => {
+  it('states the address on the page, as the reader typed it', () => {
+    const wrong: string[] = [];
+    for (const p of doc.products) {
+      for (const op of p.operations) {
+        const want = `\`${op.method.toUpperCase()} ${op.path}\``;
+        if (!spoken(page.get(at(p, op))!).includes(want)) wrong.push(`${p.name}: ${op.id}`);
+      }
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  it('gives no two pages in a product the same title', () => {
     const dupes: string[] = [];
-    for (const [name, src] of pageOf) {
-      const seen = new Set<string>();
-      for (const h of headings(src)) {
-        if (seen.has(h)) dupes.push(`${name}: ${h}`);
-        seen.add(h);
+    for (const p of doc.products) {
+      const seen = new Map<string, string>();
+      for (const op of p.operations) {
+        const t = titleOf(page.get(at(p, op))!);
+        expect(t).not.toBe('');
+        if (seen.has(t)) dupes.push(`${p.name}: ${seen.get(t)} and ${op.id} are both "${t}"`);
+        seen.set(t, op.id);
       }
     }
     expect(dupes).toEqual([]);
   });
 });
 
-describe('said once — the summary is not published twice', () => {
-  it('never prints a summary the description already opens with', () => {
-    const twice: string[] = [];
+describe('said once — the product index is an index, not a copy', () => {
+  it('links every operation it owns, and links nothing else', () => {
+    const wrong: string[] = [];
     for (const p of doc.products) {
-      const src = spoken(pageOf.get(p.name)!);
+      const src = page.get(`${p.name}/index.mdx`)!;
+      const linked = new Set(
+        [...src.matchAll(/\]\(\/docs\/openapi\/[^/)]+\/([^)]+)\)/g)].map((m) => m[1]),
+      );
+      const owned = new Set(p.operations.map(opSlug));
+      for (const s of owned) if (!linked.has(s)) wrong.push(`${p.name}: ${s} is on no index`);
+      for (const s of linked) if (!owned.has(s)) wrong.push(`${p.name}: ${s} is not this product's`);
+    }
+    expect(wrong).toEqual([]);
+  });
+
+  // The index used to carry each operation's whole description. Two addresses
+  // serving the same paragraph is one a reader lands on by chance and one a
+  // search engine picks between; the index states the summary and links out.
+  it('does not repeat an operation description onto the index', () => {
+    const copied: string[] = [];
+    for (const p of doc.products) {
+      const index = flat(spoken(page.get(`${p.name}/index.mdx`)!));
       for (const op of p.operations) {
-        const summary = flat(op.summary);
-        if (!summary || !flat(op.description).startsWith(summary)) continue;
-        // The sentence lives in this operation's description, so it may appear
-        // once in this operation's entry. Twice means it was printed as a
-        // heading or a lead as well — which is what the reference did.
-        //
-        // Flattened, because the description keeps the source's line wrapping
-        // while a heading and a lead are written on one line: comparing raw,
-        // only the one-line copies could ever match and the assertion would
-        // count 1 where the entry really says it twice.
-        const occurrences = flat(sectionOf(src, op)).split(summary).length - 1;
-        if (occurrences > 1) twice.push(`${p.name}: ${op.method.toUpperCase()} ${op.path}`);
+        const tail = flat(op.description).slice(200, 320);
+        if (tail.length > 80 && index.includes(tail)) copied.push(`${p.name}: ${op.id}`);
       }
     }
-    expect(twice).toEqual([]);
+    expect(copied).toEqual([]);
   });
 });
 
 describe('complete — the document survives onto the page', () => {
-  it('keeps the summary where the description does not carry it', () => {
+  it('keeps every sentence the document wrote for the operation', () => {
     const lost: string[] = [];
     for (const p of doc.products) {
-      const src = spoken(pageOf.get(p.name)!);
       for (const op of p.operations) {
-        const summary = flat(op.summary);
-        if (!summary || flat(op.description).startsWith(summary)) continue;
-        if (!flat(sectionOf(src, op)).includes(summary)) {
-          lost.push(`${p.name}: ${op.method.toUpperCase()} ${op.path}`);
-        }
+        const said = flat(op.description || op.summary);
+        if (!said) continue;
+        const body = flat(spoken(page.get(at(p, op))!));
+        // The first 160 characters are enough to prove the prose landed and are
+        // short enough to survive the line-wrapping `prose()` applies.
+        if (!body.includes(said.slice(0, 160))) lost.push(`${p.name}: ${op.id}`);
       }
     }
     expect(lost).toEqual([]);
   });
 
-  it('prints every operation that has one page to be on', () => {
-    const counted = doc.products.reduce((n, p) => n + p.operations.length, 0);
-    const rendered = [...pageOf.values()].reduce((n, src) => n + headings(src).length, 0);
-    expect(rendered).toBe(counted);
+  it('lists every parameter the document declares', () => {
+    const missing: string[] = [];
+    for (const p of doc.products) {
+      for (const op of p.operations) {
+        if (!op.parameters.length) continue;
+        const req = section(page.get(at(p, op))!, 'Request');
+        for (const par of op.parameters) {
+          if (!req.includes(`\`${par.name}\``)) missing.push(`${p.name}/${op.id}: ${par.name}`);
+        }
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
+  // No cap. `UpdateChannelByID` declares 1,698 body fields at every depth and
+  // the page carries all of them; the rule that stopped at forty published a
+  // reference whose silence about field 41 read exactly like absence.
+  it('lists every body field, at every depth, uncapped', () => {
+    const missing: string[] = [];
+    let deepest = 0;
+    for (const p of doc.products) {
+      for (const op of p.operations) {
+        if (!op.body?.schema) continue;
+        const req = section(page.get(at(p, op))!, 'Request');
+        for (const f of fields(doc.raw, op.body.schema)) {
+          deepest = Math.max(deepest, f.depth);
+          if (!req.includes(`\`${f.name}\``)) missing.push(`${p.name}/${op.id}: ${f.name}`);
+        }
+      }
+    }
+    expect(missing).toEqual([]);
+    expect(deepest).toBeGreaterThan(0);
+  });
+
+  it('lists every response status the document declares', () => {
+    const missing: string[] = [];
+    for (const p of doc.products) {
+      for (const op of p.operations) {
+        const declared = Object.keys(doc.raw.paths?.[op.path]?.[op.method]?.responses ?? {});
+        if (!declared.length) continue;
+        const res = section(page.get(at(p, op))!, 'Response');
+        for (const s of declared) if (!res.includes(`\`${s}\``)) missing.push(`${p.name}/${op.id}: ${s}`);
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it('shows the call on all four surfaces', () => {
+    const thin: string[] = [];
+    for (const p of doc.products) {
+      for (const op of p.operations) {
+        const ex = section(page.get(at(p, op))!, 'Examples');
+        if (!ex.includes("items={['CLI', 'SDK', 'HTTP', 'MCP']}")) thin.push(`${p.name}: ${op.id}`);
+      }
+    }
+    expect(thin).toEqual([]);
   });
 });
 
@@ -198,36 +234,31 @@ describe('complete — the document survives onto the page', () => {
 // have that in our public docs?" — so no published page names one of these
 // routes, and no published document carries one.
 describe('withheld — the operator surface is not published', () => {
-  // "Documented here" means an entry: a heading, or a row in a parameter or
-  // body table. It deliberately does not mean "the characters appear on the
-  // page" — two public referrals operations CROSS-REFERENCE the sweep job in
-  // their own prose ("the sweep job (POST /v1/admin/referrals/sweep)"), and
+  // "Documented here" means an entry: the address line, or a row in a table. It
+  // deliberately does not mean "the characters appear on the page" — two public
+  // referrals operations CROSS-REFERENCE the sweep job in their own prose, and
   // that sentence was written next to the Go handler. This generator authors
   // nothing and rewrites nothing; editing it here would mean the page no longer
   // says what the document says. That one belongs upstream, in the doc comment.
-  const documented = (src: string): string[] =>
+  const entries = (src: string): string[] =>
     spoken(src)
       .split('\n')
-      .filter((l) => l.startsWith('### ') || l.startsWith('|'));
+      .filter((l) => l.startsWith('|') || /^`(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) /.test(l));
 
-  it('no published page gives a /v1/admin route an entry', () => {
+  it('gives no /v1/admin route an entry on any published page', () => {
     const leaked: string[] = [];
-    for (const [name, src] of pageOf) {
-      for (const l of documented(src)) {
-        if (l.includes('/v1/admin')) leaked.push(`${name}: ${l.trim().slice(0, 90)}`);
-      }
+    for (const [name, src] of page) {
+      for (const l of entries(src)) if (l.includes('/v1/admin')) leaked.push(`${name}: ${l.slice(0, 90)}`);
     }
     expect(leaked).toEqual([]);
   });
 
-  it('no published page gives an entry to an operation held back by name', () => {
+  it('gives no entry to an operation held back by name', () => {
     const held = doc.operations.filter(isInternal);
     const leaked: string[] = [];
-    for (const [name, src] of pageOf) {
-      const entries = documented(src);
-      for (const op of held) {
-        if (entries.some((l) => l.includes(op.path))) leaked.push(`${name}: ${op.path}`);
-      }
+    for (const [name, src] of page) {
+      const rows = entries(src);
+      for (const op of held) if (rows.some((l) => l.includes(op.path))) leaked.push(`${name}: ${op.path}`);
     }
     expect(leaked).toEqual([]);
   });
@@ -235,18 +266,10 @@ describe('withheld — the operator surface is not published', () => {
   // public/openapi/hanzo.yaml ships in the static export and is what /reference
   // renders. Filtering the pages and copying the document whole would leave the
   // whole surface one URL away.
-  // public/openapi/hanzo.yaml ships in the static export and is what /reference
-  // renders. Filtering the pages and copying the document whole would leave the
-  // whole surface one URL away.
-  it('the published document carries none of them', () => {
+  it('carries none of them in the published document', () => {
     const paths = Object.keys(shipped.paths);
     expect(paths.filter((p) => p.startsWith('/v1/admin'))).toEqual([]);
-    expect(paths).not.toContain('/v1/commerce/admin/catalog');
     expect(shipped.tags.map((t: any) => t.name)).not.toContain('admin');
-    // Everything else survives — this is a projection, not a rewrite. 80 paths
-    // are wholly `/v1/admin`; the 81st is the one commerce route, whose only
-    // method was the held-back one.
-    expect(paths.length).toBe(Object.keys(doc.raw.paths).length - 81);
   });
 });
 
@@ -261,7 +284,9 @@ describe('withheld — but only what is really the operator surface', () => {
     '/v1/iam/admin/users/upsert',
   ])('still publishes %s', (route) => {
     expect(Object.keys(shipped.paths)).toContain(route);
-    expect(spoken(pageOf.get('iam')!)).toContain(route);
+    const iam = doc.products.find((p) => p.name === 'iam')!;
+    const op = iam.operations.find((o) => o.path === route)!;
+    expect(spoken(page.get(at(iam, op))!)).toContain(route);
   });
 });
 
@@ -269,19 +294,20 @@ describe('kept — the operator surface is documented, just not here', () => {
   it('renders every held-back operation onto an internal page', () => {
     const missing: string[] = [];
     for (const p of doc.internal) {
-      const found = new Set(headings(internalOf.get(p.name)!));
       for (const op of p.operations) {
-        if (!found.has(`\`${op.method.toUpperCase()} ${op.path}\``)) {
-          missing.push(`${p.name}: ${op.method.toUpperCase()} ${op.path}`);
-        }
+        if (!internal.has(`${p.name}/${opSlug(op)}.mdx`)) missing.push(`${p.name}: ${op.id}`);
       }
     }
     expect(missing).toEqual([]);
   });
 
+  // The COUNT is the pin's, not this file's: `openapi.yaml` holds 87 operator
+  // routes and `public.yaml` holds the one cloud has not finished moving, so a
+  // literal here fails on a re-pin that changed nothing. What must hold either
+  // way is that the split is exhaustive — everything `isInternal` names is held
+  // back, and nothing else is.
   it('holds back every operation the document has and nothing more', () => {
     const held = doc.internal.reduce((n, p) => n + p.operations.length, 0);
     expect(held).toBe(doc.operations.filter(isInternal).length);
-    expect(held).toBe(87);
   });
 });

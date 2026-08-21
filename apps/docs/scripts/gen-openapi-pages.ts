@@ -6,12 +6,15 @@ import { stringify as stringifyYaml } from 'yaml';
 import {
   DOCUMENT,
   loadDocument,
+  opHref,
+  opSlug,
   publicDocument,
   secretKey,
   type Document,
   type Operation,
   type Product,
 } from './openapi-doc';
+import { fields, type Field } from './openapi-schema';
 import { door, firstCall, runnable, surfaces, type Door } from './openapi-surfaces';
 import { load as loadDoor } from './sync-mcp-tools';
 import { loadCliTable, type CliCommand } from './sync-cli-commands';
@@ -93,42 +96,130 @@ const typeOf = (schema: any): string => {
   return t || (schema.properties ? 'object' : '');
 };
 
-function bodyTable(op: Operation): string[] {
-  const s = op.body?.schema;
-  const props = s?.properties;
-  if (!props || !Object.keys(props).length) return [];
-  const required = new Set<string>(Array.isArray(s.required) ? s.required : []);
-  const names = Object.keys(props);
-  const rows = names
-    .slice(0, 40)
-    .map(
-      (name) =>
-        `| \`${code(name)}\` | ${text(typeOf(props[name]))} | ${
-          required.has(name) ? 'yes' : '—'
-        } | ${text(firstSentence(props[name]?.description ?? '', 120))} |`,
-    );
-  return [
-    '',
-    `**Request body** — \`${op.body!.contentType}\`${op.body!.required ? ' (required)' : ''}`,
-    '',
-    '| Field | Type | Required | Description |',
-    '|---|---|---|---|',
-    ...rows,
-    ...(names.length > 40 ? [`| … | | | ${names.length - 40} more fields in the schema |`] : []),
-  ];
-}
-
-function paramTable(op: Operation): string[] {
-  if (!op.parameters.length) return [];
-  const rows = op.parameters
-    .slice(0, 30)
+/**
+ * WHAT A CALLER SENDS, in one table.
+ *
+ * A path parameter, a query parameter, a header and a body field are the same
+ * thing to a reader — a value they must supply — differing only in where it
+ * rides on the wire, which is one column. Two tables asked the reader to hold
+ * that split in their head and to check both before concluding a field does not
+ * exist; one table, sorted by where it rides, answers in one look.
+ *
+ * Body fields are enumerated at every depth by openapi-schema, so a nested one
+ * is a row named `messages[].role` rather than a row named `messages` that
+ * hides four more. Nothing is capped: a reference that stops at forty fields
+ * sends the reader to the raw document, which is the page's whole reason to
+ * exist. The count is printed above the table, so the size is known before the
+ * scroll.
+ */
+function requestRows(op: Operation, raw: any): string[] {
+  const order: Record<string, number> = { path: 0, query: 1, header: 2, cookie: 3 };
+  const rows = [...op.parameters]
+    .sort((a, b) => (order[a.in] ?? 9) - (order[b.in] ?? 9))
     .map(
       (p) =>
         `| \`${code(p.name)}\` | ${p.in} | ${text(typeOf(p.schema))} | ${
           p.required ? 'yes' : '—'
-        } | ${text(firstSentence(p.description, 120))} |`,
+        } | ${text(firstSentence(p.description, 160))} |`,
     );
-  return ['', '| Parameter | In | Type | Required | Description |', '|---|---|---|---|---|', ...rows];
+
+  if (op.body?.schema) {
+    for (const f of fields(raw, op.body.schema)) rows.push(fieldRow(f, 'body'));
+  }
+  return rows;
+}
+
+/** One field of an enumerated schema as a table row. */
+function fieldRow(f: Field, where: string): string {
+  const notes = [
+    f.default ? `Default \`${code(f.default)}\`.` : '',
+    f.enum.length ? `One of ${f.enum.map((e) => `\`${code(e)}\``).join(', ')}.` : '',
+    text(firstSentence(f.description, 160)),
+  ]
+    .filter(Boolean)
+    .join(' ');
+  return `| \`${code(f.name)}\` | ${where} | ${text(f.type)} | ${f.required ? 'yes' : '—'} | ${notes} |`;
+}
+
+function request(op: Operation, raw: any): string[] {
+  const rows = requestRows(op, raw);
+  if (!rows.length) {
+    // A GET with nothing declared genuinely takes nothing. A POST with nothing
+    // declared is a hole in the DOCUMENT — the handler reads a body the
+    // emission does not describe — and saying "the credential is the whole
+    // request" there would teach a call that fails. State which of the two it
+    // is; the reader can then reach for `describe` instead of guessing.
+    const reads = op.method === 'get' || op.method === 'head' || op.method === 'delete';
+    return [
+      '## Request',
+      '',
+      reads
+        ? `\`${op.method.toUpperCase()} ${code(op.path)}\` takes no parameters and no body — the credential is the whole request.`
+        : `The document declares no body for \`${op.method.toUpperCase()} ${code(op.path)}\`. The handler is typed in cloud but its shape is not yet emitted, so the fields are not listed here — ask the MCP door's \`describe\` for \`${code(op.id)}\`, which answers from the running route.`,
+      '',
+    ];
+  }
+  return [
+    '## Request',
+    '',
+    `${rows.length} field${rows.length === 1 ? '' : 's'}${
+      op.body ? `, body \`${op.body.contentType}\`${op.body.required ? ' (required)' : ''}` : ''
+    }.`,
+    '',
+    '| Field | In | Type | Required | Description |',
+    '|---|---|---|---|---|',
+    ...rows,
+    '',
+  ];
+}
+
+/**
+ * EVERY DECLARED RESPONSE, success and failure in one list.
+ *
+ * A status code says which kind a response is; splitting them into a "response"
+ * section and an "errors" section states that twice and leaves the errors
+ * section empty on the 1,539 of 1,562 operations that declare no failure body.
+ * A section that is almost always a referral to another page is not a section.
+ */
+function response(op: Operation, raw: any, doc: Document): string[] {
+  const declared: Array<[string, any]> = Object.entries(
+    (doc.raw.paths?.[op.path]?.[op.method]?.responses ?? {}) as Record<string, any>,
+  ).sort(([a], [b]) => a.localeCompare(b));
+
+  const L: string[] = ['## Response', ''];
+  if (!declared.length) {
+    L.push(
+      'The document declares no response body for this operation. It answers `200` on success and the platform error shape on failure — see [Errors](/docs/errors).',
+    );
+    L.push('');
+    return L;
+  }
+
+  L.push('| Status | Body | Meaning |');
+  L.push('|---|---|---|');
+  for (const [status, r] of declared) {
+    const schema = Object.values((r?.content ?? {}) as Record<string, any>)[0]?.schema;
+    L.push(
+      `| \`${code(status)}\` | ${schema ? text(typeOf(schema)) : '—'} | ${text(
+        firstSentence(r?.description ?? '', 160),
+      )} |`,
+    );
+  }
+  L.push('');
+
+  const ok = op.success?.schema ? fields(raw, op.success.schema) : [];
+  if (ok.length) {
+    L.push(`\`${code(op.success!.status)}\` body — ${ok.length} field${ok.length === 1 ? '' : 's'}.`);
+    L.push('');
+    L.push('| Field | In | Type | Always | Description |');
+    L.push('|---|---|---|---|---|');
+    for (const f of ok) L.push(fieldRow(f, 'body'));
+    L.push('');
+  }
+
+  L.push('Failure carries the platform error shape — see [Errors](/docs/errors).');
+  L.push('');
+  return L;
 }
 
 // ------------------------------------------------------------------- pages
@@ -207,6 +298,100 @@ function returns(op: Operation): string {
   return `Answers \`${s.status}\`${named ? ` with \`${text(named)}\`` : ''}${said ? ` — ${text(said)}` : ''}.`;
 }
 
+/**
+ * THE PAGE TITLE A READER SEARCHES FOR.
+ *
+ * `METHOD /path` is what a reader arrives holding and is unique on every page,
+ * so it is the heading and the table-of-contents entry. It is a poor <title>:
+ * nobody searches for a slash. The summary — the first sentence of the owning
+ * Go doc comment — carries the words they actually type, so that is the title,
+ * with the address underneath in the one place it belongs. Where two operations
+ * in a product open with the same sentence, the address disambiguates, because
+ * two pages with one title is a page a search engine picks between at random.
+ */
+function opTitle(op: Operation, taken: Set<string>): string {
+  const address = `${op.method.toUpperCase()} ${op.path}`;
+  const summary = firstSentence(op.summary.replace(/\s+/g, ' ').trim(), 80);
+  if (!summary) return address;
+  const key = summary.toLowerCase();
+  return taken.has(key) ? `${summary} — ${address}` : summary;
+}
+
+/**
+ * ONE OPERATION, ITS OWN PAGE.
+ *
+ * The product page carried every operation, so `ai` ran to 2,030 lines and the
+ * one route a reader came for was somewhere inside it — unlinkable, and
+ * competing with 207 siblings for the same URL. A page per operation gives each
+ * one an address to send someone, a title to find it by, and room to state the
+ * whole request and the whole response rather than the first forty fields.
+ *
+ * Four parts, in the order a caller needs them: what it is and what it costs to
+ * call, what it does, what you send, what comes back, and then the same call on
+ * all four surfaces. Nothing here is authored — every sentence is the document's.
+ */
+function renderOperation(
+  op: Operation,
+  p: Product,
+  doc: Document,
+  table: Map<string, CliCommand>,
+  d: Door,
+  taken: Set<string>,
+): string {
+  const L: string[] = [];
+  const address = `${op.method.toUpperCase()} ${op.path}`;
+
+  L.push('---');
+  L.push(`title: ${yamlString(opTitle(op, taken))}`);
+  L.push(
+    `description: ${yamlString(
+      firstSentence(op.description || op.summary, 155) || `${address} on ${doc.server}.`,
+    )}`,
+  );
+  L.push('---');
+  L.push('');
+  L.push("import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs'");
+  L.push('');
+  L.push(`\`${code(address)}\``);
+  L.push('');
+  if (op.deprecated) {
+    L.push('**Deprecated.** It still answers; a caller writing new code should not reach for it.');
+    L.push('');
+  }
+  L.push(`> [${text(p.title)} →](/docs/openapi/${p.name}) · [All API references →](/docs/openapi) · [Six flows, four surfaces →](/docs/start)`);
+  L.push('');
+  L.push('| | |');
+  L.push('|---|---|');
+  L.push(`| **Address** | \`${code(doc.server + op.path)}\` |`);
+  L.push(`| **Method** | \`${op.method.toUpperCase()}\` |`);
+  L.push(`| **Operation** | \`${code(op.id)}\` |`);
+  L.push(`| **Auth** | \`Authorization: Bearer $HANZO_API_KEY\` |`);
+  L.push('');
+
+  // The title IS the summary, so the body starts at the description. Printing
+  // the summary again under a heading that already says it is the same sentence
+  // twice — which is what `leadProse` exists to avoid on the product page,
+  // where the heading is the address instead.
+  const lead = op.description.trim() || op.summary.trim();
+  if (lead) {
+    L.push(prose(lead));
+    L.push('');
+  }
+
+  L.push(...request(op, doc.raw));
+  L.push(...response(op, doc.raw, doc));
+
+  L.push('## Examples');
+  L.push('');
+  L.push(...surfaces(op, doc, table, d));
+  L.push('');
+  L.push('---');
+  L.push('');
+  L.push(`[${text(p.title)} API](/docs/openapi/${p.name}) · [All Hanzo APIs](/docs/openapi) · [Interactive reference](/reference)`);
+  L.push('');
+  return L.join('\n');
+}
+
 function renderProduct(
   p: Product,
   doc: Document,
@@ -261,37 +446,33 @@ function renderProduct(
     sections.get(op.tag)!.push(op);
   }
 
+  // THE PRODUCT PAGE IS AN INDEX, NOT A COPY.
+  //
+  // It used to carry every operation's prose and tables, which made `ai` 2,030
+  // lines and gave 208 routes one shared URL. Each operation now has its own
+  // page, so printing the prose again here would publish the same sentences at
+  // two addresses — the reader picks the wrong one and a search engine picks
+  // for them. What belongs here is the part a page of its own cannot give: the
+  // whole product at a glance, in the order the document declares it.
+  // A product whose operations all carry one tag — its own name — needs no
+  // section heading: `## kms` above the only table on a page titled KMS says
+  // nothing. Where the document does group a product into several tags, those
+  // groupings are real and are printed as written.
+  const grouped = sections.size > 1;
   for (const [tag, ops] of [...sections.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
-    L.push(`## ${text(tag)}`);
+    L.push(`## ${grouped ? text(tag) : 'Endpoints'}`);
     L.push('');
+    L.push('| Endpoint | What it does |');
+    L.push('|---|---|');
     for (const op of ops) {
-      // The heading IS the endpoint.
-      //
-      // It was the summary, which is the first sentence of a Go doc comment —
-      // a sentence, not a label: 417 characters at its longest, and colliding
-      // 63 times across the document because neighbouring operations open the
-      // same way. The right rail is built from these headings, so the contents
-      // rendered as a column of wrapped paragraphs whose duplicate anchors
-      // landed on the wrong section. `METHOD /path` is the string a reader
-      // arrives holding, is unique on every page (measured: zero collisions),
-      // and is short enough to scan down — 41 characters at p90. It costs no
-      // room either: the same string was already printed on its own line
-      // directly underneath, and that is the line this replaces.
-      L.push(`### \`${op.method.toUpperCase()} ${code(op.path)}\``);
-      L.push('');
-      if (op.deprecated) {
-        L.push('**Deprecated.**');
-        L.push('');
-      }
-      const lead = leadProse(op);
-      if (lead) {
-        L.push(prose(lead));
-        L.push('');
-      }
-      L.push(...paramTable(op));
-      L.push(...bodyTable(op));
-      L.push('');
+      const said = firstSentence(op.summary || op.description, 150);
+      L.push(
+        `| [\`${op.method.toUpperCase()} ${code(op.path)}\`](${opHref(op)}) | ${
+          op.deprecated ? '**Deprecated.** ' : ''
+        }${text(said)} |`,
+      );
     }
+    L.push('');
   }
 
   L.push('---');
@@ -387,23 +568,55 @@ function writePages(
   // a different URL but the same filename, and writing it flat silently
   // destroyed one or the other. A folder index resolves it: `index/index.mdx`
   // serves /docs/openapi/index and leaves /docs/openapi alone.
-  const pageFile = (slug: string) =>
-    slug === 'index' ? path.join(dir, slug, 'index.mdx') : path.join(dir, `${slug}.mdx`);
-
+  // Every product is a FOLDER — `<product>/index.mdx` beside one page per
+  // operation. It used to be a flat `<product>.mdx`, with `index` special-cased
+  // because Hanzo Index wants /docs/openapi/index and that is the same filename
+  // as this folder's own page. One shape for all of them retires the special
+  // case: the folder index serves the product, and no product can collide with
+  // the section.
+  let ops = 0;
   for (const p of products) {
-    const f = pageFile(p.name);
-    fs.mkdirSync(path.dirname(f), { recursive: true });
-    fs.writeFileSync(f, renderProduct(p, doc, table, d));
+    const folder = path.join(dir, p.name);
+    fs.mkdirSync(folder, { recursive: true });
+    fs.writeFileSync(path.join(folder, 'index.mdx'), renderProduct(p, doc, table, d));
+
+    // Summaries that repeat inside one product get the address appended, so no
+    // two pages here carry the same title.
+    const seen = new Set<string>();
+    const dup = new Set<string>();
+    for (const op of p.operations) {
+      const k = firstSentence(op.summary.replace(/\s+/g, ' ').trim(), 80).toLowerCase();
+      if (k && seen.has(k)) dup.add(k);
+      if (k) seen.add(k);
+    }
+
+    const slugs = new Set<string>();
+    for (const op of p.operations) {
+      const slug = opSlug(op);
+      if (slugs.has(slug)) {
+        throw new Error(
+          `[openapi] ${p.name}: "${op.id}" and an earlier operation both address "${slug}" — the slug rule in openapi-doc.ts must separate them`,
+        );
+      }
+      slugs.add(slug);
+      fs.writeFileSync(
+        path.join(folder, `${slug}.mdx`),
+        renderOperation(op, p, doc, table, d, dup),
+      );
+      ops++;
+    }
+
+    // The operations are routed but NOT in the sidebar: 2,344 leaves under 179
+    // products is a tree nobody navigates. The product page's endpoint table is
+    // their index, and it is the better one — it states what each call does.
+    fs.writeFileSync(
+      path.join(folder, 'meta.json'),
+      JSON.stringify({ title: p.title, description: firstSentence(p.description, 160), pages: ['index'] }, null, 2) +
+        '\n',
+    );
   }
   fs.writeFileSync(path.join(dir, 'index.mdx'), renderIndex(products, doc));
 
-  // Every product got its own page, or the build is lying about its coverage.
-  const written = new Set(products.map((p) => pageFile(p.name)));
-  if (written.size !== products.length) {
-    throw new Error(
-      `[openapi] ${products.length} products collapsed onto ${written.size} files — two slugs share a path`,
-    );
-  }
   fs.writeFileSync(
     path.join(dir, 'meta.json'),
     JSON.stringify(
@@ -417,6 +630,7 @@ function writePages(
       2,
     ) + '\n',
   );
+  console.log(`[openapi] ${products.length} products, ${ops} operation pages -> ${path.relative(APP_ROOT, dir)}`);
 }
 
 // -------------------------------------------------------------------- main
