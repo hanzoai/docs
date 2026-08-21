@@ -2,6 +2,7 @@
 
 import type { ComponentProps } from 'react';
 import { useDocsLayout } from '@hanzo/docs-base-ui/layouts/docs';
+import { useSidebar } from '@hanzo/docs-base-ui/components/sidebar/base';
 import { MeetHanzo } from '@/components/meet-hanzo';
 import { cn } from '@/lib/cn';
 import { DocsNavLinks } from '@/components/docs-nav-links';
@@ -32,6 +33,7 @@ import { AuthButtons } from '@/components/auth-buttons';
 // slots, so they keep their behaviour.
 export function DocsNavbar(props: ComponentProps<'header'>) {
   const { isNavTransparent, slots } = useDocsLayout();
+  const { collapsed } = useSidebar();
 
   return (
     <header
@@ -39,7 +41,16 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
       data-transparent={isNavTransparent}
       {...props}
       className={cn(
-        '[grid-area:header] sticky top-(--fd-docs-row-1) z-30 flex items-center gap-3 ps-4 pe-2.5',
+        '[grid-area:header] sticky top-(--fd-docs-row-1) z-30 flex items-center gap-3 pe-2.5',
+        // A COLLAPSED RAIL TAKES NO COLUMN, SO THIS BAR STARTS AT THE VIEWPORT EDGE.
+        // container.tsx sets `--fd-sidebar-col: 0px` when collapsed, and the rail's
+        // floating control is `fixed inset-s-4` at 66px wide — x∈[16,82] — at z-40,
+        // above this bar's z-30. With a flat ps-4 the first nav item begins at x=16,
+        // i.e. underneath it, which is what buried the leading link on the landing
+        // page (the one route that opens collapsed). Reserve the control's footprint:
+        // 88px clears 82 with a gap. The rail only exists in `full` mode, so below md
+        // there is no control to clear and the padding stays 4.
+        collapsed ? 'ps-4 md:ps-22' : 'ps-4',
         'border-b transition-colors backdrop-blur-sm h-(--fd-header-height)',
         // The height variable is only declared under max-md upstream, because the bar
         // is not expected on desktop. Without it the grid row collapses to zero and
@@ -55,7 +66,17 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
           into a drawer and this is the only place a wordmark can live, so it stays
           there rather than being dropped outright. */}
       {slots.navTitle && (
-        <slots.navTitle className="inline-flex items-center gap-2.5 font-semibold md:hidden" />
+        <slots.navTitle
+          className={cn(
+            'inline-flex items-center gap-2.5 font-semibold',
+            // Hidden on desktop only while the SIDEBAR is showing it — which it is
+            // not when collapsed, and collapsed is exactly the landing page. Left
+            // unconditional the front door rendered no wordmark at all: the rail
+            // that owns it was off-screen and this copy was suppressed for a
+            // neighbour that was not drawing.
+            !collapsed && 'md:hidden',
+          )}
+        />
       )}
 
       <div className="flex flex-1 items-center">
