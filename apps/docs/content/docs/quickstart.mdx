@@ -17,7 +17,14 @@ reachable.
 
 ## 1. Install
 
-<Tabs items={['Script', 'Homebrew', 'npm', 'From source']}>
+<Tabs items={['npm', 'Script', 'Homebrew', 'From source']}>
+<Tab value="npm">
+```bash
+npm i -g hanzo
+```
+
+`hanzo` is the CLI and the client in one install.
+</Tab>
 <Tab value="Script">
 ```bash
 curl -fsSL https://hanzo.sh | sh
@@ -29,14 +36,6 @@ Installs into `~/.local/bin`. `https://hanzo.sh/cli` installs the CLI alone.
 ```bash
 brew install hanzoai/tap/hanzo
 ```
-</Tab>
-<Tab value="npm">
-```bash
-npm i -g @hanzo/cli
-```
-
-The package is `@hanzo/cli`. Unscoped `hanzo` on npm and PyPI is somebody
-else's project.
 </Tab>
 <Tab value="From source">
 ```bash
@@ -86,12 +85,70 @@ hanzo models list
 ```
 </Tab>
 <Tab value="SDK">
-```ts
-import { Configuration, AIApi } from 'hanzoai';
-
-const api = new AIApi(new Configuration({ accessToken: process.env.HANZO_API_KEY }));
-const { data } = await api.getModels();
+<Tabs items={['TypeScript', 'Python', 'Go', 'Rust', 'Swift', 'Kotlin']}>
+<Tab value="TypeScript">
+```bash
+npm i hanzo
 ```
+
+```ts
+import { Hanzo } from 'hanzo'
+
+const hanzo = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+const models = await hanzo.models.list()
+```
+</Tab>
+<Tab value="Python">
+```bash
+pip install hanzo
+```
+
+```python
+from hanzo import Hanzo
+
+hanzo = Hanzo(api_key=os.environ["HANZO_API_KEY"])
+models = hanzo.models.list()
+```
+</Tab>
+<Tab value="Go">
+```bash
+go get github.com/hanzoai/go-sdk
+```
+
+```go
+client := hanzo.NewClient(hanzo.WithAPIKey(os.Getenv("HANZO_API_KEY")))
+models, err := client.Models.List(ctx)
+```
+</Tab>
+<Tab value="Rust">
+```bash
+cargo add hanzo
+```
+
+```rust
+let hanzo = hanzo::Client::from_env()?;
+let models = hanzo.models().list().await?;
+```
+</Tab>
+<Tab value="Swift">
+```swift
+// Package.swift: .package(url: "https://github.com/hanzoai/swift-sdk", from: "1.0.0")
+let hanzo = Hanzo(apiKey: ProcessInfo.processInfo.environment["HANZO_API_KEY"]!)
+let models = try await hanzo.models.list()
+```
+</Tab>
+<Tab value="Kotlin">
+```kotlin
+// build.gradle.kts: implementation("ai.hanzo:sdk:latest.release")
+val hanzo = Hanzo(apiKey = System.getenv("HANZO_API_KEY"))
+val models = hanzo.models.list()
+```
+</Tab>
+</Tabs>
+
+Every one of these is generated from the same description of the API, so the
+method names line up across languages. [C++](/docs/sdks/cpp) is the one still
+landing.
 </Tab>
 <Tab value="HTTP">
 ```bash
@@ -111,6 +168,17 @@ One door, one tool per capability. `tools/call` names the capability and the
 operation; `describe` explains any operation's input.
 </Tab>
 </Tabs>
+
+Those are one API seen from four places, and the tabs above are the whole
+difference. Pick the one you will write in:
+
+- **[CLI](/docs/cli)** — every capability as a command group, one page each.
+- **[SDKs](/docs/sdks)** — Python, TypeScript, Go, Rust, C++, Swift and Kotlin,
+  generated from the same description the CLI and the tools are.
+- **[MCP](/docs/mcp)** — one door an agent connects to; [the tools](/docs/mcp-tools)
+  are listed one per capability.
+
+HTTP needs no page: it is `https://api.hanzo.ai` and the key you just exported.
 
 ## 4. Something that costs money
 

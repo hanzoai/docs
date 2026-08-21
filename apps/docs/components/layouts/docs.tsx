@@ -4,7 +4,6 @@ import { DocsNavbar } from '@/components/docs-navbar';
 import { baseOptions, logo } from '@/components/layouts/shared';
 import { source } from '@/lib/source';
 import { getSection } from '@/lib/source/navigation';
-import { ProjectSwitcher } from '@/components/projects/project-switcher';
 import { SidebarFilter } from '@/components/sidebar-filter';
 
 // The documentation chrome: navbar, page tree, sidebar filter.
@@ -65,12 +64,12 @@ export function Docs({
         // The tree shows 12 rows so it fits one screen; the filter is how a
         // reader reaches the ~1,600 pages it does not list. Titles and paths are
         // computed here, on the server, from the same source the tree comes from.
-        banner: (
-          <>
-            <ProjectSwitcher />
-            <SidebarFilter pages={filterPages} />
-          </>
-        ),
+        //
+        // The filter is the only thing here. A product switcher sat above it and
+        // answered the same question worse: it listed sections a reader could
+        // already see in the tree, and typing reaches any of them plus every page
+        // inside them.
+        banner: <SidebarFilter pages={filterPages} />,
         tabs: {
           transform(option, node) {
             const meta = source.getNodeMeta(node);
