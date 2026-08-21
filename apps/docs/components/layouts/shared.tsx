@@ -13,10 +13,33 @@ import { HanzoDocsIcon } from '@/app/layout.client';
 // plus a Markdown previewer. 200, and about the wrong product. The `hanzo`
 // binary is documented at the URL below, and hanzo.ai's nav now names the same
 // four surfaces pointing at these same pages.
+// Ordered the way a reader arrives: the whole thing, then the guided path
+// through it, then the four surfaces they will write against.
+//
+// Guides points at /docs/start — six journeys, each shown as CLI, SDK, HTTP and
+// MCP. "Start" is what the section is called on disk and not what anyone looks
+// for in a nav bar; the page is unchanged and the word is the one people use.
 export const linkItems: LinkItemType[] = [
   {
-    text: 'API',
+    // Exact, not nested: /docs is a prefix of every page here, so nesting would
+    // light this up beside whichever surface the reader is actually in.
+    text: 'Docs',
+    url: '/docs',
+    active: 'url',
+  },
+  {
+    text: 'Guides',
+    url: '/docs/start',
+    active: 'nested-url',
+  },
+  {
+    text: 'APIs',
     url: '/docs/openapi',
+    active: 'nested-url',
+  },
+  {
+    text: 'SDKs',
+    url: '/docs/sdks',
     active: 'nested-url',
   },
   {
@@ -27,11 +50,6 @@ export const linkItems: LinkItemType[] = [
   {
     text: 'MCP',
     url: '/docs/mcp',
-    active: 'nested-url',
-  },
-  {
-    text: 'SDKs',
-    url: '/docs/sdks',
     active: 'nested-url',
   },
 ];
