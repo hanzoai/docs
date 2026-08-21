@@ -70,7 +70,7 @@ const domains = [
     name: 'Commerce',
     desc: 'Turn usage into money — meter it, price it, bill it, reward it. Commerce, Billing, Marketplace, Referrals.',
     icon: ShoppingCart,
-    href: '/docs/commerce',
+    href: '/docs/openapi/commerce',
     tag: 'Commerce',
   },
   {

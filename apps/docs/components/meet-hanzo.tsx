@@ -19,8 +19,8 @@ import { MeetHanzoMenu } from '@hanzogui/shell';
 // ecosystem link. Passed to MeetHanzoMenu's `resolveHref` (opt-in; a no-op on
 // shell versions before that prop exists, so it's safe to ship ahead).
 const DOCS_HREFS: Record<string, string> = {
-  models: '/docs/services/models',
-  enso: '/docs/services/models',
+  models: '/docs/openapi/ai',
+  enso: '/docs/openapi/ai',
   agents: '/docs/agents',
   mcp: '/docs/mcp',
   gateway: '/docs/llm',
