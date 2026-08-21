@@ -19,7 +19,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       }}
       links={[
         { text: 'GitHub', url: 'https://github.com/hanzoai/insights' },
-        { text: 'Dashboard', url: 'https://insights-app.hanzo.ai' },
+        { text: 'Dashboard', url: 'https://insights.hanzo.ai' },
       ]}
     >
       {children}

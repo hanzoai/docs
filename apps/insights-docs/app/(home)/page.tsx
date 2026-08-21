@@ -45,7 +45,7 @@ export default function HomePage() {
 
           <div className="flex flex-wrap gap-3 justify-center mb-20">
             <a
-              href="https://insights-app.hanzo.ai"
+              href="https://insights.hanzo.ai"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-2.5 text-sm font-medium text-brand-foreground hover:bg-brand-hover transition-all"
@@ -212,7 +212,7 @@ docker compose up -d
 import Insights from 'hanzo-insights-js'
 
 Insights.init('YOUR_API_KEY', {
-  api_host: 'https://insights-app.hanzo.ai',
+  api_host: 'https://insights.hanzo.ai',
 })
 
 Insights.capture('button_clicked', {
@@ -261,7 +261,7 @@ Insights.capture('button_clicked', {
               description="Managed cloud hosting. We handle infrastructure and updates."
               features={['1M events / month', 'All 45+ products', '1 year data retention', '3 projects', 'Email support', 'Automatic updates']}
               cta="Start Free Trial"
-              ctaHref="https://insights-app.hanzo.ai"
+              ctaHref="https://insights.hanzo.ai"
               ctaExternal
             />
             <PricingCard
@@ -271,7 +271,7 @@ Insights.capture('button_clicked', {
               description="For growing teams with high event volumes and compliance needs."
               features={['10M events / month', 'All 45+ products', '3 years data retention', 'Unlimited projects', 'SSO / SAML', 'Priority support']}
               cta="Get Started"
-              ctaHref="https://insights-app.hanzo.ai"
+              ctaHref="https://insights.hanzo.ai"
               ctaExternal
               highlighted
             />
@@ -333,7 +333,7 @@ Insights.capture('button_clicked', {
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <a
-              href="https://insights-app.hanzo.ai"
+              href="https://insights.hanzo.ai"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-full bg-brand px-8 py-3 text-sm font-medium text-brand-foreground hover:bg-brand-hover transition-all"
@@ -434,7 +434,7 @@ const STACK = [
   { icon: Server,   name: 'Django + Python',       role: 'Web Server & API',          description: 'Application server handling dashboards, feature flag evaluation, and REST/GraphQL APIs.', badge: 'Backend' },
   { icon: Code,     name: 'React Frontend',        role: 'Dashboard UI',              description: 'Fast single-page application for analytics dashboards, session replay, and experiment setup.', badge: 'Frontend' },
   { icon: Database, name: 'Datastore',            role: 'hanzoai/datastore',         description: 'Column-oriented OLAP database. Aggregates billions of events in milliseconds.', badge: 'Analytics DB' },
-  { icon: Database, name: 'PostgreSQL',            role: 'hanzoai/sql',               description: 'Relational store for users, projects, feature flags, experiments, and surveys.', badge: 'App DB' },
+  { icon: Database, name: 'Hanzo SQL',             role: 'hanzoai/sql',               description: 'Relational store for users, projects, feature flags, experiments, and surveys.', badge: 'App DB' },
   { icon: Zap,      name: 'Valkey / Redis',        role: 'hanzoai/kv',                description: 'High-performance caching, session storage, Celery task queue, and feature flag cache.', badge: 'Cache' },
   { icon: Radio,    name: 'Kafka',                 role: 'hanzoai/stream',            description: 'Event streaming backbone. Decouples high-throughput ingestion from storage.', badge: 'Streaming' },
   { icon: Cpu,      name: 'Rust Capture Service',  role: 'High-Throughput Ingestion', description: 'Zero-copy event capture. Handles millions of events per second with minimal latency.', badge: 'Capture' },
