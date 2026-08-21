@@ -204,7 +204,7 @@ export const SDKS: SdkLang[] = [
     label: 'TypeScript',
     lang: 'ts',
     render(op, doc) {
-      const cls = `${pascalTag(op.tag)}Api`;
+      const cls = `${pascalTag(op.product)}Api`;
       const { keys, body } = args(op, doc);
       const params = [
         ...keys.map((k) => `${k}: '${k}'`),
@@ -224,7 +224,7 @@ export const SDKS: SdkLang[] = [
     label: 'Python',
     lang: 'python',
     render(op, doc) {
-      const cls = `${pascalTag(op.tag)}Api`;
+      const cls = `${pascalTag(op.product)}Api`;
       const py_pkg = pkg('python', 'packageName', 'hanzoai.cloud');
       const { keys, body } = args(op, doc);
       const params = [
@@ -246,7 +246,7 @@ export const SDKS: SdkLang[] = [
     label: 'Go',
     lang: 'go',
     render(op, doc) {
-      const svc = `${pascalTag(op.tag)}API`;
+      const svc = `${pascalTag(op.product)}API`;
       const go_pkg = pkg('go', 'packageName', 'cloud');
       return [
         `cfg := ${go_pkg}.NewConfiguration()`,
@@ -266,7 +266,7 @@ export const SDKS: SdkLang[] = [
     label: 'Rust',
     lang: 'rust',
     render(op, doc) {
-      const mod = `${snakeId(pascalTag(op.tag))}_api`;
+      const mod = `${snakeId(pascalTag(op.product))}_api`;
       const crate = pkg('rust', 'packageName', 'hanzo-cloud').replace(/-/g, '_');
       return [
         `use ${crate}::apis::{configuration::Configuration, ${mod}};`,
@@ -284,7 +284,7 @@ export const SDKS: SdkLang[] = [
     label: 'Java / Kotlin',
     lang: 'java',
     render(op, doc) {
-      const cls = `${pascalTag(op.tag)}Api`;
+      const cls = `${pascalTag(op.product)}Api`;
       const jpkg = pkg('java', 'invokerPackage', 'ai.hanzo.cloud');
       return [
         `import ${jpkg}.ApiClient;`,

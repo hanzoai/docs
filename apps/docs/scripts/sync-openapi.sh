@@ -49,7 +49,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APP_DIR="$SCRIPT_DIR/.."
 SPECS_DIR="$APP_DIR/openapi-specs"
 LOCK="$SPECS_DIR/.spec-lock"
-DOCUMENT="$SPECS_DIR/openapi.yaml"
+# The document is named for WHICH document it is, and the lock says which.
+# DOC_PATH is read below; the file is installed under that same name so the
+# snapshot cannot be called `openapi.yaml` while holding the public contract.
 mkdir -p "$SPECS_DIR"
 
 tmp="$(mktemp)"
@@ -65,6 +67,7 @@ REPO="${REPO:-hanzo-inc/cloud}"
 # — openapi.yaml (everything served) or public.yaml (the customer contract).
 DOC_PATH="$(sed -n 's/^path=//p' "$LOCK" 2>/dev/null || true)"
 DOC_PATH="${DOC_PATH:-openapi.yaml}"
+DOCUMENT="$SPECS_DIR/$DOC_PATH"
 
 # The forge serves its API at /v1/, NOT /api/v1/ — /api/v1 answers with a 404
 # that reads exactly like a rejected credential.

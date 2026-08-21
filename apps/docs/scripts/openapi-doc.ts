@@ -27,17 +27,30 @@ import { parse as parseYaml } from 'yaml';
  * change; a path repeated is six chances to miss one.
  */
 const SPECS = path.join(path.dirname(fileURLToPath(import.meta.url)), '../openapi-specs');
-export const DOCUMENT = path.join(SPECS, 'openapi.yaml');
 
-/** The cloud release the document was taken at, from `.spec-lock`. */
-export const release = (): string => {
+const lock = (field: string): string => {
   try {
-    const lock = fs.readFileSync(path.join(SPECS, '.spec-lock'), 'utf8');
-    return (lock.match(/^ref=(.+)$/m)?.[1] ?? '').trim().slice(0, 9);
+    const text = fs.readFileSync(path.join(SPECS, '.spec-lock'), 'utf8');
+    return (text.match(new RegExp(`^${field}=(.+)$`, 'm'))?.[1] ?? '').trim();
   } catch {
     return '';
   }
 };
+
+/**
+ * The lock names WHICH document, so the snapshot is called what it is.
+ *
+ * cloud emits two: `openapi.yaml`, everything the fleet serves, and
+ * `public.yaml`, the customer contract. The lock's `path=` chose between them
+ * for the fetch while the local copy stayed named `openapi.yaml` whatever it
+ * held — a file whose name contradicts its contents, in the one place a reader
+ * checks which document a page was built from. The name is read from the same
+ * line the fetch reads, so there is one answer and no way to have two.
+ */
+export const DOCUMENT = path.join(SPECS, lock('path') || 'openapi.yaml');
+
+/** The cloud release the document was taken at, from `.spec-lock`. */
+export const release = (): string => lock('ref').slice(0, 9);
 
 export const METHODS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options'] as const;
 export type Method = (typeof METHODS)[number];
@@ -57,7 +70,7 @@ export interface Body {
 }
 
 export interface Operation {
-  /** Product this page groups the operation under: its tag, else `/v1/<seg>`. */
+  /** The capability that serves this operation — its tag. See `capabilityOf`. */
   product: string;
   /** Full operationId, e.g. `get_v1_tools`. */
   id: string;
@@ -66,8 +79,6 @@ export interface Operation {
    * itself — see the note where it is computed.
    */
   name: string;
-  /** The operation's own tag — a section heading within its product. */
-  tag: string;
   method: Method;
   path: string;
   summary: string;
@@ -177,29 +188,28 @@ export const isInternal = (op: Operation): boolean =>
   op.product === INTERNAL_PRODUCT || INTERNAL_ROUTES.has(`${op.method} ${op.path}`);
 
 /**
- * WHERE AN OPERATION'S PAGE LIVES.
+ * WHERE AN OPERATION'S PAGE LIVES: its operationId, whole.
  *
- * The address is the identity: an operationId reads `<verb>_<product>_<rest>`,
- * and the page already sits under the product, so the product infix is dropped
- * — `get_ads_campaigns_by_id` under `ads` is `get-campaigns-by-id`. Measured on
- * the whole document: 2,344 operations, zero collisions, because operationIds
- * are unique and removing one constant infix inside one product cannot merge
- * two of them.
+ * The id is unique across the document — cloud mints one per route — so this
+ * rule cannot collide, and it needs to know nothing about the capability the
+ * page sits under.
  *
- * The alternative — keeping the id whole — spells the product twice in every
- * URL (`/docs/openapi/ads/get-ads-campaigns-by-id`). A reader types the shorter
- * one, and a search engine reads the repetition as keyword padding.
+ * It used to drop the capability infix, so `get_ads_campaigns_by_id` under
+ * `ads` became `get-campaigns-by-id`, on the reasoning that the URL already
+ * spells `ads` once. That reasoning quietly assumed the id CONTAINS the
+ * capability, which was true only while the capability was being derived from
+ * the id. It is now the tag — the app that OWNS the route, which is not always
+ * the word the address starts with — and the two differ on 485 of 2,284
+ * operations. Dropping a segment that means something else merged `post_messages`
+ * and `post_ai_messages` onto one page under `ai`, which is a lost page, not a
+ * tidier URL.
  */
-export const opSlug = (op: Operation): string => {
-  const parts = op.id.split('_');
-  const at = parts.indexOf(op.product);
-  const kept = at > 0 ? [parts[0], ...parts.slice(at + 1)] : parts;
-  return kept
-    .join('-')
+export const opSlug = (op: Operation): string =>
+  op.id
+    .replace(/_/g, '-')
     .replace(/[^a-zA-Z0-9-]/g, '')
     .replace(/-{2,}/g, '-')
     .toLowerCase();
-};
 
 /** The operation's own page, under its product. */
 export const opHref = (op: Operation): string => `/docs/openapi/${op.product}/${opSlug(op)}`;
@@ -237,7 +247,7 @@ export function publicDocument(doc: Document): any {
   const published = new Set(doc.products.map((p) => p.name));
   const gone = new Set(doc.internal.map((p) => p.name).filter((n) => !published.has(n)));
   if (Array.isArray(raw.tags)) {
-    raw.tags = raw.tags.filter((t: any) => !gone.has(squash(String(t?.name ?? ''))));
+    raw.tags = raw.tags.filter((t: any) => !gone.has(String(t?.name ?? '')));
   }
   return raw;
 }
@@ -391,45 +401,30 @@ const firstSentence = (s: string): string => {
 };
 
 /**
- * The product rule, in exactly one place.
+ * The capability rule: THE TAG.
  *
- * Every operation in the document is `<product>_<name>`, and every prefix is a
- * top-level tag carrying that product's synopsis. Where an operationId is
- * malformed we fall back to the `/v1/<product>` path segment rather than
- * inventing a product — and if neither resolves, the operation is reported as
- * unresolved instead of being silently dropped.
+ * An operation's tag is the capability that serves it — the app, one word, the
+ * same word that names its Go package, its plugin binary, its client class, its
+ * tool, its command group, its page and its HIP (HIP-0139). cloud states it
+ * twice, as the tag and as `x-app`, and the two agree on all 2,284 operations.
  *
- * AN HTTP METHOD IS NEVER A PRODUCT, and saying so is what this rule was missing.
- * A route outside `/v1/<product>` — `/.well-known/jwks`, `/{org}/{repo}/git-upload-pack`,
- * `/_/commerce/healthz` — is idded `get_well_known_jwks`, so its prefix is the
- * word `get`. The final fallback returned that prefix whether or not it named
- * anything, which minted six products called Get, Post, Put, Patch, Delete and
- * Options, each with a synopsis-less page and dozens of unrelated routes filed
- * under the verb they happen to use. The comment above already said the rule
- * does not invent a product; the code did, and only for the operations no tag
- * covers, which is exactly where nobody was looking.
+ * This used to be derived instead: the operationId's first segment, else the
+ * `/v1/<seg>` path segment. Both are guesses about an ADDRESS, and an address is
+ * not an owner — an app may answer at a route not named for it, which cloud
+ * tracks in its own `openapi/misfiled.txt`. Measured on this document the guess
+ * disagrees with the owner on 485 of 2,284 operations: 385 resolved to nothing
+ * and were dropped from the site entirely, the rest filed under a neighbour's
+ * name. The id branch never even fired — every id reads `<verb>_<app>_<rest>`,
+ * so its first segment is `get` or `post`, which is why a rule had to be written
+ * saying an HTTP method is not a product.
  *
- * Refusing them sends those routes to `unresolved`, where the generator prints
- * them — one honest line naming what hanzoai/cloud must tag, instead of six
- * pages that look like products and are not.
+ * Reading the tag deletes all of that: no parsing, no fallback, no verb
+ * exception, no squash-matching a slug to a prose-cased name. A capability with
+ * no page is now impossible, because the page is keyed by the thing the document
+ * groups by.
  */
-function resolveProduct(id: string, path: string, known: (s: string) => boolean): string | null {
-  const prefix = id.includes('_') ? id.slice(0, id.indexOf('_')) : '';
-  if (prefix && known(prefix)) return prefix;
-  const seg = path.split('/').filter(Boolean);
-  if (seg[0] === 'v1' && seg[1] && known(seg[1])) return seg[1];
-  if (!prefix || (METHODS as readonly string[]).includes(prefix)) return null;
-  return prefix;
-}
-
-/**
- * Product slugs are lowercase (`webhooks`, `pubsub`) because they come from an
- * operationId prefix or a path segment; tag names are prose-cased (`Webhooks`,
- * `Pub/Sub`). Matching them exactly stranded 16 packages' synopses on tags no
- * page was keyed by. Compare on the squashed form so the prose finds its page,
- * while the slug — and therefore the URL — stays the lowercase one.
- */
-const squash = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+const capabilityOf = (op: any): string =>
+  (Array.isArray(op?.tags) && typeof op.tags[0] === 'string' ? op.tags[0] : '').trim();
 
 export function loadDocument(file: string): Document {
   const raw = parseYaml(fs.readFileSync(file, 'utf8'));
@@ -439,23 +434,16 @@ export function loadDocument(file: string): Document {
   const undeclared = new Set<string>();
 
   const tags: any[] = Array.isArray(raw.tags) ? raw.tags : [];
-  // TWO indexes, deliberately not one. Resolution matches tag names EXACTLY;
-  // squash-matching there would let the woven document's `cloud_` prefix claim
-  // a `Cloud` tag and swallow every path-derived product with it (132 products
-  // collapsed to 29). Squashing is only for finding a slug's prose.
+  // ONE index. The tag name IS the slug — cloud emits capability names, which
+  // are single lowercase words by construction (HIP-0139) — so there is nothing
+  // to normalise and no second spelling for a page to be keyed by.
   const tagByName = new Map<string, any>(tags.map((t) => [t.name, t]));
-  const tagBySquash = new Map<string, any>();
-  for (const t of tags) if (!tagBySquash.has(squash(t.name))) tagBySquash.set(squash(t.name), t);
-  const known = (s: string) => tagByName.has(s);
 
-  // Products are created on demand, keyed by SLUG. Pre-seeding one per tag
-  // would mint a second page for every tag whose name only squash-matches a
-  // slug (`Webhooks` beside `webhooks`).
   const byName = new Map<string, Product>();
   const product = (slug: string): Product => {
     let p = byName.get(slug);
     if (p) return p;
-    const t = tagByName.get(slug) ?? tagBySquash.get(squash(slug));
+    const t = tagByName.get(slug);
     if (!t) undeclared.add(slug);
     p = {
       name: slug,
@@ -483,7 +471,7 @@ export function loadDocument(file: string): Document {
       if (!op || typeof op !== 'object') continue;
 
       const id = String(op.operationId ?? '');
-      const product_ = resolveProduct(id, path, known);
+      const product_ = capabilityOf(op);
 
       const parameters: Param[] = [...shared, ...(op.parameters ?? [])]
         .map((p) => deref(raw, p))
@@ -511,7 +499,7 @@ export function loadDocument(file: string): Document {
       const okCt = okRaw?.content ? Object.keys(okRaw.content)[0] : undefined;
 
       const resolved: Operation = {
-        product: product_ ?? '',
+        product: product_,
         id,
         // The door's tool name IS the operationId. It was the id minus its own
         // first segment while hanzoai/openapi prefixed every id with the spec it
@@ -520,7 +508,6 @@ export function loadDocument(file: string): Document {
         // against the door's own tools/list: 802 of 833 names are the
         // operationId exactly, where stripping a segment resolves 89.
         name: id,
-        tag: (Array.isArray(op.tags) && op.tags[0]) || product_ || 'General',
         method,
         path,
         summary: String(op.summary ?? '').replace(/\s+/g, ' ').trim(),
