@@ -13,112 +13,7 @@ import {
   SelectValue,
 } from '@hanzo/docs-base-ui/components/ui/select';
 
-interface DocSection {
-  name: string;
-  route: string;
-  /** true = has deep subpages (full doc section) */
-  deep?: boolean;
-}
-
-interface SectionGroup {
-  label: string;
-  items: DocSection[];
-}
-
-const SECTIONS: SectionGroup[] = [
-  {
-    label: 'AI & Intelligence',
-    items: [
-      { name: 'Cloud',       route: '/docs/services/cloud',     deep: true },
-      { name: 'Chat',        route: '/docs/services/chat' },
-      { name: 'Search',      route: '/docs/services/search' },
-      { name: 'Bot',         route: '/docs/services/bot' },
-      { name: 'Studio',      route: '/docs/services/studio' },
-      { name: 'Vector',      route: '/docs/services/vector' },
-      { name: 'Embeddings',  route: '/docs/services/embeddings' },
-      { name: 'ML',          route: '/docs/services/ml' },
-    ],
-  },
-  {
-    label: 'Automation',
-    items: [
-      { name: 'Flow',        route: '/docs/services/flow' },
-      { name: 'Auto',        route: '/docs/services/auto' },
-      { name: 'Operative',   route: '/docs/services/operative' },
-    ],
-  },
-  {
-    label: 'Business',
-    items: [
-      { name: 'Commerce',    route: '/docs/services/commerce',  deep: true },
-      { name: 'Sign',        route: '/docs/services/sign' },
-      { name: 'Dataroom',    route: '/docs/services/dataroom' },
-      { name: 'Cap Table',   route: '/docs/services/captable' },
-    ],
-  },
-  {
-    label: 'Platform',
-    items: [
-      { name: 'IAM',         route: '/docs/services/iam',       deep: true },
-      { name: 'KMS',         route: '/docs/services/kms',       deep: true },
-      { name: 'Platform',    route: '/docs/services/platform',  deep: true },
-      { name: 'DID',         route: '/docs/services/did' },
-      { name: 'Gateway',     route: '/docs/services/gateway' },
-      { name: 'Guard',       route: '/docs/services/guard' },
-      { name: 'Console',     route: '/docs/services/console' },
-      { name: 'MPC',         route: '/docs/services/mpc',       deep: true },
-      { name: 'Insights',    route: '/docs/services/insights',  deep: true },
-    ],
-  },
-  {
-    label: 'Infrastructure',
-    items: [
-      { name: 'Ingress',     route: '/docs/services/ingress' },
-      { name: 'PaaS',        route: '/docs/services/paas' },
-      { name: 'Storage',     route: '/docs/services/storage' },
-      { name: 'S3',          route: '/docs/services/s3' },
-      { name: 'DB',          route: '/docs/services/db' },
-      { name: 'ORM',         route: '/docs/services/orm',       deep: true },
-      { name: 'KV',          route: '/docs/services/kv' },
-      { name: 'MQ',          route: '/docs/services/mq' },
-      { name: 'Stream',      route: '/docs/services/stream' },
-      { name: 'PubSub',      route: '/docs/services/pubsub' },
-      { name: 'Edge',        route: '/docs/services/edge' },
-      { name: 'Registry',    route: '/docs/services/registry' },
-    ],
-  },
-  {
-    label: 'Operations',
-    items: [
-      { name: 'Engine',      route: '/docs/services/engine' },
-      { name: 'O11y',        route: '/docs/services/o11y' },
-      { name: 'Status',      route: '/docs/services/status',    deep: true },
-      { name: 'DNS',         route: '/docs/services/dns' },
-      { name: 'Zero Trust',  route: '/docs/services/zt' },
-    ],
-  },
-  {
-    label: 'Products',
-    items: [
-      { name: 'Agent',       route: '/docs/agent' },
-      { name: 'Hanzo Chat',  route: '/docs/chat' },
-      { name: 'Hanzo Dev',   route: '/docs/dev' },
-      { name: 'Hanzo Studio',route: '/docs/studio' },
-      { name: 'Hanzo Inference', route: '/docs/llm' },
-      { name: 'Extension',   route: '/docs/extension' },
-      { name: 'MCP',         route: '/docs/mcp' },
-      { name: 'ZAP',         route: '/docs/zap' },
-    ],
-  },
-  {
-    label: 'Reference',
-    items: [
-      { name: 'API Reference', route: '/docs/openapi' },
-      { name: 'SDKs',          route: '/docs/sdks' },
-      { name: 'Open Source',    route: '/docs/projects' },
-    ],
-  },
-];
+import { SECTIONS, type DocSection, type SectionGroup } from '@/generated/sections';
 
 /** Flatten all items for route matching */
 const ALL_ITEMS = SECTIONS.flatMap((g) => g.items);
@@ -131,7 +26,7 @@ const ALL = '__all__';
  *  trigger's text from `items`; given no map it prints the value itself, which
  *  is how every docs page came to show `__all__` where the section name goes. */
 const LABELS: Record<string, string> = {
-  [ALL]: 'All Services',
+  [ALL]: 'All capabilities',
   ...Object.fromEntries(ALL_ITEMS.map((item) => [item.route, item.name])),
 };
 
@@ -175,7 +70,7 @@ export function ProjectSwitcher() {
       value={value}
       onValueChange={(next) => {
         if (next && next !== ALL) router.push(next);
-        else if (next === ALL) router.push('/docs/services');
+        else if (next === ALL) router.push('/docs/openapi');
       }}
     >
       <SelectTrigger aria-label="Section switcher">

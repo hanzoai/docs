@@ -23,17 +23,17 @@ Eleven primitives generate the platform. Each is one idea, named for what it is.
 
 | Primitive | What it is | Composed by |
 |-----------|------------|-------------|
-| **Principal** | An authenticated identity — a person, an org member, a service, or an agent. | [IAM](/docs/iam), [Identity](/docs/services/identity), [API Keys](/docs/api-keys) |
-| **Tenant** | The organization boundary every record is scoped to. | [Organizations](/docs/organizations) — and every capability, "tenant-scoped by org" |
-| **Resource** | A typed record with a declared **schema**; CRUD, validation, and serialization fall out of the shape. | [ORM](/docs/services/orm) (`Model[T]`), [Base](/docs/base), [SQL](/docs/sql), [DocDB](/docs/docdb) |
-| **Policy** | A rule deciding who may do what to which resource. | [Authz](/docs/authz), [Guard](/docs/services/guard), [Zero-Trust](/docs/zero-trust) |
-| **Ledger** | An append-only record of facts — what happened, immutable. | [Traces](/docs/traces), [Logs](/docs/logs), [O11y](/docs/o11y) |
-| **Meter** | A count of usage, for limits and billing. | [Usage](/docs/usage), [Analytics](/docs/analytics), [Billing](/docs/billing) |
-| **Schedule** | Deferred and recurring execution — run this later, or on a cadence. | [Tasks](/docs/tasks), [Pipelines](/docs/pipelines) |
-| **Bus** | Asynchronous delivery between components. | [PubSub](/docs/pubsub), [Stream](/docs/services/stream), [MQ](/docs/services/mq) |
-| **Gateway** | The one front door; every capability is reached at `/v1/<name>`. | [Gateway](/docs/gateway), [Ingress](/docs/services/ingress) |
-| **Store** | Durable bytes and blobs. | [Storage](/docs/storage), [KV](/docs/kv), [Vector](/docs/vector), [Datastore](/docs/datastore) |
-| **Money** | Value movement — charges, payouts, balances, rewards. | [Commerce](/docs/commerce), [Billing](/docs/billing), [Referrals](/docs/referrals), [Marketplace](/docs/marketplace) |
+| **Principal** | An authenticated identity — a person, an org member, a service, or an agent. | [IAM](/docs/openapi/iam), [Identity](/docs/openapi), [API Keys](/docs/api-keys) |
+| **Tenant** | The organization boundary every record is scoped to. | [Organizations](/docs/openapi/iam) — and every capability, "tenant-scoped by org" |
+| **Resource** | A typed record with a declared **schema**; CRUD, validation, and serialization fall out of the shape. | [ORM](/docs/openapi) (`Model[T]`), [Base](/docs/openapi/base), [SQL](/docs/openapi), [DocDB](/docs/openapi) |
+| **Policy** | A rule deciding who may do what to which resource. | [Authz](/docs/openapi/authz), [Guard](/docs/openapi), [Zero-Trust](/docs/openapi/zt) |
+| **Ledger** | An append-only record of facts — what happened, immutable. | [Traces](/docs/openapi/o11y), [Logs](/docs/openapi/o11y), [O11y](/docs/openapi/o11y) |
+| **Meter** | A count of usage, for limits and billing. | [Usage](/docs/usage), [Analytics](/docs/openapi/analytics), [Billing](/docs/openapi/billing) |
+| **Schedule** | Deferred and recurring execution — run this later, or on a cadence. | [Tasks](/docs/openapi/tasks), [Pipelines](/docs/openapi/automations) |
+| **Bus** | Asynchronous delivery between components. | [PubSub](/docs/openapi/pubsub), [Stream](/docs/openapi), [MQ](/docs/openapi/mq) |
+| **Gateway** | The one front door; every capability is reached at `/v1/<name>`. | [Gateway](/docs/openapi/gateway), [Ingress](/docs/openapi/ingress) |
+| **Store** | Durable bytes and blobs. | [Storage](/docs/openapi/storage), [KV](/docs/openapi), [Vector](/docs/openapi), [Datastore](/docs/openapi) |
+| **Money** | Value movement — charges, payouts, balances, rewards. | [Commerce](/docs/openapi/commerce), [Billing](/docs/openapi/billing), [Referrals](/docs/openapi/referrals), [Marketplace](/docs/openapi/marketplace) |
 
 ## How a product is assembled
 
@@ -41,16 +41,16 @@ A product is not a fresh vertical slice of infrastructure. It makes four moves a
 
 | The move | You write | You inherit |
 |----------|-----------|-------------|
-| **Declare a Resource** | the schema — your `Model[T]` | persistence + validation ([ORM](/docs/services/orm)), and tenancy: every row scoped to its Tenant |
-| **Attach a Policy** | who may touch it | authorization at the boundary ([Authz](/docs/authz)) |
-| **Write Ledger facts** | what happened | audit + observability ([O11y](/docs/o11y)) |
-| **Count with a Meter** | the unit that matters | metering + billing ([Billing](/docs/billing)) |
+| **Declare a Resource** | the schema — your `Model[T]` | persistence + validation ([ORM](/docs/openapi)), and tenancy: every row scoped to its Tenant |
+| **Attach a Policy** | who may touch it | authorization at the boundary ([Authz](/docs/openapi/authz)) |
+| **Write Ledger facts** | what happened | audit + observability ([O11y](/docs/openapi/o11y)) |
+| **Count with a Meter** | the unit that matters | metering + billing ([Billing](/docs/openapi/billing)) |
 | **Expose a Gateway surface** | the handler | routing, auth, and generated SDKs at `/v1/<name>` |
 
 Persistence, tenancy, audit, and metering are therefore **not per-product code** — they are what you get for standing on the primitives. And the primitives themselves stand on exactly two things: **one ORM** and **one wire** — every product is a set of `Model[T]` resources served over [ZAP](/docs/zap). One ORM, one wire, one contract: the [philosophy's](/docs/architecture/philosophy) "one and one way" expressed as structure.
 
 <Callout type="info">
-**The proof: a Principal on ORM + ZAP.** Hanzo IAM is being rebuilt exactly this way — a clean-room identity service where a Principal is a `Model[T]` on the shared [ORM](/docs/services/orm), served over [ZAP](/docs/zap), with no bespoke persistence, tenancy, or audit layer of its own. It is the first product to drop an inherited third-party stack and stand entirely on the primitives — the demonstration that the algebra composes a real service, not just a diagram.
+**The proof: a Principal on ORM + ZAP.** Hanzo IAM is being rebuilt exactly this way — a clean-room identity service where a Principal is a `Model[T]` on the shared [ORM](/docs/openapi), served over [ZAP](/docs/zap), with no bespoke persistence, tenancy, or audit layer of its own. It is the first product to drop an inherited third-party stack and stand entirely on the primitives — the demonstration that the algebra composes a real service, not just a diagram.
 </Callout>
 
 ## Two things named "agent"
@@ -62,7 +62,7 @@ The naming law behind the algebra: **say what it is.** No compound words; an aca
   <Card title="Agents — the open-source set" href="/docs/services/agents" description="The plural. The library of specialist agents and orchestrators you compose. A collection, not a runtime." />
 </Cards>
 
-Same word, two referents, kept apart: the [Engine](/docs/services/engine) is the runtime that *runs* an agent; [Agents](/docs/agents) is the open-source *set* you compose. Collapsing them would fuse a place (the runtime) with a value (the set) — the exact braid the platform decomplects.
+Same word, two referents, kept apart: the [Engine](/docs/openapi/engine) is the runtime that *runs* an agent; [Agents](/docs/openapi/agents) is the open-source *set* you compose. Collapsing them would fuse a place (the runtime) with a value (the set) — the exact braid the platform decomplects.
 
 ## Read on
 
