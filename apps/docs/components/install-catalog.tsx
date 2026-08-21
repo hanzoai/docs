@@ -60,11 +60,11 @@ const TARGETS: Target[] = [
   { id: 'laravel', label: 'Laravel', kind: 'server', install: 'composer require hanzo/hanzo' },
   { id: 'django', label: 'Django', kind: 'server', install: 'pip install hanzoai', docs: '/docs/sdks/python' },
   { id: 'elixir', label: 'Elixir', kind: 'server', install: '{:hanzo, "~> 1.0"}' },
-  { id: 'api', label: 'HTTP API', kind: 'server', install: 'POST https://api.hanzo.ai/v1/event', docs: '/docs/api' },
+  { id: 'api', label: 'HTTP API', kind: 'server', install: 'POST https://api.hanzo.ai/v1/event', docs: '/docs/openapi' },
 
   // LLM
-  { id: 'openai', label: 'OpenAI-compatible', kind: 'llm', install: 'base_url="https://api.hanzo.ai/v1"', docs: '/docs/api' },
-  { id: 'anthropic', label: 'Anthropic-compatible', kind: 'llm', install: 'base_url="https://api.hanzo.ai/v1"', docs: '/docs/api' },
+  { id: 'openai', label: 'OpenAI-compatible', kind: 'llm', install: 'base_url="https://api.hanzo.ai/v1"', docs: '/docs/openapi' },
+  { id: 'anthropic', label: 'Anthropic-compatible', kind: 'llm', install: 'base_url="https://api.hanzo.ai/v1"', docs: '/docs/openapi' },
   { id: 'ai-sdk', label: 'Vercel AI SDK', kind: 'llm', install: 'npm i @hanzo/ai' },
   { id: 'langchain', label: 'LangChain', kind: 'llm', install: 'pip install hanzoai' },
   { id: 'llamaindex', label: 'LlamaIndex', kind: 'llm', install: 'pip install hanzoai' },
@@ -181,7 +181,7 @@ export function InstallCatalog() {
       {shown.length === 0 ? (
         <p className="text-sm text-fd-muted-foreground">
           Nothing matches “{q}”. Every stack can use the{' '}
-          <a href="/docs/api" className="underline underline-offset-2">
+          <a href="/docs/openapi" className="underline underline-offset-2">
             HTTP API
           </a>
           .
@@ -189,7 +189,7 @@ export function InstallCatalog() {
       ) : (
         <p className="text-sm text-fd-muted-foreground">
           {shown.length} of {TARGETS.length}. Anything not listed reaches the same endpoints over the{' '}
-          <a href="/docs/api" className="underline underline-offset-2">
+          <a href="/docs/openapi" className="underline underline-offset-2">
             HTTP API
           </a>
           .

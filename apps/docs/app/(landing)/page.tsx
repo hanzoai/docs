@@ -35,35 +35,35 @@ const domains = [
     name: 'Identity & Trust',
     desc: 'Who someone is, what they may touch, and where secrets stay safe. IAM, AuthZ, KMS, MPC, Zero-Trust.',
     icon: Shield,
-    href: '/docs/iam',
+    href: '/docs/openapi/iam',
     tag: 'Identity',
   },
   {
     name: 'Intelligence',
     desc: 'The mind of the cloud — every model, agent, and tool you can call. Models, Agents, MCP, Embeddings, Prompts, GPUs, Functions.',
     icon: Sparkles,
-    href: '/docs/llm',
+    href: '/docs/openapi/ai',
     tag: 'Intelligence',
   },
   {
     name: 'Data',
     desc: 'Somewhere to put your data and read it back fast. SQL, Vector, KV, Search, Object, Base, DocDB.',
     icon: Database,
-    href: '/docs/sql',
+    href: '/docs/openapi/provisioning',
     tag: 'Data',
   },
   {
     name: 'Streams',
     desc: 'Move messages and run work in the background, reliably. PubSub, Tasks, Pipelines, Crawl.',
     icon: Workflow,
-    href: '/docs/pubsub',
+    href: '/docs/openapi/pubsub',
     tag: 'Streams',
   },
   {
     name: 'Observability',
     desc: 'See exactly what your system is doing, live. Metrics, Logs, Traces, Sessions, Evals, Analytics.',
     icon: Activity,
-    href: '/docs/o11y',
+    href: '/docs/openapi/o11y',
     tag: 'Observe',
   },
   {
@@ -77,7 +77,7 @@ const domains = [
     name: 'Platform',
     desc: 'Ship your code and run it anywhere. Gateway, Machines, Edge, Registry.',
     icon: Server,
-    href: '/docs/gateway',
+    href: '/docs/openapi/gateway',
     tag: 'Platform',
   },
   {
@@ -202,7 +202,7 @@ export default function Page() {
               eyebrow: 'Lower level',
               title: 'Build with API',
               body: 'Over 400 models behind one REST endpoint, with SDKs for every language we ship.',
-              href: '/docs/api',
+              href: '/docs/openapi',
             },
           ].map((d) => (
             <Link

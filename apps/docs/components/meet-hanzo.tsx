@@ -21,10 +21,10 @@ import { MeetHanzoMenu } from '@hanzogui/shell';
 const DOCS_HREFS: Record<string, string> = {
   models: '/docs/openapi/ai',
   enso: '/docs/openapi/ai',
-  agents: '/docs/agents',
+  agents: '/docs/openapi/agents',
   mcp: '/docs/mcp',
-  gateway: '/docs/llm',
-  api: '/docs/api',
+  gateway: '/docs/openapi/gateway',
+  api: '/docs/openapi',
   keys: '/docs/api-keys',
 };
 
