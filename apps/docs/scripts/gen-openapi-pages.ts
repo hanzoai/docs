@@ -18,6 +18,7 @@ import { fields, type Field } from './openapi-schema';
 import { door, firstCall, runnable, surfaces, type Door } from './openapi-surfaces';
 import { load as loadDoor } from './sync-mcp-tools';
 import { loadCliTable, type CliCommand } from './sync-cli-commands';
+import { loadCorpus, type Corpus, type Hip } from './sync-hips';
 import { code, firstSentence, prose, text, yamlString } from './mdx';
 
 // The API reference, generated from THE document.
@@ -395,11 +396,68 @@ function renderOperation(
   return L.join('\n');
 }
 
+/**
+ * WHAT THE CAPABILITY IS, from the capability's own HIP.
+ *
+ * The reference below states what it SERVES. This states what it is: the store
+ * it owns, how a request becomes a tenant, what it meters, what it publishes.
+ * HIP-0139 makes that text part of shipping a capability, so it exists in one
+ * place and is rendered here rather than re-told.
+ *
+ * The HIP's own `##` sections become `###`, so the page keeps one spine and the
+ * specification nests under it. The Abstract leads WITHOUT a heading — it is the
+ * definition, and a reader who arrived at a page called KMS does not need a
+ * heading to be told the first paragraph says what KMS is. References and
+ * Copyright are the HIP's bookkeeping about itself, not the capability's
+ * specification, and are left in the HIP.
+ */
+const HIP_BOOKKEEPING = new Set(['references', 'copyright']);
+
+function specification(name: string, hips: Corpus): string[] {
+  const hip: Hip | undefined = hips.capabilities[name];
+  const L: string[] = ['## Specification', ''];
+
+  // A capability with no HIP says so, and says it in one line. Padding the gap
+  // with a paragraph of generated prose would make an unwritten specification
+  // look like a written one, which is the one thing a reader must not conclude.
+  if (!hip) {
+    L.push(
+      `Specification pending — no HIP in [hanzoai/hips](https://github.com/hanzoai/hips) ` +
+        `declares \`capability: ${name}\` yet. What this capability serves is below, ` +
+        'from the API document; what it is — the store it owns, how it meters, what it ' +
+        'publishes — is written as a HIP under HIP-0139.',
+    );
+    L.push('');
+    return L;
+  }
+
+  const url =
+    `https://github.com/hanzoai/hips/blob/${hips.pin}/HIPs/${hip.file}`;
+  L.push(
+    `> **HIP-${text(hip.hip)} · ${text(hip.title)}** — ${text(hip.status)} · ` +
+      `[read the specification →](${url})`,
+  );
+  L.push('');
+  for (const sec of hip.sections) {
+    if (HIP_BOOKKEEPING.has(sec.heading.toLowerCase())) continue;
+    const lead = sec.heading.toLowerCase() === 'abstract';
+    if (!lead) {
+      L.push(`### ${text(sec.heading)}`);
+      L.push('');
+    }
+    // Everything the author nested moves down one level with its parent.
+    L.push(sec.body.replace(/^(#{3,5})\s/gm, (_m, h) => `${h}# `));
+    L.push('');
+  }
+  return L;
+}
+
 function renderProduct(
   p: Product,
   doc: Document,
   table: Map<string, CliCommand>,
   d: Door,
+  hips: Corpus,
 ): string {
   const guide = guideHref(p.name);
   const L: string[] = [];
@@ -440,6 +498,8 @@ function renderProduct(
   L.push(`| **Operations** | ${p.operations.length} |`);
   L.push(`| **Auth** | \`Authorization: Bearer $HANZO_API_KEY\` |`);
   L.push('');
+
+  L.push(...specification(p.name, hips));
 
   L.push(...quickstart(p, doc, table, d));
 
@@ -553,6 +613,7 @@ function writePages(
   doc: Document,
   table: Map<string, CliCommand>,
   d: Door,
+  hips: Corpus,
 ): void {
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(dir, { recursive: true });
@@ -572,7 +633,7 @@ function writePages(
   for (const p of products) {
     const folder = path.join(dir, p.name);
     fs.mkdirSync(folder, { recursive: true });
-    fs.writeFileSync(path.join(folder, 'index.mdx'), renderProduct(p, doc, table, d));
+    fs.writeFileSync(path.join(folder, 'index.mdx'), renderProduct(p, doc, table, d, hips));
 
     // Summaries that repeat inside one product get the address appended, so no
     // two pages here carry the same title.
@@ -662,13 +723,14 @@ export async function genOpenapiPages(
   // pages read, through the same two functions.
   const table = loadCliTable();
   const d = door(loadDoor().tools);
+  const hips = loadCorpus();
 
-  writePages(out, doc.products, doc, table, d);
+  writePages(out, doc.products, doc, table, d, hips);
 
   // The operator surface is rendered too, just not here. 86 endpoints our own
   // people run on are worth a page each; what they are not worth is being on
   // docs.hanzo.ai. See INTERNAL_DIR for where they go and why it is not a repo.
-  if (doc.internal.length) writePages(internalOut, doc.internal, doc, table, d);
+  if (doc.internal.length) writePages(internalOut, doc.internal, doc, table, d, hips);
 
   // The interactive reference at /reference reads the same document, so the
   // document it reads is the published one. Copying the source whole — which is
