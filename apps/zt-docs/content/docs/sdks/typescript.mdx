@@ -94,7 +94,7 @@ const auth = await HanzoAuth.resolve();
 const auth = HanzoAuth.fromToken('eyJhbGciOiJSUzI1NiIs...');
 
 // From an explicit API key
-const auth = HanzoAuth.fromApiKey('hk_live_xxxxx');
+const auth = HanzoAuth.fromApiKey('sk-...');
 ```
 
 ### Token Resolution Order
@@ -147,7 +147,7 @@ const headers = await auth.getAuthHeader();
 The `display()` method shows the credential type with masked secrets:
 
 ```ts
-const auth = HanzoAuth.fromApiKey('hk_live_abc123xyz');
+const auth = HanzoAuth.fromApiKey('sk-...');
 console.log(auth.display());
 // "Hanzo API key (...3xyz)"
 
@@ -762,7 +762,7 @@ import { HanzoAuth } from '@hanzo/zt';
 
 describe('HanzoAuth', () => {
   it('resolves from HANZO_API_KEY env', async () => {
-    process.env.HANZO_API_KEY = 'hk_test_abc123';
+    process.env.HANZO_API_KEY = 'sk-...';
     const auth = await HanzoAuth.resolve();
     expect(auth.display()).toContain('API key');
     expect(auth.display()).toContain('...c123');
@@ -853,7 +853,7 @@ describe('BillingGuard', () => {
 For integration tests against a real ZT controller, set the environment and run:
 
 ```bash
-export HANZO_API_KEY='hk_test_...'
+export HANZO_API_KEY='sk-...'
 export ZT_CONTROLLER_URL='https://zt-api.hanzo.ai'
 npm run test:integration
 ```

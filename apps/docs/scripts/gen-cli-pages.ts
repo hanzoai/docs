@@ -180,7 +180,19 @@ export async function genCliPages(): Promise<void> {
   fs.rmSync(OUT_DIR, { recursive: true, force: true });
   fs.mkdirSync(OUT_DIR, { recursive: true });
 
-  for (const g of gs) fs.writeFileSync(path.join(OUT_DIR, `${g.name}.mdx`), renderGroup(g));
+  // Every group is a FOLDER — `<name>/index.mdx` — for the reason the reference
+  // is: one capability is called `index` (Hanzo Index, full-text search), and
+  // flat files put its page at the same filename as this section's own. One
+  // shape for all of them retires the special case.
+  for (const g of gs) {
+    const folder = path.join(OUT_DIR, g.name);
+    fs.mkdirSync(folder, { recursive: true });
+    fs.writeFileSync(path.join(folder, 'index.mdx'), renderGroup(g));
+    fs.writeFileSync(
+      path.join(folder, 'meta.json'),
+      JSON.stringify({ title: g.title, pages: ['index'] }, null, 2) + '\n',
+    );
+  }
   fs.writeFileSync(
     path.join(OUT_DIR, 'index.mdx'),
     renderIndex(gs, table.size, doc.products.length),
