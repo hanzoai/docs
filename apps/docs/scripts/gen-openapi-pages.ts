@@ -430,8 +430,14 @@ function specification(name: string, hips: Corpus): string[] {
       L.push(`### ${text(sec.heading)}`);
       L.push('');
     }
-    // Everything the author nested moves down one level with its parent.
-    L.push(sec.body.replace(/^(#{3,5})\s/gm, (_m, h) => `${h}# `));
+    // Everything the author nested moves down one level with its parent, and
+    // the prose is escaped for MDX. A HIP is markdown written for a markdown
+    // reader, so it is free to contain `{host}` and `<name>` in running text;
+    // MDX reads the first as an expression and the second as a component, and
+    // the admission page died prerendering with `host is not defined`. `prose`
+    // leaves fenced blocks and code spans alone, so examples still read as
+    // written.
+    L.push(prose(sec.body.replace(/^(#{3,5})\s/gm, (_m, h) => `${h}# `)));
     L.push('');
   }
   return L;

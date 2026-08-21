@@ -1,0 +1,65 @@
+---
+title: Integrations
+description: "Point any agent framework at Hanzo. One host, one key, two lines — and the exact parameter name for each of sixteen frameworks."
+icon: Puzzle
+---
+
+An agent framework is the caller. It is not a service you connect to, so there is nothing to authorize and nothing to register. Every framework here accepts a base URL and a key, which makes pointing one at Hanzo two lines.
+
+The parameter has four spellings — `baseURL`, `base_url`, `api_base`, and a few that take neither. Picking the wrong one is silent: the framework keeps calling whatever host it called before, and the first sign is a bill somewhere else.
+
+## The contract
+
+**Host.** `https://api.hanzo.ai`. The document declares one server and that is it.
+
+**Base URL.** `https://api.hanzo.ai/v1` for every client that appends `/chat/completions` to what you hand it, which is all of them but one. The Claude Agent SDK appends `/v1/messages` itself, so it takes the bare host.
+
+**Key.** `Authorization: Bearer sk-...`. A framework's `apiKey` or `api_key` parameter sets that header. Tenancy comes from the key — `sk-` resolves to a user, `pk-` to an org — so there is no header to add and no id to pass. [Where keys come from →](/docs/api-keys)
+
+**Routes.** Two request shapes on the one host:
+
+| Route | Shape | Reached by |
+| --- | --- | --- |
+| `POST /v1/chat/completions` | OpenAI chat | where every snippet below lands, but one |
+| `POST /v1/responses` | OpenAI responses | Pydantic AI, the OpenAI Agents SDK, Agno and the Vercel AI SDK, each on a sibling constructor |
+| `POST /v1/messages` | Anthropic messages | the Claude Agent SDK |
+| `POST /v1/embeddings` | OpenAI embeddings | retrieval, wherever a framework indexes |
+
+Each page below says which one its snippet lands on.
+
+## Picking a model
+
+`GET /v1/models` is the list, and it answers without a credential:
+
+```bash
+curl -s https://api.hanzo.ai/v1/models | jq -r '.data[].id'
+```
+
+Pass the `id` through verbatim as the framework's model name — `zen5`, `claude-sonnet-4-6`, `gpt-5.5`. Every record carries `context_window` and `pricing`; `supports_tools` and `supports_vision` appear on the models where the router declares them, and an absent field is undeclared rather than false.
+
+Some frameworks want those same facts restated in their own constructor — AutoGen's `model_info`, LlamaIndex's `is_chat_model` — and the page says so where it applies.
+
+## Tools
+
+Hanzo's own tools are one MCP endpoint — `POST https://api.hanzo.ai/v1/mcp`, streamable HTTP, the same bearer key. Fifteen of the sixteen frameworks consume MCP tools directly and each page shows the wiring. [The tool catalogue →](/docs/mcp-tools)
+
+## The frameworks
+
+| Framework | Language | What you set | Where |
+| --- | --- | --- | --- |
+| [Agno](/docs/integrations/agno) | Python | `base_url` | `OpenAILike` |
+| [AutoGen](/docs/integrations/autogen) | Python | `base_url` | `OpenAIChatCompletionClient` |
+| [Claude Agent SDK](/docs/integrations/claude-agent-sdk) | TypeScript, Python | `ANTHROPIC_BASE_URL` | the environment |
+| [Cloudflare Agents](/docs/integrations/cloudflare-agents) | TypeScript | `baseURL` | `new OpenAI()` |
+| [CrewAI](/docs/integrations/crewai) | Python | `base_url` | `LLM` |
+| [DSPy](/docs/integrations/dspy) | Python | `api_base` | `dspy.LM` |
+| [Google ADK](/docs/integrations/google-adk) | Python | `api_base` | `LiteLlm` |
+| [LangGraph](/docs/integrations/langgraph) | Python | `base_url` | `ChatOpenAI` |
+| [Letta](/docs/integrations/letta) | any | base URL and key | the `/connect` flow |
+| [LlamaIndex](/docs/integrations/llamaindex) | Python | `api_base` | `OpenAILike` |
+| [Mastra](/docs/integrations/mastra) | TypeScript | `url` | the agent's `model` |
+| [OpenAI Agents SDK](/docs/integrations/openai-agents) | Python | `base_url` | `AsyncOpenAI` |
+| [Pydantic AI](/docs/integrations/pydantic-ai) | Python | `base_url` | `OpenAIProvider` |
+| [Semantic Kernel](/docs/integrations/semantic-kernel) | .NET, Python | `endpoint`, `async_client` | `AddOpenAIChatCompletion` |
+| [smolagents](/docs/integrations/smolagents) | Python | `api_base` | `OpenAIModel` |
+| [Vercel AI SDK](/docs/integrations/vercel-ai-sdk) | TypeScript | `baseURL` | `createOpenAICompatible` |

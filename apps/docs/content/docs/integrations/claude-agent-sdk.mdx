@@ -1,0 +1,80 @@
+---
+title: Claude Agent SDK
+description: "The one framework on the Anthropic shape, and the one that wants the bare host — ANTHROPIC_BASE_URL takes no /v1."
+---
+
+There is no base-URL parameter. The SDK drives the `claude` CLI as a subprocess, and the subprocess reads two environment variables: **`ANTHROPIC_BASE_URL`** and **`ANTHROPIC_AUTH_TOKEN`**.
+
+```bash
+export ANTHROPIC_BASE_URL=https://api.hanzo.ai
+export ANTHROPIC_AUTH_TOKEN=sk-...
+```
+
+**No `/v1` on the base URL.** The SDK appends the version itself — its own verification call is `$ANTHROPIC_BASE_URL/v1/messages` — so `https://api.hanzo.ai` is right and `https://api.hanzo.ai/v1` sends every request to `/v1/v1/messages`. This is the one framework here that differs; every OpenAI-shaped client on the other pages wants the `/v1`.
+
+Verify before writing any code:
+
+```bash
+curl -X POST "$ANTHROPIC_BASE_URL/v1/messages" \
+  -H "Authorization: Bearer $ANTHROPIC_AUTH_TOKEN" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "content-type: application/json" \
+  -d '{"model":"claude-sonnet-4-6","max_tokens":1,"messages":[{"role":"user","content":"."}]}'
+```
+
+In process, pass them through the SDK's `env` option. The two SDKs treat it differently: in TypeScript `options.env` replaces the spawned process's environment entirely, so spread `process.env` into it; in Python it merges on top of what was inherited.
+
+```ts
+import { query } from "@anthropic-ai/claude-agent-sdk";
+
+const result = query({
+  prompt: "Summarize this repository.",
+  options: {
+    env: {
+      ...process.env,
+      ANTHROPIC_BASE_URL: "https://api.hanzo.ai",
+      ANTHROPIC_AUTH_TOKEN: process.env.HANZO_API_KEY,
+    },
+  },
+});
+```
+
+```python
+import os
+from claude_agent_sdk import ClaudeAgentOptions
+
+options = ClaudeAgentOptions(env={
+    "ANTHROPIC_BASE_URL": "https://api.hanzo.ai",
+    "ANTHROPIC_AUTH_TOKEN": os.environ["HANZO_API_KEY"],
+})
+```
+
+Lands on `POST /v1/messages`.
+
+The variable decides the header. `ANTHROPIC_AUTH_TOKEN` sends `Authorization: Bearer`, which is the scheme the document declares. `ANTHROPIC_API_KEY` sends `x-api-key` instead, which it does not — a good credential in that variable comes back 401.
+
+Model ids come from `GET /v1/models` as everywhere else. Anthropic-shaped names are served under their own ids — `claude-sonnet-4-6`, `claude-opus-4-8`, `claude-haiku-4-5`.
+
+An `env` block in `.claude/settings.json` sets the same two variables, and takes precedence over a shell export. That file is committed, so put the address there and leave the credential in the environment.
+
+## MCP
+
+Servers go in the `mcpServers` option. The remote form is a type, a URL and the headers that authenticate it.
+
+```ts
+const result = query({
+  prompt: "What is my account balance?",
+  options: {
+    mcpServers: {
+      hanzo: {
+        type: "http",
+        url: "https://api.hanzo.ai/v1/mcp",
+        headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` },
+      },
+    },
+    allowedTools: ["mcp__hanzo__*"],
+  },
+});
+```
+
+JSON config files also accept `"streamable-http"` as an alias for `"http"`. The programmatic `mcpServers` option does not — only `"http"`.

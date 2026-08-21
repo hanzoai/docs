@@ -1,0 +1,48 @@
+---
+title: OpenAI Agents SDK
+description: "base_url goes on an AsyncOpenAI client. The SDK defaults to Responses, so choose the endpoint deliberately."
+---
+
+The base URL goes on an `AsyncOpenAI` client, parameter **`base_url`**, which is then handed to the SDK. Three scopes take it: `set_default_openai_client` globally, a `ModelProvider` through `RunConfig` per run, or `Agent.model` per agent.
+
+```bash
+pip install openai-agents
+```
+
+```python
+from agents import Agent, Runner, AsyncOpenAI, OpenAIChatCompletionsModel, set_tracing_disabled
+
+set_tracing_disabled(disabled=True)
+
+client = AsyncOpenAI(api_key="sk-...", base_url="https://api.hanzo.ai/v1")
+model = OpenAIChatCompletionsModel(model="zen5", openai_client=client)
+
+agent = Agent(name="Assistant", instructions="Answer precisely.", model=model)
+result = Runner.run_sync(agent, "Hello")
+print(result.final_output)
+```
+
+Lands on `POST /v1/chat/completions`.
+
+The SDK's own default is the Responses API, so a plain agent would reach `POST /v1/responses` instead. Both are served, so either works — the snippet uses `OpenAIChatCompletionsModel` to make the choice visible. The other documented way to make it is `set_default_openai_api("chat_completions")`, which applies when the address and key come from `OPENAI_BASE_URL` and `OPENAI_API_KEY`.
+
+Tracing uploads to OpenAI. With no platform.openai.com key in the environment, disable it as above or every run logs a tracing failure.
+
+`MultiProvider(openai_base_url=..., openai_api_key=..., openai_prefix_mode="model_id", unknown_prefix_mode="model_id")` is the route for prefix-based dispatch where the endpoint expects literal namespaced ids.
+
+## MCP
+
+```python
+from agents import Agent
+from agents.mcp import MCPServerStreamableHttp
+
+server = MCPServerStreamableHttp(params={
+    "url": "https://api.hanzo.ai/v1/mcp",
+    "headers": {"Authorization": "Bearer sk-..."},
+    "timeout": 10,
+})
+
+agent = Agent(name="Assistant", instructions="Answer precisely.", model=model, mcp_servers=[server])
+```
+
+There is also `HostedMCPTool`, which passes a `server_url` in `tool_config` — that round trip is run by the OpenAI Responses API, not by your process.
