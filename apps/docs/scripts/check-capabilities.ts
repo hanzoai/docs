@@ -106,7 +106,7 @@ export function checkCapabilities(): Result {
   // `/.well-known/` convention and a co-resident claim are not HTTP operations,
   // so no document can carry them; `capabilities.yaml`'s `doors:` names them,
   // and they are expected to have pages for exactly the same reason every other
-  // GA capability is. Without this the nine of them are `orphaned` — a page for
+  // GA capability is. Without this every one of them is `orphaned` — a page for
   // a name the document does not serve — which is the check telling the truth
   // about the wrong question.
   const off = doors();

@@ -16,11 +16,12 @@ import {
   type Product,
 } from './openapi-doc';
 import { fields, type Field } from './openapi-schema';
-import { door, firstCall, pascalTag, runnable, surfaces, type Door } from './openapi-surfaces';
+import { behind, command, door, firstCall, pascalTag, runnable, server, surfaces, type Door } from './openapi-surfaces';
 import { MCP_DOOR, load as loadDoor, ops } from './sync-mcp-tools';
 import { loadCliTable, type CliCommand } from './sync-cli-commands';
 import { loadCorpus, type Corpus, type Hip } from './sync-hips';
 import { domains, doors, icon } from './capabilities';
+import { coverage, gaps, type Coverage } from './coverage';
 import { code, firstSentence, prose, text, yamlString } from './mdx';
 
 // The API reference, generated from THE document.
@@ -268,15 +269,24 @@ function leadProse(op: Operation): string {
  * says how much is reachable and the block says what reaching it looks like.
  */
 function reachTable(p: Product, table: Map<string, CliCommand>, d: Door): string[] {
-  const commands = p.operations.filter((o) =>
-    table.has(`${o.method.toUpperCase()} ${o.path}`),
-  ).length;
-  const group = p.operations
-    .map((o) => table.get(`${o.method.toUpperCase()} ${o.path}`)?.product)
-    .find(Boolean);
-  const tool = d.byProduct.get(p.name);
-  const named = p.operations.filter((o) => d.index.get(o.id)).length;
+  // The CLI join follows the ALIAS, because the command table is pinned on its
+  // own clock and cloud answers at either spelling. Keyed on the exact string,
+  // a sweep of the addresses made this table report `none yet` for forty
+  // capabilities whose command runs — a gap that does not exist is a worse
+  // answer than no table.
+  const hits = p.operations.map((o) => command(o, table)).filter(Boolean) as CliCommand[];
+  const commands = hits.length;
+  const group = hits[0]?.product;
+  const serving = server(p, d);
   const n = p.operations.length;
+  // The SDK column was the one number here that was never measured: it printed
+  // the OPERATION count, on the assumption that a published client declares a
+  // method per operation. The clients are generated at their own release and
+  // lag it, so for 56 capabilities that assumption overstated what an installed
+  // client can call, and for eighteen of them the true count is zero. Ask the
+  // clients what they declare, the same way the per-operation SDK tab already
+  // does, and print that.
+  const methods = p.operations.filter((o) => behind(o).length === 0).length;
 
   const L: string[] = ['## Four surfaces', ''];
   L.push('| Surface | Reaches this capability as | Coverage |');
@@ -286,21 +296,27 @@ function reachTable(p: Product, table: Map<string, CliCommand>, d: Door): string
     `| **CLI** | ${group ? `\`hanzo ${code(group)} …\`` : '—'} | ${
       commands
         ? `${commands} of ${n}${commands < n ? ' — the CLI pins the document on its own clock' : ''}`
-        : 'none yet'
+        : 'no command reaches it yet — use HTTP or an SDK'
     } |`,
   );
   L.push(
-    `| **SDK** | \`${code(pascalTag(p.name))}Api\` in every published client | ${n} method${n === 1 ? '' : 's'} |`,
+    `| **SDK** | ${methods ? `\`${code(pascalTag(p.name))}Api\` in every published client` : '—'} | ${
+      methods === n
+        ? `${n} method${n === 1 ? '' : 's'}`
+        : methods
+          ? `${methods} of ${n} — the clients are generated at their own release`
+          : 'no published client declares one yet — regenerating the clients is what adds them'
+    } |`,
   );
   L.push(
-    `| **MCP** | ${tool ? `tool \`${code(tool.name)}\` on \`${MCP_DOOR}\`` : '—'} | ${
-      tool
-        ? `${ops(tool).length} operation${ops(tool).length === 1 ? '' : 's'}${
-            named < ops(tool).length
-              ? `, ${named} under the document's own id — ask \`describe\` for the rest`
+    `| **MCP** | ${serving ? `tool \`${code(serving.tool.name)}\` on \`${MCP_DOOR}\`` : '—'} | ${
+      serving
+        ? `${ops(serving.tool).length} operation${ops(serving.tool).length === 1 ? '' : 's'}${
+            serving.named < ops(serving.tool).length
+              ? `, ${serving.named} under the document's own id — ask \`describe\` for the rest`
               : ''
           }`
-        : 'none yet'
+        : 'no tool names it yet — use HTTP or an SDK'
     } |`,
   );
   L.push('');
@@ -506,21 +522,24 @@ function specification(name: string, hips: Corpus): string[] {
 /**
  * A capability the public document does not carry.
  *
- * Nine of them ship in `manifest/apps.go`. Their page has no Endpoints table and
+ * Every one is a row in `manifest/apps.go`. Their page has no Endpoints table and
  * must not pretend to: an empty table reads as a broken product, and a generated
  * sample would be a call that cannot run.
  *
- * The REASON differs, and the page must not flatten it into one. Seven answer on
+ * The REASON differs, and the page must not flatten it into one. Most answer on
  * something a document cannot describe — a port, a `/.well-known/` convention,
- * another app's router, a stream. Two, `admin` and `plugins`, serve ordinary
- * HTTP at `/v1/admin/*` and are withheld on purpose, because the operator
- * surface is not a customer's. Saying "this serves no HTTP operations" on the
- * admin page would be false, and false in the direction that matters: it would
- * tell an operator the console does not exist.
+ * another app's router, a control plane the address relays onto. `admin` and
+ * `plugins` serve ordinary HTTP at `/v1/admin/*` and are withheld on purpose,
+ * because the operator surface is not a customer's. Saying "this serves no HTTP
+ * operations" on the admin page would be false, and false in the direction that
+ * matters: it would tell an operator the console does not exist.
  *
- * So the sentence states only what is true of all nine — it is not in the public
- * contract, it is GA, and here is the door — and the door line, written per
- * capability in `capabilities.yaml`, carries the specific why.
+ * So the sentence states only what is true of all of them — it is not in the
+ * public contract, it is GA, and here is the door — and the door line, written
+ * per capability in `capabilities.yaml`, carries the specific why. The COUNT is
+ * not written here at all: two of these were retired the week this was authored
+ * (`catalogsync` and `rollingcap`, neither of which was a process), and a number
+ * in a comment is the one part of that change nothing would have caught.
  */
 function renderReached(name: string, door: string, hips: Corpus): string {
   // The SAME title rule every other capability page is titled by — `amqp` is
@@ -656,7 +675,58 @@ function renderProduct(
   return L.join('\n');
 }
 
-function renderIndex(products: Product[], doc: Document, reached: string[] = []): string {
+/**
+ * WHERE THE FOUR SURFACES DO NOT LINE UP, said once and in the open.
+ *
+ * Every capability page carries its own four-surface table, so a reader who
+ * lands on one already learns whether the CLI reaches it. What that cannot give
+ * anyone is the SHAPE of what is missing — which is the question a reader asks
+ * before choosing a surface to build on, and the question we ask before deciding
+ * what to generate next.
+ *
+ * Only the NONE cases are named. A capability the CLI reaches partially is
+ * reachable, and its own page prints the fraction; listing every fraction here
+ * would rebuild the wall of numbers the grouped index exists to avoid. And the
+ * REST column never appears, because it cannot be empty: a capability with no
+ * operations is not in this document at all, it is one of the doors above.
+ */
+function gapNote(rows: Coverage[]): string[] {
+  const g = gaps(rows);
+  if (!g.noCli.length && !g.noMcp.length && !g.noSdk.length) return [];
+  const L: string[] = ['## Where the surfaces do not line up', ''];
+  L.push(
+    'REST is the contract, and the other three are generated from it — so they trail it, ' +
+      'each on its own clock. Where one has not caught up the capability is still reachable, ' +
+      'just not that way, and its own page says which. Named here are only the capabilities a ' +
+      'surface does not reach **at all**:',
+  );
+  L.push('');
+  L.push('| Surface | Does not reach | Why |');
+  L.push('|---|---|---|');
+  const row = (surface: string, names: string[], why: string) => {
+    if (!names.length) return;
+    L.push(
+      `| **${surface}** | ${names.map((n) => `[\`${code(n)}\`](/docs/openapi/${n})`).join(', ')} | ${why} |`,
+    );
+  };
+  row('CLI', g.noCli, 'no command is folded for it yet — `hanzo` generates its table from the document at its own pin');
+  row('SDK', g.noSdk, 'the published clients predate these operations — regenerating them is what adds the methods');
+  row('MCP', g.noMcp, 'the door names no tool that reaches them — `tools/list` is the door\'s own answer, not a projection of the document');
+  L.push('');
+  L.push(
+    'Every one of them is reachable over HTTP today, and each page shows the call. ' +
+      'This table is generated with the rest of the reference, so it shrinks as the projections catch up.',
+  );
+  L.push('');
+  return L;
+}
+
+function renderIndex(
+  products: Product[],
+  doc: Document,
+  reached: string[] = [],
+  rows: Coverage[] = [],
+): string {
   const ops = products.reduce((n, p) => n + p.operations.length, 0);
   const total = products.length + reached.length;
   const L: string[] = [];
@@ -681,11 +751,28 @@ function renderIndex(products: Product[], doc: Document, reached: string[] = [])
   if (reached.length) {
     L.push(
       `The other ${reached.length} carry no operation in it. Most answer somewhere a document cannot describe — a port, a \`/.well-known/\` convention, ` +
-        `another app's router, a stream — and two are the operator surface, which serves ordinary HTTP and is withheld because its audience is not a customer. ` +
+        `another app's router, a control plane the address relays onto — and two are the operator surface, which serves ordinary HTTP and is withheld because its audience is not a customer. ` +
         `All ${reached.length} are GA and run in every deployment; each page names its own door and prints no endpoint table it does not have.`,
     );
     L.push('');
   }
+  // THE ALIAS, said ONCE.
+  //
+  // cloud answers at both the singular and the plural of a capability's name —
+  // a mechanical bidirectional alias at the router — but publishes only the
+  // canonical one. A reader who has an older client, an older CLI or an older
+  // tutorial needs to know their spelling still works; what they must not
+  // conclude is that there are two capabilities. Saying it here, on the page
+  // that introduces the naming rule, is the one place it belongs: repeating it
+  // on 122 pages would make an implementation detail look like a choice a
+  // caller has to make.
+  L.push(
+    'The names below are the canonical ones. cloud also answers at the other ' +
+      'spelling of a name that has one — `/v1/sandboxes` reaches `/v1/sandbox` — so an older client ' +
+      'keeps working; only the canonical name is published, documented and generated from.',
+  );
+  L.push('');
+  L.push(...gapNote(rows));
   L.push('## Authentication');
   L.push('');
   L.push(
@@ -712,10 +799,11 @@ function renderIndex(products: Product[], doc: Document, reached: string[] = [])
       'and say so rather than printing a sample that cannot run.',
   );
   L.push('');
-  // GROUPED, because ungrouped is the one arrangement nobody chose. 124 cards
-  // in one list is a wall a reader scrolls past; nine headings is a question
-  // they answer in one look and then a card they click. Same taxonomy as the
-  // sidebar, read from the same file, so the two cannot show different shapes.
+  // GROUPED, because ungrouped is the one arrangement nobody chose. Every
+  // capability in one flat list is a wall a reader scrolls past; nine headings
+  // is a question they answer in one look and then a card they click. Same
+  // taxonomy as the sidebar, read from the same file, so the two cannot show
+  // different shapes.
   const off = doors();
   const by = new Map(products.map((p) => [p.name, p]));
   for (const d of domains()) {
@@ -871,7 +959,10 @@ function writePages(
     }
   }
 
-  fs.writeFileSync(path.join(dir, 'index.mdx'), renderIndex(products, doc, reached));
+  fs.writeFileSync(
+    path.join(dir, 'index.mdx'),
+    renderIndex(products, doc, reached, coverage(doc, table, d)),
+  );
 
   fs.writeFileSync(
     path.join(dir, 'meta.json'),

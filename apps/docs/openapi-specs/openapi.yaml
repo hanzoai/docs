@@ -799,8 +799,9 @@ components:
           type: integer
         name:
           description: |-
-            Name is which leg this reports: "index", the lexical store, or "vector", the
-            semantic one. Match.Backend uses the same two names.
+            Name is which leg this reports: "index", the lexical store, "vector", the
+            semantic one, or "code", the org's own repositories. Match.Backend uses the
+            same three names.
           type: string
         status:
           description: |-
@@ -2046,6 +2047,45 @@ components:
             never launched), live, paused, failed (Detail says why) or unavailable (no
             executor wired on this deployment). Server-owned — a caller can never assert it.
           type: string
+      type: object
+    Charge:
+      properties:
+        amountCents:
+          description: AmountCents is what this line costs.
+          type: integer
+        asOf:
+          description: AsOf is when a pass-through amount was last checked against
+            its source.
+          type: string
+        code:
+          description: Code names the line so a caller can branch on it without reading
+            prose.
+          type: string
+        label:
+          description: Label is what the payer sees on the invoice.
+          type: string
+        passThrough:
+          description: |-
+            PassThrough marks money we collect and remit rather than keep — the state's
+            fee is not our revenue, and a quote that hides that is a quote that reads
+            as a bigger margin than it is.
+          type: boolean
+        recurring:
+          description: |-
+            Recurring marks a line that repeats. An agent of record is billed every
+            year for as long as the entity stands, and a payer agreeing to a one-time
+            total is not agreeing to that.
+          type: string
+        source:
+          description: |-
+            Source names who publishes this amount, for a line we merely pass through.
+            Empty for a price of ours, which needs no external authority.
+          type: string
+        stale:
+          description: |-
+            Stale reports that AsOf is older than the review window — the figure may
+            have moved and nobody has looked. It does not block; it tells.
+          type: boolean
       type: object
     Citation:
       properties:
@@ -4250,9 +4290,11 @@ components:
       properties:
         corpus:
           description: |-
-            Corpus is which store the document lives in. Both legs read the org's
-            knowledge base, so it is "kb" on every hit today; it is provenance for the
-            day a third corpus is fused, not a field to branch on.
+            Corpus is which store the document lives in: "kb" for a document either
+            knowledge leg returned, "code" for a span out of one of the org's own
+            repositories. It is PROVENANCE — read it to say where a hit came from, not
+            to branch on: the fused ranking is what decides order, and a caller that
+            filters by corpus wants the backend's own door instead.
           type: string
         doctype:
           description: |-
@@ -4270,8 +4312,9 @@ components:
         matched:
           description: |-
             Matched is one entry per leg that returned this document, with that leg's
-            rank and native score. Two entries mean both legs agreed, which is exactly
-            why the hit outranks one a single leg found. Never empty on a returned hit.
+            rank and native score. More than one entry means the legs AGREED, which is
+            exactly why the hit outranks one a single leg found. Never empty on a
+            returned hit.
           items:
             $ref: '#/components/schemas/Match'
           type: array
@@ -4284,7 +4327,7 @@ components:
           description: |-
             Score is the FUSED score, not a relevance or a similarity: Reciprocal Rank
             Fusion sums 1/(60+rank) over each leg that returned the document, so it is
-            bounded by roughly 1/61 per leg (about 0.033 for a document both legs put
+            bounded by roughly 1/61 per leg (about 0.033 for a document two legs put
             first) and hits are ordered by it, descending. Being built from ranks, it is
             comparable only WITHIN one response — never across queries, and never against
             a backend's own score, which stays in Matched.
@@ -5250,9 +5293,10 @@ components:
       properties:
         backend:
           description: |-
-            Backend is the leg that contributed this match: "index" (lexical) or
-            "vector" (semantic). It is the same name that leg reports itself under in
-            Response.Backends, so a hit can be traced to a status.
+            Backend is the leg that contributed this match: "index" (lexical), "vector"
+            (semantic) or "code" (the org's repositories). It is the same name that leg
+            reports itself under in Response.Backends, so a hit can be traced to a
+            status.
           type: string
         rank:
           description: |-
@@ -9046,6 +9090,37 @@ components:
             rate limits). Like ACMEEmail it applies only when the edge (re)starts.
           type: boolean
       type: object
+    Tariff:
+      properties:
+        currency:
+          description: Currency is the ISO code every amount on this quote is denominated
+            in.
+          type: string
+        dueNowCents:
+          description: 'DueNowCents is what is charged to begin: every non-recurring
+            line.'
+          type: integer
+        jurisdiction:
+          description: Jurisdiction is the state of formation the filing fee belongs
+            to.
+          type: string
+        lines:
+          description: Lines are the charges, in the order a reader should see them.
+          items:
+            $ref: '#/components/schemas/Charge'
+          type: array
+        recurring:
+          description: |-
+            Recurring is how often RecurringCents repeats — "yearly" for an agent of
+            record. Empty when nothing on this quote recurs.
+          type: string
+        recurringCents:
+          description: RecurringCents is what repeats, and Recurring says how often.
+          type: integer
+        structure:
+          description: 'Structure is the entity this prices: c-corp, llc or dao-llc.'
+          type: string
+      type: object
     Taxon:
       properties:
         brands:
@@ -12763,21 +12838,40 @@ components:
     buildOut:
       properties:
         bytes:
+          description: Bytes is the size of the bundled CommonJS the runtime will
+            execute.
           type: integer
         generated:
+          description: |-
+            Generated is whether a model wrote the source from a spec, rather than the
+            caller posting the source itself.
           type: boolean
         plugin:
           $ref: '#/components/schemas/AuthoredPlugin'
+          description: Plugin is the plugin as stored, with its derived id and build
+            time.
       type: object
     buildRequest:
       properties:
         name:
+          description: |-
+            Name is the plugin's name: one lowercase path segment (a-z0-9, _ or -),
+            and the id the runtime loads it by.
           type: string
         provider:
+          description: |-
+            Provider is the connectors provider whose credential the plugin reads at
+            run time. Empty for a plugin that needs none.
           type: string
         source:
+          description: Source is TypeScript to build as-is. Exactly one of Source
+            or Spec.
           type: string
         spec:
+          description: |-
+            Spec is API documentation — an OpenAPI document, or prose describing the
+            endpoints — that the generator turns into Source. The generated source is
+            returned in the response, so a caller can read what will run before it runs.
           type: string
       type: object
     buildRow:
@@ -13335,7 +13429,7 @@ components:
         abTest:
           description: |-
             ABTest is the creative A/B analysis from the experiments primitive
-            (experiments.Analyze, pull-model), present only when the campaign runs
+            (experiment.Analyze, pull-model), present only when the campaign runs
             more than one creative and an experiment is wired. Opaque JSON — campaign
             stays decoupled from the experiments analysis type.
         available:
@@ -14365,7 +14459,7 @@ components:
       properties:
         data:
           description: Data is every starter prompt, each importable as-is with POST
-            /v1/prompts.
+            /v1/prompt.
           items:
             $ref: '#/components/schemas/CatalogEntry'
           type: array
@@ -15811,7 +15905,7 @@ components:
           description: |-
             Status is "active" or "disabled". Empty defaults to active. A disabled
             endpoint receives no bus deliveries, but can still be exercised with
-            POST /v1/webhooks/{id}/test.
+            POST /v1/webhook/{id}/test.
           type: string
         url:
           description: |-
@@ -16546,15 +16640,6 @@ components:
           type: string
         updatedAt:
           description: UpdatedAt is when the description or metadata last changed.
-          type: string
-      type: object
-    dayCount:
-      properties:
-        count:
-          description: Count is that day's total.
-          type: integer
-        date:
-          description: Date is the day, YYYY-MM-DD.
           type: string
       type: object
     decideBody:
@@ -20332,8 +20417,6 @@ components:
           type: string
         owner:
           type: string
-        privateKey:
-          type: string
         provider:
           type: string
         scope:
@@ -20674,6 +20757,17 @@ components:
             no plaintext and still be found in one indexed read — a salted hash cannot be
             looked up by value, which is the reason the plaintext was here.
           type: string
+        act:
+          description: |-
+            Act is the durable, opt-in grant that lets this key act FOR a user in its
+            own org — the credential behind as(): presenting it authorizes minting a
+            short-lived, user-bound token for a member of the key's tenant. Default
+            false, so a server key mints nothing on anyone's behalf until the grant is
+            set deliberately — the capability is never inherited by every key. It is
+            confined at mint time to the key's OWN Owner, and a reserved-org or
+            SuperAdmin target is refused, so the grant reaches only ordinary members of
+            the one tenant that holds the key.
+          type: boolean
         application:
           type: string
         createdAt:
@@ -25397,6 +25491,27 @@ components:
           description: URL is the canonical https remote, with any embedded credentials
             stripped.
           type: string
+      type: object
+    mlCreate:
+      properties:
+        labels:
+          additionalProperties:
+            type: string
+          description: |-
+            Labels are extra labels to set on the object, merged UNDER the tenancy
+            labels this plane derives from the validated principal — so a label naming
+            another org's scope cannot displace the real one.
+          type: object
+        name:
+          description: |-
+            Name is the resource's name: a DNS-1123 label
+            (^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$), lowercased and trimmed. It is the
+            name the resource answers to for the life of the caller's org.
+          type: string
+        spec:
+          description: |-
+            Spec is the resource's own spec, passed to Kubernetes unchanged. Required —
+            an empty spec is 400 rather than an empty resource.
       type: object
     mlResource:
       properties:
@@ -39812,7 +39927,7 @@ components:
             (e.g. {"ga4":"G-…","meta":"…"}). track.js injects these first-party and the
             server CAPI reads them, per site. Absent LEAVES them; a present object REPLACES
             the set (send {} to clear). The ids are public — they ship in the page — so this
-            is not the SECRET path (a CAPI token is sealed via POST /v1/destinations).
+            is not the SECRET path (a CAPI token is sealed via POST /v1/destination).
           type: object
         upstream:
           description: |-
@@ -39959,7 +40074,7 @@ components:
         name:
           description: |-
             Name is the prompt's org-unique handle and the URL segment it is fetched by:
-            GET /v1/prompts/<name>.
+            GET /v1/prompt/<name>.
           type: string
         tags:
           description: |-
@@ -40043,31 +40158,74 @@ components:
     provisionRequest:
       properties:
         instance:
+          description: |-
+            Instance binds a DEDICATED add-on to the app instance whose
+            <instance>-addons Secret receives the <KIND>_URL (e.g. "commerce").
+            Optional: empty means "not instance-bound" — the DSN is returned once and
+            wired by the caller.
           type: string
         name:
+          description: |-
+            Name is the org-unique slug for the new resource, matching
+            ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$. Every physical name derives from it.
           type: string
       type: object
     provisionResult:
       properties:
         connectionString:
+          description: |-
+            ConnectionString is the ready-to-use DSN, credential included. RETURNED
+            HERE ONCE: no read beside this one carries it, so a caller that does not
+            keep it must provision again.
           type: string
         database:
+          description: |-
+            Database is the logical database, collection, index or bucket this resource
+            resolves to on its backend. It is derived from Name under an org-namespacing
+            hash, so it is not Name and two orgs cannot land on one.
           type: string
         host:
+          description: |-
+            Host is the address that routes to this resource — a dedicated instance's
+            own in-cluster Service, or the public gateway for a shared one. Never the
+            internal admin address of a shared backend.
           type: string
         id:
+          description: |-
+            ID is the resource's server-minted handle, "rs_"-prefixed. The caller does
+            not choose it, and it is what every read and the delete address.
           type: string
         kind:
+          description: |-
+            Kind is the product provisioned: sql, vector, datastore, kv, search, s3 or
+            docdb. It is the route that was called, not a body field.
           type: string
         name:
+          description: |-
+            Name is the org-unique slug the caller asked for, lower-cased. Every
+            physical name on the backend derives from it.
           type: string
         password:
+          description: |-
+            Password is the minted credential, in plaintext, for the kinds that have
+            one. RETURNED HERE ONCE — where KMS is configured it is sealed there and
+            only a reference is persisted; where it is not, it is stored nowhere at all.
+            It is never held in plaintext on either side.
           type: string
         port:
+          description: Port is the port a client connects to on Host.
           type: integer
         status:
+          description: |-
+            Status is "ready", or "provisioning" while a dedicated instance is still
+            being materialized by the operator. A shared-backend create is "ready" here;
+            a dedicated one answers 201 still launching, and reaches ready only when a
+            later read reconciles it against the operator's live CR — never fabricated.
           type: string
         username:
+          description: |-
+            Username is the credential's user, for the kinds that mint one per resource.
+            Absent for a kind whose backend authenticates with a shared, out-of-band key.
           type: string
       type: object
     provisionedResource:
@@ -43613,6 +43771,27 @@ components:
           description: Status is "ok" whenever the findings store opened.
           type: string
       type: object
+    runIn:
+      properties:
+        action:
+          description: Action is the name of the connector action to invoke.
+          type: string
+        auth:
+          description: |-
+            Auth is the caller's resolved credential for the connector, handed to the
+            action verbatim. Its shape is whatever the connector's auth descriptor
+            declares (a token string, an object), so it is opaque here.
+          type: object
+        id:
+          description: ID is the connector to run, from the path.
+          type: string
+        props:
+          additionalProperties:
+            type: object
+          description: Props are the action's input properties, keyed by property
+            name.
+          type: object
+      type: object
     runList:
       properties:
         runs:
@@ -43734,6 +43913,19 @@ components:
       - dataset
       - model
       type: object
+    runResp:
+      properties:
+        error:
+          description: Error is the connector-level failure message when not ok.
+          type: string
+        ok:
+          description: Ok reports whether the action ran to completion.
+          type: boolean
+        output:
+          description: Output is the action's result when ok. Its shape is the action's
+            own.
+          type: object
+      type: object
     runSummary:
       properties:
         avgScore:
@@ -43833,12 +44025,6 @@ components:
           description: |-
             Image is the output image ref to push. Required on the image lane, and it
             must target a registry namespace the caller's org owns.
-          type: string
-        organizationId:
-          description: |-
-            OrgID attributes the build to an org. On the IAM path it defaults to the
-            caller's own validated org, and a foreign one is refused unless the caller
-            is a platform SuperAdmin.
           type: string
         os:
           description: OS is the target operating system for the artifact lane.
@@ -44388,35 +44574,6 @@ components:
           description: Query is the natural-language question. Required.
           type: string
       type: object
-    searchIndex:
-      properties:
-        createdAt:
-          description: |-
-            CreatedAt is the index's creation time (RFC 3339); it falls back to now when
-            the index list could not be read.
-          type: string
-        docCount:
-          description: DocCount is how many documents the index currently holds.
-          type: integer
-        lastIndexedAt:
-          description: |-
-            LastIndexedAt is the index's last update time (RFC 3339), null when the
-            index list could not be read.
-          type: string
-        name:
-          description: Name is the index uid.
-          type: string
-      type: object
-    searchIndexList:
-      properties:
-        indexes:
-          description: |-
-            Indexes is one row per Meilisearch index, sorted by name. Empty — never
-            absent — when the search service cannot be reached.
-          items:
-            $ref: '#/components/schemas/searchIndex'
-          type: array
-      type: object
     searchOut:
       properties:
         degraded:
@@ -44451,25 +44608,6 @@ components:
         type:
           description: Type echoes the retrieval tier that ran, after defaulting.
           type: string
-      type: object
-    searchStats:
-      properties:
-        searchesPerDay:
-          description: SearchesPerDay is always empty, for the same reason as totalSearches.
-          items:
-            $ref: '#/components/schemas/dayCount'
-          type: array
-        totalDocuments:
-          description: TotalDocuments is the sum of every index's document count.
-          type: integer
-        totalSearches:
-          description: |-
-            TotalSearches is always 0: Meilisearch keeps no query-history counter, so
-            this surface reports the honest zero rather than an estimate.
-          type: integer
-        totalSessions:
-          description: TotalSessions is always 0, for the same reason as totalSearches.
-          type: integer
       type: object
     secretList:
       properties:
@@ -46414,6 +46552,21 @@ components:
             machine is its last heartbeat, since a heartbeat IS a write.
           type: string
       type: object
+    tariffIn:
+      properties:
+        agentOfRecord:
+          description: AgentOfRecord puts us on file as the entity's agent, yearly.
+          type: boolean
+        expeditedEin:
+          description: ExpeditedEIN prioritises the EIN.
+          type: boolean
+        jurisdiction:
+          description: Jurisdiction is the state of formation.
+          type: string
+        structure:
+          description: 'Structure is the entity being formed: c-corp, llc or dao-llc.'
+          type: string
+      type: object
     taxonIn:
       properties:
         brands:
@@ -48114,13 +48267,13 @@ paths:
       x-app: account
       x-public: true
       x-tool: true
-  /v1/ads/campaigns:
+  /v1/ad/campaigns:
     get:
       description: |-
         Returns the caller org's ad campaigns, most recently updated
         first, optionally narrowed to one lifecycle status. The listing is bounded by
         the org: another tenant's campaigns are not reachable from here at all.
-      operationId: get_ads_campaigns
+      operationId: get_ad_campaigns
       parameters:
       - description: |-
           Status filters to one lifecycle state (draft, active, paused, completed).
@@ -48150,18 +48303,18 @@ paths:
       summary: Returns the caller org's ad campaigns, most recently updated first,
         optionally narrowed to one lifecycle status.
       tags:
-      - ads
-      x-app: ads
+      - ad
+      x-app: ad
       x-public: true
       x-tool: true
     post:
       description: |-
         Registers a new ad campaign for the caller's org and answers
         201 with the stored row. It only records the campaign — nothing is sent to the
-        ad network until POST /v1/ads/campaigns/{id}/launch runs it. The org is
+        ad network until POST /v1/ad/campaigns/{id}/launch runs it. The org is
         stamped by the server from the validated principal, so a body can never place
         a campaign in another tenant.
-      operationId: post_ads_campaigns
+      operationId: post_ad_campaigns
       requestBody:
         content:
           application/json:
@@ -48183,18 +48336,18 @@ paths:
       summary: Registers a new ad campaign for the caller's org and answers 201 with
         the stored row.
       tags:
-      - ads
-      x-app: ads
+      - ad
+      x-app: ad
       x-public: true
       x-tool: true
-  /v1/ads/campaigns/{id}:
+  /v1/ad/campaigns/{id}:
     delete:
       description: |-
         Removes one of the caller org's campaigns and answers 204 with
         no body. It deletes the stored record only: a campaign already launched keeps
         running on the ad network, which must be stopped there. An id another org owns
         reads as not found.
-      operationId: delete_ads_campaigns_by_id
+      operationId: delete_ad_campaigns_by_id
       parameters:
       - example: camp_2f9c1d
         in: path
@@ -48207,15 +48360,15 @@ paths:
           description: no content
       summary: Removes one of the caller org's campaigns and answers 204 with no body.
       tags:
-      - ads
-      x-app: ads
+      - ad
+      x-app: ad
       x-public: true
       x-tool: true
     get:
       description: |-
         Returns one of the caller org's campaigns. An id another org owns
         reads as not found, so the response cannot confirm that it exists.
-      operationId: get_ads_campaigns_by_id
+      operationId: get_ad_campaigns_by_id
       parameters:
       - example: camp_2f9c1d
         in: path
@@ -48232,8 +48385,8 @@ paths:
           description: ok
       summary: Returns one of the caller org's campaigns.
       tags:
-      - ads
-      x-app: ads
+      - ad
+      x-app: ad
       x-public: true
       x-tool: true
     put:
@@ -48243,7 +48396,7 @@ paths:
         field is written from the request, so an omitted one is cleared. externalId is
         launch-owned and is never touched here, so editing a campaign cannot break its
         link to a live provider execution.
-      operationId: put_ads_campaigns_by_id
+      operationId: put_ad_campaigns_by_id
       parameters:
       - example: camp_2f9c1d
         in: path
@@ -48273,11 +48426,11 @@ paths:
       summary: Replaces the user-owned fields of one of the caller org's campaigns
         and answers the stored row.
       tags:
-      - ads
-      x-app: ads
+      - ad
+      x-app: ad
       x-public: true
       x-tool: true
-  /v1/ads/campaigns/{id}/launch:
+  /v1/ad/campaigns/{id}/launch:
     post:
       description: 'Creates the campaign on its platform under the CALLER ORG''S own
         connected ad account, records the provider campaign id, flips the stored campaign
@@ -48291,7 +48444,7 @@ paths:
         for this launch and is TOLERANT — a malformed or non-JSON body is ignored
         and the campaign launches on its stored account rather than being refused.
         A campaign id another org owns reads as not found.'
-      operationId: post_ads_campaigns_by_id_launch
+      operationId: post_ad_campaigns_by_id_launch
       parameters:
       - in: path
         name: id
@@ -48300,17 +48453,17 @@ paths:
           type: string
       summary: Run one of your stored campaigns on its ad network
       tags:
-      - ads
-      x-app: ads
+      - ad
+      x-app: ad
       x-public: true
-  /v1/ads/summary:
+  /v1/ad/summary:
     get:
       description: |-
         Rolls the caller org's ad campaigns up into four numbers: how many
         campaigns exist, how many are active, and the summed budget and spend across
         all of them. Budget and spend are MINOR units (cents), the same units the
         campaign rows carry. It counts only this org's campaigns.
-      operationId: get_ads_summary
+      operationId: get_ad_summary
       responses:
         "200":
           content:
@@ -48322,8 +48475,8 @@ paths:
         campaigns exist, how many are active, and the summed budget and spend across
         all of them.'
       tags:
-      - ads
-      x-app: ads
+      - ad
+      x-app: ad
       x-public: true
       x-tool: true
   /v1/affiliate:
@@ -54831,6 +54984,49 @@ paths:
                 $ref: '#/components/schemas/Catalog'
           description: ok
       summary: Connectors returns the connector catalogue.
+      tags:
+      - auto
+      x-app: auto
+      x-public: true
+      x-tool: true
+  /v1/auto/connectors/{id}/run:
+    post:
+      description: |-
+        Run executes one connector action in-process and answers the outcome. The
+        caller's resolved credential travels in `auth`, delivered to the action
+        verbatim — the runtime resolves no credential itself. An action that ran and
+        failed (or an action name the connector does not have) answers ok:false with
+        the failure message, not an HTTP error; an unknown connector is 404 and a
+        missing action 422.
+      operationId: post_auto_connectors_by_id_run
+      parameters:
+      - description: ID is the connector to run, from the path.
+        example: notion
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            example:
+              action: create_page
+              auth: secret-token
+              id: notion
+              props:
+                title: Hello
+            schema:
+              $ref: '#/components/schemas/runIn'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/runResp'
+          description: ok
+      summary: Run executes one connector action in-process and answers the outcome.
       tags:
       - auto
       x-app: auto
@@ -65725,24 +65921,41 @@ paths:
   /v1/company/payment:
     post:
       description: |-
-        Bills the caller's own org the one-time Hanzo Company formation fee — $999 unless the deployment sets another — and answers with the formation record carrying its paid flag and the charge reference. Takes no body: the org is the validated tenant and the amount is the platform's, never the caller's to assert.
+        Charges the caller's own org the one-time Hanzo Company formation fee.
 
-        IDEMPOTENT on the formation rather than on the request: an already-paid formation answers 200 with the same record and is not charged again, so a retry or a double-clicked button costs nothing. Available only at the `payment` stage (409 anywhere else) and only for an org that has begun a formation (404 otherwise).
+        It is $999 unless the deployment sets another, and the answer is the formation
+        record carrying its paid flag and the charge reference. It takes no body: the org is the validated tenant and the amount is the
+        platform's, never the caller's to assert.
 
-        A refused charge answers the fleet-wide billing contract, not a formation error — 402 when the org cannot pay, 503 when metering is unavailable — which is exactly why this route is not a typed op.
+        IDEMPOTENT on the formation rather than on the request: an already-paid
+        formation answers 200 with the same record and is not charged again, so a
+        retry or a double-clicked button costs nothing. Available only at the
+        `payment` stage (409 anywhere else) and only for an org that has begun a
+        formation (404 otherwise).
+
+        A denial answers the fleet-wide billing contract — 402 insufficient_balance,
+        402 spend_cap_exceeded, 503 balance_unavailable — carried by cloud.Denied,
+        which is the money wire's own {"error":{"code","message"}} body rather than a
+        second vocabulary invented for this surface.
+
+        The gate is the LAST thing it does, after the stage check and the paid
+        short-circuit, so a caller the machine is about to refuse is never charged.
+        That ordering is why the gate cannot lift into middleware, where it would run
+        first. Both facts are pinned: TestPaymentDenialWire, TestPaymentChargesLast.
       operationId: post_company_payment
       responses:
-        2XX:
+        "200":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/formationView'
-          description: Success
-      summary: Charge the one-time formation fee and mark the formation paid
+          description: ok
+      summary: Charges the caller's own org the one-time Hanzo Company formation fee.
       tags:
       - company
       x-app: company
       x-public: true
+      x-tool: true
   /v1/company/register:
     get:
       description: |-
@@ -65898,6 +66111,39 @@ paths:
                 $ref: '#/components/schemas/formationView'
           description: ok
       summary: Records the entity kind, the state of formation and the proposed name.
+      tags:
+      - company
+      x-app: company
+      x-public: true
+      x-tool: true
+  /v1/company/tariff:
+    post:
+      description: |-
+        Itemises what a formation costs before anyone commits to it.
+
+        It answers what is due now and what recurs, as separate figures, and marks the
+        state's filing fee as money we collect and remit rather than keep. A caller can
+        therefore show a payer the whole bill — which is the point of quoting at all,
+        and was impossible while the fee was one number in an error string.
+
+        A jurisdiction whose filing fee this deployment has not been told REFUSES,
+        naming the setting that fixes it. Quoting our half as though it were the total
+        is the one answer that would be worse than no answer.
+      operationId: post_company_tariff
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/tariffIn'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tariff'
+          description: ok
+      summary: Itemises what a formation costs before anyone commits to it.
       tags:
       - company
       x-app: company
@@ -68538,14 +68784,14 @@ paths:
       x-app: deploy
       x-public: true
       x-tool: true
-  /v1/destinations:
+  /v1/destination:
     get:
       description: |-
         Reports every destination this deployment can forward to, each with the
         caller org's connection state: whether it is connected, whether it is enabled,
         whether a credential resolves right now, and the config fields the console
         renders for it.
-      operationId: get_destinations
+      operationId: get_destination
       responses:
         "200":
           content:
@@ -68558,16 +68804,16 @@ paths:
         enabled, whether a credential resolves right now, and the config fields the
         console renders for it.'
       tags:
-      - destinations
-      x-app: destinations
+      - destination
+      x-app: destination
       x-public: true
       x-tool: true
-  /v1/destinations/{platform}:
+  /v1/destination/{platform}:
     delete:
       description: |-
         Forgets a destination for the caller's org: every credential held in
         KMS, then the stored config. Idempotent, and it requires org admin.
-      operationId: delete_destinations_by_platform
+      operationId: delete_destination_by_platform
       parameters:
       - description: |-
           Platform is the destination to act on, from the path: ga4 | meta | tiktok |
@@ -68588,8 +68834,8 @@ paths:
       summary: 'Forgets a destination for the caller''s org: every credential held
         in KMS, then the stored config.'
       tags:
-      - destinations
-      x-app: destinations
+      - destination
+      x-app: destination
       x-public: true
       x-tool: true
     get:
@@ -68597,7 +68843,7 @@ paths:
         Reports one destination's card for the caller's org — its config fields,
         its connection state, and whether a credential resolves right now. A platform
         this deployment does not carry is not found.
-      operationId: get_destinations_by_platform
+      operationId: get_destination_by_platform
       parameters:
       - description: |-
           Platform is the destination to act on, from the path: ga4 | meta | tiktok |
@@ -68618,8 +68864,8 @@ paths:
       summary: Reports one destination's card for the caller's org — its config fields,
         its connection state, and whether a credential resolves right now.
       tags:
-      - destinations
-      x-app: destinations
+      - destination
+      x-app: destination
       x-public: true
       x-tool: true
     post:
@@ -68636,7 +68882,7 @@ paths:
         never appears in the response, in the store, or in a log line; only its NAME
         is ever published. Set enabled to false to keep the connection but stop the
         analytics fan-out to it.'
-      operationId: post_destinations_by_platform
+      operationId: post_destination_by_platform
       parameters:
       - in: path
         name: platform
@@ -68659,17 +68905,17 @@ paths:
       summary: Connect one conversion destination for your org, or update the one
         you have
       tags:
-      - destinations
-      x-app: destinations
+      - destination
+      x-app: destination
       x-public: true
-  /v1/destinations/{platform}/test:
+  /v1/destination/{platform}/test:
     post:
       description: |-
         Sends ONE synthetic pageview through the connected destination end to end
         and reports what the platform said. A send the platform refuses is reported as
         data — {"ok": false, "error": …} at 200 — so the console shows the platform's
         own words rather than an error about Hanzo. It requires org admin.
-      operationId: post_destinations_by_platform_test
+      operationId: post_destination_by_platform_test
       parameters:
       - description: |-
           Platform is the destination to act on, from the path: ga4 | meta | tiktok |
@@ -68690,8 +68936,8 @@ paths:
       summary: Sends ONE synthetic pageview through the connected destination end
         to end and reports what the platform said.
       tags:
-      - destinations
-      x-app: destinations
+      - destination
+      x-app: destination
       x-public: true
       x-tool: true
   /v1/domain/availability:
@@ -75693,8 +75939,15 @@ paths:
     post:
       description: |-
         Adds a signing certificate your applications can verify tokens against
-        — the call you make to bring your own key, or to stage the next one before a
-        rotation. A name already used in your organization is refused.
+        — the call you make to stage the next one before a rotation. A name already
+        used in your organization is refused.
+
+        It registers the certificate's IDENTITY: its name (which is the JWKS `kid`),
+        its algorithm, its expiry. Key material does not travel this way and cannot:
+        the private key is not part of the Cert's JSON, so it is neither served here
+        nor accepted here. It is supplied to the process by the deployment, under the
+        name registered here (internal/keyring). Staging a rotation is therefore two
+        halves — this call names the key, and the deployment provides it.
       operationId: post_iam_certs
       requestBody:
         content:
@@ -75710,8 +75963,7 @@ paths:
                 $ref: '#/components/schemas/iam.Cert'
           description: ok
       summary: Adds a signing certificate your applications can verify tokens against
-        — the call you make to bring your own key, or to stage the next one before
-        a rotation.
+        — the call you make to stage the next one before a rotation.
       tags:
       - iam
       x-app: iam
@@ -75773,6 +76025,26 @@ paths:
       description: |-
         Changes a signing certificate's settings. What it is called does not
         change, and neither does when it was added.
+
+        A PUT here is a METADATA edit — display name, expiry, provider. It overlays
+        only the fields the request actually SET onto the loaded row: a field the JSON
+        omits (or leaves at its zero value) keeps what the row holds, rather than
+        blanking it. That is load-bearing, not a nicety. A read serves the public
+        Certificate (Mask hides only PrivateKey and AccessSecret), so a client that
+        reads a cert, changes one field, and writes it back sends the masked halves
+        empty and every other field it did not touch at its zero value — and the old
+        full-struct overlay wrote all of those blanks back. Blanking CryptoAlgorithm
+        alone drops the cert from the JWKS (oidc.Publishes turns false), so every
+        token under its `kid` stops verifying; blanking Provider/Account/ExpireTime
+        breaks ACME renewal and expiry — all from a request that only meant to rename
+        it. Absent-or-zero means "unchanged", so the deployment (key) and a rotation
+        (cert) remain the only way key or published material changes; the metadata API
+        cannot clear it.
+
+        The overlay is generic — it copies every set field, so a field nobody has added
+        yet is carried without a line here — and leaves three things the request may
+        not move: the bound Model (id, createdAt, key, snapshot), the natural key
+        (owner/name address the row, they do not mutate it), and the creation stamp.
       operationId: post_iam_certs_update
       requestBody:
         content:
@@ -76892,11 +77164,11 @@ paths:
         It requires the proof initiate handed out — a passcode from the authenticator, or the
         code that was sent — and verifies it BEFORE writing anything.
 
-        It used to write on the strength of a `secret` field alone. A client that skipped
-        the verify step, scanned the QR into the wrong app, or was simply buggy switched on
-        a factor no code would ever satisfy, and the account was then locked out with no
+        Verifying BEFORE writing is what keeps a client that never completed the proof —
+        a skipped verify step, a QR scanned into the wrong app, a bug — from switching on
+        a factor no code can satisfy. That would lock the account out with no
         self-service way back: the gate holds the sign-in before minting, so the person
-        cannot obtain the bearer that disable requires.
+        could not obtain the bearer that disable requires.
 
         The recovery codes are minted here and returned ONCE, on the first factor the
         account adds. Answering with them is the way back in when no factor can be
@@ -77038,11 +77310,9 @@ paths:
         Answers "what am I approving?" for a pending device code.
 
         The approval page exists to tell a human WHICH application they are authorizing;
-        a page that names the wrong one defeats the control it implements. It used to
-        render the portal's own app name — a constant, `hanzo-console` for every code —
-        so a device code minted by `hanzo-cli` was approved under a screen naming a
-        different application entirely. The client is a property of the CODE, so it is
-        read from the code's row here and nowhere else.
+        a page that names any other one defeats the control it implements. The client is
+        a property of the CODE, not of the page or of whatever app the browser happens
+        to be signed in to, so it is read from the code's row here and nowhere else.
 
         Requires a signed-in session, and answers with the same ONE opaque refusal
         approveDevice uses. That is deliberate: the user_code is only 40 bits and is the
@@ -77100,12 +77370,10 @@ paths:
         Ends a sign-in and sends the browser somewhere sensible. Accepts
         GET or POST, so it works as a plain link.
 
-        It ACTUALLY signs you out, which is worth stating because the endpoint spent a
-        release not doing it: the whole body computed a redirect and answered
-        {"status":"ok"} unconditionally — no session ended, no token revoked. A logout
-        that reports success while leaving the session live is worse than no logout at
-        all, because the person on the shared machine believes it worked. Three things
-        happen here now, in this order:
+        It ACTUALLY signs you out — worth stating, because a logout that computes a
+        redirect and answers {"status":"ok"} while ending no session and revoking no
+        token is worse than none: the person on the shared machine believes it worked.
+        Three things happen here, in this order:
 
          1. The browser session dies — sid revoked server-side AND the cookie expired
             (sessions.Clear). Server-side revocation is the load-bearing half: a copy
@@ -77131,12 +77399,10 @@ paths:
         Ends a sign-in and sends the browser somewhere sensible. Accepts
         GET or POST, so it works as a plain link.
 
-        It ACTUALLY signs you out, which is worth stating because the endpoint spent a
-        release not doing it: the whole body computed a redirect and answered
-        {"status":"ok"} unconditionally — no session ended, no token revoked. A logout
-        that reports success while leaving the session live is worse than no logout at
-        all, because the person on the shared machine believes it worked. Three things
-        happen here now, in this order:
+        It ACTUALLY signs you out — worth stating, because a logout that computes a
+        redirect and answers {"status":"ok"} while ending no session and revoking no
+        token is worse than none: the person on the shared machine believes it worked.
+        Three things happen here, in this order:
 
          1. The browser session dies — sid revoked server-side AND the cookie expired
             (sessions.Clear). Server-side revocation is the load-bearing half: a copy
@@ -77171,12 +77437,9 @@ paths:
         nothing — so the endpoint cannot be used to discover which tokens are real.
 
         PUBLIC clients revoke too, and must: sign-out is the only control a long-lived
-        refresh token has. hanzo-cli is a public PKCE client holding a 30-day rotating
-        refresh token, so a confidential-only revocation endpoint made `hanzo auth
-        logout` a LOCAL DELETE — the credential it dropped stayed spendable at
-        hanzo.id for the rest of the month, with nothing able to kill it. Measured
-        2026-08-01: revoke answered 401 invalid_client and the refresh token went on
-        minting access tokens.
+        refresh token has. A native app or CLI is a public PKCE client and holds no
+        secret, so requiring one here would leave signing out as a local delete —
+        forgetting a credential that stays spendable for the rest of its lifetime.
 
         Widening authentication does not widen authority. The caller must still POSSESS
         the token — and possession already permits USE, of which revocation is the
@@ -77272,10 +77535,9 @@ paths:
         GET with 403 before the handler runs. That was true and sufficient for as long
         as HTTP was the only way in. It stopped being sufficient when the same typed op
         became reachable over the agent door, where a request arrives at the handler
-        with no middleware in front of it — and this handler, reading no principal and
-        treating an absent Owner selector as no filter, answered with the whole table.
-        Measured on production: 670 organizations, 898KB, to a caller holding no
-        credential at all.
+        with no middleware in front of it. A handler that reads no principal and treats
+        an absent Owner selector as no filter would answer such a caller with the whole
+        registry, so the scope has to be the handler's own, not the door's.
 
         So the fact moves to where every door reaches it. The Guard keeps its own
         refusal — two checks of one rule is not two rules, and the outer one still
@@ -79212,12 +79474,12 @@ paths:
         their user record — so this list can never show more people than the surface
         beside it already does.
 
-        There is no organization-wide list. It used to scope to the ORG, which handed
-        an org admin every member's credential rows in one answer, and a SuperAdmin
-        every tenant's; a plain member meanwhile could not read even their own,
-        because an unnamed target fails the Guard's tenant rule. One scope fixes both
-        halves: the answer is a person's, and the caller is the person unless they say
-        otherwise and may.
+        There is no organization-wide list, by design. Scoping to the ORG would hand an
+        org admin every member's credential rows in one answer and a SuperAdmin every
+        tenant's, while a plain member could not read even their own (an unnamed target
+        fails the Guard's tenant rule). One scope answers both halves cleanly: the
+        answer is a person's, and the caller is that person unless they say otherwise
+        and may.
       operationId: listWebauthnCredentials
       parameters:
       - in: query
@@ -86180,17 +86442,42 @@ paths:
       x-tool: true
     post:
       description: |-
-        Deploys a model into the caller's own tenant namespace and answers the created resource, 201. The spec is the kserve InferenceService spec, relayed as given, so anything kserve serves is deployable here without this layer knowing what it is.
+        Deploys one inference model for the caller's org, and answers 201
+        with the model as Kubernetes admitted it.
 
-        THE BALANCE GATE RUNS FIRST, before a namespace or a resource exists, so an unfunded org cannot start GPU compute and then be billed for it. It fails CLOSED: a commerce that cannot be reached refuses rather than admits. The refusal carries the fleet's nested error body — the 402 shape a funded-balance client already parses — which is precisely why this route is not a typed op. On success the submission fee is debited from the caller org's own ledger, asynchronously and best-effort; ongoing GPU-hour cost is metered elsewhere.
-
-        The tenant namespace is derived from the VALIDATED org and project — never from a field — and the mapping is injective in both, so two tenants can never land in one namespace. An unvalidated caller is refused before any of that. The name must be a DNS-1123 label; a name already taken in the tenant's namespace is a 409.
+        The `spec` is a kserve InferenceService spec, passed through unchanged — this
+        plane owns the tenancy, the billing and the namespace, and kserve owns what a
+        model IS. An unfunded org is refused BEFORE anything is created, so nobody runs
+        free GPU compute and nobody is charged for a resource that was never made.
       operationId: post_ml_models
-      summary: Deploy an inference model
+      requestBody:
+        content:
+          application/json:
+            example:
+              name: sentiment
+              spec:
+                predictor:
+                  model:
+                    modelFormat:
+                      name: sklearn
+                    storageUri: s3://models/sentiment
+            schema:
+              $ref: '#/components/schemas/mlCreate'
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mlResource'
+          description: created
+      summary: Deploys one inference model for the caller's org, and answers 201 with
+        the model as Kubernetes admitted it.
       tags:
       - ml
       x-app: ml
       x-public: true
+      x-tool: true
   /v1/ml/models/{name}:
     delete:
       description: |-
@@ -101150,17 +101437,23 @@ paths:
         to object storage instead; it must carry no `image`, because a build produces
         binaries or an image, never both.
 
-        PRIVILEGED, with exactly two credentials and never a third: the shared
-        build-callback token compared in constant time — the machine path, which a user
-        never holds — or a validated IAM principal who is an ADMIN of their org, which is
-        the `hanzo build` user path and means one IAM login authorizes a build with no
-        separate build token. A plain member is refused.
+        PRIVILEGED, and A BUILD BELONGS TO THE ORGANIZATION ITS CREDENTIAL NAMES. Two
+        credentials, never a third:
 
-        Both paths are bounded the same way: the output must push to a registry the
-        fabric owns, and on the IAM path the image's registry namespace must MATCH the
-        caller's own validated org — so an org admin can only publish into their own
-        brand and can never overwrite another's through the shared push credential. The
-        same confinement applies to the artifact lane's repo owner.
+          - one that NAMES an organization — a person who administers it (the `hanzo
+            build` path, so one IAM login authorizes a build with no separate build
+            token), or that organization's own machine identity (the pipeline path). The
+            build is attributed to that org and confined to what it owns.
+          - the shared build-callback token, compared in constant time. It names NO
+            organization, which is both why the fabric's own release can publish across
+            brands with it and why anything that CAN name one is read first.
+
+        Both are bounded by the owned-registry allowlist. The org path is bounded again,
+        by the org: the image's registry namespace must be one that organization owns, so
+        it publishes into its own brand and can never overwrite another's through the
+        shared push credential. The same confinement applies to the artifact lane's repo
+        owner. There is no request field naming an organization — the attribution is read
+        off the credential, so there is nothing for a caller to write it with.
 
         The output image is parsed and validated as a single well-formed OCI ref before
         any authorization decision reads it, so a crafted ref cannot smuggle a
@@ -103003,13 +103296,13 @@ paths:
       - projects
       x-app: projects
       x-public: true
-  /v1/prompts:
+  /v1/prompt:
     get:
       description: |-
         List returns the caller org's prompt library as one row per prompt: its name,
         type, every version number it has, its taxonomy and when it last changed. The
         template bodies are deliberately absent — fetch one prompt to read its text.
-      operationId: get_prompts
+      operationId: get_prompt
       responses:
         "200":
           content:
@@ -103021,8 +103314,8 @@ paths:
         its name, type, every version number it has, its taxonomy and when it last
         changed.'
       tags:
-      - prompts
-      x-app: prompts
+      - prompt
+      x-app: prompt
       x-public: true
       x-tool: true
     post:
@@ -103032,7 +103325,7 @@ paths:
         so the library keeps real, inspectable history and the response carries the whole
         version list. The name is also the URL segment the prompt is fetched by, which is
         why its shape is constrained and a handful of names are reserved.
-      operationId: post_prompts
+      operationId: post_prompt
       requestBody:
         content:
           application/json:
@@ -103053,17 +103346,17 @@ paths:
           description: created
       summary: Create records a prompt for the caller's org and answers 201 with it.
       tags:
-      - prompts
-      x-app: prompts
+      - prompt
+      x-app: prompt
       x-public: true
       x-tool: true
-  /v1/prompts/{name}:
+  /v1/prompt/{name}:
     delete:
       description: |-
         Delete removes one of the caller org's prompts and every version of it, answering
         204. It is scoped to the caller's org, so a name another tenant owns is the same
         404 an unknown name gives. There is no undo: the version history goes with it.
-      operationId: delete_prompts_by_name
+      operationId: delete_prompt_by_name
       parameters:
       - description: Name is the prompt to act on, from the path.
         example: greeting
@@ -103078,8 +103371,8 @@ paths:
       summary: Delete removes one of the caller org's prompts and every version of
         it, answering 204.
       tags:
-      - prompts
-      x-app: prompts
+      - prompt
+      x-app: prompt
       x-public: true
       x-tool: true
     get:
@@ -103088,7 +103381,7 @@ paths:
         metadata of every version it has had. The history carries version numbers, types
         and timestamps only — not each version's body — so a long history cannot inflate
         this response. A name the caller's org does not own is 404, whoever owns it.
-      operationId: get_prompts_by_name
+      operationId: get_prompt_by_name
       parameters:
       - description: Name is the prompt to act on, from the path.
         example: greeting
@@ -103107,20 +103400,20 @@ paths:
       summary: 'Get returns one of the caller org''s prompts: its CURRENT template
         text plus the metadata of every version it has had.'
       tags:
-      - prompts
-      x-app: prompts
+      - prompt
+      x-app: prompt
       x-public: true
       x-tool: true
-  /v1/prompts/catalog:
+  /v1/prompt/catalog:
     get:
       description: |-
         Catalog returns the read-only starter prompt library shipped with the binary —
         reference content every tenant sees the same, NOT the caller's own prompts and
         never mixed into them. An org's library stays honestly empty until someone
-        explicitly imports a starter, which is an ordinary POST /v1/prompts. Entries that
+        explicitly imports a starter, which is an ordinary POST /v1/prompt. Entries that
         would fail the create guards are dropped, so everything offered here can actually
         be imported.
-      operationId: get_prompts_catalog
+      operationId: get_prompt_catalog
       responses:
         "200":
           content:
@@ -103132,17 +103425,17 @@ paths:
         binary — reference content every tenant sees the same, NOT the caller's own
         prompts and never mixed into them.
       tags:
-      - prompts
-      x-app: prompts
+      - prompt
+      x-app: prompt
       x-public: true
       x-tool: true
-  /v1/prompts/metrics:
+  /v1/prompt/metrics:
     get:
       description: |-
         Metrics returns real per-prompt statistics for the caller's org: how many versions
         each prompt has, which one is current, and when it was created and last changed.
         Every number is counted from the store — nothing here is estimated or fabricated.
-      operationId: get_prompts_metrics
+      operationId: get_prompt_metrics
       responses:
         "200":
           content:
@@ -103154,8 +103447,8 @@ paths:
         how many versions each prompt has, which one is current, and when it was created
         and last changed.'
       tags:
-      - prompts
-      x-app: prompts
+      - prompt
+      x-app: prompt
       x-public: true
       x-tool: true
   /v1/provisioning/datastore:
@@ -103182,33 +103475,34 @@ paths:
       x-tool: true
     post:
       description: |-
-        Launches your org's OWN Hanzo Datastore instance and answers with its `datastore://` connection string. The instance is yours alone: a deployment in your own tenant namespace, so its admin credential is naturally scoped to you and no other tenant shares the process. Off-cluster, where there is no orchestrator to launch one, this fails closed with 503 rather than handing back a shared one.
+        Launches your org's OWN Hanzo Datastore instance and answers
+        with its `datastore://` connection string.
 
-        `name` is the org-unique slug every physical name derives from, and must match ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$. `instance` optionally BINDS the add-on to one of your app instances: the DSN is injected into that instance's addons secret as <KIND>_URL, switching the app off its built-in store and onto this one. Omit it and the connection string is yours to wire.
-
-        THE CREDENTIAL COMES BACK ONCE. The connection string and password are in this response and nowhere else — every read beside it omits the password — so a caller that does not keep them has to provision again. Where KMS is configured the password is sealed there and only a reference is persisted; where it is not, it is returned this once and stored nowhere. It is never held in plaintext.
-
-        Scoped to the caller's validated org (403 without one), which also namespaces the physical resource under a fixed-width hash, so two tenants can never fold onto one backend resource — a residual collision fails closed with 409 rather than silently sharing. A name already taken in your org is 409; an invalid name or instance slug is 400; a backend that refuses the create is 502. Where a later step fails after the backend resource already exists, it is torn back down rather than left orphaned.
-
-        Billing is gated BEFORE anything is created: an unfunded org — or, in the fail-closed default, an unreachable meter — gets the fleet-wide 402/503 and nothing is provisioned. The fee is per-kind and set by the deployment.
+        The instance is yours alone — a deployment in your own tenant namespace, so its
+        admin credential is naturally scoped to you and no other tenant shares the
+        process. Off-cluster this fails closed with 503 rather than handing back a
+        shared one.
       operationId: post_provisioning_datastore
       requestBody:
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/provisionRequest'
+        required: true
       responses:
-        2XX:
+        "201":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/provisionResult'
-          description: Success
-      summary: Provision a Hanzo Datastore instance for your org
+          description: created
+      summary: Launches your org's OWN Hanzo Datastore instance and answers with its
+        `datastore://` connection string.
       tags:
       - provisioning
       x-app: provisioning
       x-public: true
+      x-tool: true
   /v1/provisioning/datastore/{name}:
     delete:
       description: |-
@@ -103291,33 +103585,35 @@ paths:
       x-tool: true
     post:
       description: |-
-        Launches your org's OWN document-database instance — it speaks the MongoDB wire protocol, so existing MongoDB drivers connect unchanged — and answers with its `mongodb://` connection string. The instance is yours alone: a deployment in your own tenant namespace, so its admin credential is naturally scoped to you and no other tenant shares the process. Off-cluster, where there is no orchestrator to launch one, this fails closed with 503 rather than handing back a shared one.
+        CreateDocDB launches your org's OWN document-database instance and answers with
+        its `mongodb://` connection string. It speaks the MongoDB wire protocol, so
+        existing MongoDB drivers connect unchanged.
 
-        `name` is the org-unique slug every physical name derives from, and must match ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$. `instance` optionally BINDS the add-on to one of your app instances: the DSN is injected into that instance's addons secret as <KIND>_URL, switching the app off its built-in store and onto this one. Omit it and the connection string is yours to wire.
-
-        THE CREDENTIAL COMES BACK ONCE. The connection string and password are in this response and nowhere else — every read beside it omits the password — so a caller that does not keep them has to provision again. Where KMS is configured the password is sealed there and only a reference is persisted; where it is not, it is returned this once and stored nowhere. It is never held in plaintext.
-
-        Scoped to the caller's validated org (403 without one), which also namespaces the physical resource under a fixed-width hash, so two tenants can never fold onto one backend resource — a residual collision fails closed with 409 rather than silently sharing. A name already taken in your org is 409; an invalid name or instance slug is 400; a backend that refuses the create is 502. Where a later step fails after the backend resource already exists, it is torn back down rather than left orphaned.
-
-        Billing is gated BEFORE anything is created: an unfunded org — or, in the fail-closed default, an unreachable meter — gets the fleet-wide 402/503 and nothing is provisioned. The fee is per-kind and set by the deployment.
+        The instance is yours alone — a deployment in your own tenant namespace, so its
+        admin credential is naturally scoped to you and no other tenant shares the
+        process. Off-cluster this fails closed with 503 rather than handing back a
+        shared one.
       operationId: post_provisioning_docdb
       requestBody:
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/provisionRequest'
+        required: true
       responses:
-        2XX:
+        "201":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/provisionResult'
-          description: Success
-      summary: Provision a document database for your org
+          description: created
+      summary: CreateDocDB launches your org's OWN document-database instance and
+        answers with its `mongodb://` connection string.
       tags:
       - provisioning
       x-app: provisioning
       x-public: true
+      x-tool: true
   /v1/provisioning/docdb/{name}:
     delete:
       description: |-
@@ -103399,33 +103695,34 @@ paths:
       x-tool: true
     post:
       description: |-
-        Launches your org's OWN key-value instance and answers with its `kv://` connection string. The instance is yours alone: a deployment in your own tenant namespace, so its admin credential is naturally scoped to you and no other tenant shares the process. Off-cluster, where there is no orchestrator to launch one, this fails closed with 503 rather than handing back a shared one.
+        CreateKV launches your org's OWN key-value instance and answers with its `kv://`
+        connection string.
 
-        `name` is the org-unique slug every physical name derives from, and must match ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$. `instance` optionally BINDS the add-on to one of your app instances: the DSN is injected into that instance's addons secret as <KIND>_URL, switching the app off its built-in store and onto this one. Omit it and the connection string is yours to wire.
-
-        THE CREDENTIAL COMES BACK ONCE. The connection string and password are in this response and nowhere else — every read beside it omits the password — so a caller that does not keep them has to provision again. Where KMS is configured the password is sealed there and only a reference is persisted; where it is not, it is returned this once and stored nowhere. It is never held in plaintext.
-
-        Scoped to the caller's validated org (403 without one), which also namespaces the physical resource under a fixed-width hash, so two tenants can never fold onto one backend resource — a residual collision fails closed with 409 rather than silently sharing. A name already taken in your org is 409; an invalid name or instance slug is 400; a backend that refuses the create is 502. Where a later step fails after the backend resource already exists, it is torn back down rather than left orphaned.
-
-        Billing is gated BEFORE anything is created: an unfunded org — or, in the fail-closed default, an unreachable meter — gets the fleet-wide 402/503 and nothing is provisioned. The fee is per-kind and set by the deployment.
+        The instance is yours alone — a deployment in your own tenant namespace, so its
+        admin credential is naturally scoped to you and no other tenant shares the
+        process. Off-cluster this fails closed with 503 rather than handing back a
+        shared one.
       operationId: post_provisioning_kv
       requestBody:
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/provisionRequest'
+        required: true
       responses:
-        2XX:
+        "201":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/provisionResult'
-          description: Success
-      summary: Provision a key-value store for your org
+          description: created
+      summary: CreateKV launches your org's OWN key-value instance and answers with
+        its `kv://` connection string.
       tags:
       - provisioning
       x-app: provisioning
       x-public: true
+      x-tool: true
   /v1/provisioning/kv/{name}:
     delete:
       description: |-
@@ -103509,33 +103806,29 @@ paths:
       x-tool: true
     post:
       description: |-
-        Creates an S3-compatible bucket inside the already-running shared object store and answers with the endpoint that reaches it.
-
-        `name` is the org-unique slug every physical name derives from, and must match ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$. `instance` optionally BINDS the add-on to one of your app instances: the DSN is injected into that instance's addons secret as <KIND>_URL, switching the app off its built-in store and onto this one. Omit it and the connection string is yours to wire.
-
-        THE CREDENTIAL COMES BACK ONCE. The connection string and password are in this response and nowhere else — every read beside it omits the password — so a caller that does not keep them has to provision again. Where KMS is configured the password is sealed there and only a reference is persisted; where it is not, it is returned this once and stored nowhere. It is never held in plaintext.
-
-        Scoped to the caller's validated org (403 without one), which also namespaces the physical resource under a fixed-width hash, so two tenants can never fold onto one backend resource — a residual collision fails closed with 409 rather than silently sharing. A name already taken in your org is 409; an invalid name or instance slug is 400; a backend that refuses the create is 502. Where a later step fails after the backend resource already exists, it is torn back down rather than left orphaned.
-
-        Billing is gated BEFORE anything is created: an unfunded org — or, in the fail-closed default, an unreachable meter — gets the fleet-wide 402/503 and nothing is provisioned. The fee is per-kind and set by the deployment.
+        Creates an S3-compatible bucket inside the already-running shared
+        object store and answers with the endpoint that reaches it.
       operationId: post_provisioning_s3
       requestBody:
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/provisionRequest'
+        required: true
       responses:
-        2XX:
+        "201":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/provisionResult'
-          description: Success
-      summary: Provision an object storage bucket for your org
+          description: created
+      summary: Creates an S3-compatible bucket inside the already-running shared object
+        store and answers with the endpoint that reaches it.
       tags:
       - provisioning
       x-app: provisioning
       x-public: true
+      x-tool: true
   /v1/provisioning/s3/{name}:
     delete:
       description: |-
@@ -103616,33 +103909,29 @@ paths:
       x-tool: true
     post:
       description: |-
-        Creates a search index inside the already-running shared search backend and answers with the endpoint that reaches it.
-
-        `name` is the org-unique slug every physical name derives from, and must match ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$. `instance` optionally BINDS the add-on to one of your app instances: the DSN is injected into that instance's addons secret as <KIND>_URL, switching the app off its built-in store and onto this one. Omit it and the connection string is yours to wire.
-
-        THE CREDENTIAL COMES BACK ONCE. The connection string and password are in this response and nowhere else — every read beside it omits the password — so a caller that does not keep them has to provision again. Where KMS is configured the password is sealed there and only a reference is persisted; where it is not, it is returned this once and stored nowhere. It is never held in plaintext.
-
-        Scoped to the caller's validated org (403 without one), which also namespaces the physical resource under a fixed-width hash, so two tenants can never fold onto one backend resource — a residual collision fails closed with 409 rather than silently sharing. A name already taken in your org is 409; an invalid name or instance slug is 400; a backend that refuses the create is 502. Where a later step fails after the backend resource already exists, it is torn back down rather than left orphaned.
-
-        Billing is gated BEFORE anything is created: an unfunded org — or, in the fail-closed default, an unreachable meter — gets the fleet-wide 402/503 and nothing is provisioned. The fee is per-kind and set by the deployment.
+        Creates a search index inside the already-running shared search
+        backend and answers with the endpoint that reaches it.
       operationId: post_provisioning_search
       requestBody:
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/provisionRequest'
+        required: true
       responses:
-        2XX:
+        "201":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/provisionResult'
-          description: Success
-      summary: Provision a search index for your org
+          description: created
+      summary: Creates a search index inside the already-running shared search backend
+        and answers with the endpoint that reaches it.
       tags:
       - provisioning
       x-app: provisioning
       x-public: true
+      x-tool: true
   /v1/provisioning/search/{name}:
     delete:
       description: |-
@@ -103723,33 +104012,34 @@ paths:
       x-tool: true
     post:
       description: |-
-        Launches your org's OWN PostgreSQL instance and answers with its `postgres://` connection string. The instance is yours alone: a deployment in your own tenant namespace, so its admin credential is naturally scoped to you and no other tenant shares the process. Off-cluster, where there is no orchestrator to launch one, this fails closed with 503 rather than handing back a shared one.
+        CreateSQL launches your org's OWN PostgreSQL instance and answers with its
+        `postgres://` connection string.
 
-        `name` is the org-unique slug every physical name derives from, and must match ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$. `instance` optionally BINDS the add-on to one of your app instances: the DSN is injected into that instance's addons secret as <KIND>_URL, switching the app off its built-in store and onto this one. Omit it and the connection string is yours to wire.
-
-        THE CREDENTIAL COMES BACK ONCE. The connection string and password are in this response and nowhere else — every read beside it omits the password — so a caller that does not keep them has to provision again. Where KMS is configured the password is sealed there and only a reference is persisted; where it is not, it is returned this once and stored nowhere. It is never held in plaintext.
-
-        Scoped to the caller's validated org (403 without one), which also namespaces the physical resource under a fixed-width hash, so two tenants can never fold onto one backend resource — a residual collision fails closed with 409 rather than silently sharing. A name already taken in your org is 409; an invalid name or instance slug is 400; a backend that refuses the create is 502. Where a later step fails after the backend resource already exists, it is torn back down rather than left orphaned.
-
-        Billing is gated BEFORE anything is created: an unfunded org — or, in the fail-closed default, an unreachable meter — gets the fleet-wide 402/503 and nothing is provisioned. The fee is per-kind and set by the deployment.
+        The instance is yours alone — a deployment in your own tenant namespace, so its
+        admin credential is naturally scoped to you and no other tenant shares the
+        process. Off-cluster, where there is no orchestrator to launch one, this fails
+        closed with 503 rather than handing back a shared one.
       operationId: post_provisioning_sql
       requestBody:
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/provisionRequest'
+        required: true
       responses:
-        2XX:
+        "201":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/provisionResult'
-          description: Success
-      summary: Provision a PostgreSQL database for your org
+          description: created
+      summary: CreateSQL launches your org's OWN PostgreSQL instance and answers with
+        its `postgres://` connection string.
       tags:
       - provisioning
       x-app: provisioning
       x-public: true
+      x-tool: true
   /v1/provisioning/sql/{name}:
     delete:
       description: |-
@@ -103833,33 +104123,29 @@ paths:
       x-tool: true
     post:
       description: |-
-        Creates a vector collection inside the already-running shared vector backend and answers with the endpoint that reaches it.
-
-        `name` is the org-unique slug every physical name derives from, and must match ^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$. `instance` optionally BINDS the add-on to one of your app instances: the DSN is injected into that instance's addons secret as <KIND>_URL, switching the app off its built-in store and onto this one. Omit it and the connection string is yours to wire.
-
-        THE CREDENTIAL COMES BACK ONCE. The connection string and password are in this response and nowhere else — every read beside it omits the password — so a caller that does not keep them has to provision again. Where KMS is configured the password is sealed there and only a reference is persisted; where it is not, it is returned this once and stored nowhere. It is never held in plaintext.
-
-        Scoped to the caller's validated org (403 without one), which also namespaces the physical resource under a fixed-width hash, so two tenants can never fold onto one backend resource — a residual collision fails closed with 409 rather than silently sharing. A name already taken in your org is 409; an invalid name or instance slug is 400; a backend that refuses the create is 502. Where a later step fails after the backend resource already exists, it is torn back down rather than left orphaned.
-
-        Billing is gated BEFORE anything is created: an unfunded org — or, in the fail-closed default, an unreachable meter — gets the fleet-wide 402/503 and nothing is provisioned. The fee is per-kind and set by the deployment.
+        Creates a vector collection inside the already-running shared
+        vector backend and answers with the endpoint that reaches it.
       operationId: post_provisioning_vector
       requestBody:
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/provisionRequest'
+        required: true
       responses:
-        2XX:
+        "201":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/provisionResult'
-          description: Success
-      summary: Provision a vector collection for your org
+          description: created
+      summary: Creates a vector collection inside the already-running shared vector
+        backend and answers with the endpoint that reaches it.
       tags:
       - provisioning
       x-app: provisioning
       x-public: true
+      x-tool: true
   /v1/provisioning/vector/{name}:
     delete:
       description: |-
@@ -104994,36 +105280,36 @@ paths:
       - s3
       x-app: s3
       x-public: true
-  /v1/sandboxes:
+  /v1/sandbox:
     get:
       description: |-
         Lists the caller org's sandboxes, newest first. `project` and `status` narrow it, and both are read from the QUERY STRING.
 
         It answers from the org's own store rather than from the cluster, so a sandbox whose pod has since died still appears, carrying the status it was last known to have. That is deliberate: a lease you are being charged for should not vanish from the list because the thing behind it fell over.
-      operationId: get_sandboxes
+      operationId: get_sandbox
       summary: The sandboxes this org holds
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
     post:
       description: |-
         Creates a sandbox and returns it. `class` is one of `exec`, `dev`, `desktop` or `android`; `dev` and `desktop` are attached to a `project`, which is required for them and names the volume the work persists on. `ttlSec` bounds the lease, and `image` overrides the class default.
 
         This is the ONLY path that creates cluster objects. The isolation boundary is the pod's runtime class, one field, so what a sandbox is confined by is a deployment decision rather than anything this operation negotiates.
-      operationId: post_sandboxes
+      operationId: post_sandbox
       summary: Lease a sandbox
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
-  /v1/sandboxes/{id}:
+  /v1/sandbox/{id}:
     delete:
       description: |-
         Stops the sandbox's pod and drops the lease. The VOLUME survives by default, so a `dev` or `desktop` sandbox can be leased again over the same project and find its checkout where it left it.
 
         `purge=1` deletes the volume too. It is opt-in because it is the one part of this that cannot be undone.
-      operationId: delete_sandboxes_by_id
+      operationId: delete_sandbox_by_id
       parameters:
       - in: path
         name: id
@@ -105032,14 +105318,14 @@ paths:
           type: string
       summary: End a sandbox
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
     get:
       description: Returns one of the caller org's sandboxes. An id belonging to another
         org answers 404 and not 403 — a 403 would confirm the id exists, and whether
         a given sandbox exists is itself a cross-tenant fact.
-      operationId: get_sandboxes_by_id
+      operationId: get_sandbox_by_id
       parameters:
       - in: path
         name: id
@@ -105048,16 +105334,16 @@ paths:
           type: string
       summary: One sandbox
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
-  /v1/sandboxes/{id}/exec:
+  /v1/sandbox/{id}/exec:
     post:
       description: |-
         Runs a command inside the sandbox and returns its exit code, stdout and stderr. A non-zero exit is a SUCCESSFUL call carrying a failed program — the HTTP status stays 200, because "the tests failed" and "the sandbox is broken" are different facts.
 
         NOTHING RUNS IN cloud. The command is streamed to the Kubernetes exec subresource of the sandbox's pod, which runs under the gVisor runtime class. The sandbox is addressed by pod NAME through the apiserver, never by address.
-      operationId: post_sandboxes_by_id_exec
+      operationId: post_sandbox_by_id_exec
       parameters:
       - in: path
         name: id
@@ -105066,15 +105352,15 @@ paths:
           type: string
       summary: Run a command in a sandbox
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
-  /v1/sandboxes/{id}/fs:
+  /v1/sandbox/{id}/fs:
     get:
       description: Reads one file from the sandbox's project directory as text, or
         lists the entries when the path names a directory. Paths resolve under the
         project root and a path that climbs out is refused rather than rewritten.
-      operationId: get_sandboxes_by_id_fs
+      operationId: get_sandbox_by_id_fs
       parameters:
       - in: path
         name: id
@@ -105083,13 +105369,13 @@ paths:
           type: string
       summary: Read a file, or list a directory
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
     post:
       description: Writes the request body to one file in the sandbox's project directory,
         creating parent directories. Same confinement as the read above.
-      operationId: post_sandboxes_by_id_fs
+      operationId: post_sandbox_by_id_fs
       parameters:
       - in: path
         name: id
@@ -105098,10 +105384,10 @@ paths:
           type: string
       summary: Write a file
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
-  /v1/sandboxes/{id}/screen:
+  /v1/sandbox/{id}/screen:
     get:
       description: |-
         A complete, self-contained desktop — noVNC inline, no other origin — that opens its own socket and draws this sandbox's display. Embed it in an iframe and there is nothing else to build.
@@ -105109,7 +105395,7 @@ paths:
         `ticket` is the credential from the POST above, carried through to the socket. The page is NOT gated: it is inert markup and does not redeem the ticket, because a ticket is spent once and a page that spent it would hold a credential that no longer opens anything. `frame-ancestors` admits our own brands' hosts and nothing further.
 
         It is served for every class, not only for `desktop`. The class is a fact about the image, and a sandbox with no VNC server already fails exactly — the connection is refused and the page says so — where a check here would be a second opinion about what is running inside a pod, formed from a label rather than from the pod.
-      operationId: get_sandboxes_by_id_screen
+      operationId: get_sandbox_by_id_screen
       parameters:
       - in: path
         name: id
@@ -105118,10 +105404,10 @@ paths:
           type: string
       summary: The screen, as a page
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
-  /v1/sandboxes/{id}/screen/ticket:
+  /v1/sandbox/{id}/screen/ticket:
     post:
       description: |-
         Mints a SINGLE-USE ticket for this sandbox's DISPLAY and returns `{ticket, expiresIn, url}`, where url is the desktop PAGE with the ticket already on it. The same ticket as the terminal's, minted for a different door.
@@ -105129,7 +105415,7 @@ paths:
         A ticket says which org and which sandbox, and the terminal and the screen are two views of one machine: a caller who may type in a sandbox may look at it. What the door decides is the URL handed back, which is the only part that differs.
 
         Mint one per screen, and mint a fresh one to reconnect.
-      operationId: post_sandboxes_by_id_screen_ticket
+      operationId: post_sandbox_by_id_screen_ticket
       parameters:
       - in: path
         name: id
@@ -105138,10 +105424,10 @@ paths:
           type: string
       summary: Open a screen
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
-  /v1/sandboxes/{id}/screen/ws:
+  /v1/sandbox/{id}/screen/ws:
     get:
       description: |-
         Upgrades to a WebSocket carrying RFB — the VNC wire protocol — from the sandbox's display, for a host that brings its own client. Requires `ticket`; a missing, expired or already-spent one answers 401 without upgrading.
@@ -105151,7 +105437,7 @@ paths:
         THE PIXELS COME OUT THROUGH THE EXEC CHANNEL. The display binds 127.0.0.1 only and deliberately nothing else, so there is no address to dial — `socat` joins the stream to that loopback port over the same Kubernetes exec subresource every other call into a sandbox uses. One way in, one thing to authorize, nothing further exposed.
 
         The window size is ignored. A browser pane is not the X server's geometry, and the client scales what it is given rather than asking a server with no RandR to resize itself.
-      operationId: get_sandboxes_by_id_screen_ws
+      operationId: get_sandbox_by_id_screen_ws
       parameters:
       - in: path
         name: id
@@ -105160,10 +105446,10 @@ paths:
           type: string
       summary: The screen, as a socket
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
-  /v1/sandboxes/{id}/terminal:
+  /v1/sandbox/{id}/terminal:
     get:
       description: |-
         A complete, self-contained terminal — xterm inline, no other origin — that opens its own socket and runs a shell in this sandbox. Embed it in an iframe and there is nothing else to build.
@@ -105171,7 +105457,7 @@ paths:
         `ticket` is the credential from the POST above and `arg` names the session (see the socket below); both are simply carried through to the socket. The page is NOT gated — it is inert markup and does not redeem the ticket, because a ticket is spent once and a page that spent it would hold a credential that no longer opens anything.
 
         When the terminal is up it posts `{source:"hanzo-term", ready:true}` to its parent frame, so a host can tell a live terminal from a page that failed into something else. `frame-ancestors` admits our own brands' hosts and nothing further.
-      operationId: get_sandboxes_by_id_terminal
+      operationId: get_sandbox_by_id_terminal
       parameters:
       - in: path
         name: id
@@ -105180,10 +105466,10 @@ paths:
           type: string
       summary: The terminal, as a page
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
-  /v1/sandboxes/{id}/terminal/ticket:
+  /v1/sandbox/{id}/terminal/ticket:
     post:
       description: |-
         Mints a SINGLE-USE ticket for one interactive terminal in this sandbox and returns `{ticket, expiresIn, url}`, where url is the terminal PAGE with the ticket already on it.
@@ -105191,7 +105477,7 @@ paths:
         It exists because a browser carries no Authorization header into a WebSocket or an iframe, so a terminal cannot be authenticated the way every other route here is. The ticket is a credential MINTED for that one terminal: bound to this org and this sandbox, valid for thirty seconds, and gone the first time it is presented. A long-lived bearer in a query string would instead be written into every access log on the path.
 
         Mint one per terminal, and mint a fresh one to reconnect.
-      operationId: post_sandboxes_by_id_terminal_ticket
+      operationId: post_sandbox_by_id_terminal_ticket
       parameters:
       - in: path
         name: id
@@ -105200,10 +105486,10 @@ paths:
           type: string
       summary: Open a terminal
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
-  /v1/sandboxes/{id}/terminal/ws:
+  /v1/sandbox/{id}/terminal/ws:
     get:
       description: |-
         Upgrades to a WebSocket carrying a login shell on a pseudo-terminal inside the sandbox — for a host that brings its own emulator. Requires `ticket`; a missing, expired or already-spent one answers 401 without upgrading.
@@ -105213,7 +105499,7 @@ paths:
         `arg` names a SESSION: the shell runs under `tmux new -A -s <arg>`, which attaches to that session if it exists and creates it if it does not — so one sandbox holds as many terminals as a caller has names for. It is 1-64 characters of letters, digits, `-` or `_` and may not begin with `-`; anything else is 400. Without `arg` the shell is unnamed and unmultiplexed.
 
         The shell is `zsh -l`, falling back to `bash -l` and then to `sh -l`, and to the plain shell again when the image has no tmux. Every step is a preference and none is a requirement: whatever else the image carries — the hanzo CLI included — is a command to type, never a condition for getting a prompt.
-      operationId: get_sandboxes_by_id_terminal_ws
+      operationId: get_sandbox_by_id_terminal_ws
       parameters:
       - in: path
         name: id
@@ -105222,10 +105508,10 @@ paths:
           type: string
       summary: The terminal, as a socket
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
-  /v1/sandboxes/end:
+  /v1/sandbox/end:
     post:
       description: |-
         Ends the caller's sandbox lease: the pod goes, and the volume goes only
@@ -105242,11 +105528,11 @@ paths:
           description: no content
       summary: End a sandbox and release it
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
       x-tool: true
-  /v1/sandboxes/lease:
+  /v1/sandbox/lease:
     post:
       description: |-
         Leases the caller's sandbox, or returns the one it named if that
@@ -105271,11 +105557,11 @@ paths:
           description: ok
       summary: Lease a sandbox — a real computer — or resume one you hold
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
       x-tool: true
-  /v1/sandboxes/read:
+  /v1/sandbox/read:
     post:
       description: |-
         Reads one path in the caller's sandbox: a file's bytes, or a
@@ -105296,11 +105582,11 @@ paths:
           description: ok
       summary: Read a file from a sandbox you hold
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
       x-tool: true
-  /v1/sandboxes/run:
+  /v1/sandbox/run:
     post:
       description: |-
         Runs one command inside the caller's sandbox and answers its exit code,
@@ -105333,11 +105619,11 @@ paths:
           description: ok
       summary: Run a command in a sandbox you hold and read its output
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
       x-tool: true
-  /v1/sandboxes/stop:
+  /v1/sandbox/stop:
     post:
       description: |-
         Interrupts whatever the caller's sandbox is running and answers how
@@ -105359,11 +105645,11 @@ paths:
           description: ok
       summary: Stop what a sandbox is running, and keep the sandbox
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
       x-tool: true
-  /v1/sandboxes/write:
+  /v1/sandbox/write:
     post:
       description: |-
         Writes bytes to one path in the caller's sandbox, creating parents,
@@ -105384,8 +105670,8 @@ paths:
           description: ok
       summary: Write a file into a sandbox you hold
       tags:
-      - sandboxes
-      x-app: sandboxes
+      - sandbox
+      x-app: sandbox
       x-public: true
       x-tool: true
   /v1/sbom:
@@ -105464,77 +105750,6 @@ paths:
                 $ref: '#/components/schemas/Response'
           description: ok
       summary: Hybrid search over the org's own corpora
-      tags:
-      - search
-      x-app: search
-      x-public: true
-      x-tool: true
-  /v1/search/indexes:
-    get:
-      description: |-
-        Lists the search indexes with their document counts and timestamps.
-
-        It reads the in-cluster Meilisearch service and reshapes its /stats and
-        /indexes replies into the rows the console's Search panel renders. The read is
-        degrade-friendly by design: an unreachable Meilisearch answers 200 with an
-        EMPTY list, so the panel shows an honest empty state instead of an error.
-        createdAt falls back to now and lastIndexedAt to null when the index list is
-        unavailable.
-      operationId: get_search_indexes
-      parameters:
-      - description: |-
-          Authorization carries the surface's bearer key (`Bearer <key>`); the bare
-          key is accepted too. It is not `validate:"required"` on purpose: requireKey
-          answers absence itself, so an unconfigured surface 503s and a missing bearer
-          401s — a validation refusal would rewrite both statuses.
-        in: header
-        name: Authorization
-        required: false
-        schema:
-          type: string
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/searchIndexList'
-          description: ok
-      summary: Lists the search indexes with their document counts and timestamps.
-      tags:
-      - search
-      x-app: search
-      x-public: true
-      x-tool: true
-  /v1/search/stats:
-    get:
-      description: |-
-        Totals the documents across every search index.
-
-        totalDocuments is summed from Meilisearch's own per-index counts. The other
-        three fields are structurally zero rather than estimated: Meilisearch keeps no
-        query-history counters, so searches, sessions and the per-day series are not
-        derivable from the index and this surface reports the honest zero instead of a
-        fabricated number. An unreachable Meilisearch answers 200 with all zeros.
-      operationId: get_search_stats
-      parameters:
-      - description: |-
-          Authorization carries the surface's bearer key (`Bearer <key>`); the bare
-          key is accepted too. It is not `validate:"required"` on purpose: requireKey
-          answers absence itself, so an unconfigured surface 503s and a missing bearer
-          401s — a validation refusal would rewrite both statuses.
-        in: header
-        name: Authorization
-        required: false
-        schema:
-          type: string
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/searchStats'
-          description: ok
-      summary: Totals the documents across every search index.
       tags:
       - search
       x-app: search
@@ -107691,14 +107906,14 @@ paths:
       x-app: tel
       x-public: true
       x-tool: true
-  /v1/templates:
+  /v1/template:
     get:
       description: |-
         Lists the public starter-kit catalog plus, for a validated caller, that
         org's own private kits. No request field can widen the scope: the org comes
         from the validated principal, so an anonymous or cross-org caller structurally
         sees the public catalog only.
-      operationId: get_templates
+      operationId: get_template
       responses:
         "200":
           content:
@@ -107709,8 +107924,8 @@ paths:
       summary: Lists the public starter-kit catalog plus, for a validated caller,
         that org's own private kits.
       tags:
-      - templates
-      x-app: templates
+      - template
+      x-app: template
       x-public: true
       x-tool: true
     post:
@@ -107719,7 +107934,7 @@ paths:
         the stored kit. The owner is stamped by the server, so a body "org" is never
         trusted; publishing over a public-catalog slug is 409, so a slug still names
         exactly one kit.
-      operationId: post_templates
+      operationId: post_template
       requestBody:
         content:
           application/json:
@@ -107740,16 +107955,16 @@ paths:
       summary: Creates a starter kit PRIVATE to the caller's org and answers 201 with
         the stored kit.
       tags:
-      - templates
-      x-app: templates
+      - template
+      x-app: template
       x-public: true
       x-tool: true
-  /v1/templates/{slug}:
+  /v1/template/{slug}:
     delete:
       description: |-
         Deletes the caller org's OWN starter kit. A slug they do not own is a
         404, never a delete: the DELETE binds org.
-      operationId: delete_templates_by_slug
+      operationId: delete_template_by_slug
       parameters:
       - description: Slug is the starter kit to act on, from the path.
         example: acme-portal
@@ -107763,15 +107978,15 @@ paths:
           description: no content
       summary: Deletes the caller org's OWN starter kit.
       tags:
-      - templates
-      x-app: templates
+      - template
+      x-app: template
       x-public: true
       x-tool: true
     get:
       description: |-
         Returns one starter kit: the caller org's own by that slug, else the public
         catalog's. A slug another org owns reads as not found.
-      operationId: get_templates_by_slug
+      operationId: get_template_by_slug
       parameters:
       - description: Slug is the starter kit to act on, from the path.
         example: folio
@@ -107790,8 +108005,8 @@ paths:
       summary: 'Returns one starter kit: the caller org''s own by that slug, else
         the public catalog''s.'
       tags:
-      - templates
-      x-app: templates
+      - template
+      x-app: template
       x-public: true
       x-tool: true
     put:
@@ -107799,7 +108014,7 @@ paths:
         Overwrites the caller org's OWN starter kit at the path slug, answering
         the stored kit. A slug they do not own is 404, never a create: the UPDATE binds
         org, so a PUT can never reach another org's kit.
-      operationId: put_templates_by_slug
+      operationId: put_template_by_slug
       parameters:
       - description: Slug is the kit to replace, from the path.
         example: acme-portal
@@ -107827,8 +108042,8 @@ paths:
       summary: Overwrites the caller org's OWN starter kit at the path slug, answering
         the stored kit.
       tags:
-      - templates
-      x-app: templates
+      - template
+      x-app: template
       x-public: true
       x-tool: true
   /v1/todo/board:
@@ -108876,32 +109091,51 @@ paths:
   /v1/tools/plugins/build:
     post:
       description: |-
-        Builds one plugin for the caller's org and answers 201 with the bundle's size, whether a model wrote the source, and the plugin as stored. Post `source` to build TypeScript as-is, or `spec` — an OpenAPI document or plain prose describing the endpoints — to have one generated; the generated source comes back in the answer, so a caller reads what will run before it runs. Exactly one of the two, and `name` must be one lowercase path segment; both or neither is 400.
+        Builds and stores one plugin for the caller's org. The 201 carries
+        the bundle's size, whether a model wrote the source, and the plugin as stored.
 
-        COMPILING IS THE GATE. The source goes through the same pipeline the committed connectors do — esbuild to one CommonJS program, then compiled in the goja runtime that will actually execute it — and anything that fails is rejected and NEVER stored. So a plugin in the store is one this deployment has already loaded once, not one a model claimed was fine. A failed build answers 422 carrying the diagnostics a caller needs to fix it: the bundler's error, the source that failed, and whether the model wrote it — a body outside the declared success shape.
+        Post `source` to build TypeScript as-is, or `spec` — an OpenAPI document or
+        plain prose describing the endpoints — to have one generated; the generated
+        source comes back in the answer, so a caller reads what will run before it
+        runs. Exactly one of the two, and `name` must be one lowercase path segment;
+        both or neither is 400.
 
-        CREDENTIALS ARE NOT PART OF A PLUGIN. A plugin names the connectors `provider` it needs and reads that credential from `ctx.auth` at run time, under KMS custody. Source that contains something shaped like a key is REFUSED rather than silently scrubbed, so a caller who pasted one finds out instead of shipping it — register it as a connector instead.
+        COMPILING IS THE GATE. The source goes through the same pipeline the committed
+        connectors do — esbuild to one CommonJS program, then compiled in the goja
+        runtime that will actually execute it — and anything that fails is rejected and
+        NEVER stored. So a plugin in the store is one this deployment has already
+        loaded once, not one a model claimed was fine. A failed build answers 422
+        carrying the diagnostics a caller needs to fix it: the bundler's error
+        (`detail`), the source that failed, and whether the model wrote it.
 
-        Requires a validated principal; 403 without one. The plugin is stored under that principal's org and is what `/v1/tools/plugins/authored` lists — never `/v1/tools/plugins`, which is this deployment's mounted-subsystem inventory. Source over 512 KiB or a spec over 256 KiB is refused. Posting a `spec` to a deployment with no AI client configured is 503, and a generation that fails upstream is 502.
+        CREDENTIALS ARE NOT PART OF A PLUGIN. A plugin names the connectors `provider`
+        it needs and reads that credential from `ctx.auth` at run time, under KMS
+        custody. Source that carries something key-shaped is REFUSED rather than
+        silently persisted — a scrubbed key looks like it worked.
       operationId: post_tools_plugins_build
       requestBody:
         content:
           application/json:
+            example:
+              name: acme
+              provider: acme
+              spec: POST /v1/things creates a thing
             schema:
               $ref: '#/components/schemas/buildRequest'
+        required: true
       responses:
-        2XX:
+        "201":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/buildOut'
-          description: Success
-      summary: Build a plugin for your org from TypeScript, or from an API spec a
-        model writes it from
+          description: created
+      summary: Builds and stores one plugin for the caller's org.
       tags:
       - tools
       x-app: tools
       x-public: true
+      x-tool: true
   /v1/tools/skills:
     get:
       description: |-
@@ -110795,14 +111029,14 @@ paths:
       x-app: visor
       x-public: true
       x-tool: true
-  /v1/wallets:
+  /v1/wallet:
     get:
       description: |-
         Returns the caller org's wallets, newest first, optionally NARROWED
         within the org by project, agent or account. The org is always the bound
         isolation boundary — the filters only ever narrow inside it, so a caller can
         never widen past its own org.
-      operationId: get_wallets
+      operationId: get_wallet
       parameters:
       - description: Project narrows to wallets scoped to one project. Must be a url-safe
           segment.
@@ -110836,8 +111070,8 @@ paths:
       summary: Returns the caller org's wallets, newest first, optionally NARROWED
         within the org by project, agent or account.
       tags:
-      - wallets
-      x-app: wallets
+      - wallet
+      x-app: wallet
       x-public: true
       x-tool: true
     post:
@@ -110851,7 +111085,7 @@ paths:
         fabricated. The wallet is scoped to the org, the caller's ambient project, and
         optionally an agent and the named account; those narrowings are what its key
         ref is derived from, so each must be a url-safe segment.
-      operationId: post_wallets
+      operationId: post_wallet
       requestBody:
         content:
           application/json:
@@ -110874,18 +111108,18 @@ paths:
       summary: Provisions a new signing identity under one of the caller org's accounts
         and answers the stored wallet including its on-chain address.
       tags:
-      - wallets
-      x-app: wallets
+      - wallet
+      x-app: wallet
       x-public: true
       x-tool: true
-  /v1/wallets/{id}:
+  /v1/wallet/{id}:
     get:
       description: |-
         Returns one of the caller org's wallets: its scope, custody kind,
         tier, chain and on-chain address. The custody handle to the signing material is
         never part of the answer. A wallet id another org owns reads as not found, so
         the response cannot confirm that it exists.
-      operationId: get_wallets_by_id
+      operationId: get_wallet_by_id
       parameters:
       - example: wal_4b1e77
         in: path
@@ -110903,11 +111137,11 @@ paths:
       summary: 'Returns one of the caller org''s wallets: its scope, custody kind,
         tier, chain and on-chain address.'
       tags:
-      - wallets
-      x-app: wallets
+      - wallet
+      x-app: wallet
       x-public: true
       x-tool: true
-  /v1/wallets/{id}/keys:
+  /v1/wallet/{id}/keys:
     post:
       description: |-
         Rolls one wallet's signing material through its own custody backend
@@ -110917,7 +111151,7 @@ paths:
         counterfactual and the owner shares are ring-managed, so rotation is a no-op
         and the address is unchanged. A backend that is not configured fails closed
         with 503 rather than leaving the wallet half-rotated.
-      operationId: post_wallets_by_id_keys
+      operationId: post_wallet_by_id_keys
       parameters:
       - example: wal_4b1e77
         in: path
@@ -110935,11 +111169,11 @@ paths:
       summary: Rolls one wallet's signing material through its own custody backend
         and answers the wallet with whatever address that produced.
       tags:
-      - wallets
-      x-app: wallets
+      - wallet
+      x-app: wallet
       x-public: true
       x-tool: true
-  /v1/wallets/{id}/sign:
+  /v1/wallet/{id}/sign:
     post:
       description: |-
         Produces a secp256k1 signature from one of the caller org's wallets over
@@ -110949,7 +111183,7 @@ paths:
         its backend: KMS custody opens the sealed key in-process, MPC custody produces
         a threshold signature on the ring. The answer carries the digest that was
         signed alongside the signature, so a caller can verify what it got.
-      operationId: post_wallets_by_id_sign
+      operationId: post_wallet_by_id_sign
       parameters:
       - example: wal_4b1e77
         in: path
@@ -110976,11 +111210,11 @@ paths:
       summary: Produces a secp256k1 signature from one of the caller org's wallets
         over a 32-byte digest, through whichever custody backend that wallet uses.
       tags:
-      - wallets
-      x-app: wallets
+      - wallet
+      x-app: wallet
       x-public: true
       x-tool: true
-  /v1/wallets/{id}/transactions:
+  /v1/wallet/{id}/transactions:
     post:
       description: |-
         Composes a Safe transaction on the MPC ring and answers its
@@ -110990,7 +111224,7 @@ paths:
         than the kind being switched on. The ring computes the Safe-tx hash bound to
         the Safe contract and the chain id, so the hash a caller gets back is the one
         the Safe will verify. This PROPOSES: it does not execute the transaction.
-      operationId: post_wallets_by_id_transactions
+      operationId: post_wallet_by_id_transactions
       parameters:
       - example: wal_4b1e77
         in: path
@@ -111021,16 +111255,16 @@ paths:
       summary: Composes a Safe transaction on the MPC ring and answers its EIP-712
         hash together with the owner approval the ring's threshold signature produced.
       tags:
-      - wallets
-      x-app: wallets
+      - wallet
+      x-app: wallet
       x-public: true
       x-tool: true
-  /v1/wallets/accounts:
+  /v1/wallet/accounts:
     get:
       description: |-
         Returns the caller org's wallet accounts, newest first. Accounts
         are physically org-scoped, so another tenant's are not reachable from here.
-      operationId: get_wallets_accounts
+      operationId: get_wallet_accounts
       responses:
         "200":
           content:
@@ -111040,8 +111274,8 @@ paths:
           description: ok
       summary: Returns the caller org's wallet accounts, newest first.
       tags:
-      - wallets
-      x-app: wallets
+      - wallet
+      x-app: wallet
       x-public: true
       x-tool: true
     post:
@@ -111050,7 +111284,7 @@ paths:
         a GROUPING of wallets, not a key or a balance: wallets are created under one
         and can be listed by it. The org is stamped by the server from the validated
         principal, so a request can never open an account in another tenant.
-      operationId: post_wallets_accounts
+      operationId: post_wallet_accounts
       requestBody:
         content:
           application/json:
@@ -111068,8 +111302,8 @@ paths:
           description: ok
       summary: Opens a named wallet account for the caller's org.
       tags:
-      - wallets
-      x-app: wallets
+      - wallet
+      x-app: wallet
       x-public: true
       x-tool: true
   /v1/web3/chains:
@@ -111191,7 +111425,7 @@ paths:
       x-app: web3
       x-public: true
       x-tool: true
-  /v1/webhooks:
+  /v1/webhook:
     get:
       description: |-
         Returns every webhook endpoint the caller's org has registered,
@@ -111199,7 +111433,7 @@ paths:
         are redacted here — a secret leaves the server only on create and on rotate.
         The listing is physically org-scoped, so another tenant's endpoints are not
         reachable from this route at all.
-      operationId: get_webhooks
+      operationId: get_webhook
       responses:
         "200":
           content:
@@ -111210,8 +111444,8 @@ paths:
       summary: Returns every webhook endpoint the caller's org has registered, newest
         first, each with its 7-day delivery and failure counts.
       tags:
-      - webhooks
-      x-app: webhooks
+      - webhook
+      x-app: webhook
       x-public: true
       x-tool: true
     post:
@@ -111222,7 +111456,7 @@ paths:
         rotate) — store it now, because no later read returns it. The org is stamped by
         the server from the validated principal, so a body can never register an
         endpoint in another tenant.
-      operationId: post_webhooks
+      operationId: post_webhook
       requestBody:
         content:
           application/json:
@@ -111244,18 +111478,18 @@ paths:
       summary: Registers a new webhook subscription for the caller's org and answers
         201 with the endpoint INCLUDING its freshly minted signing secret.
       tags:
-      - webhooks
-      x-app: webhooks
+      - webhook
+      x-app: webhook
       x-public: true
       x-tool: true
-  /v1/webhooks/{id}:
+  /v1/webhook/{id}:
     delete:
       description: |-
         Removes one of the caller org's webhook endpoints and answers
         204 with no body. Delivery stops immediately and the endpoint's signing secret
         is gone with it; its recorded delivery history goes too. An id another org owns
         reads as not found.
-      operationId: delete_webhooks_by_id
+      operationId: delete_webhook_by_id
       parameters:
       - example: wh_9f8c1d2e
         in: path
@@ -111269,8 +111503,8 @@ paths:
       summary: Removes one of the caller org's webhook endpoints and answers 204 with
         no body.
       tags:
-      - webhooks
-      x-app: webhooks
+      - webhook
+      x-app: webhook
       x-public: true
       x-tool: true
     get:
@@ -111278,7 +111512,7 @@ paths:
         Returns one of the caller org's webhook endpoints with its 7-day
         delivery and failure counts, signing secret redacted. An id another org owns
         reads as not found, so the response cannot confirm that it exists.
-      operationId: get_webhooks_by_id
+      operationId: get_webhook_by_id
       parameters:
       - example: wh_9f8c1d2e
         in: path
@@ -111296,8 +111530,8 @@ paths:
       summary: Returns one of the caller org's webhook endpoints with its 7-day delivery
         and failure counts, signing secret redacted.
       tags:
-      - webhooks
-      x-app: webhooks
+      - webhook
+      x-app: webhook
       x-public: true
       x-tool: true
     put:
@@ -111307,8 +111541,8 @@ paths:
         with its secret redacted. It is a full replace, not a patch: an omitted field
         is written as its empty value, and an omitted or empty events list resubscribes
         the endpoint to EVERY event. The signing secret and the creation time are
-        immutable here; rotate the secret with POST /v1/webhooks/{id}/secret.
-      operationId: put_webhooks_by_id
+        immutable here; rotate the secret with POST /v1/webhook/{id}/secret.
+      operationId: put_webhook_by_id
       parameters:
       - example: wh_9f8c1d2e
         in: path
@@ -111339,11 +111573,11 @@ paths:
         url, events, status and description — and answers the stored row with its
         secret redacted.
       tags:
-      - webhooks
-      x-app: webhooks
+      - webhook
+      x-app: webhook
       x-public: true
       x-tool: true
-  /v1/webhooks/{id}/deliveries:
+  /v1/webhook/{id}/deliveries:
     get:
       description: |-
         Returns one endpoint's per-attempt delivery log, newest first —
@@ -111352,7 +111586,7 @@ paths:
         delivery id. It is org-scoped exactly like every other route here: the endpoint
         lookup only ever finds THIS org's endpoint, so another org's id is a 404 and
         never a window onto its logs.
-      operationId: get_webhooks_by_id_deliveries
+      operationId: get_webhook_by_id_deliveries
       parameters:
       - example: wh_9f8c1d2e
         in: path
@@ -111388,11 +111622,11 @@ paths:
       summary: Returns one endpoint's per-attempt delivery log, newest first — the
         record of what was sent, what the subscriber answered, and how long it took.
       tags:
-      - webhooks
-      x-app: webhooks
+      - webhook
+      x-app: webhook
       x-public: true
       x-tool: true
-  /v1/webhooks/{id}/secret:
+  /v1/webhook/{id}/secret:
     post:
       description: |-
         Mints a NEW HMAC signing secret for the endpoint and answers the
@@ -111400,7 +111634,7 @@ paths:
         secret. The old secret stops working the instant this returns: every subsequent
         delivery signs with the new one, with no overlap window. Call it when the
         subscriber is ready to swap the value on its side, not before.
-      operationId: post_webhooks_by_id_secret
+      operationId: post_webhook_by_id_secret
       parameters:
       - example: wh_9f8c1d2e
         in: path
@@ -111418,11 +111652,11 @@ paths:
       summary: Mints a NEW HMAC signing secret for the endpoint and answers the endpoint
         WITH it — the only other response besides create that ever carries a secret.
       tags:
-      - webhooks
-      x-app: webhooks
+      - webhook
+      x-app: webhook
       x-public: true
       x-tool: true
-  /v1/webhooks/{id}/test:
+  /v1/webhook/{id}/test:
     post:
       description: |-
         Sends ONE signed test event to the endpoint right now and answers
@@ -111431,7 +111665,7 @@ paths:
         dispatcher takes — one attempt, 10s timeout, no retry ladder — and records the
         result in the endpoint's delivery log. It works on a DISABLED endpoint too:
         validating one you have paused is the whole point.
-      operationId: post_webhooks_by_id_test
+      operationId: post_webhook_by_id_test
       parameters:
       - example: wh_9f8c1d2e
         in: path
@@ -111450,8 +111684,8 @@ paths:
         outcome inline, so the console can show whether the subscriber is reachable
         without waiting for real traffic.
       tags:
-      - webhooks
-      x-app: webhooks
+      - webhook
+      x-app: webhook
       x-public: true
       x-tool: true
   /v1/websearch:
@@ -111817,7 +112051,7 @@ tags:
   name: account
 - description: Package ads is your paid ad campaigns, launched and paused from one
     place.
-  name: ads
+  name: ad
 - description: Package affiliates is a partner program that pays commission on what
     your referrals spend.
   name: affiliate
@@ -111912,7 +112146,7 @@ tags:
   name: deploy
 - description: Package destinations is your events forwarded to the ad and analytics
     tools you use.
-  name: destinations
+  name: destination
 - description: 'Package domain is Hanzo Domains: search a name, see the price, buy
     it from your prepaid wallet.'
   name: domain
@@ -112062,7 +112296,7 @@ tags:
   name: projects
 - description: Package prompts is your prompt library, versioned, so nothing changes
     silently.
-  name: prompts
+  name: prompt
 - description: 'Package provisioning is one-click data add-ons: a SQL, key-value,
     document, vector, search or object store, wired straight into your app.'
   name: provisioning
@@ -112089,7 +112323,7 @@ tags:
   name: s3
 - description: 'Package sandbox is the ONE compute primitive: a sandbox is a gVisor
     pod that runs somebody else''s code, and every lifetime is the same object.'
-  name: sandboxes
+  name: sandbox
 - description: 'Package sbom is what is inside a container image: every component,
     resolvable by digest or image ref.'
   name: sbom
@@ -112130,7 +112364,7 @@ tags:
   name: tel
 - description: Package templates is a gallery of starter kits you can deploy as they
     come.
-  name: templates
+  name: template
 - description: 'Package todo is Hanzo Todo: boards, the work items on them, and the
     filters that make a board.'
   name: todo
@@ -112154,14 +112388,14 @@ tags:
   name: visor
 - description: 'Package wallets is blockchain key custody: create wallets, rotate
     their keys, and sign with them.'
-  name: wallets
+  name: wallet
 - description: 'Package web3 is the chain-access surface: which chains this deployment
     can reach, a JSON-RPC door onto each, and the two token reads every wallet UI
     needs.'
   name: web3
 - description: 'Package webhooks is how your app hears about events: register an endpoint,
     pick the events, get each one delivered and signed.'
-  name: webhooks
+  name: webhook
 - description: Package websearch is a web search and a page fetch your agents can
     call.
   name: websearch

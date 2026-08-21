@@ -1,29 +1,29 @@
 ---
 title: E2B
-description: E2B leases isolated sandboxes for code an agent wrote. Here that is /v1/sandboxes, with /v1/exec for the one-shot snippet case.
+description: E2B leases isolated sandboxes for code an agent wrote. Here that is /v1/sandbox, with /v1/exec for the one-shot snippet case.
 ---
 
 E2B leases an isolated computer, runs code in it, and gives you its filesystem.
-`/v1/sandboxes` (19 operations) is the same thing: lease, run, read, write, end.
+`/v1/sandbox` (19 operations) is the same thing: lease, run, read, write, end.
 `POST /v1/exec` is the short path — one snippet, one answer, no lease to manage.
 
 ## Nouns
 
 | E2B | Hanzo |
 |---|---|
-| `Sandbox.create()` | `POST /v1/sandboxes/lease` |
+| `Sandbox.create()` | `POST /v1/sandbox/lease` |
 | The sandbox id you reconnect with | `id` in the lease answer, passed in every later body |
-| `sandbox.commands.run(cmd)` | `POST /v1/sandboxes/run` |
-| `sandbox.files.write(path, bytes)` | `POST /v1/sandboxes/write`, `data` base64 |
-| `sandbox.files.read(path)` | `POST /v1/sandboxes/read`, `data` base64, or `entries` for a directory |
-| `sandbox.kill()` | `POST /v1/sandboxes/end` |
+| `sandbox.commands.run(cmd)` | `POST /v1/sandbox/run` |
+| `sandbox.files.write(path, bytes)` | `POST /v1/sandbox/write`, `data` base64 |
+| `sandbox.files.read(path)` | `POST /v1/sandbox/read`, `data` base64, or `entries` for a directory |
+| `sandbox.kill()` | `POST /v1/sandbox/end` |
 | `timeoutMs` / `timeout` | `ttlSec` on the lease |
 | Template | `class` — `exec`, `dev`, `desktop` or `android` — with `image` to override its default |
 | Persistent template data | `project` on the lease, which names the volume the work persists on |
 | `@e2b/code-interpreter` `runCode()` | `POST /v1/exec` with `lang` and `code` |
-| Interactive terminal (PTY) | `POST /v1/sandboxes/{id}/terminal/ticket`, then the socket at `/v1/sandboxes/{id}/terminal/ws` |
-| Desktop stream | `POST /v1/sandboxes/{id}/screen/ticket`, then `/v1/sandboxes/{id}/screen/ws` |
-| Listing your sandboxes | `GET /v1/sandboxes` |
+| Interactive terminal (PTY) | `POST /v1/sandbox/{id}/terminal/ticket`, then the socket at `/v1/sandbox/{id}/terminal/ws` |
+| Desktop stream | `POST /v1/sandbox/{id}/screen/ticket`, then `/v1/sandbox/{id}/screen/ws` |
+| Listing your sandboxes | `GET /v1/sandbox` |
 
 `dev` and `desktop` require a `project`; `exec` does not.
 
@@ -44,25 +44,25 @@ Hanzo:
 
 ```bash
 # 1. Lease. The answer carries id, class, runtime, status and workdir.
-SB=$(curl -sS -X POST https://api.hanzo.ai/v1/sandboxes/lease \
+SB=$(curl -sS -X POST https://api.hanzo.ai/v1/sandbox/lease \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"class":"exec","ttlSec":60}' | jq -r .id)
 
 # 2. Write. `data` is base64.
-curl -sS -X POST https://api.hanzo.ai/v1/sandboxes/write \
+curl -sS -X POST https://api.hanzo.ai/v1/sandbox/write \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H 'Content-Type: application/json' \
   -d "{\"id\":\"$SB\",\"path\":\"main.py\",\"data\":\"$(printf 'print(1 + 1)' | base64 -w0)\"}"
 
 # 3. Run. Answers exitCode, stdout, stderr.
-curl -sS -X POST https://api.hanzo.ai/v1/sandboxes/run \
+curl -sS -X POST https://api.hanzo.ai/v1/sandbox/run \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H 'Content-Type: application/json' \
   -d "{\"id\":\"$SB\",\"command\":\"python main.py\"}"
 
 # 4. Release it.
-curl -sS -X POST https://api.hanzo.ai/v1/sandboxes/end \
+curl -sS -X POST https://api.hanzo.ai/v1/sandbox/end \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H 'Content-Type: application/json' \
   -d "{\"id\":\"$SB\"}"
@@ -101,7 +101,7 @@ image you built elsewhere. There is no template registry to push to.
 you run.
 
 **No lifecycle events, metrics or OTel export.** E2B emits sandbox lifecycle
-webhooks and per-sandbox metrics. `GET /v1/sandboxes` answers from the org's own
+webhooks and per-sandbox metrics. `GET /v1/sandbox` answers from the org's own
 store rather than the cluster, so a sandbox whose pod has died still appears with
 the status it was last known to have — deliberate, because a lease you are being
 charged for should not vanish from the list.
