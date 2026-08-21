@@ -28,7 +28,7 @@ import { domains } from './capabilities';
 //
 // The fourth relation is NOT a failure, and saying why matters. A name the
 // taxonomy groups that the document does not serve used to fail here, when both
-// described the same 116 capabilities. They no longer do: `public.yaml` is the
+// described the same 116 capabilities. They no longer do: `openapi.yaml` is the
 // GA contract and drops everything below it (HIP-0139 §8.1 — a beta capability
 // appears in no public page), while `capabilities.yaml` is stage-independent,
 // because which DOMAIN a capability belongs to does not change when it ships.
