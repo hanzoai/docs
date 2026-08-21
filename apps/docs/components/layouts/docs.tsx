@@ -5,6 +5,7 @@ import { baseOptions, logo } from '@/components/layouts/shared';
 import { source } from '@/lib/source';
 import { getSection } from '@/lib/source/navigation';
 import { SidebarFilter } from '@/components/sidebar-filter';
+import { SidebarAccount } from '@/components/sidebar-account';
 
 // The documentation chrome: navbar, page tree, sidebar filter.
 //
@@ -70,6 +71,9 @@ export function Docs({
         // already see in the tree, and typing reaches any of them plus every page
         // inside them.
         banner: <SidebarFilter pages={filterPages} />,
+        // Who you are, at the foot of the rail. The top bar is a fixed 56px row
+        // and these are the widest labels on the page; a column can afford them.
+        footer: <SidebarAccount />,
         tabs: {
           transform(option, node) {
             const meta = source.getNodeMeta(node);

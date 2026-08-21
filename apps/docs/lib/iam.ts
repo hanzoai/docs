@@ -50,11 +50,23 @@ export function iam(): IAM {
  * signed-in state was unreachable even when the token was present. Identity comes
  * from the userinfo endpoint via `getUser()`; there is no second copy to go stale.
  */
-export async function currentUser(): Promise<{ email?: string; name?: string } | null> {
+export interface DocsUser {
+  email?: string
+  name?: string
+  /**
+   * The organization the reader acts in. IAM's `owner` IS the org — the same
+   * value every service scopes on — so it is read from there rather than
+   * derived from an email domain, which is a guess that is wrong for anyone
+   * with a personal address.
+   */
+  owner?: string
+}
+
+export async function currentUser(): Promise<DocsUser | null> {
   try {
     if (!iam().getAccessToken()) return null
     const u = await iam().getUser()
-    return u ? { email: u.email, name: u.name } : null
+    return u ? { email: u.email, name: u.name, owner: u.owner } : null
   } catch {
     return null
   }

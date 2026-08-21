@@ -6,7 +6,7 @@ import { useSidebar } from '@hanzo/docs-base-ui/components/sidebar/base';
 import { MeetHanzo } from '@/components/meet-hanzo';
 import { cn } from '@/lib/cn';
 import { DocsNavLinks } from '@/components/docs-nav-links';
-import { AuthButtons } from '@/components/auth-buttons';
+import { OrgBadge } from '@/components/org-badge';
 
 // The top bar on doc pages.
 //
@@ -99,7 +99,13 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
             labelled, and it resolves a product to its DOCS page when we have one instead
             of bouncing the reader out to marketing. */}
         <MeetHanzo compact />
-        <AuthButtons />
+        {/* The bar names WHICH tenant, and nothing else. Sign in, the API key
+            and the account menu moved to the foot of the sidebar: this row is a
+            fixed 56px and "Get API Key" is the widest label on the page, so it
+            was the control that reflowed to three lines and spilled out of the
+            bar between 768 and 805px. A column can afford a long label; this
+            row cannot. */}
+        <OrgBadge />
       </div>
     </header>
   );
