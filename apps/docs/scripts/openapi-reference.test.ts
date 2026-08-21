@@ -240,10 +240,16 @@ describe('withheld — the operator surface is not published', () => {
   // that sentence was written next to the Go handler. This generator authors
   // nothing and rewrites nothing; editing it here would mean the page no longer
   // says what the document says. That one belongs upstream, in the doc comment.
+  //
+  // The address line on an operation page is ONLY the address — a prose line
+  // that opens with a backticked route keeps going past the closing backtick,
+  // and two referrals operations do exactly that, naming the sweep job they
+  // hand off to. Anchoring the pattern at both ends is what separates "this
+  // page documents the route" from "this page mentions it".
   const entries = (src: string): string[] =>
     spoken(src)
       .split('\n')
-      .filter((l) => l.startsWith('|') || /^`(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) /.test(l));
+      .filter((l) => l.startsWith('|') || /^`(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) \S+`$/.test(l.trim()));
 
   it('gives no /v1/admin route an entry on any published page', () => {
     const leaked: string[] = [];
