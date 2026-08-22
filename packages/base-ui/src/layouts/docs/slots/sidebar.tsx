@@ -9,7 +9,6 @@ import {
 } from '@/components/sidebar/page-tree';
 import { createLinkItemRenderer } from '@/components/sidebar/link-item';
 import { buttonVariants } from '@/components/ui/button';
-import { SearchTrigger } from '@/layouts/shared/slots/search-trigger';
 import { Check, ChevronDown, ChevronsUpDown, Languages, SidebarIcon } from 'lucide-react';
 import { mergeRefs } from '@/utils/merge-refs';
 import { useDocsLayout } from '../client';
@@ -281,7 +280,6 @@ function SidebarContent({ ref: refProp, className, children, ...props }: Compone
             >
               <SidebarIcon />
             </Base.SidebarCollapseTrigger>
-            <SearchTrigger className="rounded-lg" hideIfDisabled />
           </div>
         </>
       )}

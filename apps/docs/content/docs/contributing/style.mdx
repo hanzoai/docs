@@ -1,0 +1,111 @@
+---
+title: Style
+description: How code and prose are written here — one base URL, one key, one way to do a thing — and the traps that keep catching agents working in this repo.
+icon: PenLine
+---
+
+Two audiences read this: a person adding to Hanzo, and an agent doing the same.
+The rules are the same for both. The second half is written for the agent,
+because every trap in it has already cost someone a wrong answer here.
+
+## One of everything
+
+**One base URL.** `https://api.hanzo.ai/v1`. Not a per-product host, not a
+regional host, no `/api/` segment before the version. A capability is the first
+segment after `/v1/`, and that segment is the whole address space: `/v1/iam`,
+`/v1/flags`, `/v1/captable`.
+
+**One key, in two classes.** There is no second credential to manage, no account
+SID, no workspace id, no project header.
+
+| Class | Prefix | Resolves to | Belongs |
+|---|---|---|---|
+| Secret | `sk-` | the user | a server you control |
+| Publishable | `pk-` | the org only | a browser bundle, a published site |
+
+```bash
+curl -sS https://api.hanzo.ai/v1/<capability> \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Mint either at `POST /v1/account/keys` with `{"type":"secret"}` or
+`{"type":"publishable"}`. The gateway derives org, user and project from the
+validated key, so a request that carries the tenant in a body field is a request
+that can name somebody else's — the shape is the security property.
+
+**One name for one thing.** Nouns are singular where the contract says so —
+`/v1/experiment`, `/v1/webhook`, `/v1/template`. Check before writing a plural.
+
+## Code
+
+Write the smallest thing that is complete. Prefer deleting to adding, and a
+value to a flag.
+
+- **Derive, do not restate.** A second copy of a fact is a copy that will
+  disagree. If a count, a list or a mapping can be computed from the contract,
+  compute it.
+- **Make the wrong thing unrepresentable** rather than refused. A tenant that
+  cannot be named in a request needs no check that it was not.
+- **Say what a thing is, not where it sits.** `quasar.RoundSigner`, not
+  `LuxRoundSigner`. Namespace qualifies; the name states the value.
+- **No compound word when one word does.** `clients/gateway`, not
+  `clients/gatewaysvc`.
+- **Comments explain WHY.** The code already says what. A comment that narrates
+  the code is noise; a comment that records the measurement behind a decision is
+  the most valuable line in the file.
+
+## Prose
+
+Plain, specific, and short. A number beats an adjective — "381 operations" says
+more than "comprehensive".
+
+Never write a limitation you have not checked. If a guide says Hanzo cannot do
+something it can, that sentence costs a customer. Before writing "no X":
+
+1. grep the contract for the capability, and for its **singular** spelling;
+2. consider the product surface, which is larger than the API surface — Hanzo
+   also ships Dataroom, Console, Desktop, Team, Chat, Studio, Base, Pack;
+3. only then write it, and say which of the two you checked.
+
+## Traps
+
+Every one of these produced a wrong answer in this repo. They are ordered by how
+often they recur.
+
+**Absence is not evidence.** An empty grep, a timed-out loop, a query against a
+table with no rows in the window, a `git show` of a path that does not exist —
+each returns nothing and nothing looks like proof. Echo the intermediate value
+and run a control that is known to match. A scan of 28 log sources that returns
+zero because it timed out reads exactly like a fleet that is idle.
+
+**The API surface is not the product surface.** The contract describes what
+`/v1` serves. It does not describe Pack's zero-config builder, the Dataroom, or
+the DNS server that answers 11 routes behind a wildcard and publishes none of
+them. Reading only the document produces confident claims that we lack things we
+ship.
+
+**Check the shape of an identifier before matching on it.** Image tags here are
+seven characters (`sha-deda25c`), not eight. A probe built from `git log
+--format=%h` silently misses every one and reads as "the build failed".
+
+**A file layout is a fact to verify, not to assume.** A Next.js export writes
+`out/amqp.html`, not `out/amqp/index.html`. Checking the wrong path reports a
+missing page that is present.
+
+**In zsh, `$var:a` is a modifier.** `git show $c:apps/…` becomes
+`HEADpps/apps/…`. Brace it: `${c}:apps/…`.
+
+**`pkill -f` matches your own shell.** A pattern broad enough to catch a build
+is broad enough to catch the wrapper running it, and the whole batch dies with
+an exit that looks like the build failed.
+
+**A pipe inside a table cell splits the cell**, code span or not. Reword; never
+"fix" it with a regex that spans two spans and escapes the real separator.
+
+**Generated output is not yours to commit.** A build step here rewrites over
+1,500 vendored files as a side effect. Read `git status` before staging, and
+stage paths, never `-A`.
+
+**Verify the deploy, not the push.** A merged commit is not a running one. Read
+the artifact — the image digest, the served `last-modified`, the running pod —
+before saying a thing is live.

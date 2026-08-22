@@ -675,51 +675,6 @@ function renderProduct(
   return L.join('\n');
 }
 
-/**
- * WHERE THE FOUR SURFACES DO NOT LINE UP, said once and in the open.
- *
- * Every capability page carries its own four-surface table, so a reader who
- * lands on one already learns whether the CLI reaches it. What that cannot give
- * anyone is the SHAPE of what is missing — which is the question a reader asks
- * before choosing a surface to build on, and the question we ask before deciding
- * what to generate next.
- *
- * Only the NONE cases are named. A capability the CLI reaches partially is
- * reachable, and its own page prints the fraction; listing every fraction here
- * would rebuild the wall of numbers the grouped index exists to avoid. And the
- * REST column never appears, because it cannot be empty: a capability with no
- * operations is not in this document at all, it is one of the doors above.
- */
-function gapNote(rows: Coverage[]): string[] {
-  const g = gaps(rows);
-  if (!g.noCli.length && !g.noMcp.length && !g.noSdk.length) return [];
-  const L: string[] = ['## Where the surfaces do not line up', ''];
-  L.push(
-    'REST is the contract, and the other three are generated from it — so they trail it, ' +
-      'each on its own clock. Where one has not caught up the capability is still reachable, ' +
-      'just not that way, and its own page says which. Named here are only the capabilities a ' +
-      'surface does not reach **at all**:',
-  );
-  L.push('');
-  L.push('| Surface | Does not reach | Why |');
-  L.push('|---|---|---|');
-  const row = (surface: string, names: string[], why: string) => {
-    if (!names.length) return;
-    L.push(
-      `| **${surface}** | ${names.map((n) => `[\`${code(n)}\`](/docs/openapi/${n})`).join(', ')} | ${why} |`,
-    );
-  };
-  row('CLI', g.noCli, 'no command is folded for it yet — `hanzo` generates its table from the document at its own pin');
-  row('SDK', g.noSdk, 'the published clients predate these operations — regenerating them is what adds the methods');
-  row('MCP', g.noMcp, 'the door names no tool that reaches them — `tools/list` is the door\'s own answer, not a projection of the document');
-  L.push('');
-  L.push(
-    'Every one of them is reachable over HTTP today, and each page shows the call. ' +
-      'This table is generated with the rest of the reference, so it shrinks as the projections catch up.',
-  );
-  L.push('');
-  return L;
-}
 
 function renderIndex(
   products: Product[],
@@ -772,7 +727,6 @@ function renderIndex(
       'keeps working; only the canonical name is published, documented and generated from.',
   );
   L.push('');
-  L.push(...gapNote(rows));
   L.push('## Authentication');
   L.push('');
   L.push(
