@@ -25,12 +25,15 @@ export default function Layout({ children }: LayoutProps<'/'>) {
           is a plain class selector, so nesting it redefines the tokens for
           everything below — chrome included, which is why it sits here and not
           on the page's own <main>. */}
-      {/* The rail starts collapsed HERE only. The tree is still one click away
-          via the sidebar trigger, but the front door leads with the page, not
-          with 12 rows of nav — a reader who typed the domain has not yet asked
-          for the table of contents. /docs/** keeps it open, where they have. */}
+      {/* THE TREE IS THE POINT, so it starts open here as it does everywhere
+          else. It started collapsed on the argument that a reader who typed the
+          domain has not asked for a table of contents — but the front door is
+          exactly where somebody does not yet know what is here, and a collapsed
+          rail answers that by showing nothing. It also cost the page its
+          wordmark: the sidebar renders it, so collapsing the sidebar rendered no
+          brand at all. One state, every route. */}
       <div className="dark bg-fd-background text-fd-foreground">
-        <Docs themeSwitch={{ enabled: false }} sidebar={{ defaultCollapsed: true }}>
+        <Docs themeSwitch={{ enabled: false }} sidebar={{ defaultCollapsed: false }}>
           {children}
         </Docs>
       </div>

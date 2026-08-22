@@ -90,7 +90,11 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
           correctly and rendered by nobody. Named explicitly so the omission
           cannot happen silently again. */}
       <div className="flex items-center gap-2">
-        {slots.searchTrigger && <slots.searchTrigger.sm hideIfDisabled className="p-2" />}
+        {/* NO SEARCH HERE. The sidebar carries the search field itself, and the
+            collapsed rail carries a search button beside its own toggle — so a
+            third one on the far right was the same action offered twice on one
+            screen, and the two were not even the same shape. Search lives where
+            the tree lives. */}
         {/* ONE ecosystem affordance, the same on every page. The home layout used to
             render BOTH this and <MeetHanzo>, which said the same thing twice and put an
             unlabeled grid icon next to a labelled menu; the inner pages then showed only
