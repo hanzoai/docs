@@ -218,7 +218,7 @@ export default function Page() {
               {...(d.external ? { target: '_blank', rel: 'noreferrer' } : {})}
               className="group flex flex-col rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]"
             >
-              <span className="mb-2 text-[11px] uppercase tracking-[0.16em] text-neutral-300">
+              <span className="mb-2 text-xs font-medium text-neutral-300">
                 {d.eyebrow}
               </span>
               <span className="mb-1.5 flex items-center gap-1.5 text-lg font-semibold text-white">
@@ -315,7 +315,7 @@ print(response.choices[0].message.content)`}
                       <div className="rounded-xl bg-white/[0.06] p-2">
                         <item.icon className="size-5 text-neutral-400 group-hover:text-white transition-colors" />
                       </div>
-                      <Badge variant="ghost" className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium border-none px-0">
+                      <Badge variant="ghost" className="text-[11px] text-neutral-400 font-medium border-none px-0">
                         {item.tag}
                       </Badge>
                     </div>
