@@ -319,6 +319,14 @@ function SidebarSeparator({ className, style, children, ...props }: ComponentPro
         // mt-3, not mt-6: 24px above a 20px label is more air than the label is
         // tall, and a tree pays it once per group.
         'inline-flex items-center gap-2 mb-1 px-2 mt-3 empty:mb-0 [&_svg]:size-4 [&_svg]:shrink-0',
+        // A HEADING IS NOT A ROW, and the tree has to say which without being
+        // read. Both used to be sentence-case text at the same size, separated
+        // only by an icon each carried — so a row with an icon and a heading with
+        // one were the same shape, and the reader counted indentation to tell
+        // them apart. Uppercase, tracked, smaller and muted is the label register
+        // every docs tree uses for exactly this, and it costs the heading nothing:
+        // it was never something you click.
+        'text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-fd-muted-foreground',
         depth === 0 && 'first:mt-0',
         className,
       )}
