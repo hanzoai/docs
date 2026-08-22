@@ -218,6 +218,10 @@ const config: NextConfig = {
     '@hanzo/docs-openapi',
     '@hanzogui/shell',
     '@hanzo/brand',
+    // @hanzo/ui ships 'use client' ESM against React 19; the app build has to
+    // compile it for the client/server split and the JSX runtime to resolve,
+    // the same reason the shell above is listed.
+    '@hanzo/ui',
   ],
   serverExternalPackages: [
     'ts-morph',
