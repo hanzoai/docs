@@ -27,6 +27,7 @@ signing routes carry no other authentication.
 | Certificate of completion | `GET /v1/esign/documents/{id}/audit` |
 | Completed PDF | `GET /v1/esign/documents/{id}/download` |
 | Decline to sign | `POST /v1/esign/o/{org}/sign/{token}/reject` |
+| Template library | Hanzo Dataroom — `/v1/dataroom` (26), documents and the links that share them |
 
 ## The call
 
@@ -71,10 +72,13 @@ ports without drift.
 
 ## What does not carry
 
-**No templates.** DocuSign templates hold recipients, tabs and routing so an
-envelope can be created from one. There is no template noun here. Keep the
-field list in your own code and post it per document — which is what a template
-is, minus the copy that goes stale.
+**Templates live in the Dataroom, not on this API.** DocuSign templates hold
+recipients, tabs and routing so an envelope can be created from one. Hanzo
+Dataroom (dataroom.hanzo.ai) is where documents and their reusable shapes are
+kept — `/v1/dataroom` (26) carries the datarooms, the documents and the links
+that share them. What `/v1/esign` publishes is the signing sequence itself, and it
+has no template noun: driving it from the API means posting the field list per
+document, which is what a template is once it stops going stale.
 
 **No bulk send.** One document, one set of recipients. A hundred contracts is a
 hundred sequences, which is a loop rather than a feature.
