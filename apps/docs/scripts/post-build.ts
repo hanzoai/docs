@@ -1,5 +1,6 @@
 import env from '@next/env';
 import { updateSearchIndexes } from './update-hanzo-index';
+import { emit as emitRedirects } from './emit-redirects';
 
 env.loadEnvConfig(process.cwd());
 
@@ -11,6 +12,9 @@ env.loadEnvConfig(process.cwd());
 // green and the index quietly stopped being updated. One indexer, imported
 // statically — a missing one is now a type error, not a runtime surprise.
 async function main() {
+  // Before indexing: a redirect page is part of the export, and indexing is
+  // allowed to fail without taking the deploy down.
+  emitRedirects();
   await updateSearchIndexes();
 }
 
