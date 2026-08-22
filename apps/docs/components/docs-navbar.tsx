@@ -3,10 +3,10 @@
 import type { ComponentProps } from 'react';
 import { useDocsLayout } from '@hanzo/docs-base-ui/layouts/docs';
 import { useSidebar } from '@hanzo/docs-base-ui/components/sidebar/base';
-import { MeetHanzo } from '@/components/meet-hanzo';
 import { cn } from '@/lib/cn';
 import { DocsNavLinks } from '@/components/docs-nav-links';
 import { OrgBadge } from '@/components/org-badge';
+import { NavAccount } from '@/components/sidebar-account';
 
 // The top bar on doc pages.
 //
@@ -95,21 +95,20 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
             third one on the far right was the same action offered twice on one
             screen, and the two were not even the same shape. Search lives where
             the tree lives. */}
-        {/* ONE ecosystem affordance, the same on every page. The home layout used to
-            render BOTH this and <MeetHanzo>, which said the same thing twice and put an
-            unlabeled grid icon next to a labelled menu; the inner pages then showed only
-            the grid, so "where do I find the other products" had a different answer
-            depending on which page you were on. MeetHanzo is the one kept: it is
-            labelled, and it resolves a product to its DOCS page when we have one instead
-            of bouncing the reader out to marketing. */}
-        <MeetHanzo compact />
-        {/* The bar names WHICH tenant, and nothing else. Sign in, the API key
-            and the account menu moved to the foot of the sidebar: this row is a
-            fixed 56px and "Get API Key" is the widest label on the page, so it
-            was the control that reflowed to three lines and spilled out of the
-            bar between 768 and 805px. A column can afford a long label; this
-            row cannot. */}
+
+        {/* The full-width account controls live at the foot of the sidebar: this
+            row is a fixed 56px and "Get API Key" is the widest label on the
+            page, so it was the control that reflowed to three lines and spilled
+            out of the bar between 768 and 805px. A column can afford a long
+            label; this row carries the short one instead, and only when the rail
+            is not on screen to carry either. */}
         <OrgBadge />
+        {/* Shown exactly where the rail is not showing it: below md the rail is
+            a drawer, and on desktop only while it is collapsed. Everywhere else
+            the column version at the foot of the rail is the one control. */}
+        <div className={cn(collapsed ? '' : 'md:hidden')}>
+          <NavAccount />
+        </div>
       </div>
     </header>
   );
