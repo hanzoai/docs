@@ -4,7 +4,7 @@ import { DocsNavbar } from '@/components/docs-navbar';
 import { baseOptions, logo } from '@/components/layouts/shared';
 import { source } from '@/lib/source';
 import { getSection } from '@/lib/source/navigation';
-import { SidebarFilter } from '@/components/sidebar-filter';
+import { SidebarSearch } from '@/components/sidebar-search';
 import { SidebarAccount } from '@/components/sidebar-account';
 
 // The documentation chrome: navbar, page tree, sidebar filter.
@@ -30,17 +30,6 @@ export function Docs({
   sidebar?: Pick<NonNullable<DocsLayoutProps['sidebar']>, 'defaultCollapsed'>;
 }) {
   const base = baseOptions();
-  // Title + path for every page, for the sidebar filter.
-  //
-  // The element type is annotated because `source`'s methods resolve to `never`
-  // in THIS file specifically — the same reason getNodeMeta(node).path errors
-  // below, which predates this and is untouched. sitemap.ts calls the identical
-  // getPages() against the identical import and types fine, so it is a resolution
-  // quirk local to this module, not a wrong shape. Verified at runtime: the
-  // filter renders and matches.
-  const filterPages: [string, string][] = (
-    source.getPages() as unknown as { url: string; data: { title?: string } }[]
-  ).map((page) => [page.url, page.data.title ?? page.url]);
 
   return (
     <DocsLayout
@@ -70,7 +59,7 @@ export function Docs({
         // answered the same question worse: it listed sections a reader could
         // already see in the tree, and typing reaches any of them plus every page
         // inside them.
-        banner: <SidebarFilter pages={filterPages} />,
+        banner: <SidebarSearch />,
         // Who you are, at the foot of the rail. The top bar is a fixed 56px row
         // and these are the widest labels on the page; a column can afford them.
         footer: <SidebarAccount />,
