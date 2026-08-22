@@ -5,8 +5,44 @@ description: Tavily searches the live web and pulls pages back as text for agent
 
 Tavily gives an agent two primitives: search the live web, and read a page.
 `/v1/websearch` (6 operations) answers the first and `/v1/crawl` (1) answers the
-second, with `/v1/scrape` (1) beside it for callers that already speak the
-firecrawl envelope.
+second, with `/v1/websearch/scrape` (1) beside it for callers that already
+speak the firecrawl envelope.
+
+## Start here
+
+Mint a key, search the live web, then read one of the URLs that came back — Tavily's single `search()` is two calls here.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. search — answers {query, number_of_results, results:[{url, title, content, engine}]}
+curl -sS -X POST https://api.hanzo.ai/v1/websearch \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"q": "Who is Leo Messi?"}'
+
+# 3. read one of those URLs — step 2 gave snippets, this gives the page
+curl -sS -X POST https://api.hanzo.ai/v1/crawl \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"url": "https://en.wikipedia.org/wiki/Lionel_Messi"}'
+```
+
+Step 2 returned engine snippets with the engine named on each hit; step 3 turned
+one of those URLs into `data.markdown`. That is the whole shape of the move —
+Tavily's one round trip is two, and both calls fail soft, so an empty `results`
+array and a `success: false` are answers at 200 rather than outages.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/websearch` | Searches the live web. Keyless public engines run concurrently, hits are merged and deduplicated by normalised URL, capped at 30. | 7 |
+| `/v1/crawl` | Fetches one URL from inside the cluster and answers with the page as markdown, plus what the page said about itself. | 1 |
 
 ## Nouns
 
@@ -19,7 +55,7 @@ firecrawl envelope.
 | `client.extract(urls)` | `POST /v1/crawl` — one URL, answered as markdown |
 | `raw_content` | `data.markdown` |
 | `failed_results` | `success: false` with the reason in `error`, at 200 |
-| A firecrawl-shaped client | `POST /v1/scrape` — `{success, data: {markdown, metadata}}` |
+| A firecrawl-shaped client | `POST /v1/websearch/scrape` — `{success, data: {markdown, metadata}}` |
 
 Search takes a validated principal and nothing else. The results are public web
 pages, identical for every caller, so there is no tenant to scope and nothing
@@ -84,15 +120,15 @@ to unpack. Walking a site is a loop you write.
 
 **No research task.** `client.research()` is an agent: it plans, searches, reads
 and writes a cited report, and you poll a `request_id` for it. There is no
-equivalent single call. `/v1/research` is a different thing under a similar name
-— an append-only record of experiments and artifacts an org has run, useful for
-*keeping* what a research loop produced, not for producing it.
+equivalent single call. Plan the loop yourself: search, read the pages you
+picked, then compose the report.
 
 **No search options.** There is no `search_depth`, `topic`, `max_results`,
 `include_domains` or `exclude_domains`. Engines run concurrently, hits are merged
 and deduplicated by normalised URL, and the list is capped at 30. Ranking is
 deterministic rather than scored: the first configured engine's hits lead.
 
-**`/v1/scrape` is not the one to reach for.** It is the service-to-service door
-and takes the shared service key as its `Authorization` Bearer — a validated
-principal does not substitute for it. Use `/v1/crawl`, which takes either.
+**`/v1/websearch/scrape` is not the one to reach for.** It is the
+service-to-service door and takes the shared service key as its `Authorization`
+Bearer — a validated principal does not substitute for it. Use `/v1/crawl`,
+which takes either.

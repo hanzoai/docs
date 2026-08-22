@@ -1,0 +1,249 @@
+---
+title: PostHog
+description: PostHog is product analytics, feature flags, experiments and session replay behind one SDK. Here that is /v1/event (12), /v1/flags (8) and /v1/experiment (7) — the same wire on all three, with the tenant taken from the key rather than an api_key field.
+---
+
+PostHog captures events, decides flags, runs experiments and records sessions.
+Four capabilities answer it: **`/v1/event`** (12 operations) for capture and the
+read lenses, **`/v1/flags`** (8) for decisions, **`/v1/experiment`** (7) for
+trials, and **`/v1/o11y`** (381) for dashboards, error tracking, alerting and
+query. The wire is the one you already send — `POST /v1/event` accepts PostHog's
+capture body verbatim, `distinct_id` and all, and `POST /v1/flags/decide` accepts
+PostHog's `/decide` body and answers `featureFlags`, `featureFlagPayloads` and
+`errorsWhileComputingFlags` — so pointing an SDK here is a base URL.
+
+The structural difference is where the tenant comes from. PostHog carries
+`api_key` in every capture body and a numeric project id in every REST path.
+Neither exists here: the credential resolves the org, so there is nothing to
+keep in step and no field a caller could point at somebody else's project.
+
+## Start here
+
+Three calls: mint a key, post a PostHog capture body, read the row back — no
+project id in any path and no `api_key` in any body.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. capture an event — PostHog's capture body, minus api_key
+curl -sS -X POST https://api.hanzo.ai/v1/event \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"event":"checkout_completed","distinct_id":"user-42","properties":{"plan":"pro","revenue":49}}'
+# {"accepted":1,"dropped":0}
+
+# 3. read the row back — a real bearer only
+curl -sS 'https://api.hanzo.ai/v1/event/insights/events?limit=5' \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+The body in step 2 is PostHog's, `distinct_id` and all; `api_key` is gone because
+the header already named the org. The receipt totals what was sent — a nonzero
+`dropped` beside a nonzero `accepted` is a partial batch, not a failed one — and
+step 3 returns that row from the same table `GET /v1/event/tag.js` fills from a
+browser, which is what proves the write is yours to read.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/event` | Capture, replay ingest, and the fixed read lenses: overview, top, timeseries, live events, errors | 12 |
+| `/v1/flags` | Decide flags for a subject, and hold the definitions plus an actor-stamped activity log | 8 |
+| `/v1/experiment` | Create a trial that is already bucketing, assign arms, analyze, promote a winner | 7 |
+
+## Nouns
+
+### Capture and read
+
+| PostHog | Hanzo |
+|---|---|
+| Project API key `phc_…` | A publishable `pk-` key. It attributes a write and reads nothing, on any route |
+| Personal API key `phx_…` | A bearer, minted at `POST /v1/account/keys` |
+| Project, by numeric id in every path | Your org and project, from the validated key |
+| `POST /capture/` | `POST /v1/event` |
+| `POST /batch/` | The same door. A batch is a body, not a path — an array already is one |
+| `$pageview`, `$identify`, custom events | The same names, the same door |
+| `posthog-js` snippet | `GET /v1/event/tag.js` — one script tag carrying `data-key="pk-…"` |
+| Autocapture | The tag captures pageviews, initial and SPA, plus uncaught errors |
+| Web analytics tiles | `GET /v1/event/overview` — pageviews, visitors, sessions for one window |
+| Path, referrer and UTM breakdowns | `GET /v1/event/top` — five ranked lenses at once, each row with its share of the window |
+| Activity / live events | `GET /v1/event/insights/events` |
+| Group analytics | `groupType` and `groupId` on the event; `groups` on the decide call |
+| Error tracking | `GET /v1/event/errors`. Sentry SDKs report unchanged at `POST /v1/event/{project}/envelope` |
+| Replay chunks, sent as `$snapshot` events | `POST /v1/event/replay` — its own door, rrweb carried byte for byte |
+| Data pipelines / destinations | `/v1/destination` (5) — ga4, meta, tiktok, linkedin, x, reddit |
+
+### Flags and experiments
+
+| PostHog | Hanzo |
+|---|---|
+| `POST /decide?v=3` | `POST /v1/flags/decide` — same body, same answer |
+| `distinct_id`, `person_properties`, `groups` | The same three fields, unchanged |
+| Feature flag | `PUT /v1/flags/defs/{key}` — the definition document, stored byte for byte |
+| Multivariate flag | Variants and weights inside that document |
+| Local evaluation, polled from a payload | Evaluation is already in-process over your own definitions. No poll, no shared cache |
+| Flag activity log | `GET /v1/flags/activity` — every create, update and delete, with the actor |
+| Create experiment, then set `start_date` to launch | `POST /v1/experiment` — 201 means the arms are bucketing |
+| Experiment results, refreshed | `POST /v1/experiment/{id}/analyze` — exposed, conversions, rate, lift, z, p |
+| Which variant is this user in | `GET /v1/experiment/{id}/assign` |
+| Ship a winner | `POST /v1/experiment/{id}/decide`, org admin only |
+| Cohort | `POST /v1/marketing/audiences`, evaluated live at `GET /v1/marketing/audiences/{id}/preview` |
+| Survey | `/v1/ai/forms` holds the form, `GET /v1/ai/forms/data` the responses |
+
+### Dashboards, query and the rest
+
+| PostHog | Hanzo |
+|---|---|
+| Dashboard | `/v1/o11y/dashboards`, shared read-only at `GET /v1/o11y/public/dashboards/{id}` |
+| Saved insight | `/v1/o11y/explorer/views` |
+| HogQL query | `POST /v1/o11y/query_range` — builder queries, PromQL and Datastore SQL over traces, logs and metrics |
+| Funnel | `POST /v1/o11y/trace-funnels/new`, then its `analytics/steps` reads |
+| Error tracking issues | `GET /v1/o11y/errortracking/issues` |
+| LLM analytics | `/v1/o11y/llm/traces`, `/v1/o11y/llm/observations`, `/v1/o11y/llm/scores` |
+| Alerts and subscriptions | `/v1/o11y/rules`, delivered through `/v1/o11y/channels` |
+| Batch export | `POST /v1/o11y/export_raw_data` — CSV or JSONL with a trailer that says whether it completed |
+| Ingestion keys, and their rate limits | `/v1/o11y/gateway/ingestion_keys` |
+| Data retention | `/v1/o11y/settings/ttl` |
+| Webhook subscription | `/v1/webhook` (8) — with deliveries and a rotatable signing secret |
+
+## The call
+
+PostHog, capturing and deciding. Two hosts, and `api_key` in both bodies:
+
+```bash
+curl -sS -X POST https://us.i.posthog.com/capture/ \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "api_key": "phc_xxx",
+    "event": "checkout_completed",
+    "distinct_id": "user-42",
+    "properties": {"plan": "pro", "revenue": 49}
+  }'
+
+curl -sS -X POST 'https://us.i.posthog.com/decide?v=3' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "api_key": "phc_xxx",
+    "distinct_id": "user-42",
+    "person_properties": {"plan": "pro"}
+  }'
+```
+
+Hanzo, the same two bodies with the key moved to the header:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/event \
+  -H "Authorization: Bearer $HANZO_INGEST_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "event": "checkout_completed",
+    "distinct_id": "user-42",
+    "properties": {"plan": "pro", "revenue": 49}
+  }'
+# {"accepted":1,"dropped":0}
+
+curl -sS -X POST https://api.hanzo.ai/v1/flags/decide \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "distinct_id": "user-42",
+    "person_properties": {"plan": "pro"}
+  }'
+# {"featureFlags":{"checkout-copy":"urgent"},"featureFlagPayloads":{},"errorsWhileComputingFlags":false}
+```
+
+An experiment is where the call counts diverge. PostHog registers it in draft,
+then launches it by writing a start date — two calls, a numeric project id, and
+a numeric experiment id you carry from the first to the second:
+
+```bash
+curl -sS -X POST https://us.posthog.com/api/projects/1234/experiments/ \
+  -H "Authorization: Bearer $POSTHOG_PERSONAL_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "Checkout copy",
+    "feature_flag_key": "checkout-copy",
+    "parameters": {"feature_flag_variants": [
+      {"key": "control", "rollout_percentage": 50},
+      {"key": "urgent",  "rollout_percentage": 50}
+    ]}
+  }'
+
+curl -sS -X PATCH https://us.posthog.com/api/projects/1234/experiments/567/ \
+  -H "Authorization: Bearer $POSTHOG_PERSONAL_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"start_date": "'"$(date -u +%FT%TZ)"'"}'
+```
+
+Here it is one call, and it is already running when it answers:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/experiment \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id": "checkout-copy",
+    "metricEvent": "checkout_completed",
+    "variants": [
+      {"key": "control", "weight": 50, "control": true},
+      {"key": "urgent",  "weight": 50}
+    ]
+  }'
+```
+
+Creating is starting: the assignment flag is written live at 100% rollout with
+the declared weights before the 201 comes back, and it fails closed on that
+write — an experiment whose flag does not exist would assign nobody, so nothing
+is registered rather than a trial that measures zero. The flag key defaults to
+`exp_<id>`, so there is no second name to keep matched. The org, the project and
+the creator are stamped from the credential and are not body fields, which is
+also why the `api_key` above has nowhere to go: a `pk-` resolves which tenant a
+beacon belongs to and nothing more, so a leaked browser key lets a stranger
+write into your stream and never read out of it.
+
+## What does not carry
+
+**No HogQL, and no insight builder over product events.** PostHog gives you SQL
+against `events` and `persons`, and a UI that composes trends, retention, paths
+and stickiness from the same rows. The product-event reads here are fixed
+lenses — `overview`, `top`, `timeseries`, `insights/events`, `errors` — each
+with its own window and limit. `POST /v1/o11y/query_range` does run Datastore
+SQL, but its subject is traces, logs and metrics, and `trace-funnels` steps over
+traces rather than over what `POST /v1/event` stored.
+
+**A cohort is one event and a window.** `POST /v1/marketing/audiences` takes a
+name, an event and `windowDays`, and `GET /v1/marketing/audiences/{id}/preview`
+evaluates it live — reporting count, deliverable and unmatched, so a cohort of
+500 that reaches 3 mailboxes says so. A PostHog cohort is a nested condition
+tree over person properties and behaviour. That nesting does not port; what
+saves here is the single filter the marketing plane acts on.
+
+**A survey is a form, not a targeted popup.** `/v1/ai/forms` holds the
+definition and `GET /v1/ai/forms/data` the responses. PostHog injects the survey
+into your page and picks who sees it. Rendering it is yours —
+`POST /v1/flags/decide` answers who should get it.
+
+**`assign` records no exposure.** `GET /v1/experiment/{id}/assign` buckets the
+subject and returns the arm, and it is a pure read: nothing is written. The
+analysis denominator is whatever `exposureEvent` names, defaulting to
+`$feature_flag_called`, which is the marker a PostHog SDK already sends. Keep
+sending it. Without it every arm reports zero exposed and the analysis is empty.
+
+**Read the analysis before you decide.** `analyze` joins each subject to its arm
+by re-evaluating the assignment flag *at analysis time*, not from what was in
+force during the window, and `decide` rewrites that flag to 100% for the winner.
+Analyse after promoting and every subject re-buckets into the promoted arm, the
+control collapses to zero exposed, and the numbers mean nothing. Deciding is
+also not terminal and does not revert: a second call overwrites the winner with
+no record of the first, and restoring a split is a flag write.
+
+**Replay is an ingest door, not a search.** `POST /v1/event/replay` takes rrweb
+batches keyed by `sessionId` — 70 characters at most, 512 KiB a batch — and is
+all-or-nothing, so a 200 means the recording is durable rather than buffered.
+Filtering recordings by rage click or console error is not an API route, and a
+Hanzo Team workspace token is refused outright: a full-fidelity screen recording
+has no reduced form safe to write into a host org.

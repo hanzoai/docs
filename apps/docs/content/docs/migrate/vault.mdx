@@ -1,0 +1,215 @@
+---
+title: HashiCorp Vault
+description: Vault stores secrets, mints credentials and decides who may read them. Here that is three capabilities — /v1/kms (5) holds the secret, /v1/iam (159) and /v1/authz (3) hold the identity and the decision — and none of them has a mount table.
+---
+
+Vault is one server doing four jobs: holding static secrets, minting dynamic
+ones, encrypting on demand, and deciding whether a token may act. Those come
+apart here — `/v1/kms` (5 operations) is custody, `/v1/iam` (159) is identity and
+credentials, `/v1/authz` (3) is the decision, and `/v1/provisioning` (28) is the
+backend a dynamic credential used to point at. The difference that costs the most
+to port is the mount: in Vault a path is at once where a secret lives, which
+engine serves it, and what a policy matches, so `secret/data/backend/prd` has to
+be spelled the same way in the write, in the policy, and in the role bound to
+that policy. Here `path` and `env` are storage coordinates and nothing else —
+authority is org membership, and the org is derived from the key rather than
+named in the request.
+
+## Start here
+
+Mint a key, seal one secret, list what is held — three calls, no mount and no policy.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. seal one secret — env is required on a write and has no default
+curl -sS -X POST https://api.hanzo.ai/v1/kms/secrets \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"path":"backend","env":"prd","name":"SIGNING_SECRET","value":"s3cr3t"}'
+
+# 3. see what your org holds
+curl -sS "https://api.hanzo.ai/v1/kms/secrets?path=backend&env=prd" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+The write sealed the value under a fresh per-secret data key wrapped by the
+master key; the listing came back with name, path, environment and sealing
+scheme, and no value. Neither call named an org — the store root comes from the
+validated key — so there is no namespace, mount name or policy path to spell
+twice and get out of step.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/kms` | Custody. Seals a secret, enumerates what is held, reports whether the store is open | 5 |
+| `/v1/iam` | Identity and credentials — users, service accounts, roles, permissions, tokens | 159 |
+| `/v1/authz` | The decision. A subject, an object and an action in, one allow or deny out | 3 |
+
+## Nouns
+
+### Secrets
+
+| Vault | Hanzo |
+|---|---|
+| Namespace, sent as `X-Vault-Namespace` | Your org, taken from the validated key. Never a header, never a field |
+| Mount point, `sys/mounts` | Nothing to mount. `/v1/kms/secrets` is always there |
+| KV v2 path, `secret/data/backend/prd` | `path` and `env` — two flat fields on the request |
+| `POST /v1/secret/data/{path}` | `POST /v1/kms/secrets`, body `path`, `env`, `name`, `value` — one secret per write |
+| `LIST /v1/secret/metadata/{path}` | `GET /v1/kms/secrets` — name, path, environment, sealing scheme. Never a value |
+| KV v2 version history, `?version=N` | No history. A write upserts, and the value it replaced is gone |
+| Seal status, `sys/health` | `GET /v1/kms/health` — 200 only when the store is open and a master key is present |
+| Envelope encryption under the barrier | A fresh per-secret data key wrapped by the master key; plaintext never reaches disk |
+
+### Identity, policy and tokens
+
+| Vault | Hanzo |
+|---|---|
+| ACL policy in HCL, `sys/policies/acl/{name}` | `POST /v1/iam/permissions` — a grant naming who, which action, which resource |
+| Identity group | `POST /v1/iam/roles` |
+| Identity entity and entity-alias | A user at `/v1/iam/users`; joined identities at `/v1/iam/linked-accounts` |
+| `sys/capabilities-self` | `POST /v1/authz/check` — a subject, an object and an action in, one allow or deny out |
+| Auth method mounted at `auth/{type}` | `GET /v1/iam/auth/methods` — which methods an application has switched on |
+| AppRole role-id plus secret-id | `POST /v1/iam/service-accounts` — one identity, one key, secret half shown once |
+| `POST /v1/auth/approle/login` | `POST /v1/kms/auth/login` for the secret store, `POST /v1/iam/oauth/token` for everything else |
+| `POST /v1/auth/token/create` | `POST /v1/iam/tokens/issue` |
+| `GET /v1/auth/token/lookup-self` | `GET /v1/iam/whoami`, or `POST /v1/iam/oauth/introspect` for a token you did not mint |
+| `POST /v1/auth/token/revoke` | `POST /v1/iam/oauth/revoke` for a token, `POST /v1/iam/revoke-user-keys` for a key |
+| Root token, used for break-glass | `POST /v1/iam/assume`, then `POST /v1/iam/release`. The token still names the operator |
+| Audit device, a file or syslog sink you attach | `GET /v1/audit` and `GET /v1/iam/audit-logs` — already written, already queryable |
+
+### The engines
+
+| Vault | Hanzo |
+|---|---|
+| `GET /v1/database/creds/{role}`, a user per request | `POST /v1/provisioning/sql` — your org's own PostgreSQL instance, not a user on a shared one |
+| `database/config` and rotate-root | `POST /v1/iam/service-accounts/{name}/keys` — mints the successor and kills the prior key in one call |
+| A KV or object engine you mount | `POST /v1/provisioning/kv`, `POST /v1/provisioning/s3` |
+| `POST /v1/transit/sign/{name}` | `POST /v1/wallet/{id}/sign` — secp256k1 over a 32-byte digest, key never leaving custody |
+| `POST /v1/transit/keys/{name}/rotate` | `POST /v1/wallet/{id}/keys` |
+| `POST /v1/pki/issue/{role}` for a public host | ACME, configured at `PUT /v1/ingress/tls` |
+| Token signing key, `identity/oidc/key` | `POST /v1/iam/certs` names the key and its JWKS `kid`; the deployment supplies the material |
+| A credential scoped to one prefix for one job | The upload grant on `POST /v1/projects/{slug}/deployments` — minted on the 202, never served again |
+
+## The call
+
+Vault, giving CI read access to one production secret:
+
+```bash
+# 1. the policy
+curl -sS -X PUT "$VAULT_ADDR/v1/sys/policies/acl/ci-read" \
+  -H "X-Vault-Token: $VAULT_TOKEN" -H "X-Vault-Namespace: acme" \
+  -d '{"policy":"path \"secret/data/backend/prd\" { capabilities = [\"read\"] }"}'
+
+# 2. a role bound to it
+curl -sS -X POST "$VAULT_ADDR/v1/auth/approle/role/ci" \
+  -H "X-Vault-Token: $VAULT_TOKEN" -H "X-Vault-Namespace: acme" \
+  -d '{"token_policies":"ci-read","token_ttl":"1h"}'
+
+# 3 and 4. the two halves of the credential
+curl -sS "$VAULT_ADDR/v1/auth/approle/role/ci/role-id" \
+  -H "X-Vault-Token: $VAULT_TOKEN"
+curl -sS -X POST "$VAULT_ADDR/v1/auth/approle/role/ci/secret-id" \
+  -H "X-Vault-Token: $VAULT_TOKEN"
+
+# 5. exchange them for a client token
+curl -sS -X POST "$VAULT_ADDR/v1/auth/approle/login" \
+  -d '{"role_id":"'"$ROLE_ID"'","secret_id":"'"$SECRET_ID"'"}'
+
+# 6. read
+curl -sS "$VAULT_ADDR/v1/secret/data/backend/prd" \
+  -H "X-Vault-Token: $CLIENT_TOKEN" -H "X-Vault-Namespace: acme"
+```
+
+Hanzo, the same thing:
+
+```bash
+# 1. an identity for the program; the secret half is shown once, here
+curl -sS -X POST https://api.hanzo.ai/v1/iam/service-accounts \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"ci"}'
+
+# 2. what it may see
+curl -sS "https://api.hanzo.ai/v1/kms/secrets?path=backend&env=prd" \
+  -H "Authorization: Bearer $CI_KEY"
+```
+
+The write, side by side:
+
+```bash
+curl -sS -X POST "$VAULT_ADDR/v1/secret/data/backend/prd" \
+  -H "X-Vault-Token: $VAULT_TOKEN" -H "X-Vault-Namespace: acme" \
+  -d '{"data":{"SIGNING_SECRET":"s3cr3t"}}'
+
+curl -sS -X POST https://api.hanzo.ai/v1/kms/secrets \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"path":"backend","env":"prd","name":"SIGNING_SECRET","value":"s3cr3t"}'
+```
+
+Six requests to two, and five identifiers that must agree to none. Vault's
+namespace header, mount name, policy path string, role name and KV path all have
+to line up, and the one that most often does not is the path: KV v2 puts `data/`
+in the API path and not in the CLI path, so a policy copied from
+`vault kv get secret/backend/prd` denies a read of `secret/data/backend/prd`, and
+the 403 names the read rather than the policy that refused it.
+
+Nothing here can drift that way, because `path` never appears in a policy to
+disagree with itself and the store root is derived from the org claim in the key
+— a caller has no way to write down another tenant's namespace. Note which
+credential does which half: the CI key reads, and cannot write, because a machine
+credential holds no org membership and so is never an org admin.
+
+## What does not carry
+
+**No transit engine.** `transit/encrypt` and `transit/decrypt` take your
+plaintext and hand back ciphertext, so an application never holds a key. Sealing
+here happens beneath `/v1/kms/secrets` — a per-secret data key wrapped by the
+master key — and is not exposed as an operation over bytes you supply. Signing
+is: `POST /v1/wallet/{id}/sign` produces a secp256k1 signature over a 32-byte
+digest, with the private key never leaving KMS or MPC custody. That is a signing
+service, not a general cipher.
+
+**No route returns a secret's value.** `GET /v1/kms/secrets` enumerates what is
+held and there is no per-secret read beside it. `vault kv get` ports to a
+listing; `vault agent` template rendering and `consul-template` do not, because
+both exist to pull values into a file on disk.
+
+**No leases, so nothing to renew.** Every dynamic thing in Vault carries a lease,
+a TTL, `sys/leases/renew` and a `max_ttl` that eventually forces a re-auth. Keys
+here are valid until replaced, and replacement is one call:
+`POST /v1/iam/service-accounts/{name}/keys` mints the successor and invalidates
+the prior key in the same operation, so there is no window in which both are
+live. Revocation is immediate rather than scheduled — a token retired at
+`POST /v1/iam/oauth/revoke` reads as dead at `POST /v1/iam/oauth/introspect` on
+the next call, where Vault's expiration manager revokes in the background and
+retries on failure. Response wrapping, which returns a single-use token in place
+of a payload, goes with the leases.
+
+**No dynamic database users.** `database/creds/{role}` makes a fresh Postgres
+user per request. `POST /v1/provisioning/sql` gives your org its own PostgreSQL
+instance in its own namespace, with the admin password returned once at create
+and otherwise held in KMS. The isolation boundary moves from a short-lived user
+to a dedicated instance — a smaller blast radius and a different operational
+habit to run. The one per-job scoped credential that does exist is the upload
+grant on `POST /v1/projects/{slug}/deployments`, which is minted on the 202 and
+cannot be fetched again.
+
+**No private CA.** Public certificates are issued by ACME and configured at
+`PUT /v1/ingress/tls`. What has no counterpart is `pki/issue/{role}` — a leaf and
+its private key minted from a CA of yours, for service-to-service mTLS.
+`POST /v1/iam/certs` registers a signing certificate's identity, its name being
+the JWKS `kid`, and key material never travels through the call: the deployment
+supplies it under the registered name.
+
+**No `sys/` to operate.** Vault is software you run — init, Shamir shares, an
+unseal quorum, raft peers, a mount table, audit devices you attach and tune.
+None of that ports because none of it is yours. `GET /v1/kms/health` reports
+whether the store is open and a master key is present, and that is the whole
+operational surface.

@@ -1,0 +1,231 @@
+---
+title: Grafana
+description: Grafana renders dashboards and alerts over Mimir, Loki and Tempo. Here that is /v1/o11y — 381 operations over one store, so a panel that crosses metrics, logs and traces is one query instead of three datasources.
+---
+
+Grafana is a rendering and alerting layer over stores you run or rent: Mimir for
+metrics, Loki for logs, Tempo for traces. Each is registered as a datasource with
+its own host, its own credential and its own UID, and every panel names that UID.
+`/v1/o11y` (381 operations across 287 routes) is the store and the layer together —
+dashboards, alert rules, log pipelines, trace waterfalls and Kubernetes inventory
+over one datastore. That is the difference which shapes the rest: there is no
+datasource object, so `POST /v1/o11y/query_range` takes builder queries over
+traces, logs and metrics, formulas, PromQL and the datastore's SQL in a single
+composite request.
+
+## Start here
+
+Mint a key, ask the store which metrics it already holds, then evaluate PromQL
+against one of them — three calls, one host, no datasource to register first.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. what is in the store — name, type, unit, temporality, monotonicity
+curl -sS -G https://api.hanzo.ai/v1/o11y/metrics \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  --data-urlencode 'searchText=http_server' \
+  --data-urlencode 'limit=20'
+
+# 3. evaluate PromQL over a name from step 2, unchanged from Grafana
+curl -sS -G https://api.hanzo.ai/v1/o11y/query_range \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  --data-urlencode 'query=sum by (service) (rate(http_server_duration_count[5m]))' \
+  --data-urlencode 'start=1755840000' \
+  --data-urlencode 'end=1755843600' \
+  --data-urlencode 'step=60s'
+```
+
+Step 2 names every metric in the window and carries its type, unit, temporality and
+monotonicity, so step 3 has a real series to put in the query. Nothing was registered
+between the two calls: no datasource object, no UID to paste, no per-signal instance
+id and no `X-Scope-OrgID` — the key carries the org.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/o11y` | Dashboards, alert rules, PromQL and composite queries, log pipelines, trace waterfalls, Kubernetes inventory — one store behind all of it | 381 |
+| `/v1/metrics` | The ingest doors — metric, log and trace writes, plus the reads over that bounded ring | 11 |
+| `/v1/notify` | Sends the SMS and email an escalation ends in | 4 |
+
+## Nouns
+
+Grafana is four products sold as one. The left column is their surface; the right
+is what answers it.
+
+### Dashboards
+
+| Grafana | Hanzo |
+|---|---|
+| `POST /api/dashboards/db` | `POST /v1/o11y/dashboards` — a Perses spec at schema version 6 |
+| `GET /api/dashboards/uid/{uid}` | `GET /v1/o11y/dashboards/{id}` |
+| Re-post the whole dashboard to edit one panel | `PATCH /v1/o11y/dashboards/{id}` — an RFC 6902 patch over panels, queries, variables, layouts and tags |
+| `POST /api/datasources` | None. The store is the datasource; a query names a signal |
+| Mixed-datasource panel | `POST /v1/o11y/query_range` — one composite query across all three signals |
+| `POST /api/folders`, folder permissions | Tags, plus a filter DSL on the list — `?query=name:cpu source:user` |
+| Provisioned dashboard, read-only in the UI | `PUT /v1/o11y/dashboards/{id}/lock`, released with DELETE |
+| `POST /api/library-elements` | `POST /v1/o11y/dashboards/{id}/clone`, then patch the copy |
+| Snapshot, public dashboard | `POST /v1/o11y/dashboards/{id}/public` |
+| Starred dashboard | `PUT /v1/o11y/users/me/dashboards/{id}/pins` |
+| Explore, saved queries | `POST /v1/o11y/explorer/views` |
+| Dashboard variable query | `POST /v1/o11y/variables/query` |
+| Panel CSV download | `POST /v1/o11y/export_raw_data` — chunked, with a trailer saying whether it completed |
+
+### Logs, traces and metrics
+
+| Grafana | Hanzo |
+|---|---|
+| `POST /loki/api/v1/push` | `POST /v1/metrics/logs/write` |
+| `GET /loki/api/v1/query_range` with LogQL | `GET /v1/metrics/logs/query` — a label matcher plus a substring test |
+| Recent lines in a window | `GET /v1/o11y/logs` |
+| `/loki/api/v1/tail` | `GET /v1/o11y/logs/livetail` |
+| Promtail pipeline stages | `POST /v1/o11y/logs/pipelines` — versioned, and the posted set replaces the current one |
+| Loki label indexing | `POST /v1/o11y/logs/fields` — promote a field to an indexed column |
+| Tempo push | `POST /v1/metrics/traces/write` |
+| `GET /api/search` with TraceQL | `GET /v1/o11y/traces?range=3600&minDurationMs=2000` |
+| `GET /api/traces/{traceID}` | `GET /v1/o11y/traces/{traceId}`, or `GET /v1/metrics/traces/trace` |
+| Trace view | `POST /v1/o11y/traces/{traceId}/waterfall` and `POST /v1/o11y/traces/{traceId}/flamegraph` |
+| Prometheus remote write | `POST /v1/metrics/write`, or `POST /v1/metrics/batch` |
+| `GET /prometheus/api/v1/query_range` | `GET /v1/o11y/query_range`; the instant read is `GET /v1/o11y/query` |
+| Metric catalogue | `GET /v1/o11y/metrics` — name, type, unit, temporality, monotonicity |
+| Adaptive Metrics | `POST /v1/o11y/metric_reduction_rules`, costed first at `POST /v1/o11y/metric_reduction_rules/preview` |
+| Per-stack retention | `POST /v1/o11y/settings/ttl` — per signal, ordered per-label rules, cold storage |
+
+### Alerting and paging
+
+| Grafana | Hanzo |
+|---|---|
+| `/api/v1/provisioning/alert-rules` | `POST /v1/o11y/rules` |
+| Save the rule, then wait for an evaluation | `POST /v1/o11y/rules/test` — answers how many series would fire, without saving |
+| Alert state history | `GET /v1/o11y/rules/{id}/history/timeline`, with stats and top contributors beside it |
+| `/api/v1/provisioning/contact-points` | `POST /v1/o11y/channels`, fired once at `POST /v1/o11y/channels/test` |
+| `/api/v1/provisioning/policies` | `POST /v1/o11y/route_policies` |
+| Silences and mute timings | `POST /v1/o11y/downtime_schedules` |
+| `GET /api/alertmanager/grafana/api/v2/alerts` | `GET /v1/o11y/alerts` |
+| Grafana OnCall paging | `POST /v1/o11y/alerts/{receiver}` — an Alertmanager delivery that pages, and answers 503 when no egress accepted it |
+| SMS and email escalation | `POST /v1/notify/send/sms`, `POST /v1/notify/send/email` |
+| Webhook contact point | `/v1/webhook` (8) — signed, with 7-day delivery and failure counts per endpoint |
+
+### The rest of the platform
+
+| Grafana | Hanzo |
+|---|---|
+| Kubernetes Monitoring | `POST /v1/o11y/infra_monitoring/pods` and nine siblings — nodes, clusters, deployments, daemonsets, statefulsets, jobs, namespaces, pvcs, hosts |
+| Agent onboarding, is-it-working | `GET /v1/o11y/infra_monitoring/checks` — names each metric the collector is not sending |
+| Application Observability, RED | `POST /v1/o11y/services`; apdex thresholds at `POST /v1/o11y/settings/apdex` |
+| Service graph | `POST /v1/o11y/dependency_graph` — every parent-to-child edge with rates and latency percentiles |
+| Faro frontend errors | `GET /v1/o11y/errortracking/issues`; the browser SDK posts to `/v1/o11y/api/{project_id}/store/` |
+| Cloud integrations, AWS and friends | `POST /v1/o11y/cloud_integrations/{cloud_provider}/accounts`, turned on at `POST /v1/o11y/integrations/install` |
+| Access policy token | `POST /v1/o11y/gateway/ingestion_keys`, with per-key limits |
+| `/api/serviceaccounts` | `/v1/o11y/service_accounts`; the org identity itself is `/v1/iam` (159) |
+| `/api/org/users`, teams | `POST /v1/o11y/users` and `POST /v1/o11y/roles` |
+| Grafana LLM plugin | `GET /v1/o11y/llm/traces`, `GET /v1/o11y/llm/scores`, `GET /v1/o11y/llm_pricing_rules` |
+| status.grafana.com | `GET /v1/o11y/summary` — open, no credential, 503 when it cannot tell |
+| Outbound dependency view | `POST /v1/o11y/third-party-apis/overview/list` |
+| Funnel over a user journey | `POST /v1/o11y/trace-funnels/new` |
+
+## The call
+
+Grafana Cloud, finding a slow trace and reading it:
+
+```bash
+curl -sS -u "$TEMPO_USER:$GRAFANA_TOKEN" \
+  "https://tempo-prod-04-prod-us-east-0.grafana.net/api/search?q=%7Bduration%3E2s%7D&limit=50"
+
+curl -sS -u "$TEMPO_USER:$GRAFANA_TOKEN" \
+  "https://tempo-prod-04-prod-us-east-0.grafana.net/api/traces/$TRACE_ID"
+```
+
+The logs and metrics for that same incident are two more hosts and two more numeric
+instance ids — `logs-prod-006.grafana.net` with `$LOKI_USER`, and the Mimir host with
+`$MIMIR_USER` — against the one token.
+
+Hanzo:
+
+```bash
+curl -sS "https://api.hanzo.ai/v1/o11y/traces?range=3600&limit=50&minDurationMs=2000" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+curl -sS "https://api.hanzo.ai/v1/o11y/traces/$TRACE_ID" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+One host, one key, no per-signal instance id, and a duration filter that is a number
+rather than a TraceQL string you have to escape. There is no `X-Scope-OrgID` to set,
+because the tenant is the validated principal: every row is the caller's own org, and
+a caller has no field in which to write another one.
+
+PromQL you already have keeps working, unchanged:
+
+```bash
+curl -sS -G https://api.hanzo.ai/v1/o11y/query_range \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  --data-urlencode 'query=sum by (service) (rate(http_server_duration_count[5m]))' \
+  --data-urlencode 'start=1755840000' \
+  --data-urlencode 'end=1755843600' \
+  --data-urlencode 'step=60s'
+```
+
+And a rule is decided before it is stored:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/o11y/rules/test \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  --data-binary @rule.json
+```
+
+That answers how many series would alert, right now, on a rule that does not exist
+yet. Grafana's provisioning API stores the rule first and tells you the same fact at
+the next evaluation interval, once it is already live. The split runs through the
+rest of the surface: `POST /v1/o11y/metric_reduction_rules/preview` estimates a
+volume-control rule's saving and names the dashboards and alerts it would touch
+before anything is written, and `POST /v1/o11y/channels/test` fires one notification
+at a receiver carried in the body rather than at a saved one. A decision that can be
+made before the write is made before the write, because a background loop's answer
+arrives after the thing is in production.
+
+## What does not carry
+
+**Grafana dashboard JSON does not import.** A Grafana panel carries a `datasource`
+UID and a `targets` array written in that datasource's own language. Dashboards here
+are the Perses spec at schema version 6, and there is no UID to substitute at import,
+so a dashboard is rewritten rather than converted. `PATCH /v1/o11y/dashboards/{id}`
+takes an RFC 6902 patch, which at least lets the rewrite go panel by panel instead of
+in one post.
+
+**LogQL and TraceQL do not carry. PromQL does.** `GET /v1/o11y/query` and
+`GET /v1/o11y/query_range` evaluate PromQL as written. Log and trace queries are the
+builder shape or the datastore's SQL dialect — a stored LogQL string has no evaluator
+here, and a TraceQL duration predicate becomes `minDurationMs=2000`.
+
+**No annotation overlay.** Grafana's `/api/annotations` writes a marker that panels
+draw over a time range: deploys, incidents, releases. Nothing here writes a marker
+onto a panel. `POST /v1/o11y/llm/annotation` is a different noun — a human's label on
+one LLM trace or observation, in a review queue, not a band drawn across a chart.
+
+**No continuous profiling, and no probes in other regions.** Pyroscope's per-process
+CPU and heap profiles have no ingest door. `POST /v1/o11y/traces/{traceId}/flamegraph`
+buckets one trace's spans by depth, which draws like a flame graph and measures
+something else. Synthetic Monitoring's checks from probe locations and k6's load tests
+have no equivalent either — `GET /v1/o11y/summary` and `GET /v1/o11y/status` report
+Hanzo's own fleet health, which is a different fact from your endpoint's.
+
+**Two ingest doors, both counting in nanoseconds.** `/v1/metrics/logs/write` and
+`/v1/metrics/traces/write` hold a bounded ring per org — 1,048,576 records and
+1,048,576 spans, oldest evicted — and take the tenant from the gateway-minted
+`X-Org-Id`; a series written to `/v1/metrics/write` keeps its newest 65,536 samples.
+The `/v1/o11y` reads run over the collector-fed datastore, whose retention you set per
+signal at `POST /v1/o11y/settings/ttl`. Choose the door deliberately. Note also that
+Prometheus remote write sends milliseconds while both doors here read nanoseconds, and
+a sample sent with no timestamp is stored at 0 and then falls outside any query with a
+lower bound — that is the usual reason a write which answered 200 does not read back.
+
+**Log aggregate buckets are not computed yet.** `GET /v1/o11y/logs/aggregate` answers
+the empty set: the schema is the contract, the numbers are not there. Bucketed
+log-rate panels come from `POST /v1/o11y/query_range` instead.

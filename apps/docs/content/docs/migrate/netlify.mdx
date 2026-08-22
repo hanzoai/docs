@@ -1,0 +1,239 @@
+---
+title: Netlify
+description: Netlify serves a built directory, runs functions beside it, collects form posts and signs visitors in. Here that is /v1/projects (27) for the site, /v1/functions (11) for the code and /v1/iam (159) for the people — and a deploy is one call, because the bytes never pass through the API.
+---
+
+Netlify does five things: it serves a built directory, builds that directory
+from a repo, runs functions beside it, collects form posts, and signs visitors
+in. Three capabilities answer those — `/v1/projects` (27) is the site,
+`/v1/functions` (11) is the code, `/v1/iam` (159) is the people — and a form
+post lands in the project's own Base data space, which is provisioned when the
+project is created.
+
+The structural difference to plan for is the deploy. Netlify negotiates a
+file-digest manifest and then streams every changed file back through its API,
+so one deploy is one POST, N PUTs and a poll. Here it is one archive POST — or,
+for a site too large for one body, one call that hands back a scoped storage
+grant and one that says the build finished.
+
+## Start here
+
+Create the project to claim the slug, then send it a built directory — the site
+is live on the second call.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. claim the slug — it is the host label, the storage prefix and the handle
+curl -sS -X POST https://api.hanzo.ai/v1/projects \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Acme WWW","slug":"acme-www"}'
+
+# 3. take a built directory live at https://acme-www.hanzo.app
+curl -sS -X POST https://api.hanzo.ai/v1/projects/acme-www/deploy \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/octet-stream' \
+  --data-binary @dist.zip
+```
+
+Step 3 answers with the finished deployment and the URL it serves at — no digest
+manifest, no PUT per file, no poll. Neither call names a team or an account
+slug, because the key already carried the org.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/projects` | The site: slug, archive deploy, releases, custom domains, cache purge | 27 |
+| `/v1/functions` | The code beside it: node, python or deno, invoked by name | 11 |
+| `/v1/iam` | The people: signup, OAuth, SCIM, roles, invitations | 159 |
+
+## Nouns
+
+The left column is Netlify's product surface; the right is the capability that
+answers it.
+
+### The site
+
+| Netlify | Hanzo |
+|---|---|
+| Team, addressed by account slug | Your org, taken from the validated key |
+| Site, addressed by `site_id` | Project, addressed by `slug` — `POST /v1/projects` |
+| `POST /api/v1/sites/{site_id}/deploys` with a zip | `POST /v1/projects/{slug}/deploy` — same archive, one call |
+| Digest deploy, then a PUT per required file | `POST /v1/projects/{slug}/deployments`, then `.../complete` |
+| Deploy history | `GET /v1/projects/{slug}/deployments` |
+| The published deploy | The active release — `GET /v1/projects/{slug}/releases` |
+| Restore an earlier deploy | `POST /v1/projects/{slug}/releases/{release}/activate` |
+| `*.netlify.app` subdomain | `<slug>.hanzo.app`, the same slug as a hostname label |
+| Custom domain and its DNS check | `POST /v1/projects/{slug}/domains`, then `/{host}/verify` |
+| Cache invalidation | `POST /v1/projects/{slug}/purge` — no redeploy, origin untouched |
+| Snippet injection | `GET /v1/projects/tags` — the first-party tag set, per site |
+| Open Graph preview image | `GET /v1/projects/{slug}/shot` — keyed by the deployment |
+| Deploy-to-Netlify button, starter templates | `POST /v1/projects/fork` |
+| Netlify Drop | `POST /v1/projects/sites/deploy` — a file manifest, no archive |
+
+### Build and functions
+
+| Netlify | Hanzo |
+|---|---|
+| Build from a linked repo | `repo` on the project; a push to it rebuilds |
+| Build hook URL | `POST /v1/platform/hook` — HMAC over the raw bytes, checked before parsing |
+| A build whose output needs a server | `/v1/platform` (37) — build, deploy, promote, rollback |
+| Build environment variables | `PUT /v1/platform/projects/{project}/apps/{app}/env` |
+| Sensitive values in a build env | `/v1/kms` (5) — sealed at rest, listed by name only |
+| Deploy log | `GET /v1/platform/projects/{project}/apps/{app}/deployments/{id}/logs` |
+| Deploy notification to Slack or a URL | `/v1/webhook` (8), with `deliveries` and a `test` |
+| Serverless Function | `POST /v1/functions` — node, python or deno |
+| Edge Function, Deno runtime | Same surface, `runtime` set to `deno` |
+| `/.netlify/functions/{name}` | `POST /v1/functions/{name}/invoke` |
+| Function log, function metrics | `GET /v1/functions/{name}/logs`, `GET /v1/functions/metrics` |
+| Scheduled function | `/v1/tasks` (5) — a durable engine that outlives any one deploy |
+| Netlify Blobs | `/v1/kv` (6) for values with history, `/v1/s3` (6) for objects |
+
+### Forms, identity and the rest
+
+| Netlify | Hanzo |
+|---|---|
+| A form declared with `data-netlify` in the HTML | A form definition — `POST /v1/ai/forms` |
+| Form submissions | The project's Base data space — `space` on the project row |
+| Reading submissions | `GET /v1/ai/forms/data` |
+| Submission notification email | `POST /v1/notify/send/email` |
+| Submission posted to a URL | `/v1/webhook` (8) |
+| A submission that is a sales lead | `POST /v1/crm/contacts` |
+| Identity signup and login | `POST /v1/iam/signup`, `POST /v1/iam/login` |
+| GoTrue token exchange | `POST /v1/iam/oauth/token` |
+| Identity external providers | `GET /v1/iam/oauth/authorize` |
+| Identity invite | `/v1/iam/invitations` |
+| Roles in the token, checked per request | `/v1/iam/roles`, then `POST /v1/authz/check` |
+| Netlify Analytics | `/v1/event` (12), with the browser tag at `GET /v1/event/tag.js` |
+| Log drains | `/v1/o11y` (381) — `GET /v1/o11y/logs/livetail` is the tail |
+| Split testing across branches | `/v1/experiment` (7) — `GET /v1/experiment/{id}/assign` |
+| Rate limiting, CORS, accepted methods | `PUT /v1/gateway/config` |
+| A domain you buy and hold | `/v1/domain` (7) |
+
+Split testing is where the two models diverge most. Netlify splits traffic
+between branch deploys and remembers the choice in a cookie. Here bucketing is a
+deterministic hash of the subject you pass, evaluated in-process against your own
+org's flag definitions — no cookie, no shared KV, no network hop, and the same
+subject gets the same arm on every call for as long as the definition is
+unchanged.
+
+## The call
+
+Netlify, deploying a built directory through the API:
+
+```bash
+# 1. open a deploy with a sha1 per file; Netlify answers with the ones it wants
+curl -sS -X POST "https://api.netlify.com/api/v1/sites/$SITE_ID/deploys" \
+  -H "Authorization: Bearer $NETLIFY_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"files":{"/index.html":"907d14fb…","/assets/app.css":"5f2b91…"}}'
+
+# 2. one PUT per required file, through their API
+curl -sS -X PUT "https://api.netlify.com/api/v1/deploys/$DEPLOY_ID/files/index.html" \
+  -H "Authorization: Bearer $NETLIFY_TOKEN" \
+  -H 'Content-Type: application/octet-stream' \
+  --data-binary @dist/index.html
+
+# 3. poll until state is "ready"
+curl -sS "https://api.netlify.com/api/v1/deploys/$DEPLOY_ID" \
+  -H "Authorization: Bearer $NETLIFY_TOKEN"
+```
+
+Hanzo, the same site:
+
+```bash
+curl -sS -X POST "https://api.hanzo.ai/v1/projects/acme-www/deploy" \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/octet-stream' \
+  --data-binary @dist.zip
+```
+
+The answer is the finished deployment with the URL it serves at, so there is no
+state to poll.
+
+Past the 16 MiB edge body limit the bytes leave the API entirely:
+
+```bash
+ID=$(curl -sS -X POST https://api.hanzo.ai/v1/projects/acme-www/deployments \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"commit":"'"$GIT_SHA"'"}' | jq -r .id)
+
+# the 202 carries bucket, prefix and a 30-minute presigned POST policy that S3
+# confines to this deployment's prefix — CI writes its own files against it
+
+curl -sS -X POST "https://api.hanzo.ai/v1/projects/acme-www/deployments/$ID/complete" \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"status":"live","keys":["index.html","assets/app.css"]}'
+```
+
+Rolling back is one statement, and nothing is rebuilt:
+
+```bash
+curl -sS -X POST \
+  "https://api.hanzo.ai/v1/projects/acme-www/releases/$REL/activate" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Three identifiers become one. Netlify addresses the site by `site_id`, the
+deploy by `deploy_id`, and environment variables by the account slug with the
+site id as a query parameter — four things to keep in step across CI. Here the
+slug is the site, the public host label and the object-store key segment at
+once, and the org comes from the key, so it is never a field in the request.
+
+The digest negotiation exists because Netlify's API sits in the byte path. Ours
+does not: the grant is prefix-scoped and expires in 30 minutes, so a build writes
+its own files and holds no standing bucket credential. That grant authorizes
+writes only, which is why the completion carries `keys` — cloud reconciles the
+prefix against that manifest, so a page deleted from the build actually stops
+serving without a build ever being able to delete.
+
+A release id is a SHA-256 over its own sorted manifest. Republishing unchanged
+bytes is the same release with no copy at all, and activating an older id is a
+pointer flip against bytes that never moved.
+
+## What does not carry
+
+**The build is a hint, not a script.** A linked `repo` does build here — a push
+to its `branch` rebuilds and CI completes the deployment — but `framework` is a
+closed set, so Netlify's build image, its `[build]` command block and its build
+plugins have no counterpart. Anything past a known framework you build in your
+own CI and send as a directory. An app that needs a server is `/v1/platform`
+(37), which builds, deploys, promotes and rolls back.
+
+**No `_redirects` or `_headers` file.** Netlify compiles both into edge rules at
+deploy time. The one per-project edge knob here is `cacheControl`, the
+`Cache-Control` policy the HTML is served under; assets are content-addressed
+and are not governed by it. Redirect and header logic that must run per request
+belongs in a function, or in `/v1/ingress` (18) if you are on the app plane.
+
+**No branch deploy, and no per-pull-request hostname.** Netlify mints
+`deploy-preview-42--site.netlify.app` for every PR without being asked. A static
+project has one active release at a time. The preview that exists is
+`POST /v1/platform/projects/{project}/apps/{app}/preview`, and it belongs to the
+app plane, not this one.
+
+**No image transform in the request path.** `/.netlify/images` resizes and
+re-encodes on the fly. Nothing here rewrites an image as it is served — pre-size
+at build. `POST /v1/images/generations` makes new images; it does not resize the
+ones you deployed.
+
+**The Identity widget does not port; the identity does.** GoTrue answers under
+your own site at `/.netlify/identity`, so every call is same-origin and the
+widget assumes it. `/v1/iam` is a real provider at its own address, with OAuth,
+SCIM at `/v1/iam/scim/v2/Users`, WebAuthn and MFA. Rewrite the
+`netlifyIdentity.*` calls; the users, roles and external providers all have a
+home.
+
+**Form spam filtering is a policy, not a checkbox.** Netlify runs a honeypot and
+Akismet on every submission by default. Here a submission lands in the project's
+data space and scoring it is `POST /v1/risk/score` against a policy you write at
+`PUT /v1/risk/policy`. That is more work on day one and a rule you can read on
+day one hundred.

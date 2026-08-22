@@ -7,6 +7,43 @@ Doppler stores secrets for a team and serves them to the things that need them.
 `/v1/kms` (5 operations) is the custody half of that: store a secret sealed, list
 what you hold, and exchange a machine credential for a token.
 
+## Start here
+
+Mint a key, write one secret under an explicit `path` and `env`, then list what
+the org holds.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. store one secret, sealed — env is required and has no default
+curl -sS -X POST https://api.hanzo.ai/v1/kms/secrets \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"path":"backend","env":"prd","name":"SIGNING_SECRET","value":"s3cr3t"}'
+
+# 3. list what those coordinates now hold
+curl -sS "https://api.hanzo.ai/v1/kms/secrets?path=backend&env=prd" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Step 2 sealed the value under a fresh per-secret data key and answered with the
+name and environment it wrote, not the value. Step 3 returns descriptors — name,
+path, environment, sealing scheme — and proves the write landed under the
+coordinates a reader resolves. Writing needs org admin; a member, and any machine
+credential exchanged at `POST /v1/kms/auth/login`, gets step 3 only.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/kms` | Stores a secret sealed, lists what the org holds without values, exchanges a machine credential for a bearer | 5 |
+| `/v1/account` | Mints, lists and revokes the keys a service presents — what a Doppler service token becomes | 10 |
+| `/v1/iam` | Org membership and admin authority — who reads a secret and who may replace one | 159 |
+
 ## Nouns
 
 | Doppler | Hanzo |

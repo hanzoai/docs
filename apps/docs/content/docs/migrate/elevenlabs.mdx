@@ -8,12 +8,51 @@ and music beside it. `/v1/audio` (5 operations) covers the same four verbs:
 `speech` and `transcriptions` in the OpenAI shape, and `voice`, `music` and
 `foley` for the Zen family's own.
 
+## Start here
+
+Two calls after the key: turn a sentence into an MP3, then turn the MP3 back
+into the sentence.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. synthesize — the bytes stream back, so write them to a file
+curl -sS -X POST https://api.hanzo.ai/v1/audio/speech \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"qwen3-tts-voicedesign","input":"The first move is what sets everything in motion.","response_format":"mp3"}' \
+  -o out.mp3
+
+# 3. read it back — multipart, file and model
+curl -sS -X POST https://api.hanzo.ai/v1/audio/transcriptions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -F file=@out.mp3 \
+  -F model=whisper-1
+```
+
+Step 3 returns the sentence from step 2. The round trip proves the key carries,
+that `model` resolved to a provider in both directions, and that both halves are
+OpenAI-shaped — so an OpenAI client pointed at `https://api.hanzo.ai/v1` reaches
+them with no other change.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/audio` | Speech from text, text from speech, and the Zen family's own voice, music and foley | 5 |
+| `/v1/models` | The ids this gateway resolves right now, per modality | 4 |
+| `/v1/account` | Mints, lists and revokes keys — `/v1/account/keys` issued the `sk-` in step 1 | 10 |
+
 ## Nouns
 
 | ElevenLabs | Hanzo |
 |---|---|
 | `client.text_to_speech.convert(...)` | `POST /v1/audio/speech` — `model`, `input`, optional `voice` |
-| `POST /v1/text-to-speech/{voice_id}` | The same route; the voice is a body field, not a path segment |
+| `POST .../text-to-speech/{voice_id}` | The same route; the voice is a body field, not a path segment |
 | `model_id`, e.g. `eleven_v3` | `model`, e.g. `qwen3-tts-voicedesign` |
 | `output_format`, e.g. `mp3_44100_128` | `response_format` — `mp3` by default |
 | `client.speech_to_text.convert(...)` | `POST /v1/audio/transcriptions` — multipart `file` and `model`, with `language` and `response_format` |

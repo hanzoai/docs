@@ -1,0 +1,214 @@
+---
+title: Supabase
+description: Supabase is one Postgres instance with auth, storage, realtime, functions and vectors bolted to it. Here those are separate capabilities behind one host — /v1/iam (159 operations) signs people in, /v1/provisioning (28) mints the database, and /v1/functions (11), /v1/s3 (6), /v1/mq (15) and /v1/index (17) do the rest.
+---
+
+Supabase is a Postgres instance with the rest of a backend attached to it: your
+users sit in an `auth.users` table, row-level security lives in your policies,
+realtime tails the write-ahead log, and a vector is a column type. Here those are
+separate capabilities behind one host — `/v1/iam` (159 operations) is the largest
+single piece of the migration, `/v1/provisioning` (28) mints the database itself,
+and `/v1/functions` (11), `/v1/s3` (6), `/v1/mq` (15) and `/v1/index` (17) cover
+the rest.
+
+The structural difference is that one: you cannot `JOIN` your users table,
+because your users are not in your database. What the coupling buys Supabase —
+a policy no client can go around, because it runs inside the query plan — is the
+thing you rebuild deliberately, and it is the first bullet at the bottom.
+
+## Start here
+
+Three calls: mint a key, mint your own Postgres instance, then ask the policy
+question that used to live in an RLS clause.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. mint your org's own Postgres instance
+curl -sS -X POST https://api.hanzo.ai/v1/provisioning/sql \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"acme"}'
+
+# 3. ask the question the RLS clause used to answer
+curl -sS -X POST https://api.hanzo.ai/v1/authz/check \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"sub":"u_314","obj":"task:9f2","act":"write"}'
+```
+
+Step 2 answers 201 with `connectionString`, `host`, `port` 5432, `username` and
+`password` — a dedicated instance your org alone runs, and the credential is on
+that response and on no read beside it. Step 3 is the half Supabase compiled
+into the query plan for you, now a call your service makes on the path that
+reads the row, and neither body names an org because the key carries it.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/provisioning` | Mints the Postgres instance, and the vector, search, kv, s3, docdb and datastore backends beside it | 28 |
+| `/v1/iam` | Everything `auth.users` held: signup, sign-in, OAuth, MFA, passkeys, SCIM, service accounts | 159 |
+| `/v1/authz` | One policy question at a time, asked by your service instead of by the query plan | 3 |
+
+## Nouns
+
+### The database
+
+| Supabase | Hanzo |
+|---|---|
+| Organization | Your org, taken from the validated key. Never a field in the request |
+| Project | Project — `/v1/iam/projects`; resources beneath it are org-unique slugs |
+| Project ref, and its `.supabase.co` host | No per-project API host. One host, capability in the path |
+| Postgres instance | `POST /v1/provisioning/sql` — your org's own instance, port 5432 |
+| Connection string from the dashboard | `connectionString` on the 201, returned once |
+| PostgREST over your tables | Hanzo Base — a hosted backend for your app: collections, records, access rules and sign-in |
+| RLS policy on a table | `POST /v1/authz/check` — a subject, an object, an action, one allow or deny |
+| `pg_cron` | `/v1/tasks/` — a durable engine that outlives any one database; bare `/v1/tasks` only redirects |
+| `pgmq`, Queues | `/v1/mq` (15) — `POST /v1/mq/stream`, consumers pull at `.../consumer/{name}/next` |
+| Database webhooks | `/v1/webhook` (8), deliveries at `GET /v1/webhook/{id}/deliveries` |
+| The other backing stores | `/v1/provisioning` also mints datastore, docdb, kv, search, s3 and vector |
+
+### Auth
+
+| Supabase | Hanzo |
+|---|---|
+| GoTrue, the `auth.users` table | `/v1/iam` (159) — users at `GET /v1/iam/users` |
+| `signUp()`, `signInWithPassword()` | `POST /v1/iam/signup`, `POST /v1/iam/signin` |
+| `signInWithOtp()`, magic link | `POST /v1/iam/send-verification-code`, then `POST /v1/iam/verification-codes` |
+| `signInWithOAuth()` | `GET /v1/iam/oauth/authorize`; providers at `/v1/iam/providers` |
+| `signInWithWeb3()` | `GET /v1/iam/web3/nonce`, then `POST /v1/iam/web3/verify` |
+| MFA enroll and challenge | `POST /v1/iam/mfa/setup/initiate`, then `POST /v1/iam/mfa/setup/enable` |
+| Passkeys | `GET /v1/iam/webauthn/signin/begin`, `POST /v1/iam/webauthn/signin/finish` |
+| JWT secret, the JWKS endpoint | `GET /v1/iam/.well-known/jwks` |
+| `service_role` key | `POST /v1/iam/service-accounts`, then `POST /v1/iam/service-accounts/{name}/keys` |
+| Sessions and refresh tokens | `/v1/iam/sessions`, `POST /v1/iam/oauth/token` |
+| SAML SSO and SCIM provisioning | `/v1/iam/scim/v2/Users`, certificates at `/v1/iam/certs` |
+| Audit log | `GET /v1/iam/audit-logs` |
+
+### Storage, functions, realtime, vector
+
+| Supabase | Hanzo |
+|---|---|
+| Storage bucket | `POST /v1/s3/buckets`; `GET /v1/s3/buckets/{bucket}/objects` — one folder level, or `?recursive=true` |
+| `storage.upload()` | `POST /v1/s3/buckets/{bucket}/objects` — mints a presigned PUT |
+| Edge Function | `POST /v1/functions` — runtime node, python or deno |
+| `functions.invoke()` | `POST /v1/functions/{name}/invoke`; logs at `GET /v1/functions/{name}/logs` |
+| Function secrets | `envNames` on the definition — names only; values stay in the store |
+| Realtime Broadcast | `POST /v1/pubsub/publish` — durable when a stream captures the subject |
+| Realtime Postgres Changes | Base collection subscriptions. On a provisioned instance, you publish the change |
+| `pgvector` column | `POST /v1/provisioning/vector` — a collection — plus `POST /v1/embeddings` |
+| A `match_documents()` RPC | `POST /v1/ai/rag/query` — top-K chunks for a query; `POST /v1/ai/rag/embed` indexes the file first |
+| `tsvector` full-text search | `/v1/index` (17) — `POST /v1/index/indexes/{uid}/search`, typos forgiven |
+| Studio | console.hanzo.ai |
+| Logs and Reports | `/v1/o11y` (381); product analytics at `/v1/event` (12) |
+| Supabase AI Assistant | `/v1/ai` (272) — Zen models and the rest of the AI surface |
+
+Two notes on that last table. The presigned PUT means the bytes go straight to
+the bucket and the admin credential never leaves the server, so an upload is not
+bounded by what the API will accept in a body. Nothing rewrites an object on the
+way out, though, so size an avatar before you store it rather than at the
+request that serves it.
+
+## The call
+
+Supabase, standing up a project:
+
+```bash
+curl -sS -X POST https://api.supabase.com/v1/projects \
+  -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "organization_id": "yrxkpmdgbwvhqnjs",
+    "name": "acme",
+    "region": "us-east-1",
+    "db_pass": "a-password-you-invent"
+  }'
+```
+
+Every client call afterwards carries the project ref in the host and two headers
+that must agree with each other:
+
+```bash
+curl -sS "https://yrxkpmdgbwvhqnjs.supabase.co/rest/v1/tasks?select=*&status=eq.active" \
+  -H "apikey: $SUPABASE_ANON_KEY" \
+  -H "Authorization: Bearer $USER_JWT"
+```
+
+Hanzo:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/provisioning/sql \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"acme"}'
+```
+
+The 201 carries `connectionString`, `host`, `port` 5432, `username`, `password`
+and `status`. Authorization is a separate call, one question at a time:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/authz/check \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"sub":"u_314","obj":"task:9f2","act":"write"}'
+```
+
+The body has one field because the org comes from the validated key: there is no
+`organization_id` to get wrong, no anon key to keep in step with a service key,
+and no ref in the host to keep in step with either. The logical database is
+derived from `name` under an org-namespacing hash, so two orgs that both ask for
+`acme` cannot land on one. `status` is `ready` for a shared backend, and a
+dedicated instance answers 201 while still launching and reaches `ready` when a
+later read reconciles it against the operator's live record — never on a timer
+and never fabricated. `POST /v1/authz/check` echoes `sub`, `obj` and `act` beside
+`allow`, so a decision you cached or logged carries the question it answered, and
+a request that carries no org is refused rather than answered from a default set.
+
+## What does not carry
+
+**Row-level security does not travel into the database.** Supabase compiles
+`auth.uid() = user_id` into the query plan, so a client that forgets a filter
+still cannot read another user's rows. `POST /v1/authz/check` is a question your
+service asks on the path that reads the row. Port every policy to a call, and
+treat a missed call as a bug the database will not catch for you.
+
+**PostgREST's URL grammar is not a route here.**
+`?select=*&status=eq.active&order=created.desc` is most of Supabase's read API
+and it has no equivalent over a provisioned instance — once you hold the DSN you
+talk SQL with your own driver. The nearest shape is
+`POST /v1/index/indexes/{uid}/search` with `q`, `filter`, `limit` and `offset`,
+and it ranks documents in an index rather than rows in a table. If a generated
+API over your data is what you actually wanted, that is Base.
+
+**The key you publish cannot read.** Supabase's anon key ships in a browser
+bundle and reads tables, with RLS as the backstop. There is a publishable key
+here — `POST /v1/account/keys` with `type: publishable`, or an org key at scope
+`publish` — but it is write-only: a `pk-` resolves an org at the ingest door and
+never a principal, so it writes an event and reads nothing back. A browser that
+reads gets a user token through `GET /v1/iam/oauth/authorize` and
+`POST /v1/iam/oauth/token`. The tenant still comes from the credential rather
+than from the hostname, which is why there is no per-project API host to
+provision alongside it.
+
+**Nothing tails a provisioned instance's write-ahead log.**
+`POST /v1/pubsub/publish` publishes what you hand it, durably when a stream
+captures the subject. Base is the piece that ships change subscriptions over its
+own collections, so if the change feed is the reason you chose Supabase, put that
+data in Base rather than in a raw SQL instance and publish nothing by hand.
+
+**The database credential comes back once.** `connectionString` and `password`
+are on the 201 and on no read beside it; where KMS is configured the password is
+sealed there and only a reference is kept. A runbook that re-reads the database
+password from the Supabase dashboard has nowhere to go. Store it at creation, or
+provision again.
+
+**A branch is a second database, not a fork of the first.** Supabase preview
+branches give you an instance seeded from your migrations and tied to the
+original. `POST /v1/provisioning/sql` with a different `name` gives you a second
+instance and nothing links the two: you run your own migrations into it and
+remove it with `DELETE /v1/provisioning/sql/{name}`.

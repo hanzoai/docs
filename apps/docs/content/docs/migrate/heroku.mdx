@@ -1,0 +1,230 @@
+---
+title: Heroku
+description: Heroku builds a repo into a slug and runs it as dynos. Here that is /v1/platform — 37 operations from app create through build, promote and rollback — with the add-ons split out into /v1/provisioning (28).
+---
+
+Heroku takes a repo, builds it into a slug, and runs that slug as dynos.
+`/v1/platform` (37 operations) is the like-for-like replacement: create an app,
+deploy it, read the build's logs, promote, roll back, set env, attach a domain.
+Add-ons are not part of it — they are `/v1/provisioning` (28), one route per kind.
+
+The structural difference to plan around: a Heroku app is a globally unique name
+holding several process types, and here an app is one image under
+`org → project → app`. The org comes from your key and is never a field, the
+slug only has to be free inside the project, and a `worker` process type is a
+second app rather than a second line in a Procfile.
+
+## Start here
+
+With an image already built, one call puts an app on a live HTTPS URL — no
+project to create, no team, no region.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. run the image — answers with the app's live URL
+curl -sS -X POST https://api.hanzo.ai/v1/platform/run \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"web","image":"oci.hanzo.ai/acme/web:1.4.2","port":8080,"minScale":1}'
+
+# 3. give it a database — the DSN lands in that app's web-addons secret
+curl -sS -X POST https://api.hanzo.ai/v1/provisioning/sql \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"web-db","instance":"web"}'
+```
+
+Step 2 answers 202 with `url` and `status: deploying`, and what it created is an
+ordinary app in your org's `default` project — listable at
+`GET /v1/platform/projects/default/apps`, stoppable and redeployable like any
+other. Step 3 returns `connectionString` once and never again; together the two
+are `heroku create` plus `addons:create heroku-postgresql`, with no `team` and no
+`region` to name because the org is the claim in the key.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/platform` | App create, build, deploy, promote, rollback, env, domains | 37 |
+| `/v1/provisioning` | The seven add-on kinds: sql, kv, s3, search, docdb, vector, datastore | 28 |
+| `/v1/o11y` | Logs, live tail and traces, in place of a log drain and an APM add-on | 381 |
+
+## Nouns
+
+### The app, its builds and its releases
+
+| Heroku | Hanzo |
+|---|---|
+| Team, Enterprise Account | Your org, taken from the validated key. Never a field in the request |
+| App | `POST /v1/platform/projects/{project}/apps` — creating does not deploy; it lands in `draft` |
+| Buildpack | `buildType: pack`, the zero-config default that detects the project. `dockerfile` is the explicit escape hatch |
+| Slug, the build artifact | An OCI image in your org's own registry namespace — `/v1/registry` (6) |
+| `git push heroku main` | `POST /v1/git/{org}/{repo}/git-receive-pack`, and `POST /v1/platform/hook` turns the push into a build |
+| Build | `POST .../apps/{app}/deploy`, whose build record is listed at `GET /v1/platform/builds` |
+| Release | `GET /v1/platform/releases` — only deployments that genuinely reached the cluster |
+| `releases:rollback` | `POST .../apps/{app}/rollback` — with no body, the newest earlier deployment that carries a real image |
+| Config vars | `PUT .../apps/{app}/env` — replaces the whole set; `secret: true` seals into KMS |
+| Pipeline | `GET /v1/platform/pipelines` — a projection of an app plus its newest deployment, not a record you create |
+| Staging and production stages | `GET /v1/platform/environments` — derived from what apps name, so nothing creates or deletes one |
+| `pipelines:promote` | `POST .../apps/{app}/promote` — redeploys a built image and never builds |
+| Review app | `POST .../apps/{app}/preview` — a branch on its own URL, as a first-class app named `<app>-<branch>` |
+| `heroku ps`, `ps:scale web=0`, maintenance mode | `GET .../apps/{app}` reads live phase and health from the cluster; `.../apps/{app}/stop` and `.../apps/{app}/start` scale to zero and back, and metering stops with the pods |
+| `heroku logs --tail` | `GET .../apps/{app}/deployments/{id}/logs` for build then app, `GET /v1/o11y/logs/livetail` for the stream |
+| Custom domain and ACM | `POST .../apps/{app}/domains`, then `POST .../apps/{app}/domains/{host}/verify` |
+
+The canonical default host is seeded at create, so an app has a working HTTPS
+address the moment it first deploys. A custom host is the one thing that cannot
+be attached at create — it goes through add-domain and DNS verification first.
+
+### Add-ons
+
+| Heroku | Hanzo |
+|---|---|
+| Heroku Postgres | `POST /v1/provisioning/sql` — your org's own instance, `postgres://` returned once |
+| Heroku Key-Value Store | `POST /v1/provisioning/kv` for a dedicated instance, `/v1/kv` (6) for a hosted bucket with history |
+| Heroku Kafka | `/v1/mq` (15) — streams, consumers, and a `next` that acknowledges on delivery |
+| Object storage add-ons, Bucketeer | `POST /v1/provisioning/s3`, and `/v1/s3` (6) to work the buckets |
+| Search add-ons, Bonsai | `POST /v1/provisioning/search` |
+| MongoDB add-ons | `POST /v1/provisioning/docdb` |
+| Vector add-ons, Pinecone | `POST /v1/provisioning/vector` |
+| Warehouse and analytics add-ons | `POST /v1/provisioning/datastore` |
+| Heroku Scheduler | `/v1/tasks` (5) — a durable engine, not a dyno that wakes on a clock |
+| Log drains, Papertrail, Logentries | `/v1/o11y` (381) — logs, live tail, pipelines and retention |
+| APM add-ons, New Relic, Scout | `GET /v1/o11y/traces` with flamegraph and waterfall, plus `/v1/metrics` (11) |
+| Error trackers, Sentry, Rollbar | `/v1/event` (12) |
+| Flag add-ons, LaunchDarkly, Split | `/v1/flags` (8) — a definition and a deterministic decision |
+| Heroku Managed Inference and Agents | `/v1/ai` (272) — the Zen models themselves, not a broker to somebody else's — plus `/v1/agents` (37) for the agent runtime |
+| Elements marketplace, Heroku Button | `/v1/marketplace` (6) to install one tool, `/v1/blueprint` (3) for a whole stack with its monthly cost |
+
+### The rest of the account
+
+| Heroku | Hanzo |
+|---|---|
+| Add-on attachment writing `DATABASE_URL` | `instance` on the provision body — the DSN lands in that app's `<instance>-addons` secret |
+| Container Registry, `container:push` | `source: image` on create, and `/v1/registry` (6) to list images and mint a pull token |
+| App webhooks | `/v1/webhook` (8) — the signing secret leaves the server on create and on rotate, never on a read |
+| Collaborators, teams, API keys | `/v1/iam` (159) |
+| Invoices and usage | `/v1/billing` (45) and `/v1/usage` (5) |
+| Private Space, Shield networking | `/v1/network` (4) for the org's overlay; every app already lands in its own `tenant-<org>` namespace |
+| Buying the domain itself | `/v1/domain` (7) |
+| Routing, TLS and middleware in front of the app | `/v1/ingress` (18) |
+| `heroku run bash` | `POST /v1/sandbox`, then `POST /v1/sandbox/{id}/exec` — `/v1/sandbox` (19) |
+| A function rather than a dyno | `/v1/functions` (11) |
+
+## The call
+
+Heroku, creating and running an app through the Platform API:
+
+```bash
+H=(-H "Authorization: Bearer $HEROKU_API_KEY"
+   -H 'Accept: application/vnd.heroku+json; version=3'
+   -H 'Content-Type: application/json')
+
+curl -sS "${H[@]}" -X POST https://api.heroku.com/apps \
+  -d '{"name":"acme-web","team":"acme","region":"us"}'
+
+curl -sS "${H[@]}" -X PATCH https://api.heroku.com/apps/acme-web/config-vars \
+  -d '{"STRIPE_KEY":"sk_live_51abc"}'
+
+curl -sS "${H[@]}" -X POST https://api.heroku.com/apps/acme-web/builds \
+  -d '{"source_blob":{"url":"'"$SOURCE_URL"'","version":"a1b2c3d"}}'
+
+curl -sS "${H[@]}" -X PATCH https://api.heroku.com/apps/acme-web/formation \
+  -d '{"updates":[{"type":"web","quantity":3,"size":"standard-1x"}]}'
+```
+
+Four calls, after a fifth to `POST /sources` produced `$SOURCE_URL`, and four
+identifiers to keep in step: an app name that has to be free across every Heroku
+customer, a `team`, a source version, and a formation `type` that has to match a
+line in the Procfile.
+
+Hanzo, the same app, in two:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/platform/projects/acme/apps \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "web",
+    "source": "git",
+    "repo": {"url": "https://git.hanzo.ai/acme/web.git", "branch": "main"},
+    "replicas": 3,
+    "env": [{"key": "STRIPE_KEY", "value": "sk_live_51abc", "secret": true}]
+  }'
+
+curl -sS -X POST https://api.hanzo.ai/v1/platform/projects/acme/apps/web/deploy \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"commit":"main"}'
+```
+
+When the image already exists, one call, and it answers with the live URL:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/platform/run \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"web","image":"oci.hanzo.ai/acme/web:1.4.2","port":8080,"minScale":3,"maxScale":10}'
+```
+
+There is no `team` and no `region`. The org is the claim in the key, so `web`
+only has to be free inside the `acme` project, and no request field exists for a
+caller to write another tenant down. Env goes in at create because `secret: true`
+seals the value into KMS before the app is ever persisted — it reads back as
+`""` from then on, where a Heroku config var is readable again through
+`GET /config-vars`. Deploys are ordered by a version that counts up per app and
+one goes live only if no higher version already has, so a build that finishes
+late is recorded `superseded` instead of overwriting the newer release; that is
+also why `promote` and `rollback` redeploy an existing image rather than
+building a second one.
+
+## What does not carry
+
+**A Procfile's process types become separate apps.** Heroku's app holds `web`,
+`worker` and `release` and scales each with a formation entry. An app here is one
+image running one process, so `worker` is a second app in the same project with
+its own slug, env and replica count. No release-phase command runs between the
+build and the release either — put migrations in a scheduled task on `/v1/tasks`
+or run them from a sandbox, which is a separate pod with its own filesystem and
+none of the app's environment.
+
+**There is no dyno size to choose.** `shape` is accepted for the client contract
+and echoed straight back; the operator sizes CPU and memory. The knobs that do
+bite are counts and capacity: `replicas` on an app, `minScale` and `maxScale` on
+`POST /v1/platform/run`, `storageGb` for a persistent volume — absent means
+stateless, which a Heroku dyno filesystem always is — and `gpu` on a run. Each is
+clamped to the deployment's limit rather than refused, so an oversized ask lands
+smaller instead of erroring.
+
+**Changing env does not restart anything.** `PATCH /config-vars` cuts a new
+Heroku release and cycles every dyno. `PUT .../apps/{app}/env` re-declares the
+secret sync immediately, but running pods keep the environment they started with
+until their next deploy or restart. It also replaces the whole set: a variable
+absent from the body is gone.
+
+**Review apps are not automatic.** Heroku opens one per pull request from
+`app.json` and destroys it on merge. `POST .../apps/{app}/preview` is a call you
+make, it needs an image that already exists because it does not build, and it
+carries no environment variables at all — a preview never inherits production's
+secrets. Re-previewing a branch converges the same target rather than stacking
+another one.
+
+**Backing services are first-party instances, and the credential comes back
+once.** The seven provisioning kinds are the whole catalog — sql, kv, s3, search,
+docdb, vector and datastore — so there is no third-party vendor plan to subscribe
+to and no vendor dashboard to be handed off to for a database.
+`POST /v1/provisioning/sql` launches a dedicated instance in your own namespace
+and returns the DSN in that single response; no later read carries it. Name
+`instance` and it lands in that app's `<instance>-addons` secret, which is the
+attachment; leave it out and you hold the string yourself.
+
+**The CI board is not wired.** `GET /v1/platform/ci` answers 501 rather than an
+empty list, because a deployment with no forge Actions client and a forge with no
+runs must not look the same. Runs do happen — repos build from `.hanzo/workflows`
+on git.hanzo.ai — the API just does not enumerate them yet. Builds triggered by a
+deploy are a different record and are listed at `GET /v1/platform/builds`.

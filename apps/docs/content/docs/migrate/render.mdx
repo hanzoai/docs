@@ -1,0 +1,238 @@
+---
+title: Render
+description: Render builds a repo, runs the result, and provisions a database beside it. Here that is /v1/platform (37) for the app, /v1/provisioning (28) for Postgres and Key Value, /v1/projects (27) for a static site and /v1/tasks (5) for cron.
+---
+
+Render takes a repository, builds it, runs it, and gives you managed Postgres and
+Key Value next to it. Four capabilities answer that surface: **`/v1/platform`**
+(37 operations) for the app, **`/v1/provisioning`** (28) for the data,
+**`/v1/projects`** (27) for a static site, and **`/v1/tasks`** (5) for cron.
+
+The structural difference that shows up in every call is `ownerId` — Render makes
+the tenant a field you send, on every create and as a query parameter on every
+list. Here the org is read off the validated key and the cluster namespace
+`tenant-<org>` is derived from it, so there is no field to write another tenant
+into and nothing to keep in step between calls.
+
+## Start here
+
+An image you already have becomes a running URL in one call, and the database
+beside it in a second.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. run the image — no owner lookup, no service id. 202 with the live URL
+curl -sS -X POST https://api.hanzo.ai/v1/platform/run \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"api","image":"oci.hanzo.ai/acme/api:1.4.2","port":8080,"minScale":1}'
+
+# 3. a Postgres of your own beside it — instance binds SQL_URL into the app
+curl -sS -X POST https://api.hanzo.ai/v1/provisioning/sql \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"orders","instance":"api"}'
+```
+
+Two calls, and neither holds an identifier the other minted: the org is read off
+the key, the app is addressed by the `name` you chose, and `instance` places the
+DSN in the app's environment at create. Render's equivalent is five — list owners
+for `ownerId`, create the service, poll the deploy, fetch `connection-info`, then
+`PUT` the whole env-var array back. Re-running step 2 with the same name updates
+that app in place, so a pipeline stores nothing between runs.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/platform` | The app — create, deploy, roll back, stop, scale, domains, env | 37 |
+| `/v1/provisioning` | A dedicated instance in your namespace across seven kinds: sql, kv, vector, search, s3, docdb, datastore | 28 |
+| `/v1/projects` | Static sites — a content-addressed release, published rather than built | 27 |
+
+## Nouns
+
+Render's `type` field picks between five service kinds. Two of them are separate
+capabilities here, and the rest are one app.
+
+### Services and deploys
+
+| Render | Hanzo |
+|---|---|
+| Owner, `ownerId` on every call | Your org, taken from the validated key. Never a field in the request |
+| Project, Environment | Project — IAM owns it; apps live under it. `environment` is a label on the app |
+| `type: web_service` | App — `POST /v1/platform/projects/{project}/apps`, source `git` or `image` |
+| `type: static_site` | `/v1/projects` (27) — a content-addressed release. It does not build |
+| `type: cron_job` | `/v1/tasks` (5) — an engine, not a service that happens to hold a schedule |
+| `type: background_worker` | The same app. There is one app shape, whatever it listens on |
+| `POST /v1/services/{id}/deploys` | `POST .../apps/{app}/deploy` — builds first when the source is `git`, answers 202 |
+| `POST .../rollback` with a `deployId` | `POST .../apps/{app}/rollback` — omit `deploymentId` for the previous release |
+| `POST .../suspend` and `/resume` | `POST .../apps/{app}/stop` and `.../start` — compute metering stops with the pods |
+| `POST .../scale`, `numInstances` | `replicas` at create; `minScale` and `maxScale` on `POST /v1/platform/run` |
+| Autoscaling | `maxScale` above the floor. `maxScale: 0` means no autoscaler — a fixed run |
+| Disk | `storageGb` on the app. Absent means stateless, no volume at all |
+| `PUT /v1/services/{id}/env-vars` | `PUT .../apps/{app}/env` — also replaces, and seals anything secret into KMS |
+| Custom Domain, then verify | `POST .../apps/{app}/domains`, then `.../domains/{host}/verify` |
+| Pull Request Previews | `POST .../apps/{app}/preview` — a real app named `<app>-<branch>`, carrying no production env |
+| Deploy logs | `GET .../apps/{app}/deployments/{id}/logs` — the build pod's output, then the app's |
+
+### Data, edge and the rest
+
+| Render | Hanzo |
+|---|---|
+| Render Postgres | `POST /v1/provisioning/sql` — your org's own instance, `postgres://` on the 201 |
+| Render Key Value, formerly Redis | `POST /v1/provisioning/kv` — your org's own instance, `kv://` on the 201 |
+| `GET /v1/postgres/{id}/connection-info` | No second call. The DSN is on the create, once |
+| Persistent object storage | `POST /v1/provisioning/s3`, or buckets at `/v1/s3/buckets` |
+| Environment Groups | `/v1/kms` (5) — a secret written at a `path` and an `env`, read by whatever holds the key |
+| Registry Credentials | `/v1/registry` (6) — `POST /v1/registry/token` mints a short-lived pull-only token for one repository |
+| Blueprints, the gallery | `/v1/blueprint` (3) — stacks with a service count and a monthly compute figure |
+| `GET /v1/logs`, `/v1/logs/subscribe` | `GET /v1/o11y/logs`, and `GET /v1/o11y/logs/livetail` to follow |
+| `GET /v1/metrics/cpu` and friends | `/v1/o11y` (381) — `GET /v1/o11y/metrics`, boards at `/v1/o11y/dashboards` |
+| Webhooks | `/v1/webhook` (8) — `POST /v1/webhook/{id}/test`, receipts at `/v1/webhook/{id}/deliveries` |
+| Notification settings | `/v1/notify` (4) for delivery, `/v1/o11y/alerts` for what fires |
+| DDoS protection, rate limits | `/v1/gateway` (3) — `GET /v1/gateway/config` returns the policy actually in force |
+| Connected GitHub or GitLab repo | `/v1/git` (44) — the forge itself, or `POST /v1/git/repos/{name}/mirror` to import one |
+| Instance types and their prices | `/v1/pricing` (28), including `GET /v1/pricing/cloud/plans`. The bill is `/v1/billing` (45) |
+
+## The call
+
+Render, standing up a service. Three requests, because the create needs an owner
+you have to go and find, and the deploy it starts has to be polled:
+
+```bash
+curl -sS https://api.render.com/v1/owners \
+  -H "Authorization: Bearer $RENDER_API_KEY"
+
+curl -sS -X POST https://api.render.com/v1/services \
+  -H "Authorization: Bearer $RENDER_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "type": "web_service",
+    "name": "api",
+    "ownerId": "own-cq1e8h5f2p",
+    "repo": "https://github.com/acme/api",
+    "branch": "main",
+    "serviceDetails": {"env": "docker"}
+  }'
+
+curl -sS "https://api.render.com/v1/services/srv-cq1e8j/deploys/dep-cq1e8k" \
+  -H "Authorization: Bearer $RENDER_API_KEY"
+```
+
+Hanzo, from an image that already exists. One request:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/platform/run \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "api",
+    "image": "oci.hanzo.ai/acme/api:1.4.2",
+    "port": 8080,
+    "minScale": 1,
+    "maxScale": 4
+  }'
+```
+
+From a repo, where there is something to build, it is create then deploy:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/platform/projects/acme/apps \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "api",
+    "source": "git",
+    "repo": {"url": "https://github.com/acme/api", "branch": "main"},
+    "buildType": "pack",
+    "port": 8080,
+    "storageGb": 10
+  }'
+
+curl -sS -X POST \
+  https://api.hanzo.ai/v1/platform/projects/acme/apps/api/deploy \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"commit":"main"}'
+```
+
+The database, and its wiring, is one call:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/provisioning/sql \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"orders","instance":"api"}'
+```
+
+And a rollback takes an empty body:
+
+```bash
+curl -sS -X POST \
+  https://api.hanzo.ai/v1/platform/projects/acme/apps/api/rollback \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' -d '{}'
+```
+
+Count what each side has to remember. Render's flow carries `own-`, then `srv-`,
+then `dep-`, and a pipeline has to store the service id between runs to know
+whether to POST or PATCH. Here an app is addressed by project and slug, a
+provisioned resource by the org-unique `name` you chose, and `POST /v1/platform/run`
+is idempotent by name — re-running it updates that app in place, so a pipeline
+holds no identifier at all. The 201 from `/v1/provisioning/sql` carries
+`connectionString` in the body, and `instance` binds the resource to an app whose
+`<instance>-addons` Secret receives the `SQL_URL`; Render answers its create
+without the DSN and makes you fetch `connection-info`, then `PUT` the whole
+env-var array back. The rollback is the same shape: Render wants a `deployId` you
+looked up first, and here an empty body resolves to the newest earlier deployment
+that carries a real built image and did not error, skipping the release currently
+live.
+
+## What does not carry
+
+**`render.yaml` has no equivalent.** Render's Blueprint is a file in the repo
+that declares services, databases and env groups, and syncing it creates them.
+`hanzo.yml` in a repo declares how that repo *builds* — the images and binaries —
+and committing it is how a repo opts into push-to-deploy, rather than owning a
+webhook of its own. The service's shape is API state: replicas, disk, domains and
+env are calls, not lines in a file. `/v1/blueprint` (3) is a catalog of ready-made
+stacks, which is a different thing to your repo declaring itself.
+
+**There is no private service.** Every app is seeded with its canonical host,
+`<slug>.<org>.<sites host>`, at create, and that host cannot be removed —
+re-adding it is a 409. So an app is always reachable by name. Restrict who may
+call it with `/v1/gateway` (3), which is edge policy rather than absence from
+DNS, and have the app authenticate its callers.
+
+**Backups and point-in-time recovery are not in the provisioning API.** Render
+gives Postgres `GET /v1/postgres/{id}/backups`, `POST .../recovery` and a managed
+export. `/v1/provisioning` (28) is create, read and drop across seven kinds — sql,
+kv, vector, search, s3, docdb and datastore. The instance runs in your own
+namespace and no other tenant shares the process, which also means its backup
+schedule is yours to run.
+
+**The credential is returned once.** The 201 carries `connectionString` and
+`password`, and no read beside it does: `GET /v1/provisioning/sql/{name}` answers
+the status, the instance address and the admin user Postgres booted with, never
+the password. Render's `connection-info` can be fetched whenever you like. Bind
+the resource with `instance` at create, or put the DSN into `/v1/kms` (5)
+yourself.
+
+**Env groups do not fan out, and a write does not restart anything.** Render's
+env group is one object many services inherit, and editing it redeploys them all.
+`PUT .../apps/{app}/env` replaces one app's whole set — a variable absent from the
+body is gone — and running pods keep the environment they started with until
+their next deploy. A value two apps share is written into both, or held in
+`/v1/kms` and placed by whatever runs your deploy.
+
+**A refused deploy leaves no record at all.** Deploys are capped per org: over the
+concurrent limit is 429 and nothing is written, so there is no phantom in the
+history to reconcile. An unreachable cluster is 503 but *does* record an `error`
+deployment, because an attempt that failed must not be indistinguishable from one
+never made. Render queues instead of refusing, so port a retry rather than
+assuming the deploy is somewhere in a backlog.

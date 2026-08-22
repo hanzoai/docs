@@ -12,6 +12,44 @@ not have an account here. `GET /v1/esign/o/{org}/sign/{token}` is the whole
 session — the token names the org, the document and the recipient, and the
 signing routes carry no other authentication.
 
+## Start here
+
+Three calls: mint a key, upload the PDF, add the person who signs it.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. upload the PDF — 201, and the document is in DRAFT
+ID=$(curl -sS -X POST https://api.hanzo.ai/v1/esign/documents \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d "{\"title\":\"Mutual NDA\",\"pdfBase64\":\"$(base64 < nda.pdf | tr -d '\n')\"}" \
+  | jq -r .id)
+
+# 3. add the signer — the response carries their token
+curl -sS -X POST "https://api.hanzo.ai/v1/esign/documents/$ID/recipients" \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"counterparty@example.com","name":"Dana Lee","role":"SIGNER"}'
+```
+
+You have a DRAFT document and one recipient, and step 3 answered a `token` —
+minted before anything is sent, and the entire credential the signing door
+accepts. That is the shape difference from DocuSign in one call: the signer has
+no account, only the link built from that token.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/esign` | Upload a PDF, add recipients and fields, send, read the audit trail | 13 |
+| `/v1/dataroom` | Holds the documents and the links that share them — where a DocuSign template's reusable shape lives | 26 |
+| `/v1/compliance` | Subjects, verifications and accreditation decisions — the identity check you run before handing over a link | 17 |
+
 ## Nouns
 
 | DocuSign | Hanzo |
@@ -21,7 +59,7 @@ signing routes carry no other authentication.
 | Document (inside an envelope) | The document itself. One per envelope |
 | Recipient / Signer | `POST /v1/esign/documents/{id}/recipients` |
 | Tab (SignHere, DateSigned, Text) | Field — `POST /v1/esign/documents/{id}/fields` |
-| Routing order | `order` on the recipient |
+| Routing order | `signingOrder` on the recipient |
 | Send envelope | `POST /v1/esign/documents/{id}/send` |
 | Signing ceremony URL | `GET /v1/esign/o/{org}/sign/{token}` |
 | Certificate of completion | `GET /v1/esign/documents/{id}/audit` |
@@ -44,22 +82,25 @@ curl -sS -X POST \
 Hanzo — the same thing, as four calls that each do one thing:
 
 ```bash
-# 1. the document (the body is the file itself)
+# 1. the document — title and the base64 PDF, both required
 ID=$(curl -sS -X POST https://api.hanzo.ai/v1/esign/documents \
   -H "Authorization: Bearer $HANZO_API_KEY" \
-  --data-binary @contract.pdf | jq -r .id)
+  -H 'Content-Type: application/json' \
+  -d "{\"title\":\"Services Agreement\",\"pdfBase64\":\"$(base64 < contract.pdf | tr -d '\n')\"}" \
+  | jq -r .id)
 
-# 2. who signs it
-curl -sS -X POST "https://api.hanzo.ai/v1/esign/documents/$ID/recipients" \
+# 2. who signs it — the response carries the recipient id and their token
+RCPT=$(curl -sS -X POST "https://api.hanzo.ai/v1/esign/documents/$ID/recipients" \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H 'Content-Type: application/json' \
-  -d '{"email":"signer@example.com","name":"A Signer","order":1}'
+  -d '{"email":"signer@example.com","name":"A Signer","signingOrder":1}' \
+  | jq -r .id)
 
-# 3. where they sign
+# 3. where they sign — a field is placed against that recipient
 curl -sS -X POST "https://api.hanzo.ai/v1/esign/documents/$ID/fields" \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H 'Content-Type: application/json' \
-  -d '{"kind":"signature","page":1,"x":120,"y":640}'
+  -d "{\"recipientId\":\"$RCPT\",\"type\":\"SIGNATURE\",\"page\":1,\"positionX\":120,\"positionY\":640}"
 
 # 4. send
 curl -sS -X POST "https://api.hanzo.ai/v1/esign/documents/$ID/send" \

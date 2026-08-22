@@ -1,0 +1,235 @@
+---
+title: OpenAI
+description: OpenAI serves models and the platform grown around them. Here that is /v1/ai (272 operations) for the models, their files and their routing, and /v1/agents (37) for the assistant that runs, with the OpenAI-shaped inference routes at the addresses your client already calls.
+---
+
+OpenAI is a model API with a platform grown around it: chat and embeddings at the
+centre, then assistants, files, vector stores, fine-tuning, batch and realtime.
+Two capabilities answer it. `/v1/ai` (272 operations) holds the models, the files
+they read, the stores they search, fine-tuning and the router; `/v1/agents` (37)
+holds the assistant, its runs and its live sessions. The OpenAI-shaped routes are
+at the addresses your client already calls — `POST /v1/chat/completions`,
+`/v1/embeddings`, `/v1/responses`, `/v1/images/generations`, `/v1/audio/speech` —
+so for plain inference the base URL is the whole edit. The structural difference
+sits above that: an assistant here is one identifier and one call to run, not
+three identifiers and a poll.
+
+## Start here
+
+Mint a key, change the host, and the request body you already send works
+unchanged.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. the call you already make, at a different host
+curl -sS -X POST https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"zen5","messages":[{"role":"user","content":"summarise Q3"}]}'
+
+# 3. the catalogue the model name in step 2 comes from
+curl -sS https://api.hanzo.ai/v1/models
+```
+
+Step 2 is your existing request with a new host and a new key — no field in the
+body changed, so plain inference is a base URL and a secret. Step 3 is where the
+names it accepts are published, and it answers with no `Authorization` header at
+all, which is why a 200 there says nothing about your key and step 2's answer
+does.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/ai` | Models, files, stores, RAG, fine-tuning, memory and the router | 272 |
+| `/v1/agents` | The assistant — create it, run it, stream it, list every run in the org | 37 |
+| `/v1/tools` | The named tools an agent may call, and the MCP servers behind them | 19 |
+
+## Nouns
+
+Four tables, because OpenAI is four products stacked on one another.
+
+### Inference
+
+| OpenAI | Hanzo |
+|---|---|
+| `POST /v1/chat/completions` | The same address, `POST /v1/chat/completions` |
+| `POST /v1/responses` | `POST /v1/responses` — converted, then completed by the chat path |
+| `POST /v1/completions` | `POST /v1/completions` |
+| `POST /v1/embeddings` | `POST /v1/embeddings`, or `zen-embedding` at 8K context |
+| `GET /v1/models` | `GET /v1/models` — 432 models from 57 providers, 14 of them Zen |
+| `POST /v1/images/generations` | `POST /v1/images/generations` |
+| `POST /v1/audio/speech` and `/v1/audio/transcriptions` | The same two addresses, `/v1/audio` (5) |
+| `POST /v1/moderations` | `zen-guard`, a 128K-context safety classifier, called like any other model |
+| No rerank endpoint | `POST /v1/rerank` — a native provider when the model routes to one, cosine over embeddings otherwise |
+| `OpenAI-Organization` and `OpenAI-Project` headers | Neither. The org is the validated key's, and there is no field for it |
+| A form to request access to a gated model | `POST /v1/models/{model}/access`, and `GET` for your own standing |
+| The Anthropic-shaped client you also maintain | `POST /v1/messages`, with `POST /v1/messages/count_tokens` beside it |
+
+### The assistant
+
+| OpenAI | Hanzo |
+|---|---|
+| Assistant | Agent — `POST /v1/agents`, carrying `model`, `instructions` and `tools` |
+| `assistant_id` | The `agent_…` id or the org-unique name you chose. Either resolves the same agent |
+| Thread, and `thread_id` | `conversationId` on `POST /v1/agents/chat`, listed at `/v1/agents/chat/conversations` |
+| Run, then poll `GET /v1/threads/{t}/runs/{r}` | `POST /v1/agents/{ref}/run` — answers the finished run |
+| Reading the answer back off the thread | The run's `output`, in that same response |
+| A run's per-assistant history | `GET /v1/agents/{ref}` — the agent plus its 20 most recent runs |
+| No feed across assistants | `GET /v1/agents/runs` — every run in the org, newest first, filterable by status |
+| Tool of type `function` | A name from `GET /v1/tools` (19), dispatched with `POST /v1/tools/call` |
+| Tool of type `code_interpreter` | `POST /v1/sandbox/run` (19) — exit code, stdout and stderr returned as data |
+| Tool of type `file_search` | `POST /v1/ai/rag/query` over what `POST /v1/ai/rag/ingest` indexed |
+| A remote MCP server named on a response | `POST /v1/tools/mcp/servers` registers it; `POST /v1/mcp` is the door |
+| Streaming run events | `GET /v1/agents/sessions/stream` — server-sent events, filtered on tenant before fan-out |
+| Scheduling a run yourself | `executionMode: long-running` with a 5-field cron, parsed at create |
+
+### The data the model reads
+
+| OpenAI | Hanzo |
+|---|---|
+| File | `POST /v1/ai/files`, bytes through `POST /v1/ai/files/upload` |
+| Listing what you uploaded | `GET /v1/ai/files`, scoped to the caller |
+| Vector store | Store — `POST /v1/ai/stores`, vectors at `/v1/ai/stores/{owner}/{name}/vectors` |
+| Chunking and embedding you drive yourself | `POST /v1/ai/rag/ingest` — parse, chunk, embed, into the vector and keyword index at once |
+| A connector you write to pull in Drive or Notion | `/v1/knowledge/connectors` (6), synced |
+| Fine-tuning job | `POST /v1/ai/finetune/jobs`, status refreshed on `GET` |
+| Serving the fine-tuned result | `POST /v1/ai/finetune/deploy` — registers it as a routable model name |
+| Prompt object, referenced by id and version | `POST /v1/prompt` (6) — a repeated name appends a version rather than overwriting |
+| Per-user context you keep in your own database | `POST /v1/ai/memory/remember`, read with `GET /v1/ai/memory/recall` |
+
+### Around the model
+
+| OpenAI | Hanzo |
+|---|---|
+| Project, and who is in it | Org, from `/v1/iam` (159) |
+| Service account | `POST /v1/iam/service-accounts/{name}/keys` |
+| API key | `/v1/iam/keys` |
+| Usage and Costs in the dashboard | `GET /v1/usage/summary` and `GET /v1/billing/usage` (45) |
+| Rate-limit tier | `GET /v1/billing/tier` |
+| Spend limit and its email | `/v1/billing/alerts` |
+| Evals — dataset, grader, run | `/v1/eval` (16): `datasets`, `evaluators`, `runs`, `traces` |
+| Webhooks | `/v1/webhook` (8). The signing secret is returned once, on create |
+| Web search folded into a response | `POST /v1/websearch` (7), a call of its own |
+| Your own provider key, used by you | `POST /v1/ai/connections` — sealed into KMS, never echoed back |
+| Model choice hardcoded in your caller | `PUT /v1/ai/router/policy`, or the model name `router:general` |
+
+## The call
+
+OpenAI's assistant, end to end. Six requests and three identifiers:
+
+```bash
+ASSISTANT=$(curl -sS https://api.openai.com/v1/assistants \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H 'OpenAI-Beta: assistants=v2' -H 'Content-Type: application/json' \
+  -d '{"model":"gpt-4o","name":"helper","instructions":"be terse"}' | jq -r .id)
+
+THREAD=$(curl -sS -X POST https://api.openai.com/v1/threads \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H 'OpenAI-Beta: assistants=v2' | jq -r .id)
+
+curl -sS https://api.openai.com/v1/threads/$THREAD/messages \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H 'OpenAI-Beta: assistants=v2' -H 'Content-Type: application/json' \
+  -d '{"role":"user","content":"summarise Q3"}'
+
+RUN=$(curl -sS https://api.openai.com/v1/threads/$THREAD/runs \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H 'OpenAI-Beta: assistants=v2' -H 'Content-Type: application/json' \
+  -d "{\"assistant_id\":\"$ASSISTANT\"}" | jq -r .id)
+
+# poll this until .status stops saying queued or in_progress
+curl -sS https://api.openai.com/v1/threads/$THREAD/runs/$RUN \
+  -H "Authorization: Bearer $OPENAI_API_KEY" -H 'OpenAI-Beta: assistants=v2'
+
+# then read the answer back off the thread
+curl -sS https://api.openai.com/v1/threads/$THREAD/messages \
+  -H "Authorization: Bearer $OPENAI_API_KEY" -H 'OpenAI-Beta: assistants=v2'
+```
+
+`POST /v1/threads/runs` collapses the middle three into one. The poll and the
+read-back stay.
+
+Hanzo. Two requests and one identifier, which is the name you picked:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/agents \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"helper","model":"zen5","instructions":"be terse"}'
+
+curl -sS -X POST https://api.hanzo.ai/v1/agents/helper/run \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"input":"summarise Q3"}'
+```
+
+Plain inference is the base URL and nothing else:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"zen5","messages":[{"role":"user","content":"summarise Q3"}]}'
+```
+
+The run call answers the run — id, status, model, `output`, duration, error —
+because the work is finished when the response is written. There is nothing to
+poll, so there is no window in which a reader can see a stale one. The name is
+the address, so `helper` is reachable the moment create returns and
+nothing has to be stored client-side to find it again; the org is the key's, so
+an agent in another tenant is a 404 rather than a 403, which is a property of the
+lookup rather than of a check that could be skipped. The balance is authorised
+before any inference, so an unfunded org gets 402 and no free compute, and only a
+successful run is billed — attributed to the model that actually answered, which
+after a failover is not the one it started on.
+
+## What does not carry
+
+**No Batch API, and no batch discount.** OpenAI's `/v1/batches` takes a JSONL
+file, promises a 24-hour window and prices at half. There is no equivalent
+address and no discounted asynchronous tier: a fan-out is a loop you write, and
+`/v1/mq` (15) gives that loop a durable queue when the work must survive a
+restart. Per-token price is what `GET /v1/models` publishes, the same for ten
+thousand calls as for one.
+
+**Realtime is not a socket.** OpenAI's Realtime API is a bidirectional WebSocket
+carrying audio both ways with server-side turn detection. Speech here is request
+and response — `POST /v1/audio/transcriptions` in, `POST /v1/audio/speech` out —
+and the sockets that do exist carry sessions and streams, not audio. For a spoken
+agent on a phone line, `POST /v1/tel/calls` dials one and names the agent that
+answers it.
+
+**Conversation state and runs are two surfaces, not one.** OpenAI keeps the
+messages on a thread and every run against them in the same place.
+`POST /v1/agents/{ref}/run` is one shot: it composes the agent's stored
+instructions with your `input` and returns. Multi-turn state lives on
+`POST /v1/agents/chat` with a `conversationId`, listed at
+`/v1/agents/chat/conversations`. Pick by whether the turn needs the last one.
+
+**A tool is a name the org holds, not a schema you send.** OpenAI takes the
+function definition in the request body, so the callable set is whatever that
+request says. An agent's `tools` is a list of names resolved from `GET /v1/tools`
+at run time, and omitting it grants none — that default is the agent's authority
+and nothing widens it later. Your own function goes in by publishing an MCP
+server and registering it with `POST /v1/tools/mcp/servers`; it then appears in
+the same listing.
+
+**Fine-tuning is still a job you poll.** No parity claim here.
+`POST /v1/ai/finetune/jobs` submits a training job and `GET /v1/ai/finetune/jobs`
+refreshes live status, the same shape you already have. What differs is the end:
+`POST /v1/ai/finetune/deploy` serves the checkpoints and registers the result as a
+routable model name, so the trained model answers on `/v1/chat/completions` like
+any other. A submit that fails is saved with status `failed` and the reason,
+never as a job that quietly never starts.
+
+**`GET /v1/models` does not authenticate.** OpenAI's model list sits behind your
+key. This one is public and says so out loud: the catalogue is identical for
+every caller, and an `Authorization` header is read for exactly one thing —
+annotating gated models with your own standing. A dead key gets 200 here, so it
+is the wrong probe for "is my auth working". Use a route that acts on your org.

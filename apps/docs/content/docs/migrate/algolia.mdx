@@ -1,0 +1,229 @@
+---
+title: Algolia
+description: Algolia hosts search indexes and ranks documents against a query. Here that is /v1/index (17 operations), which speaks the Meilisearch dialect, plus /v1/search (1) when a lexical index and a vector leg should answer as one ranking.
+---
+
+Algolia stores your records, builds an index over them, and ranks them against a
+query with typo tolerance and facets. `/v1/index` (17 operations) is that half,
+and it speaks the Meilisearch dialect — point an existing Meilisearch client at
+`https://api.hanzo.ai/v1/index` and it works unchanged, which is a door Algolia's
+own SDK does not open.
+
+The structural difference is that indexing is not a queue. Algolia's `taskID`
+names real background work and `waitTask` polls until the record is published.
+Here the write is applied before the response is written, so the `enqueuedAt`,
+`startedAt` and `finishedAt` on `GET /v1/index/tasks/{uid}` are the same instant,
+`isIndexing` on `GET /v1/index/stats` is always false, and a document is
+searchable the moment its write returns.
+
+## Start here
+
+Two calls after the key: write a document, then search it.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. write a document — the index is created by this write, so no create call first
+curl -sS -X POST https://api.hanzo.ai/v1/index/indexes/products/documents \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '[{"id":"1","name":"Wool coat","brand":"Acme"}]'
+
+# 3. search it — nothing to poll between this and the write above
+curl -sS -X POST https://api.hanzo.ai/v1/index/indexes/products/search \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"q":"wool cot","limit":20}'
+```
+
+Step 2 created `products` on its way through and answered `"status":"enqueued"`,
+which is dialect compatibility rather than pending work; step 3 returns the coat
+on the first try, matching `cot` because typos are forgiven. That is the whole
+difference from Algolia in three calls — one host, one credential, no
+application id, and no `waitTask` between writing and reading.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/index` | Stores documents and ranks them against a query with typos forgiven, in the Meilisearch dialect. The query is `POST /v1/index/indexes/{uid}/search` | 17 |
+| `/v1/search` | One query across that index, the org's knowledge and its repositories, lexical and vector legs fused by reciprocal rank | 1 |
+| `/v1/event` | Records what was searched, clicked and converted — the Insights half — read back at `GET /v1/event/insights/events` | 12 |
+
+## Nouns
+
+### The index and its documents
+
+| Algolia | Hanzo |
+|---|---|
+| Application ID | Nothing. The org is minted from the validated key's owner claim |
+| Index | Index — `POST /v1/index/indexes`, body `uid`. Idempotent |
+| `objectID` | `primaryKey` — nominated on create, or established by the first write |
+| `saveObjects`, replacing a record whole | `POST /v1/index/indexes/{uid}/documents` |
+| `updateObjects` | `PUT /v1/index/indexes/{uid}/documents` — the same upsert, both spellings served |
+| `getObject` | `GET /v1/index/indexes/{uid}/documents/{id}` |
+| `deleteObject` | `DELETE /v1/index/indexes/{uid}/documents/{id}` |
+| `deleteObjects`, a list of ids | `POST /v1/index/indexes/{uid}/documents/delete-batch` |
+| `browse` | `GET /v1/index/indexes/{uid}/documents` — insertion order, `limit` and `offset` |
+| `listIndices` | `GET /v1/index/indexes` |
+| `deleteIndex` | `DELETE /v1/index/indexes/{uid}` — deleting one that is absent succeeds |
+| `getTask`, then `waitTask` | `GET /v1/index/tasks/{uid}` — always `succeeded`, so the poll ends on call one |
+| Record count per index | `GET /v1/index/stats` |
+| Status and monitoring API | `GET /v1/index/health`, which 503s on an unreadable store, and `GET /v1/index/version` |
+
+### Querying
+
+| Algolia | Hanzo |
+|---|---|
+| `POST /1/indexes/{name}/query` | `POST /v1/index/indexes/{uid}/search` |
+| `query` | `q` — typos forgiven, a prefix matches, empty matches everything |
+| `filters`, spelled `brand:Acme` | `filter`, spelled `brand = Acme`; an array of them is combined with AND |
+| `attributesForFaceting` | `filterableAttributes` — `PATCH /v1/index/indexes/{uid}/settings` |
+| `hitsPerPage` and `page` | `limit` (default 20, ceiling 1000) and `offset` |
+| `nbHits` | `estimatedTotalHits` — every hit is materialised, so for the page it is exact |
+| `processingTimeMS` | `processingTimeMs` |
+| NeuralSearch, keyword and vector together | `POST /v1/search` — legs fused by reciprocal rank, each hit naming which found it |
+| A multi-index query | `POST /v1/search` — one query across the index, the org's knowledge and its repositories |
+| Re-ranking a candidate set | `POST /v1/rerank`, and `POST /v1/embeddings` for a pipeline you own |
+
+### Around the index
+
+| Algolia | Hanzo |
+|---|---|
+| Admin key and search-only key | `POST /v1/iam/keys` — the secret half is shown once, the publishable half ships in the browser |
+| Secured API key carrying a tenant filter | The org is the key; one end user inside it is a `filter` over `filterableAttributes` |
+| Insights events — click, conversion, view | `POST /v1/event` (12), read back at `GET /v1/event/insights/events` |
+| A/B test between two index configurations | `/v1/experiment` (7) — `POST /v1/experiment` starts it, `GET /v1/experiment/{id}/assign` buckets, `POST /v1/experiment/{id}/decide` promotes |
+| Latency and error dashboards | `/v1/o11y` (381) |
+| Crawler | `POST /v1/crawl` for one URL to markdown; `/v1/knowledge/connectors` for a source that keeps syncing |
+| Data connectors and scheduled ingestion | `/v1/sync` (6) |
+| Related-item lookups over a graph you hold | `POST /v1/graph/neighbors` — bounded walk from a seed set |
+| Search over source code | `GET /v1/code/search` — lexical, symbolic and semantic tiers, fused |
+| Docsearch over public projects | `GET /v1/catalog` — the one surface here that returns facet counts |
+| Semantic retrieval over org knowledge | `POST /v1/knowledge/search` |
+| Dashboard | console.hanzo.ai |
+
+## The call
+
+Algolia. Two hosts, two keys, an application id in both the hostname and a
+header, and a poll between writing and reading:
+
+```bash
+curl -sS -X PUT \
+  "https://$ALGOLIA_APP_ID.algolia.net/1/indexes/products/settings" \
+  -H "X-Algolia-Application-Id: $ALGOLIA_APP_ID" \
+  -H "X-Algolia-API-Key: $ALGOLIA_ADMIN_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"attributesForFaceting":["brand"]}'
+
+curl -sS -X POST \
+  "https://$ALGOLIA_APP_ID.algolia.net/1/indexes/products/batch" \
+  -H "X-Algolia-Application-Id: $ALGOLIA_APP_ID" \
+  -H "X-Algolia-API-Key: $ALGOLIA_ADMIN_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"requests":[{"action":"addObject","body":{"objectID":"1","name":"Wool coat","brand":"Acme"}}]}'
+
+# -> {"taskID":844761822}
+curl -sS "https://$ALGOLIA_APP_ID.algolia.net/1/indexes/products/task/844761822" \
+  -H "X-Algolia-Application-Id: $ALGOLIA_APP_ID" \
+  -H "X-Algolia-API-Key: $ALGOLIA_ADMIN_KEY"
+# -> {"status":"notPublished"}   repeat until "published"
+
+curl -sS -X POST \
+  "https://$ALGOLIA_APP_ID-dsn.algolia.net/1/indexes/products/query" \
+  -H "X-Algolia-Application-Id: $ALGOLIA_APP_ID" \
+  -H "X-Algolia-API-Key: $ALGOLIA_SEARCH_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"params":"query=wool%20cot&filters=brand:Acme"}'
+```
+
+Hanzo. One host, one key, no application id, and the last call is the search:
+
+```bash
+curl -sS -X PATCH \
+  https://api.hanzo.ai/v1/index/indexes/products/settings \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"filterableAttributes":["brand"]}'
+
+curl -sS -X POST \
+  https://api.hanzo.ai/v1/index/indexes/products/documents \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '[{"id":"1","name":"Wool coat","brand":"Acme"}]'
+
+curl -sS -X POST \
+  https://api.hanzo.ai/v1/index/indexes/products/search \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"q":"wool cot","filter":"brand = Acme","limit":20}'
+```
+
+Three calls against one host with one credential, and no `POST
+/v1/index/indexes` among them: an index is a row rather than a table, so both the
+settings write and the first document write create it when it is missing, and
+creating one that exists returns the same receipt and changes nothing. That is
+what lets a client write before it configures without a check first.
+
+The `202` and its `enqueued` status are dialect compatibility, not a promise of
+later work — a client calling `waitForTask` resolves on its first poll because
+the write is already durable. The tenant is the key's owner claim and never a
+header or a body field, so two orgs both holding an index named `products` cannot
+see each other, and there is no second identifier to keep in step with the first
+or to leak into a browser bundle.
+
+When the keyword index alone is not enough, `POST /v1/search` runs the same
+`products` index as its lexical leg beside a vector leg and fuses them by
+reciprocal rank. Its `backends` array reports each leg as `ok`, `degraded`,
+`disabled` or `skipped`, so a thin result set says which leg was missing rather
+than reading as "nothing matched":
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/search \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"warm winter jacket","index":"products","mode":"hybrid","limit":10}'
+```
+
+## What does not carry
+
+**No synonyms, and no ranking to configure.** Algolia gives you
+`synonyms/batch`, `searchableAttributes`, `ranking`, `customRanking`,
+`typoTolerance` and the dictionaries. The whole settings surface here is
+`filterableAttributes`. Typos are forgiven and that is not a dial, so a part
+number that must match exactly is a `filter` on a filterable attribute rather
+than a search term. What replaces synonym expansion is the semantic leg of `POST
+/v1/search` — a vector match finds "notebook" for "laptop" with no list to
+maintain — but a curated pair you depend on today has nowhere to go.
+
+**No `copyIndex` or `moveIndex`, so no atomic reindex swap.** Algolia's standard
+rebuild is: write into a temporary index, then move it over the live one in one
+step. Nothing here renames or copies an index. Because writes apply before their
+response there is no window where a background pass has half-built the index, but
+there is one where old and new documents coexist. Either version the uid and
+switch which uid your app reads, or `DELETE /v1/index/indexes/{uid}` and rewrite.
+
+**No partial record update.** `partialUpdateObjects` merges the attributes you
+name into the stored record and leaves the rest. Both write spellings here
+replace the document whole on its primary key. Read it, merge, write it back.
+
+**No facet counts.** `filterableAttributes` makes an attribute filterable;
+nothing counts how many documents sit behind each value, so a facet rail showing
+numbers is yours to aggregate. `GET /v1/catalog` does return facet counts, but
+over the fleet's own corpus of projects and sites, not over your index.
+
+**No highlighting or snippets.** Algolia returns `_highlightResult` and
+`_snippetResult` with the matched span marked up. Documents come back exactly as
+they were stored, with no annotated copy beside them, so marking the match is the
+client's job.
+
+**No Rules, Personalization or Query Suggestions.** Merchandising rules that pin
+a result for a given query, per-user affinity profiles, and a suggestions index
+built from past searches are three Algolia products with no counterpart here.
+The measuring half exists — `POST /v1/event` records what was searched and
+clicked, `/v1/experiment` (7) runs the A/B test and promotes the winner — so you
+keep the evidence and lose the levers.

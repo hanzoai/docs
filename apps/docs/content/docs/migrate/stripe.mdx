@@ -1,0 +1,268 @@
+---
+title: Stripe
+description: Stripe takes payments and bills for them. Here that is /v1/commerce (181 operations) for taking the money and /v1/billing (45) for what is owed and what is left, with the payer resolved from the key instead of carried as a customer id.
+---
+
+Stripe is a payments API with a billing product on top: charge a card, hold a
+customer, run subscriptions and invoices against that customer, meter usage, pay
+out through Connect. Two capabilities answer it here — **`/v1/commerce`** (181
+operations) takes money and runs the storefront, **`/v1/billing`** (45) owns what
+a customer owes, holds, and has left to spend.
+
+The structural difference is who the payer is. Every Stripe money object names a
+`cus_…` you created and must keep in step with a `pm_…`, a `price_…` and a
+`sub_…`; here the paying org comes from the validated key and is never a field in
+the request. A charge is an amount, a currency and a card token.
+
+## Start here
+
+Mint a key, read which processor account and environment your org is on, then
+charge the card token a browser mints against it.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. the public processor ids a browser tokenizes with, and which bucket you are in
+curl -sS https://api.hanzo.ai/v1/billing/settings \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+# 3. charge the single-use token that came back from the browser
+curl -sS -X POST https://api.hanzo.ai/v1/commerce/payments \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "amountCents": 5000,
+    "currency": "usd",
+    "sourceId": "cnon:card-nonce-from-the-browser",
+    "idempotencyKey": "first-charge-1"
+  }'
+```
+
+Step 2 names the processor account the charge will land on and `live` says
+whether step 3 moves real money; step 3 answers a ledger transaction id,
+`processorRef` for reconciling at the processor, and `test` echoing that same
+bucket. No `cus_…`, no `pm_…`, no `price_…` had to exist first — the org
+credited is the key that made the call, so $50 cannot land in someone else's
+books.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/commerce` | Takes the money: payments, cart, checkout, catalog, discounts, storefronts | 181 |
+| `/v1/billing` | What is owed and what is left: cards on file, subscriptions, invoices, usage, ledger | 45 |
+| `/v1/webhook` | Endpoints, signing secrets, delivery attempts and replays | 8 |
+
+## Nouns
+
+The left column is Stripe's product surface, not just its payments core.
+
+### Taking money
+
+| Stripe | Hanzo |
+|---|---|
+| Customer | Your org, taken from the validated key. Never a field in the request |
+| PaymentIntent, confirmed | `POST /v1/commerce/payments` — amount, currency, card token, idempotency key |
+| Charge, read back | `GET /v1/commerce/payments/{id}`, by the ledger transaction id |
+| PaymentMethod attached to a customer | `POST /v1/billing/methods` — vaulted at the processor, always the caller's own |
+| SetupIntent, to charge later | The same `POST /v1/billing/methods`. A card already on file answers 200, a new one 201 |
+| Publishable key for Elements | `GET /v1/billing/settings` — the ids a browser tokenizes with, and which environment |
+| Checkout Session | `POST /v1/commerce/cart`, then `POST /v1/commerce/store/{storeid}/checkout/charge` |
+| Authorize now, capture later | `.../checkout/authorize`, then `.../checkout/capture/{orderid}` |
+| Cart line edit | `POST /v1/commerce/cart/{id}/item` — quantity is the result, not a delta; zero removes |
+| Coupon and promotion code | `/v1/commerce/discount/` — flat, percent, free shipping, free item or bulk |
+| Balance and balance transactions | `GET /v1/billing/balance`, `GET /v1/billing/transactions` |
+
+### Subscriptions, invoices and metering
+
+| Stripe | Hanzo |
+|---|---|
+| Product and Price | `/v1/commerce/product/` and `/v1/commerce/variant/`; the sellable catalog is `GET /v1/billing/plans` |
+| Subscription | `POST /v1/billing/subscribe/card`, listed at `GET /v1/billing/subscriptions` |
+| Cancel at period end | `POST /v1/billing/subscriptions/{id}/cancel` — `atPeriodEnd` defaults true |
+| Resume a canceled subscription | `POST /v1/billing/subscriptions/{id}/reactivate` |
+| Trial without a card | `POST /v1/commerce/store/{storeid}/trial` — seven days, entitlement per store |
+| Invoice: draft, finalize, pay | `POST /v1/billing/invoices`, then `/issue`, then `/collect` |
+| Void, and the PDF | `POST /v1/billing/invoices/{id}/void`, `GET /v1/billing/invoices/{id}/pdf` |
+| Meter events and usage records | Priced by the rate authority at `/v1/commerce/rates/entries`, read back at `GET /v1/billing/usage` |
+| Credit grants | `GET /v1/billing/credits` for every grant, `GET /v1/billing/credit-balance` for what is spendable |
+| Active entitlements and features | `GET /v1/entitlement` (3), plus `GET /v1/commerce/store/access` per storefront |
+| Free-tier quota beside the composer | `GET /v1/allowance` (1) — reading it does not spend |
+| Billing portal | `GET /v1/team/billing/ui`, the session-gated wallet page |
+
+### Ledger, reporting and events
+
+| Stripe | Hanzo |
+|---|---|
+| Balance transaction export | `GET /v1/billing/ledger` — signed double-entry postings over a 24h, 7d, 30d or 90d window |
+| Usage grouped by product | `GET /v1/billing/usage?groupBy=product` |
+| The month against the plan | `GET /v1/billing/usage/rollup` — plan allotment and wallet, reported separately |
+| Which tier, and what is left | `GET /v1/billing/tier` — compare `effectiveAvailable` against zero, nothing else |
+| Billing alerts and spend thresholds | `/v1/billing/alerts`, enforced per request at `GET /v1/billing/alerts/authorize` |
+| Webhook endpoints | `/v1/webhook` (8) — the signing secret leaves the server on create and on rotate only |
+| Delivery attempts and replays | `GET /v1/webhook/{id}/deliveries`, `POST /v1/webhook/{id}/test` |
+| Inbound provider events | `POST /v1/commerce/webhooks/{provider}` — the signature is the authentication |
+| Sigma and Reporting | `GET /v1/books/gl` and `GET /v1/books/pnl`, from the 25 accounting operations |
+| Dashboard graphs | `/v1/o11y` (381) |
+
+`amount` on a usage row is whole cents, rounded; `decimal` beside it is the same
+debit exact, to 18 places. Sum `decimal`. A page of sub-cent inference calls
+totals correctly there and totals zero in `amount`, and that difference is real
+money.
+
+### Marketplace, risk and identity
+
+| Stripe | Hanzo |
+|---|---|
+| Radar fraud scoring | `POST /v1/risk/score` — your org's own model, from `/v1/risk` (11) |
+| Radar rules | `GET` and `PUT /v1/risk/policy` |
+| Chargeback and refund outcomes as training signal | `POST /v1/risk/learn` — a label carries `seen` as well as `at`, so a chargeback landing 90 days late cannot leak backwards |
+| Identity verification sessions | `POST /v1/compliance/verifications` (17), ruled on at `/{id}/decision` |
+| Connect account onboarding | `/v1/compliance/subjects` and `/v1/compliance/accreditation` |
+| Marketplace listings and installs | `/v1/marketplace` (6) |
+| Transfer to a connected account | `/v1/commerce/transfer/` — a record that a payable was paid, not an executor |
+| Payouts | `GET /v1/billing/payouts` — amount, destination, status, failure reason |
+| Revenue share to partners | `/v1/treasury` (2) for the reserve and its policy, `/v1/affiliate` (10) for earnings |
+| Crypto acceptance | `POST /v1/billing/crypto/deposit`, assets at `GET /v1/billing/crypto/options` |
+| Wire top-up | `GET /v1/billing/wire` — the serving brand's bank, and your own payment reference |
+| Machine-to-machine payment receipt | `GET /v1/x402/settlements/{id}` (1) |
+
+## The call
+
+Charging a customer $50. Stripe needs three identifiers to exist and agree:
+
+```bash
+curl -sS https://api.stripe.com/v1/customers \
+  -u "$STRIPE_SECRET_KEY:" \
+  -d email=ops@acme.example
+
+curl -sS https://api.stripe.com/v1/payment_methods/pm_1234/attach \
+  -u "$STRIPE_SECRET_KEY:" \
+  -d customer=cus_1234
+
+curl -sS https://api.stripe.com/v1/payment_intents \
+  -u "$STRIPE_SECRET_KEY:" \
+  -H "Idempotency-Key: $KEY" \
+  -d amount=5000 \
+  -d currency=usd \
+  -d customer=cus_1234 \
+  -d payment_method=pm_1234 \
+  -d confirm=true
+```
+
+Hanzo:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/commerce/payments \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "amountCents": 5000,
+    "currency": "usd",
+    "sourceId": "cnon:card-nonce-from-the-browser",
+    "idempotencyKey": "'"$KEY"'"
+  }'
+```
+
+Three identifiers become none. The org credited is the validated principal and
+is not readable from the body, so a payment can only ever credit the account of
+whoever made the call — there is no `customer` to mistype into someone else's
+books. The amount is bounded server-side, floor $1 and ceiling $5,000 by
+default, and the charge is risk-screened before the card is touched: 403 is a
+refusal, 503 is a screen that could not reach a decision and is worth retrying,
+and no money moved either way. The receipt carries `processorRef` for
+reconciliation against the processor and `test` for which bucket it credited,
+so a sandbox charge can never be read as a live one. Omitting `idempotencyKey`
+is survivable rather than dangerous: the server falls back to a key derived from
+amount and currency, and a double-submit inside 15 minutes collapses onto one
+charge.
+
+Invoicing is the same collapse. Stripe builds the invoice from items you create
+first, then finalizes, then pays:
+
+```bash
+curl -sS https://api.stripe.com/v1/invoiceitems -u "$STRIPE_SECRET_KEY:" \
+  -d customer=cus_1234 -d amount=250000 -d currency=usd \
+  -d description="Advisory retainer"
+curl -sS https://api.stripe.com/v1/invoices -u "$STRIPE_SECRET_KEY:" -d customer=cus_1234
+curl -sS https://api.stripe.com/v1/invoices/in_1234/finalize -u "$STRIPE_SECRET_KEY:"
+curl -sS https://api.stripe.com/v1/invoices/in_1234/pay -u "$STRIPE_SECRET_KEY:"
+```
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/billing/invoices \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "userId": "u_412",
+    "currency": "usd",
+    "lines": [{"description":"Advisory retainer — August","amount":250000}]
+  }'
+
+curl -sS -X POST "https://api.hanzo.ai/v1/billing/invoices/$ID/issue" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+curl -sS -X POST "https://api.hanzo.ai/v1/billing/invoices/$ID/collect" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+The lines are the invoice: subtotal and amount due are computed from them, so
+there is no total to send and none to disagree with itself. `collect` runs one
+waterfall — credit grants, then prepaid balance, then the card on file — and
+answers `creditUsedCents`, `balanceUsedCents` and `cardChargedCents` on a single
+receipt, where Stripe's customer balance, credit grants and card are three
+things configured apart and applied apart. A decline is `paid=false` with a
+reason and the invoice still open, not an error, because a decline is a normal
+business outcome and dunning must stay retryable. Only a successful collection
+is sealed, so retrying a paid invoice replays the receipt rather than charging
+again.
+
+## What does not carry
+
+**Refunds and disputes are settled at the processor.** No route reverses a
+settled charge. `void` covers a draft or issued invoice and refuses a paid one —
+money moved, and the correction for that is a refund, not an erasure.
+`/v1/commerce/return/` records the RMA, with the money living in its line items
+and fulfillment pricing rather than as a refund amount on the return itself.
+`/v1/risk/learn` takes `dispute` and `chargeoff` as label sources, but there is
+no evidence-submission route behind them. Reconcile with `processorRef`.
+
+**Connect's payout rail is a record here, not an executor.** `GET
+/v1/billing/payouts` reads outbound payouts; creating one is not on this
+surface. `/v1/commerce/transfer/` is the annotation a human writes after paying
+out of band, it moves no money, and nothing enforces uniqueness on its
+reference — post the same transfer twice and the payable settles twice. The
+pieces around the rail do exist: `/v1/marketplace` for listings, `/v1/treasury`
+for the reserve and revenue-share policy, `/v1/affiliate` for partner earnings,
+`/v1/compliance` for KYC and KYB of a counterparty. The money leaving is the
+part you still run at your bank.
+
+**Test mode is not a second key.** Stripe hands out `sk_test_` and `sk_live_`
+and you switch by swapping a string. Here there is one key, and `POST
+/v1/billing/mode` moves an org between sandbox and real money — platform
+authority, never the org itself, because an org that could put itself in test
+mode could take priced work for free. Every payment receipt states `test`
+outright, so the two can never be confused after the fact.
+
+**Products and variants are not kept in step for you.** A product carries its
+variants as a denormalized JSON snapshot alongside the standalone
+`/v1/commerce/variant/` rows, and writing one does not update the other. Stripe's
+`price` hangs off `product` by reference and cannot drift. Pick which side is
+authoritative and write both.
+
+**Sales tax is a number on the cart, not a filing product.** `taxCents` stays
+zero until checkout resolves the shopper's region, and the total is subtotal
+plus shipping plus tax. There is no registrations-and-returns surface on this
+API; `/v1/books` and `GET /v1/billing/ledger` give you the books to file from.
+
+**You do not post your own meter events.** Stripe lets you meter your product's
+own units and price them against a `price_…`. Here the rate authority at
+`/v1/commerce/rates/entries` is SuperAdmin-only — a rate is cross-tenant money —
+and the platform's meter prices calls as they happen, with `GET
+/v1/billing/usage` reading the charged rows back. `POST /v1/usage` is a
+different thing: it ingests a developer's own AI-account samples. To bill your
+own units, put them on invoice lines with `quantity` and `unitPrice`.

@@ -1,0 +1,225 @@
+---
+title: Upstash
+description: Upstash sells Redis, Kafka, QStash and Vector as four products behind four hostnames and ten credential values; here that is /v1/kv (6), /v1/mq (15), /v1/webhook (8) and /v1/index (17) on one hostname with one bearer.
+---
+
+Upstash sells four serverless data products, and each one is its own service:
+`UPSTASH_REDIS_REST_URL` and its token, `UPSTASH_KAFKA_REST_URL` with a username
+and a password, `QSTASH_TOKEN` plus a current and a next signing key,
+`UPSTASH_VECTOR_REST_URL` and its token. That is ten values across four
+hostnames, and every one of them has to stay in step through every rotation.
+
+Four capabilities answer them on one hostname with one bearer. The structural
+difference is where the tenant comes from: there is no per-database endpoint to
+address, because the org is minted from the validated key's owner claim and no
+request body can name another one.
+
+## Start here
+
+Three calls stand in for `UPSTASH_REDIS_REST_URL` and its token: mint a key,
+create a bucket, write to it.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. create the bucket — this is the whole of "provision a database"
+curl -sS -X POST https://api.hanzo.ai/v1/kv/sessions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"history":5,"ttl":3600}'
+
+# 3. write a key; the answer is the revision the write created
+curl -sS -X PUT https://api.hanzo.ai/v1/kv/sessions/session_1 \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"value":"{\"theme\":\"dark\"}"}'
+```
+
+Step 2 answers 201 with the bucket; step 3 answers `{"revision":1}`, and the
+fifth write to that key answers 5 with the four before it still readable at
+`GET /v1/kv/sessions/session_1/history`. Neither body carries a database URL or
+an org, because the bucket is a name under the key's owner claim — another
+customer's `sessions` is a different bucket, and neither can address the other's.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/kv` | Buckets of versioned keys: put, get, delete, and up to 64 retained revisions per key | 6 |
+| `/v1/mq` | Durable streams over subjects: named pull consumers that acknowledge what they hand back, retention by age, bytes or count | 15 |
+| `/v1/webhook` | Registered URLs that receive matching events, signed HMAC-SHA256, one row per delivery attempt | 8 |
+| `/v1/index` | Full-text indexes: write documents, search with typo tolerance, declare the filterable attributes | 17 |
+
+## Nouns
+
+### Redis → `/v1/kv` (6) and `/v1/provisioning` (28)
+
+| Upstash | Hanzo |
+|---|---|
+| Database, with its own REST URL and token | Bucket — `POST /v1/kv/{bucket}`, on the same hostname as everything else |
+| `SET key value` | `PUT /v1/kv/{bucket}/{key}`, body `value`, carried verbatim as UTF-8 text |
+| `GET key` | `GET /v1/kv/{bucket}/{key}` — the value and the revision it is at |
+| `DEL key` | `DELETE /v1/kv/{bucket}/{key}` — a delete marker, so watchers see it happen |
+| Per-key `EXPIRE` | `ttl` on the bucket, in seconds, fixed at create |
+| No history; the previous value is gone | `GET /v1/kv/{bucket}/{key}/history` — up to 64 revisions, oldest first |
+| A Redis endpoint you connect a driver to | `POST /v1/provisioning/kv` — your org's own instance on 6379, DSN returned once |
+
+### Kafka → `/v1/mq` (15) and `/v1/pubsub` (2)
+
+| Upstash | Hanzo |
+|---|---|
+| Cluster | Your org's subject namespace, derived from the key |
+| Topic | Stream — `POST /v1/mq/stream`, capturing one or more subjects |
+| `/produce/{topic}` | `POST /v1/pubsub/publish` — `subject`, `data`, `headers` |
+| Consumer group and instance | Consumer — `POST /v1/mq/stream/{stream}/consumer`, durable and named |
+| `/consume/{group}/{instance}/{topic}` | `POST /v1/mq/stream/{stream}/consumer/{name}/next` |
+| `/fetch` at an explicit offset | `GET /v1/mq/stream/{name}/message` — by sequence, with no consumer involved |
+| `retention.ms` and `retention.bytes` | `max_age`, `max_bytes` and `max_msgs` on the stream |
+| Cleanup policy | `retention` — limits, interest or workqueue |
+| Deleting a topic's records | `POST /v1/mq/stream/{name}/purge`, consumers left in place |
+
+### QStash → `/v1/webhook` (8) and `/v1/tasks` (5)
+
+| Upstash | Hanzo |
+|---|---|
+| Publish to a destination URL | `POST /v1/webhook` — register the URL once, and matching events go to it |
+| `Upstash-Signature`, verified with two keys | One HMAC-SHA256 secret, returned once on create |
+| Rotating that key | `POST /v1/webhook/{id}/secret` |
+| URL groups and topics, for fan-out | `events` — subject patterns such as `commerce.order.>`; empty means every event |
+| `GET /v2/events` to learn what happened | `GET /v1/webhook/{id}/deliveries` — one row per attempt, narrowed by `ok`, `retrying` or `failed` |
+| Publishing a probe, then polling for it | `POST /v1/webhook/{id}/test` — one signed send, outcome answered inline |
+| `Upstash-Cron` on a message | `/v1/tasks` — a durable engine, not a header on a send |
+
+### Vector and Search → `/v1/ai` (272), `/v1/index` (17)
+
+| Upstash | Hanzo |
+|---|---|
+| Vector index, with its own REST URL | `POST /v1/provisioning/vector` — a collection reached through the gateway |
+| `/upsert` | `POST /v1/ai/vectors`, read back at `GET /v1/ai/vectors/{owner}/{name}` |
+| Embedding model attached to the index | `POST /v1/embeddings` — a model named in the body, on the same key |
+| `/upsert-data` over a document | `POST /v1/ai/rag/embed` — parse, chunk and embed one file under its id |
+| Upstash Search index | `POST /v1/index/indexes`, written at `.../documents` |
+| Query with typo tolerance | `POST /v1/index/indexes/{uid}/search` |
+| Metadata filter on a query | `PATCH /v1/index/indexes/{uid}/settings` declares the filterable attributes first |
+| Reranking a candidate set | `POST /v1/rerank` |
+| Index size in the console | `GET /v1/index/stats` |
+
+## The call
+
+Four products, four hostnames, four credentials:
+
+```bash
+# Redis
+curl "$UPSTASH_REDIS_REST_URL/set/session:1/dark" \
+  -H "Authorization: Bearer $UPSTASH_REDIS_REST_TOKEN"
+
+# Kafka
+curl "$UPSTASH_KAFKA_REST_URL/produce/orders" \
+  -u "$UPSTASH_KAFKA_REST_USERNAME:$UPSTASH_KAFKA_REST_PASSWORD" \
+  -d '{"value":"{\"id\":1}"}'
+
+# QStash
+curl -X POST "https://qstash.upstash.io/v2/publish/https://acme.example/hooks" \
+  -H "Authorization: Bearer $QSTASH_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"id":1}'
+
+# Vector
+curl -X POST "$UPSTASH_VECTOR_REST_URL/upsert" \
+  -H "Authorization: Bearer $UPSTASH_VECTOR_REST_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"id":"doc-1","vector":[0.1,0.2],"metadata":{"user":"alice"}}'
+```
+
+The same four acts, one hostname and one credential:
+
+```bash
+# Key-value. The bucket is made once; the put answers the revision it created.
+curl -X POST https://api.hanzo.ai/v1/kv/sessions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"history": 5, "ttl": 3600}'
+
+curl -X PUT https://api.hanzo.ai/v1/kv/sessions/session_1 \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"value": "{\"theme\":\"dark\"}"}'
+
+# Publish. The receipt names the stream and sequence once storage has it.
+curl -X POST https://api.hanzo.ai/v1/pubsub/publish \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "subject": "orders.created",
+    "data": "{\"id\":1}",
+    "headers": {"Nats-Msg-Id": "order-1"}
+  }'
+
+# HTTP delivery. Create is one of only two answers that ever carry the secret.
+curl -X POST https://api.hanzo.ai/v1/webhook \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "url": "https://acme.example/hooks",
+    "events": ["commerce.order.>"]
+  }'
+
+# Search. The index is created by this write, and the document is findable
+# when the call answers.
+curl -X POST https://api.hanzo.ai/v1/index/indexes/docs/documents \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '[{"id": "doc-1", "user": "alice", "text": "roadmap"}]'
+```
+
+One hostname and one bearer, so a rotation is one value rather than ten across
+four dashboards. Nothing in those bodies names an org: the tenant is minted from
+the key's owner claim, which is why two customers can both hold a bucket called
+`sessions` and neither can address the other's. The answers are decided rather
+than promised — the put returns the revision it created, the publish receipt
+carries `stream` and `seq` only after the broker has the message on storage, and
+the index write is applied before its response, so a Meilisearch client polling
+`waitForTask` resolves on its first call.
+
+## What does not carry
+
+**No Redis command surface, and no key scan.** Upstash's REST endpoint speaks
+every Redis command — `INCR`, `ZADD`, `LPUSH`, `EVAL` — and `/pipeline` batches
+them in one round trip. `/v1/kv` is get, put, delete and history over one string
+value per key, one key per call, and it has no route that enumerates a bucket.
+Sorted sets, counters and `SCAN` live on the instance `POST /v1/provisioning/kv`
+gives your org, which you reach with a driver on 6379.
+
+**No delay and no cron on a send.** QStash carries scheduling as headers on the
+message: `Upstash-Delay`, `Upstash-Not-Before`, `Upstash-Cron`.
+`POST /v1/pubsub/publish` sends now. Scheduling is `/v1/tasks`, a durable engine
+that outlives any one message, so porting a header to it is a rewrite rather
+than a rename.
+
+**One signing secret, and no overlap window.** QStash hands a receiver a current
+and a next key so verification survives a rotation.
+`POST /v1/webhook/{id}/secret` mints a new secret and the old one stops working
+the instant the call returns. Change the value on the subscriber first, then
+rotate.
+
+**The pull acknowledges.** `POST /v1/mq/stream/{stream}/consumer/{name}/next`
+acknowledges what it hands back, so there is no offset to commit afterwards and
+nothing is redelivered. A Kafka consumer that commits after a successful handler
+does not port over HTTP; explicit acknowledgement lives on the NATS port, which
+is where a worker that needs at-least-once should sit.
+
+**No region and no read replicas.** An Upstash database is pinned to a region
+and can carry global read replicas, with the consistency that implies. A
+provision request here is a name and an optional app instance to bind the DSN
+into — there is no region field and no replica count, so there is no replica to
+read a stale value from.
+
+**Filterable attributes are declared, not inferred.** Upstash Vector filters on
+whatever metadata you happened to upsert. Here an attribute has to be listed by
+`PATCH /v1/index/indexes/{uid}/settings` before a search `filter` may constrain
+it. That is one more call at setup, and it is what makes per-user narrowing
+within an index a property of the index rather than of each query.

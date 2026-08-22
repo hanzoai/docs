@@ -1,0 +1,229 @@
+---
+title: Pinecone
+description: Pinecone is a managed vector database with a control plane, a per-index data host and a namespace on every call; here that is /v1/ai (272) for the vectors and the ingest path, /v1/index (17) for the lexical half, and one hostname with the tenant taken from the key.
+---
+
+Pinecone stores vectors and returns the nearest ones to a query. Here that lives
+inside `/v1/ai` (272 operations) — stores, vectors, and an ingest path that
+parses, chunks and embeds in one call — with `/v1/index` (17) as the lexical
+half and `POST /v1/search` fusing both by reciprocal rank. The structural
+difference is where the tenant comes from: Pinecone partitions with a
+`namespace` string passed on every data-plane call, so isolation is a discipline
+your code keeps, while here the org is minted from the validated key's owner
+claim and no request body can name another one.
+
+## Start here
+
+Ingest a document and search it. There is no index to create first — the store
+is named on the call, and the org it belongs to comes from the key.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. ingest — parse, chunk and embed in one call, no embedding step of your own
+curl -sS -X POST https://api.hanzo.ai/v1/ai/rag/ingest \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"store":"docs","text":"Hanzo IAM issues OIDC tokens.","metadata":{"src":"handbook"}}'
+
+# 3. search it — semantic and lexical fused by reciprocal rank
+curl -sS -X POST https://api.hanzo.ai/v1/search \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"how do tokens get issued","stores":["docs"]}'
+```
+
+Three calls and you have retrieval. Pinecone's equivalent needs an index
+created on the control plane, its host read back, an embedding model called
+yourself, and a namespace passed on every data-plane call after that.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/ai` | Stores, vectors, and the ingest path that parses, chunks and embeds | 272 |
+| `/v1/index` | The lexical half — terms, filters and facets | 17 |
+| `/v1/knowledge` | Collections built on top of both, for an agent to read | 9 |
+
+## Nouns
+
+### The index, and the namespace inside it
+
+`/v1/provisioning` (28) · `/v1/ai` (272) · `/v1/index` (17)
+
+| Pinecone | Hanzo |
+|---|---|
+| Project | Your org, taken from the validated key |
+| `POST /indexes` — name, dimension, metric, cloud, region | `POST /v1/provisioning/vector` — a name, and nothing else to decide |
+| `GET /indexes`, `GET /indexes/{name}` | `GET /v1/provisioning/vector`, `GET /v1/provisioning/vector/{name}` |
+| `DELETE /indexes/{name}` | `DELETE /v1/provisioning/vector/{name}` |
+| The index `host`, read back before the first write | `host` on the create receipt, and it is the public gateway — one address for every collection |
+| Namespace, on every data-plane call | Not a field. The org is minted from the key; `project` narrows within it |
+| A store the assistant reads from | `POST /v1/ai/stores`, listed at `GET /v1/ai/stores` |
+| Sparse index, for the keyword half of hybrid | `POST /v1/index/indexes` — a lexical index, written at `.../documents` |
+
+The physical collection name is derived from your slug under an org-namespacing
+hash, so it is not the slug and two orgs cannot land on one.
+
+### Records
+
+`/v1/ai` (272) · `/v1/index` (17)
+
+| Pinecone | Hanzo |
+|---|---|
+| `POST /vectors/upsert` | `POST /v1/ai/stores/{owner}/{name}/vectors`, or `POST /v1/ai/vectors` for one |
+| Integrated records — upsert text, embedded server-side | `POST /v1/ai/rag/ingest` — parse, chunk, embed and index in one call |
+| Re-embedding one document | `POST /v1/ai/rag/embed` — the same `file_id` replaces its own chunks |
+| `GET /vectors/fetch` | `GET /v1/ai/vectors/{owner}/{name}`, `GET /v1/index/indexes/{uid}/documents/{id}` |
+| `GET /vectors/list`, paged by id prefix | `GET /v1/ai/rag/context` — every stored chunk of one `file_id` |
+| Walking the corpus | `GET /v1/index/indexes/{uid}/documents` — insertion order, with the index total |
+| `POST /vectors/delete` by id | `DELETE /v1/ai/vectors/{owner}/{name}`, `POST /v1/index/indexes/{uid}/documents/delete-batch` |
+| Deleting everything one document put in | `POST /v1/ai/rag/delete`, by `file_id` |
+| `POST /bulk/imports` from object storage | `POST /v1/ai/rag/ingest` with an `s3`, `github` or `crawl` source |
+| `POST /describe_index_stats` | `GET /v1/index/stats` — per-index counts and the org's total |
+
+### Query, and the inference beside it
+
+`/v1/ai` (272) · `/v1/search` (1) · `/v1/knowledge` (9)
+
+| Pinecone | Hanzo |
+|---|---|
+| `POST /query` with a vector and `topK` | `POST /v1/search` with text — `query`, `mode`, `limit` |
+| Dense and sparse indexes, merged in your client | `POST /v1/search` with `mode` hybrid — both legs, fused by reciprocal rank on the server |
+| `filter` such as `{"user":{"$eq":"alice"}}` | `filter` on `POST /v1/index/indexes/{uid}/search`, written `user = alice` |
+| Declaring which metadata is indexed | `PATCH /v1/index/indexes/{uid}/settings` — `filterableAttributes`, replaced whole |
+| `POST /records/.../search` over text | `POST /v1/ai/rag/query`, or `POST /v1/ai/rag/query-multiple` over a set of files |
+| Searching a private corpus | `POST /v1/knowledge/search` — the org's pages, memories and synced sources |
+| Inference `POST /embed` | `POST /v1/embeddings` — `zen-embedding`, 8K context |
+| Inference `POST /rerank` | `POST /v1/rerank` — `zen-rerank` |
+| `GET /models` | `GET /v1/models` |
+| Assistant — upload files, chat over them | `POST /v1/ai/files/upload`, then `POST /v1/chat/completions` |
+| Keeping an index fresh from a source | `POST /v1/knowledge/connectors/{provider}/sync` — github, slack, google, notion |
+| Importing a vault of notes | `POST /v1/knowledge/import` — obsidian, notion, roam or evernote |
+
+## The call
+
+Pinecone, from nothing to a first result:
+
+```bash
+# 1. create the index — dimension and metric are fixed here, permanently
+curl -sS -X POST https://api.pinecone.io/indexes \
+  -H "Api-Key: $PINECONE_API_KEY" \
+  -H 'X-Pinecone-API-Version: 2025-04' \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"docs","dimension":1024,"metric":"cosine",
+       "spec":{"serverless":{"cloud":"aws","region":"us-east-1"}}}'
+
+# 2. poll until ready, and read back the host this index answers on
+HOST=$(curl -sS https://api.pinecone.io/indexes/docs \
+  -H "Api-Key: $PINECONE_API_KEY" \
+  -H 'X-Pinecone-API-Version: 2025-04' | jq -r .host)
+
+# 3. embed on one hostname, write on the other
+curl -sS -X POST https://api.pinecone.io/embed \
+  -H "Api-Key: $PINECONE_API_KEY" \
+  -H 'X-Pinecone-API-Version: 2025-04' \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"multilingual-e5-large","inputs":[{"text":"the Q3 roadmap"}]}'
+
+curl -sS -X POST "https://$HOST/vectors/upsert" \
+  -H "Api-Key: $PINECONE_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"namespace":"acme","vectors":[
+        {"id":"doc-1","values":[0.02,0.31],"metadata":{"user":"alice"}}]}'
+
+# 4. query, reusing the vector rather than embedding the text again
+curl -sS -X POST "https://$HOST/query" \
+  -H "Api-Key: $PINECONE_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"namespace":"acme","topK":5,"vector":[0.02,0.31],
+       "filter":{"user":{"$eq":"alice"}},"includeMetadata":true}'
+```
+
+Hanzo, the same thing:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/ai/rag/ingest \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"source":"upload","store":"docs",
+       "documents":[{"id":"doc-1","text":"the Q3 roadmap"}]}'
+
+curl -sS -X POST https://api.hanzo.ai/v1/search \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"query":"roadmap","mode":"hybrid","limit":5}'
+```
+
+Five calls across two hostnames become two against one, and it is five only
+because the query reuses the vector from the upsert instead of embedding the
+query text again. There is no index host to resolve, because an index is a row
+rather than an appliance; and no `namespace` in either body, because the org is
+minted from the validated bearer's owner claim, so two orgs both holding a
+`docs` index have no way to write each other's name down. The write is applied
+before its response — `GET /v1/index/tasks/{uid}` reports `succeeded` on the
+first poll and `isIndexing` in `GET /v1/index/stats` is always false — so the
+query that follows a write sees it, rather than seeing it soon. Pinecone asks
+you to keep the index name, the resolved host, the namespace, the record id, the
+metadata key and the embedding model's output width in step; here it is the
+store name and the document id.
+
+The metadata filter is the one place that takes two calls, because an attribute
+has to be declared filterable before a query may constrain it:
+
+```bash
+curl -sS -X PATCH https://api.hanzo.ai/v1/index/indexes/docs/settings \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"filterableAttributes":["user","conversationId"]}'
+
+curl -sS -X POST https://api.hanzo.ai/v1/index/indexes/docs/search \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"q":"roadmap","filter":"user = alice","limit":20}'
+```
+
+## What does not carry
+
+**Namespace is not a field, and the one-call namespace drop goes with it.**
+Pinecone puts thousands of end-user partitions in one index and deletes one with
+a single call. The org here comes from the key, `project` is the one narrowing
+coordinate beneath it, and per-end-user scoping is a filterable attribute — a
+filter, not a partition. Deleting one user's records is a list of keys at
+`POST /v1/index/indexes/{uid}/documents/delete-batch`, not a namespace drop.
+
+**You cannot query by a vector you computed yourself.** Every query door in this
+document takes text: `query` on `POST /v1/search`, `q` on the index search,
+`query` on `POST /v1/knowledge/search`. If you embed with your own model —
+images, a fine-tune, anything outside `POST /v1/embeddings` — the answer is
+`POST /v1/provisioning/vector`, which hands back a `host`, a `port` and a
+connection string once, and you speak the backend's own protocol to it.
+
+**No sparse values on either side.** Pinecone's hybrid is a dense vector and a
+sparse one you build and send together. Here hybrid is two engines — a lexical
+index and a semantic one — fused by reciprocal rank at `POST /v1/search`, which
+reports each leg's status and timing in `backends`. That is a different
+mechanism, not a different spelling: there is nowhere to put a sparse encoding
+you built.
+
+**No dimension and no metric to choose.** `POST /v1/provisioning/vector` takes a
+name; `POST /v1/index/indexes` takes a `uid` and an optional `primaryKey`.
+Nothing takes a width or a distance function. The semantic leg is cosine —
+`score` on a knowledge hit is documented as cosine similarity from -1 to 1 —
+and changing embedding model means re-ingesting, because nothing converts
+vectors of one width into another.
+
+**No snapshot and restore.** Pinecone backs an index up to a collection or a
+backup and restores it into a new index. No route here does that. A corpus is
+rebuilt from its source instead: `POST /v1/ai/rag/ingest` naming `github`,
+`crawl` or `s3`, or `POST /v1/knowledge/import` for an exported vault.
+
+**No capacity to size.** Pods, replicas, `pod_type` and `configure_index` have
+no equivalent. A create body is a name plus an optional instance binding; a
+shared-backend create answers `ready`, and a dedicated one answers 201 while it
+is still launching and reaches ready only when a later read reconciles it
+against the operator's live record. Nothing sets throughput.

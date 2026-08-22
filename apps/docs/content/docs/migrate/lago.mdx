@@ -6,7 +6,49 @@ description: Lago meters usage and turns it into invoices. Here /v1/billing rais
 Lago is a billing engine: you define what you charge for, feed it usage, and it
 produces invoices and collects them. Three capabilities cover the same ground —
 `/v1/billing` (45 operations) for invoices, subscriptions and prepaid credit,
-`/v1/usage` (11) for what was consumed, `/v1/pricing` (25) for the rate card.
+`/v1/usage` (5) for what was consumed, `/v1/pricing` (28) for the rate card.
+
+## Start here
+
+Two calls after the key: raise a draft from its lines, then issue it.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. raise the draft — there is no total to send, the lines are the total
+INV=$(curl -sS -X POST https://api.hanzo.ai/v1/billing/invoices \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "userId": "usr_7f3a",
+    "currency": "usd",
+    "lines": [
+      {"description":"API calls, March","quantity":12000,"unitPrice":1,"amount":12000}
+    ]
+  }' | jq -r .id)
+
+# 3. issue it — moves it to open, assigns the number, makes it collectible
+curl -sS -X POST "https://api.hanzo.ai/v1/billing/invoices/$INV/issue" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Step 2 answers 201 with `status` draft, `subtotalCents` 12000 summed from the
+lines, and no `number` — a draft is readable and correctable, and owes nothing.
+Step 3 is the state change that issuing exists for: open, numbered, collectible,
+after which `POST /v1/billing/invoices/$INV/collect` draws credits, then balance,
+then card. No plan, metric or customer object had to exist first.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/billing` | Raises drafts, issues, collects and voids them; subscriptions, credit balance, top-ups, spend alerts | 45 |
+| `/v1/usage` | Takes consumption samples and reads them back as the org's footprint over a window | 5 |
+| `/v1/pricing` | The platform's own rate card for models, compute, storage and tools; 25 of the 28 are reads | 28 |
 
 ## Nouns
 
@@ -60,7 +102,7 @@ client.events().create(Event(
 Hanzo, raising and collecting an invoice:
 
 ```bash
-# 1. Draft. Answers the row with subtotalCents, amountDueCents and a number.
+# 1. Draft. Answers the row with subtotalCents and amountDueCents — no number.
 INV=$(curl -sS -X POST https://api.hanzo.ai/v1/billing/invoices \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H 'Content-Type: application/json' \
@@ -115,8 +157,8 @@ subscribe to, not a place to define one. Graduated, package, volume and
 percentage pricing, charge models, add-ons, coupons, taxes and credit notes have
 no counterpart.
 
-**`/v1/pricing` is a rate card, not your rate card.** Twenty-five operations,
-twenty-four of them reads: what this platform charges for models, compute,
+**`/v1/pricing` is a rate card, not your rate card.** Twenty-eight operations,
+twenty-five of them reads: what this platform charges for models, compute,
 storage, IAM, hosting and per-use tools. It is not a place to publish prices for
 your own customers.
 

@@ -1,13 +1,50 @@
 ---
 title: Composio
-description: Composio gives an agent authenticated tools across third-party apps. Here that is /v1/integrations for the org's credential, /v1/connectors for a user's own, and /v1/tools for the actions they reach.
+description: Composio gives an agent authenticated tools across third-party apps. Here that is /v1/integrations for the org's credential, /v1/integrations/connectors for a user's own, and /v1/tools for the actions they reach.
 ---
 
 Composio holds OAuth credentials for third-party apps and hands an agent the
 actions those credentials reach. Two capabilities answer it: `/v1/integrations`
-(40 operations) holds the credential an **org** connects, `/v1/connectors` (8)
-holds the one a **user** connects, and every action either one reaches shows up
-in `/v1/tools`.
+(40 operations) holds the credential an **org** connects,
+`/v1/integrations/connectors` (8) holds the one a **user** connects, and every
+action either one reaches shows up in `/v1/tools`.
+
+## Start here
+
+A fresh key already reaches the platform's own tools, so you can dispatch one
+before connecting any provider.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. what this key can already call, before any provider is connected.
+#    Each row carries a name, an inputSchema and its source.
+curl -sS "https://api.hanzo.ai/v1/tools?activated=true" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+# 3. dispatch one, by the exact name step 2 printed
+curl -sS -X POST https://api.hanzo.ai/v1/tools/call \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"NAME_FROM_STEP_2","arguments":{}}'
+```
+
+Three calls and no OAuth. The key carried the org, the project and the user, so
+step 2 answered with the set this caller can actually dispatch and step 3 would
+have refused anything outside it with a 403 — which is why Composio's `userId`
+argument has no counterpart here.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/integrations` | The credential an **org** connects to a provider, and the callbacks that acquire it | 40 |
+| `/v1/integrations/connectors` | The same credential held per **user** — device flow, refresh, token read | 8 |
+| `/v1/tools` | One flat set of callable actions across every source, plus dispatch and activation | 19 |
 
 ## Nouns
 
@@ -16,7 +53,7 @@ in `/v1/tools`.
 | Toolkit — an app such as GitHub or Slack | Provider — `GET /v1/integrations/{provider}` returns one with this org's connection status |
 | Auth config — the OAuth app you register per toolkit | The deployment's own provider configuration. A connect against a provider it lacks answers 503 |
 | Connected account, shared by a team | Connection — `POST /v1/integrations/{provider}/connect` |
-| Connected account, one per end user | Connector — `GET /v1/connectors`, rows keyed by (org, user) |
+| Connected account, one per end user | Connector — `GET /v1/integrations/connectors`, rows keyed by (org, user) |
 | `userId` passed on every call | The validated principal in the key |
 | Tool | Tool — `GET /v1/tools`, one flat set across every source, each with an `inputSchema` |
 | Executing a tool | `POST /v1/tools/call` |
@@ -25,9 +62,9 @@ in `/v1/tools`.
 
 Two scopes, not one. Composio scopes a connected account by the `userId` you
 pass; here the scope is structural. An `/v1/integrations` connection belongs to
-the org and every member reaches it. A `/v1/connectors` row belongs to one
-person and is invisible to everyone else, including their own org's admins. Pick
-by who owns the account, not by a field.
+the org and every member reaches it. A `/v1/integrations/connectors` row belongs
+to one person and is invisible to everyone else, including their own org's
+admins. Pick by who owns the account, not by a field.
 
 ## The call
 
@@ -80,11 +117,11 @@ operations, the actions of its connected providers, its authored skills, its
 agents and functions, and the tools of every external MCP server it
 registered. Check `GET /v1/integrations` for the
 providers this deployment carries before you plan a cutover. A provider that is
-not there is added by registering its MCP server with `POST /v1/mcp/servers`, not
-by waiting for a catalog entry.
+not there is added by registering its MCP server with
+`POST /v1/tools/mcp/servers`, not by waiting for a catalog entry.
 
 **Triggers have no equivalent.** Composio subscribes you to events inside the
-third-party app — a new Gmail message, a closed GitHub issue. `/v1/webhooks`
+third-party app — a new Gmail message, a closed GitHub issue. `/v1/webhook`
 delivers Hanzo's own events, not the provider's. Inbound app events you keep
 yourself: register the webhook with the provider and take the delivery.
 

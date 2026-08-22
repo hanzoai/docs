@@ -5,8 +5,45 @@ description: SQS is a queue between services. Here that is /v1/mq for durable st
 
 SQS holds messages between a producer and a worker. Two capabilities answer it:
 `/v1/mq` (15 operations) owns the durable half — streams, their consumers and
-their retained messages — and `/v1/pubsub` (8) owns the send, plus a request
+their retained messages — and `/v1/pubsub` (2) owns the send, plus a request
 that waits for one reply.
+
+## Start here
+
+A stream first, then a publish into it — that is the whole path from an empty org
+to a durable message.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. create the stream that will capture the subject
+curl -sS -X POST https://api.hanzo.ai/v1/mq/stream \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"orders","subjects":["orders.>"],"retention":"workqueue","storage":"file"}'
+
+# 3. publish into it
+curl -sS -X POST https://api.hanzo.ai/v1/pubsub/publish \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"subject":"orders.created","data":"{\"id\":1}","headers":{"Nats-Msg-Id":"order-1"}}'
+```
+
+Step 2 answers 201 with the stream; step 3's receipt names that stream and a
+sequence number, which is the proof the message reached storage. Publish without
+step 2 and the receipt is a bare `{ok}` — sent to whoever was listening, kept
+nowhere.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/mq` | Streams, durable consumers, and the messages a stream retains | 15 |
+| `/v1/pubsub` | Puts one message on a subject; `request` waits for one reply | 2 |
 
 ## Nouns
 

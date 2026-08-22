@@ -1,0 +1,247 @@
+---
+title: LangSmith
+description: LangSmith records what an LLM app did and grades it against datasets. Here that is /v1/o11y (381) for the traces, scores and review queues, /v1/eval (16) for the datasets and runs, and /v1/prompt (6) for the library.
+---
+
+LangSmith is a recorder standing beside your app. Your process calls a model
+somewhere, then posts a run to `api.smith.langchain.com` describing the call it
+just made. Three capabilities answer that here — `/v1/o11y` (381 operations) for
+traces, sessions, scores and review queues, `/v1/eval` (16) for datasets and
+evaluation runs, `/v1/prompt` (6) for the library — and one structural
+difference runs through all three: the recorder is underneath the model, not
+beside it. A call served by `/v1/ai` (272) is already a `gen_ai` span, so you
+instrument what you serve yourself and nothing else.
+
+## Start here
+
+A call served by `/v1/ai` is already a trace, so the first step is not
+instrumentation — it is looking at what you already recorded.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. the sessions already recorded for you — no SDK, no post-run call
+curl -sS "https://api.hanzo.ai/v1/o11y/llm/sessions?limit=20" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+# 3. a dataset to grade against
+curl -sS -X POST https://api.hanzo.ai/v1/eval/datasets \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"support-qa","description":"answers we expect"}'
+```
+
+Step 2 returns rows without your app having posted anything. That is the whole
+difference: LangSmith records what your process says it did, and this records
+what the model actually served.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/o11y` | Traces, sessions, scores and review queues | 381 |
+| `/v1/eval` | Datasets and evaluation runs | 16 |
+| `/v1/prompt` | The prompt library | 6 |
+
+## Nouns
+
+### Tracing
+
+| LangSmith | Hanzo |
+|---|---|
+| Workspace, selected by `X-Tenant-Id` on a service key | Your org, taken from the validated key. Not a header, not a body field |
+| Project, sent as `session_name` on every run | The project scope the credential carries; the LLM reads are narrowed to it |
+| Run: `POST /runs`, then `PATCH /runs/{id}` to close it | One span, closed on the write: `POST /v1/metrics/traces/write` carries `startNs` and `endNs` together |
+| `dotted_order`, the ancestor chain encoded into a string | `parentId`. A span names its parent and derives nothing |
+| `POST /runs/batch` | `POST /v1/event` — one ingest door; an authenticated body is offered to the observability plane, which claims LLM ingestion batches |
+| LLM run list | `GET /v1/o11y/llm/observations` — model, token counts, cost and latency per call |
+| Trace view | `GET /v1/o11y/llm/traces`; the waterfall at `POST /v1/o11y/traces/{traceId}/waterfall` |
+| Threads | `GET /v1/o11y/llm/sessions` — spans grouped by `session.id` |
+| End-user metadata | `GET /v1/o11y/llm/users` — spans grouped by `user.id`, with their cost |
+| Feedback on a run | `POST /v1/o11y/llm/scores`, or `POST /v1/eval/scores` to attach one to a run or a dataset item |
+| Inline comment on a trace | `POST /v1/o11y/llm/annotation` |
+| Annotation queue | `POST /v1/o11y/reviews`; enqueue with `POST /v1/o11y/reviews/{id}/items` |
+| Mapping your field names onto the ones the views read | `POST /v1/o11y/span_mapper_groups`, rules under `.../{groupId}/span_mappers` |
+| Model price table behind the cost column | `PUT /v1/o11y/llm_pricing_rules` |
+| Monitoring charts | `GET /v1/eval/metrics` — totals, gap-filled series, per-model breakdown, latency percentiles |
+| Alerting on a filter | `GET,POST /v1/o11y/rules`; dry-run one with `POST /v1/o11y/rules/test` |
+
+### Datasets and evaluation
+
+| LangSmith | Hanzo |
+|---|---|
+| Dataset: `POST /datasets` answers a UUID you carry from then on | `POST /v1/eval/datasets` — the name is the key, so re-posting it edits and never duplicates |
+| Example: `POST /examples`, with `dataset_id` in the body | `POST /v1/eval/datasets/{name}/items` — the set is the path, not a field |
+| Splits | `status` on the item, ACTIVE or ARCHIVED. Only ACTIVE examples are fed to a run |
+| Experiment: you call the target yourself and post the runs | `POST /v1/eval/runs` — it calls the model, records the trace, calls the judge and answers the summary |
+| `evaluate()` with a grader function in your process | `POST /v1/eval/evaluators` — a stored judge: judge model, written criteria, the score name it files under |
+| Feedback key with a schema | `POST /v1/eval/rubrics` — data type, numeric bounds, allowed categories, enforced at write time |
+| Experiment results table | `GET /v1/eval/runs` — dataset, model, judge, items attempted, items scored, average |
+| Per-example scores | `GET /v1/eval/scores`, narrowed by `runName`, `name` or `traceId` |
+| The traces one experiment produced | `GET /v1/eval/traces`, narrowed by `runName` or `datasetName` |
+| Two models head to head | `GET /v1/benchmark/compare` — paired on the items both completed, with an exact-McNemar p |
+
+### Prompts
+
+| LangSmith | Hanzo |
+|---|---|
+| Prompt hub repo, `/repos/{owner}/{repo}` | `POST /v1/prompt` — the name is the handle and the URL segment |
+| Commit, `/commits/{owner}/{repo}` | A version. Re-posting a name appends one rather than overwriting |
+| Reading a prompt | `GET /v1/prompt/{name}` — the current body plus the number, type and time of every version |
+| The public hub | `GET /v1/prompt/catalog` — the starter library shipped with the binary, read-only, never mixed into yours |
+| Prompt usage stats | `GET /v1/prompt/metrics` — versions per prompt, which one is current, when it last changed |
+| Playground | Hanzo Chat and Studio; over the API, `POST /v1/chat/completions` |
+| Rolling a prompt change onto live traffic | `/v1/experiment` (7): create, `GET /v1/experiment/{id}/assign`, `POST /v1/experiment/{id}/analyze`, `POST /v1/experiment/{id}/decide` |
+
+`assign` is a deterministic hash of the subject, so the same subject gets the
+same arm on every call for as long as the flag definition is unchanged. It is a
+pure read and records nothing, including the exposure — your own event does
+that, or the analysis has an empty denominator.
+
+## The call
+
+LangSmith, tracing one call. The run is opened, then closed, and a child would
+also carry a `dotted_order` naming its ancestors:
+
+```bash
+RUN=$(uuidgen)
+curl -sS -X POST https://api.smith.langchain.com/runs \
+  -H "x-api-key: $LANGSMITH_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "id": "'"$RUN"'",
+    "trace_id": "'"$RUN"'",
+    "dotted_order": "20260820T120000000000Z'"$RUN"'",
+    "session_name": "support-bot",
+    "name": "answer",
+    "run_type": "llm",
+    "start_time": "2026-08-20T12:00:00Z",
+    "inputs": {"question": "how do I rotate a key?"}
+  }'
+
+curl -sS -X PATCH "https://api.smith.langchain.com/runs/$RUN" \
+  -H "x-api-key: $LANGSMITH_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"end_time": "2026-08-20T12:00:02Z", "outputs": {"answer": "…"}}'
+```
+
+Hanzo. The call is the trace, and the second command is a read, not a write:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"zen5","messages":[{"role":"user","content":"how do I rotate a key?"}]}'
+
+curl -sS "https://api.hanzo.ai/v1/o11y/llm/traces?limit=20" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Work you serve yourself is a span you append — one write, already closed:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/metrics/traces/write \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"spans":[{
+    "traceId": "9f2c7a1e",
+    "spanId": "0a1b2c3d",
+    "parentId": "",
+    "name": "retrieve",
+    "startNs": 1766232000000000000,
+    "endNs": 1766232000420000000,
+    "attrs": {"gen_ai.system": "hanzo", "gen_ai.request.model": "zen5"}
+  }]}'
+```
+
+The evaluation is where the call count separates. Three commands, start to
+graded result:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/eval/datasets \
+  -H "Authorization: Bearer $HANZO_API_KEY" -H 'Content-Type: application/json' \
+  -d '{"name":"support-qa","description":"answers we grade each release against"}'
+
+curl -sS -X POST https://api.hanzo.ai/v1/eval/datasets/support-qa/items \
+  -H "Authorization: Bearer $HANZO_API_KEY" -H 'Content-Type: application/json' \
+  -d '{
+    "id": "rotate-key",
+    "input": {"question": "how do I rotate a key?"},
+    "expectedOutput": {"answer": "POST /v1/kms/secrets with the new value"}
+  }'
+
+curl -sS -X POST https://api.hanzo.ai/v1/eval/runs \
+  -H "Authorization: Bearer $HANZO_API_KEY" -H 'Content-Type: application/json' \
+  -d '{
+    "dataset": "support-qa",
+    "model": "zen5",
+    "runName": "rc-41",
+    "judge": {"model": "zen5-mini", "criteria": "the answer names the right endpoint", "name": "correctness"}
+  }'
+```
+
+The third command is the whole evaluation. For each ACTIVE example it calls the
+model under test, records a trace, calls the judge, files the judge's score with
+its reasoning, and answers `items`, `scored`, `avgScore` and one row per example
+— synchronous work, not a job id, so there is no polling loop to write and a run
+where nothing scored is a 502 rather than a 200 with an empty table. The same
+sequence against LangSmith is seven calls: create the dataset, create the
+example, call the model yourself, post the run, patch it closed, grade it
+yourself, post the feedback. It also leaves you holding six identifiers that
+have to agree — dataset id, run id, trace id, dotted order, project name and the
+workspace header. Here there are two names: the dataset's, and the item's if you
+want the write idempotent. The run drives the gateway with your own bearer, so
+it can call exactly the models you can call, and only a non-reversible hash of
+that credential is written onto the traces.
+
+## What does not carry
+
+**No `@traceable`, and no callback handler.** LangSmith's client wraps a
+function and mints the run tree around it. What we serve is recorded because we
+served it; what your own process does is an OpenTelemetry span you append, and
+the `gen_ai.*` attributes on it are what the LLM views project from. The Hanzo
+SDKs are generated API clients — they do not decorate your code. If your
+attribute names differ from the ones the views read, declare the translation
+once at `POST /v1/o11y/span_mapper_groups` instead of rewriting the emitters.
+
+**A run is bounded, deliberately.** `POST /v1/eval/runs` scores 20 examples by
+default and 100 at most; a `limit` above 100 falls back to the default of 20
+rather than clamping to 100. An org may have 4 runs in flight before the fifth
+is a 429, and the whole run is capped at ten minutes — examples past the deadline
+come back with an error rather than a score, and `scored` counts successes only.
+LangSmith evaluates thousands of examples with concurrency you own. A sweep here
+is several runs against one dataset, each with its own `runName`.
+
+**Nothing samples production traffic into a dataset for you.** LangSmith
+automations take a filter and a sampling rate and run an online evaluator on
+what they catch. Choosing which traces matter is an explicit act here:
+`GET /v1/o11y/llm/traces` reads them, `POST /v1/o11y/reviews/{id}/items` queues
+them for a human, `POST /v1/o11y/llm/scores` files a machine score, and
+`/v1/auto` (17) is where you hang that off a trigger.
+
+**Old prompt bodies are not readable back.** A repeated `POST /v1/prompt`
+appends a version, and `GET /v1/prompt/{name}` returns the current text plus
+each version's number, type and timestamp — the history, not the bodies. There
+is no route that fetches version 3, and no tag alias that resolves to one.
+LangSmith pulls a prompt at a named commit. Pin the text in whatever cuts your
+release, or keep a variant under its own name.
+
+**The paired significance test is on the benchmark plane, not on your dataset.**
+`GET /v1/benchmark/compare` pairs two models on the items both completed and
+answers rescue and damage counts with an exact-McNemar p, over the benchmark
+catalog. Two runs across your own eval dataset compare by `avgScore` from
+`GET /v1/eval/runs` and per-item scores from `GET /v1/eval/scores` — the
+numbers, without the test on top.
+
+**The two trace stores keep different amounts.** What
+`POST /v1/metrics/traces/write` appends into is a ring of 1048576 spans per org:
+past that the oldest are evicted, so a long-lived trace can lose its early spans
+while its later ones survive, and a waterfall read is best-effort against
+retention rather than a guarantee. The full plane
+holds its own retention at `GET,POST /v1/o11y/settings/ttl`. Neither is
+LangSmith's per-trace extended-retention upgrade, so port a retention
+expectation as a setting, not as an assumption.

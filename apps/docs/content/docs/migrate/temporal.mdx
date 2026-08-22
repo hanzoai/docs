@@ -1,0 +1,198 @@
+---
+title: Temporal
+description: Temporal runs durable workflows as your own code against workers you operate. Here that is /v1/auto — 17 operations covering flows, versions, durable runs, schedules and signals — and there is no worker to deploy.
+---
+
+Temporal is a coordinator. Nothing of yours runs on it: you deploy worker
+processes that poll a task queue, and the server replays an event history
+against them so a long-running function survives a crash. `/v1/auto`
+(17 operations) is the same job with that half removed — the engine holds the
+step tree and executes it, so there is no worker fleet, no task queue to name,
+and no workflow type to keep in step between the process that starts a run and
+the process that serves it.
+
+Do not confuse it with `/v1/flow` (8), which is a different plane: a graph run
+synchronously under a five-minute ceiling, which is precisely what a Temporal
+workflow is not.
+
+## Start here
+
+Two calls stand between an empty account and a durable run: create the flow, start it.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. create the flow — a step tree the engine holds, not a type a worker registers
+curl -sS -X POST https://api.hanzo.ai/v1/auto/flows \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"displayName":"Process order",
+       "trigger":{"name":"trigger","displayName":"Start","type":"PIECE_TRIGGER",
+                  "strategy":"MANUAL","settings":{"pieceName":"core","triggerName":"manual"}}}'
+# 201 {"id":"flow_1","status":"DISABLED","publishedVersionId":""}
+
+# 3. start one durable run of it
+curl -sS -X POST https://api.hanzo.ai/v1/auto/flows/flow_1/run \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+# 201 {"id":"run_1","flowId":"flow_1","flowVersionId":"ver_1","status":"RUNNING"}
+```
+
+Nothing was deployed between those two calls — no worker process, no task queue,
+no workflow type held in agreement between the side that starts a run and the
+side that serves it — and the org came from the key, so `flow_1` is the whole
+address. Creating does not arm the flow's trigger, which is what
+`POST /v1/auto/flows/{id}/enable` is for; step 3 starts a run by hand, and
+`GET /v1/auto/runs/run_1` reads it back from the engine while it is still live.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/auto` | Flows, versions, durable runs, schedules and signals. The engine holds the step tree and executes it | 17 |
+| `/v1/functions` | Code a step needs, published once and called at `POST /v1/functions/{name}/invoke` | 11 |
+| `/v1/sandbox` | A leased machine for a step that must run a real command, at `POST /v1/sandbox/run` | 19 |
+
+## Nouns
+
+### Workflows, runs and signals
+
+| Temporal | Hanzo |
+|---|---|
+| Namespace, on every call and every worker connection | Your org, taken from the validated key. Never a field in the request |
+| Workflow definition registered on a worker | Flow — `POST /v1/auto/flows`, a step tree the engine executes |
+| Workflow type, and the task queue it is polled from | Nothing polls, so neither exists. The flow id is the whole address |
+| `StartWorkflowExecution` | `POST /v1/auto/flows/{id}/run` — runs the published version, else the latest |
+| `SignalWithStartWorkflowExecution` | `POST /v1/auto/hooks/{source}/{event}` — starts every enabled flow subscribed to that key |
+| `SignalWorkflowExecution` | `POST /v1/auto/runs/{id}/resume` — releases a run parked at an approval step; the body lands verbatim as that waitpoint's output |
+| `DescribeWorkflowExecution` | `GET /v1/auto/runs/{id}` — refreshed from the engine while the run is not terminal |
+| `ListWorkflowExecutions` | `GET /v1/auto/runs`, narrowed by `flowId` |
+| Activity, and the activity task it becomes | A step. The catalogue is `GET /v1/auto/connectors`; one action alone is `POST /v1/auto/connectors/{id}/run` |
+| Schedule — create, pause, unpause | `POST /v1/auto/flows/{id}/enable` and `.../disable`. Arming a polling trigger writes its cron on the durable engine |
+| Worker build ids and `GetVersion` patches | `POST /v1/auto/flows/{id}/versions`, and `publishedVersionId` on `PATCH /v1/auto/flows/{id}` pins which one runs |
+| A workflow started by a workflow | A step fires `POST /v1/auto/hooks/{source}/{event}`; the `X-Causation-Depth` header bounds the chain |
+
+### The rest of the platform
+
+| Temporal | Hanzo |
+|---|---|
+| The worker fleet you build, deploy and scale | Nothing to run. Code a step needs is published to `/v1/functions` (11) and called at `POST /v1/functions/{name}/invoke` |
+| An activity that must run a command on a real machine | `/v1/sandbox` (19) — lease one, then `POST /v1/sandbox/run` |
+| A local activity — one short snippet | `POST /v1/exec` — a snippet in a sandboxed interpreter |
+| Task queue used as a durable buffer with acks | `/v1/mq` (15) — streams and pull consumers, drained at `.../consumer/{name}/next` |
+| A cron schedule standing alone from any workflow | `/v1/tasks` (5) — the durable engine's own root |
+| Memo attached to an execution | `metadata` on `PATCH /v1/auto/flows/{id}` — opaque JSON, stored and returned verbatim |
+| Cloud metrics, and the history you read as telemetry | `/v1/o11y` (381) |
+| Audit log | `GET /v1/audit` — your own org's trail; a resume is recorded as `automations.run.resume` |
+| Web UI | console.hanzo.ai — where the step tree is built |
+| Cloud users, service accounts, API keys | `/v1/iam` (159) — `/v1/iam/service-accounts`, `/v1/iam/keys` |
+| Codec server, payloads sealed before they are stored | `/v1/kms` (5) |
+| An activity whose whole job is telling another system | `/v1/webhook` (8), signed, with a per-attempt log at `.../deliveries`; `/v1/notify` (4) for email or SMS |
+
+## The call
+
+Temporal, starting a run and signalling it:
+
+```bash
+# only works if a worker is already polling `orders`
+# with ProcessOrder registered on it
+temporal workflow start \
+  --namespace acme-prod \
+  --task-queue orders \
+  --type ProcessOrder \
+  --workflow-id order-8412 \
+  --input '{"orderId":"8412"}'
+
+temporal workflow signal \
+  --namespace acme-prod \
+  --workflow-id order-8412 \
+  --name approve \
+  --input '{"by":"ops"}'
+```
+
+Hanzo:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/auto/flows/flow_1/run \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+# 201 {"id":"run_1","flowId":"flow_1","flowVersionId":"ver_3","status":"RUNNING"}
+
+curl -sS -X POST https://api.hanzo.ai/v1/auto/runs/run_1/resume \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"by":"ops","approved":true}'
+# {"resumed":true}
+```
+
+Starting from an event rather than by hand:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/auto/hooks/stripe/invoice.paid \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'X-Idempotency-Key: evt_8412' \
+  -H 'Content-Type: application/json' \
+  -d '{"invoice":"in_8412","amount":4200}'
+# {"matched":2}
+```
+
+Count the identifiers. The start on the left names four — namespace, task queue,
+workflow type, workflow id — and each has to match what some worker process
+registered, or the call is accepted and nothing ever picks it up. The start on
+the right names one, the flow id: the org is the key's, and the version is the
+one the flow publishes, so there is no fifth thing to hold in agreement.
+
+The answers are decisions, not receipts. `resume` returns `{"resumed":true}`
+once the engine has taken the signal, where `SignalWorkflowExecution` returns
+when the signal is written to history and the workflow observes it on some later
+task. The hook returns how many flows it started, so zero is a real answer
+meaning nothing was subscribed rather than a success you have to go and check. A
+second identical post collapses onto the first — `X-Idempotency-Key` dedupes,
+and with no header the body is content-hashed instead — so a retrying producer
+gets one run, not one per attempt. Over the org's per-minute start budget or its
+in-flight ceiling, no run starts and no run id is burned: the failure is the
+absence of a run rather than a run in a state you have to reconcile.
+
+## What does not carry
+
+**Workflow code in your own language, replayed.** Temporal's bargain is that
+your Go or TypeScript function *is* the workflow, and durability comes from
+replaying its event history against it deterministically. A flow here is a step
+tree — `PIECE`, `CODE`, `ROUTER`, `LOOP_ON_ITEMS` — that the engine executes. A
+`CODE` step runs code, so the logic ports; the worker process, the determinism
+rules and `workflow.GetVersion` patching do not.
+
+**No retry policy on the wire.** Temporal takes an initial interval, a backoff
+coefficient, a maximum attempt count and a list of non-retryable error types,
+per activity. No `/v1/auto` route accepts those fields — a step's settings are
+its connector, its action and its input. The engine retries; you do not
+shape it step by step.
+
+**No event history, and no query.** `GetWorkflowExecutionHistory` is what makes
+replay and `temporal workflow reset` possible, and `QueryWorkflow` reads live
+in-workflow state without disturbing it. `GET /v1/auto/runs/{id}` answers a
+status, the version that ran and its timestamps. Step-level detail lives in
+`/v1/o11y` (381) as spans and logs — readable, but not a thing you can replay.
+
+**No terminate on a run in flight.** `POST /v1/auto/flows/{id}/disable` states
+plainly that runs already started are unaffected, and
+`DELETE /v1/auto/flows/{id}` removes the flow, its versions and its history
+rather than stopping work. That control does exist for a supervised agent —
+`/v1/agents/sessions/{id}/pause`, `/resume` and `/stop` on the agents plane (37)
+— but it is a different plane, so porting a terminate means moving the work onto
+it.
+
+**No search attributes, no visibility query, and no batch over one.** Temporal
+indexes custom fields per execution, lists with a SQL-ish `WHERE`, and then
+signals or terminates thousands of matches as one batch job. `GET /v1/auto/runs`
+takes `flowId` and `limit`, newest first. A flow's `metadata` is a place to keep
+your own key, not an index to filter on, and each start and each resume is one
+call against one run.
+
+**Continue-as-new has no equivalent.** Temporal rolls a long-lived execution
+into a fresh history so it never grows without bound, and the caller keeps
+treating it as one thing. A recurring flow here is many runs, each with its own
+run id, minted by the trigger its schedule arms. Anything you key on a run id
+has to be rewritten around the flow id instead.
