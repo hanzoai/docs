@@ -1,0 +1,90 @@
+---
+title: LaunchDarkly
+description: LaunchDarkly decides which users see which behaviour. Here that is /v1/flags — eight operations, one deterministic decision, and no SDK that has to be kept warm.
+---
+
+LaunchDarkly holds flag definitions and evaluates them per user. `/v1/flags`
+(8 operations) does the same: `PUT /v1/flags/defs/{key}` stores a definition,
+`POST /v1/flags/decide` answers for a subject.
+
+The difference is where evaluation happens. LaunchDarkly's SDKs stream rules into
+your process and decide locally. Here the decision is a call, and it is
+**deterministic**: the same subject and key always land in the same bucket,
+because the bucket is a hash of them rather than a roll.
+
+## Nouns
+
+| LaunchDarkly | Hanzo |
+|---|---|
+| Project | Your org and project, from the validated key |
+| Environment | `env` on the definition |
+| Feature flag | Definition — `/v1/flags/defs/{key}` |
+| Variation | A variant on the definition, with a weight |
+| Targeting rule | Rules on the definition |
+| Percentage rollout | Weights. The subject hash decides, not chance |
+| `client.variation(key, user, default)` | `POST /v1/flags/decide` |
+| User / context | `subject` plus `props` on the decide call |
+| Audit log | `GET /v1/flags/activity` |
+| Experiment | `/v1/experiment`, which composes flags for assignment |
+
+## The call
+
+LaunchDarkly, in-process:
+
+```js
+const show = await client.variation('new-checkout', { key: 'user-42' }, false)
+```
+
+Hanzo:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/flags/decide \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "key": "new-checkout",
+    "subject": "user-42",
+    "props": {"plan": "pro"}
+  }'
+```
+
+Storing the definition:
+
+```bash
+curl -sS -X PUT https://api.hanzo.ai/v1/flags/defs/new-checkout \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "env": "prod",
+    "variants": [
+      {"value": true,  "weight": 10},
+      {"value": false, "weight": 90}
+    ]
+  }'
+```
+
+Because the assignment is a hash of `(key, subject)`, a subject keeps its variant
+across processes, restarts and languages without any shared state — and an
+experiment reading the same flag sees the same split.
+
+## What does not carry
+
+**No streaming SDK, and no local evaluation.** LaunchDarkly's whole latency story
+is that your process already holds the rules. `decide` is a network call. Cache
+it yourself if the hot path cannot afford one; the decision is deterministic, so
+a cache cannot disagree with the server about a subject it has already seen.
+
+**No flag prerequisites.** LaunchDarkly lets one flag gate another. Definitions
+here are flat. Compose them in your own code, where the reader can see it.
+
+**No scheduled changes or approval workflows.** A definition is written by whoever
+holds the key. Change control is your deploy pipeline and the activity log, not a
+review queue inside the flag service.
+
+**No `/sdk/goals` or client-side experimentation bundle.** Measurement is
+`/v1/experiment`, which reads outcomes from analytics rather than from a
+browser SDK.
+
+**Removing a flag is a delete.** `DELETE /v1/flags/defs/{key}` removes the
+definition. There is no archive state that keeps serving a last-known value, so
+retire the call site first and the definition second.

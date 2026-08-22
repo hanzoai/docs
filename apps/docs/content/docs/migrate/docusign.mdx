@@ -1,0 +1,91 @@
+---
+title: DocuSign
+description: DocuSign collects legally binding signatures on a document. Here that is /v1/esign — 13 operations, a signing link that carries its own token, and an audit trail you can read.
+---
+
+DocuSign sends a document to people and collects their signatures. `/v1/esign`
+(13 operations) is the same sequence: create a document, add recipients and
+fields, send it, and read the audit trail when it is done.
+
+The shape that differs: **the signer's link is the credential.** A recipient does
+not have an account here. `GET /v1/esign/o/{org}/sign/{token}` is the whole
+session — the token names the org, the document and the recipient, and the
+signing routes carry no other authentication.
+
+## Nouns
+
+| DocuSign | Hanzo |
+|---|---|
+| Account | Your org, taken from the validated key |
+| Envelope | Document — `POST /v1/esign/documents` |
+| Document (inside an envelope) | The document itself. One per envelope |
+| Recipient / Signer | `POST /v1/esign/documents/{id}/recipients` |
+| Tab (SignHere, DateSigned, Text) | Field — `POST /v1/esign/documents/{id}/fields` |
+| Routing order | `order` on the recipient |
+| Send envelope | `POST /v1/esign/documents/{id}/send` |
+| Signing ceremony URL | `GET /v1/esign/o/{org}/sign/{token}` |
+| Certificate of completion | `GET /v1/esign/documents/{id}/audit` |
+| Completed PDF | `GET /v1/esign/documents/{id}/download` |
+| Decline to sign | `POST /v1/esign/o/{org}/sign/{token}/reject` |
+
+## The call
+
+DocuSign, creating and sending:
+
+```bash
+curl -sS -X POST \
+  "https://demo.docusign.net/restapi/v2.1/accounts/$ACCT/envelopes" \
+  -H "Authorization: Bearer $DS_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"emailSubject":"Please sign","status":"sent","documents":[…],"recipients":{…}}'
+```
+
+Hanzo — the same thing, as four calls that each do one thing:
+
+```bash
+# 1. the document (the body is the file itself)
+ID=$(curl -sS -X POST https://api.hanzo.ai/v1/esign/documents \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  --data-binary @contract.pdf | jq -r .id)
+
+# 2. who signs it
+curl -sS -X POST "https://api.hanzo.ai/v1/esign/documents/$ID/recipients" \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"signer@example.com","name":"A Signer","order":1}'
+
+# 3. where they sign
+curl -sS -X POST "https://api.hanzo.ai/v1/esign/documents/$ID/fields" \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"kind":"signature","page":1,"x":120,"y":640}'
+
+# 4. send
+curl -sS -X POST "https://api.hanzo.ai/v1/esign/documents/$ID/send" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+A field's page and coordinates are the caller's numbers, kept as given — the
+route does not round them, so a template that positions fields fractionally
+ports without drift.
+
+## What does not carry
+
+**No templates.** DocuSign templates hold recipients, tabs and routing so an
+envelope can be created from one. There is no template noun here. Keep the
+field list in your own code and post it per document — which is what a template
+is, minus the copy that goes stale.
+
+**No bulk send.** One document, one set of recipients. A hundred contracts is a
+hundred sequences, which is a loop rather than a feature.
+
+**No embedded signing ceremony.** DocuSign's JS embeds the ceremony in your page
+with a recipient view URL. The signing link here is a page we serve.
+
+**No identity verification, SMS auth or access codes.** The token in the link is
+the authentication. If you need to prove who held it, that is your flow before
+you hand it over.
+
+**No connect webhooks yet.** DocuSign pushes envelope events to a listener. Poll
+`GET /v1/esign/documents/{id}` for status, or subscribe on `/v1/webhook` if the
+event you need is already published there.

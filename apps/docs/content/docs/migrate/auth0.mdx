@@ -1,0 +1,98 @@
+---
+title: Auth0
+description: Auth0 is the identity provider your app redirects to. Here that is /v1/iam — 159 operations, OIDC end to end, and the org is a first-class noun rather than an add-on.
+---
+
+Auth0 authenticates a person and hands your app a token. `/v1/iam` (159
+operations) is the same job: an OIDC provider with `authorize`, `token`,
+`userinfo`, `introspect` and `revoke` at the addresses the spec names them, plus
+the users, orgs, roles and applications behind them.
+
+The difference worth knowing before you port anything: **the organization is not
+an upgrade here.** Auth0 sells Organizations as a tier on top of tenants. In
+Hanzo IAM the org is the tenant — `owner` is a column on every user, and every
+other Hanzo capability scopes on that same value.
+
+## Nouns
+
+| Auth0 | Hanzo |
+|---|---|
+| Tenant | Nothing. The deployment is the tenant boundary |
+| Organization | Org — `/v1/iam/organizations`, addressed `{owner}/{name}` |
+| Application (SPA, M2M, Regular Web) | Application — `/v1/iam/applications` |
+| User | User — `/v1/iam/users`, addressed `{owner}/{name}` |
+| Connection (database, social, enterprise) | A provider on the application |
+| Role, Permission | `/v1/iam/roles`, `/v1/iam/permissions` — both `{owner}/{name}` |
+| Rule / Action / Hook | Nothing. See below |
+| Management API token | The same bearer as everything else |
+| `/oauth/token` | `POST /v1/iam/oauth/token` |
+| `/userinfo` | `GET /v1/iam/oauth/userinfo` |
+| `/.well-known/openid-configuration` | The same path, under `/v1/iam` |
+| SCIM (Enterprise) | `/v1/iam/scim/v2/Users` — five operations, not a tier |
+
+`{owner}/{name}` is the shape of every identity address: the org, then the
+thing. It is why a user and an org can share a name without colliding, and why
+no request needs an org field — the address carries it.
+
+## The call
+
+Auth0, exchanging client credentials:
+
+```bash
+curl -sS --request POST \
+  --url https://YOUR_TENANT.auth0.com/oauth/token \
+  --header 'content-type: application/json' \
+  --data '{
+    "client_id": "abc123",
+    "client_secret": "s3cr3t",
+    "audience": "https://api.example.com",
+    "grant_type": "client_credentials"
+  }'
+```
+
+Hanzo:
+
+```bash
+curl -sS -X POST https://hanzo.id/v1/iam/oauth/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=client_credentials' \
+  -d 'client_id=abc123' \
+  -d 'client_secret=s3cr3t'
+```
+
+Form-encoded, because that is what RFC 6749 §4.4.2 specifies and what every OIDC
+client library already sends. The `audience` is the client id: a token is minted
+for the application that asked for it, so there is no second identifier to
+register and keep in step.
+
+Listing users in an org:
+
+```bash
+curl -sS "https://hanzo.id/v1/iam/users?owner=acme" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## What does not carry
+
+**No Rules, Actions or Hooks.** Auth0 runs your JavaScript inside the login
+transaction — to add claims, deny a sign-in, or call out mid-flow. Nothing here
+executes customer code during authentication, and that is deliberate: a login
+that can run arbitrary code is a login that can be made to hang. Post-login work
+belongs in your own handler, or in `/v1/auto` where it can fail without taking
+the sign-in with it.
+
+**No Universal Login page builder.** The hosted login page is
+[hanzo.id](https://hanzo.id) and it is branded by domain, not by a template you
+edit in a dashboard. A brand surface is configuration in the deployment.
+
+**Lock and the Auth0 SDKs do not port.** Use any standards-compliant OIDC
+client against the discovery document; `@hanzo/iam` is the one we publish.
+
+**No log streams or anomaly detection.** Auth0 ships sign-in telemetry to a
+SIEM and scores attempts. Sign-in events land on the ordinary audit trail
+(`/v1/audit`), and the risk decision is `/v1/risk` — a separate capability with
+its own vocabulary, not a toggle inside identity.
+
+**Migration is a write, not an import.** There is no password-hash import
+endpoint. `POST /v1/iam/admin/users/upsert` is idempotent and takes a user at a
+time; a bulk export from Auth0 becomes a loop against it.
