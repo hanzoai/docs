@@ -61,6 +61,31 @@ function listed(dir: string): string[] | null {
   }
 }
 
+/**
+ * Pages the root meta.json says are OUT of the sidebar on purpose.
+ *
+ * A page can be published, reachable by link, and deliberately absent from the
+ * rail — enso, games and proof-of-ai are, by the product owner. Without a way to
+ * SAY that, the only two options are a sidebar entry nobody wanted or a gate red
+ * forever, and the second is what happened: the decision was written into
+ * meta.json and this gate could not read it, so it went on refusing every build
+ * for three pages whose absence was the point.
+ *
+ * It is not an escape hatch for an orphan. The block is in the same file as
+ * `pages`, so leaving a page out and declaring it out are one edit apart and a
+ * reader of the sidebar sees both.
+ */
+function excused(dir: string): Set<string> {
+  const file = path.join(dir, 'meta.json');
+  if (!fs.existsSync(file)) return new Set();
+  try {
+    const pages = JSON.parse(fs.readFileSync(file, 'utf8'))?.unlisted?.pages;
+    return new Set(Array.isArray(pages) ? pages.filter((p: unknown) => typeof p === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
 /** Whether a directory holds any page at all, at any depth. */
 function routes(dir: string): boolean {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -110,7 +135,8 @@ export function checkRoutes(): Routes {
     if (meta && !rel.startsWith('projects')) {
       if (dir === CONTENT) {
         const named = new Set(meta);
-        for (const name of here) if (!named.has(name)) unlisted.push(name);
+        const out = excused(dir);
+        for (const name of here) if (!named.has(name) && !out.has(name)) unlisted.push(name);
       }
       // Dangling is measured against what EXISTS, not against what routes. A
       // submodule that a checkout did not recurse into is an empty directory,

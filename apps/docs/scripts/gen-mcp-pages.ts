@@ -270,17 +270,49 @@ const fieldsOf = (schema: any, con: Map<string, Constraint> = new Map()): Field[
     });
 };
 
+/**
+ * A LEGEND is a description that is really one line per value — what the door
+ * publishes for a grouped tool's `op`, where each line is `name — what it does`.
+ *
+ * A table cell cannot hold it. Markdown has no line break inside one, so `text`
+ * folds the newlines away and twelve operations arrive as a single run-on
+ * sentence: "create_chat — Implements the … create_chat_completion — Implements
+ * the …". The door's data was right the whole time; flattening it is what made
+ * the one field a reader most needs unreadable.
+ *
+ * Two or more lines that all carry the separator is the shape, and nothing else
+ * is: a prose description that happens to wrap keeps its cell.
+ */
+const legend = (d: string): string[] => {
+  const lines = String(d ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
+  return lines.length > 1 && lines.every((l) => l.includes(' — ')) ? lines : [];
+};
+
 function fieldTable(fields: Field[]): string[] {
-  return [
+  const out = [
     '| Field | Type | Required | Default | Values | Description |',
     '|---|---|---|---|---|---|',
-    ...fields.map(
-      (f) =>
-        `| \`${code(f.name)}\` | \`${code(f.type)}\` | ${f.required ? '**yes**' : '—'} | ${
-          f.def ? `\`${code(f.def)}\`` : '—'
-        } | ${f.values || '—'} | ${text(f.description) || '—'} |`,
-    ),
+    ...fields.map((f) => {
+      // A legend's cell points AT the list rather than repeating a line of it,
+      // so the table stays a table and the values stay readable.
+      const d = legend(f.description).length
+        ? `one of the operations below`
+        : text(f.description) || '—';
+      return `| \`${code(f.name)}\` | \`${code(f.type)}\` | ${f.required ? '**yes**' : '—'} | ${
+        f.def ? `\`${code(f.def)}\`` : '—'
+      } | ${f.values || '—'} | ${d} |`;
+    }),
   ];
+  for (const f of fields) {
+    const lines = legend(f.description);
+    if (!lines.length) continue;
+    out.push('', `**\`${code(f.name)}\`** — what each one does:`, '');
+    for (const l of lines) {
+      const at = l.indexOf(' — ');
+      out.push(`- \`${code(l.slice(0, at))}\` — ${text(l.slice(at + 3))}`);
+    }
+  }
+  return out;
 }
 
 /**
