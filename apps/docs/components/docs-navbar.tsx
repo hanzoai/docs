@@ -7,6 +7,7 @@ import { cn } from '@/lib/cn';
 import { DocsNavLinks } from '@/components/docs-nav-links';
 import { OrgBadge } from '@/components/org-badge';
 import { NavAccount } from '@/components/sidebar-account';
+import { AgentActions } from '@/components/agent-actions';
 
 // The top bar on doc pages.
 //
@@ -102,6 +103,11 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
             out of the bar between 768 and 805px. A column can afford a long
             label; this row carries the short one instead, and only when the rail
             is not on screen to carry either. */}
+        {/* One control for "hand this page to an agent", derived from the
+            pathname so it works on every page. It replaced a Copy Markdown
+            button and an Open menu buried under the title, plus a Copy prompt
+            that existed only on the front page. */}
+        <AgentActions />
         <OrgBadge />
         {/* Shown exactly where the rail is not showing it: below md the rail is
             a drawer, and on desktop only while it is collapsed. Everywhere else

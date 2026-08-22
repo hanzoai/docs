@@ -5,11 +5,10 @@ import { Callout } from '@hanzo/docs-base-ui/components/callout';
 import { TypeTable } from '@hanzo/docs-base-ui/components/type-table';
 import * as Preview from '@/components/preview';
 import { createMetadata } from '@/lib/metadata';
-import { getPageMarkdownUrl, source } from '@/lib/source';
+import { source } from '@/lib/source';
 import { Wrapper } from '@/components/preview/wrapper';
 import { Mermaid } from '@/components/mdx/mermaid';
 import { PageFeedback, PageFeedbackBlock } from '@/components/feedback';
-import { owner, repo } from '@/lib/github';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@hanzo/docs-base-ui/components/ui/hover-card';
 import Link from '@hanzo/docs-core/link';
 import { findSiblings } from '@hanzo/docs-core/page-tree';
@@ -22,8 +21,6 @@ import {
   DocsBody,
   DocsPage,
   PageLastUpdate,
-  MarkdownCopyButton,
-  ViewOptionsPopover,
 } from '@hanzo/docs-base-ui/layouts/docs/page';
 import { NotFound } from '@/components/layouts/not-found';
 import { MdxErrorBoundary } from '@/components/mdx-error-boundary';
@@ -63,13 +60,10 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
     >
       <h1 className="text-[1.75em] font-semibold">{page.data.title}</h1>
       <p className="text-lg text-fd-muted-foreground mb-2">{page.data.description}</p>
-      <div className="flex flex-row flex-wrap gap-2 items-center border-b pb-6">
-        <MarkdownCopyButton markdownUrl={getPageMarkdownUrl(page).url} />
-        <ViewOptionsPopover
-          markdownUrl={getPageMarkdownUrl(page).url}
-          githubUrl={`https://github.com/${owner}/${repo}/blob/dev/apps/docs/content/docs/${page.path}`}
-        />
-      </div>
+      {/* The page actions moved to the top bar as one control (AgentActions):
+          same three things, reachable from every page rather than only from
+          under a title, and one row of chrome instead of two. */}
+      <div className="border-b pb-6" />
       <div className="prose flex-1 text-fd-foreground/90">
         {page.data.preview && <PreviewRenderer preview={page.data.preview} />}
         <MdxErrorBoundary>
