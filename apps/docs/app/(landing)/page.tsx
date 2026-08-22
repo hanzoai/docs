@@ -26,6 +26,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@hanzo/docs-base-ui/components/ui/card';
+import { Grid } from '@hanzo/ui/primitives/Grid';
+import { HeroField } from '@/components/hero-field';
 import { CodeBlock } from '@/components/code-block';
 
 /* -- The nine domains -- category-first, mirrors the console shell ---------- */
@@ -143,7 +145,12 @@ export default function Page() {
     <main className="[grid-area:main] min-w-0 pb-6 md:pb-12">
       {/* -- Hero ---------------------------------------------------------- */}
       <section className="relative flex flex-col items-center text-center mx-auto w-full max-w-5xl px-6 pt-24 pb-16 md:pt-36 md:pb-24">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_600px_300px_at_50%_0%,rgba(255,255,255,0.04),transparent_70%)]" />
+        {/* The atmosphere behind the headline, as dots rather than a gradient —
+            the halftone IS the mark, and a gradient carries none of it. `fade`
+            dissolves the canvas rectangle on both axes so the field ends in the
+            page instead of on an edge you can see. It is its own client island
+            because its shape is a function; see components/hero-field.tsx. */}
+        <HeroField />
 
         {/* Enso first. The model is the reason to choose the platform; a
             capability count is the reason to choose nothing. */}
@@ -158,8 +165,13 @@ export default function Page() {
           <ArrowRight className="size-3.5" />
         </Link>
 
-        <h1 className="relative text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.05]">
-          <span className="text-white">Build anything<br className="hidden sm:block" /> with Hanzo.</span>
+        {/* Display optics, measured off hanzo.ai: leading 1.0 and tracking
+            -0.025em are most of why that type reads as SET rather than merely
+            large — at display size the default 1.05 opens a gap the eye reads as
+            two lines instead of one block. The ink is #e5e5e5, not #fff: pure
+            white halates against a near-black ground, thickening the stems. */}
+        <h1 className="relative text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-none">
+          <span className="text-[#e5e5e5]">Build anything<br className="hidden sm:block" /> with Hanzo.</span>
         </h1>
         <p className="relative mt-5 max-w-xl text-neutral-300 text-lg md:text-xl leading-relaxed">
           Every model. Every tool. One key. Start in the browser, ship from your
@@ -186,11 +198,20 @@ export default function Page() {
             the one they keep. Replaces the stats bar: 67 / 436 / 600+ / 7 asked a
             reader to be impressed before they knew what the thing was, and the
             counts went stale the moment a service shipped. */}
-        {/* Three across at `sm`, where there is no sidebar yet, and again from
-            `lg`. Between those the sidebar has appeared but the viewport has not
-            grown to pay for it: at 768 the column is 500px and a third of it put
-            "Build with App" on three lines. Stacked is the honest layout there. */}
-        <div className="relative mt-12 grid w-full max-w-4xl gap-4 sm:grid-cols-3 md:grid-cols-1 lg:grid-cols-3">
+        {/* The track floor is the whole responsive story: a column never goes
+            below 260px, and there are never more than three. Breakpoints cannot
+            express this, which is why the three they replaced read 3 → 1 → 3 —
+            at 768 the sidebar has appeared but the viewport has not grown to pay
+            for it, so a viewport query says "wide" while the column is 500px and
+            a third of it put "Build with App" on three lines. `auto-fill`
+            measures the COLUMN, so the sidebar is simply part of the arithmetic
+            and the row is right at every width without being told about any. */}
+        <Grid
+          min={260}
+          max={3}
+          gap={16}
+          style={{ position: 'relative', marginTop: 48, width: '100%', maxWidth: 896 }}
+        >
           {[
             {
               eyebrow: 'No code',
@@ -228,7 +249,7 @@ export default function Page() {
               <span className="text-sm leading-relaxed text-neutral-300">{d.body}</span>
             </Link>
           ))}
-        </div>
+        </Grid>
 
       </section>
 
@@ -285,7 +306,11 @@ print(response.choices[0].message.content)`}
           <p className="text-neutral-300 text-sm mb-8">
             Every capability has one name and one route. Browse by domain — click any card to go deep.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {/* 220, not 240: the column at 768 is 457px, and 240 needs 492 for a
+              second track, so a 40px difference in one number is the whole gap
+              between 2-up and 1-up there. Measured at the three real container
+              widths — 342 / 457 / 960 — this gives 1 / 2 / 3. */}
+          <Grid min={220} max={3} gap={12}>
             {domains.map((item) => {
               const isExternal = !!(item as { external?: boolean }).external;
               const linkProps = isExternal
@@ -334,7 +359,7 @@ print(response.choices[0].message.content)`}
                 </Card>
               );
             })}
-          </div>
+          </Grid>
         </section>
 
         {/* -- Developer Tools --------------------------------------------- */}
