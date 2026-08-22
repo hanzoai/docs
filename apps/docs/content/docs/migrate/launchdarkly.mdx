@@ -77,9 +77,11 @@ a cache cannot disagree with the server about a subject it has already seen.
 **No flag prerequisites.** LaunchDarkly lets one flag gate another. Definitions
 here are flat. Compose them in your own code, where the reader can see it.
 
-**No scheduled changes or approval workflows.** A definition is written by whoever
-holds the key. Change control is your deploy pipeline and the activity log, not a
-review queue inside the flag service.
+**No approval queue inside the flag service.** A definition is written by whoever
+holds the key; change control is your deploy pipeline and `GET /v1/flags/activity`.
+A change that should happen later is a job — `/v1/tasks` is a durable engine and
+outlives any one deploy — rather than a scheduled-change feature bolted onto the
+flag.
 
 **No `/sdk/goals` or client-side experimentation bundle.** Measurement is
 `/v1/experiment`, which reads outcomes from analytics rather than from a
