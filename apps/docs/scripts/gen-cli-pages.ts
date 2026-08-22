@@ -60,11 +60,7 @@ function renderGroup(g: Group, doc: Document): string {
   const L: string[] = [];
   L.push('---');
   L.push(`title: ${yamlString(g.title)}`);
-  L.push(
-    `description: ${yamlString(
-      `${g.rows.length} \`hanzo\` commands for ${g.title}, each calling one operation on api.hanzo.ai.`,
-    )}`,
-  );
+  L.push(`description: ${yamlString(`The \`hanzo ${g.name}\` commands.`)}`);
   L.push('---');
   L.push('');
   if (g.description) {
@@ -75,25 +71,45 @@ function renderGroup(g: Group, doc: Document): string {
   // document has since swept. Link only where a page exists; a group whose name
   // resolves to nothing gets the count and no dead link.
   const ref = canonical(doc, g.name);
-  L.push(
-    `\`${g.rows.length}\` command${g.rows.length === 1 ? '' : 's'}` +
-      (ref ? ` · [API reference →](/docs/openapi/${ref})` : ''),
-  );
-  L.push('');
-  L.push('| Command | Calls | What it does |');
-  L.push('|---|---|---|');
+  if (ref) {
+    L.push(`[API reference →](/docs/openapi/${ref})`);
+    L.push('');
+  }
+
+  // Grouped by the NOUN the command acts on, nouns and commands both in
+  // alphabetical order. The rows arrive in the order the document happens to
+  // list its operations, which is neither, so a reader scanning for "the one
+  // that downloads a document" had to read all of them.
+  //
+  // The HTTP route is not a column. It is how the command is implemented, not
+  // how it is used, and repeating it per row made the widest column in the
+  // table the one a CLI reader never needs. The reference is linked once above.
+  const byNoun = new Map<string, { one: string; what: string }[]>();
   for (const { op, command } of g.rows) {
     // The multi-flag form breaks a command across lines for a code block; a
-    // table cell needs the one-line spelling.
+    // table row needs the one-line spelling.
     const one = command.replace(/\s*\\\n\s*/g, ' ');
-    L.push(
-      `| \`${one.replace(/\|/g, '\\|')}\` | [\`${op.method.toUpperCase()} ${op.path.replace(
-        /\|/g,
-        '\\|',
-      )}\`](${opHref(op)}) | ${text(firstSentence(op.summary || op.description, 120))} |`,
-    );
+    // `hanzo <capability> <noun> <verb> …` — the noun is the segment after the
+    // capability, and a command with none acts on the capability itself.
+    const parts = one.split(/\s+/).slice(2);
+    const noun = parts.length > 1 ? parts[0] : '';
+    const list = byNoun.get(noun) ?? [];
+    list.push({ one, what: text(firstSentence(op.summary || op.description, 120)) });
+    byNoun.set(noun, list);
   }
-  L.push('');
+
+  for (const noun of [...byNoun.keys()].sort()) {
+    if (noun) {
+      L.push(`### ${noun}`);
+      L.push('');
+    }
+    L.push('| Command | What it does |');
+    L.push('|---|---|');
+    for (const r of byNoun.get(noun)!.sort((a, b) => a.one.localeCompare(b.one))) {
+      L.push(`| \`${r.one.replace(/\|/g, '\\|')}\` | ${r.what} |`);
+    }
+    L.push('');
+  }
   return L.join('\n');
 }
 
