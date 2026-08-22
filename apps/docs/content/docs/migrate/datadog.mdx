@@ -1,0 +1,245 @@
+---
+title: Datadog
+description: Datadog collects metrics, traces and logs from one agent and gives each signal its own search API. Here that is /v1/o11y — 381 operations behind one query door — with /v1/event (12) for the browser and /v1/metrics (11) for an in-process store.
+---
+
+Datadog collects metrics, traces and logs from one agent, then gives each signal
+its own search endpoint, its own query dialect and its own retention.
+**`/v1/o11y`** (381 operations) covers that ground — ingestion keys, dashboards,
+alert rules, downtimes, notification channels, host and Kubernetes views, error
+tracking, log pipelines, retention — with **`/v1/event`** (12) for the browser tag
+and session replay, and **`/v1/metrics`** (11) for a store small enough to run
+inside the process it measures.
+
+The one difference that shapes the migration is the read. Datadog searches
+metrics at `/api/v1/query`, logs at `/api/v2/logs/events/search` and spans at
+`/api/v2/spans/events/search`: three requests, three dialects, and three time
+windows you keep in step by hand. `POST /v1/o11y/query_range` takes an array of
+queries over any signal, evaluates formulas across them where the data is, and
+answers one result for one window.
+
+## Start here
+
+Mint an API key to read with, mint an ingestion key for your exporter to write
+to, then read a series back.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. mint the ingestion key your OpenTelemetry exporter ships to
+curl -sS -X POST https://api.hanzo.ai/v1/o11y/gateway/ingestion_keys \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"otel-collector","tags":["prod"]}'
+
+# 3. read a series back — instant PromQL, the /api/v1/query swap
+curl -sS -G https://api.hanzo.ai/v1/o11y/query \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  --data-urlencode 'query=sum by (service_name) (rate(http_server_duration_count[5m]))'
+```
+
+Two keys now exist and they do opposite jobs: the bearer reads, the ingestion key
+writes, and every signal the exporter ships goes through the one key. Datadog
+wants `DD-API-KEY` and `DD-APPLICATION-KEY` together on every read plus a
+region-specific host; step 3 is one bearer against one host, and the org is a
+claim inside the key rather than a header you set.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/o11y` | Metrics, logs and traces in one store behind one query door, plus dashboards, alert rules, downtimes, notification channels, host and Kubernetes views | 381 |
+| `/v1/event` | Browser tag, session replay and the Sentry wire — pageviews, uncaught errors, custom events | 12 |
+| `/v1/metrics` | A write-and-query store small enough to run inside the process it measures | 11 |
+
+## Nouns
+
+### Reading telemetry
+
+| Datadog | Hanzo |
+|---|---|
+| `POST /api/v2/query/scalar` for one value | `GET /v1/o11y/query` — instant PromQL |
+| `GET /api/v1/query` over a range | `GET /v1/o11y/query_range` — PromQL with `start`, `end`, `step` |
+| `POST /api/v2/logs/events/search` | `POST /v1/o11y/query_range`, a builder query with `signal: logs` |
+| `POST /api/v2/spans/events/search` | `POST /v1/o11y/query_range` with `signal: traces` |
+| Three searches you correlate by hand | One `compositeQuery.queries` array, one window |
+| Formula inside a dashboard widget | A `builder_formula` over sibling queries, evaluated server-side |
+| Metrics Summary `GET /api/v1/metrics` | `GET /v1/o11y/metrics` — name, type, unit, temporality, monotonicity |
+| Cardinality inspection | `POST /v1/o11y/metrics/inspect`, `POST /v1/o11y/metrics/treemap` |
+| Metrics without Limits tag config | `POST /v1/o11y/metric_reduction_rules`, dry-run at `/preview` |
+| Facets behind a search bar | `GET /v1/o11y/fields/keys`, `GET /v1/o11y/filter_suggestions` |
+| CSV export from a notebook | `POST /v1/o11y/export_raw_data` — chunked, with a completion trailer |
+| Log index retention | `POST /v1/o11y/settings/ttl` — default TTL plus per-label rules |
+
+### Dashboards, monitors, paging
+
+| Datadog | Hanzo |
+|---|---|
+| `POST /api/v1/dashboard` | `POST /v1/o11y/dashboards` |
+| Clone, read-only mode, public URL | `POST .../{id}/clone`, `PUT .../{id}/lock`, `POST .../{id}/public` |
+| Saved view in an explorer | `POST /v1/o11y/explorer/views`, `POST /v1/o11y/dashboard_views` |
+| `POST /api/v1/monitor` | `POST /v1/o11y/rules` |
+| `POST /api/v1/monitor/validate` — syntax only | `POST /v1/o11y/rules/test` — answers how many series would alert |
+| Monitor status history | `GET /v1/o11y/rules/{id}/history/timeline`, with related logs and traces per entry |
+| Triggered monitors | `GET /v1/o11y/alerts` |
+| `POST /api/v2/downtime` | `POST /v1/o11y/downtime_schedules` |
+| A separate integration API per destination | One `POST /v1/o11y/channels`, nineteen receiver types from PagerDuty to Jira |
+| Send a test notification | `POST /v1/o11y/channels/test` |
+| Apdex settings per service | `POST /v1/o11y/settings/apdex` |
+
+### APM, hosts and ingestion
+
+| Datadog | Hanzo |
+|---|---|
+| APM service list | `POST /v1/o11y/services` — p99, average, call rate, error rate |
+| Service Map | `POST /v1/o11y/dependency_graph` — every parent-child edge with its own latency |
+| Resources and top endpoints | `POST /v1/o11y/service/top_operations` |
+| Trace search | `GET /v1/o11y/traces`, then `GET /v1/o11y/traces/{traceId}` |
+| Flame graph and waterfall | `POST /v1/o11y/traces/{traceId}/flamegraph`, `POST .../waterfall` |
+| Funnel over spans | `POST /v1/o11y/trace-funnels/new` |
+| Outgoing HTTP by domain | `POST /v1/o11y/third-party-apis/overview/list` |
+| `GET /api/v1/hosts` | `POST /v1/o11y/hosts/list`, `POST /v1/o11y/infra_monitoring/hosts` |
+| Kubernetes explorer | `POST /v1/o11y/infra_monitoring/pods` and ten sibling views |
+| AWS, GCP and Azure integrations | `POST /v1/o11y/cloud_integrations/{cloud_provider}/accounts` |
+| `DD_API_KEY` on the agent | `POST /v1/o11y/gateway/ingestion_keys`, per-signal caps at `POST .../{keyId}/limits` |
+| Log pipelines and processors | `POST /v1/o11y/logs/pipelines`, live tail at `GET /v1/o11y/logs/livetail` |
+| Usage and ingestion metering | `GET /v1/o11y/usage` |
+| Roles, users and service accounts | `POST /v1/o11y/roles`, `POST /v1/o11y/service_accounts` |
+
+### RUM, errors and LLM observability
+
+| Datadog | Hanzo |
+|---|---|
+| RUM browser SDK snippet | `GET /v1/event/tag.js` — autocaptures pageviews and uncaught errors |
+| `POST /api/v2/rum/events/search` for pageviews | `GET /v1/event/top`, `GET /v1/event/timeseries` |
+| Session Replay | `POST /v1/event/replay` — rrweb batches |
+| RUM error stream | `GET /v1/event/errors` |
+| Error Tracking issues | `GET /v1/o11y/errortracking/issues`, `GET /v1/o11y/sentinel/issues` |
+| Resolve, ignore, reopen, assign | `POST /v1/o11y/errortracking/issues/{id}` |
+| A vendor SDK per language | `POST /v1/event/{project}/envelope` takes the Sentry wire; repoint an existing DSN |
+| Custom event `POST /api/v1/events` | `POST /v1/event` — answers `{accepted, dropped}` totalling what was sent |
+| LLM Observability traces and spans | `GET /v1/o11y/llm/traces`, `GET /v1/o11y/llm/observations` |
+| LLM sessions and end users | `GET /v1/o11y/llm/sessions`, `GET /v1/o11y/llm/users` |
+| Evaluations and human feedback | `POST /v1/o11y/llm/scores`, `POST /v1/o11y/llm/annotation`, plus `/v1/eval` (16) |
+| Per-model cost mapping | `PUT /v1/o11y/llm_pricing_rules` |
+
+## The call
+
+The question is "what is checkout's error rate, and what did the logs say" over
+the last hour. Datadog:
+
+```bash
+# Metrics, on a host that encodes your region.
+curl -sS -G "https://api.datadoghq.com/api/v1/query" \
+  -H "DD-API-KEY: $DD_API_KEY" -H "DD-APPLICATION-KEY: $DD_APP_KEY" \
+  --data-urlencode "from=1755820800" --data-urlencode "to=1755824400" \
+  --data-urlencode "query=sum:trace.http.request.errors{service:checkout}.as_rate()"
+
+# Spans: a second dialect, a second endpoint, a window respelled.
+curl -sS -X POST "https://api.datadoghq.com/api/v2/spans/events/search" \
+  -H "DD-API-KEY: $DD_API_KEY" -H "DD-APPLICATION-KEY: $DD_APP_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"data":{"attributes":{"filter":{"query":"service:checkout status:error","from":"now-1h","to":"now"}}}}'
+
+# Logs: a third.
+curl -sS -X POST "https://api.datadoghq.com/api/v2/logs/events/search" \
+  -H "DD-API-KEY: $DD_API_KEY" -H "DD-APPLICATION-KEY: $DD_APP_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"filter":{"query":"service:checkout status:error","from":"now-1h","to":"now"}}'
+```
+
+Hanzo, one request:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/o11y/query_range \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  --data-binary @- <<'JSON'
+{
+  "schemaVersion": "v1",
+  "start": 1755820800000,
+  "end":   1755824400000,
+  "requestType": "time_series",
+  "compositeQuery": {
+    "queries": [
+      { "type": "builder_query", "spec": {
+          "name": "A", "signal": "traces", "stepInterval": "60s",
+          "aggregations": [{ "expression": "countIf(has_error = true)" }],
+          "filter": { "expression": "service.name = 'checkout'" },
+          "groupBy": [{ "fieldContext": "resource", "name": "service.name" }] } },
+      { "type": "builder_query", "spec": {
+          "name": "B", "signal": "traces", "stepInterval": "60s",
+          "aggregations": [{ "expression": "count()" }],
+          "filter": { "expression": "service.name = 'checkout'" },
+          "groupBy": [{ "fieldContext": "resource", "name": "service.name" }] } },
+      { "type": "builder_formula", "spec": {
+          "name": "error_rate", "expression": "A / B * 100" } },
+      { "type": "builder_query", "spec": {
+          "name": "C", "signal": "logs", "stepInterval": "60s",
+          "aggregations": [{ "alias": "log_errors", "expression": "count()" }],
+          "filter": { "expression": "severity_text = 'ERROR' AND service.name = 'checkout'" },
+          "groupBy": [{ "fieldContext": "resource", "name": "service.name" }] } }
+    ]
+  }
+}
+JSON
+```
+
+One request because the signals share one field catalog: a builder query names a
+`signal` and filters with an expression over OpenTelemetry attribute names, so
+`service.name` means the same thing to a span, a log record and a metric label.
+`error_rate` is divided where the data is, over one `start` and one `end`, rather
+than by a client reconciling two responses that resolved their own windows. There
+is no site host and no second application key: the org is the claim in the bearer,
+and `GET /v1/o11y/traces` is explicit that the tenant is the validated principal
+and never an input — there is no field to point at another tenant. Send the same
+body to `POST /v1/o11y/query_range/preview` and it renders the statements it would
+run without running them, which is how a generated query gets checked before it
+costs anything.
+
+## What does not carry
+
+**Query syntax is not portable, and it is the migration.** Datadog's monitor query
+(`avg(last_5m):sum:trace.http.request.errors{env:prod}.as_rate() > 0.05`), its log
+search syntax and its span search syntax are three vendor dialects, and nothing
+here parses any of them. Filters are expressions over OpenTelemetry attribute
+names, metrics are PromQL or a builder aggregation, and raw reads are SQL against
+the datastore. Every monitor, dashboard widget and saved search is rewritten by
+hand. Size that before anything else.
+
+**No synthetic tests.** Datadog runs scheduled browser and API checks from managed
+locations. Nothing here dials your endpoint from outside — `GET /v1/o11y/availability`
+and `GET /v1/o11y/status` report Hanzo's own fleet, not yours. The port is a
+schedule on `/v1/tasks` (5) that calls your endpoint and writes the result through
+`POST /v1/metrics/write`, then an alert rule on that series.
+
+**No stored SLO.** `/api/v1/slo` holds a target, a window and an error budget as
+state you read back, and `/api/v1/slo/{id}/history` reads the burn.
+`POST /v1/o11y/settings/apdex` stores a per-service threshold and the status codes
+excluded from it; everything past that is a query. You compute the budget from
+`POST /v1/o11y/query_range` each time rather than reading it off an objective.
+
+**Incidents live in the tool that pages you.** Datadog's `/api/v2/incidents` carries
+state, severity, a timeline and a postmortem. Here a rule fires into a channel and
+the incident record belongs to incident.io, PagerDuty, Opsgenie or Jira — all four
+are receiver types on `POST /v1/o11y/channels`. `GET /v1/o11y/summary` reports
+Hanzo's own ongoing incidents from fleet health probes, which is a different fact
+about a different system.
+
+**The flame graph is spans, not stacks.** `POST /v1/o11y/traces/{traceId}/flamegraph`
+lays out one trace's spans bucketed by depth. Datadog's Continuous Profiler samples
+CPU and heap inside the running process and has no counterpart here.
+`PUT /v1/o11y/zeus/profiles` records a deployment's onboarding profile despite the
+name, and is not it.
+
+**What you did not label, you cannot group by.** Datadog's agent decorates
+everything it ships with host tags and unified service tags. Grouping here is over
+the resource and span attributes the exporter actually set — a `groupBy` of
+`fieldContext: resource` and `name: service.name` needs the resource to carry it.
+`GET /v1/o11y/logs/fields` and `GET /v1/o11y/traces/fields` show which fields are
+materialized columns and let you promote one; an unpromoted field is still
+queryable and still a scan.

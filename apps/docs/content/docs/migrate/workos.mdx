@@ -1,0 +1,249 @@
+---
+title: WorkOS
+description: WorkOS sells enterprise readiness as four products — SSO, SCIM, audit logs, an admin portal — wired to one organization. Here they are one capability, /v1/iam (159 operations), addressing one user record.
+---
+
+WorkOS makes an app enterprise-ready: SAML and OIDC sign-on, SCIM directory
+sync, an audit trail, and a hosted portal your customer's IT admin configures it
+all in. `/v1/iam` (159 operations) is all four, with `/v1/audit` (1) for the
+tamper-evident trail and `/v1/authz` (3) for a fine-grained check.
+
+The difference worth knowing before you port anything: **WorkOS gives one human
+three identifiers.** An SSO `prof_…`, a directory `directory_user_…`, an AuthKit
+`user_…`, and you reconcile them on email. Here `{owner}/{name}` is the whole
+address, and `/v1/iam/scim/v2/Users/{owner}/{name}` and
+`/v1/iam/users/{owner}/{name}` are the same person at the same coordinates — the
+directory writes what OIDC authenticates.
+
+## Start here
+
+Mint a key, attach a customer's identity provider, then read what their login
+screen should draw.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. attach the IdP — WorkOS's Connection, metadata XML taken verbatim
+curl -sS -X POST https://hanzo.id/v1/iam/providers \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "owner": "acme",
+    "name": "okta",
+    "displayName": "Acme Okta",
+    "issuerUrl": "https://acme.okta.com",
+    "metadata": "<EntityDescriptor ...>"
+  }'
+
+# 3. read the sign-in methods one application has switched on
+curl -sS "https://hanzo.id/v1/iam/auth/methods?clientId=$CLIENT_ID" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+The provider's address is `acme/okta` — the org plus the name you chose — so step
+2 hands back no identifier you have to keep. Step 3 is what a login screen reads
+before anyone has signed in, and the provider from step 2 joins that answer when
+you switch it on for that application, not when a URL carries `connection=`.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/iam` | SAML and OIDC sign-on, SCIM provisioning, sessions, MFA, orgs and applications — WorkOS's four products at one address | 159 |
+| `/v1/audit` | The tamper-evident trail, filtered and paged, answered synchronously — no export job, no CSV | 1 |
+| `/v1/authz` | The question WorkOS FGA answers: subject, object and action in, allow or deny out | 3 |
+
+## Nouns
+
+### Sign-on
+
+| WorkOS | Hanzo |
+|---|---|
+| Organization (`org_…`) | Org — `/v1/iam/organizations`, addressed `{owner}/{name}` |
+| Connection (`conn_…`, SAML or OIDC) | Provider — `/v1/iam/providers`, switched on per application |
+| IdP metadata XML, entity id | `metadata` and `issuerUrl` on the provider, taken verbatim |
+| ACS URL, NameID, attribute map | `samlReplyUrl`, `useEmailAsSamlNameId`, `samlAttributes` on the application |
+| `GET /sso/authorize` | `GET /v1/iam/oauth/authorize` |
+| `POST /sso/token` | `POST /v1/iam/oauth/token` |
+| Profile (`prof_…`) | `GET /v1/iam/oauth/userinfo`, mapped through the provider's `userMapping` |
+| Client id and secret | `/v1/iam/applications` — one per product your people sign in to |
+| Which buttons the login page draws | `GET /v1/iam/auth/methods?clientId=…`, read before anyone signs in |
+| Certificate rotation | `/v1/iam/certs` — the name you register is the JWKS `kid` |
+| API key, test and live | The same bearer as everything else — `/v1/iam/keys` mints it |
+
+### Directory
+
+| WorkOS | Hanzo |
+|---|---|
+| Directory (`directory_…`) | Nothing. SCIM writes the org's own users |
+| Directory User (`directory_user_…`) | `/v1/iam/scim/v2/Users/{owner}/{name}` — the user's own address |
+| `GET /directory_users` | `GET /v1/iam/scim/v2/Users` |
+| Provisioning a new hire | `POST /v1/iam/scim/v2/Users` |
+| Deprovisioning | `DELETE /v1/iam/scim/v2/Users/{owner}/{name}` — sessions stop at once |
+| SCIM discovery | `/v1/iam/scim/v2/ServiceProviderConfig`, `/Schemas`, `/ResourceTypes` |
+| Directory Group | Nothing. See below |
+| Organization membership | `/v1/iam/memberships` |
+| Invitation | `/v1/iam/invitations` |
+| Roles and permissions | `/v1/iam/roles`, `/v1/iam/permissions` |
+| `POST /fga/v1/check` | `POST /v1/authz/check` — body `{sub, obj, act}`, one allow or deny |
+
+Eleven SCIM operations across seven addresses, not an enterprise tier. A `PUT`
+replaces only the attributes SCIM describes; multi-factor enrolment is not one of
+them, so a routine sync from an IdP cannot quietly strip somebody's second factor
+or bring a deleted account back.
+
+### Audit and events
+
+| WorkOS | Hanzo |
+|---|---|
+| `POST /audit_logs/events` | `POST /v1/iam/audit-logs` |
+| `POST /audit_logs/exports`, then poll | `GET /v1/audit` — one call, filtered, paged, with the matched total |
+| Audit log schema, declared first | Nothing to declare. The action is a string on the row |
+| Actor, target, context | `sub`, `resource`, `resourceId`, `sourceIp`, `userAgent`, `requestId` |
+| Denied attempts | `result` is `success`, `deny` or `error`, all in the one trail |
+| `GET /events` polling | `GET /v1/webhook/{id}/deliveries` — every attempt, status and duration |
+| Webhook endpoint, dashboard-only | `/v1/webhook` (8) — create, rotate the secret, send a test |
+| Log Streams to a SIEM | See below |
+
+### The rest
+
+| WorkOS | Hanzo |
+|---|---|
+| Admin Portal (`POST /portal/generate_link`) | console.hanzo.ai — their own admin, in their own org |
+| AuthKit hosted login | [hanzo.id](https://hanzo.id), branded by domain |
+| Magic Auth | `POST /v1/iam/send-verification-code`, then `POST /v1/iam/login` with the code |
+| MFA enrolment | `/v1/iam/mfa/setup/initiate`, then `/v1/iam/mfa/setup/enable` |
+| Passkeys | `/v1/iam/webauthn/signin/begin` and `/finish` |
+| Session revocation | `DELETE /v1/iam/sessions/{owner}/{name}/{application}` |
+| Impersonation | `POST /v1/iam/assume` — the token still names the operator |
+| M2M credentials | `/v1/iam/service-accounts` — the secret half is shown once |
+| Vault | `/v1/kms` (5) — sealed at rest, org taken from the key |
+| Radar bot signals | `/v1/risk` (11) — `POST /v1/risk/score`, against the org's own model |
+| The SOC 2 posture you show a customer | `/v1/trust` (17) and `/v1/compliance` (17) |
+
+## The call
+
+Connecting a customer's identity provider. WorkOS:
+
+```bash
+curl -sS -X POST https://api.workos.com/organizations \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Acme","domain_data":[{"domain":"acme.com","state":"verified"}]}'
+# -> {"id":"org_01H8..."}
+
+curl -sS -X POST https://api.workos.com/portal/generate_link \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"organization":"org_01H8...","intent":"sso"}'
+# -> a link that expires in five minutes
+
+curl -sS "https://api.workos.com/connections?organization_id=org_01H8..." \
+  -H "Authorization: Bearer $WORKOS_API_KEY"
+# -> {"data":[{"id":"conn_01H8...","state":"active"}]}
+```
+
+Three calls, and the third has no answer until somebody you do not employ finishes
+the second. You now hold `org_…`, `conn_…` and `client_…`, and every sign-in URL
+has to carry the right pair.
+
+Hanzo:
+
+```bash
+curl -sS -X POST https://hanzo.id/v1/iam/organizations \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"acme","displayName":"Acme"}'
+
+curl -sS -X POST https://hanzo.id/v1/iam/providers \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "owner": "acme",
+    "name": "okta",
+    "displayName": "Acme Okta",
+    "issuerUrl": "https://acme.okta.com",
+    "metadata": "<EntityDescriptor ...>"
+  }'
+```
+
+Two calls, both synchronous, and the provider's address is `acme/okta` — the org
+you just named plus the name you chose. There is no third identifier to store,
+because the address is the identifier. `metadata` takes the IdP's XML as it came,
+so nothing is transcribed field by field.
+
+Sign-in then starts the ordinary way, with no `connection=` on the URL:
+
+```bash
+curl -sS -i "https://hanzo.id/v1/iam/oauth/authorize?response_type=code&client_id=$CLIENT_ID&redirect_uri=https://app.example.com/callback"
+```
+
+Which IdPs a sign-in may use is a property of the application, so a login page
+reads `GET /v1/iam/auth/methods?clientId=…` and draws what is switched on.
+Onboarding a second customer changes no code and no URL.
+
+Reading the trail. WorkOS starts a job and collects it:
+
+```bash
+curl -sS -X POST https://api.workos.com/audit_logs/exports \
+  -H "Authorization: Bearer $WORKOS_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"organization_id":"org_01H8...","range_start":"2026-08-01T00:00:00Z","range_end":"2026-08-22T00:00:00Z"}'
+# -> {"id":"audit_log_export_01H8...","state":"pending","url":null}
+
+curl -sS https://api.workos.com/audit_logs/exports/audit_log_export_01H8... \
+  -H "Authorization: Bearer $WORKOS_API_KEY"
+# poll until state is "ready", then fetch the CSV at url
+```
+
+Hanzo answers it:
+
+```bash
+curl -sS "https://api.hanzo.ai/v1/audit?since=2026-08-01T00:00:00Z&result=deny&pageSize=50&p=1" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+There is no `organization_id` in that request. The org is the validated
+principal's, so a filter narrows the trail and has no way to widen it past the
+tenant. Every row carries `seq`, `hash` and `prevHash` — a SHA-256 over the row's
+own canonical JSON folded with its predecessor's — so a reader recomputes the
+chain and a deleted or reordered row breaks it at that point. That is why the
+answer is synchronous: there is nothing to assemble.
+
+## What does not carry
+
+**No `generate_link` handoff.** WorkOS mints a single-use URL with an `intent` —
+`sso`, `dsync`, `audit_logs` — good for five minutes, and you email it to somebody
+who has no account with you. Here the customer's admin has an account: invite them
+with `POST /v1/iam/invitations`, they sign in at hanzo.id and administer their own
+org in console.hanzo.ai. Better every day after the first, worse on the first.
+
+**No SCIM Groups.** The directory provisions people and only people:
+`/v1/iam/scim/v2/Users` with nothing beside it. WorkOS's `directory_group` and its
+membership pushes have no counterpart, so mapping an IdP group to access is a
+write you make against `/v1/iam/roles` after the sync rather than something the
+IdP drives.
+
+**Raw IdP attributes are not passed through.** `POST /sso/token` hands back a
+profile carrying `raw_attributes` — everything the assertion held, asked for or
+not. Claims here come from `GET /v1/iam/oauth/userinfo` through the provider's
+`userMapping`, so an attribute the mapping does not name never arrives. Enumerate
+what you actually read before you cut over.
+
+**No export job and no file.** `GET /v1/audit` pages JSON and answers now; nothing
+produces a CSV at a signed URL. A yearly archive is your loop over `p`, not a job
+you start and come back to.
+
+**No managed Log Streams.** WorkOS ships the trail into Datadog, Splunk or S3 for
+you. `/v1/webhook` pushes each event to a URL you own, signed HMAC-SHA256 and
+retried at 1s, 5s then 25s, with `GET /v1/webhook/{id}/deliveries` recording every
+attempt. You write the last hop.
+
+**Audit is two routes, not one.** `/v1/audit` is the platform trail: hash-chained,
+read-only, and the one you query. `/v1/iam/audit-logs` is the identity trail and
+takes a `POST` for entries your own systems raise. WorkOS has one `audit_logs`
+noun; port your emits to the second address and your reads to the first.

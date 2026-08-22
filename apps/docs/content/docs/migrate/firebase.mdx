@@ -1,0 +1,268 @@
+---
+title: Firebase
+description: Firebase is six products behind one project id — sign-in is /v1/iam (159 operations), the data is /v1/kv (6) and /v1/provisioning (28), files are /v1/s3 (6), code is /v1/functions (11), hosting is /v1/projects (27), and the project id stops being something you carry.
+---
+
+Firebase bundles authentication, a document store, object storage, functions,
+hosting and push behind one project and one web API key. Every one but push has
+an answer here, and they are separate capabilities rather than facets of a
+project: `/v1/iam` (159 operations) signs people in, `/v1/kv` (6) and
+`/v1/provisioning` (28) hold data, `/v1/s3` (6) holds files, `/v1/functions`
+(11) runs code, `/v1/projects` (27) and `/v1/platform` (37) serve it. The
+structural difference that costs the most work to port: Firebase names the
+project in every path and every config field, and here the tenant is derived
+from the validated key, so no request field can name one.
+
+## Start here
+
+Three calls put a document in storage, and none of them names a project.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. the collection — a bucket keeping 5 revisions of every key
+curl -sS -X POST https://api.hanzo.ai/v1/kv/rooms \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"history":5}'
+
+# 3. the document
+curl -sS -X PUT https://api.hanzo.ai/v1/kv/rooms/general \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"value":"{\"title\":\"General\",\"members\":12}"}'
+```
+
+The write answers with the revision it created, and `GET /v1/kv/rooms/general/history`
+reads it back beside every earlier one. Neither call carries a project id or a
+database name — `rooms` is your org's `rooms` because the key said so, which is
+most of what `firebaseConfig`'s eight fields were carrying.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/iam` | Signs people in, and holds the accounts, roles, providers, MFA and service accounts behind it | 159 |
+| `/v1/kv` | Buckets of versioned keys — the documents, with per-key revision history | 6 |
+| `/v1/projects` | Serves the built app — deployments, releases, custom domains | 27 |
+
+## Nouns
+
+### Sign-in
+
+Firebase Auth is the Identity Toolkit REST API plus an Admin SDK. It is
+`/v1/iam` here, and it is ordinary OpenID Connect.
+
+| Firebase | Hanzo |
+|---|---|
+| Project, and the project id in every path | Your org, taken from the validated key |
+| `accounts:signUp` | `POST /v1/iam/signup` |
+| `accounts:signInWithPassword` | `POST /v1/iam/login` — password compared against a stored hash, second factor asked for here |
+| `accounts:signInWithIdp` — Google, Apple, GitHub | `GET /v1/iam/oauth/authorize`, providers at `/v1/iam/providers` |
+| `securetoken.googleapis.com/v1/token` | `POST /v1/iam/oauth/token` — the same address as the code exchange |
+| `accounts:sendOobCode` — verify, reset | `POST /v1/iam/send-verification-code`, then `PUT /v1/iam/password` |
+| Admin SDK `createCustomToken` | `POST /v1/iam/issue-user-token` |
+| Admin SDK `verifyIdToken` | `GET /v1/iam/.well-known/jwks`, or `POST /v1/iam/oauth/introspect` |
+| Custom claims | Roles and permissions — `/v1/iam/roles`, `/v1/iam/permissions` |
+| Multi-factor enrolment | `POST /v1/iam/mfa/setup/initiate`, then `/v1/iam/mfa/setup/enable` |
+| Passkeys | `GET /v1/iam/webauthn/signin/begin`, `POST /v1/iam/webauthn/signin/finish` |
+| Identity Platform tenants | `/v1/iam/organizations` — the same primitive keys and billing scope to |
+| SAML and OIDC providers, SCIM | `/v1/iam/providers`, `/v1/iam/scim/v2/Users` |
+| The service account JSON file | `POST /v1/iam/service-accounts`, keys at `/v1/iam/service-accounts/{name}/keys` |
+
+### The data
+
+| Firebase | Hanzo |
+|---|---|
+| Firestore document | `PUT /v1/kv/{bucket}/{key}` — one bucket per collection, every write a revision |
+| Realtime Database node | The same bucket; `GET /v1/kv/{bucket}/{key}/history` reads the retained revisions |
+| `onSnapshot`, EventSource on a `.json` path | Watchers on the bus port `:4222`; fan out with `POST /v1/pubsub/publish` |
+| `documents:runQuery`, composite indexes | `POST /v1/index/indexes/{uid}/search` over `/v1/index` (17) |
+| A collection you want a real query language over | `POST /v1/provisioning/docdb` — your org's own instance, MongoDB wire protocol |
+| Data Connect (Postgres and GraphQL) | `POST /v1/provisioning/sql`, and `POST /v1/graph/graphql` |
+| Vector search extension | `POST /v1/provisioning/vector`, `POST /v1/embeddings` |
+| `firestore.rules` | `POST /v1/authz/check` — one subject, object and action, one allow or deny |
+| Point-in-time recovery | Per-key revision history — `GET /v1/kv/{bucket}/{key}/history` |
+| The do-everything app backend | Hanzo Base, the embedded engine that answers behind `/v1/base/health` |
+
+### Files, functions, hosting
+
+| Firebase | Hanzo |
+|---|---|
+| Cloud Storage bucket, `gs://` | `POST /v1/s3/buckets` — S3, so your existing client speaks it unchanged |
+| `POST /v0/b/{bucket}/o?name=` upload | `POST /v1/s3/buckets/{bucket}/objects` — mints a presigned PUT you upload to directly |
+| Listing a folder | `GET /v1/s3/buckets/{bucket}/objects?prefix=` |
+| `storage.rules` | `POST /v1/authz/check`, plus the presigned URL's own bucket, key and expiry |
+| A dedicated bucket you provision | `POST /v1/provisioning/s3` |
+| HTTPS function | `POST /v1/functions`, called at `POST /v1/functions/{name}/invoke` |
+| Function logs and invocations | `GET /v1/functions/{name}/logs`, `GET /v1/functions/{name}/invocations` |
+| `onSchedule` | `/v1/tasks` — a durable engine, not a property of a deployment |
+| `onMessagePublished` | `POST /v1/pubsub/publish`, with `POST /v1/auto/hooks/{source}/{event}` to run work off it |
+| Hosting, a static build | `/v1/projects` (27) — upload a directory, activate a release |
+| Hosting rewrites into a server | `/v1/platform` (37) — an app that is built and run |
+| Preview channel | `POST /v1/platform/projects/{project}/apps/{app}/preview` |
+| Hosting rollback | `POST /v1/projects/{slug}/releases/{release}/activate` |
+| Custom domain | `POST /v1/projects/{slug}/domains`, then `POST /v1/projects/{slug}/domains/{host}/verify` |
+
+Publishing a Hosting version is four calls against three resources — create the
+version, populate files, finalize, then release. The static plane here is two:
+`POST /v1/projects/{slug}/deployments` hands back an upload grant, and
+`POST /v1/projects/{slug}/deployments/{id}/complete` closes it.
+
+### Messaging and the rest of the console
+
+| Firebase | Hanzo |
+|---|---|
+| Cloud Messaging to a device token | Not here — see below |
+| Transactional mail and SMS | `POST /v1/notify/send` — the channel is a body field, provider credential read from KMS |
+| Reaching a team room | `POST /v1/channels/{channel}/send` — Slack, Discord, Teams, Telegram |
+| Remote Config | `PUT /v1/flags/defs/{key}`, decided at `POST /v1/flags/decide` |
+| A/B Testing | `/v1/experiment` (7) — `/v1/experiment/{id}/assign`, `/decide`, `/analyze` |
+| Google Analytics for Firebase | `/v1/event` (12), browser tag at `GET /v1/event/tag.js` |
+| Crashlytics | `GET /v1/o11y/errortracking/issues`, and `GET /v1/event/errors` |
+| Performance Monitoring | `/v1/o11y` (381) — dashboards, traces, alerts |
+| App Check | `/v1/gateway` (3) — the CORS allowlist, per-IP flood cap and rate ceiling in force |
+| Dynamic Links | Not here — `/v1/link` is AI provider-account linking, not short links |
+| Extensions | `/v1/integrations` (48) — connectors and the providers behind them |
+| Genkit, Vertex AI in Firebase | `/v1/ai` (272) — Zen models on our own inference, `POST /v1/chat/completions` |
+| Test Lab, somewhere to run code | `/v1/sandbox` (19), `POST /v1/exec` |
+| Firebase Console | console.hanzo.ai |
+
+## The call
+
+Firebase signs a person in at one host and refreshes them at another, with the
+web API key in the query string of both:
+
+```bash
+curl -sS -X POST \
+  "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=$FIREBASE_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"ada@acme.com","password":"s3cr3t","returnSecureToken":true}'
+
+curl -sS -X POST "https://securetoken.googleapis.com/v1/token?key=$FIREBASE_API_KEY" \
+  -d "grant_type=refresh_token&refresh_token=$REFRESH"
+```
+
+Hanzo, at one host, in the OpenID Connect grammar your library already has:
+
+```bash
+curl -sS https://api.hanzo.ai/v1/iam/.well-known/openid-configuration
+
+curl -sS -X POST https://api.hanzo.ai/v1/iam/oauth/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d grant_type=authorization_code \
+  -d "code=$CODE" -d "client_id=$CLIENT_ID" -d "code_verifier=$VERIFIER"
+
+curl -sS -X POST https://api.hanzo.ai/v1/iam/oauth/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d grant_type=refresh_token \
+  -d "refresh_token=$REFRESH" -d "client_id=$CLIENT_ID"
+```
+
+The `firebaseConfig` object holds eight values a client has to keep in step —
+API key, auth domain, project id, storage bucket, sender id, app id, database
+URL, measurement id. Here there is a client id and one host, and every other
+address is read out of the discovery document rather than pasted in. A refresh
+returns a new refresh token and retires the one you sent; present a retired one
+and the whole chain is revoked, so a stolen refresh token is worth one use.
+Tokens verify against `/v1/iam/.well-known/jwks`, which means no vendor admin
+SDK sits in your verification path.
+
+Writing one document. Firestore carries the project, the database and a type
+per field:
+
+```bash
+curl -sS -X PATCH \
+  "https://firestore.googleapis.com/v1/projects/$PROJECT/databases/(default)/documents/rooms/general" \
+  -H "Authorization: Bearer $ID_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"fields":{"title":{"stringValue":"General"},"members":{"integerValue":"12"}}}'
+```
+
+```bash
+curl -sS -X PUT https://api.hanzo.ai/v1/kv/rooms/general \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"value":"{\"title\":\"General\",\"members\":12}"}'
+```
+
+The project and the database are gone from the request because a bucket's
+physical name is derived from the validated org — there is no field in the body
+that could point at another tenant's `rooms`, so cross-tenant addressing is not
+refused, it is unwritable. The write answers with the revision it created and
+the earlier ones stay readable at `GET /v1/kv/rooms/general/history`.
+
+Config that changes behaviour. Remote Config is published once, then reaches a
+device when that device's own fetch interval elapses and something calls
+`activate()`:
+
+```bash
+curl -sS -X PUT \
+  "https://firebaseremoteconfig.googleapis.com/v1/projects/$PROJECT/remoteConfig" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" -H "If-Match: $ETAG" \
+  -H 'Content-Type: application/json; UTF-8' \
+  --data-binary @remoteconfig.json
+```
+
+```bash
+curl -sS -X PUT https://api.hanzo.ai/v1/flags/defs/new-editor \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"key":"new-editor","active":true,"filters":{"groups":[{"rollout_percentage":25}]}}'
+
+curl -sS -X POST https://api.hanzo.ai/v1/flags/decide \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"distinct_id":"u1","person_properties":{"plan":"pro"}}'
+```
+
+`POST /v1/flags/decide` evaluates in-process over the caller's own definitions —
+no network hop and no shared cache between the write and the read — so the
+second call returns the definition the first call wrote. Which version a client
+is running is not a question you have to ask.
+
+## What does not carry
+
+**No push notification.** FCM's job — a token per device, topics, APNs and web
+push fan-out — has no answer here. `/v1/notify/send` delivers email and SMS
+through your org's own provider credential, synchronously, and
+`/v1/channels/{channel}/send` reaches a Slack, Discord, Teams or Telegram room.
+A phone that is asleep is reachable by none of them. Port this to a push vendor
+directly.
+
+**A function has one trigger and it is HTTP.** `GET /v1/functions/triggers`
+says as much: every function's trigger is its own invoke endpoint.
+`onDocumentWritten`, `onObjectFinalized` and `beforeUserCreated` do not port as
+a property of the function. Publish the event to `POST /v1/pubsub/publish` or
+`POST /v1/auto/hooks/{source}/{event}` and the wiring becomes a row you can
+read rather than a decorator that ships with a deploy.
+
+**Live data comes off the bus, not off the REST address.** A KV write is seen
+by watchers on `:4222`. There is no `onSnapshot` on the HTTP path and no
+EventSource on a `.json` URL, so a browser that wants live rows goes through
+your own server or a bus client.
+
+**Rules are a call you place, not a wall that is always there.**
+`firestore.rules` and `storage.rules` compile into the datastore and run on
+every read whether or not you remembered them. `POST /v1/authz/check` answers
+one question when your handler asks it — which is auditable and cheap to test,
+and which means a path you never check is never checked.
+
+**A KV value is opaque text.** Firestore types every field because it indexes
+and queries them; `/v1/kv` stores UTF-8 and does not query it, so there is no
+`where` clause and no composite index over a bucket. Query moves to
+`POST /v1/index/indexes/{uid}/search` or to your own instance from
+`POST /v1/provisioning/docdb`. Deciding which is the real work of this
+migration — the rest is transcription.
+
+**Every identity is a record.** Firebase mints a durable uid for a caller who
+has supplied nothing at all. Accounts here exist in `/v1/iam/users`. A
+logged-out visitor is instead a `distinct_id` you choose, which is what
+`POST /v1/flags/decide` and `POST /v1/event` take — a stable analytics identity,
+and not an account. The browser credential that carries it is a publishable
+`pk-` key, which resolves the tenant a beacon belongs to and can read nothing
+back.

@@ -13,6 +13,42 @@ an upgrade here.** Auth0 sells Organizations as a tier on top of tenants. In
 Hanzo IAM the org is the tenant — `owner` is a column on every user, and every
 other Hanzo capability scopes on that same value.
 
+## Start here
+
+Mint a key, confirm it resolves to somebody, then write your first Auth0 user across.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. who does that key speak for?
+curl -sS https://api.hanzo.ai/v1/iam/whoami \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+# 3. move one Auth0 user across — idempotent, so the export loop can re-run
+curl -sS -X POST https://api.hanzo.ai/v1/iam/admin/users/upsert \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"owner":"acme","name":"ada","email":"ada@acme.com","displayName":"Ada Lovelace"}'
+```
+
+Step 2 is the cheapest proof the key works: it names the caller, or says plainly
+that nobody is signed in rather than failing. Step 3 lands a user in the org
+named by `owner` — there is no org header because the address carries it — and
+omitting `password` keeps whatever that user already had, so running the export
+loop twice rotates nobody's credentials.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/iam` | Users, orgs, roles, applications, and the OIDC endpoints in front of them | 159 |
+| `/v1/risk` | Scores one sign-in against your org's own model, and holds the regime it decides under | 11 |
+| `/v1/audit` | Your org's own trail, narrowed by actor, action or resource | 1 |
+
 ## Nouns
 
 | Auth0 | Hanzo |
@@ -28,7 +64,7 @@ other Hanzo capability scopes on that same value.
 | `/oauth/token` | `POST /v1/iam/oauth/token` |
 | `/userinfo` | `GET /v1/iam/oauth/userinfo` |
 | `/.well-known/openid-configuration` | The same path, under `/v1/iam` |
-| SCIM (Enterprise) | `/v1/iam/scim/v2/Users` — five operations, not a tier |
+| SCIM (Enterprise) | `/v1/iam/scim/v2/Users` — six operations, not a tier |
 
 `{owner}/{name}` is the shape of every identity address: the org, then the
 thing. It is why a user and an org can share a name without colliding, and why

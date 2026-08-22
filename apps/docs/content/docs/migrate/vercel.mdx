@@ -19,6 +19,43 @@ app: use `/v1/platform`. If it is `output: 'export'` — a directory of HTML —
 Sites plane is simpler and cheaper. This documentation site is the first; the
 marketing site is the second.
 
+## Start here
+
+Register the app against your repo, then deploy it — two calls, no dashboard.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. register the app against a git repo — it lands in draft, nothing built yet
+curl -sS -X POST https://api.hanzo.ai/v1/platform/projects/default/apps \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"web","source":"git","repo":{"url":"https://github.com/acme/web","branch":"main"},"port":3000}'
+
+# 3. build it and run it
+curl -sS -X POST https://api.hanzo.ai/v1/platform/projects/default/apps/web/deploy \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"commit":"main"}'
+```
+
+Step 2 answers 201 with the app in `draft` and its canonical HTTPS host already
+attached; the `default` project needs no creating, because every org has one.
+Step 3 answers 202 — an accepted deployment, not a live one — and comes back
+`building` while BuildKit runs, which is why the logs call below exists.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/platform` | Builds a repo and runs it: deploy, per-deployment logs, preview, promote, rollback, env, domains | 37 |
+| `/v1/projects` | Serves a directory you already built, as content-addressed releases with domains and purge | 27 |
+| `/v1/functions` | Publishes one handler with no app around it, and invokes it | 11 |
+
 ## Nouns
 
 Vercel is not only deploys, and neither is this. The left column is their
@@ -76,7 +113,7 @@ curl -sS -X POST \
   "https://api.hanzo.ai/v1/platform/projects/acme/apps/web/deploy" \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H 'Content-Type: application/json' \
-  -d '{"ref":"main"}'
+  -d '{"commit":"main"}'
 ```
 
 Then watch it, and promote when you are happy:
@@ -96,7 +133,7 @@ Static instead, when the output needs no server — enqueue, upload, complete:
 curl -sS -X POST https://api.hanzo.ai/v1/projects/my-site/deployments \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H 'Content-Type: application/json' \
-  -d '{"branch":"main","commit":"'"$GIT_SHA"'"}'
+  -d '{"commit":"'"$GIT_SHA"'"}'
 ```
 
 The bytes go straight to object storage with the grant that call hands back, so

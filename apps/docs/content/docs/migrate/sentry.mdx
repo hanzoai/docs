@@ -1,0 +1,203 @@
+---
+title: Sentry
+description: Sentry catches an exception off a running application and groups it into an issue. Here that is /v1/o11y (381 operations) to read and /v1/event (12) to ingest, and the ingest speaks Sentry's own wire.
+---
+
+Sentry takes a stack trace off a running application, groups it by fingerprint
+into an issue, and keeps the traces, logs and recordings around it. Two
+capabilities answer that: **`/v1/o11y`** (381 operations) holds the issues,
+traces, alert rules and dashboards, and **`/v1/event`** (12 operations) is the
+ingest door, which accepts the Sentry envelope byte-for-byte — an application
+already instrumented reports here by changing its DSN and nothing else.
+
+The structural difference is where the tenant comes from. Sentry names the
+organization in nearly every path (`/api/0/projects/{org}/{project}/issues/`).
+Here it never appears: on ingest the org is derived from the DSN key, on reads
+from the validated bearer. The only identifier you carry is the project, and on
+most reads it is optional.
+
+## Start here
+
+One key and one project: the project's DSN drops into `Sentry.init`, and the
+issues read back with no org slug anywhere.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. create the project — the DSN comes back with it
+curl -sS -X POST https://api.hanzo.ai/v1/o11y/sentinel/projects \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"backend","platform":"python"}'
+
+# 3. read the grouped issues back
+curl -sS "https://api.hanzo.ai/v1/o11y/sentinel/issues?status=unresolved&period=24h" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Step 2 returns `data.dsn`. Paste it into `Sentry.init` and an already-instrumented
+application reports to `POST /v1/event/{project}/envelope` with nothing else
+changed — that door is credentialed by the DSN key, not by the bearer above. Step
+3 is the read side: the org came from the key, so `project` is an optional
+narrowing rather than a required path segment.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/o11y` | Issues, traces, alert rules, dashboards and logs — everything you read | 381, across 287 paths |
+| `/v1/event` | The ingest door. Takes the Sentry envelope byte-for-byte, keyed by the DSN | 12 |
+| `/v1/webhook` | Where an issue leaves the platform. Each endpoint carries its 7-day delivery and failure counts | 8 |
+
+## Nouns
+
+### Errors and issues
+
+| Sentry | Hanzo |
+|---|---|
+| Organization | Your org — from the DSN key on ingest, the bearer on reads. Never a path segment |
+| Project | `POST /v1/o11y/sentinel/projects` — you set name and platform, the server assigns id and key |
+| DSN, client key | The `dsn` field on the project, derived fresh on every read of it |
+| Rotating a client key | `POST /v1/o11y/sentinel/projects/{id}/keys/rotate` |
+| Envelope ingest, current SDKs | `POST /v1/event/{project}/envelope` |
+| `store` ingest, pre-envelope SDKs | `POST /v1/event/{project}/store` |
+| The `/api/{id}/envelope/` path an SDK builds | `POST /v1/o11y/api/{project_id}/envelope/` — received verbatim, not published |
+| Issue, grouped by fingerprint | `GET /v1/o11y/sentinel/issues`, also `GET /v1/o11y/errortracking/issues` |
+| Resolve, ignore, reopen, assign | `PUT /v1/o11y/sentinel/issues/{id}` — one route, `status` and `assignee` |
+| An issue's occurrences | `GET /v1/o11y/sentinel/issues/{id}/events` |
+| One event by id | `GET /v1/o11y/sentinel/events/{id}` |
+| Discover query | `POST /v1/o11y/sentinel/discover` — filters, groupings and aggregations in, columns and rows out |
+| Event-rate graph for a project | `GET /v1/o11y/sentinel/stats` |
+| Full-text over raw events | `GET /v1/o11y/sentinel/logs` |
+| Deleting a project | `DELETE /v1/o11y/sentinel/projects/{id}` — the DSN stops resolving at once, retained events are untouched |
+
+### Performance
+
+| Sentry | Hanzo |
+|---|---|
+| Transaction, trace | `GET /v1/o11y/traces`, one at `GET /v1/o11y/traces/{traceId}` |
+| Span waterfall | `POST /v1/o11y/traces/{traceId}/waterfall` |
+| Flame graph | `POST /v1/o11y/traces/{traceId}/flamegraph` |
+| Service latency and error rate | `GET /v1/o11y/services/list` |
+| Slowest operations in one service | `POST /v1/o11y/service/top_operations` — p50, p95 and p99 each |
+| Apdex threshold | `GET /v1/o11y/settings/apdex`, set with `POST` on the same path |
+| Where one span sits among its peers | `POST /v1/o11y/span_percentile` |
+| Outbound HTTP dependencies | `POST /v1/o11y/third-party-apis/overview/list` |
+| Which requests are failing | `GET /v1/o11y/sentinel/traces` — traces a project's errors landed on, error count each |
+| Every error on one trace | `GET /v1/o11y/sentinel/traces/{id}` |
+| Funnel across a trace | `GET /v1/o11y/trace-funnels/list` |
+
+### Releases, replay and the rest
+
+| Sentry | Hanzo |
+|---|---|
+| Release | `GET /v1/platform/releases` — the versions that reached the cluster, observed rather than declared |
+| Session Replay ingest | `POST /v1/event/replay` — an rrweb batch keyed by `sessionId`, stored before the call answers |
+| Metric alert rule | `GET /v1/o11y/rules`, created with `POST`, dry-run at `POST /v1/o11y/rules/test` |
+| Currently firing | `GET /v1/o11y/alerts`, most recent at `GET /v1/o11y/alerts/last` |
+| Where an alert is delivered | `GET /v1/o11y/channels`, checked with `POST /v1/o11y/channels/test` |
+| Dashboard | `GET /v1/o11y/dashboards`, shared read-only at `/v1/o11y/dashboards/{id}/public` |
+| Logs, and Live Tail | `GET /v1/o11y/logs`, `GET /v1/o11y/logs/livetail` |
+| Retention and quota | `POST /v1/o11y/settings/ttl` — default TTL in days, per-label rules, cold storage |
+| Spike protection, per-key rate limit | `POST /v1/o11y/gateway/ingestion_keys/{keyId}/limits` |
+| Cron monitors and check-ins | `/v1/tasks` (5) — a durable engine, not a heartbeat beside an issue |
+| Issue webhooks | `/v1/webhook` (8) — every endpoint carries its 7-day delivery and failure counts |
+| Installing a third-party integration | `POST /v1/o11y/integrations/install` |
+| Browser errors from a page with no bundler | `GET /v1/event/tag.js` — one script tag and a publishable `pk-` key |
+| Data export | `POST /v1/o11y/export_raw_data` |
+| LLM spans, tokens and cost | `GET /v1/o11y/llm/traces` |
+
+## The call
+
+Sentry. The DSN comes out of the project settings page, and reads name the org
+and the project in the path:
+
+```bash
+curl -sS "https://sentry.io/api/0/projects/acme/backend/issues/?query=is%3Aunresolved&statsPeriod=24h" \
+  -H "Authorization: Bearer $SENTRY_TOKEN"
+
+curl -sS -X PUT "https://sentry.io/api/0/issues/5551212/" \
+  -H "Authorization: Bearer $SENTRY_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"status":"resolved"}'
+```
+
+Hanzo. Create the project and the DSN comes back with it:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/o11y/sentinel/projects \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"backend","platform":"python"}'
+```
+
+Copy `data.dsn` into `Sentry.init` and the application is migrated. The SDK
+appends its own `/api/<project>/envelope/` to whatever DSN it holds, so no code
+below that one string changes.
+
+Reading back, and resolving:
+
+```bash
+curl -sS "https://api.hanzo.ai/v1/o11y/sentinel/issues?status=unresolved&period=24h" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+curl -sS -X PUT https://api.hanzo.ai/v1/o11y/sentinel/issues/5551212 \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"id":"5551212","status":"resolved","assignee":"kim@acme.com"}'
+```
+
+Three things follow from that shape. `acme` appears nowhere, so there is no org
+slug to keep in step with the token that reads it — and because the org is the
+key's, `project` is an optional narrowing rather than a required coordinate:
+drop it and you read every project's unresolved issues, which in Sentry is a
+second endpoint under a different scope. The DSN is derived from the project on
+each read rather than stored beside it, so there is no second record to keep
+current; `DELETE` on the project stops the DSN resolving in the same instant.
+And rotation bumps a watermark that keys below stop verifying against, so the
+old key is dead on the next request rather than once a revocation has reached
+every relay.
+
+## What does not carry
+
+**No source maps and no symbolication.** Sentry uploads artifact bundles and
+debug files and un-minifies the stack server-side. Nothing here does — there is
+no upload route and no symbolicator, so a minified frame is stored and shown
+minified. If your frontend stacks are the reason you read Sentry, this is the
+one to weigh before anything else.
+
+**A release is observed, not declared.** `GET /v1/platform/releases` lists the
+deployments that genuinely reached the cluster; one that failed or is still
+building is excluded. Error tracking never takes a release declaration: deploying
+through Hanzo's own PaaS does mint one (`POST /v1/projects/{slug}/releases`), but
+no route attaches commits to a release or ties one to an issue — so `sentry-cli
+releases new`, `set-commits` and `finalize` have nothing to call, and the
+suspect-commit attribution and regression detection built on that graph do not
+come with it.
+
+**No release health.** Session tracking, crash-free rate and adoption per
+release are Sentry counting sessions the SDK opens. The envelope wire carries
+those session items and they are ingested, but no route reads a crash-free
+number back.
+
+**Grouping is the server's.** Issues group by fingerprint and there is no route
+that edits a grouping rule, so Sentry's per-project stack-trace rules and
+fingerprint overrides have no destination. What the SDK sends is what it groups
+by.
+
+**Attachments and user feedback arrive but do not read back.** The envelope is
+accepted whole, attachments included. There is no route that lists or downloads
+an attachment, and no crash-report or user-feedback endpoint to point a feedback
+widget at.
+
+**Replay ingests through the API and plays back in the console.** `POST
+/v1/event/replay` takes the recording — 512 KiB per batch, so a recorder chunks
+a long session — and a player in console.hanzo.ai reads the derived summary.
+Pulling a raw recording out programmatically is not an API call. A reduced Hanzo
+Team workspace token is refused here with `insufficient_capability`, because a
+full-fidelity screen recording has no safe projected form for a guest to write
+into a host org.

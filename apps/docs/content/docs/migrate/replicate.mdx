@@ -1,0 +1,224 @@
+---
+title: Replicate
+description: Replicate runs containerised models behind one API and lets you push your own. Here that is /v1/ml (7 operations) — deploy a model under a name, then call it — with /v1/ai (272) for the hosted models and the training that produces them.
+---
+
+Replicate packages a model as a container, stamps every build with an immutable
+version hash, and runs it as a prediction you create and then poll. `/v1/ml`
+(7 operations) is that job with the identifiers collapsed: deploy a model under a
+name, `POST /v1/ml/models/{name}/predict`, and the predictor's own reply comes
+back on that call. The hosted models Replicate is better known for — image,
+video, audio, chat — are `/v1/ai` (272), at OpenAI-shaped addresses. The
+structural difference is the prediction itself: Replicate's is a stored object
+with an id, a status and a poll loop, and here the inference call returns the
+inference.
+
+## Start here
+
+Deploy a model under a name, then call that name — there is no version hash to
+resolve and no prediction id to poll.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. deploy one model — spec is a kserve InferenceService spec, passed through unchanged
+curl -sS -X POST https://api.hanzo.ai/v1/ml/models \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"sentiment","spec":{"predictor":{"model":{"modelFormat":{"name":"sklearn"},"storageUri":"s3://models/sentiment"}}}}'
+
+# 3. run it — the predictor's own reply comes back on this call
+curl -sS -X POST https://api.hanzo.ai/v1/ml/models/sentiment/predict \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"inputs":[{"name":"text","shape":[1],"datatype":"BYTES","data":["the shipment arrived early"]}]}'
+```
+
+Step 2 answers 201 with the model as Kubernetes admitted it — an unfunded org is
+refused there, before anything is created — and step 3 answers with the
+predictor's own status code, body bytes and Content-Type, unchanged. The name in
+the path is the only identifier either call needs; a 503 `not ready` from step 3
+means deployed but not yet serving, and `GET /v1/ml/health` says whether the
+cluster holds a serving runtime at all.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/ml` | Deploys your own model under a name and runs inference against it, verbatim in both directions | 7 |
+| `/v1/ai` | The hosted models Replicate is better known for, and the fine-tuning that produces new ones | 272 |
+| `/v1/registry` | The images those models serve from — list, tag, and mint a pull-only token that expires in minutes | 6 |
+
+## Nouns
+
+Three tables. Replicate is a model registry, an inference runtime, and a training
+service sold as one thing.
+
+### Deploying and running your own model
+
+| Replicate | Hanzo |
+|---|---|
+| Model, addressed `owner/name` | Model, a name in your org — `POST /v1/ml/models` |
+| Version, a 64-hex hash of the build | The `spec` on that model. There is no second identifier |
+| Prediction, created and then polled | `POST /v1/ml/models/{name}/predict` — the predictor answers on the call |
+| The `input` object Cog validates | Whatever the serving runtime's protocol takes, relayed unchanged |
+| Deployment, a named endpoint with its own scale | The model itself. Replica count lives in its spec |
+| Hardware tier chosen at deploy time | Resource requests in the spec, changed with `PATCH /v1/ml/models/{name}` |
+| Rolling a deployment onto a new version | The same `PATCH` — image, replicas or resources, without a teardown |
+| Listing what you have running | `GET /v1/ml/models` — each entry carrying kserve's live status |
+| Reading one model's config and readiness | `GET /v1/ml/models/{name}` |
+| Deleting a deployment | `DELETE /v1/ml/models/{name}` — 204, and serving stops with it |
+| The status page | `GET /v1/ml/health` — a live cluster call, not a flag set at boot |
+
+### The hosted models, and training one
+
+| Replicate | Hanzo |
+|---|---|
+| Running a language model | `POST /v1/chat/completions`, OpenAI-shaped |
+| Running an image model | `POST /v1/images/generations` |
+| Running a video model | `POST /v1/videos/generations`, then `GET /v1/videos/{id}/content` |
+| Running a speech or music model | `POST /v1/audio/speech`, `/transcriptions`, `/voice`, `/music`, `/foley` |
+| Browsing what you can run | `GET /v1/models` — public, and it does not authenticate |
+| Asking for access to a gated model | `POST /v1/models/{model}/access` |
+| A training run against a version | `POST /v1/ai/finetune/jobs` — submits a real training job |
+| Polling that training | `GET /v1/ai/finetune/job` |
+| Cancelling it | `POST /v1/ai/finetune/cancel` — meters the GPU-hours already spent, then cancels |
+| The trained version you then run | `POST /v1/ai/finetune/deploy` — serves the checkpoints as a routable model |
+| Picking a base model and a dataset | `GET /v1/ai/finetune/presets`, `/hf/models`, `/hf/datasets` |
+
+### Around the model
+
+| Replicate | Hanzo |
+|---|---|
+| `webhook` URL set on each prediction | An endpoint registered once — `POST /v1/webhook` |
+| `webhook_events_filter` | The `events` list on that endpoint, matched as a subject pattern |
+| The default webhook secret you fetch | Returned on create, and after that only by `POST /v1/webhook/{id}/secret` |
+| Wondering whether a delivery landed | `GET /v1/webhook/{id}/deliveries` — one row per attempt, narrowable to failed |
+| Proving an endpoint is reachable | `POST /v1/webhook/{id}/test` — one signed event now, outcome inline |
+| `cog push` to `r8.im` | `POST /v1/platform/runner` builds and pushes; `GET /v1/registry/images` lists |
+| Pulling that image from a build | `POST /v1/registry/token` — pull-only, one image, expires in minutes |
+| Files API for large inputs and outputs | `/v1/s3` (6) — `POST /v1/s3/buckets/{bucket}/objects` mints a presigned PUT |
+| Prediction logs | `/v1/o11y` (381) — `GET /v1/o11y/logs`, live at `/v1/o11y/logs/livetail` |
+| What a run cost | `GET /v1/billing/ledger`, with the balance at `GET /v1/billing/balance` |
+| Running arbitrary code beside a model | `/v1/sandbox` (19) — lease, exec, read, write, end |
+| Scoring model output against a fixed set | `/v1/eval` (16) and `/v1/benchmark` (9) |
+
+## The call
+
+Replicate, running your own model once it is pushed:
+
+```bash
+# resolve the version hash a prediction has to name
+curl -sS https://api.replicate.com/v1/models/acme/sentiment \
+  -H "Authorization: Bearer $REPLICATE_API_TOKEN"
+
+# create the prediction against that hash
+curl -sS -X POST https://api.replicate.com/v1/predictions \
+  -H "Authorization: Bearer $REPLICATE_API_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "version": "5c7d5dc6dd8bf75c1acaa8565735e7986bc5b66206b55cca93cb72c9bf15ccaa",
+    "input": {"text": "the shipment arrived early"},
+    "webhook": "https://acme.example/hooks/replicate",
+    "webhook_events_filter": ["completed"]
+  }'
+
+# poll until status stops being starting or processing
+curl -sS "https://api.replicate.com/v1/predictions/$ID" \
+  -H "Authorization: Bearer $REPLICATE_API_TOKEN"
+```
+
+Hanzo, deploying once:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/ml/models \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "sentiment",
+    "spec": {
+      "predictor": {
+        "model": {
+          "modelFormat": {"name": "sklearn"},
+          "storageUri": "s3://models/sentiment"
+        }
+      }
+    }
+  }'
+```
+
+Then every call after that:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/ml/models/sentiment/predict \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"inputs":[{"name":"text","shape":[1],"datatype":"BYTES","data":["the shipment arrived early"]}]}'
+```
+
+Three calls become one, and three identifiers become one. Replicate needs
+`owner/name` to resolve a version, the version hash to create a prediction, and
+the prediction id to read the answer — three values that have to stay in step,
+and a stale hash in a config file quietly runs last month's model. Here the name
+is the only thing you hold, and the org is in neither the path nor the body: it
+is derived from the validated key, so a request has no field in which to name
+another tenant.
+
+The reply is the predictor's own — status code, body bytes and Content-Type,
+unchanged — so a model that raises comes back as the model's error rather than
+this layer's paraphrase of it. Two decisions are settled before anything runs
+and neither is eventually consistent: an unfunded org is refused before the
+InferenceService is created, so nothing runs unpaid and nothing is billed for a
+resource that was never made; and a model that exists but has no serving address
+yet answers 503 `not ready` rather than a connection error, because deployed and
+serving are separate facts.
+
+## What does not carry
+
+**There is no public directory of other people's models.** Replicate's shop
+window is tens of thousands of community models addressed as `owner/name` and
+runnable on the first call with no deploy. `GET /v1/models` is the routing
+table's catalogue and `/v1/ml/models` holds only what your org put there;
+nothing runs a model that is in neither. `/v1/marketplace` (6) does publish and
+price other people's work per call — `POST /v1/marketplace/listings`, installed
+with `POST /v1/marketplace/install` — but the unit it sells is a tool or an
+agent, not a model image.
+
+**A prediction is not a stored object.** Replicate's has an id, a status, a
+`urls.get` and a `urls.cancel`, and stays listable for an hour. `predict`
+answers and keeps nothing: no id to poll, no history to page through, no cancel.
+The record of what ran is a log line at `GET /v1/o11y/logs`, not a resource you
+re-read by id. Video is the one place the asynchronous shape survives —
+`POST /v1/videos/generations` returns `queued` immediately and you poll
+`GET /v1/videos/{id}` — because that work outlives a request.
+
+**No immutable version hash.** Every Cog build gets a content hash you can pin,
+roll back to, and run alongside its predecessor. A model here has a name and a
+mutable spec; `PATCH` moves it forward and there is no earlier one to reactivate.
+Two versions side by side means two names. The pin you keep is the image tag
+inside the spec, and `GET /v1/registry/tags` is what answers for it.
+
+**Cog's convention does not port, though the build does.** A `cog.yaml` plus a
+`predict.py` becomes a GPU image with a typed input schema derived from your
+function signature, and that derivation has no counterpart. `POST /v1/platform/runner`
+builds a container from a repo and pushes it to your org's registry namespace, so
+getting an image is answered; what you write yourself is the serving contract the
+image speaks. `GET /v1/ml/health` reports whether the cluster actually holds a
+runtime to run one, because a cluster with the CRD and no runtime accepts a
+deploy and then never schedules it.
+
+**The webhook is a subscription, not a request field.** Replicate takes a URL per
+prediction, so a fire-and-forget client can be told about that one run. Here you
+register an endpoint once and subscribe it to an event pattern; it is
+HMAC-signed, the secret leaves the server only on create and on rotate, and every
+attempt is in `GET /v1/webhook/{id}/deliveries`. A per-call callback URL has
+nowhere to go — and `predict` returning the answer is why it does not need one.
+
+**`predict` reads the predictor's body up to a fixed ceiling.** A synchronous
+relay has to bound what it buffers. Output measured in hundreds of megabytes —
+long video, a large batch of frames — should be written to object storage by the
+predictor and fetched from `/v1/s3` (6), rather than returned inline.

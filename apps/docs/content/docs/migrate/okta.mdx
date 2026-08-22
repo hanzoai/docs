@@ -1,0 +1,229 @@
+---
+title: Okta
+description: Okta signs a workforce in, provisions it, challenges it and gates it with policy. Here that is /v1/iam — 159 operations covering OIDC, SAML, SCIM and MFA — plus /v1/authz/check for the decision.
+---
+
+Okta does four jobs for a workforce: sign people in, keep the directory in step
+with the system of record, ask for a second factor, and decide what is
+permitted. `/v1/iam` (159 operations) answers the first three at the addresses
+the standards give them — `oauth/token`, `scim/v2/Users`, `mfa/setup/initiate` —
+and the fourth splits in two.
+
+The structural difference to know before you port anything: **there is no policy
+object here.** Okta's sign-on, password and MFA policies are first-class
+resources, each a priority-ordered stack of rules resolved per sign-in. The same
+constraints live as columns on two rows — the organization and the application —
+and the authorization question is a separate call, `POST /v1/authz/check`, which
+takes a subject, an object and an action and answers `allow`. Nothing is
+ordered, so there is no precedence to reason about.
+
+## Start here
+
+Mint a key, provision a person through SCIM, then ask the authorization question
+about them.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. provision a person — SCIM, the body Okta's Lifecycle Management already sends
+curl -sS -X POST https://api.hanzo.ai/v1/iam/scim/v2/Users \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/scim+json' \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+    "userName": "ada",
+    "emails": [{"value": "ada@acme.com", "primary": true}],
+    "active": true
+  }'
+
+# 3. ask what that person may do — the half Okta answered with a policy stack
+curl -sS -X POST https://api.hanzo.ai/v1/authz/check \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"sub": "acme/ada", "obj": "repo:web", "act": "write"}'
+```
+
+Step 3 asks about `acme/ada` — the org from your key and the `userName` you sent
+in step 2 — so no id is carried between the calls, and it refuses until a grant
+exists, which `POST /v1/iam/memberships` writes. That is the shape of the port:
+the directory is one write, the decision is a separate question, and neither is a
+rule in an ordered stack.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/iam` | Directory, SCIM provisioning, OIDC and SAML sign-in, sessions, MFA — Okta's Users, Apps, Factors and Lifecycle APIs at one address | 159 |
+| `/v1/authz` | The decision a sign-on policy used to render: subject, object and action in, `allow` out | 3 |
+| `/v1/auto` | Flows, connectors and runs you can resume — where Okta Workflows, group rules and inline hooks land | 17 |
+
+## Nouns
+
+Okta is four products under one console. The left column is that surface; the
+right is what answers it.
+
+### Directory and lifecycle
+
+| Okta | Hanzo |
+|---|---|
+| Org, `dev-12345.okta.com` | Your org, taken from the validated key. Never a field in the request |
+| Universal Directory user | User — `/v1/iam/users`, addressed `{owner}/{name}` |
+| User id `00u1a2b3c4d5e6f7g8h9` | `{owner}/{name}` — the org from your key and the username you chose |
+| Group | Role — `/v1/iam/roles`, whose row carries `users` and `groups` |
+| Assign an app or a group to someone | `POST /v1/iam/memberships` — repeating it changes nothing |
+| Lifecycle Management (SCIM provisioning) | `/v1/iam/scim/v2/Users` — eleven operations, not a SKU |
+| `POST /api/v1/users/{id}/lifecycle/deactivate` | `DELETE /v1/iam/scim/v2/Users/{owner}/{name}`; sessions stop immediately |
+| Suspend without deleting | `isForbidden` on the user, written with `PUT /v1/iam/users/{owner}/{name}` |
+| Self-service registration, activation mail | `/v1/iam/invitations` — a code carrying a role, an expiry and a seat count |
+| Profile mappings and attribute transforms | `userMapping` on the provider — `/v1/iam/providers` |
+| System Log | `/v1/audit` for the platform trail, `/v1/iam/audit-logs` for the identity one |
+| API token (SSWS) | `POST /v1/iam/service-accounts`, then `/v1/iam/service-accounts/{name}/keys` |
+
+### Sign-in
+
+| Okta | Hanzo |
+|---|---|
+| Okta as OIDC provider to your app | `/v1/iam/oauth/authorize`, `/v1/iam/oauth/token`, `/v1/iam/oauth/userinfo` |
+| Introspection and revocation | `POST /v1/iam/oauth/introspect`, `POST /v1/iam/oauth/revoke` |
+| `/.well-known/openid-configuration` | The same path, under `/v1/iam` |
+| Okta as SAML IdP to your app | The application row — `samlAttributes`, `samlReplyUrl`, `samlHashAlgorithm` |
+| Inbound IdP: SAML, OIDC, ADFS, social | Provider — `POST /v1/iam/providers`, then switched on per application |
+| App integration (OIDC, SAML, SWA) | Application — `/v1/iam/applications`, one client id and secret each |
+| Custom Authorization Server | One issuer. Scopes and claims are `customScopes` and `tokenAttributes` on the application |
+| Okta FastPass, WebAuthn | `/v1/iam/webauthn/signin/begin`, then `/v1/iam/webauthn/signin/finish` |
+| Device Authorization grant | `POST /v1/iam/oauth/device` |
+| Sessions API | `/v1/iam/sessions` reads them; `DELETE /v1/iam/sessions/{owner}/{name}/{application}` ends one |
+| Key rollover | `/v1/iam/certs` stages the next `kid`, `/v1/iam/.well-known/jwks` publishes it |
+| Sign-In Widget | [hanzo.id](https://hanzo.id), branded by domain. `GET /v1/iam/auth/methods` says which buttons to draw |
+
+### Factors, policy, and the rest of the console
+
+| Okta | Hanzo |
+|---|---|
+| Enroll a factor, then activate it | `POST /v1/iam/mfa/setup/initiate`, then `POST /v1/iam/mfa/setup/enable` |
+| Admin resets a factor after a lost phone | `DELETE /v1/iam/mfa` — naming no factor turns off all of them |
+| Default factor | `POST /v1/iam/mfa/preferred` — only a factor the account actually holds |
+| Step-up after a federated sign-in | `POST /v1/iam/oauth/federation/mfa` |
+| Recovery question | Recovery codes, returned once by the first `mfa/setup/enable` |
+| Password policy | `passwordOptions` and `passwordExpireDays` on the organization |
+| Sign-on policy, lockout half | `failedSigninLimit` and `failedSigninFrozenTime`, on the org and the application |
+| Network zone | `ipWhitelist` and `ipRestriction`, on the same two rows |
+| Session lifetime | `expireInHours`, `refreshExpireInHours`, `cookieExpireInHours` on the application |
+| Authorization decision | `POST /v1/authz/check` — subject, object, action in, `allow` out |
+| ThreatInsight, Behavior Detection | `/v1/risk` (11) — a score citing the policy version it was decided under |
+| Event Hooks | `/v1/webhook` (8) — signing secret returned once, deliveries counted per endpoint |
+| Okta Workflows | `/v1/auto` (17) — flows, connectors, and runs you can resume |
+| Access Gateway | `/v1/ingress` (18) — routes, header middlewares and TLS in front of the app |
+| Admin Console, and acting as a tenant | console.hanzo.ai; an operator steps in with `POST /v1/iam/assume`, which keeps naming the operator |
+
+`{owner}/{name}` is the address of everything in identity: the org, then the
+thing. It is why no request needs an org field, and why the second call below is
+written from what you already had.
+
+## The call
+
+Okta, hiring somebody and giving them an app. Two calls, and the second is
+written from the id the first returned:
+
+```bash
+curl -sS -X POST "https://$OKTA_DOMAIN/api/v1/users?activate=true" \
+  -H "Authorization: SSWS $OKTA_API_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "profile": {
+      "firstName": "Ada", "lastName": "Lovelace",
+      "email": "ada@acme.com", "login": "ada@acme.com"
+    }
+  }'
+# => {"id":"00u1a2b3c4d5e6f7g8h9", "status":"ACTIVE", ...}
+
+curl -sS -X POST "https://$OKTA_DOMAIN/api/v1/apps/0oa8x1qk2wPqR3v0h7/users" \
+  -H "Authorization: SSWS $OKTA_API_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"id":"00u1a2b3c4d5e6f7g8h9","scope":"USER"}'
+```
+
+Hanzo, the same two steps:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/iam/scim/v2/Users \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/scim+json' \
+  -d '{
+    "schemas": ["urn:ietf:params:scim:schemas:core:2.0:User"],
+    "userName": "ada",
+    "name": {"givenName": "Ada", "familyName": "Lovelace"},
+    "emails": [{"value": "ada@acme.com", "primary": true}],
+    "active": true
+  }'
+
+curl -sS -X POST https://api.hanzo.ai/v1/iam/memberships \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"user": "acme/ada", "org": "acme"}'
+```
+
+Nothing is carried between the two calls. `acme/ada` is the org from the key and
+the `userName` you sent, so the second request is writable before the first one
+returns — there is no minted `00u…` to store, and therefore no pair of
+identifiers to hold in step when your HR record and the directory disagree.
+Repeating the second call changes nothing, so the reconcile loop and the first
+grant are the same request.
+
+The decision is its own call, and it is a function of the grants rather than of
+which rule matched first:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/authz/check \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"sub": "acme/ada", "obj": "repo:web", "act": "write"}'
+```
+
+The reply is `allow`, with `sub`, `obj` and `act` echoed beside it, so a logged
+or cached decision carries the question it answered. The org comes from the
+credential and picks that tenant's enforcer; a request arriving with no org is
+refused rather than answered from a shared default set.
+
+## What does not carry
+
+**Conditional sign-on rules have nowhere to live.** Okta's policy holds several
+rules with conditions — this network, that group, this client — and priorities
+that resolve them. Here `failedSigninLimit`, `ipWhitelist` and `mfaItems` are
+columns on the organization and the application. Two rows, no ordering, no
+conditions. "Require MFA only from outside the office" does not port: `ipRestriction`
+is an allow or a refusal, not a step-up trigger.
+
+**No Inline Hooks.** Okta calls your endpoint mid-transaction to add a claim,
+veto a registration or import a password, and waits for the answer. Nothing here
+runs customer code inside a sign-in — a login that can call out is a login that
+can be made to hang. Put the work in `/v1/auto`, where a failure does not take
+the sign-in with it.
+
+**Group rules do not re-evaluate.** Okta assigns membership from an expression
+over profile attributes and re-runs it when an attribute changes.
+`POST /v1/iam/memberships` is a write. The replacement is a flow in `/v1/auto`
+triggered by the change — an explicit job you can read the runs of, rather than
+an invisible one.
+
+**SCIM is Users only.** Eleven operations under `/v1/iam/scim/v2/`: six on
+`Users`, five of discovery. There is no `/Groups`, so Okta's group push has no
+receiver — roles and memberships are written through `/v1/iam/roles` and
+`/v1/iam/memberships`. In exchange, `PUT` replaces only the attributes SCIM
+describes, so a nightly sync cannot strip somebody's second factor.
+
+**No password-hash import.** Okta accepts a foreign hash with its algorithm and
+salt, so a migration is invisible to the user. `POST /v1/iam/admin/users/upsert`
+hashes a password you send and keeps the current one when you omit it; no route
+takes a hash you already hold. The drain instead of a reset is to register Okta
+as an inbound provider — `okta` is a column on the user record, beside `adfs`,
+`azuread` and `ldap` — and let people link as they sign in.
+
+**Access certification is reads, not a campaign.** `/v1/iam/memberships` answers
+who may act where, `/v1/audit` what they did, `/v1/trust/controls` which control
+you are evidencing. Nothing schedules a quarterly review or chases the
+reviewers; that is a flow you build on `/v1/auto`.

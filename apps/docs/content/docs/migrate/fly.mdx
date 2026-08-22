@@ -1,0 +1,198 @@
+---
+title: Fly.io
+description: Fly runs Firecracker machines under an app namespace, in regions you name. Here that is /v1/platform (37 operations) for an app that deploys and rolls back, and /v1/visor (34) for a machine placed in a region — with the tenant coming from your key rather than an org_slug field.
+---
+
+On Fly the app is a namespace that holds no compute and the machine is the unit
+that runs, so you keep three names in step: `org_slug`, `app_name`, and the hex
+id the machine create mints. Two capabilities answer that here. **`/v1/platform`**
+(37 operations) is an application you deploy, stop, promote and roll back;
+**`/v1/visor`** (34) is a metered machine you place in a named region and
+address by the name you gave it. The structural difference to know before you
+port anything: the org is never in the request. It comes from the validated key,
+which is what decides who pays and which namespace the objects land in.
+
+## Start here
+
+One call takes a container image to a live HTTPS URL; everything after that is
+the ordinary application plane.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. image to a running URL — the 202 body carries it
+curl -sS -X POST https://api.hanzo.ai/v1/platform/run \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"acme-web","image":"ghcr.io/acme/web:1.4.2","port":8080,"minScale":1}'
+
+# 3. put your own hostname on it
+curl -sS -X POST https://api.hanzo.ai/v1/platform/projects/default/apps/acme-web/domains \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"host":"acme.example.com"}'
+```
+
+Step 2 answers with the address it created, so there is no `<app>.fly.dev`
+convention to assemble and no `org_slug` to send — the key already resolved the
+org. Step 3 proves what step 2 made: an ordinary application, reachable at the
+same `/v1/platform/projects/{project}/apps/{app}/...` routes that deploy, stop
+and roll back a git app.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/platform` | Applications you deploy, stop, promote and roll back. `run` is the one-call path from image to URL | 37 |
+| `/v1/visor` | Metered machines placed in a named region, addressed by the name you chose, priced before you spend | 34 |
+| `/v1/ingress` | The edge `fly ips` and `fly certs` reach — routes, services, middlewares, TLS | 18 |
+
+## Nouns
+
+### Running things
+
+| Fly.io | Hanzo |
+|---|---|
+| Organization — `org_slug`, required on every app create | Your org, taken from the validated key. Never a field in the request |
+| App — a namespace holding no compute of its own | Application under a project — `POST /v1/platform/projects/{project}/apps` |
+| Machine, addressed by a minted hex id | Machine, addressed by the name you chose — Visor keys on owner plus name, so `/v1/visor/machines/{id}` takes `edge-1` |
+| `POST /v1/apps/{app}/machines` with a config block | `POST /v1/visor/machines`, or `POST /v1/platform/run` to go from image to live URL in one call |
+| Remote builders building your Dockerfile | An in-cluster BuildKit Job, launched by `POST .../apps/{app}/deploy` for a git app and billed in wall-clock build minutes |
+| `fly deploy` | `POST .../apps/{app}/deploy` — 202 with a monotonically versioned deployment record |
+| `fly machine start` and `stop` | `POST .../apps/{app}/start` and `.../stop` — back to the configured replicas, or to zero |
+| `fly releases` | `GET /v1/platform/releases` — the versions that actually reached the cluster; a failed or still-building deploy is not one |
+| `fly releases --rollback` | `POST .../apps/{app}/rollback` — redeploys the old image under a NEW version, appending to history rather than rewinding it |
+| `fly scale count` | `replicas` on the app record; `minScale` and `maxScale` on a run |
+| `auto_stop_machines`, `auto_start_machines` | `maxScale` above `minScale` declares the autoscaling ceiling; `maxScale: 0` is a fixed run at the floor |
+| `fly platform regions`, `fly platform vm-sizes` | `GET /v1/visor/compute/regions` and `GET /v1/visor/compute/sizes` |
+| GPU machines (a100, l40s) | A GPU size on `POST /v1/visor/machines`; per-accelerator inventory at `GET /v1/visor/gpus` |
+| `fly ssh console`, `fly machine exec` | `POST /v1/sandbox/lease`, then `POST /v1/sandbox/run`; a self-contained browser terminal at `GET /v1/sandbox/{id}/terminal` |
+| `fly machine run` for a one-off | `POST /v1/exec` — a throwaway sandbox across thirteen languages, answering stdout and the files the program left |
+
+### State and edge
+
+| Fly.io | Hanzo |
+|---|---|
+| Volume — its own id, region, snapshots, fork | `storageGb` on the app record. Absent means stateless, and there is no second object |
+| `fly postgres create` — an app in your org that you operate | `POST /v1/provisioning/sql` — your org's own instance, `postgres://` DSN returned once |
+| `fly redis create` | `POST /v1/provisioning/kv` — your org's own instance, `kv://` DSN |
+| Tigris object storage | `POST /v1/provisioning/s3` to make a bucket, `/v1/s3` (6) to read and write it |
+| LiteFS, SQLite replicated between machines | Hanzo Base — SQLite per org and per project, health at `GET /v1/base/health` |
+| `fly secrets` at rest | `/v1/kms` (5) — sealed per secret, and `GET /v1/kms/secrets` is structurally incapable of emitting a value |
+| `fly certs add` | `POST .../apps/{app}/domains`, then `.../domains/{host}/verify`; edge-wide ACME intent at `GET /v1/ingress/tls` |
+| `fly ips allocate`, the Anycast edge | `/v1/ingress` (18) — routes, services, middlewares, TLS |
+| `fly wireguard`, 6PN, `.internal` DNS | `/v1/network` (4) — the org's Zero Trust overlay and the edge services on it |
+| Rate limiting you write into your own app | `/v1/gateway` (3) — CORS allowlist, pre-auth per-IP flood cap, per-org rate ceiling |
+| `fly logs` | `GET .../deployments/{id}/logs` for build then app output, and `GET /v1/metrics/logs/query` |
+| Fly's managed Grafana and Prometheus | `/v1/o11y` (381) and `/v1/metrics` (11) |
+| Scheduled machines standing in for cron | `/v1/tasks` (5) — a durable engine that outlives any one deploy |
+| Domains bought elsewhere and pointed at Fly | `/v1/domain` (7) — search, register, renew, transfer |
+
+## The call
+
+Fly, from an image to something serving traffic:
+
+```bash
+curl -sS -X POST https://api.machines.dev/v1/apps \
+  -H "Authorization: Bearer $FLY_API_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"app_name":"acme-web","org_slug":"acme"}'
+
+curl -sS -X POST https://api.machines.dev/v1/apps/acme-web/machines \
+  -H "Authorization: Bearer $FLY_API_TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "region": "iad",
+    "config": {
+      "image": "ghcr.io/acme/web:1.4.2",
+      "guest": {"cpu_kind":"shared","cpus":1,"memory_mb":512},
+      "services": [{
+        "protocol": "tcp",
+        "internal_port": 8080,
+        "ports": [{"port":443,"handlers":["tls","http"]}]
+      }]
+    }
+  }'
+```
+
+Two calls, three identifiers, and the address you hand a user is
+`https://acme-web.fly.dev` — a convention over the app name that neither
+response states.
+
+Hanzo:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/platform/run \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"acme-web","image":"ghcr.io/acme/web:1.4.2","port":8080,"minScale":1}'
+```
+
+One call, and the 202 body carries `url`: the live HTTPS address that was
+created, not a hostname you assemble. There is no org in the body because the
+validated key already resolves it, so there is no field to get wrong and no way
+to write another tenant's name down. `name` is the address — re-running it
+updates that run in place rather than minting a second machine — so nothing hex
+is ever stored. What comes out is an ordinary application, not a special object:
+`POST /v1/platform/projects/default/apps/acme-web/deploy`, `/stop` and
+`/rollback` all take it.
+
+When you want a specific region, that is the machine plane, and you can price it
+before you spend anything:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/visor/machines \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"edge-1","size":"s-2vcpu-4gb","region":"sfo3","dryRun":true}'
+```
+
+`dryRun: true` answers 200 with the quote and launches nothing. Drop it and the
+same body launches; `GET /v1/visor/machines/edge-1` and `DELETE` on the same
+address reach it for the rest of its life, because the key is owner plus name
+rather than the provider's id. A machine that is recreated is still `edge-1`.
+
+## What does not carry
+
+**A region is a machine's property, not an app's.** Neither `POST
+/v1/platform/run` nor the app record carries a region field — an app lands in
+your org's `tenant-<org>` namespace. `GET /v1/visor/compute/regions` is the
+catalog `POST /v1/visor/machines` places against. `fly scale count 2 --region
+syd` has no app-plane equivalent: spread on the machine plane and put the
+results behind `/v1/ingress` routes yourself.
+
+**No Anycast edge, and nothing replays a request.** Fly lands a request in the
+nearest region holding a machine and lets a `fly-replay` header bounce it to
+another. `/v1/ingress` routes by host and path at one edge. Nothing here reads a
+response header and re-issues the request elsewhere.
+
+**A volume is a number, not a resource.** `storageGb` is the persistent disk in
+GiB, clamped to the deployment's limit rather than refused, and absent means no
+volume at all. There is no volume id, no snapshot, no fork, no extend, no
+detaching one and attaching it to something else. What you do get is a read:
+`/v1/o11y` reports each claim's capacity, usage and inodes. Data that has to be
+a resource in its own right belongs on `/v1/provisioning`, where sql, kv, s3,
+vector, search, docdb and datastore each answer with an `rs_`-prefixed handle.
+
+**Changing env does not restart anything.** `fly secrets set` updates the
+machines. `PUT .../apps/{app}/env` re-declares the sealed sync immediately, so
+the operator re-materialises the Secret, but running pods keep the environment
+they started with until their next deploy. It also REPLACES rather than merges —
+a variable absent from the body is gone — so port the whole set, never a delta.
+
+**The Postgres connection string comes back once.** `POST /v1/provisioning/sql`
+launches your org's own instance and returns the DSN with its credential in that
+one response; afterwards the password is sealed in KMS and no read carries it.
+It is a dedicated instance rather than a Fly app you operate, which cuts both
+ways — no `pg_autoctl` to tune, and no `fly pg` to reach in with either.
+
+**No `fly.toml` in the repo deciding the deploy.** The app record is the
+configuration: `source`, `buildType`, `port`, `replicas`, `storageGb`, `env` and
+`domains`, set at `POST .../apps` and changed through the routes. A git app
+builds with zero-config `pack` unless you name `dockerfile`, and the deploy
+routes read that record rather than the tree. Push-to-deploy through the forge
+is a separate lane, which a repo opts into by committing `hanzo.yml`.

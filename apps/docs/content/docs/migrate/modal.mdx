@@ -1,0 +1,220 @@
+---
+title: Modal
+description: Modal deploys Python functions onto GPUs and calls them from a client. Here that is /v1/functions (11 operations) for the function, /v1/sandbox (19) for a sandbox and /v1/visor (34) for the accelerators underneath — with the tenant coming from your key rather than a workspace.
+---
+
+Modal runs a Python function on a GPU and hands you a handle to call it.
+`/v1/functions` (11 operations) is the same unit: publish a record, invoke it by
+name, read what it did. The structural difference to know before porting
+anything is that Modal deploys a **graph** — an app holding functions holding
+images, volumes and secrets, all declared in one file and shipped together by
+`modal deploy` — where here each of those is a separate record with its own
+address that a function refers to by name. The org is not one of those names. It
+comes from the validated key, so there is no workspace and no app namespace to
+keep in step with the function's.
+
+## Start here
+
+Publish a function record, then call it by name — two requests, no deploy step.
+
+```bash
+# 1. mint a key — sk- belongs on a server, pk- is safe in a browser
+curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
+  -H "Authorization: Bearer $HANZO_SESSION" \
+  -H 'Content-Type: application/json' \
+  -d '{"type":"secret"}'
+
+# 2. publish the function — name is the only required field
+curl -sS -X POST https://api.hanzo.ai/v1/functions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"render","runtime":"python","code":"import sys; print(sys.stdin.read().strip().upper())"}'
+
+# 3. invoke it — input arrives on stdin, the record comes back
+curl -sS -X POST https://api.hanzo.ai/v1/functions/render/invoke \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"input":"abc"}'
+```
+
+Step 2 answers 201 with the stored record; step 3 answers 200 with a real
+invocation — an id, a duration and how the run ended; what it printed is at
+`GET /v1/functions/{name}/logs`. That is `modal deploy` plus `.remote()` in two
+calls, with no app namespace to name and no client whose Python has to match the
+container's.
+
+### Core capabilities
+
+| Capability | What it does | Operations |
+|---|---|---|
+| `/v1/functions` | Publish once, then call it at `POST /v1/functions/{name}/invoke` | 11 |
+| `/v1/sandbox` | Lease a container at `POST /v1/sandbox/lease`, then exec, read, write | 19 |
+| `/v1/visor` | The GPUs a `fleet` function runs on, listed at `GET /v1/visor/gpus` | 34 |
+
+## Nouns
+
+### The function
+
+| Modal | Hanzo |
+|---|---|
+| Workspace, from `modal token new` | Your org, taken from the validated key. Never a field in the request |
+| App — `modal.App("thumbs")`, the namespace a function deploys under | No app namespace. `name` is org-unique and addresses the function directly |
+| Environment — `modal environment create` | `namespace` on the record, which is cosmetic grouping. The org is the isolation key |
+| `@app.function(...)` plus `modal deploy` | `POST /v1/functions` — one record carrying runtime, code, limits and secret names |
+| `.remote(x)` | `POST /v1/functions/{name}/invoke`, `input` arriving on the program's stdin |
+| Web endpoint and its `*.modal.run` URL | `endpoint` on the record; every function's is listed at `GET /v1/functions/triggers` |
+| `gpu="H100"` | `target: "fleet"` — the org's own GPU fleet, inventoried at `GET /v1/visor/gpus` |
+| `timeout=900` | `timeoutSec` — 30 by default, clamped at 900 rather than reset to the default |
+| `memory=`, `cpu=` | `memoryLimit` — 256Mi by default, and the multiplier on the GB-seconds charge |
+| `image=modal.Image...` | `image` — a prebuilt image, listed at `GET /v1/registry/images` |
+| `secrets=[modal.Secret.from_name("s3")]` | `envNames` — the secret NAMES only. Values stay in `/v1/kms` (5) and never ride the definition |
+| `modal app list` | `GET /v1/functions/deployments` — a function has one record, and that record IS its live deployment |
+| `modal app logs` | `GET /v1/functions/{name}/logs` — the most recent run's output, and nothing older |
+| The function's dashboard page | `GET /v1/functions/{name}` — definition, 7-day rollup, trigger, last twenty invocations, secret names, in one round-trip |
+| Call history | `GET /v1/functions/{name}/invocations` — real recorded rows, newest first, never a projection |
+| The usage graphs | `GET /v1/functions/metrics` — counted invocations per bucket, with the cost column left null rather than guessed |
+
+### Sandboxes and shells
+
+| Modal | Hanzo |
+|---|---|
+| `modal.Sandbox.create()` | `POST /v1/sandbox/lease` — `/v1/sandbox` is 19 operations |
+| `sb.exec("pytest")` | `POST /v1/sandbox/run` — a non-zero exit is a 200 carrying a failed program |
+| `sb.open(path)` for read and write | `POST /v1/sandbox/read` and `POST /v1/sandbox/write`, `data` base64 |
+| `sb.terminate()` | `POST /v1/sandbox/end`; `purge` decides whether the disk goes with it |
+| `modal shell` | `POST /v1/sandbox/{id}/terminal/ticket`, then the self-contained page at `GET /v1/sandbox/{id}/terminal` |
+| `modal run` for a one-off script | `POST /v1/exec` — thirteen languages, a throwaway sandbox, stdout plus the files the program left |
+| `modal container list`, `modal container exec` | `GET /v1/sandbox`, then `POST /v1/sandbox/{id}/exec` |
+| A sandbox with a display | `class: "desktop"` on the lease, screen at `POST /v1/sandbox/{id}/screen/ticket` |
+
+### State, schedules and the rest
+
+| Modal | Hanzo |
+|---|---|
+| `modal.Volume` or `modal.NetworkFileSystem` mounted into a function | The sandbox's `project` disk for working state; object storage at `/v1/s3` (6), made with `POST /v1/provisioning/s3`. There is no second filesystem object |
+| `modal.Dict` | `/v1/kv` (6) — a bucket per name, revisions per key, TTL per bucket |
+| `modal.Queue` | `/v1/mq` (15) — durable streams with consumers, pulled at `POST /v1/mq/stream/{stream}/consumer/{name}/next` |
+| `modal.Cron`, `modal.Period` | `/v1/tasks` (5) — a durable engine that outlives any one function record |
+| `modal secret create` | `POST /v1/kms/secrets`; `GET /v1/kms/secrets` enumerates names and is structurally incapable of emitting a value |
+| Building and holding that image | `POST /v1/platform/runner` builds it in-cluster and answers 202 with the build job id; `/v1/registry` (6) holds it in the org's own OCI namespace, filtered server-side so a listing can only hold your images |
+| `min_containers`, an always-warm service | `POST /v1/platform/run` — an image in, a live URL back, `minScale` floor and `maxScale` ceiling, idempotent by name |
+| Modal's GPU classes and pricing page | `GET /v1/visor/compute/sizes` for what can be launched, `GET /v1/visor/fleet` for what you hold |
+| Adding capacity | `POST /v1/visor/machines`, or your own host dialing in with `hanzo link` |
+| The GPU work queue | `GET /v1/visor/fleet/jobs` — per-node lanes plus a shared any-GPU lane, cancelled at `POST /v1/visor/fleet/jobs/{id}/cancel` |
+| Training and fine-tuning runs you put on Modal | `POST /v1/ai/finetune/jobs`, then `POST /v1/ai/finetune/deploy` |
+| Serving your own weights behind an endpoint | `POST /v1/ml/models`, inference at `POST /v1/ml/models/{name}/predict` |
+| Calling a hosted model instead of hosting one | `/v1/ai` (272) — the Zen family, served on the same key |
+| Modal Notebooks | A `dev` sandbox with the browser terminal at `GET /v1/sandbox/{id}/terminal`, or Hanzo Desktop locally |
+| Logs, traces and dashboards | `/v1/o11y` (381) and `/v1/metrics` (11), queried at `GET /v1/metrics/logs/query` |
+| What you have spent | `GET /v1/billing/balance` and `/v1/usage` (5) |
+
+## The call
+
+Modal — a file, a deploy, and a client that looks the function up:
+
+```python
+# thumbs.py
+import modal
+
+app = modal.App("thumbs")
+image = modal.Image.debian_slim().pip_install("pillow")
+
+@app.function(image=image, gpu="H100", timeout=900,
+              secrets=[modal.Secret.from_name("s3")])
+def render(seed: str) -> str:
+    return seed.upper()
+
+# $ modal deploy thumbs.py
+# then, from any other process:
+#   f = modal.Function.from_name("thumbs", "render")
+#   f.remote("abc")
+```
+
+Hanzo — publish the record, then invoke it:
+
+```bash
+curl -sS -X POST https://api.hanzo.ai/v1/functions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "render",
+    "runtime": "python",
+    "target": "fleet",
+    "timeoutSec": 900,
+    "memoryLimit": "4Gi",
+    "envNames": ["S3_KEY"],
+    "code": "import sys; print(sys.stdin.read().strip().upper())"
+  }'
+
+curl -sS -X POST https://api.hanzo.ai/v1/functions/render/invoke \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"input":"abc"}'
+```
+
+One name, `render`, and it is org-unique — there is no workspace, no app and no
+deployment id to keep aligned with it, because which org owns `render` is
+decided by the key rather than by a field anyone can write. The argument goes in
+on stdin and the answer is the invocation record, so nothing is pickled and the
+caller's Python and library versions never have to match the container's; `curl`
+is a first-class client.
+
+The record comes back whatever happened: 200 when your code ran clean, 502 when
+it ran and failed, 503 when this deployment has no sandbox to run code in. A
+failed run still has an id, a duration and the status code your own program
+answered with, instead of an exception on one path and an error envelope on the
+other. Billing follows the same split — the flat per-invocation fee is
+authorized against the org's prepaid balance **before** any compute starts, so
+an unfunded org gets a 402 and nothing executes, and the GB-seconds debit lands
+after the run. A sandbox that was unreachable ran no billable compute and is not
+charged; a program that exited non-zero is, because that is a successful
+invocation of a failing program.
+
+Reading it back is one call, not a tour of the dashboard:
+
+```bash
+curl -sS https://api.hanzo.ai/v1/functions/render \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+That answers the definition, the 7-day rollup, the trigger, the twenty most
+recent invocations and the names of the secrets it mounts. Rollup fields are
+absent rather than zero when the function has not run in the window, so a
+console draws an em dash instead of a fabricated 0.
+
+## What does not carry
+
+**Arguments are bytes, not Python objects.** Modal serializes your call
+arguments and the function's closure, which is why the client and the container
+have to agree on versions. `input` here is opaque to this surface and lands on
+stdin; structured output is whatever your program prints. A typed signature does
+not port — write the encode and decode yourself.
+
+**`.map()` and `.spawn()` have no counterpart.** Modal fans a function across an
+iterable and hands back a `FunctionCall` you poll. `POST /v1/functions/{name}/invoke`
+is synchronous and answers when the run is over. Fan-out is a queue you drive:
+`/v1/mq` (15) for the work, one invoke per item, and `GET /v1/visor/fleet/jobs`
+to watch what the GPU lanes are holding.
+
+**`gpu="H100:8"` is not a field on a function.** `target` is `sandbox` or
+`fleet`, and `fleet` means the org's own accelerators — the ones at
+`GET /v1/visor/gpus`, added by `POST /v1/visor/machines` or by a host running
+`hanzo link`. You choose the fleet, not the card, and `fleet` accepts
+`runtime: python` only.
+
+**No image builder DSL.** `modal.Image.debian_slim().pip_install(...)` builds and
+caches a layer per method call. `image` here names an image that already exists,
+built by `POST /v1/platform/runner` or by your own CI. Nothing is installed for
+you at publish time; the image is the environment.
+
+**A function mounts no volume.** There is no `volumes=` on the definition and no
+`.commit()`. Persistent working state is the sandbox's `project` disk, and
+anything a function must read or write goes through `/v1/s3` (6) or `/v1/kv` (6)
+from inside the code.
+
+**Warm pools are a different plane.** A function record carries a timeout and a
+memory limit, and no replica floor — it starts when it is called. An always-on
+autoscaled service is `POST /v1/platform/run`, which takes `minScale` and
+`maxScale` and is idempotent by name. Port a Modal function with
+`min_containers` there and keep `/v1/functions` for work that begins on a
+request.
