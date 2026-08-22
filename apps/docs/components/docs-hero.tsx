@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { PROVIDER_ICONS } from '@/components/provider-icons';
-import { AGENT_SETUP_PROMPT } from '@/lib/agent-setup-prompt';
 
 // The masthead. Three doors, one model, and nothing else above the fold.
 //
@@ -24,7 +23,6 @@ import { AGENT_SETUP_PROMPT } from '@/lib/agent-setup-prompt';
 // the only emphasis available is weight, border and motion, so those carry it.
 
 /** Assistants a reader might paste the prompt into, from our own icon set. */
-const ASSISTANTS = ['hanzo', 'anthropic', 'openai', 'google'] as const;
 
 // The clipboard payload lives in lib/agent-setup-prompt.ts — see the note there
 // for why it instructs the AGENT rather than describing steps to a human.
@@ -88,21 +86,10 @@ export function DocsHero({
   title?: string;
   description?: string;
 }) {
-  const [copied, setCopied] = useState(false);
   const [active, setActive] = useState<string>(DOORS[0].id);
 
   const door = DOORS.find((d) => d.id === active) ?? DOORS[0];
 
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(AGENT_SETUP_PROMPT);
-      setCopied(true);
-      // Revert rather than latch — a button stuck on "Copied" reads as broken.
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
-  }
 
   return (
     <div className="not-prose mb-12">
@@ -128,9 +115,6 @@ export function DocsHero({
 
       <div className="hanzo-rise mb-4 flex items-center gap-2.5">
         <BrandIcon name="hanzo" />
-        <span className="text-[11px] uppercase tracking-[0.2em] text-fd-muted-foreground">
-          Hanzo
-        </span>
       </div>
 
       <h1
@@ -171,7 +155,7 @@ export function DocsHero({
               ].join(' ')}
               style={{ ['--d' as string]: `${180 + i * 70}ms` }}
             >
-              <span className="mb-2 text-[11px] uppercase tracking-[0.16em] text-fd-muted-foreground">
+              <span className="mb-2 text-xs font-medium text-fd-muted-foreground">
                 {d.eyebrow}
               </span>
               <span className="mb-1.5 flex items-center gap-1.5 text-base font-semibold text-fd-foreground">
@@ -200,7 +184,7 @@ export function DocsHero({
         style={{ ['--d' as string]: '400ms' }}
       >
         <div className="flex items-center justify-between gap-3 border-b border-fd-border px-4 py-2.5">
-          <span className="text-[11px] uppercase tracking-[0.16em] text-fd-muted-foreground">
+          <span className="text-xs font-medium text-fd-muted-foreground">
             {door.lang}
           </span>
           <Link
@@ -224,7 +208,7 @@ export function DocsHero({
         className="hanzo-rise group mb-8 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-fd-border bg-fd-card/40 px-5 py-4 transition-colors hover:border-fd-foreground/25 hover:bg-fd-accent/40"
         style={{ ['--d' as string]: '460ms' }}
       >
-        <span className="rounded border border-fd-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-fd-muted-foreground">
+        <span className="rounded border border-fd-border px-1.5 py-0.5 text-[11px] font-medium text-fd-muted-foreground">
           Enso
         </span>
         <span className="text-sm font-medium text-fd-foreground">
@@ -252,27 +236,6 @@ export function DocsHero({
           Get started
         </Link>
 
-        <button
-          type="button"
-          onClick={copy}
-          aria-label="Copy a prompt that points your assistant at these docs"
-          className="inline-flex h-10 items-center gap-3 rounded-full border border-fd-border px-5 text-sm font-medium text-fd-foreground transition-colors hover:bg-fd-accent"
-        >
-          <span className="flex items-center gap-1.5 text-fd-muted-foreground">
-            {ASSISTANTS.map((name) => (
-              <BrandIcon key={name} name={name} className="size-4" />
-            ))}
-          </span>
-          {copied ? 'Copied' : 'Copy prompt'}
-        </button>
-
-        <Link
-          href="/docs/games"
-          className="inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm text-fd-muted-foreground transition-colors hover:text-fd-foreground"
-        >
-          <span aria-hidden>🕹</span>
-          Or build a game →
-        </Link>
       </div>
     </div>
   );
