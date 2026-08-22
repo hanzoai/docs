@@ -78,6 +78,14 @@ export function AgentActions() {
     setOpen(false)
   }
 
+  // hanzo dev takes the prompt as its argument, so this is the same intention
+  // as "open in ChatGPT" for the agent that runs where the code is.
+  const copyDev = async () => {
+    await navigator.clipboard.writeText(`hanzo dev ${JSON.stringify(promptFor(here))}`)
+    flash('dev')
+    setOpen(false)
+  }
+
   const copyPrompt = async () => {
     await navigator.clipboard.writeText(promptFor(here))
     flash('prompt')
@@ -96,7 +104,7 @@ export function AgentActions() {
         className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm text-fd-muted-foreground transition-colors hover:bg-fd-accent hover:text-fd-foreground"
       >
         {done ? <Check className="size-3.5" /> : <Sparkles className="size-3.5" />}
-        <span className="max-sm:hidden">{done === 'prompt' ? 'Copied' : done === 'markdown' ? 'Copied' : 'Use with AI'}</span>
+        <span className="max-sm:hidden">{done ? 'Copied' : 'Use Agent'}</span>
         <ChevronDown className="size-3 opacity-60 max-sm:hidden" />
       </button>
 
@@ -133,6 +141,12 @@ export function AgentActions() {
           >
             Open in Claude
           </a>
+          <div className="my-1 border-t" />
+          {/* Our own agent, which runs in the reader's terminal against their
+              repo — so it takes a command rather than a URL. */}
+          <button role="menuitem" onClick={copyDev} className={item}>
+            Open in Hanzo Dev
+          </button>
           <div className="my-1 border-t" />
           {/* The skill for whatever this page is about, so an agent can pick up
               the capability rather than only this one page's text. */}

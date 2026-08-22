@@ -51,7 +51,7 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
         // page (the one route that opens collapsed). Reserve the control's footprint:
         // 88px clears 82 with a gap. The rail only exists in `full` mode, so below md
         // there is no control to clear and the padding stays 4.
-        collapsed ? 'ps-4 md:ps-22' : 'ps-4',
+        collapsed ? 'ps-4 md:ps-22' : 'ps-4 md:ps-8',
         'border-b transition-colors backdrop-blur-sm h-(--fd-header-height)',
         // The height variable is only declared under max-md upstream, because the bar
         // is not expected on desktop. Without it the grid row collapses to zero and
@@ -107,7 +107,6 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
             pathname so it works on every page. It replaced a Copy Markdown
             button and an Open menu buried under the title, plus a Copy prompt
             that existed only on the front page. */}
-        <AgentActions />
         <OrgBadge />
         {/* Shown exactly where the rail is not showing it: below md the rail is
             a drawer, and on desktop only while it is collapsed. Everywhere else
@@ -115,6 +114,9 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
         <div className={cn(collapsed ? '' : 'md:hidden')}>
           <NavAccount />
         </div>
+        {/* Last in the row, so it sits at the right edge where the reader's eye
+            ends rather than in the middle of the trailing controls. */}
+        <AgentActions />
       </div>
     </header>
   );
