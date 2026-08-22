@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
+import { unpackage } from './mdx';
 
 // THE DOCUMENT.
 //
@@ -539,7 +540,10 @@ export function loadDocument(file: string): Document {
       // Using the description's first line as a title turned whole sentences
       // into page titles once the document gained product-voice prose.
       title: String(t?.['x-displayName'] ?? '').trim() || titleCase(t?.name ?? slug),
-      description: String(t?.description ?? '').trim(),
+      // Stripped HERE, once, because all three generators read this one field:
+      // the CLI's group table, the API reference and the MCP tool pages each
+      // opened every row with "Package <goname> is". See [unpackage].
+      description: unpackage(String(t?.description ?? '').trim()),
       operations: [],
     };
     byName.set(slug, p);
