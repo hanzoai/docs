@@ -10,6 +10,30 @@ import { fileURLToPath } from 'node:url';
 // short-circuits before createOctokit() runs in that case.
 type Octokit = any;
 
+/**
+ * Forks of other people's demos and engine samples, carried under our org and
+ * presented by the docs as Hanzo projects. Measured against the GitHub API: all
+ * twelve are forks whose upstream owner is Unity-Technologies or BayatGames.
+ *
+ * A list rather than a rule, because "is this ours" is a judgement — a fork of
+ * ClickHouse IS a Hanzo project (hanzoai/datastore) and a fork of a platformer
+ * is not, and no field on the API tells them apart.
+ */
+const SAMPLE_FORKS = new Set([
+  '2d-techdemos',
+  'BoatAttack',
+  'DOTSSample',
+  'ECS-Network-Racing-Sample',
+  'FPSSample',
+  'Megacity-2019',
+  'ProjectTinySamples',
+  'RedRunner',
+  'UIToolkitUnityRoyaleRuntimeDemo',
+  'com.unity.multiplayer.samples.coop',
+  'megacity-metro',
+  'open-project-1',
+]);
+
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const SCRIPT_DIR = path.dirname(SCRIPT_PATH);
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
@@ -78,6 +102,11 @@ export async function syncProjectDocs() {
     const repos = await listOrgRepos(octokit, org);
     const tasks = repos
       .filter((repo) => !excludeRepos.has(repo.name))
+      // A fork of somebody's engine demo is not a Hanzo project. Twelve of these
+      // were listed as ours: FPSSample, BoatAttack, Megacity-2019, RedRunner and
+      // the rest, all forked from Unity-Technologies or BayatGames. They stay on
+      // GitHub; they do not belong in the Open source rail.
+      .filter((repo) => !SAMPLE_FORKS.has(repo.name))
       .filter((repo) => {
         const isPrivate = repo.private === true || repo.visibility === 'private' || repo.visibility === 'internal';
         return includePrivate || !isPrivate;
@@ -91,6 +120,7 @@ export async function syncProjectDocs() {
           docsCandidates,
           fetchRemote,
           dryRun,
+          octokit,
         }),
       );
 
@@ -180,6 +210,13 @@ async function listOrgRepos(octokit: Octokit, org: string) {
     private?: boolean;
     html_url: string;
     default_branch: string;
+    // Whose work this is, and on what terms. The listing already returns all
+    // three; they were dropped, which is why a page could present a fork of
+    // somebody else's project as ours with no attribution and no licence.
+    fork: boolean;
+    license: string | null;
+    homepage: string | null;
+    language: string | null;
   }> = [];
 
   let page = 1;
@@ -209,6 +246,10 @@ async function listOrgRepos(octokit: Octokit, org: string) {
         private: repo.private,
         html_url: repo.html_url,
         default_branch: repo.default_branch,
+        fork: repo.fork === true,
+        license: (repo as { license?: { spdx_id?: string } }).license?.spdx_id ?? null,
+        homepage: (repo as { homepage?: string | null }).homepage ?? null,
+        language: (repo as { language?: string | null }).language ?? null,
       });
     }
 
@@ -219,6 +260,39 @@ async function listOrgRepos(octokit: Octokit, org: string) {
   return repos;
 }
 
+/** The repo's README, rendered as the project page when it ships no docs/ dir. */
+async function readReadme(octokit: Octokit | undefined, org: string, repo: string): Promise<string | null> {
+  if (!octokit) return null;
+  try {
+    const r = await octokit.request('GET /repos/{owner}/{repo}/readme', {
+      owner: org,
+      repo,
+      headers: { accept: 'application/vnd.github.raw+json' },
+    });
+    return typeof r.data === 'string' ? r.data : null;
+  } catch {
+    // No README, or unreadable. The page falls back to the description.
+    return null;
+  }
+}
+
+/** Whose work a fork is, and on what terms. The org listing does not carry it. */
+async function upstreamOf(
+  octokit: Octokit | undefined,
+  org: string,
+  repo: string,
+): Promise<{ parent: string; license: string | null } | null> {
+  if (!octokit) return null;
+  try {
+    const r = await octokit.request('GET /repos/{owner}/{repo}', { owner: org, repo });
+    const parent = (r.data as { parent?: { full_name?: string; license?: { spdx_id?: string } } }).parent;
+    if (!parent?.full_name) return null;
+    return { parent: parent.full_name, license: parent.license?.spdx_id ?? null };
+  } catch {
+    return null;
+  }
+}
+
 async function syncRepoDocs({
   org,
   repo,
@@ -227,6 +301,7 @@ async function syncRepoDocs({
   docsCandidates,
   fetchRemote,
   dryRun,
+  octokit,
 }: {
   org: string;
   repo: {
@@ -237,12 +312,17 @@ async function syncRepoDocs({
     private?: boolean;
     html_url: string;
     default_branch: string;
+    fork?: boolean;
+    license?: string | null;
+    homepage?: string | null;
+    language?: string | null;
   };
   outputDir: string;
   localRoot: string;
   docsCandidates: string[];
   fetchRemote: boolean;
   dryRun: boolean;
+  octokit?: Octokit;
 }): Promise<RepoRecord> {
   const slug = repo.name;
   const route = `/docs/projects/${org}/${slug}`;
@@ -272,12 +352,22 @@ async function syncRepoDocs({
     });
   }
 
+  ensureDir(outputRepoDir, dryRun);
   if (!docsPath) {
-    ensureDir(outputRepoDir, dryRun);
-    writeFallbackDocs(outputRepoDir, org, repo, dryRun);
-  } else {
-    ensureBaseMeta(outputRepoDir, repo.name, repo.description, dryRun);
+    const [readme, lineage] = await Promise.all([
+      readReadme(octokit, org, repo.name),
+      repo.fork ? upstreamOf(octokit, org, repo.name) : Promise.resolve(null),
+    ]);
+    writeFallbackDocs(
+      outputRepoDir,
+      org,
+      { ...repo, upstream: lineage?.parent ?? null, upstreamLicense: lineage?.license ?? null },
+      dryRun,
+      readme,
+    );
   }
+  else ensureLanding(outputRepoDir, repo.name, repo.description, dryRun);
+  writeProjectMeta(outputRepoDir, repo.name, repo.description, dryRun);
 
   return {
     org,
@@ -401,38 +491,145 @@ async function fetchDocsFromRemote({
   return null;
 }
 
-function writeFallbackDocs(destDir: string, org: string, repo: { name: string; description: string | null; html_url: string }, dryRun: boolean) {
+/**
+ * What a project page carries when the repo ships no docs/ directory.
+ *
+ * It used to say "Docs are not available yet for this project" — true of the
+ * docs directory and false of the project, which has a README describing it.
+ * A reader who followed a link from the Open source rail was told nothing and
+ * sent to GitHub to find out.
+ *
+ * So: the README is the page. On top of it go the two things a README does not
+ * know — where the work came from, and on what terms — because a page that
+ * presents somebody else's project under our org with neither is a claim we
+ * should not be making. 83 of the public repos are forks.
+ */
+function writeFallbackDocs(
+  destDir: string,
+  org: string,
+  repo: {
+    name: string;
+    description: string | null;
+    html_url: string;
+    fork?: boolean;
+    license?: string | null;
+    homepage?: string | null;
+    upstream?: string | null;
+    upstreamLicense?: string | null;
+  },
+  dryRun: boolean,
+  readme?: string | null,
+) {
   const title = humanize(repo.name);
   const description = repo.description ?? `Documentation for ${title}.`;
-  const content = `---\ntitle: ${escapeYaml(title)}\ndescription: ${escapeYaml(description)}\n---\n\n# ${title}\n\nDocs are not available yet for this project.\n\n- Repository: ${repo.html_url}\n- Org: ${org}\n\nIf this repo has docs in a non-standard location, add a \`hanzo.docs.json\` file with \`docsPath\` in the repo root.`;
+
+  const L: string[] = [];
+  L.push('---');
+  L.push(`title: ${escapeYaml(title)}`);
+  L.push(`description: ${escapeYaml(description)}`);
+  L.push('---');
+  L.push('');
+
+  // A fork says whose work it is BEFORE the work, not in a footnote.
+  if (repo.fork && repo.upstream) {
+    const terms = repo.upstreamLicense && repo.upstreamLicense !== 'NOASSERTION' ? repo.upstreamLicense : null;
+    L.push(
+      `> Forked from [${repo.upstream}](https://github.com/${repo.upstream})` +
+        (terms ? `, under ${terms}.` : '.') +
+        ' Upstream holds the copyright; changes here are ours.',
+    );
+    L.push('');
+  }
+
+  if (readme && readme.trim()) {
+    // The README's own H1 repeats the title the page already renders.
+    L.push(readme.replace(/^#\s+.*\n+/, '').trim());
+  } else {
+    L.push(`# ${title}`);
+    L.push('');
+    L.push(description);
+  }
+
+  L.push('');
+  L.push('## Links');
+  L.push('');
+  L.push(`- [Source](${repo.html_url})`);
+  if (repo.homepage && /^https?:\/\//.test(repo.homepage)) L.push(`- [Project site](${repo.homepage})`);
+  // Terms only where they are detectable. NOASSERTION is GitHub failing to
+  // identify a licence, which is not a licence — saying nothing beats guessing.
+  if (repo.license && repo.license !== 'NOASSERTION') L.push(`- Licence: ${repo.license}`);
 
   if (dryRun) return;
   fs.mkdirSync(destDir, { recursive: true });
-  fs.writeFileSync(path.join(destDir, 'index.mdx'), content, 'utf8');
-  fs.writeFileSync(
-    path.join(destDir, 'meta.json'),
-    JSON.stringify({ title, description, pages: ['index'] }, null, 2),
-    'utf8',
-  );
+  fs.writeFileSync(path.join(destDir, 'index.mdx'), L.join('\n') + '\n', 'utf8');
 }
 
-function ensureBaseMeta(destDir: string, repoName: string, description: string | null, dryRun: boolean) {
+function ensureLanding(destDir: string, repoName: string, description: string | null, dryRun: boolean) {
+  if (dryRun) return;
+  const indexPath = path.join(destDir, 'index.mdx');
+  if (fs.existsSync(indexPath)) return;
+  const title = humanize(repoName);
+  const body = `---\ntitle: ${escapeYaml(title)}\ndescription: ${escapeYaml(description ?? `Documentation for ${title}.`)}\n---\n\n# ${title}\n\nDocumentation imported from repository content.`;
+  fs.writeFileSync(indexPath, body, 'utf8');
+}
+
+/**
+ * ONE ROW PER PROJECT.
+ *
+ * `pages` decides what the rail shows, and an EMPTY list is not the same as no
+ * list. No `pages` means "every child", recursively — that is how one synced
+ * repo puts 762 rows ten levels deep into a rail of 113 projects. `["index"]`
+ * looks like the fix and is not: naming the index takes it OUT of the folder's
+ * index slot and puts it back as a child, so the project row stops being a link
+ * and grows a second row with the same name under it. Measured over the 278
+ * project folders on disk: 556 rows, two per project, every one wearing a
+ * chevron that opens a list of one.
+ *
+ * `[]` keeps the index in its slot and gives the folder no children, so the row
+ * IS the project page. `collapsible: false` drops the chevron, so it reads as
+ * the link it is rather than a disclosure that opens nothing.
+ *
+ * Written unconditionally, and last, because the shape of our rail is not a
+ * decision a synced repo gets to make. A vendored meta.json arrives with the
+ * copied docs and carries the upstream's own navigation; three are in the tree
+ * today (`ai` and `index` list every child, `commerce` grafts four upstream
+ * rows), and under the old `ensureBaseMeta` — which wrote only when no file was
+ * there — the next repo to add one changed this sidebar without touching this
+ * repo. Its title and description are kept: upstream names the project ("Hanzo
+ * Commerce" beats humanize()'s "Commerce"), we decide the rail.
+ *
+ * The pages underneath stay published. A route comes from a file being in the
+ * collection — `source.getPages()`, which reads the file list and never a
+ * meta.json — which is why the sitemap, the search index, llms.txt and
+ * llms-full.txt all read the pages rather than the tree. The same shape already
+ * generates the API reference, where the `openapi/ai` folder publishes 296
+ * operation pages behind a single row.
+ */
+function writeProjectMeta(destDir: string, repoName: string, description: string | null, dryRun: boolean) {
   if (dryRun) return;
   const metaPath = path.join(destDir, 'meta.json');
-  if (!fs.existsSync(metaPath)) {
-    const title = humanize(repoName);
-    fs.writeFileSync(
-      metaPath,
-      JSON.stringify({ title, description: description ?? undefined, pages: ['index'] }, null, 2),
-      'utf8',
-    );
+  let vendored: { title?: string; description?: string } = {};
+  if (fs.existsSync(metaPath)) {
+    try {
+      vendored = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+    } catch {
+      // malformed upstream meta: ours stands
+    }
   }
-  const indexPath = path.join(destDir, 'index.mdx');
-  if (!fs.existsSync(indexPath)) {
-    const title = humanize(repoName);
-    const body = `---\ntitle: ${escapeYaml(title)}\ndescription: ${escapeYaml(description ?? `Documentation for ${title}.`)}\n---\n\n# ${title}\n\nDocumentation imported from repository content.`;
-    fs.writeFileSync(indexPath, body, 'utf8');
-  }
+  fs.writeFileSync(
+    metaPath,
+    JSON.stringify(
+      {
+        title: vendored.title ?? humanize(repoName),
+        description: vendored.description ?? description ?? undefined,
+        pages: [],
+        collapsible: false,
+      },
+      null,
+      2,
+    ) + '\n',
+    'utf8',
+  );
 }
 
 function applyPageRenames(
