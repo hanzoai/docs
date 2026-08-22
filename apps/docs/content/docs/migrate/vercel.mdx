@@ -1,86 +1,136 @@
 ---
 title: Vercel
-description: Vercel builds a repo and serves the result on a domain. Here that is /v1/projects — 27 operations, where a deployment is content-addressed and going live is a separate, reversible act.
+description: Vercel builds a repo and serves the result. Here that is two capabilities — /v1/platform (37) builds and runs an app, /v1/projects (27) serves a static export — and which one you want depends on whether your output needs a server.
 ---
 
-Vercel takes a repository, builds it, and serves the output on a URL. `/v1/projects`
-(27 operations) is the same shape: a project holds sites, a deployment uploads an
-export, and a release is what a domain points at.
+Vercel takes a repository, builds it, and serves the output. Two capabilities
+answer that, and picking the right one is the whole migration:
 
-The difference that changes how you think about it: **publishing and going live
-are two calls, not one.** A deployment becomes a release addressed by the digest
-of its own manifest, and a domain is pointed at a release by
-`POST /v1/projects/{slug}/releases/{release}/activate`. Rolling back is
-activating an earlier one — the bytes never moved.
+- **`/v1/platform`** (37 operations) — an app that is **built and run**. It has
+  the build (`POST /v1/platform/runner`, listed at `/v1/platform/builds`), a
+  deploy, per-deployment logs, preview, promote, rollback, env and domains. This
+  is the like-for-like Vercel replacement.
+- **`/v1/projects`** (27 operations) — a **static site**. You bring a built
+  directory; it stores it as a content-addressed release and points a domain at
+  one. No build, because there is nothing to build.
+
+If your project is `next build` with route handlers, ISR or middleware, it is an
+app: use `/v1/platform`. If it is `output: 'export'` — a directory of HTML — the
+Sites plane is simpler and cheaper. This documentation site is the first; the
+marketing site is the second.
 
 ## Nouns
+
+Vercel is not only deploys, and neither is this. The left column is their
+product surface; the right is the capability that answers it.
+
+### Building and serving
 
 | Vercel | Hanzo |
 |---|---|
 | Team | Your org, taken from the validated key |
-| Project | Project — `/v1/projects`, addressed by `slug` |
-| Deployment | Deployment — `POST /v1/projects/{slug}/deployments`, then `/complete` |
-| Production / Preview | A release, and which one a domain is activated on |
-| Promote to production | `POST /v1/projects/{slug}/releases/{release}/activate` |
-| Instant rollback | The same call, naming an older release |
-| Domain | `/v1/projects/{slug}/domains`, verified at `/verify` |
-| `vercel --prod` | `POST /v1/projects/{slug}/publish` |
+| Project | Project — IAM owns it; apps and sites live under it |
+| Deployment (built for you) | `POST /v1/platform/projects/{project}/apps/{app}/deploy` |
+| Build logs | `GET .../apps/{app}/deployments/{id}/logs` |
+| Preview deployment | `POST .../apps/{app}/preview` |
+| Promote to production | `POST .../apps/{app}/promote` |
+| Instant rollback | `POST .../apps/{app}/rollback` |
+| Environment variables | `PUT .../apps/{app}/env` |
+| Domain, and verifying it | `.../apps/{app}/domains`, then `/{host}/verify` |
+| Purely static output | `/v1/projects` (27) — upload a directory, activate a release |
+| Rollback, static | `POST /v1/projects/{slug}/releases/{release}/activate` |
 | Edge cache purge | `POST /v1/projects/{slug}/purge` |
-| Template / clone | `POST /v1/projects/fork` |
-| OG image | `GET /v1/projects/{slug}/shot` |
+
+### The rest of the platform
+
+| Vercel | Hanzo |
+|---|---|
+| Serverless / Edge Functions | `/v1/functions` (11) |
+| Cron Jobs | `/v1/tasks` (5) — a durable engine, not a timer on a deployment |
+| Vercel KV | `/v1/kv` (6) |
+| Vercel Blob | `/v1/s3` (6) |
+| Vercel Postgres / storage you provision | `/v1/provisioning` (28) |
+| Edge Config | `/v1/flags` (8) — a definition and a deterministic decision |
+| Web Analytics | `/v1/event` (12) |
+| Speed Insights, Log Drains, traces | `/v1/o11y` (381) |
+| Firewall, rate limiting, allowed origins | `/v1/gateway` (3) |
+| Domains bought and held | `/v1/domain` (7) |
+| AI SDK / AI Gateway | `/v1/ai` (272) — the models, not a proxy to somebody else's |
+
+The counts are the operations each capability publishes in the document this
+site is built from. `/v1/ai` being the largest is the point of the whole
+platform rather than an add-on to hosting.
 
 ## The call
 
-Vercel, deploying a built directory:
+Vercel:
 
 ```bash
-vercel deploy --prebuilt --prod
+vercel deploy --prod
 ```
 
-Hanzo — enqueue, upload, complete:
+Hanzo, as an app that builds — the shape that matches:
 
 ```bash
-# 1. enqueue: returns {id, bucket, prefix, upload}
+curl -sS -X POST \
+  "https://api.hanzo.ai/v1/platform/projects/acme/apps/web/deploy" \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"ref":"main"}'
+```
+
+Then watch it, and promote when you are happy:
+
+```bash
+curl -sS "https://api.hanzo.ai/v1/platform/projects/acme/apps/web/deployments/$ID/logs" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+
+curl -sS -X POST \
+  "https://api.hanzo.ai/v1/platform/projects/acme/apps/web/promote" \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Static instead, when the output needs no server — enqueue, upload, complete:
+
+```bash
 curl -sS -X POST https://api.hanzo.ai/v1/projects/my-site/deployments \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"branch":"main","commit":"'"$GIT_SHA"'"}'
-
-# 2. the bytes go straight to object storage with the grant from step 1,
-#    never through the API
-
-# 3. complete: reconciles the prefix against the manifest and cuts a release
-curl -sS -X POST \
-  "https://api.hanzo.ai/v1/projects/my-site/deployments/$ID/complete" \
-  -H "Authorization: Bearer $HANZO_API_KEY" \
-  -H 'Content-Type: application/json' \
-  -d '{"keys":["index.html","_next/static/chunk.js"]}'
 ```
 
-The bytes skip the API on purpose. The enqueue hands back a prefix-scoped,
-short-lived upload grant, so CI never holds a standing storage credential and
-the edge body limit never applies to your largest asset.
+The bytes go straight to object storage with the grant that call hands back, so
+CI never holds a standing storage credential and the edge body limit never
+applies to your largest asset. A release is addressed by the digest of its own
+manifest, so rolling back is activating an earlier one — the bytes never move.
 
 ## What does not carry
 
-**No build step.** This is the biggest one. Vercel clones your repo and runs the
-build; here you bring a built directory. Your CI already builds — `pnpm build`,
-then publish `out/`. What you lose is Vercel's build cache and its framework
-detection; what you gain is that the thing you tested is the thing that ships.
+Short, because most of Vercel's surface has an answer above. What genuinely
+differs:
 
-**No serverless or edge functions on this capability.** A Vercel project mixes
-static output and functions in one deployment. Here a site is static and per-request
-compute is `/v1/functions` — a different capability with its own lifecycle. A
-Next.js app with route handlers does not lift over as one unit.
+**Git-push-to-deploy is opt-in, not ambient.** Vercel watches every branch of a
+connected repo and deploys what it finds. A push here reaches `cloud.OnGitPush`
+and an app rebuilds when it tracks that repo — you say which repo an app
+tracks, rather than the connection implying it for all of them.
 
-**No preview URL per commit.** Every deployment becomes a release and a release
-is addressable, but there is no automatic `*.vercel.app` hostname minted per
-push. Point a domain at a release deliberately.
+**No `*.vercel.app` hostname per commit.** `preview` gives you a running
+deployment; a memorable per-commit subdomain minted automatically is not part
+of it. Point a domain at what you want to share.
 
-**No ISR, no image optimization.** `output: 'export'` is the shape this serves.
-Incremental regeneration needs a server, and there is no image transform in the
-request path.
+**No framework auto-detection.** Vercel infers Next, Astro or SvelteKit and
+writes the build for you. Say what your build is.
 
-**The completion manifest is one body.** It lists every key and it is subject to
-the edge body limit, so an export with very many files can exceed it. A full
-prerender of tens of thousands of pages is what makes that happen.
+**No image optimization in the request path.** Vercel rewrites and caches
+images per request from `next/image`. Nothing here transforms an image as it is
+served, so pre-size them at build.
+
+**Cron is a durable engine, not a field on a deployment.** `vercel.json`'s
+`crons` ships with the deployment and disappears with it. `/v1/tasks` outlives
+any one deploy, which is what you want and is a different thing to port.
+
+**On the static plane specifically:** `/v1/projects` does not build and has no
+per-request compute, and its completion manifest is a single body subject to
+the edge limit — a full prerender of very many pages is what makes that bite.
+Those are properties of choosing the static plane over `/v1/platform`, not of
+the platform.

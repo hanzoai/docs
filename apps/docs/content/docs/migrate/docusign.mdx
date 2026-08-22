@@ -82,9 +82,12 @@ hundred sequences, which is a loop rather than a feature.
 **No embedded signing ceremony.** DocuSign's JS embeds the ceremony in your page
 with a recipient view URL. The signing link here is a page we serve.
 
-**No identity verification, SMS auth or access codes.** The token in the link is
-the authentication. If you need to prove who held it, that is your flow before
-you hand it over.
+**Identity is verified somewhere else, not in the ceremony.** DocuSign gates a
+signer with SMS, an access code or an ID check inside the envelope. The token in
+the link is the whole authentication here. Proving who someone is has its own
+capability — `/v1/compliance` carries subjects, records and accreditation
+decisions — so the check is a step you run before you hand the link over, rather
+than a setting on the document.
 
 **No connect webhooks yet.** DocuSign pushes envelope events to a listener. Poll
 `GET /v1/esign/documents/{id}` for status, or subscribe on `/v1/webhook` if the
