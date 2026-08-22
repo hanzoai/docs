@@ -45,7 +45,23 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-${{ github.ref }}
+  # PER-SHA, because `cancel-in-progress: false` does not mean "do not cancel".
+  # It selects which statuses a newer run in the same group sweeps: the kill list
+  # is {waiting, blocked} always, and gains {running, cancelling} only when the
+  # flag is true. A run that has not been given a runner yet is forfeit to the
+  # next push either way.
+  #
+  # Sharing the group `deploy-<ref>` therefore coalesced nothing and cost
+  # everything: this repo takes a push every few minutes, the fleet hands out a
+  # runner more slowly than that, so every deploy sat in `waiting` until the next
+  # push swept it. Measured — runs for 1ab21251, 3446e7e2 and a hand-dispatched
+  # one all ended `cancelled`, no image was pushed for any of them, and
+  # docs.hanzo.ai served a seven-hour-old build while main moved eleven commits.
+  # A deploy that never runs is not a slower deploy, it is an absent one.
+  #
+  # Per-sha, no run is another run's rival. A pull request keeps a shared group,
+  # where a newer push to the same branch genuinely does supersede the older one.
+  group: deploy-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.sha }}
   cancel-in-progress: false
 
 jobs:
