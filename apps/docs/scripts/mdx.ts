@@ -47,6 +47,30 @@ export const yamlString = (s: string): string =>
   JSON.stringify(String(s ?? '').replace(/\s+/g, ' ').trim());
 
 /**
+ * A Go package doc opens with the package's own name — `gofmt` and every linter
+ * require it — so the synopsis every product page is cut from arrives as
+ * "Package ads is your paid ad campaigns". That sentence is correct Go and wrong
+ * product prose twice over: it names an identifier no caller can see, and where
+ * the package is not named after the capability it names the WRONG one
+ * (`hanzo audit` read "Package auditlog is …", `hanzo authz` read "Package serve
+ * is …").
+ *
+ * The convention is stripped where it is READ rather than fixed where it is
+ * written, because it is not wrong where it is written. Same shape as zip
+ * dropping a handler's own name from a lifted doc comment.
+ *
+ * Only an exact leading match goes: "Package <ident> is " or "Package <ident> ",
+ * and what follows is re-capitalised. Prose that merely opens with the word
+ * "Package" — a sentence about packaging — keeps it.
+ */
+export const unpackage = (s: string): string => {
+  const m = String(s ?? '').match(/^Package\s+([A-Za-z_][A-Za-z0-9_]*)\s+(is\s+)?/);
+  if (!m) return String(s ?? '');
+  const rest = String(s).slice(m[0].length);
+  return rest ? rest[0].toUpperCase() + rest.slice(1) : '';
+};
+
+/**
  * The first sentence, for a description or a card blurb.
  *
  * A sentence that fits comes back whole. One that does not is cut at the last
