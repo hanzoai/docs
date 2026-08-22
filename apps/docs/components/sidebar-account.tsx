@@ -49,18 +49,21 @@ export function SidebarAccount() {
 function SignedOut() {
   return (
     <div className="flex flex-col gap-2">
-      <a
-        href="https://console.hanzo.ai"
-        className="rounded-lg bg-fd-primary px-3 py-1.5 text-center text-sm font-medium text-fd-primary-foreground transition-colors hover:opacity-90"
-      >
-        Get an API key
-      </a>
+      {/* Sign in first: it is the step that costs nothing and the one most
+          readers already have an account for. Getting a key is the commitment,
+          so it sits at the foot as the thing you end on. */}
       <Link
         href="/login"
         className="rounded-lg px-3 py-1.5 text-center text-sm text-fd-muted-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground"
       >
         Sign in
       </Link>
+      <a
+        href="https://console.hanzo.ai"
+        className="rounded-lg bg-fd-primary px-3 py-1.5 text-center text-sm font-medium text-fd-primary-foreground transition-colors hover:opacity-90"
+      >
+        Get an API key
+      </a>
     </div>
   )
 }
