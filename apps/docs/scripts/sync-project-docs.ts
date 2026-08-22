@@ -724,9 +724,18 @@ function pruneProjectOutput(outputDir: string, orgs: string[], projects: RepoRec
     }
 
     for (const repoEntry of fs.readdirSync(orgPath, { withFileTypes: true })) {
-      if (!repoEntry.isDirectory()) continue;
-      const key = `${org}/${repoEntry.name}`;
-      if (!allowed.has(key)) {
+      // Files are pruned too. A project is a FOLDER here, but an older
+      // generation of this sync wrote `<slug>.mdx` at the org root, and those
+      // resolve to the same route as `<slug>/index.mdx` — 47 slugs were served
+      // by two files, and 27 of the flat ones said "Docs are not available yet"
+      // while the folder beside them held the actual documentation. Skipping
+      // files meant prune could never reach them, so the duplicate could only
+      // ever be removed by hand.
+      const name = repoEntry.isDirectory() ? repoEntry.name : repoEntry.name.replace(/\.mdx?$/, '');
+      // The org's own index and meta are ours, not a project's.
+      if (!repoEntry.isDirectory() && (name === 'index' || name === 'meta')) continue;
+      const key = `${org}/${name}`;
+      if (!allowed.has(key) || (!repoEntry.isDirectory() && fs.existsSync(path.join(orgPath, name, 'index.mdx')))) {
         if (!dryRun) fs.rmSync(path.join(orgPath, repoEntry.name), { recursive: true, force: true });
       }
     }
