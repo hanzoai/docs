@@ -225,6 +225,10 @@ export const opHref = (op: Operation): string => `/docs/openapi/${op.product}/${
 export const secretKey = (doc: Document): KeyType =>
   doc.keys.find((k) => !k.publishable) ?? doc.keys[0];
 
+/** The browser-safe key, read off the same declaration its secret twin is. */
+export const publishableKey = (doc: Document): KeyType | undefined =>
+  doc.keys.find((k) => k.publishable);
+
 /**
  * The document with the operator surface taken out, for publishing.
  *

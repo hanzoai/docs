@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
-import { DOCUMENT, loadDocument, secretKey, type Document, type Operation } from './openapi-doc';
+import { DOCUMENT, loadDocument, secretKey, publishableKey, type Document, type Operation } from './openapi-doc';
 import { SDKS, door, mcp, surfaces, type Door } from './openapi-surfaces';
 import { MCP_DOOR, load } from './sync-mcp-tools';
 import { loadCliTable, type CliCommand } from './sync-cli-commands';
@@ -176,7 +176,7 @@ function renderIndex(flows: Flow[], doc: Document): string {
   L.push('title: Start');
   L.push(
     `description: ${JSON.stringify(
-      `Six journeys through Hanzo — hello, chat, money, store, agent, tools — each shown as the CLI, an SDK, raw HTTP and an MCP tool.`,
+      `One task per page, each written four ways: a CLI command, an SDK call, an HTTP request and an MCP tool.`,
     )}`,
   );
   L.push('icon: Rocket');
@@ -184,13 +184,42 @@ function renderIndex(flows: Flow[], doc: Document): string {
   L.push('');
   L.push("import { Cards, Card } from '@hanzo/docs-base-ui/components/card'");
   L.push('');
-  L.push('# Six flows, four surfaces');
+  L.push('# Start');
   L.push('');
+  // No counts in the prose. A number here is a fact about today's document that
+  // reads as a claim about the product, and it is wrong the next time the
+  // document moves. What does not go stale is what the surfaces ARE.
+  const pk = publishableKey(doc);
   L.push(
-    'Hanzo is a full AI cloud: inference, identity, data, money, agents and tools behind one API key. These six journeys are the whole product in miniature — and each one is shown four ways, because the CLI, the SDKs, the REST API and the MCP tools are all projections of the same OpenAPI document.',
+    'One key authenticates every request. `' +
+      secretKey(doc).prefix +
+      '` keys resolve to a user and belong on a server' +
+      (pk
+        ? '; `' + pk.prefix + '` keys resolve only to an organisation and are safe in a browser.'
+        : '.'),
   );
   L.push('');
-  L.push('Learn a flow once and you know it on every surface.');
+  L.push('```bash');
+  L.push(`export HANZO_API_KEY=${secretKey(doc).prefix}...     # console.hanzo.ai`);
+  L.push('hanzo auth login                # or sign in through Hanzo IAM');
+  L.push('```');
+  L.push('');
+  L.push('## Four surfaces, one contract');
+  L.push('');
+  L.push(
+    'The CLI, the SDKs, the HTTP API and the MCP tools are generated from the same OpenAPI document. A command, a method, a path and a tool that do the same thing are the same operation under four names, so what you learn on one surface holds on the others.',
+  );
+  L.push('');
+  L.push('| Surface | Address |');
+  L.push('| --- | --- |');
+  L.push('| CLI | `hanzo <capability> <verb>` |');
+  L.push('| SDK | a method per operation, in your language |');
+  L.push('| HTTP | `https://api.hanzo.ai/v1/<capability>` |');
+  L.push('| MCP | one tool per capability, dispatched by operation |');
+  L.push('');
+  L.push('## Tasks');
+  L.push('');
+  L.push('Each page below does one thing, and does it on all four surfaces.');
   L.push('');
   L.push('<Cards>');
   for (const f of flows) {
@@ -200,15 +229,8 @@ function renderIndex(flows: Flow[], doc: Document): string {
   }
   L.push('</Cards>');
   L.push('');
-  L.push('## One credential');
-  L.push('');
-  L.push('```bash');
-  L.push(`export HANZO_API_KEY=${secretKey(doc).prefix}...            # console.hanzo.ai`);
-  L.push('hanzo auth login                       # or sign in through Hanzo IAM');
-  L.push('```');
-  L.push('');
   L.push(
-    `The same key reaches every one of the [${doc.products.length} products in the API reference](/docs/openapi).`,
+    'Every capability the API serves is in the [reference](/docs/openapi), and the same key reaches all of it.',
   );
   L.push('');
   return L.join('\n');
@@ -252,7 +274,7 @@ export async function genFlowPages(): Promise<void> {
     JSON.stringify(
       {
         title: 'Start',
-        description: 'Six journeys, each shown as CLI, SDK, HTTP and MCP.',
+        description: 'One task per page, each written as CLI, SDK, HTTP and MCP.',
         // Not led by `index` — this folder's own `index.mdx` is its landing
         // page already, and naming it publishes `Start > Start`.
         pages: flows.map((f) => f.id),
