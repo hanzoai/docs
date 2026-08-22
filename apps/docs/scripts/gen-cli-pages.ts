@@ -76,6 +76,43 @@ function renderGroup(g: Group, doc: Document): string {
     L.push('');
   }
 
+  // ONE command, spelled out and runnable. A page that lists two hundred
+  // commands and shows none of them being run tells a reader what exists and
+  // not how to start — and the shortest read is the honest opener, because it
+  // is the one that costs nothing to try.
+  //
+  // It is CHOSEN, not written: the shortest GET the capability actually serves,
+  // so the example moves with the surface and can never name a command the
+  // table below does not carry. A capability that serves no read gets no
+  // example rather than an invented one.
+  //
+  // A LIST first, because listing what you have is what a person actually runs
+  // first and it reads as an invitation; the shortest remaining read otherwise.
+  // Anything taking a `<placeholder>` is skipped — an example you must edit
+  // before it runs is not an example.
+  const reads = g.rows.filter(
+    (r) => r.op.method.toUpperCase() === 'GET' && !r.command.includes('<'),
+  );
+  // SHALLOWEST first, not shortest: depth is how central a noun is, so
+  // `hanzo iam service-accounts list` opens the page and `hanzo iam scim v2
+  // Users list` does not, even though the SCIM one is the shorter string.
+  const depth = (c: string) => c.split(/\s+/).length;
+  const shortest = (rs: typeof reads) =>
+    [...rs].sort((a, b) => depth(a.command) - depth(b.command) || a.command.length - b.command.length)[0];
+  const first = shortest(reads.filter((r) => / list$/.test(r.command))) ?? shortest(reads);
+  if (first) {
+    L.push('```bash');
+    L.push(first.command.replace(/\s*\\\n\s*/g, ' '));
+    L.push('```');
+    L.push('');
+    L.push(
+      'Every command takes `--json` for the raw response and `--help` for its own ' +
+        'flags. Sign in once with `hanzo auth login`; the commands below use that ' +
+        'session, and the org they act in is the one it carries.',
+    );
+    L.push('');
+  }
+
   // Grouped by the NOUN the command acts on, nouns and commands both in
   // alphabetical order. The rows arrive in the order the document happens to
   // list its operations, which is neither, so a reader scanning for "the one
