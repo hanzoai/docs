@@ -1,0 +1,86 @@
+---
+title: Vercel
+description: Vercel builds a repo and serves the result on a domain. Here that is /v1/projects — 27 operations, where a deployment is content-addressed and going live is a separate, reversible act.
+---
+
+Vercel takes a repository, builds it, and serves the output on a URL. `/v1/projects`
+(27 operations) is the same shape: a project holds sites, a deployment uploads an
+export, and a release is what a domain points at.
+
+The difference that changes how you think about it: **publishing and going live
+are two calls, not one.** A deployment becomes a release addressed by the digest
+of its own manifest, and a domain is pointed at a release by
+`POST /v1/projects/{slug}/releases/{release}/activate`. Rolling back is
+activating an earlier one — the bytes never moved.
+
+## Nouns
+
+| Vercel | Hanzo |
+|---|---|
+| Team | Your org, taken from the validated key |
+| Project | Project — `/v1/projects`, addressed by `slug` |
+| Deployment | Deployment — `POST /v1/projects/{slug}/deployments`, then `/complete` |
+| Production / Preview | A release, and which one a domain is activated on |
+| Promote to production | `POST /v1/projects/{slug}/releases/{release}/activate` |
+| Instant rollback | The same call, naming an older release |
+| Domain | `/v1/projects/{slug}/domains`, verified at `/verify` |
+| `vercel --prod` | `POST /v1/projects/{slug}/publish` |
+| Edge cache purge | `POST /v1/projects/{slug}/purge` |
+| Template / clone | `POST /v1/projects/fork` |
+| OG image | `GET /v1/projects/{slug}/shot` |
+
+## The call
+
+Vercel, deploying a built directory:
+
+```bash
+vercel deploy --prebuilt --prod
+```
+
+Hanzo — enqueue, upload, complete:
+
+```bash
+# 1. enqueue: returns {id, bucket, prefix, upload}
+curl -sS -X POST https://api.hanzo.ai/v1/projects/my-site/deployments \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"branch":"main","commit":"'"$GIT_SHA"'"}'
+
+# 2. the bytes go straight to object storage with the grant from step 1,
+#    never through the API
+
+# 3. complete: reconciles the prefix against the manifest and cuts a release
+curl -sS -X POST \
+  "https://api.hanzo.ai/v1/projects/my-site/deployments/$ID/complete" \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"keys":["index.html","_next/static/chunk.js"]}'
+```
+
+The bytes skip the API on purpose. The enqueue hands back a prefix-scoped,
+short-lived upload grant, so CI never holds a standing storage credential and
+the edge body limit never applies to your largest asset.
+
+## What does not carry
+
+**No build step.** This is the biggest one. Vercel clones your repo and runs the
+build; here you bring a built directory. Your CI already builds — `pnpm build`,
+then publish `out/`. What you lose is Vercel's build cache and its framework
+detection; what you gain is that the thing you tested is the thing that ships.
+
+**No serverless or edge functions on this capability.** A Vercel project mixes
+static output and functions in one deployment. Here a site is static and per-request
+compute is `/v1/functions` — a different capability with its own lifecycle. A
+Next.js app with route handlers does not lift over as one unit.
+
+**No preview URL per commit.** Every deployment becomes a release and a release
+is addressable, but there is no automatic `*.vercel.app` hostname minted per
+push. Point a domain at a release deliberately.
+
+**No ISR, no image optimization.** `output: 'export'` is the shape this serves.
+Incremental regeneration needs a server, and there is no image transform in the
+request path.
+
+**The completion manifest is one body.** It lists every key and it is subject to
+the edge body limit, so an export with very many files can exceed it. A full
+prerender of tens of thousands of pages is what makes that happen.

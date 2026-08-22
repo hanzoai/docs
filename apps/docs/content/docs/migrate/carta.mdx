@@ -1,0 +1,89 @@
+---
+title: Carta
+description: Carta keeps who owns what in a company. Here that is /v1/captable — 31 operations over stakeholders, share classes, SAFEs, options and rounds, with the summary derived rather than stored.
+---
+
+Carta holds a company's ownership: who holds shares, on what terms, and what a
+round did to it. `/v1/captable` (31 operations) is the same ledger —
+stakeholders, share classes, share issuances, options, SAFEs, convertibles and
+rounds — with `GET /v1/captable/summary` computing the table rather than storing
+it.
+
+That last point is the design: **the cap table is derived.** Ownership percentages
+are not a column anybody writes. They fall out of the issuances, so they cannot
+drift from them.
+
+## Nouns
+
+| Carta | Hanzo |
+|---|---|
+| Issuer / Company | `GET` and `PUT /v1/captable/company` |
+| Stakeholder | `/v1/captable/stakeholders`, `{id}` to amend or remove |
+| Share class (Common, Preferred A) | `/v1/captable/classes` |
+| Certificate / share issuance | `/v1/captable/shares` |
+| Transfer | `POST /v1/captable/shares/transfer` |
+| Option grant | `/v1/captable/options` |
+| Option pool / equity plan | `/v1/captable/plans` |
+| SAFE | `/v1/captable/safes` |
+| Convertible note | `/v1/captable/convertibles` |
+| Financing round | `/v1/captable/rounds`, closed at `/{id}/close` |
+| Investment in a round | `POST /v1/captable/rounds/{id}/investments` |
+| Cap table view | `GET /v1/captable/summary` — computed |
+| 409A valuation | Nothing. See below |
+
+## The call
+
+Issuing shares to a stakeholder:
+
+```bash
+# the holder
+SH=$(curl -sS -X POST https://api.hanzo.ai/v1/captable/stakeholders \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"A Founder","email":"founder@example.com"}' | jq -r .id)
+
+# the issuance
+curl -sS -X POST https://api.hanzo.ai/v1/captable/shares \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "stakeholderId": "'"$SH"'",
+    "classId": "common",
+    "quantity": 4000000,
+    "pricePerShare": "0.0001"
+  }'
+```
+
+Reading the table:
+
+```bash
+curl -sS https://api.hanzo.ai/v1/captable/summary \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Prices are decimal strings, not floats. A per-share price of `0.0001` and a
+position worth nine figures have to survive the same arithmetic, and binary
+floating point does not carry both.
+
+## What does not carry
+
+**No 409A valuations.** Carta sells the valuation as a service with an opinion
+attached. Nothing here produces one, and a fair market value you got elsewhere
+is a number you record on the round.
+
+**No electronic securities or transfer agent function.** Carta is the transfer
+agent of record for many issuers. This is a ledger of what you tell it. Signing
+the documents that make an issuance real is `/v1/esign`; being the registered
+agent is not a thing this does.
+
+**No stakeholder portal.** Carta gives every holder a login to see their own
+position. There is no per-stakeholder identity here — the org holds the table,
+and what a holder sees is what you build on top of the read.
+
+**No vesting engine driving notifications.** A grant records its schedule. There
+is no scheduler emailing people as tranches vest; put that on `/v1/tasks` if you
+need it.
+
+**No scenario modelling or waterfall.** Carta models exits and dilution across
+preference stacks. `summary` reports the table as it stands. Modelling what a
+term sheet would do to it is your spreadsheet, for now.
