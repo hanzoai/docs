@@ -36,7 +36,7 @@ open http://localhost:8000  # IAM Dashboard
 - **PostgreSQL** - Primary database
 - **MySQL** - IAM database
 - **MongoDB** - Chat storage
-- **ClickHouse** - Analytics
+- **Hanzo Datastore** - Analytics
 - **Redis** - Caching
 - **Meilisearch** - Full-text search
 - **MinIO** - S3-compatible storage
@@ -122,8 +122,8 @@ PRODUCTION_API_URL=https://api.hanzo.ai
 ### Hot Reload Development
 
 ```bash
-# Use development compose file
-docker compose -f compose.dev.yml up
+# API and client, both in watch mode
+npm run backend:dev & npm run frontend:dev
 
 # Services with hot reload:
 # - Cloud (Next.js)

@@ -11,7 +11,7 @@ Hanzo transforms your API infrastructure by providing enterprise-grade API Gatew
 
 Hanzo offers two complementary approaches to API governance:
 
-- [Hanzo API Gateway](https://hanzo.ai): Enterprise-grade security, distributed features, and advanced access control for cloud-native API gateway scenarios. It includes AI API capabilities for modern machine learning workloads.
+- [Hanzo API Gateway](https://hanzo.ai): Enterprise-grade security, distributed features, and advanced access control for cloud-native API gateway scenarios. It includes AI Gateway capabilities for modern machine learning workloads.
 
 - [Hanzo API Management](https://hanzo.ai): Comprehensive API lifecycle management, developer portals, and organizational features for teams managing multiple APIs across environments.
 
@@ -53,7 +53,7 @@ Hanzo API Management provides a complete suite of features designed to streamlin
 
 Transform your API infrastructure with Hanzo's governance capabilities:
 
-1. **Start with API Gateway**: Implement enterprise security, authentication, distributed features, and AI API capabilities
+1. **Start with API Gateway**: Implement enterprise security, authentication, distributed features, and AI Gateway capabilities
 2. **Scale with API Management**: Add comprehensive lifecycle management, developer portals, and governance features
 
 Ready to govern your APIs at scale? Explore [Hanzo API Management](https://hanzo.ai) and discover how it can transform your API strategy.

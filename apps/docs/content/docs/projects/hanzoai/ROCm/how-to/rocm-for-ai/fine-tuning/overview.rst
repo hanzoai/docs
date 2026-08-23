@@ -30,7 +30,7 @@ The challenge of fine-tuning models
 
 However, the computational cost of fine-tuning is still high, especially for complex models and large datasets, which
 poses distinct challenges related to substantial computational and memory requirements. This might be a barrier for
-GPUs with low computing power or limited device memory resources.
+accelerators or GPUs with low computing power or limited device memory resources.
 
 For example, suppose we have a language model with 7 billion (7B) parameters, represented by a weight matrix :math:`W`.
 During backpropagation, the model needs to learn a :math:`ΔW` matrix, which updates the original weights to minimize the
@@ -84,8 +84,8 @@ Walkthrough
 ===========
 
 To demonstrate the benefits of LoRA and the ideal compute compatibility of using PEFT and TRL libraries on AMD
-ROCm-compatible GPUs, let's step through a comprehensive implementation of the fine-tuning process
-using the Llama 2 7B model with LoRA tailored specifically for question-and-answer tasks on AMD MI300X GPUs.
+ROCm-compatible accelerators and GPUs, let's step through a comprehensive implementation of the fine-tuning process
+using the Llama 2 7B model with LoRA tailored specifically for question-and-answer tasks on AMD MI300X accelerators.
 
 Before starting, review and understand the key components of this walkthrough:
 

@@ -9,7 +9,7 @@ If the setting is not enabled by default on your environment, depending on how C
 To manually turn on asynchronous metric logs history collection [`system.asynchronous_metric_log`](../../operations/system-tables/asynchronous_metric_log.md), create `/etc/clickhouse-server/config.d/asynchronous_metric_log.xml` with the following content:
 
 ```xml
-<clickhouse>
+<datastore>
      <asynchronous_metric_log>
         <database>system</database>
         <table>asynchronous_metric_log</table>
@@ -20,7 +20,7 @@ To manually turn on asynchronous metric logs history collection [`system.asynchr
         <buffer_size_rows_flush_threshold>524288</buffer_size_rows_flush_threshold>
         <flush_on_crash>false</flush_on_crash>
     </asynchronous_metric_log>
-</clickhouse>
+</datastore>
 ```
 
 **Disabling**
@@ -28,7 +28,7 @@ To manually turn on asynchronous metric logs history collection [`system.asynchr
 To disable `asynchronous_metric_log` setting, you should create the following file `/etc/clickhouse-server/config.d/disable_asynchronous_metric_log.xml` with the following content:
 
 ```xml
-<clickhouse><asynchronous_metric_log remove="1" /></clickhouse>
+<datastore><asynchronous_metric_log remove="1" /></datastore>
 ```
 
 <SystemLogParameters/>
@@ -295,7 +295,7 @@ It is disabled by default.
 To manually turn on error history collection [`system.error_log`](../../operations/system-tables/error_log.md), create `/etc/clickhouse-server/config.d/error_log.xml` with the following content:
 
 ```xml
-<clickhouse>
+<datastore>
     <error_log>
         <database>system</database>
         <table>error_log</table>
@@ -306,7 +306,7 @@ To manually turn on error history collection [`system.error_log`](../../operatio
         <buffer_size_rows_flush_threshold>524288</buffer_size_rows_flush_threshold>
         <flush_on_crash>false</flush_on_crash>
     </error_log>
-</clickhouse>
+</datastore>
 ```
 
 **Disabling**
@@ -314,9 +314,9 @@ To manually turn on error history collection [`system.error_log`](../../operatio
 To disable `error_log` setting, you should create the following file `/etc/clickhouse-server/config.d/disable_error_log.xml` with the following content:
 
 ```xml
-<clickhouse>
+<datastore>
     <error_log remove="1" />
-</clickhouse>
+</datastore>
 ```
 
 <SystemLogParameters/>
@@ -466,16 +466,28 @@ Allows using custom HTTP handlers.
 To add a new http handler simply add a new `<rule>`.
 Rules are checked from top to bottom as defined,
 and the first match will run the handler.
+A rule with no match conditions (only `handler`) matches every request; since rules are checked in order,
+such a rule is only useful as a fallback placed last.
 
-The following settings can be configured by sub-tags:
+The following settings can be configured by sub-tags (all these sub-tags are optional except `handler`):
 
 | Sub-tags             | Definition                                                                                                                                        |
 |----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
-| `url`                | To match the request URL, you can use the 'regex:' prefix to use regex match (optional)                                                           |
-| `methods`            | To match request methods, you can use commas to separate multiple method matches (optional)                                                       |
-| `headers`            | To match request headers, match each child element (child element name is header name), you can use 'regex:' prefix to use regex match (optional) |
-| `handler`            | The request handler                                                                                                                               |
+| `url`                | To match the request URL path. The query string is ignored when matching |
+| `url_prefix`         | To match the request URL path against a base path: the path itself or anything below it on a path-segment boundary (e.g. '/api/v1' matches /api/v1, /api/v1/ and /api/v1/write, but not /api/v1beta). The query string is ignored when matching |
+| `url_regexp`         | To match the request URL path against a regular expression. The query string is ignored when matching |
+| `full_url`           | To match the complete request URL `scheme://host:port/path`. The query string is ignored when matching, and the host is the connection IP address (not the `Host` header) |
+| `full_url_prefix`    | To match the complete request URL `scheme://host:port/path` against base URL `scheme://host:port/base_path`, on a path-segment boundary (see `url_prefix`). The query string is ignored when matching |
+| `full_url_regexp`    | To match the complete request URL `scheme://host:port/path` against a regular expression. The query string is ignored when matching |
+| `methods`            | To match request methods, you can use commas to separate multiple method matches |
+| `headers`            | To match request headers, match each child element (child element name is header name) |
+| `headers_regexp`     | Like `headers`, but each child element's value is matched against a regular expression |
 | `empty_query_string` | Check that there is no query string in the URL                                                                                                    |
+| `handler`            | The request handler (required)                                                                                                                    |
+
+:::note
+Instead of `url_regexp`, `full_url_regexp` and `headers_regexp` you can also write a regular expression in `url`, `full_url` or `headers` using the `regex:` prefix (e.g. `<url>regex:/api/.*</url>`). This is still supported for backward compatibility, but is obsolete: prefer the dedicated `url_regexp`, `full_url_regexp` and `headers_regexp` sub-tags.
+:::
 
 `handler` contains the following settings, which can be configured by sub-tags:
 
@@ -743,7 +755,7 @@ The location and format of log messages.
 | Key                    | Description                                                                                                                                                        |
 |------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `async` | When `true` (default) logging will happen asynchronously (one background thread per output channel). Otherwise it will log inside the thread calling LOG           |
-| `async_queue_max_size` | When using async logging, the max amount of messages that will be kept in the the queue waiting for flushing. Extra messages will be dropped                       |
+| `async_queue_max_size` | When using async logging, the max amount of messages that will be kept in the queue waiting for flushing. Extra messages will be dropped                       |
 | `console` | Enable logging to the console. Set to `1` or `true` to enable. Default is `1` if ClickHouse does not run in daemon mode, `0` otherwise.                            |
 | `console_log_level` | Log level for console output. Defaults to `level`.                                                                                                                 |
 | `console_shutdown_log_level` | Shutdown level is used to set the console log level at server Shutdown.   
@@ -1114,7 +1126,7 @@ It is disabled by default.
 To manually turn on metrics history collection [`system.metric_log`](../../operations/system-tables/metric_log.md), create `/etc/clickhouse-server/config.d/metric_log.xml` with the following content:
 
 ```xml
-<clickhouse>
+<datastore>
     <metric_log>
         <database>system</database>
         <table>metric_log</table>
@@ -1125,7 +1137,7 @@ To manually turn on metrics history collection [`system.metric_log`](../../opera
         <buffer_size_rows_flush_threshold>524288</buffer_size_rows_flush_threshold>
         <flush_on_crash>false</flush_on_crash>
     </metric_log>
-</clickhouse>
+</datastore>
 ```
 
 **Disabling**
@@ -1133,9 +1145,9 @@ To manually turn on metrics history collection [`system.metric_log`](../../opera
 To disable `metric_log` setting, you should create the following file `/etc/clickhouse-server/config.d/disable_metric_log.xml` with the following content:
 
 ```xml
-<clickhouse>
+<datastore>
     <metric_log remove="1" />
-</clickhouse>
+</datastore>
 ```
 
 <SystemLogParameters/>
@@ -1197,7 +1209,7 @@ Keys for server/client settings:
 | `extendedVerification` | If enabled, verify that the certificate CN or SAN matches the peer hostname.                                                                                                                                                                                                                                                                                                                                                                                           | `false`                                    |
 | `fips` | Activates OpenSSL FIPS mode. Supported if the library's OpenSSL version supports FIPS.                                                                                                                                                                                                                                                                                                                                                                                 | `false`                                    |
 | `invalidCertificateHandler` | Class (a subclass of CertificateHandler) for verifying invalid certificates. For example: `<invalidCertificateHandler> <name>RejectCertificateHandler</name> </invalidCertificateHandler>` .                                                                                                                                                                                                                                                                           | `RejectCertificateHandler`                 |
-| `loadDefaultCAFile` | Wether built-in CA certificates for OpenSSL will be used. ClickHouse assumes that builtin CA certificates are in the file `/etc/ssl/cert.pem` (resp. the directory `/etc/ssl/certs`) or in file (resp. directory) specified by the environment variable `SSL_CERT_FILE` (resp. `SSL_CERT_DIR`).                                                                                                                                                                        | `true`                                     |
+| `loadDefaultCAFile` | Whether built-in CA certificates for OpenSSL will be used. ClickHouse assumes that builtin CA certificates are in the file `/etc/ssl/cert.pem` (resp. the directory `/etc/ssl/certs`) or in file (resp. directory) specified by the environment variable `SSL_CERT_FILE` (resp. `SSL_CERT_DIR`).                                                                                                                                                                        | `true`                                     |
 | `preferServerCiphers` | Client-preferred server ciphers.                                                                                                                                                                                                                                                                                                                                                                                                                                       | `false`                                    |
 | `privateKeyFile` | Path to the file with the secret key of the PEM certificate. The file may contain a key and certificate at the same time.                                                                                                                                                                                                                                                                                                                                              |                                            |
 | `privateKeyPassphraseHandler` | Class (PrivateKeyPassphraseHandler subclass) that requests the passphrase for accessing the private key. For example: `<privateKeyPassphraseHandler>`, `<name>KeyFileHandler</name>`, `<options><password>test</password></options>`, `</privateKeyPassphraseHandler>`.                                                                                                                                                                                                | `KeyConsoleHandler`                        |
@@ -1300,7 +1312,7 @@ Settings:
 **Example**
 
 ```xml
-<clickhouse>
+<datastore>
     <listen_host>0.0.0.0</listen_host>
     <http_port>8123</http_port>
     <tcp_port>9000</tcp_port>
@@ -1314,7 +1326,7 @@ Settings:
         <errors>true</errors>
     </prometheus>
     <!-- highlight-end -->
-</clickhouse>
+</datastore>
 ```
 
 Check (replace `127.0.0.1` with the IP addr or hostname of your ClickHouse server):
@@ -1356,7 +1368,7 @@ It is disabled by default.
 To manually turn on metrics history collection [`system.query_metric_log`](../../operations/system-tables/query_metric_log.md), create `/etc/clickhouse-server/config.d/query_metric_log.xml` with the following content:
 
 ```xml
-<clickhouse>
+<datastore>
     <query_metric_log>
         <database>system</database>
         <table>query_metric_log</table>
@@ -1367,7 +1379,7 @@ To manually turn on metrics history collection [`system.query_metric_log`](../..
         <buffer_size_rows_flush_threshold>524288</buffer_size_rows_flush_threshold>
         <flush_on_crash>false</flush_on_crash>
     </query_metric_log>
-</clickhouse>
+</datastore>
 ```
 
 **Disabling**
@@ -1375,9 +1387,9 @@ To manually turn on metrics history collection [`system.query_metric_log`](../..
 To disable `query_metric_log` setting, you should create the following file `/etc/clickhouse-server/config.d/disable_query_metric_log.xml` with the following content:
 
 ```xml
-<clickhouse>
+<datastore>
     <query_metric_log remove="1" />
-</clickhouse>
+</datastore>
 ```
 
 <SystemLogParameters/>
@@ -1476,7 +1488,7 @@ Additionally:
 **Example**
 
 ```xml
-<clickhouse>
+<datastore>
     <text_log>
         <level>notice</level>
         <database>system</database>
@@ -1489,7 +1501,7 @@ Additionally:
         <!-- <partition_by>event_date</partition_by> -->
         <engine>Engine = MergeTree PARTITION BY event_date ORDER BY event_time TTL event_date + INTERVAL 30 day</engine>
     </text_log>
-</clickhouse>
+</datastore>
 ```
 
 ## trace_log {#trace_log}
@@ -1523,7 +1535,7 @@ Settings for the [asynchronous_insert_log](/operations/system-tables/asynchronou
 **Example**
 
 ```xml
-<clickhouse>
+<datastore>
     <asynchronous_insert_log>
         <database>system</database>
         <table>asynchronous_insert_log</table>
@@ -1535,7 +1547,7 @@ Settings for the [asynchronous_insert_log](/operations/system-tables/asynchronou
         <flush_on_crash>false</flush_on_crash>
         <!-- <engine>Engine = MergeTree PARTITION BY event_date ORDER BY event_time TTL event_date + INTERVAL 30 day</engine> -->
     </asynchronous_insert_log>
-</clickhouse>
+</datastore>
 ```
 
 ## crash_log {#crash_log}
@@ -1603,7 +1615,7 @@ Settings for the [backup_log](../../operations/system-tables/backup_log.md) syst
 **Example**
 
 ```xml
-<clickhouse>
+<datastore>
     <backup_log>
         <database>system</database>
         <table>backup_log</table>
@@ -1615,7 +1627,7 @@ Settings for the [backup_log](../../operations/system-tables/backup_log.md) syst
         <flush_on_crash>false</flush_on_crash>
         <!-- <engine>Engine = MergeTree PARTITION BY event_date ORDER BY event_time TTL event_date + INTERVAL 30 day</engine> -->
     </backup_log>
-</clickhouse>
+</datastore>
 ```
 
 ## blob_storage_log {#blob_storage_log}
@@ -1910,6 +1922,8 @@ There is also the `zookeeper_load_balancing` setting (optional) which lets you s
 | `in_order`                       | selects the first ZooKeeper node, if it's not available then the second, and so on.                                            |
 | `nearest_hostname`               | selects a ZooKeeper node with a hostname that is most similar to the server's hostname, hostname is compared with name prefix. |
 | `hostname_levenshtein_distance`  | just like nearest_hostname, but it compares hostname in a levenshtein distance manner.                                         |
+| `hostname_longest_common_prefix` | just like nearest_hostname, but prefers the node whose hostname shares the longest common prefix with the server's hostname.   |
+| `hostname_longest_common_suffix` | just like nearest_hostname, but prefers the node whose hostname shares the longest common suffix with the server's hostname.   |
 | `first_or_random`                | selects the first ZooKeeper node, if it's not available then randomly selects one of remaining ZooKeeper nodes.                |
 | `round_robin`                    | selects the first ZooKeeper node, if reconnection happens selects the next.                                                    |
 
@@ -1931,7 +1945,7 @@ There is also the `zookeeper_load_balancing` setting (optional) which lets you s
     <root>/path/to/zookeeper/node</root>
     <!-- Optional. Zookeeper digest ACL string. -->
     <identity>user:password</identity>
-    <!--<zookeeper_load_balancing>random / in_order / nearest_hostname / hostname_levenshtein_distance / first_or_random / round_robin</zookeeper_load_balancing>-->
+    <!--<zookeeper_load_balancing>random / in_order / nearest_hostname / hostname_levenshtein_distance / hostname_longest_common_prefix / hostname_longest_common_suffix / first_or_random / round_robin</zookeeper_load_balancing>-->
     <zookeeper_load_balancing>random</zookeeper_load_balancing>
     <!-- Optional. Enable 64-bit transaction IDs. -->
     <use_xid_64>false</use_xid_64>
@@ -2353,12 +2367,12 @@ The following settings can be configured by sub-tags:
 **Example**
 
 ```xml
-<clickhouse>
+<datastore>
     <zookeeper_log>
         <database>system</database>
         <table>zookeeper_log</table>
         <flush_interval_milliseconds>7500</flush_interval_milliseconds>
         <ttl>event_date + INTERVAL 1 WEEK DELETE</ttl>
     </zookeeper_log>
-</clickhouse>
+</datastore>
 ```

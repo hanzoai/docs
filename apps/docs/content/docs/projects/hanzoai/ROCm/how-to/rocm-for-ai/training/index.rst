@@ -19,16 +19,6 @@ training, fine-tuning, and inference. It leverages popular machine learning fram
 
 In this guide, you'll learn about:
 
-- Training a model
+- :doc:`Training a model <train-a-model>`
 
-  - :doc:`With Primus (Megatron-LM backend) <benchmark-docker/primus-megatron>`
-
-  - :doc:`With Megatron-LM <benchmark-docker/megatron-lm>`
-
-  - :doc:`With PyTorch <benchmark-docker/pytorch-training>`
-
-  - :doc:`With JAX MaxText <benchmark-docker/jax-maxtext>`
-
-  - :doc:`With LLM Foundry <benchmark-docker/mpt-llm-foundry>`
-
-- :doc:`Scaling model training <scale-model-training>`
+- :doc:`Scale model training <scale-model-training>`

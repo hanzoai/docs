@@ -2,7 +2,7 @@ apiVersion: v1
 data:
   ingester.yaml: |-
     connectors:
-      o11ymeter:
+      signozmeter:
         metrics_flush_interval: 1h
         dimensions:
           - name: service.name
@@ -24,8 +24,8 @@ data:
         send_batch_size: 20000
         send_batch_max_size: 25000
         timeout: 5s
-      o11yspanmetrics/delta:
-        metrics_exporter: o11yclickhousemetrics
+      signozspanmetrics/delta:
+        metrics_exporter: signozclickhousemetrics
         metrics_flush_interval: 60s
         latency_histogram_buckets:
           - 100us
@@ -57,36 +57,36 @@ data:
           - name: service.version
     exporters:
       clickhousetraces:
-        datasource: tcp://o11y-clickhouse:9000/o11y_traces
+        datasource: tcp://signoz-clickhouse:9000/signoz_traces
         low_cardinal_exception_grouping: ${env:LOW_CARDINAL_EXCEPTION_GROUPING}
         use_new_schema: true
         timeout: 45s
         sending_queue:
           enabled: false
-      o11yclickhousemetrics:
-        dsn: tcp://o11y-clickhouse:9000/o11y_metrics
+      signozclickhousemetrics:
+        dsn: tcp://signoz-clickhouse:9000/signoz_metrics
         timeout: 45s
         sending_queue:
           enabled: false
       clickhouselogsexporter:
-        dsn: tcp://o11y-clickhouse:9000/o11y_logs
+        dsn: tcp://signoz-clickhouse:9000/signoz_logs
         use_new_schema: true
         timeout: 45s
         sending_queue:
           enabled: false
-      o11yclickhousemeter:
-        dsn: tcp://o11y-clickhouse:9000/o11y_meter
+      signozclickhousemeter:
+        dsn: tcp://signoz-clickhouse:9000/signoz_meter
         timeout: 45s
         sending_queue:
           enabled: false
       metadataexporter:
         enabled: true
-        dsn: tcp://o11y-clickhouse:9000/o11y_metadata
+        dsn: tcp://signoz-clickhouse:9000/signoz_metadata
         timeout: 45s
         cache:
           provider: in_memory
     extensions:
-      o11y_health_check:
+      signoz_health_check:
         endpoint: "0.0.0.0:13133"
       pprof:
         endpoint: "0.0.0.0:1777"
@@ -95,18 +95,18 @@ data:
         logs:
           encoding: json
       extensions:
-        - o11y_health_check
+        - signoz_health_check
         - pprof
       pipelines:
         traces:
           receivers:
             - otlp
           processors:
-            - o11yspanmetrics/delta
+            - signozspanmetrics/delta
             - batch
           exporters:
             - clickhousetraces
-            - o11ymeter
+            - signozmeter
             - metadataexporter
         metrics:
           receivers:
@@ -114,8 +114,8 @@ data:
           processors:
             - batch
           exporters:
-            - o11yclickhousemetrics
-            - o11ymeter
+            - signozclickhousemetrics
+            - signozmeter
             - metadataexporter
         logs:
           receivers:
@@ -124,21 +124,21 @@ data:
             - batch
           exporters:
             - clickhouselogsexporter
-            - o11ymeter
+            - signozmeter
             - metadataexporter
         metrics/meter:
           receivers:
-            - o11ymeter
+            - signozmeter
           processors:
             - batch/meter
           exporters:
-            - o11yclickhousemeter
-  opamp.yaml: 'server_endpoint: ws://o11y-o11y:4320/v1/opamp'
+            - signozclickhousemeter
+  opamp.yaml: 'server_endpoint: ws://signoz-signoz:4320/v1/opamp'
 kind: ConfigMap
 metadata:
   labels:
     app.kubernetes.io/component: ingester
-    app.kubernetes.io/instance: o11y
+    app.kubernetes.io/instance: signoz
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/name: o11y-ingester
-  name: o11y-ingester
+    app.kubernetes.io/name: signoz-ingester
+  name: signoz-ingester

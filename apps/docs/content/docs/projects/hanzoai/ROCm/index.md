@@ -8,20 +8,15 @@ myst:
 # AMD ROCm documentation
 
 ROCm is an open-source software platform optimized to extract HPC and AI workload
-performance from AMD Instinct GPUs and AMD Radeon GPUs while maintaining
+performance from AMD Instinct accelerators and AMD Radeon GPUs while maintaining
 compatibility with industry software frameworks. For more information, see
 [What is ROCm?](./what-is-rocm.rst)
 
 ROCm supports multiple programming languages and programming interfaces such as
-{doc}`HIP <hip:index>`, OpenCL, and OpenMP, as explained in the [Programming guide](./how-to/programming_guide.rst).
+{doc}`HIP (Heterogeneous-Compute Interface for Portability)<hip:index>`, OpenCL,
+and OpenMP, as explained in the [Programming guide](./how-to/programming_guide.rst).
 
-If you're using AMD Radeon™ GPUs or Ryzen™ APUs for graphics workloads, see the {doc}`ROCm on Radeon and Ryzen <radeon:index>` documentation.
-
-```{note}
-The [AMD ROCm Programming Guide](https://rocm-handbook.amd.com/projects/amd-rocm-programming-guide/en/latest/)
-presents key ROCm concepts in a structured, book-style format, a helpful
-starting point for those new to GPU programming.
-```
+If you're using AMD Radeon™ PRO or Radeon GPUs in a workstation setting with a display connected, review {doc}`Radeon-specific ROCm documentation<radeon:index>`.
 
 ROCm documentation is organized into the following categories:
 
@@ -34,7 +29,7 @@ ROCm documentation is organized into the following categories:
 
 * {doc}`ROCm on Linux <rocm-install-on-linux:reference/system-requirements>`
 * {doc}`HIP SDK on Windows <rocm-install-on-windows:reference/system-requirements>`
-* {doc}`ROCm on Radeon and Ryzen<radeon:index>`
+* [ROCm on Radeon GPUs](https://rocm.docs.amd.com/projects/radeon/en/latest/index.html)
 * {doc}`Deep learning frameworks </how-to/deep-learning-rocm>`
 * {doc}`Build from source </how-to/build-rocm>`
 :::
@@ -58,23 +53,23 @@ ROCm documentation is organized into the following categories:
 :class-body: rocm-card-banner rocm-hue-8
 
 * [GPU architecture overview](./conceptual/gpu-arch.md)
+* [Input-Output Memory Management Unit (IOMMU)](./conceptual/iommu.rst)
 * [File structure (Linux FHS)](./conceptual/file-reorg.md)
 * [GPU isolation techniques](./conceptual/gpu-isolation.md)
 * [Using CMake](./conceptual/cmake-packages.rst)
+* [PCIe atomics in ROCm](./conceptual/pcie-atomics.rst)
 * [Inception v3 with PyTorch](./conceptual/ai-pytorch-inception.md)
+* [Oversubscription of hardware resources](./conceptual/oversubscription.rst)
 :::
 
 :::{grid-item-card} Reference
 :class-body: rocm-card-banner rocm-hue-6
 <!-- markdownlint-disable MD051 -->
 * [ROCm libraries](./reference/api-libraries.md)
-* [ROCm tools, compilers, and runtime API](./reference/rocm-tools.md)
-* [GPU hardware specifications](./reference/gpu-arch-specs.rst)
-* [Hardware atomics operation support](./reference/gpu-atomics-operation.rst)
-* [Environment variables](./reference/env-variables.rst)
-* [Data types and precision support](./reference/precision-support.rst)
+* [ROCm tools, compilers, and runtimes](./reference/rocm-tools.md)
+* [Accelerator and  GPU hardware specifications](./reference/gpu-arch-specs.rst)
+* [Precision support](./reference/precision-support.rst)
 * [Graph safe support](./reference/graph-safe-support.rst)
-* [ROCm glossary](./reference/glossary.rst)
 <!-- markdownlint-enable MD051 -->
 :::
 

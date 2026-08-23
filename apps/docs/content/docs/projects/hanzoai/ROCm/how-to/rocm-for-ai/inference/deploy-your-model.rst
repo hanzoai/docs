@@ -16,13 +16,14 @@ ROCm supports vLLM and Hugging Face TGI as major LLM-serving frameworks.
 Serving using vLLM
 ==================
 
-vLLM is a fast and easy-to-use library for LLM inference and serving. AMD is actively working with the vLLM team to improve performance and support the latest ROCm versions.
+vLLM is a fast and easy-to-use library for LLM inference and serving. vLLM officially supports ROCm versions 5.7 and
+6.0. AMD is actively working with the vLLM team to improve performance and support later ROCm versions.
 
 See the `GitHub repository <https://github.com/vllm-project/vllm>`_ and `official vLLM documentation
 <https://docs.vllm.ai/>`_ for more information.
 
 For guidance on using vLLM with ROCm, refer to `Installation with ROCm
-<https://docs.vllm.ai/en/stable/getting_started/installation/gpu.html#amd-rocm>`__.
+<https://docs.vllm.ai/en/latest/getting_started/amd-installation.html>`_.
 
 vLLM installation
 -----------------
@@ -30,9 +31,9 @@ vLLM installation
 vLLM supports two ROCm-capable installation methods. Refer to the official documentation use the following links.
 
 -  `Build from source with Docker
-   <https://docs.vllm.ai/en/latest/getting_started/installation/gpu.html?device=rocm#build-image-from-source>`_ (recommended)
+   <https://docs.vllm.ai/en/latest/getting_started/amd-installation.html#build-from-source-docker-rocm>`_ (recommended)
 
--  `Build from source <https://docs.vllm.ai/en/latest/getting_started/installation/gpu.html?device=rocm#build-wheel-from-source>`_
+-  `Build from source <https://docs.vllm.ai/en/latest/getting_started/amd-installation.html#build-from-source-rocm>`_
 
 vLLM walkthrough
 ----------------
@@ -44,9 +45,9 @@ Validating vLLM performance
 ---------------------------
 
 ROCm provides a prebuilt optimized Docker image for validating the performance of LLM inference with vLLM 
-on the MI300X GPU. The Docker image includes ROCm, vLLM, PyTorch, and tuning files in the CSV 
+on the MI300X accelerator. The Docker image includes ROCm, vLLM, PyTorch, and tuning files in the CSV 
 format. For more information, see the guide to 
-`LLM inference performance testing with vLLM on the AMD Instinct™ MI300X GPU <https://github.com/ROCm/MAD/blob/develop/benchmark/vllm/README.md>`_ 
+`LLM inference performance validation with vLLM on the AMD Instinct™ MI300X accelerator <https://github.com/ROCm/MAD/blob/develop/benchmark/vllm/README.md>`_ 
 on the ROCm GitHub repository.
 
 .. _rocm-for-ai-serve-hugging-face-tgi:
@@ -61,7 +62,7 @@ The `Hugging Face Text Generation Inference <https://huggingface.co/docs/text-ge
 TGI installation
 ----------------
 
-The easiest way to use Hugging Face TGI with ROCm on AMD Instinct GPUs is to use the official Docker image at
+The easiest way to use Hugging Face TGI with ROCm on AMD Instinct accelerators is to use the official Docker image at
 `<https://github.com/huggingface/text-generation-inference/pkgs/container/text-generation-inference>`__.
 
 TGI walkthrough

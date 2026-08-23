@@ -6,7 +6,7 @@
   algebra, AMD">
 </head>
 
-# ROCm tools, compilers, and runtime API
+# ROCm tools, compilers, and runtimes
 
 ::::{grid} 1 2 2 2
 :gutter: 3
@@ -59,12 +59,14 @@
 * [FLANG](https://github.com/ROCm/flang/)
 :::
 
-:::{grid-item-card} Runtime API
+:::{grid-item-card} Runtimes
 :class-body: rocm-card-banner rocm-hue-12
 
 (runtimes)=
 
+* {doc}`AMD Compute Language Runtime (CLR) <hip:understand/amd_clr>`
 * {doc}`HIP <hip:index>`
+* {doc}`ROCR-Runtime <rocr-runtime:index>`
 :::
 
 ::::

@@ -2,74 +2,48 @@
    :description: How to install deep learning frameworks for ROCm
    :keywords: deep learning, frameworks, ROCm, install, PyTorch, TensorFlow, JAX, MAGMA, DeepSpeed, ML, AI
 
-**********************************
-Deep learning frameworks for ROCm
-**********************************
+********************************************
+Installing deep learning frameworks for ROCm
+********************************************
 
-Deep learning frameworks provide environments for machine learning, training, fine-tuning, inference, and performance optimization.
+ROCm provides a comprehensive ecosystem for deep learning development, including
+:ref:`libraries <artificial-intelligence-apis>` for optimized deep learning operations and ROCm-aware versions of popular
+deep learning frameworks and libraries such as PyTorch, TensorFlow, and JAX. ROCm works closely with these
+frameworks to ensure that framework-specific optimizations take advantage of AMD accelerator and GPU architectures.
 
-ROCm offers a complete ecosystem for developing and running deep learning applications efficiently. It also provides ROCm-compatible versions of popular frameworks and libraries, such as PyTorch, TensorFlow, JAX, and others.
+The following guides provide information on compatibility and supported
+features for these ROCm-enabled deep learning frameworks.
 
-The AMD ROCm organization actively contributes to open-source development and collaborates closely with framework organizations. This collaboration ensures that framework-specific optimizations effectively leverage AMD GPUs.
+* :doc:`PyTorch compatibility <../compatibility/ml-compatibility/pytorch-compatibility>`
+* :doc:`TensorFlow compatibility <../compatibility/ml-compatibility/tensorflow-compatibility>`
+* :doc:`JAX compatibility <../compatibility/ml-compatibility/jax-compatibility>`
 
-The table below summarizes information about ROCm-enabled deep learning frameworks. It includes details on ROCm compatibility and third-party tool support, installation steps and options, and links to GitHub resources. For a complete list of supported framework versions on ROCm, see the :doc:`Compatibility matrix <../compatibility/compatibility-matrix>` topic.
+This chart steps through typical installation workflows for installing deep learning frameworks for ROCm.
 
-.. list-table:: 
-    :header-rows: 1
-    :widths: 5 3 6 3
+.. image:: ../data/how-to/framework_install_2024_07_04.png
+   :alt: Flowchart for installing ROCm-aware machine learning frameworks
+   :align: center
 
-    * - Framework
-      - Installation guide
-      - Installation options
-      - GitHub
+See the installation instructions to get started.
 
-    * - :doc:`PyTorch <../compatibility/ml-compatibility/pytorch-compatibility>`
-      - :doc:`link <rocm-install-on-linux:install/3rd-party/pytorch-install>`
-      - 
-        - Docker image
-        - Wheels package
-        - ROCm Base Docker image
-        - Upstream Docker file
-      - .. raw:: html
+* :doc:`PyTorch for ROCm <rocm-install-on-linux:install/3rd-party/pytorch-install>`
+* :doc:`TensorFlow for ROCm <rocm-install-on-linux:install/3rd-party/tensorflow-install>`
+* :doc:`JAX for ROCm <rocm-install-on-linux:install/3rd-party/jax-install>`
 
-          <a href="https://github.com/ROCm/pytorch"><i class="fab fa-github fa-lg"></i></a>
+.. note::
 
-    * - :doc:`TensorFlow <../compatibility/ml-compatibility/tensorflow-compatibility>`
-      - :doc:`link <rocm-install-on-linux:install/3rd-party/tensorflow-install>`
-      - 
-        - Docker image
-        - Wheels package
-
-      - .. raw:: html
-
-          <a href="https://github.com/ROCm/tensorflow-upstream"><i class="fab fa-github fa-lg"></i></a> 
-
-    * - :doc:`JAX <../compatibility/ml-compatibility/jax-compatibility>`
-      - :doc:`link <rocm-install-on-linux:install/3rd-party/jax-install>`
-      - 
-        - Docker image
-      - .. raw:: html
-
-          <a href="https://github.com/ROCm/jax"><i class="fab fa-github fa-lg"></i></a>
-
-    * - :doc:`DGL <../compatibility/ml-compatibility/dgl-compatibility>`
-      - :doc:`link <rocm-install-on-linux:install/3rd-party/dgl-install>`
-      - 
-        - Docker image
-      - .. raw:: html
-
-          <a href="https://github.com/ROCm/dgl"><i class="fab fa-github fa-lg"></i></a> 
+   For guidance on installing ROCm itself, refer to :doc:`ROCm installation for Linux <rocm-install-on-linux:index>`.
 
 Learn how to use your ROCm deep learning environment for training, fine-tuning, inference, and performance optimization
 through the following guides.
 
 * :doc:`rocm-for-ai/index`
 
-* :doc:`Use ROCm for training <rocm-for-ai/training/index>`
+* :doc:`Training <rocm-for-ai/training/index>`
 
-* :doc:`Use ROCm for fine-tuning LLMs <rocm-for-ai/fine-tuning/index>`
+* :doc:`Fine-tuning LLMs <rocm-for-ai/fine-tuning/index>`
 
-* :doc:`Use ROCm for AI inference <rocm-for-ai/inference/index>`
+* :doc:`Inference <rocm-for-ai/inference/index>`
 
-* :doc:`Use ROCm for AI inference optimization <rocm-for-ai/inference-optimization/index>`
+* :doc:`Inference optimization <rocm-for-ai/inference-optimization/index>`
 

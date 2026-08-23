@@ -1,18 +1,18 @@
 ---
-title: Working with ClickHouse materialized columns
+title: Working with Datastore materialized columns
 sidebar: Handbook
 showTitle: true
 ---
 
-This document outlines what materialized columns in ClickHouse are, how we're making use of them and how to manage them on cloud.
+This document outlines what materialized columns in Datastore are, how we're making use of them and how to manage them on cloud.
 
 ## Background
 
-We currently store JSON data in string columns in clickhouse, reading and parsing that data at query-time. This can be slow due to how "fat" these columns are.
+We currently store JSON data in string columns in datastore, reading and parsing that data at query-time. This can be slow due to how "fat" these columns are.
 
 Materialized columns allow us to "store" specific properties stored in JSON as separate columns that are there on disk, making reading these columns up to 25x faster than normal properties.
 
-Also check out our [ClickHouse manual](https://hanzo.ai/handbook/engineering/clickhouse/working-with-json) and [blog post](https://hanzo.ai/blog/clickhouse-materialized-columns) for more information.
+Also check out our [Datastore manual](https://hanzo.ai/handbook/engineering/datastore/working-with-json) and [blog post](https://hanzo.ai/blog/datastore-materialized-columns) for more information.
 
 ## Materialized columns in practice
 
@@ -24,43 +24,40 @@ Note that materialized columns also require backfilling the materialized columns
 
 ### Automatic materialization
 
-We have a cron-job which analyzes slow queries ran last week and tries to find properties that are used in these slow queries, materializing some of these. Code for this can be found in `ee/clickhouse/materialized_columns/analyze.py`
+We have a cron-job which analyzes slow queries ran last week and tries to find properties that are used in these slow queries, materializing some of these. Code for this can be found in `ee/datastore/materialized_columns/analyze.py`
 
 Note that this cron can often be disabled due to cluster issues or ongoing data migrations.
 
 See [environment variables documentation](https://hanzo.ai/docs/self-host/configure/environment-variables) + instance settings for toggles which control this.
 
-### Manual materialization
+### Manual materialization via Dagster
 
-`python manage.py materialize_columns` command can be used to manually materialize one or more properties.
+We use Dagster to materialize columns in production. The job is `create_materialized_column` in the `team-datastore` location.
 
-Alternatively this can be done over `python manage.py shell_plus`. One example of materializing all properties used by a team can be found here:
+- **EU**: https://dagster.cloud/insights/prod-eu/locations/team-datastore/jobs/create_materialized_column/playground
+- **US**: https://dagster.cloud/insights/prod-us/locations/team-datastore/jobs/create_materialized_column/playground
 
-```python
-from ee.clickhouse.materialized_columns.columns import *
+To materialize columns, go to the playground for the relevant region and configure the `create_materialized_columns_op` with the properties you want to materialize:
 
-pd = PropertyDefinition.objects.filter(team_id=2635)
-used_props = set(p.name for p in pd if "distinct_id" not in p.name and "$" not in p.name)
-
-event_props_to_materialize = used_props - set(get_materialized_columns("events", use_cache=False))
-
-from ee.clickhouse.sql.person import GET_PERSON_PROPERTIES_COUNT
-rows = sync_execute(GET_PERSON_PROPERTIES_COUNT, {"team_id": 2635})
-person_props_to_materialize = set(name for name, _ in rows if "$" not in name) - set(get_materialized_columns("person", use_cache=False))
-
-
-from ee.clickhouse.materialized_columns.analyze import logger, materialize_properties_task
-
-columns_to_materialize = []
-columns_to_materialize += [("events", prop, 0) for prop in event_props_to_materialize]
-columns_to_materialize += [("person", prop, 0) for prop in person_props_to_materialize]
-
-materialize_properties_task(
-    columns_to_materialize=columns_to_materialize,
-    backfill_period_days=90,
-    dry_run=False,
-    maximum=len(columns_to_materialize)
-)
+```yaml
+ops:
+  create_materialized_columns_op:
+    config:
+      backfill_period_days: 90
+      dry_run: false
+      properties:
+        - $browser_language_prefix
+        - $app_namespace
+      table: events
+      table_column: properties
 ```
 
-Note that this snippet might need modification depending on the usecase.
+Config options:
+
+- **`table`**: The Datastore table to materialize on (e.g. `events`, `person`)
+- **`table_column`**: The JSON column containing the properties (e.g. `properties`, `person_properties`, `group_properties`)
+- **`properties`**: List of property names to materialize as columns
+- **`backfill_period_days`**: How many days of historical data to backfill (typically `90`)
+- **`dry_run`**: Set to `true` to preview what would be materialized without making changes
+
+Note that backfilling adds extra load to the cluster, so it's best done on a weekend.

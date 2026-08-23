@@ -1,6 +1,6 @@
 # Handler
 
-Handlers in O11y are responsible for exposing module functionality over HTTP. They are thin adapters that:
+Handlers in Hanzo O11y are responsible for exposing module functionality over HTTP. They are thin adapters that:
 
 - Decode incoming HTTP requests
 - Call the appropriate module layer
@@ -106,20 +106,6 @@ func (h *handler) CreateThing(rw http.ResponseWriter, req *http.Request) {
 
     // Use the `render` package to write responses or errors
     render.Success(rw, http.StatusCreated, out)
-}
-```
-
-When you need an ID from `claims` as a `valuer.UUID` (for example to pass it to a module), derive it with the `Must*` constructor instead of `NewUUID` plus an error check. Claims are validated by the auth middleware, so the conversion cannot fail and the error branch would be dead code:
-
-```go
-// Good — claims are pre-validated, the conversion cannot fail.
-orgID := valuer.MustNewUUID(claims.OrgID)
-
-// Avoid — the error path is unreachable.
-orgID, err := valuer.NewUUID(claims.OrgID)
-if err != nil {
-    render.Error(rw, err)
-    return
 }
 ```
 
@@ -347,50 +333,6 @@ func (Step) JSONSchema() (jsonschema.Schema, error) {
 }
 ```
 
-### `oneOf` with a discriminator
-
-For a sum type whose variants are keyed by a property (e.g. `kind`), expose the variants via `JSONSchemaOneOf()` and add a discriminator. Without it, code generators intersect the variants (`A & B & C`) instead of producing a clean discriminated union (`A | B | C`).
-
-The parent keeps its `JSONSchemaOneOf()` (the `oneOf` itself) and *additionally* tags it via `PrepareJSONSchema` with the `x-o11y-discriminator` extension; `o11y.attachDiscriminators` then promotes that marker to a real OpenAPI 3 `discriminator` (and strips the duplicate parent properties) after reflection.
-
-```go
-// On the parent: expose the oneOf variants...
-func (Plugin) JSONSchemaOneOf() []any {
-    return []any{FooVariant{}}
-}
-
-// ...and tag that same oneOf with the discriminator marker.
-func (Plugin) PrepareJSONSchema(s *jsonschema.Schema) error {
-    if s.ExtraProperties == nil {
-        s.ExtraProperties = map[string]any{}
-    }
-    s.ExtraProperties["x-o11y-discriminator"] = map[string]any{
-        "propertyName": "kind",
-        "mapping": map[string]string{
-            "o11y/Foo": "#/components/schemas/FooVariant",
-        },
-    }
-    return nil
-}
-```
-
-Each variant must declare the discriminator property (`kind`) and mark it `required`. 
-
-This produces the following in the generated OpenAPI spec:
-
-```yaml
-Plugin:
-  discriminator:
-    propertyName: kind
-    mapping:
-      o11y/Foo: '#/components/schemas/FooVariant'
-  oneOf:
-  - $ref: '#/components/schemas/FooVariant'
-  type: object
-```
-
-Note the discriminator property lives in the variants, not on the parent — the parent is only the union.
-
 
 ## What should I remember?
 
@@ -401,4 +343,3 @@ Note the discriminator property lives in the variants, not on the parent — the
 - **Add `nullable:"true"`** on fields that can be `null`. Pay special attention to slices and maps -- in Go these default to `nil` which serializes to `null`. If the field should always be an array, initialize it and do not mark it nullable.
 - **Implement `Enum()`** on every type that has a fixed set of acceptable values so the JSON schema generates proper `enum` constraints.
 - **Add request examples** via `RequestExamples` in `OpenAPIDef` for any non-trivial endpoint. See `pkg/apiserver/o11yapiserver/querier.go` for reference.
-- **Derive IDs from `claims` with `valuer.MustNewUUID`** (e.g. `claims.OrgID`, `claims.UserID`). Claims are pre-validated by the auth middleware, so use the `Must*` constructor — don't write `NewUUID` followed by an `if err != nil { render.Error(...); return }` block.

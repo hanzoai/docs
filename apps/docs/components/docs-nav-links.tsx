@@ -19,19 +19,16 @@ export function DocsNavLinks() {
 
   // A run of equal-height links, so the tracks come from the content and the
   // spacing is stated once on the container rather than as a margin each link
-  // carries. `justify-content: start` keeps the row left-aligned inside the
-  // stretched middle track of the bar above.
+  // carries. `justify-start` keeps the row left-aligned inside the stretched
+  // middle track of the bar above.
+  //
+  // The tracks are CLASSES, not an inline style, because this element's display
+  // is also what hides it: an inline `display:grid` outranks every class, so
+  // `max-md:hidden` stopped hiding and the whole row spilled across a 390px
+  // header under the account pill. One property, one owner — and since the
+  // hiding has to be a media query, the tracks join it there.
   return (
-    <nav
-      className="max-md:hidden"
-      style={{
-        display: 'grid',
-        gridAutoFlow: 'column',
-        justifyContent: 'start',
-        alignItems: 'center',
-        columnGap: 4,
-      }}
-    >
+    <nav className="grid grid-flow-col justify-start items-center gap-1 max-md:hidden">
       {linkItems
         .filter((item) => item.type !== 'icon' && 'url' in item)
         .map((item) => {
