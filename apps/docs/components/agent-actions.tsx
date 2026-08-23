@@ -81,9 +81,11 @@ export function AgentActions() {
   // hanzo dev takes the prompt as its argument, so this is the same intention
   // as "open in ChatGPT" for the agent that runs where the code is.
   const copyDev = async () => {
-    // The CLI runs in the reader's terminal against their repo, so it takes a
-    // command rather than a URL — copied, not opened.
-    await navigator.clipboard.writeText(`hanzo dev ${JSON.stringify(promptFor(here))}`)
+    // `hanzo code`, not `hanzo dev`: the bare form runs whichever backend the
+    // reader has selected — dev, Claude Code or Codex are all first-class — so
+    // the command does not pin one on their behalf. It runs in their terminal
+    // against their repo, so it is copied rather than opened.
+    await navigator.clipboard.writeText(`hanzo code ${JSON.stringify(promptFor(here))}`)
     flash('dev')
     setOpen(false)
   }
