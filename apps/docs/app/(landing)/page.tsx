@@ -27,6 +27,7 @@ import {
   CardTitle,
 } from '@hanzo/docs-base-ui/components/ui/card';
 import { Grid } from '@hanzo/ui/grid';
+import { AgentActions } from '@/components/agent-actions';
 import { HeroField } from '@/components/hero-field';
 import { CodeBlock } from '@/components/code-block';
 
@@ -190,6 +191,34 @@ export default function Page() {
           <p className="text-xs text-neutral-400 mt-3">
             Installs the <code className="text-neutral-400 bg-white/5 px-1 py-0.5 rounded">hanzo</code> CLI.
             Then <code className="text-neutral-400 bg-white/5 px-1 py-0.5 rounded">hanzo auth login</code> to get a key.
+          </p>
+        </div>
+
+        {/* -- The other way in: hand it to an agent ------------------------ */}
+        {/* Beside the install line, because they are the two ways to start and a
+            reader arriving with an agent open should not have to find that out
+            further down. It is the SAME control the doc pages carry, so what it
+            copies here is what it copies there — one prompt, one place it is
+            written, and it sets the agent up to use Hanzo's models and skills
+            rather than merely to call the API.
+
+            It also has to be here rather than in the bar: this page has no table
+            of contents, which is where the doc pages host it, so without this the
+            front door offered no way to hand anything to an agent at all. */}
+        <div className="relative mt-6 flex flex-col items-center gap-2">
+          <AgentActions />
+          <p className="text-xs text-neutral-400">
+            Or hand this to your agent — it installs the CLI, the MCP server and
+            the{' '}
+            <Link
+              href="https://hanzoskills.com"
+              target="_blank"
+              rel="noreferrer"
+              className="text-neutral-300 underline underline-offset-4 hover:text-white"
+            >
+              skills
+            </Link>
+            , then points its own model calls at Hanzo.
           </p>
         </div>
 
