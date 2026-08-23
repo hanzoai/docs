@@ -5,7 +5,7 @@ import jsonSchema from '@hanzo/docs-mdx/plugins/json-schema';
 import lastModified from '@hanzo/docs-mdx/plugins/last-modified';
 import type { ShikiTransformer } from 'shiki';
 import type { RemarkAutoTypeTableOptions } from '@hanzo/docs-typescript';
-import { shikiConfig } from './lib/shiki';
+import { CODE_THEME, shikiConfig } from './lib/shiki';
 import { metaSchema, pageSchema } from '@hanzo/docs-core/source/schema';
 import { visit } from 'unist-util-visit';
 import type { Transformer } from 'unified';
@@ -71,10 +71,7 @@ export const docs = defineDocs({
           ? false
           : {
               inline: 'tailing-curly-colon',
-              themes: {
-                light: 'catppuccin-latte',
-                dark: 'catppuccin-mocha',
-              },
+              themes: CODE_THEME,
               transformers: [
                 ...(rehypeCodeDefaultOptions.transformers ?? []),
                 transformerTwoslash({
@@ -166,10 +163,7 @@ export const blog = defineCollections({
         ? false
         : {
             inline: 'tailing-curly-colon',
-            themes: {
-              light: 'catppuccin-latte',
-              dark: 'catppuccin-mocha',
-            },
+            themes: CODE_THEME,
             transformers: [...(rehypeCodeDefaultOptions.transformers ?? []), transformerEscape()],
           },
       remarkCodeTabOptions: {
