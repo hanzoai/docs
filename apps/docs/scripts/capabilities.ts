@@ -42,7 +42,7 @@ export interface Domain {
  */
 const ICONS: Record<string, string> = {
   identity: 'ShieldCheck',
-  intelligence: 'Sparkles',
+  intelligence: 'Sparkle',
   data: 'Database',
   streams: 'Radio',
   observability: 'Activity',
