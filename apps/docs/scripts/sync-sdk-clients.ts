@@ -143,7 +143,7 @@ export async function syncSdkClients(): Promise<void> {
     }
   }
   // A registry that answers with nothing is a registry having a bad day, not a
-  // client that lost its methods — same rule as the door's tool list.
+  // client that lost its methods — same rule as the server's tool list.
   if (!clients.length) {
     if (!have) throw new Error('[sdk] no published client could be read and none is vendored');
     console.log(`[sdk] no registry answered — keeping the vendored clients captured ${have.captured}`);

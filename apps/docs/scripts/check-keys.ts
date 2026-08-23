@@ -12,7 +12,7 @@ import { DOCUMENT, loadDocument, type KeyType } from './openapi-doc';
 //
 // It was written because docs.hanzo.ai documented three key types and cloud has
 // two. `hk-` and `hz-` appeared on 148 pages, including the authentication page,
-// and neither has ever existed: cloud's door takes `pk-` and `sk-` and refuses
+// and neither has ever existed: cloud's edge takes `pk-` and `sk-` and refuses
 // everything else. Prose cannot be trusted to remember that, so it is checked.
 //
 // BOTH directions, which is what makes the pages underivable-from-memory:

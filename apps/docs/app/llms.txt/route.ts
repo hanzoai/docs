@@ -30,7 +30,7 @@ const TITLES: Record<string, string> = {
   openapi: 'API reference — one page per capability, one per operation',
   cli: 'CLI — the `hanzo` command line, one page per capability',
   start: 'Start — six journeys, each shown as CLI, SDK, HTTP and MCP',
-  'mcp-tools': 'MCP — one page per tool the door exposes',
+  'mcp-tools': 'MCP — one page per tool MCP exposes',
   projects: 'Open source — docs ported from the repositories themselves',
   sdks: 'SDKs — one page per language',
   architecture: 'Architecture',

@@ -255,12 +255,12 @@ function leadProse(op: Operation): string {
  * One name reaches this capability four ways — the address, the command group,
  * the client class, the MCP tool — and HIP-0139 is the reason they are the same
  * word. What HIP-0139 does not promise is that all four are FINISHED at the same
- * moment: the CLI folds a document it pins on its own clock, and the MCP door
+ * moment: the CLI folds a document it pins on its own clock, and the MCP server
  * declares its own verbs for operations it chooses to name.
  *
  * So this is a count, not a claim. Every number is a join performed here against
  * the artefact that surface actually ships — cloud's document, the CLI's
- * committed command table, the door's `tools/list` answer — and where a join
+ * committed command table, the server's `tools/list` answer — and where a join
  * yields nothing the row says none rather than omitting itself. A reader asking
  * "can I drive this from the CLI?" gets a number; a reader who gets no row would
  * assume yes.
@@ -594,8 +594,8 @@ function specification(name: string, hips: Corpus): string[] {
  * matters: it would tell an operator the console does not exist.
  *
  * So the sentence states only what is true of all of them — it is not in the
- * public contract, it is GA, and here is the door — and the door line, written
- * per capability in `capabilities.yaml`, carries the specific why. The COUNT is
+ * public contract, it is GA, and here is where it is reached — and the `doors:`
+ * line, written per capability in `capabilities.yaml`, carries the specific why. The COUNT is
  * not written here at all: two of these were retired the week this was authored
  * (`catalogsync` and `rollingcap`, neither of which was a process), and a number
  * in a comment is the one part of that change nothing would have caught.
@@ -683,7 +683,7 @@ function renderProduct(
   L.push(`| **Base URL** | \`${doc.server}\` |`);
   L.push(`| **Operations** | ${p.operations.length} |`);
   L.push(`| **Auth** | \`Authorization: Bearer $HANZO_API_KEY\` |`);
-  // A second door, where there is one. `pubsub` answers at `/v1/pubsub` AND on
+  // A second address, where there is one. `pubsub` answers at `/v1/pubsub` AND on
   // `:4222`; printing only the first describes half the capability to the half
   // of its readers who came for a NATS client.
   const second = doors().get(p.name);
@@ -1091,7 +1091,7 @@ export async function genOpenapiPages(
     );
   }
 
-  // The quickstart's CLI and MCP columns are the CLI's own table and the door's
+  // The quickstart's CLI and MCP columns are the CLI's own table and the server's
   // own answer, read here once and handed down — the same two artefacts the flow
   // pages read, through the same two functions.
   const table = loadCliTable();

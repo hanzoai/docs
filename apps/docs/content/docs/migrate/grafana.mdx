@@ -50,7 +50,7 @@ id and no `X-Scope-OrgID` — the key carries the org.
 | Capability | What it does | Operations |
 |---|---|---|
 | `/v1/o11y` | Dashboards, alert rules, PromQL and composite queries, log pipelines, trace waterfalls, Kubernetes inventory — one store behind all of it | 381 |
-| `/v1/metrics` | The ingest doors — metric, log and trace writes, plus the reads over that bounded ring | 11 |
+| `/v1/metrics` | The ingest endpoints — metric, log and trace writes, plus the reads over that bounded ring | 11 |
 | `/v1/notify` | Sends the SMS and email an escalation ends in | 4 |
 
 ## Nouns
@@ -210,19 +210,19 @@ onto a panel. `POST /v1/o11y/llm/annotation` is a different noun — a human's l
 one LLM trace or observation, in a review queue, not a band drawn across a chart.
 
 **No continuous profiling, and no probes in other regions.** Pyroscope's per-process
-CPU and heap profiles have no ingest door. `POST /v1/o11y/traces/{traceId}/flamegraph`
+CPU and heap profiles have no ingest endpoint. `POST /v1/o11y/traces/{traceId}/flamegraph`
 buckets one trace's spans by depth, which draws like a flame graph and measures
 something else. Synthetic Monitoring's checks from probe locations and k6's load tests
 have no equivalent either — `GET /v1/o11y/summary` and `GET /v1/o11y/status` report
 Hanzo's own fleet health, which is a different fact from your endpoint's.
 
-**Two ingest doors, both counting in nanoseconds.** `/v1/metrics/logs/write` and
+**Two ingest endpoints, both counting in nanoseconds.** `/v1/metrics/logs/write` and
 `/v1/metrics/traces/write` hold a bounded ring per org — 1,048,576 records and
 1,048,576 spans, oldest evicted — and take the tenant from the gateway-minted
 `X-Org-Id`; a series written to `/v1/metrics/write` keeps its newest 65,536 samples.
 The `/v1/o11y` reads run over the collector-fed datastore, whose retention you set per
-signal at `POST /v1/o11y/settings/ttl`. Choose the door deliberately. Note also that
-Prometheus remote write sends milliseconds while both doors here read nanoseconds, and
+signal at `POST /v1/o11y/settings/ttl`. Choose the endpoint deliberately. Note also that
+Prometheus remote write sends milliseconds while both endpoints here read nanoseconds, and
 a sample sent with no timestamp is stored at 0 and then falls outside any query with a
 lower bound — that is the usual reason a write which answered 200 does not read back.
 

@@ -58,7 +58,7 @@ ${
   server.length === 1
     ? `\`${server[0].prefix}\` belongs on a server and \`${browser.prefix}\` may ship in a browser bundle.`
     : `\`${browser.prefix}\` may ship in a browser bundle; every other type belongs on a server.`
-} A key spelled any other way is refused at the door — never guessed at, never
+} A key spelled any other way is refused at the edge — never guessed at, never
 defaulted to the safer-sounding one.
 `;
 

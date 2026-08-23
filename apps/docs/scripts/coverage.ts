@@ -21,7 +21,7 @@ import { doors } from './capabilities';
 //   CLI   hanzoai/cli's generated command table, joined on method+path.
 //   SDK   the methods the PUBLISHED clients declare, joined on the id each
 //         language spells the operation with.
-//   MCP   the door's `tools/list`, joined on tool name and on operationId.
+//   MCP   the server's `tools/list`, joined on tool name and on operationId.
 //
 // Three of those four joins cross a CLOCK. The CLI table, the tool list and the
 // clients are each generated from cloud at their own lock, so each may spell a
@@ -50,7 +50,7 @@ export interface Coverage {
   /** The tool that serves this capability, and the operations it names. */
   tool?: string;
   toolOps: number;
-  /** Of this capability's operations, those the door names by the document's id. */
+  /** Of this capability's operations, those the server names by the document's id. */
   mcp: number;
 }
 
@@ -117,7 +117,7 @@ if (import.meta.main) {
   const say = (label: string, names: string[]) =>
     console.log(`\n${label} (${names.length})\n  ${names.join(', ') || '—'}`);
 
-  console.log(`capabilities: ${rows.length}  (${rest.length} at /v1, ${rows.length - rest.length} at another door)`);
+  console.log(`capabilities: ${rows.length}  (${rest.length} at /v1, ${rows.length - rest.length} at another address)`);
   console.log(`operations:   ${rest.reduce((n, r) => n + r.rest, 0)}`);
   console.log(
     `full:         ${rest.filter((r) => r.cli === r.rest && r.sdk === r.rest && r.mcp === r.rest).length} capabilities where all four surfaces reach every operation`,

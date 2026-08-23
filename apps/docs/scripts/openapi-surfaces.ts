@@ -329,13 +329,13 @@ const py = (v: any): string =>
 /**
  * THE TOOL RULE, in one place and read in both directions.
  *
- * MCP is a SUBSYSTEM door: `tools/list` answers 109 tools — `agents`,
+ * MCP is a SUBSYSTEM server: `tools/list` answers 109 tools — `agents`,
  * `billing`, `iam` — and each declares an `op` enum naming the operations it
  * dispatches to. So the unit a caller names is a pair, `{name: <subsystem>,
  * arguments: {op, input}}`, not a tool per operation.
  *
  * A tool OWNS an operation when its enum names that operation's `operationId`
- * VERBATIM. Exact, nothing else — and measured on the live door: 470 of the
+ * VERBATIM. Exact, nothing else — and measured on the live server: 470 of the
  * document's 2480 operations are named that way, and not one is claimed by two
  * tools, so the map needs no tie-break.
  *
@@ -347,7 +347,7 @@ const py = (v: any): string =>
  * which resolves an operationId whichever verb MCP prefers for it.
  *
  * The rule this replaces keyed a tool by the operationId AND by a method+path
- * slug. Under the flat door both were true; under this one the second key still
+ * slug. Under the flat shape both were true; under this one the second key still
  * matches — against tool names MCP stopped serving twelve days ago — so it
  * printed `get_v1_agents` as a tool for an operation MCP now answers
  * "unknown tool" to. A key that keeps matching after the thing it names is gone
@@ -386,7 +386,7 @@ export const door = (tools: Iterable<McpTool>): Door => {
  * alias, and survives any renaming on either side — the two vocabularies meet at
  * the operation, which is the one thing both of them spell the same way.
  *
- * `named` is the count under the DOCUMENT's own ids. A door may serve an
+ * `named` is the count under the DOCUMENT's own ids. An MCP server may serve an
  * operation under a verb of its own, so `named` is a floor on what is reachable
  * and never a ceiling, and a page that prints it says which it is.
  */
@@ -483,7 +483,7 @@ export const describeCall = (op: string): string =>
  * Ranked, never hand-picked, so a product added to the document arrives with a
  * first call already chosen and nothing to remember. Measured on the document:
  * 152 of 188 products have one that runs on a key alone; the other 36 lead with
- * a POST or an id because that is genuinely their front door, and the page says
+ * a POST or an id because that is genuinely their entry point, and the page says
  * so rather than pretending otherwise — see `runnable`.
  */
 /**
@@ -531,7 +531,7 @@ export function firstCall(p: Product): Operation {
  * of the document at ITS OWN lock, and cloud dropping the default version from
  * its operationIds moved every name at once. So the column prints the method at
  * the current release — which is the one that agrees with the endpoint, the
- * operation id and the MCP door — and this line names the client that does not
+ * operation id and the MCP server — and this line names the client that does not
  * have it yet. It is computed from the two, so it cannot outlive the gap: the
  * release that regenerates the clients deletes this sentence by itself.
  */

@@ -421,7 +421,7 @@ to the image `name`, and whether the sha is abbreviated. Only a repo that sets
 `tag-suffix` explicitly *and* ignores the sha length gets agreement, and even then
 only between the last two.
 
-`build_on_push.go`'s header states that its door and the ci door "enqueue
+`build_on_push.go`'s header states that its lane and the ci lane "enqueue
 identical image tags so they converge, never diverge". That holds only for a repo
 that sets `tag-suffix`. For every repo that omits it — most of them, this one
 included — they differ by exactly the suffix. Its own test documents the fallback

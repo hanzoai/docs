@@ -54,14 +54,14 @@ function readFlows(file: string): Flow[] {
 
 
 /**
- * The MCP door is real and undeclared.
+ * The MCP endpoint is real and undeclared.
  *
  * `POST /v1/mcp` answers JSON-RPC `tools/list` — verified on the wire, and the
  * count is passed in rather than written here, because it has already moved
  * twice (833 flat tools, then 109 subsystem tools reaching 1384 operations) and
  * a number in a sentence does not move with it.
  * hanzo.yaml declares only `/v1/mcp/servers`, so the spec lane recorded
- * the door as "not routed": a true statement about the document and a false one
+ * the endpoint as "not routed": a true statement about the document and a false one
  * about the fleet. The docs must describe what actually answers, and must say
  * out loud that the document does not, so it gets declared instead of quietly
  * forgotten.
@@ -74,7 +74,7 @@ function doorNotice(doc: Document, reach: number): string[] {
   const declared = Object.keys(doc.raw.paths ?? {}).includes('/v1/mcp');
   if (declared) return [];
   return [
-    `> **The MCP door is not in the OpenAPI document.** \`POST ${MCP_DOOR}\` answers` +
+    `> **The MCP endpoint is not in the OpenAPI document.** \`POST ${MCP_DOOR}\` answers` +
       ` JSON-RPC 2.0 \`tools/list\` and \`tools/call\`, reaching ${reach} operations —` +
       ' it is live and is what the MCP column below calls. The document declares' +
       ' only `/v1/mcp/servers`, so this route is undeclared and needs adding to' +

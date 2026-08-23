@@ -14,7 +14,7 @@ import { useSearchContext } from '@hanzo/docs-base-ui/contexts/search';
  * So it is not a second search any more — it is the same dialog ⌘K opens,
  * wearing the shape of a field. Full text, every page, and the AI answer on the
  * same surface, because "find the page" and "answer my question" are one
- * intention and the reader should not have to pick a door before they know
+ * intention and the reader should not have to pick a mode before they know
  * which one they wanted.
  *
  * It renders as a BUTTON, not an input. An input would take focus and swallow

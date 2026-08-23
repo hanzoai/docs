@@ -14,11 +14,11 @@ import { constraintsOf, genMcpPages, published, slugOf } from './gen-mcp-pages';
 // not against a fixture, which could agree with a broken generator.
 //
 //   uniform     every tool page carries the same sections in the same order
-//   complete    every field the door declares appears in the page's table
+//   complete    every field the server declares appears in the page's table
 //   exemplified every page carries a tools/call envelope that parses
 //   reachable   every page is linked from the catalogue and its product index
 //
-// A tool page states nothing the door did not say, so "generated" is not a test
+// A tool page states nothing the server did not say, so "generated" is not a test
 // but a property of gen-mcp-pages: no sentence about a tool is written there.
 
 const catalog = load();
@@ -27,7 +27,7 @@ const doc = loadDocument(DOCUMENT);
 const mappedOps = toolOperations(doc, catalog.tools);
 // The reference documents the PUBLISHED tools, so the claims below are read
 // against the same list the generator writes — see published(). Reading the
-// door's whole answer here would fail every count by the 78 operator tools that
+// server's whole answer here would fail every count by the 78 operator tools that
 // deliberately have no page.
 catalog.tools = published(catalog, mappedOps);
 
@@ -62,7 +62,7 @@ beforeAll(async () => {
 }, 120_000);
 
 // The join is one rule read in both directions, so it is pinned in both. The
-// cases are taken from the live door's own tools/list answer.
+// cases are taken from the live server's own tools/list answer.
 describe('the tool -> operation rule', () => {
   it('names an operation only where a tool enumerates its operationId', () => {
     const index = door(catalog.tools).index;
@@ -71,9 +71,9 @@ describe('the tool -> operation rule', () => {
       expect(doorOps(t)).toContain(id);
     }
     // And the other way: nothing outside the enums is claimed. `get_agents` is
-    // the case worth pinning — the door DISPATCHES it (probed live) but names it
+    // the case worth pinning — the server DISPATCHES it (probed live) but names it
     // `list_agents` in the enum, so the index must not claim it, and the page
-    // must send the reader to `describe` instead of guessing the door's verb.
+    // must send the reader to `describe` instead of guessing the server's verb.
     const agents = catalog.tools.find((t) => t.name === 'agents');
     if (agents) {
       expect(doorOps(agents)).toContain('list_agents');
@@ -90,7 +90,7 @@ describe('the tool -> operation rule', () => {
 
   it('resolves the tools whose enums the document ids, and counts the rest', () => {
     const mapped = toolOperations(doc, catalog.tools);
-    // The door groups its own way and names most operations with its own verb,
+    // The server groups its own way and names most operations with its own verb,
     // so a tool resolving to nothing is normal and is published as `unmapped`
     // rather than dropped. What must hold is that the join is alive and never
     // invents: some tools resolve, none resolves outside the list.
@@ -139,9 +139,9 @@ describe('complete — every declared field is enumerated', () => {
   });
 
   it('attributes every column to the source that filled it', () => {
-    // The door publishes a type and a description and nothing else, so the
+    // The server publishes a type and a description and nothing else, so the
     // Required, Default and Values columns come from the operation. A page that
-    // printed them without saying so would imply the door declares them.
+    // printed them without saying so would imply the server declares them.
     const withFields = catalog.tools.filter((t) => Object.keys(t.inputSchema?.properties ?? {}).length);
     expect(withFields.length).toBeGreaterThan(0);
     const silent = withFields.filter((t) => !pageOf.get(slugOf(t.name))!.includes('and nothing further'));
@@ -149,9 +149,9 @@ describe('complete — every declared field is enumerated', () => {
   });
 
   it('marks every field either source requires', () => {
-    // WHO SAYS REQUIRED changed with the door. It used to say nothing, so the
+    // WHO SAYS REQUIRED changed with the server. It used to say nothing, so the
     // operation was the only source and this asserted the join carried it onto a
-    // fifth of the pages. The subsystem door declares `required: ["op"]` itself,
+    // fifth of the pages. The subsystem tool declares `required: ["op"]` itself,
     // and its two fields — `op` and `input` — are not the operation's fields, so
     // the join contributes nothing HERE and the count guard measured a join that
     // has moved rather than collapsed. The property that still matters, and is
@@ -226,16 +226,16 @@ describe('complete — every declared field is enumerated', () => {
       }
     }
     expect(missing).toEqual([]);
-    // The subsystem door declares `input` as a bare object with no properties —
+    // The subsystem tool declares `input` as a bare object with no properties —
     // what goes in it belongs to the operation you name in `op`, not to the tool
     // — so this set is empty at this capture and the rule holds over it. Said out
     // loud, like the enum case above, rather than asserted away with a count that
-    // would fail on a door that simply declares less.
+    // would fail on a server that simply declares less.
     console.log(`[mcp-ref] inline object fields checked: ${checked}`);
   });
 
-  it('states a required argument the door never declares, instead of an empty object', () => {
-    // Some operations need a path parameter the door's schema omits entirely.
+  it('states a required argument the server never declares, instead of an empty object', () => {
+    // Some operations need a path parameter the server's schema omits entirely.
     // The page cannot say where the value goes, so it must say that.
     const silent: string[] = [];
     let checked = 0;
@@ -278,7 +278,7 @@ describe('exemplified — every page carries a call that parses', () => {
       const declared = Object.keys(t.inputSchema?.properties ?? {});
       const con = constraintsOf(mappedOps.get(t.name));
       // Required as the ENVELOPE reads it: either source. This read only the
-      // operation, which was every source there was until the door began
+      // operation, which was every source there was until the server began
       // declaring `required` itself — after which the envelope correctly sent
       // just `op` and the test asked why it had not sent `input` too.
       const required = declared.filter(
@@ -291,7 +291,7 @@ describe('exemplified — every page carries a call that parses', () => {
       if (args.join(',') !== want.sort().join(','))
         bad.push(`${t.name}: sent [${args}] for [${want}]`);
       for (const n of args) {
-        if (!declared.includes(n)) bad.push(`${t.name}: sent ${n}, which the door does not declare`);
+        if (!declared.includes(n)) bad.push(`${t.name}: sent ${n}, which the server does not declare`);
       }
     }
     expect(bad).toEqual([]);
@@ -302,7 +302,7 @@ describe('exemplified — every page carries a call that parses', () => {
     // cannot, so an unannounced one is indistinguishable from a value the API
     // declares — the page would be inventing quietly. Checked against the
     // RENDERED envelope, and the schema walk below is this test's own: it
-    // resolves a dotted path through the door's schema without asking the
+    // resolves a dotted path through the server's schema without asking the
     // generator what it decided.
     const nodeAt = (schema: any, path: string): any => {
       const defs: Record<string, any> = schema?.$defs ?? {};
@@ -347,11 +347,11 @@ describe('exemplified — every page carries a call that parses', () => {
       }
     }
     expect(quiet).toEqual([]);
-    // How many opaque values there are to attribute is the DOOR'S business, and
+    // How many opaque values there are to attribute is the SERVER'S business, and
     // it is now few: a subsystem call carries one string, `op`, and that string
-    // is an enumerated operation name, which announces itself. The flat door
+    // is an enumerated operation name, which announces itself. The flat shape
     // forced hundreds — a count that pinned that shape in place, and would now
-    // fail a door that invites nothing. The rule is the assertion; the count is
+    // fail a server that invites nothing. The rule is the assertion; the count is
     // reported.
     console.log(`[mcp-ref] opaque values attributed: ${checked}`);
   });
@@ -431,7 +431,7 @@ describe('reachable — no orphans', () => {
 });
 
 describe('provenance — the reference says where it came from', () => {
-  it('stamps the door, the count and the capture date on every page', () => {
+  it('stamps the address, the count and the capture date on every page', () => {
     const unstamped = [...pageOf.entries()].filter(
       ([, src]) => !src.includes(catalog.door) || !src.includes(catalog.meta.captured),
     );

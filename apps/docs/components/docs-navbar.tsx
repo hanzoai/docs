@@ -88,7 +88,7 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
             'inline-grid grid-flow-col items-center gap-2.5 font-semibold',
             // Hidden on desktop only while the SIDEBAR is showing it — which it is
             // not when collapsed, and collapsed is exactly the landing page. Left
-            // unconditional the front door rendered no wordmark at all: the rail
+            // unconditional the landing page rendered no wordmark at all: the rail
             // that owns it was off-screen and this copy was suppressed for a
             // neighbour that was not drawing.
             !collapsed && 'md:hidden',

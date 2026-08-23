@@ -31,7 +31,7 @@ import { PROVIDER_ICONS } from '@/components/provider-icons';
  * The three paths, ordered by how much you type. Each carries its real first
  * step — these are commands that work, not illustrative pseudocode.
  */
-const DOORS = [
+const PATHS = [
   {
     id: 'app',
     eyebrow: 'No code',
@@ -86,9 +86,9 @@ export function DocsHero({
   title?: string;
   description?: string;
 }) {
-  const [active, setActive] = useState<string>(DOORS[0].id);
+  const [active, setActive] = useState<string>(PATHS[0].id);
 
-  const door = DOORS.find((d) => d.id === active) ?? DOORS[0];
+  const path = PATHS.find((d) => d.id === active) ?? PATHS[0];
 
 
   return (
@@ -135,7 +135,7 @@ export function DocsHero({
           panel below follows the pointer and a reader compares paths by moving
           across them rather than by clicking three times. */}
       <div className="mb-4 grid gap-3 sm:grid-cols-3">
-        {DOORS.map((d, i) => {
+        {PATHS.map((d, i) => {
           const on = d.id === active;
           return (
             <button
@@ -176,7 +176,7 @@ export function DocsHero({
         })}
       </div>
 
-      {/* The selected path's real first step. Keyed on the door id so React
+      {/* The selected path's real first step. Keyed on the path id so React
           remounts it and the entrance animation replays on every switch — the
           movement is what tells you the panel answers the thing you just hovered. */}
       <div
@@ -185,18 +185,18 @@ export function DocsHero({
       >
         <div className="flex items-center justify-between gap-3 border-b border-fd-border px-4 py-2.5">
           <span className="text-xs font-medium text-fd-muted-foreground">
-            {door.lang}
+            {path.lang}
           </span>
           <Link
-            href={door.href}
-            {...(door.external ? { target: '_blank', rel: 'noreferrer' } : {})}
+            href={path.href}
+            {...(path.external ? { target: '_blank', rel: 'noreferrer' } : {})}
             className="text-xs text-fd-muted-foreground underline-offset-4 transition-colors hover:text-fd-foreground hover:underline"
           >
-            {door.cta} →
+            {path.cta} →
           </Link>
         </div>
-        <pre key={door.id} className="hanzo-rise overflow-x-auto px-4 py-3.5 text-[13px] leading-relaxed text-fd-foreground">
-          <code>{door.code}</code>
+        <pre key={path.id} className="hanzo-rise overflow-x-auto px-4 py-3.5 text-[13px] leading-relaxed text-fd-foreground">
+          <code>{path.code}</code>
         </pre>
       </div>
 

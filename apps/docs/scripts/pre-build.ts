@@ -25,8 +25,8 @@ async function main() {
   //
   // The MCP tool list is NOT synced here. It is vendored
   // (openapi-specs/mcp-tools.json) and refreshed by `pnpm sync:mcp`, a commit
-  // someone makes and someone reads. Calling the live door from the build made
-  // the site a function of a running service instead of this commit: the door
+  // someone makes and someone reads. Calling the live server from the build made
+  // the site a function of a running service instead of this commit: the server
   // gained a tool named `index`, that name is one this section spends on its own
   // landing page, and the collision gate — correctly — failed every build from
   // that moment, on commits that had already gone green hours earlier. A build
