@@ -1,18 +1,7 @@
 import './global.css';
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
-import { Geist, Geist_Mono } from 'next/font/google';
 import { Analytics } from '@hanzo/docs-analytics';
-
-const geist = Geist({
-  variable: '--font-sans',
-  subsets: ['latin'],
-});
-
-const mono = Geist_Mono({
-  variable: '--font-mono',
-  subsets: ['latin'],
-});
 
 export const metadata: Metadata = {
   title: 'Hanzo Team — Project Management & Collaboration',
@@ -43,7 +32,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${geist.variable} ${mono.variable} dark`}>
+    <html lang="en" className="dark">
       <body className="antialiased">
         {children}
         <Analytics product="team-docs" />

@@ -4,7 +4,6 @@ import { baseUrl, createMetadata } from '@/lib/metadata';
 import { Body } from '@/app/layout.client';
 import { Provider } from './provider';
 import type { ReactNode } from 'react';
-import { Geist, Geist_Mono } from 'next/font/google';
 import { TreeContextProvider } from '@hanzo/docs/ui/contexts/tree';
 import { source } from '@/lib/source';
 import { NextProvider } from '@hanzo/docs/core/framework/next';
@@ -19,16 +18,6 @@ export const metadata = createMetadata({
   metadataBase: baseUrl,
 });
 
-const geist = Geist({
-  variable: '--font-sans',
-  subsets: ['latin'],
-});
-
-const mono = Geist_Mono({
-  variable: '--font-mono',
-  subsets: ['latin'],
-});
-
 export const viewport: Viewport = {
   themeColor: [
     { media: '(prefers-color-scheme: dark)', color: '#050505' },
@@ -38,7 +27,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${geist.variable} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <Body>
         <NextProvider>
           <TreeContextProvider tree={source.getPageTree()}>
