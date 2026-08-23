@@ -17,8 +17,21 @@ import { linkItems } from '@/components/layouts/shared';
 export function DocsNavLinks() {
   const pathname = usePathname();
 
+  // A run of equal-height links, so the tracks come from the content and the
+  // spacing is stated once on the container rather than as a margin each link
+  // carries. `justify-content: start` keeps the row left-aligned inside the
+  // stretched middle track of the bar above.
   return (
-    <nav className="flex items-center gap-1 max-md:hidden">
+    <nav
+      className="max-md:hidden"
+      style={{
+        display: 'grid',
+        gridAutoFlow: 'column',
+        justifyContent: 'start',
+        alignItems: 'center',
+        columnGap: 4,
+      }}
+    >
       {linkItems
         .filter((item) => item.type !== 'icon' && 'url' in item)
         .map((item) => {

@@ -30,7 +30,7 @@ export function Breadcrumb({
   return (
     <div
       {...props}
-      className={cn('flex items-center gap-1.5 text-sm text-fd-muted-foreground', props.className)}
+      className={cn('grid grid-flow-col justify-start items-center gap-1.5 text-sm text-fd-muted-foreground', props.className)}
     >
       {items.map((item, i) => {
         const className = cn('truncate', i === items.length - 1 && 'text-fd-primary font-medium');

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ChevronsUpDown } from 'lucide-react'
+import { Grid } from '@hanzo/ui/grid'
 
 import { currentUser, iam, type DocsUser } from '@/lib/iam'
 
@@ -48,7 +49,7 @@ export function SidebarAccount() {
 
 function SignedOut() {
   return (
-    <div className="flex flex-col gap-2">
+    <Grid columns={1} gap={8}>
       {/* Sign in first: it is the step that costs nothing and the one most
           readers already have an account for. Getting a key is the commitment,
           so it sits at the foot as the thing you end on. */}
@@ -64,7 +65,7 @@ function SignedOut() {
       >
         Get an API key
       </a>
-    </div>
+    </Grid>
   )
 }
 
@@ -136,16 +137,26 @@ function Account({ user, onSignOut }: { user: DocsUser; onSignOut: () => void })
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-start transition-colors hover:bg-fd-accent"
+        // Initial, name, chevron. The name track is `minmax(0, 1fr)`, which is
+        // what lets it truncate — a flex child needed `min-w-0` spelled out to
+        // do the same thing, and a track that forgets it is how a long email
+        // pushes the chevron out of the rail.
+        className="w-full rounded-lg px-2 py-1.5 text-start transition-colors hover:bg-fd-accent"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+          alignItems: 'center',
+          columnGap: 8,
+        }}
       >
         <span
           aria-hidden
-          className="grid size-6 shrink-0 place-items-center rounded-full bg-fd-primary text-[0.6875rem] font-medium text-fd-primary-foreground"
+          className="grid size-6 place-items-center rounded-full bg-fd-primary text-[0.6875rem] font-medium text-fd-primary-foreground"
         >
           {label.slice(0, 1).toUpperCase()}
         </span>
-        <span className="min-w-0 flex-1 truncate text-sm text-fd-foreground">{label}</span>
-        <ChevronsUpDown className="size-3.5 shrink-0 text-fd-muted-foreground" />
+        <span className="truncate text-sm text-fd-foreground">{label}</span>
+        <ChevronsUpDown className="size-3.5 text-fd-muted-foreground" />
       </button>
     </div>
   )

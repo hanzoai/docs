@@ -15,17 +15,7 @@ import {
   Terminal,
   Workflow,
 } from 'lucide-react';
-import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
-import { Badge } from '@hanzo/docs-base-ui/components/ui/badge';
-import { cn } from '@/lib/cn';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@hanzo/docs-base-ui/components/ui/card';
+import { Card, CardContent, CardTitle, XStack } from '@hanzo/ui';
 import { Grid } from '@hanzo/ui/grid';
 import { AgentActions } from '@/components/agent-actions';
 import { Tabs, Tab } from '@hanzo/docs-base-ui/components/tabs';
@@ -146,7 +136,14 @@ export default function Page() {
     // because the sidebar takes 268px from `md` up and 768→1024→1280 step by 256.
     <main className="[grid-area:main] min-w-0 pb-6 md:pb-12">
       {/* -- Hero ---------------------------------------------------------- */}
-      <section className="relative flex flex-col items-center text-center mx-auto w-full max-w-5xl px-6 pt-24 pb-16 md:pt-36 md:pb-24">
+      {/* One column, centred. It was `flex flex-col items-center`, which is the
+          same picture drawn with the wrong primitive: a column of blocks IS a
+          one-track grid, and saying so means `justifyItems` centres the children
+          without each of them having to be told. */}
+      <section
+        className="relative mx-auto w-full max-w-5xl px-6 pt-24 pb-16 md:pt-36 md:pb-24"
+        style={{ display: 'grid', justifyItems: 'center', textAlign: 'center' }}
+      >
         {/* The atmosphere behind the headline, as dots rather than a gradient —
             the halftone IS the mark, and a gradient carries none of it. `fade`
             dissolves the canvas rectangle on both axes so the field ends in the
@@ -160,9 +157,10 @@ export default function Page() {
           href="https://hanzo.ai/enso"
           target="_blank"
           rel="noreferrer"
-          className="relative mb-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-neutral-400 backdrop-blur transition-colors hover:border-white/20 hover:text-white"
+          className="relative mb-8 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-neutral-400 backdrop-blur transition-colors hover:border-white/20 hover:text-white"
+          style={{ display: 'inline-grid', gridAutoFlow: 'column', alignItems: 'center', columnGap: 8 }}
         >
-          <span className="h-1.5 w-1.5 rounded-full bg-white" />
+          <span className="rounded-full bg-white" style={{ width: 6, height: 6 }} />
           Meet Enso — our frontier model, default on every surface
           <ArrowRight className="size-3.5" />
         </Link>
@@ -183,10 +181,30 @@ export default function Page() {
 
         {/* -- Install command -- the main CTA ------------------------------ */}
         <div className="relative mt-10 w-full max-w-lg">
-          <Card className="border-white/[0.08] bg-white/[0.03] p-1 shadow-none gap-0 py-0 rounded-2xl">
-            <CardContent className="flex items-center gap-3 rounded-xl bg-[#0a0a0a] px-5 py-4 font-mono text-sm">
-              <span className="text-neutral-400 select-none">$</span>
-              <span className="text-white flex-1 text-left">curl hanzo.sh | sh</span>
+          <Card
+            backgroundColor="rgba(255,255,255,0.03)"
+            borderColor="rgba(255,255,255,0.08)"
+            borderRadius={16}
+            padding={4}
+            paddingVertical={4}
+            gap={0}
+          >
+            {/* `$` then the command: a fixed leader and a track that takes the
+                rest. The `flex-1` that used to be on the span was the child
+                claiming the width; the track owns it now. */}
+            <CardContent
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'auto minmax(0, 1fr)',
+                alignItems: 'center',
+                columnGap: 12,
+                borderRadius: 12,
+                background: '#0a0a0a',
+                padding: '16px 20px',
+              }}
+            >
+              <span className="font-mono text-sm text-neutral-400 select-none">$</span>
+              <span className="font-mono text-sm text-white" style={{ textAlign: 'left' }}>curl hanzo.sh | sh</span>
             </CardContent>
           </Card>
           <p className="text-xs text-neutral-400 mt-3">
@@ -206,7 +224,7 @@ export default function Page() {
             It also has to be here rather than in the bar: this page has no table
             of contents, which is where the doc pages host it, so without this the
             front door offered no way to hand anything to an agent at all. */}
-        <div className="relative mt-6 flex flex-col items-center gap-2">
+        <div className="relative mt-6" style={{ display: 'grid', justifyItems: 'center', rowGap: 8 }}>
           <AgentActions />
           <p className="text-xs text-neutral-400">
             Or hand this to your agent — it installs the CLI, the MCP server and
@@ -262,16 +280,29 @@ export default function Page() {
               href: '/docs/openapi',
             },
           ].map((d) => (
+            // Three rows — eyebrow, title, body — so the gaps are declared once
+            // on the card instead of as a margin on each child that has to know
+            // what follows it.
             <Link
               key={d.title}
               href={d.href}
               {...(d.external ? { target: '_blank', rel: 'noreferrer' } : {})}
-              className="group flex flex-col rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]"
+              className="group rounded-2xl border border-white/[0.08] bg-white/[0.02] p-6 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.05]"
+              style={{
+                display: 'grid',
+                gridTemplateRows: 'auto auto auto',
+                alignContent: 'start',
+                rowGap: 6,
+                textAlign: 'left',
+              }}
             >
-              <span className="mb-2 text-xs font-medium text-neutral-300">
+              <span className="text-xs font-medium text-neutral-300">
                 {d.eyebrow}
               </span>
-              <span className="mb-1.5 flex items-center gap-1.5 text-lg font-semibold text-white">
+              <span
+                className="text-lg font-semibold text-white"
+                style={{ display: 'grid', gridAutoFlow: 'column', justifyContent: 'start', alignItems: 'center', columnGap: 6 }}
+              >
                 {d.title}
                 <ArrowRight className="size-4 opacity-40 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
               </span>
@@ -369,9 +400,27 @@ export default function Page() {
                 ? { target: '_blank' as const, rel: 'noreferrer noopener' }
                 : {};
               return (
+                // Four rows: the icon/tag line, the name, the description, and
+                // the footer pushed to the bottom by `1fr` on the description
+                // row. Before, the footer was a separate flex child relying on
+                // the frame's own gap; now the card states its own shape and the
+                // minimum height has something to distribute.
                 <Card
                   key={item.name}
-                  className="group relative border-white/[0.08] bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05] transition-all duration-300 shadow-none py-0 gap-0 rounded-2xl min-h-[140px] sm:min-h-[160px]"
+                  className="group"
+                  minHeight={140}
+                  backgroundColor="rgba(255,255,255,0.02)"
+                  borderColor="rgba(255,255,255,0.08)"
+                  hoverStyle={{ borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(255,255,255,0.05)' }}
+                  borderRadius={16}
+                  paddingVertical={0}
+                  gap={0}
+                  style={{
+                    position: 'relative',
+                    display: 'grid',
+                    gridTemplateRows: 'auto auto 1fr auto',
+                    transition: 'all 300ms',
+                  }}
                 >
                   {/* The whole card is the click target, so the link has no text
                       of its own — it takes its accessible name from the card
@@ -387,27 +436,27 @@ export default function Page() {
                   ) : (
                     <Link href={item.href} aria-label={item.name} className="absolute inset-0 z-10" />
                   )}
-                  <CardHeader className="p-5 sm:p-6 pb-0 gap-0 grid-rows-none">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="rounded-xl bg-white/[0.06] p-2">
-                        <item.icon className="size-5 text-neutral-400 group-hover:text-white transition-colors" />
-                      </div>
-                      <Badge variant="ghost" className="text-[11px] text-neutral-400 font-medium border-none px-0">
-                        {item.tag}
-                      </Badge>
+                  <div
+                    className="p-5 sm:p-6 pb-0"
+                    style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'center', marginBottom: 12 }}
+                  >
+                    <div className="rounded-xl bg-white/[0.06] p-2" style={{ justifySelf: 'start' }}>
+                      <item.icon className="size-5 text-neutral-400 group-hover:text-white transition-colors" />
                     </div>
-                    <CardTitle className="text-sm font-semibold text-white mb-1.5">
-                      {item.name}
-                    </CardTitle>
-                    <CardDescription className="text-xs text-neutral-400 leading-relaxed group-hover:text-neutral-200 transition-colors">
-                      {item.desc}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardFooter className="p-5 sm:p-6 pt-3">
-                    <span className="flex items-center gap-1 text-[10px] font-medium text-neutral-400 group-hover:text-white transition-colors">
-                      {isExternal ? 'Visit' : 'View docs'} <ArrowRight className="size-3" />
-                    </span>
-                  </CardFooter>
+                    <span className="text-[11px] font-medium text-neutral-400">{item.tag}</span>
+                  </div>
+                  <CardTitle paddingHorizontal={24} fontSize={14} fontWeight="600" color="#ffffff" marginBottom={6}>
+                    {item.name}
+                  </CardTitle>
+                  <p className="px-5 sm:px-6 text-xs text-neutral-400 leading-relaxed group-hover:text-neutral-200 transition-colors">
+                    {item.desc}
+                  </p>
+                  <span
+                    className="p-5 sm:p-6 pt-3 text-[10px] font-medium text-neutral-400 group-hover:text-white transition-colors"
+                    style={{ display: 'grid', gridAutoFlow: 'column', justifyContent: 'start', alignItems: 'center', columnGap: 4 }}
+                  >
+                    {isExternal ? 'Visit' : 'View docs'} <ArrowRight className="size-3" />
+                  </span>
                 </Card>
               );
             })}
@@ -422,21 +471,34 @@ export default function Page() {
           <p className="text-neutral-300 text-sm mb-8">
             SDKs, APIs, and protocols for every stack.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {/* 230 is the 1 / 2 / 4 story the three breakpoints told, measured at
+              the column rather than the window: 1-up on a phone, 2-up once the
+              column clears ~476, and never more than four however wide it gets. */}
+          <Grid columns={{ min: 230, max: 4 }} gap={16}>
             {devLinks.map((t) => (
               <Card
                 key={t.name}
-                className="group relative border-white/[0.08] bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04] transition-all duration-300 shadow-none py-0 gap-0 rounded-2xl"
+                className="group"
+                backgroundColor="rgba(255,255,255,0.02)"
+                borderColor="rgba(255,255,255,0.08)"
+                hoverStyle={{ borderColor: 'rgba(255,255,255,0.2)', backgroundColor: 'rgba(255,255,255,0.04)' }}
+                borderRadius={16}
+                paddingVertical={0}
+                gap={0}
+                style={{ position: 'relative', transition: 'all 300ms' }}
               >
                 <Link href={t.href} aria-label={t.name} className="absolute inset-0 z-10" />
-                <CardContent className="p-6">
-                  <t.icon className="size-5 text-neutral-400 mb-4 group-hover:text-white transition-colors" />
-                  <CardTitle className="font-semibold text-sm text-white mb-1">{t.name}</CardTitle>
-                  <CardDescription className="text-xs text-neutral-400 group-hover:text-neutral-200 transition-colors">{t.desc}</CardDescription>
+                <CardContent
+                  padding={24}
+                  style={{ display: 'grid', gridTemplateRows: 'auto auto auto', justifyItems: 'start', rowGap: 4 }}
+                >
+                  <t.icon className="size-5 text-neutral-400 mb-3 group-hover:text-white transition-colors" />
+                  <CardTitle fontSize={14} fontWeight="600" color="#ffffff">{t.name}</CardTitle>
+                  <p className="text-xs text-neutral-400 group-hover:text-neutral-200 transition-colors">{t.desc}</p>
                 </CardContent>
               </Card>
             ))}
-          </div>
+          </Grid>
         </section>
 
         {/* -- Models & providers ------------------------------------------ */}
@@ -447,7 +509,7 @@ export default function Page() {
           <p className="text-neutral-300 text-sm mb-8">
             Over 400 models across every major provider — call any of them with one credential, one request shape.
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3">
+          <Grid columns={{ min: 120, max: 8 }} gap={12}>
             {[
               { name: 'Zen', spec: 'Open weights' },
               { name: 'OpenAI', spec: 'GPT' },
@@ -458,78 +520,111 @@ export default function Page() {
               { name: 'Mistral', spec: 'Open' },
               { name: 'Gemma', spec: 'Open' },
             ].map((p) => (
-              <Card key={p.name} className="border-white/[0.06] bg-white/[0.02] shadow-none py-0 gap-0 rounded-lg">
-                <CardContent className="px-4 py-3 text-center">
-                  <div className="text-xs font-semibold text-white mb-1">{p.name}</div>
-                  <div className="text-[10px] text-neutral-400">{p.spec}</div>
+              <Card
+                key={p.name}
+                backgroundColor="rgba(255,255,255,0.02)"
+                borderColor="rgba(255,255,255,0.06)"
+                borderRadius={8}
+                paddingVertical={0}
+                gap={0}
+              >
+                <CardContent style={{ display: 'grid', rowGap: 4, padding: '12px 16px', textAlign: 'center' }}>
+                  <span className="text-xs font-semibold text-white">{p.name}</span>
+                  <span className="text-[10px] text-neutral-400">{p.spec}</span>
                 </CardContent>
               </Card>
             ))}
-          </div>
+          </Grid>
         </section>
 
         {/* -- SDKs + connectors ------------------------------------------- */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <Card className="border-white/[0.08] bg-white/[0.02] shadow-none py-0 gap-0 rounded-2xl overflow-hidden">
-            <CardContent className="p-8">
-              <div className="flex items-center gap-3 mb-2">
-                <Code2 className="size-5 text-neutral-400" />
-                <CardTitle className="text-xl font-bold tracking-tight">SDKs in every language</CardTitle>
-              </div>
-              <CardDescription className="text-xs text-neutral-400 mb-6">
-                Generated from one contract — the same <code className="font-mono">/v1</code> surface, typed for your stack.
-              </CardDescription>
-              <div className="flex flex-wrap gap-2">
-                {['Python', 'TypeScript', 'Go', 'Rust', 'C++', 'Dart'].map((l) => (
-                  <span key={l} className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-neutral-400">
-                    {l}
-                  </span>
-                ))}
-              </div>
-              <Link href="/docs/sdks" className="mt-6 inline-flex items-center gap-1 text-xs font-medium text-neutral-400 hover:text-white transition-colors">
-                SDK reference <ArrowRight className="size-3" />
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card className="border-white/[0.08] bg-white/[0.02] shadow-none py-0 gap-0 rounded-2xl overflow-hidden">
-            <CardContent className="p-8">
-              <div className="flex items-center gap-3 mb-2">
-                <Workflow className="size-5 text-neutral-400" />
-                <CardTitle className="text-xl font-bold tracking-tight">Every tool, one MCP surface</CardTitle>
-              </div>
-              <CardDescription className="text-xs text-neutral-400 mb-6">
-                Native connectors + the open MCP registry — Slack, GitHub, Notion, Stripe, and more — exposed as MCP tools any agent can call.
-              </CardDescription>
-              <div className="flex flex-wrap gap-2">
-                {['Slack', 'GitHub', 'Notion', 'Stripe', 'Google', 'Linear', '+700 more'].map((c) => (
-                  <span key={c} className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-neutral-400">
-                    {c}
-                  </span>
-                ))}
-              </div>
-              <Link href="/docs/mcp" className="mt-6 inline-flex items-center gap-1 text-xs font-medium text-neutral-400 hover:text-white transition-colors">
-                MCP tools <ArrowRight className="size-3" />
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
+        <Grid columns={{ min: 470, max: 2 }} gap={16}>
+          {[
+            {
+              icon: Code2,
+              title: 'SDKs in every language',
+              body: (
+                <>
+                  Generated from one contract — the same <code className="font-mono">/v1</code> surface, typed for your stack.
+                </>
+              ),
+              chips: ['Python', 'TypeScript', 'Go', 'Rust', 'C++', 'Dart'],
+              href: '/docs/sdks',
+              cta: 'SDK reference',
+            },
+            {
+              icon: Workflow,
+              title: 'Every tool, one MCP surface',
+              body: 'Native connectors + the open MCP registry — Slack, GitHub, Notion, Stripe, and more — exposed as MCP tools any agent can call.',
+              chips: ['Slack', 'GitHub', 'Notion', 'Stripe', 'Google', 'Linear', '+700 more'],
+              href: '/docs/mcp',
+              cta: 'MCP tools',
+            },
+          ].map((s) => (
+            <Card
+              key={s.title}
+              backgroundColor="rgba(255,255,255,0.02)"
+              borderColor="rgba(255,255,255,0.08)"
+              borderRadius={16}
+              paddingVertical={0}
+              gap={0}
+              overflow="hidden"
+            >
+              <CardContent
+                padding={32}
+                style={{ display: 'grid', gridTemplateRows: 'auto auto auto auto', justifyItems: 'start', rowGap: 8 }}
+              >
+                <span style={{ display: 'grid', gridAutoFlow: 'column', alignItems: 'center', columnGap: 12 }}>
+                  <s.icon className="size-5 text-neutral-400" />
+                  <CardTitle fontSize={20} fontWeight="700" letterSpacing={-0.4}>{s.title}</CardTitle>
+                </span>
+                <p className="text-xs text-neutral-400 mb-4">{s.body}</p>
+                {/* A wrapping run of chips is the one place flex is still the
+                    right answer — grid cannot wrap items of unequal intrinsic
+                    width without giving them a track — so it is said with gui's
+                    XStack, whose style props travel to native, rather than with
+                    tailwind's. */}
+                <XStack flexWrap="wrap" gap={8}>
+                  {s.chips.map((c) => (
+                    <span key={c} className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-neutral-400">
+                      {c}
+                    </span>
+                  ))}
+                </XStack>
+                <Link
+                  href={s.href}
+                  className="mt-4 text-xs font-medium text-neutral-400 hover:text-white transition-colors"
+                  style={{ display: 'inline-grid', gridAutoFlow: 'column', alignItems: 'center', columnGap: 4 }}
+                >
+                  {s.cta} <ArrowRight className="size-3" />
+                </Link>
+              </CardContent>
+            </Card>
+          ))}
+        </Grid>
 
         {/* -- What the CLI can do ----------------------------------------- */}
-        <Card className="border-white/[0.08] bg-white/[0.02] shadow-none py-0 gap-0 rounded-2xl overflow-hidden">
-          <CardContent className="p-8 md:p-10">
-            <div className="flex items-center gap-3 mb-6">
+        <Card
+          backgroundColor="rgba(255,255,255,0.02)"
+          borderColor="rgba(255,255,255,0.08)"
+          borderRadius={16}
+          paddingVertical={0}
+          gap={0}
+          overflow="hidden"
+        >
+          <div className="p-8 md:p-10" style={{ display: 'grid', rowGap: 24 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', alignItems: 'center', columnGap: 12 }}>
               <div className="rounded-xl bg-white/[0.06] p-2.5">
                 <Terminal className="size-5 text-neutral-400" />
               </div>
-              <div>
-                <CardTitle className="text-2xl font-bold tracking-tight">
+              <div style={{ display: 'grid', rowGap: 2 }}>
+                <CardTitle fontSize={24} fontWeight="700" letterSpacing={-0.5}>
                   The <code className="font-mono">hanzo</code> CLI
                 </CardTitle>
-                <CardDescription className="text-xs text-neutral-400 mt-0.5">A ~15 MB Rust client for any live cloud — prod, laptop, or self-host</CardDescription>
+                <span className="text-xs text-neutral-400">A ~15 MB Rust client for any live cloud — prod, laptop, or self-host</span>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <Grid columns={{ min: 200, max: 3 }} gap={12}>
               {[
                 { cmd: 'hanzo chat', desc: 'Chat with any model interactively' },
                 { cmd: 'hanzo models list', desc: 'Browse every available model' },
@@ -541,34 +636,46 @@ export default function Page() {
                 { cmd: 'hanzo bot', desc: 'Deploy and manage AI bots' },
                 { cmd: 'hanzo flow', desc: 'Run workflow automations' },
               ].map((item) => (
-                <Card key={item.cmd} className="border-white/[0.06] bg-white/[0.02] shadow-none py-0 gap-0 rounded-lg">
-                  <CardContent className="px-4 py-3">
-                    <div className="text-xs font-mono font-medium text-white mb-1">{item.cmd}</div>
-                    <div className="text-[11px] text-neutral-400">{item.desc}</div>
+                <Card
+                  key={item.cmd}
+                  backgroundColor="rgba(255,255,255,0.02)"
+                  borderColor="rgba(255,255,255,0.06)"
+                  borderRadius={8}
+                  paddingVertical={0}
+                  gap={0}
+                >
+                  <CardContent style={{ display: 'grid', rowGap: 4, padding: '12px 16px' }}>
+                    <span className="text-xs font-mono font-medium text-white">{item.cmd}</span>
+                    <span className="text-[11px] text-neutral-400">{item.desc}</span>
                   </CardContent>
                 </Card>
               ))}
-            </div>
-          </CardContent>
+            </Grid>
+          </div>
         </Card>
 
         {/* -- Zen Models Banner ------------------------------------------- */}
-        <Card className="border-white/[0.08] bg-white/[0.02] shadow-none py-0 gap-0 rounded-2xl overflow-hidden">
-          <CardContent className="p-8 md:p-10">
-            <div className="flex items-center gap-3 mb-4">
+        <Card
+          backgroundColor="rgba(255,255,255,0.02)"
+          borderColor="rgba(255,255,255,0.08)"
+          borderRadius={16}
+          paddingVertical={0}
+          gap={0}
+          overflow="hidden"
+        >
+          <div className="p-8 md:p-10" style={{ display: 'grid', rowGap: 24 }}>
+            <div style={{ display: 'grid', gridAutoFlow: 'column', justifyContent: 'start', alignItems: 'center', columnGap: 12 }}>
               <Sparkle className="size-5 text-neutral-400" />
-              <CardTitle className="text-2xl font-bold tracking-tight">
+              <CardTitle fontSize={24} fontWeight="700" letterSpacing={-0.5}>
                 Zen
               </CardTitle>
-              <Badge variant="secondary" className="text-xs text-neutral-400 font-mono bg-white/5 px-2 py-0.5 rounded-full border-transparent">
-                44 models
-              </Badge>
+              <span className="rounded-full bg-white/5 px-2 py-0.5 font-mono text-xs text-neutral-400">44 models</span>
             </div>
-            <p className="text-neutral-300 text-sm leading-relaxed max-w-2xl mb-6">
+            <p className="text-neutral-300 text-sm leading-relaxed max-w-2xl">
               Frontier AI models from 4B edge to 1T+ reasoning. MoDE (Mixture of Diverse Experts) architecture.
               Text, code, vision, audio, video, 3D, and safety. Open weights on HuggingFace.
             </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
+            <Grid columns={{ min: 130, max: 6 }} gap={12}>
               {[
                 { name: 'zen4', spec: '~400B MoDE' },
                 { name: 'zen4-coder', spec: '~200B MoDE' },
@@ -577,23 +684,27 @@ export default function Page() {
                 { name: 'zen3-nano', spec: '4B Edge' },
                 { name: 'zen3-guard', spec: '8B Safety' },
               ].map((m) => (
-                <Card key={m.name} className="border-white/[0.06] bg-white/[0.02] shadow-none py-0 gap-0 rounded-lg">
-                  <CardContent className="p-3">
-                    <div className="text-xs font-mono font-medium text-white mb-1">{m.name}</div>
-                    <div className="text-[10px] text-neutral-400">{m.spec}</div>
+                <Card
+                  key={m.name}
+                  backgroundColor="rgba(255,255,255,0.02)"
+                  borderColor="rgba(255,255,255,0.06)"
+                  borderRadius={8}
+                  paddingVertical={0}
+                  gap={0}
+                >
+                  <CardContent style={{ display: 'grid', rowGap: 4, padding: 12 }}>
+                    <span className="text-xs font-mono font-medium text-white">{m.name}</span>
+                    <span className="text-[10px] text-neutral-400">{m.spec}</span>
                   </CardContent>
                 </Card>
               ))}
-            </div>
-            <div className="flex items-center gap-3 flex-wrap">
+            </Grid>
+            <XStack flexWrap="wrap" gap={12} alignItems="center">
               <a
                 href="https://zenlm.org"
                 target="_blank"
                 rel="noreferrer noopener"
-                className={cn(
-                  buttonVariants({ variant: 'outline', size: 'sm' }),
-                  'rounded-full border-white/20 text-white hover:bg-white/5 bg-transparent text-xs px-4 py-2 h-auto',
-                )}
+                className="rounded-full border border-white/20 px-4 py-2 text-xs text-white transition-colors hover:bg-white/5"
               >
                 zenlm.org &rarr;
               </a>
@@ -605,8 +716,8 @@ export default function Page() {
               >
                 HuggingFace &rarr;
               </a>
-            </div>
-          </CardContent>
+            </XStack>
+          </div>
         </Card>
 
         {/* -- CTA --------------------------------------------------------- */}
@@ -621,27 +732,22 @@ export default function Page() {
           <div className="relative font-mono text-sm text-neutral-400 mb-8">
             curl hanzo.sh | sh
           </div>
-          <div className="relative flex items-center justify-center gap-3 flex-wrap">
+          <XStack flexWrap="wrap" gap={12} alignItems="center" justifyContent="center" position="relative">
             <a
               href="https://hanzo.id/signup?redirect_uri=https://console.hanzo.ai"
-              className={cn(
-                buttonVariants({ variant: 'primary', size: 'lg' }),
-                'rounded-full bg-white px-8 text-black hover:bg-neutral-200',
-              )}
+              className="rounded-full bg-white px-8 py-3 text-sm font-medium text-black transition-colors hover:bg-neutral-200"
+              style={{ display: 'inline-grid', gridAutoFlow: 'column', alignItems: 'center', columnGap: 4 }}
             >
               Sign Up Free
-              <ArrowRight className="size-4 ml-1" />
+              <ArrowRight className="size-4" />
             </a>
             <Link
               href="/docs"
-              className={cn(
-                buttonVariants({ variant: 'outline', size: 'lg' }),
-                'rounded-full border-white/15 px-8 text-white hover:bg-white/5 bg-transparent',
-              )}
+              className="rounded-full border border-white/15 px-8 py-3 text-sm font-medium text-white transition-colors hover:bg-white/5"
             >
               Browse Documentation
             </Link>
-          </div>
+          </XStack>
         </section>
       </div>
     </main>
