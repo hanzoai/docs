@@ -7,7 +7,6 @@ import { cn } from '@/lib/cn';
 import { DocsNavLinks } from '@/components/docs-nav-links';
 import { OrgBadge } from '@/components/org-badge';
 import { NavAccount } from '@/components/sidebar-account';
-import { AgentActions } from '@/components/agent-actions';
 
 // The top bar on doc pages.
 //
@@ -114,9 +113,6 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
         <div className={cn(collapsed ? '' : 'md:hidden')}>
           <NavAccount />
         </div>
-        {/* Last in the row, so it sits at the right edge where the reader's eye
-            ends rather than in the middle of the trailing controls. */}
-        <AgentActions />
       </div>
     </header>
   );
