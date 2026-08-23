@@ -1,6 +1,6 @@
 apiVersion: v1alpha1
 metadata:
-  name: o11y
+  name: signoz
 spec:
   deployment:
     flavor: kustomize
@@ -13,7 +13,7 @@ spec:
         data:
           ingester.yaml: |
             connectors:
-              o11ymeter:
+              signozmeter:
                 metrics_flush_interval: 1h
                 dimensions:
                   - name: service.name
@@ -35,8 +35,8 @@ spec:
                 send_batch_size: 20000
                 send_batch_max_size: 25000
                 timeout: 1s
-              o11yspanmetrics/delta:
-                metrics_exporter: o11yclickhousemetrics
+              signozspanmetrics/delta:
+                metrics_exporter: signozclickhousemetrics
                 metrics_flush_interval: 60s
                 latency_histogram_buckets:
                   - 100us
@@ -68,30 +68,30 @@ spec:
                   - name: service.version
             exporters:
               clickhousetraces:
-                datasource: tcp://o11y-clickhouse:9000/o11y_traces
+                datasource: tcp://signoz-clickhouse:9000/signoz_traces
                 low_cardinal_exception_grouping: ${env:LOW_CARDINAL_EXCEPTION_GROUPING}
                 use_new_schema: true
                 timeout: 45s
                 sending_queue:
                   enabled: false
-              o11yclickhousemetrics:
-                dsn: tcp://o11y-clickhouse:9000/o11y_metrics
+              signozclickhousemetrics:
+                dsn: tcp://signoz-clickhouse:9000/signoz_metrics
                 timeout: 45s
                 sending_queue:
                   enabled: false
               clickhouselogsexporter:
-                dsn: tcp://o11y-clickhouse:9000/o11y_logs
+                dsn: tcp://signoz-clickhouse:9000/signoz_logs
                 use_new_schema: true
                 timeout: 45s
                 sending_queue:
                   enabled: false
-              o11yclickhousemeter:
-                dsn: tcp://o11y-clickhouse:9000/o11y_meter
+              signozclickhousemeter:
+                dsn: tcp://signoz-clickhouse:9000/signoz_meter
                 timeout: 45s
                 sending_queue:
                   enabled: false
             extensions:
-              o11y_health_check:
+              signoz_health_check:
                 endpoint: "0.0.0.0:13133"
               pprof:
                 endpoint: "0.0.0.0:1777"
@@ -100,26 +100,26 @@ spec:
                 logs:
                   encoding: json
               extensions:
-                - o11y_health_check
+                - signoz_health_check
                 - pprof
               pipelines:
                 traces:
                   receivers:
                     - otlp
                   processors:
-                    - o11yspanmetrics/delta
+                    - signozspanmetrics/delta
                     - batch
                   exporters:
                     - clickhousetraces
-                    - o11ymeter
+                    - signozmeter
                 metrics:
                   receivers:
                     - otlp
                   processors:
                     - batch
                   exporters:
-                    - o11yclickhousemetrics
-                    - o11ymeter
+                    - signozclickhousemetrics
+                    - signozmeter
                 logs:
                   receivers:
                     - otlp
@@ -127,16 +127,16 @@ spec:
                     - batch
                   exporters:
                     - clickhouselogsexporter
-                    - o11ymeter
+                    - signozmeter
                 metrics/meter:
                   receivers:
-                    - o11ymeter
+                    - signozmeter
                   processors:
                     - batch/meter
                   exporters:
-                    - o11yclickhousemeter
+                    - signozclickhousemeter
           opamp.yaml: |
-            server_endpoint: ws://o11y-o11y:4320/v1/opamp
+            server_endpoint: ws://signoz-signoz:4320/v1/opamp
       enabled: true
       image: signoz/signoz-otel-collector:latest
       version: latest
@@ -147,7 +147,7 @@ spec:
         data:
           ingester.yaml: |
             connectors:
-              o11ymeter:
+              signozmeter:
                 metrics_flush_interval: 1h
                 dimensions:
                   - name: service.name
@@ -169,8 +169,8 @@ spec:
                 send_batch_size: 20000
                 send_batch_max_size: 25000
                 timeout: 1s
-              o11yspanmetrics/delta:
-                metrics_exporter: o11yclickhousemetrics
+              signozspanmetrics/delta:
+                metrics_exporter: signozclickhousemetrics
                 metrics_flush_interval: 60s
                 latency_histogram_buckets:
                   - 100us
@@ -202,30 +202,30 @@ spec:
                   - name: service.version
             exporters:
               clickhousetraces:
-                datasource: tcp://o11y-clickhouse:9000/o11y_traces
+                datasource: tcp://signoz-clickhouse:9000/signoz_traces
                 low_cardinal_exception_grouping: ${env:LOW_CARDINAL_EXCEPTION_GROUPING}
                 use_new_schema: true
                 timeout: 45s
                 sending_queue:
                   enabled: false
-              o11yclickhousemetrics:
-                dsn: tcp://o11y-clickhouse:9000/o11y_metrics
+              signozclickhousemetrics:
+                dsn: tcp://signoz-clickhouse:9000/signoz_metrics
                 timeout: 45s
                 sending_queue:
                   enabled: false
               clickhouselogsexporter:
-                dsn: tcp://o11y-clickhouse:9000/o11y_logs
+                dsn: tcp://signoz-clickhouse:9000/signoz_logs
                 use_new_schema: true
                 timeout: 45s
                 sending_queue:
                   enabled: false
-              o11yclickhousemeter:
-                dsn: tcp://o11y-clickhouse:9000/o11y_meter
+              signozclickhousemeter:
+                dsn: tcp://signoz-clickhouse:9000/signoz_meter
                 timeout: 45s
                 sending_queue:
                   enabled: false
             extensions:
-              o11y_health_check:
+              signoz_health_check:
                 endpoint: "0.0.0.0:13133"
               pprof:
                 endpoint: "0.0.0.0:1777"
@@ -234,26 +234,26 @@ spec:
                 logs:
                   encoding: json
               extensions:
-                - o11y_health_check
+                - signoz_health_check
                 - pprof
               pipelines:
                 traces:
                   receivers:
                     - otlp
                   processors:
-                    - o11yspanmetrics/delta
+                    - signozspanmetrics/delta
                     - batch
                   exporters:
                     - clickhousetraces
-                    - o11ymeter
+                    - signozmeter
                 metrics:
                   receivers:
                     - otlp
                   processors:
                     - batch
                   exporters:
-                    - o11yclickhousemetrics
-                    - o11ymeter
+                    - signozclickhousemetrics
+                    - signozmeter
                 logs:
                   receivers:
                     - otlp
@@ -261,16 +261,16 @@ spec:
                     - batch
                   exporters:
                     - clickhouselogsexporter
-                    - o11ymeter
+                    - signozmeter
                 metrics/meter:
                   receivers:
-                    - o11ymeter
+                    - signozmeter
                   processors:
                     - batch/meter
                   exporters:
-                    - o11yclickhousemeter
+                    - signozclickhousemeter
           opamp.yaml: |
-            server_endpoint: ws://o11y-o11y:4320/v1/opamp
+            server_endpoint: ws://signoz-signoz:4320/v1/opamp
   metastore:
     kind: postgres
     spec:
@@ -279,20 +279,20 @@ spec:
       config: {}
       enabled: true
       env:
-        POSTGRES_DB: o11y
-        POSTGRES_PASSWORD: o11y
-        POSTGRES_USER: o11y
+        POSTGRES_DB: signoz
+        POSTGRES_PASSWORD: signoz
+        POSTGRES_USER: signoz
       image: postgres:16
       version: "16"
     status:
       addresses:
         dsn:
-        - postgres://o11y-metastore:5432
+        - postgres://signoz-metastore:5432
       config: {}
       env:
-        POSTGRES_DB: o11y
-        POSTGRES_PASSWORD: o11y
-        POSTGRES_USER: o11y
+        POSTGRES_DB: signoz
+        POSTGRES_PASSWORD: signoz
+        POSTGRES_USER: signoz
   patches:
   - operations:
     - op: add
@@ -326,7 +326,7 @@ spec:
         requests:
           cpu: 500m
           memory: 1Gi
-    target: deployment/o11y/statefulset.yaml
+    target: deployment/signoz/statefulset.yaml
   - operations:
     - op: add
       path: /spec/template/spec/tolerations
@@ -334,12 +334,12 @@ spec:
       - effect: NoSchedule
         key: dedicated
         operator: Equal
-        value: o11y
+        value: signoz
     - op: add
       path: /spec/template/spec/nodeSelector
       value:
         node-role.kubernetes.io/observability: ""
-    target: deployment/o11y/statefulset.yaml
+    target: deployment/signoz/statefulset.yaml
   - operations:
     - op: replace
       path: /spec/type
@@ -348,7 +348,7 @@ spec:
       path: /metadata/annotations
       value:
         service.beta.kubernetes.io/aws-load-balancer-type: nlb
-    target: deployment/o11y/service.yaml
+    target: deployment/signoz/service.yaml
   - operations:
     - op: replace
       path: /spec/template/spec/containers/0/resources
@@ -368,30 +368,30 @@ spec:
       path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
       value: 20Gi
     target: deployment/metastore/postgres/statefulset.yaml
-  o11y:
+  signoz:
     spec:
       cluster:
         replicas: 1
       config: {}
       enabled: true
       env:
-        O11Y_SQLSTORE_POSTGRES_DSN: postgres://o11y:o11y@o11y-metastore:5432/o11y?sslmode=disable
-        O11Y_SQLSTORE_PROVIDER: postgres
-        O11Y_TELEMETRYSTORE_CLICKHOUSE_DSN: tcp://o11y-clickhouse:9000
-        O11Y_TELEMETRYSTORE_PROVIDER: clickhouse
+        SIGNOZ_SQLSTORE_POSTGRES_DSN: postgres://signoz:signoz@signoz-metastore:5432/signoz?sslmode=disable
+        SIGNOZ_SQLSTORE_PROVIDER: postgres
+        SIGNOZ_TELEMETRYSTORE_CLICKHOUSE_DSN: tcp://signoz-clickhouse:9000
+        SIGNOZ_TELEMETRYSTORE_PROVIDER: clickhouse
       image: signoz/signoz:latest
       version: latest
     status:
       addresses:
         apiserver: null
         opamp:
-        - ws://o11y-o11y:4320
+        - ws://signoz-signoz:4320
       config: {}
       env:
-        O11Y_SQLSTORE_POSTGRES_DSN: postgres://o11y:o11y@o11y-metastore:5432/o11y?sslmode=disable
-        O11Y_SQLSTORE_PROVIDER: postgres
-        O11Y_TELEMETRYSTORE_CLICKHOUSE_DSN: tcp://o11y-clickhouse:9000
-        O11Y_TELEMETRYSTORE_PROVIDER: clickhouse
+        SIGNOZ_SQLSTORE_POSTGRES_DSN: postgres://signoz:signoz@signoz-metastore:5432/signoz?sslmode=disable
+        SIGNOZ_SQLSTORE_PROVIDER: postgres
+        SIGNOZ_TELEMETRYSTORE_CLICKHOUSE_DSN: tcp://signoz-clickhouse:9000
+        SIGNOZ_TELEMETRYSTORE_PROVIDER: clickhouse
   telemetrykeeper:
     kind: clickhousekeeper
     spec:
@@ -413,7 +413,7 @@ spec:
               log_storage_path: /var/lib/clickhouse/coordination/log
               raft_configuration:
                 server:
-                - hostname: o11y-clickhouse-keeper-0
+                - hostname: signoz-clickhouse-keeper-0
                   port: 9234
                   id: 0
               server_id: 0
@@ -425,9 +425,9 @@ spec:
     status:
       addresses:
         client:
-        - tcp://o11y-clickhouse-keeper-0:9181
+        - tcp://signoz-clickhouse-keeper-0:9181
         raft:
-        - tcp://o11y-clickhouse-keeper-0:9234
+        - tcp://signoz-clickhouse-keeper-0:9234
       config:
         data:
           keeper-0.yaml: |
@@ -444,7 +444,7 @@ spec:
               log_storage_path: /var/lib/clickhouse/coordination/log
               raft_configuration:
                 server:
-                - hostname: o11y-clickhouse-keeper-0
+                - hostname: signoz-clickhouse-keeper-0
                   port: 9234
                   id: 0
               server_id: 0
@@ -527,7 +527,7 @@ spec:
               cluster:
                 shard:
                 - replica:
-                    host: o11y-clickhouse
+                    host: signoz-clickhouse
                     port: 9000
             send_crash_reports:
               enabled: false
@@ -581,7 +581,7 @@ spec:
                 show_named_collection_secrets: 1
             zookeeper:
               node:
-              - host: o11y-clickhouse-keeper-0
+              - host: signoz-clickhouse-keeper-0
                 port: 9181
           functions.yaml: |
             functions:
@@ -603,7 +603,7 @@ spec:
     status:
       addresses:
         tcp:
-        - tcp://o11y-clickhouse:9000
+        - tcp://signoz-clickhouse:9000
       config:
         data:
           config.yaml: |
@@ -675,7 +675,7 @@ spec:
               cluster:
                 shard:
                 - replica:
-                    host: o11y-clickhouse
+                    host: signoz-clickhouse
                     port: 9000
             send_crash_reports:
               enabled: false
@@ -729,7 +729,7 @@ spec:
                 show_named_collection_secrets: 1
             zookeeper:
               node:
-              - host: o11y-clickhouse-keeper-0
+              - host: signoz-clickhouse-keeper-0
                 port: 9181
           functions.yaml: |
             functions:

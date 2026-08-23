@@ -16,7 +16,7 @@ Insights uses two different datastores:
   - the dataset needs to mutate often (`DELETE`/`UPDATE`)
   - the query pattern requires joins across multiple tables
 
-- **ClickHouse**: column-oriented OLAP database, used to store large datasets and run on them analytical queries. It is likely your best choice if:
+- **Datastore**: column-oriented OLAP database, used to store large datasets and run on them analytical queries. It is likely your best choice if:
   - the query pattern to access your dataset is unpredictable
   - the dataset will likely grow overtime (> 1 TB)
   - the dataset doesn't need to mutate often (`DELETE`/`UPDATE`)
@@ -65,14 +65,8 @@ Composite indices are useful when you want to optimize querying on multiple non-
 
 To find and debug slow queries in production you have a few options available:
 
-- Browse to the [Diagnose](https://data.heroku.com/datastores/56166304-6297-4dce-af64-a1536ea2197c#diagnose) tab in Heroku Data's dashboard. You can break queries down by:
-  - Most time consuming
-  - Most frequently invoked
-  - Slowest execution time
-  - Slowest I/O
-- You can also use Heroku's [Diagnose](https://blog.heroku.com/pg-diagnose) feature by running `heroku pg:diagnose` to get a breakdown of long running queries, long transactions, among other diagnostics.
-- For a more raw approach you can access real time logs from Heroku by executing `heroku logs --app insights --ps postgres`
-- With any logs pulled from PostgreSQL you can use [pgbadger](https://github.com/darold/pgbadger) to find exactly the queries that are consuming the most time and resources.
+- AWS Console > Aurora and RDS > Performance insights
+- [pganalyze query performance](https://app.pganalyze.com/servers/3nslll4vefgatnwz2cw5w72aa4/queries)
 
 ### How-to fix slow queries
 
@@ -155,7 +149,7 @@ referenced tables. When we don't actually care about this, we can specify
 `db_constraint=False`, along with making any required migrations if we're
 updating an existing field.
 
-## ClickHouse
+## Datastore
 
 #### How-to find slow queries
 
@@ -163,12 +157,12 @@ To find and debug slow queries in production you have several options available
 
 ##### Grafana
 
-The [Clickhouse queries - by endpoint](https://metrics.hanzo.ai/d/vo7oCVZ7z/clickhouse-queries-by-endpoint) dashboard gives a breakdown of how things are looking reliability and performance-wise.
+The [Datastore queries - by endpoint](https://metrics.hanzo.ai/d/vo7oCVZ7z/datastore-queries-by-endpoint) dashboard gives a breakdown of how things are looking reliability and performance-wise.
 Highly used and slow/unreliable endpoints often indicate issues with queries.
 
 ##### Insights `instance/status` dashboard
 
-Under https://insights.hanzo.ai/instance/status/internal_metrics you will find various metrics and query logs.
+Under https://app.hanzo.ai/instance/status/internal_metrics you will find various metrics and query logs.
 Note: if you are a staff user you can also analyze queries by clicking on them (or copying your own queries).
 
 This analysis will output:
@@ -182,8 +176,8 @@ These can be useful for figuring out _why_ certain queries are performing slow.
 
 ##### Metabase
 
-Need more granular access to queries than these dashboards provide? Take a look at [this Metabase query](https://metabase.insights.net/question/97). The ClickHouse `system` tables (e.g. `system.query_log`) provide a lot of useful information for identifying and diagnosing slow queries.
+Need more granular access to queries than these dashboards provide? Take a look at [this Metabase query](https://metabase.insights.net/question/97). The Datastore `system` tables (e.g. `system.query_log`) provide a lot of useful information for identifying and diagnosing slow queries.
 
 ### How-to fix slow queries
 
-See [ClickHouse manual](https://hanzo.ai/handbook/engineering/clickhouse/) for tips and tricks.
+See [Datastore manual](https://hanzo.ai/handbook/engineering/datastore/) for tips and tricks.

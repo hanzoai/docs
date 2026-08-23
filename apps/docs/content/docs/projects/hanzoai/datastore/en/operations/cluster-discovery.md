@@ -6,8 +6,6 @@ title: 'Cluster discovery'
 doc_type: 'guide'
 ---
 
-# Cluster discovery
-
 ## Overview {#overview}
 
 ClickHouse's Cluster Discovery feature simplifies cluster configuration by allowing nodes to automatically discover and register themselves without the need for explicit definition in the configuration files. This is especially beneficial in cases where the manual definition of each node becomes cumbersome.
@@ -18,11 +16,11 @@ Cluster Discovery is an experimental feature and can be changed or removed in fu
 To enable it include the `allow_experimental_cluster_discovery` setting in your configuration file:
 
 ```xml
-<clickhouse>
+<datastore>
     <!-- ... -->
     <allow_experimental_cluster_discovery>1</allow_experimental_cluster_discovery>
     <!-- ... -->
-</clickhouse>
+</datastore>
 ```
 :::
 

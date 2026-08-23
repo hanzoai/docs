@@ -9,7 +9,7 @@ description: "Hanzo Ingress, an open-source Edge Router, auto-discovers configur
 
 Hanzo Ingress is an [open-source](https://github.com/hanzoai/ingress) Application Proxy and the core of the Hanzo AI Platform.
 
-If you start with Hanzo Ingress for service discovery and routing, you can seamlessly add [API management](https://hanzo.ai), [API gateway](https://hanzo.ai), [AI API](https://hanzo.ai), and [API mocking](https://hanzo.ai) capabilities as needed.
+If you start with Hanzo Ingress for service discovery and routing, you can seamlessly add [API management](https://hanzo.ai), [API gateway](https://hanzo.ai), [AI gateway](https://hanzo.ai), and [API mocking](https://hanzo.ai) capabilities as needed.
 
 For a detailed comparison of all Hanzo Ingress products and their capabilities, see our [Product Features Comparison](./features/).
 

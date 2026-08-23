@@ -1,6 +1,6 @@
 apiVersion: v1alpha1
 metadata:
-  name: o11y
+  name: signoz
 spec:
   deployment:
     flavor: helm
@@ -19,11 +19,11 @@ spec:
               cpu: "4"
               memory: "8Gi"
 
-    # 2. Set resource requests and limits on O11y
+    # 2. Set resource requests and limits on SigNoz
     - target: "deployment/values.yaml"
       operations:
         - op: add
-          path: /o11y/resources
+          path: /signoz/resources
           value:
             requests:
               cpu: "500m"
@@ -36,14 +36,14 @@ spec:
     - target: "deployment/values.yaml"
       operations:
         - op: add
-          path: /o11y/tolerations
+          path: /signoz/tolerations
           value:
             - key: "dedicated"
               operator: "Equal"
-              value: "o11y"
+              value: "signoz"
               effect: "NoSchedule"
         - op: add
-          path: /o11y/nodeSelector
+          path: /signoz/nodeSelector
           value:
             node-role.kubernetes.io/observability: ""
 

@@ -90,12 +90,12 @@ dbx: snake_case for SQL column mapping.
 
 | Repo | External Prefix | Internal Prefix | Source |
 |------|----------------|-----------------|--------|
-| Commerce | `/v1/commerce/*` | `/v1/commerce/*` | commerce/commerce.go:1005, :1100, :1130 (groups) |
+| Commerce | `/v1/commerce/*` | `/api/v1/*` | commerce/commerce.go:694-710 (rewrite), :727 (group) |
 | Base | `/v1/*` (fixed) | `/v1/*` | base/apis/base.go:62-64 |
 | Gateway | host+path routing | N/A | gateway/router_engine.go:29-33 |
 
 Commerce canonical external path: `/v1/<service>/*`.
-Base: `/v1/*` (one path, no env knob, no vendor compat surface).
+Base: `/v1/*` (one path, no env knob, no Casdoor compat).
 
 #### B2. Error Format
 
@@ -278,15 +278,13 @@ Ecosystem standard: Hanzo IAM exclusively (Commerce, Gateway both use it).
 ### What Conflicts
 
 1. **Timestamp field names**: `created`/`updated` vs `createdAt`/`updatedAt`
-2. **No soft delete**: ORM/Commerce have it, Base does not
-3. **No multi-tenancy**: Commerce has per-org DBs, Base has nothing
-4. **No encryption**: hanzoai/sqlite has CEK, Base does not integrate it
-5. **Auth**: Base has its own auth system alongside IAM
-6. **JS SDK**: Still references `PB_CONNECT`
-7. **No inter-service events**: Commerce has NATS publisher, Base does not
-
-(The route prefix is no longer a conflict: `base/apis/base.go:62-64` hard-codes
-`/v1` with no env knob, matching Commerce's `/v1/commerce`.)
+2. **API prefix**: `/api` vs `/v1`
+3. **No soft delete**: ORM/Commerce have it, Base does not
+4. **No multi-tenancy**: Commerce has per-org DBs, Base has nothing
+5. **No encryption**: hanzoai/sqlite has CEK, Base does not integrate it
+6. **Auth**: Base has its own auth system alongside IAM
+7. **JS SDK**: Still references `PB_CONNECT`
+8. **No inter-service events**: Commerce has NATS publisher, Base does not
 
 ### What Base Does Better
 
@@ -424,8 +422,8 @@ Backward compatibility via env vars in phases 1-2. Breaking changes in phase 3+.
 7. orm/db/query.go:50-65 -- ToJSONFieldName (camelCase conversion)
 8. orm/registry.go:52-83 -- Register[T] with kind string
 9. orm/names/mapper.go:20-21 -- SnakeMapper for DB columns
-10. commerce/commerce.go:1005 -- Commerce admin route group /v1/commerce
-11. commerce/commerce.go:1100, :1130 -- Commerce public + tenant-admin groups /v1/commerce
+10. commerce/commerce.go:694-710 -- canonicalPathHandler rewrite
+11. commerce/commerce.go:727 -- Commerce route group /api/v1
 12. commerce/commerce.go:591 -- Per-org SQLite (app.DB.Org)
 13. commerce/commerce.go:667-679 -- IAM middleware config
 14. commerce/commerce.go:647-651 -- NATS/JetStream publisher

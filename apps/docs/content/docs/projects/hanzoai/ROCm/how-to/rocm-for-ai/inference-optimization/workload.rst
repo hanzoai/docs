@@ -1,321 +1,31 @@
 .. meta::
-   :description: Learn about workload tuning on AMD Instinct MI300X, MI325X, MI350X, and MI355X GPUs for optimal performance.
-   :keywords: AMD, Instinct, MI300X, MI325X, MI350X, MI355X, CDNA3, CDNA4, gfx942, gfx950,
-              HPC, tuning, ROCm, environment variable, performance, HIP, Triton,
-              PyTorch TunableOp, vLLM, RCCL, MIOpen, GPU, resource utilization,
-              FP8, MXFP4, MXFP6, MXFP8, sparsity, micro-scaling, HBM3E
+   :description: Learn about workload tuning on AMD Instinct MI300X accelerators for optimal performance.
+   :keywords: AMD, Instinct, MI300X, HPC, tuning, BIOS settings, NBIO, ROCm,
+              environment variable, performance, HIP, Triton, PyTorch TunableOp, vLLM, RCCL,
+              MIOpen, accelerator, GPU, resource utilization
 
-**************************************************************
-AMD Instinct MI300 Series / MI350 Series workload optimization
-**************************************************************
+*****************************************
+AMD Instinct MI300X workload optimization
+*****************************************
 
 This document provides guidelines for optimizing the performance of AMD
-Instinct™ MI300X and MI350X GPUs, with a particular focus on GPU kernel
+Instinct™ MI300X accelerators, with a particular focus on GPU kernel
 programming, high-performance computing (HPC), and deep learning operations
 using PyTorch. It delves into specific workloads such as
 :ref:`model inference <mi300x-vllm-optimization>`, offering strategies to
 enhance efficiency.
 
-.. note::
-
-   Most guidance in this document applies to both MI300 Series (CDNA3, gfx942, including MI300X and MI325X) and
-   MI350 Series (CDNA4, gfx950, including MI350X and MI355X). Where the two GPU families differ, GPU-specific
-   notes are provided. Key architectural differences include:
-
-   * **MI350 Series** uses TSMC N3P XCDs (vs N5), has 256 CUs (vs 304), 160 KB LDS
-     per CU (vs 64 KB), doubled Matrix Core throughput for ≤16-bit types,
-     native MXFP8/MXFP6/MXFP4 support, and 288 GB HBM3E at 8.0 TB/s.
-   * **MI350 Series** uses 2 IODs (vs 4) with a faster direct connection, and
-     Infinity Fabric links run at 38.4 Gbps (vs 32 Gbps).
-   * **MI350 Series** uses OCP FP8 variants (vs FNUZ on MI300 Series) and moves TF32 from
-     hardware to software emulation via BF16.
-
-.. _mi300x-arch-comparison:
-
-Architecture comparison
-========================
-
-The following tables compare the AMD Instinct MI300X, MI325X (CDNA3, gfx942)
-and MI350X, MI355X (CDNA4, gfx950) GPUs. Understanding these differences is
-essential for effective workload tuning.
-
-.. tab-set::
-
-   .. tab-item:: Compute architecture
-
-      .. list-table::
-         :header-rows: 1
-         :widths: 28 18 18 18 18
-
-         * - Feature
-           - MI300X
-           - MI325X
-           - MI350X
-           - MI355X
-         * - Architecture
-           - CDNA3
-           - CDNA3
-           - CDNA4
-           - CDNA4
-         * - LLVM target
-           - gfx942
-           - gfx942
-           - gfx950
-           - gfx950
-         * - Process (XCDs / IODs)
-           - N5 / N6
-           - N5 / N6
-           - N3P / N6
-           - N3P / N6
-         * - I/O dies (IODs)
-           - 4
-           - 4
-           - 2
-           - 2
-         * - XCDs
-           - 8
-           - 8
-           - 8
-           - 8
-         * - CUs per XCD (total / active)
-           - 40 / 38
-           - 40 / 38
-           - 36 / 32
-           - 36 / 32
-         * - Total active CUs
-           - 304
-           - 304
-           - 256
-           - 256
-         * - Stream processors
-           - 19,456
-           - 19,456
-           - 16,384
-           - 16,384
-         * - Matrix Cores
-           - 1,216
-           - 1,216
-           - 1,024
-           - 1,024
-         * - Max engine clock
-           - 2,100 MHz
-           - 2,100 MHz
-           - 2,200 MHz
-           - 2,400 MHz
-         * - LDS per CU
-           - 64 KB
-           - 64 KB
-           - 160 KB
-           - 160 KB
-         * - L1 data cache
-           - 32 KB
-           - 32 KB
-           - 32 KB
-           - 32 KB
-         * - L2 cache per XCD
-           - 4 MB
-           - 4 MB
-           - 4 MB
-           - 4 MB
-         * - Infinity Cache
-           - 256 MB
-           - 256 MB
-           - 256 MB
-           - 256 MB
-         * - Transistor count
-           - 153 B
-           - 153 B
-           - 185 B
-           - 185 B
-         * - Max power
-           - 750W
-           - 1000W
-           - 1000W
-           - 1400W
-
-   .. tab-item:: Peak theoretical performance
-
-      .. list-table::
-         :header-rows: 1
-         :widths: 28 18 18 18 18
-
-         * - Computation
-           - MI300X
-           - MI325X
-           - MI350X
-           - MI355X
-         * - FP64 Vector
-           - 81.7 TF
-           - 81.7 TF
-           - 72.1 TF
-           - 78.6 TF
-         * - FP32 Vector
-           - 163.4 TF
-           - 163.4 TF
-           - 144.2 TF
-           - 157.3 TF
-         * - FP64 Matrix
-           - 163.4 TF
-           - 163.4 TF
-           - 72.1 TF
-           - 78.6 TF
-         * - FP32 Matrix
-           - 163.4 TF
-           - 163.4 TF
-           - 144.2 TF
-           - 157.3 TF
-         * - TF32 Matrix
-           - 653.7 TF
-           - 653.7 TF
-           - N/A (SW via BF16)
-           - N/A (SW via BF16)
-         * - FP16 | FP16 Sparsity
-           - 1.3 PF | 2.6 PF
-           - 1.3 PF | 2.6 PF
-           - 2.3 PF | 4.6 PF
-           - 2.5 PF | 5.0 PF
-         * - BF16 | BF16 Sparsity
-           - 1.3 PF | 2.6 PF
-           - 1.3 PF | 2.6 PF
-           - 2.3 PF | 4.6 PF
-           - 2.5 PF | 5.0 PF
-         * - FP8 | FP8 Sparsity
-           - 2.6 PF | 5.2 PF
-           - 2.6 PF | 5.2 PF
-           - 4.6 PF | 9.2 PF
-           - 5.0 PF | 10 PF
-         * - INT8 | INT8 Sparsity
-           - 2.6 POPs | 5.2 POPs
-           - 2.6 POPs | 5.2 POPs
-           - 4.6 POPs | 9.2 POPs
-           - 5.0 POPs | 10 POPs
-         * - MXFP8
-           - N/A
-           - N/A
-           - 4.6 PF
-           - 5.0 PF
-         * - MXFP6 / MXFP4
-           - N/A
-           - N/A
-           - 9.2 PF
-           - 10 PF
-
-   .. tab-item:: Memory and I/O
-
-      .. list-table::
-         :header-rows: 1
-         :widths: 28 18 18 18 18
-
-         * - Feature
-           - MI300X
-           - MI325X
-           - MI350X
-           - MI355X
-         * - Memory capacity
-           - 192 GB HBM3
-           - 256 GB HBM3E
-           - 288 GB HBM3E
-           - 288 GB HBM3E
-         * - Memory bandwidth (peak)
-           - 5.3 TB/s
-           - 6.0 TB/s
-           - 8.0 TB/s
-           - 8.0 TB/s
-         * - Infinity Fabric link speed
-           - 32 Gbps
-           - 32 Gbps
-           - 38.4 Gbps
-           - 38.4 Gbps
-         * - P2P ring aggregate BW
-           - 896 GB/s
-           - 896 GB/s
-           - 1,075.2 GB/s
-           - 1,075.2 GB/s
-         * - Total peak aggregate I/O BW
-           - 1,024 GB/s
-           - 1,024 GB/s
-           - 1,203.2 GB/s
-           - 1,203.2 GB/s
-         * - Form factor
-           - OAM
-           - OAM
-           - OAM
-           - OAM
-         * - Thermal
-           - Passive/Liquid
-           - Passive/Liquid
-           - Passive/Liquid
-           - Passive/Liquid
-
-   .. tab-item:: Data type support
-
-      .. list-table::
-         :header-rows: 1
-         :widths: 40 30 30
-
-         * - Data type
-           - MI300X / MI325X (CDNA3)
-           - MI350X / MI355X (CDNA4)
-         * - FP64, FP32, FP16, BF16, INT8
-           - Yes
-           - Yes
-         * - TF32
-           - Hardware
-           - Software emulation via BF16
-         * - FP8 (E5M2 / E4M3)
-           - FNUZ variant
-           - OCP variant
-         * - MXFP8 / MXFP6 / MXFP4
-           - No
-           - Yes (OCP MX, shared exponent per 32 elements)
-
-   .. tab-item:: Partitioning
-
-      .. list-table::
-         :header-rows: 1
-         :widths: 20 20 20 20 20
-
-         * - Mode
-           - MI300X
-           - MI325X
-           - MI350X
-           - MI355X
-         * - SPX
-           - 8 XCDs, 192 GB, NPS1
-           - 8 XCDs, 256 GB, NPS1
-           - 8 XCDs, 288 GB, NPS1
-           - 8 XCDs, 288 GB, NPS1
-         * - DPX
-           - 4 XCDs, 96 GB, NPS1
-           - 4 XCDs, 128 GB, NPS1
-           - 4 XCDs, 144 GB, NPS2
-           - 4 XCDs, 144 GB, NPS2
-         * - QPX
-           - 2 XCDs, 48 GB, NPS1/4
-           - 2 XCDs, 64 GB, NPS1/4
-           - 2 XCDs, 72 GB, NPS2
-           - 2 XCDs, 72 GB, NPS2
-         * - CPX
-           - 1 XCD, 24 GB, NPS1
-           - 1 XCD, 32 GB, NPS1
-           - 1 XCD, 36 GB, NPS2
-           - 1 XCD, 36 GB, NPS2
-         * - Most efficient
-           - QPX + NPS4
-           - QPX + NPS4
-           - DPX + NPS2
-           - DPX + NPS2
-
-The following topics highlight :ref:`auto-tunable configurations <mi300x-auto-tune>` as
-well as :ref:`Triton kernel optimization <mi300x-triton-kernel-performance-optimization>`
-for meticulous tuning.
+The following topics highlight :ref:`auto-tunable configurations <mi300x-auto-tune>`
+that streamline optimization as well as advanced techniques like
+:ref:`Triton kernel optimization <mi300x-triton-kernel-performance-optimization>` for
+meticulous tuning.
 
 Workload tuning strategy
 ========================
 
 By following a structured approach, you can systematically address
 performance issues and enhance the efficiency of your workloads on AMD Instinct
-MI300 Series and MI350 Series GPUs.
+MI300X accelerators.
 
 Measure the current workload
 ----------------------------
@@ -376,28 +86,27 @@ Optimize model inference with vLLM
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 vLLM provides tools and techniques specifically designed for efficient model
-inference on AMD Instinct GPUs. See the official `vLLM installation docs
-<https://docs.vllm.ai/en/latest/getting_started/installation/gpu.html>`__ for
-installation guidance. Optimizing performance with vLLM involves configuring
-tensor parallelism, leveraging advanced features, and ensuring efficient
-execution.
+inference on AMD Instinct MI300X accelerators. See :ref:`fine-tuning-llms-vllm`
+for installation guidance. Optimizing performance with vLLM
+involves configuring tensor parallelism, leveraging advanced features, and
+ensuring efficient execution. Here’s how to optimize vLLM performance:
 
-* Configuration for vLLM: Set engine arguments according to workload
-  requirements.
+* Tensor parallelism: Configure the
+  :ref:`tensor-parallel-size parameter <mi300x-vllm-multiple-gpus>` to distribute
+  tensor computations across multiple GPUs. Adjust parameters such as
+  ``batch-size``, ``input-len``, and ``output-len`` based on your workload.
+
+* Configuration for vLLM: Set :ref:`parameters <mi300x-vllm-optimization>`
+  according to workload requirements. Benchmark performance to understand
+  characteristics and identify bottlenecks.
 
 * Benchmarking and performance metrics: Measure latency and throughput to
   evaluate performance.
-
-.. seealso::
-
-   See :doc:`vllm-optimization` to learn more about vLLM performance
-   optimization techniques for MI300X, MI325X, MI350X, and MI355X.
 
 .. _mi300x-auto-tune:
 
 Auto-tunable configurations
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 Auto-tunable configurations can significantly streamline performance
 optimization by automatically adjusting parameters based on workload
 characteristics. For example:
@@ -411,7 +120,8 @@ characteristics. For example:
   your specific hardware.
 
 * Triton: Use :ref:`Triton’s auto-tuning features <mi300x-autotunable-kernel-config>`
-  to explore various kernel configurations and select the best-performing ones.
+  to explore various kernel configurations and automatically select the
+  best-performing ones.
 
 Manual tuning
 ^^^^^^^^^^^^^
@@ -441,8 +151,8 @@ desired effect. Continuous iteration helps refine the performance gains and
 address any new bottlenecks that may emerge.
 
 ROCm provides a prebuilt optimized Docker image that has everything required to implement
-the LLM inference tips in this section. It includes ROCm, PyTorch, and vLLM.
-For more information, see :doc:`/how-to/rocm-for-ai/inference/benchmark-docker/vllm`.
+the tips in this section. It includes ROCm, vLLM, PyTorch, and tuning files in the CSV 
+format. For more information, see :doc:`../inference/vllm-benchmark`.
 
 .. _mi300x-profiling-tools:
 
@@ -529,7 +239,7 @@ benchmarking process.
 
 With AMD's profiling tools, developers are able to gain important insight into how efficiently their application is
 using hardware resources and effectively diagnose potential bottlenecks contributing to poor performance. Developers
-working with AMD Instinct GPUs have multiple tools depending on their specific profiling needs; these include:
+working with AMD Instinct accelerators have multiple tools depending on their specific profiling needs; these include:
 
 * :ref:`ROCProfiler <mi300x-rocprof>`
 
@@ -547,11 +257,11 @@ metrics, commonly called *performance counters*. These counters quantify the per
 showcasing which pieces of the computational pipeline and memory hierarchy are being utilized.
 
 Your ROCm installation contains a script or executable command called ``rocprof`` which provides the ability to list all
-available hardware counters for your specific GPU, and run applications while collecting counters during
+available hardware counters for your specific accelerator or GPU, and run applications while collecting counters during
 their execution.
 
 This ``rocprof`` utility also depends on the :doc:`ROCTracer and ROC-TX libraries <roctracer:index>`, giving it the
-ability to collect timeline traces of the GPU software stack as well as user-annotated code regions.
+ability to collect timeline traces of the accelerator software stack as well as user-annotated code regions.
 
 .. note::
 
@@ -566,16 +276,16 @@ ROCm Compute Profiler
 ^^^^^^^^^^^^^^^^^^^^^
 
 :doc:`ROCm Compute Profiler <rocprofiler-compute:index>` is a system performance profiler for high-performance computing (HPC) and
-machine learning (ML) workloads using Instinct GPUs. Under the hood, ROCm Compute Profiler uses
+machine learning (ML) workloads using Instinct accelerators. Under the hood, ROCm Compute Profiler uses
 :ref:`ROCProfiler <mi300x-rocprof>` to collect hardware performance counters. The ROCm Compute Profiler tool performs
 system profiling based on all approved hardware counters for Instinct
-GPU architectures. It provides high level performance analysis features including System Speed-of-Light, IP
+accelerator architectures. It provides high level performance analysis features including System Speed-of-Light, IP
 block Speed-of-Light, Memory Chart Analysis, Roofline Analysis, Baseline Comparisons, and more.
 
 ROCm Compute Profiler takes the guesswork out of profiling by removing the need to provide text input files with lists of counters
 to collect and analyze raw CSV output files as is the case with ROCProfiler. Instead, ROCm Compute Profiler automates the collection
 of all available hardware counters in one command and provides graphical interfaces to help users understand and
-analyze bottlenecks and stressors for their computational workloads on AMD Instinct GPUs.
+analyze bottlenecks and stressors for their computational workloads on AMD Instinct accelerators.
 
 .. note::
 
@@ -618,21 +328,379 @@ hardware counters are also included.
 
    ROCm Systems Profiler timeline trace example.
 
+.. _mi300x-vllm-optimization:
+
 vLLM performance optimization
 =============================
 
-vLLM is a high-throughput and memory efficient inference and serving engine for
-large language models that has gained traction in the AI community for its
-performance and ease of use. See :doc:`vllm-optimization`, where you'll learn
-how to:
+vLLM is a high-throughput and memory efficient inference and serving engine for large language models that has gained traction in the AI community for
+its performance and ease of use. See :ref:`fine-tuning-llms-vllm` for a primer on vLLM with ROCm.
 
-* Enable AITER (AI Tensor Engine for ROCm) to speed up on LLM models.
-* Configure environment variables for optimal HIP, RCCL, and Quick Reduce performance.
-* Select the right attention backend for your workload (AITER MHA/MLA vs. Triton).
-* Choose parallelism strategies (tensor, pipeline, data, expert) for multi-GPU deployments.
-* Apply quantization (``FP8``/``FP4``) to reduce memory usage by 2-4× with minimal accuracy loss.
-* Tune engine arguments (batch size, memory utilization, graph modes) for your use case.
-* Benchmark and scale across single-node and multi-node configurations.
+Performance environment variables
+---------------------------------
+
+The following performance tips are not *specific* to vLLM -- they are general
+but relevant in this context. You can tune the following vLLM parameters to
+achieve optimal request latency and throughput performance.
+
+* As described in :ref:`mi300x-env-vars`, the environment
+  variable ``HIP_FORCE_DEV_KERNARG`` can improve vLLM performance. Set it to
+  ``export HIP_FORCE_DEV_KERNARG=1``.
+
+* Set the :ref:`RCCL environment variable <mi300x-rccl>` ``NCCL_MIN_NCHANNELS``
+  to ``112`` to increase the number of channels on MI300X to potentially improve
+  performance.
+
+* Set the environment variable ``TORCH_BLAS_PREFER_HIPBLASLT=1`` to use hipBLASLt to improve performance.
+
+Auto-tuning using PyTorch TunableOp
+------------------------------------
+
+Since vLLM is based on the PyTorch framework, PyTorch TunableOp can be used for auto-tuning. 
+You can run auto-tuning with TunableOp in two simple steps without modifying your code:
+
+* Enable TunableOp and tuning. Optionally, enable verbose mode:
+
+  .. code-block:: shell
+
+     PYTORCH_TUNABLEOP_ENABLED=1 PYTORCH_TUNABLEOP_VERBOSE=1 your_vllm_script.sh
+
+* Enable TunableOp and disable tuning and measure.
+
+  .. code-block:: shell
+
+     PYTORCH_TUNABLEOP_ENABLED=1 PYTORCH_TUNABLEOP_TUNING=0 your_vllm_script.sh
+
+Learn more about TunableOp in the :ref:`PyTorch TunableOp <mi300x-tunableop>` section.
+
+Performance tuning based on vLLM engine configurations
+-------------------------------------------------------
+
+The following subsections describe vLLM-specific configurations for performance tuning.
+You can tune the following vLLM parameters to achieve optimal performance.
+
+*  ``tensor_parallel_size``
+
+*  ``gpu_memory_utilization``
+
+*  ``dtype``
+
+*  ``enforce_eager``
+
+*  ``kv_cache_dtype``
+
+*  ``input_len``
+
+*  ``output_len``
+
+*  ``max_num_seqs``
+
+*  ``num_scheduler_steps``
+
+*  ``max_model_len``
+
+*  ``enable_chunked_prefill``
+
+*  ``distributed_executor_backend``
+
+*  ``max_seq_len_to_capture``
+
+Refer to `vLLM documentation <https://docs.vllm.ai/en/latest/models/performance.html>`_
+for additional performance tips. :ref:`fine-tuning-llms-vllm` describes vLLM
+usage with ROCm.
+
+ROCm provides a prebuilt optimized Docker image for validating the performance
+of LLM inference with vLLM on the MI300X accelerator. The Docker image includes
+ROCm, vLLM, PyTorch, and tuning files in the CSV format. For more information,
+see :doc:`../inference/vllm-benchmark`.
+
+.. _mi300x-vllm-throughput-measurement:
+
+Evaluating performance by throughput measurement
+-------------------------------------------------
+
+This tuning guide evaluates the performance of LLM inference workloads by measuring throughput in tokens per second (TPS). Throughput can be assessed using both real-world and synthetic data, depending on your evaluation goals.
+
+Refer to the benchmarking script located at ``benchmarks/benchmark_throughput.py`` in the `vLLM repository <https://github.com/ROCm/vllm/blob/main/benchmarks/benchmark_throughput.py>`_.
+Use this script to measure throughput effectively. You can assess throughput using real-world and synthetic data, depending on your evaluation goals.
+
+* For realistic performance evaluation, you can use datasets like Hugging Face's
+  ``ShareGPT_V3_unfiltered_cleaned_split.json``. This dataset includes real-world conversational
+  data, making it a good representation of typical use cases for language models. Download it using
+  the following command:
+
+  .. code-block:: shell
+
+     wget https://huggingface.co/datasets/anon8231489123/ShareGPT_Vicuna_unfiltered/resolve/main/ShareGPT_V3_unfiltered_cleaned_split.json
+
+* For standardized benchmarking, you can set fixed input and output token
+  lengths. Synthetic prompts provide consistent benchmarking runs, making it
+  easier to compare performance across different models or configurations.
+  Additionally, a controlled environment simplifies analysis.
+
+By balancing real-world data and synthetic data approaches, you can get a well-rounded understanding of model performance in varied scenarios.
+
+.. _mi300x-vllm-single-node:
+
+Maximizing vLLM instances on a single node
+------------------------------------------
+
+The general guideline is to maximize per-node throughput by running as many vLLM instances as possible.
+However, running too many instances might lead to insufficient memory for the KV-cache, which can affect performance.
+
+The Instinct MI300X accelerator is equipped with 192GB of HBM3 memory capacity and bandwidth.
+For models that fit in one GPU -- to maximize the accumulated throughput -- you can run as many as eight vLLM instances
+simultaneously on one MI300X node (with eight GPUs). To do so, use the GPU isolation environment
+variable ``CUDA_VISIBLE_DEVICES``.
+
+For example, this script runs eight instances of vLLM for throughput benchmarking at the same time
+with a model that can fit in one GPU:
+
+.. code-block:: shell
+
+   for i in $(seq 0 7);
+   do
+       CUDA_VISIBLE_DEVICES="$i" python3 /app/vllm/benchmarks/benchmark_throughput.py -tp 1 --dataset "/path/to/dataset/ShareGPT_V3_unfiltered_cleaned_split.json" --model /path/to/model &
+   done
+
+The total throughput achieved by running ``N`` instances of vLLM is generally much higher than running a
+single vLLM instance across ``N`` GPUs simultaneously (that is, configuring ``tensor_parallel_size`` as N or
+using the ``-tp`` N option, where ``1 < N ≤ 8``).
+
+vLLM on MI300X accelerators can run a variety of model weights, including Llama 2 (7b, 13b, 70b), Llama 3 (8b, 70b), Qwen2 (7b, 72b), Mixtral-8x7b, Mixtral-8x22b, and so on.
+Notable configurations include Llama2-70b and Llama3-70b models on a single MI300X GPU, and the Llama3.1 405b model can fit on one single node with 8 MI300X GPUs.
+
+.. _mi300x-vllm-gpu-memory-utilization:
+
+Configure the gpu_memory_utilization parameter
+----------------------------------------------
+
+There are two ways to increase throughput by configuring ``gpu-memory-utilization`` parameter.
+
+1. Increase ``gpu-memory-utilization`` to improve the throughput for a single instance as long as
+   it does not incur HIP or CUDA Out Of Memory. The default ``gpu-memory-utilization`` is 0.9.
+   You can set it to ``>0.9`` and ``<1``.
+
+   For example, below benchmarking command set the ``gpu-memory-utilization`` as 0.98, or 98%.
+
+   .. code-block:: shell
+
+      /vllm-workspace/benchmarks/benchmark_throughput.py --gpu-memory-utilization 0.98 --input-len 1024 --output-len 128 --model /path/to/model
+
+2. Decrease ``gpu-memory-utilization`` to maximize the number of vLLM instances on the same GPU.
+
+   Specify GPU memory utilization to run as many instances of vLLM as possible on a single
+   GPU. However, too many instances can result in no memory for KV-cache. For small models, run
+   multiple instances of vLLM on the same GPU by specifying a smaller ``gpu-memory-utilization`` -- as
+   long as it would not cause HIP Out Of Memory. 
+
+   For example, run two instances of the Llama3-8b model at the same time on a single GPU by specifying
+   ``--gpu-memory-utilization`` to 0.4 (40%) as follows (on GPU ``0``):
+
+   .. code-block:: shell
+
+      CUDA_VISIBLE_DEVICES=0 python3 /vllm-workspace/benchmarks/benchmark_throughput.py --gpu-memory-utilization 0.4 
+      --dataset "/path/to/dataset/ShareGPT_V3_unfiltered_cleaned_split.json" --model /path/to/model &
+
+      CUDA_VISIBLE_DEVICES=0 python3 /vllm-workspace/benchmarks/benchmark_throughput.py --gpu-memory-utilization 0.4 
+      --dataset "/path/to/dataset/ShareGPT_V3_unfiltered_cleaned_split.json" --model /path/to/model &
+
+See :ref:`vllm-engine-args` for other performance suggestions.
+
+.. _mi300x-vllm-multiple-gpus:
+
+Run vLLM on multiple GPUs
+-------------------------
+
+The two main reasons to use multiple GPUs are:
+
+*  The model size is too big to run vLLM using one GPU as it results HIP Out of Memory.
+
+*  To achieve better latency when using a single GPU is not desirable.
+
+To run one vLLM instance on multiple GPUs, use the ``-tp`` or ``--tensor-parallel-size`` option to
+specify multiple GPUs. Optionally, use the ``CUDA_VISIBLE_DEVICES`` environment variable to specify
+the GPUs.
+
+For example, you can use two GPUs to start an API server on port 8000:
+
+.. code-block:: shell
+
+   python -m vllm.entrypoints.api_server --model /path/to/model --dtype
+   float16 -tp 2 --port 8000 &
+
+To achieve both latency and throughput performance for serving, you can run multiple API servers on
+different GPUs by specifying different ports for each server and use ``CUDA_VISIBLE_DEVICES`` to
+specify the GPUs for each server, for example:
+
+.. code-block:: shell
+
+   CUDA_VISIBLE_DEVICES=0,1 python -m vllm.entrypoints.api_server --model
+   /path/to/model --dtype float16 -tp 2 --port 8000 &
+
+   CUDA_VISIBLE_DEVICES=2,3 python -m vllm.entrypoints.api_server --model
+   /path/to/model --dtype float16 -tp 2 --port 8001 &
+
+Choose an attention backend
+---------------------------
+
+vLLM on ROCm supports two attention backends, each suitable for different use cases and performance
+requirements:
+
+- **Triton Flash Attention** - For benchmarking, run vLLM scripts at
+  least once as a warm-up step so Triton can perform auto-tuning before
+  collecting benchmarking numbers. This is the default setting.
+
+- **Composable Kernel (CK) Flash Attention** - To use CK Flash Attention, specify
+  the environment variable as ``export VLLM_USE_TRITON_FLASH_ATTN=0``.
+
+
+Refer to :ref:`Model acceleration libraries <acceleration-flash-attention>`
+to learn more about Flash Attention with Triton or CK backends.
+
+.. _vllm-engine-args:
+
+vLLM engine arguments
+---------------------
+
+The following are configuration suggestions to potentially improve performance with vLLM. See
+`vLLM's engine arguments documentation <https://docs.vllm.ai/en/stable/models/engine_args.html>`_
+for a full list of configurable engine arguments.
+
+Configure the max-num-seqs parameter
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Increase the ``max-num-seqs`` parameter from the default ``256`` to ``512`` (``--max-num-seqs
+512``). This increases the maximum number of sequences per iteration and can improve throughput.
+
+Use the float16 dtype
+^^^^^^^^^^^^^^^^^^^^^
+
+The default data type (``dtype``) is specified in the model’s configuration file. For instance, some models use ``torch.bfloat16`` as their default ``dtype``.
+Use float16 (``--dtype float16``) for better performance.
+
+Multi-step scheduling
+^^^^^^^^^^^^^^^^^^^^^
+
+Setting ``num-scheduler-steps`` for multi-step scheduling can increase performance. Set it between 10 to 15 (``--num-scheduler-steps 10``).
+
+Distributed executor backend
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The vLLM supports two modes of distributed executor backend: ``ray`` and ``mp``. When using the `<https://github.com/ROCm/vllm>`__ fork, using the ``mp``
+backend (``--distributed_executor_backend mp``) is recommended.
+
+Graph mode max-seq-len-to-capture
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Maximum sequence length covered by CUDA graphs. In the default mode (where ``enforce_eager`` is ``False``), when a sequence has context length
+larger than this, vLLM engine falls back to eager mode. The default is 8192.
+
+When working with models that support long context lengths, set the parameter ``--max-seq-len-to-capture`` to 16384.
+See this `vLLM blog <https://blog.vllm.ai/2024/10/23/vllm-serving-amd.html>`__ for details.
+
+An example of long context length model is Qwen2-7b.
+
+Whether to enable chunked prefill
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Another vLLM performance tip is to enable chunked prefill to improve
+throughput. Chunked prefill allows large prefills to be chunked into
+smaller chunks and batched together with decode requests.
+
+You can enable the feature by specifying ``--enable-chunked-prefill`` in the
+command line or setting ``enable_chunked_prefill=True`` in the LLM
+constructor. 
+
+As stated in `vLLM's documentation, <https://docs.vllm.ai/en/latest/models/performance.html#chunked-prefill>`__,
+you can tune the performance by changing ``max_num_batched_tokens``. By
+default, it is set to 512 and optimized for ITL (inter-token latency).
+Smaller ``max_num_batched_tokens`` achieves better ITL because there are
+fewer prefills interrupting decodes.
+Higher ``max_num_batched_tokens`` achieves better TTFT (time to the first
+token) as you can put more prefill to the batch.
+
+You might experience noticeable throughput improvements when
+benchmarking on a single GPU or 8 GPUs using the vLLM throughput
+benchmarking script along with the ShareGPT dataset as input.
+
+In the case of fixed ``input-len``/``output-len``, for some configurations,
+enabling chunked prefill increases the throughput. For some other
+configurations, the throughput may be worse and elicit a need to tune
+parameter ``max_num_batched_tokens`` (for example, increasing ``max_num_batched_tokens`` value to 4096 or larger).
+
+.. note::
+
+   Chunked prefill is no longer recommended. See the vLLM blog: `Serving LLMs on AMD MI300X: Best Practices <https://blog.vllm.ai/2024/10/23/vllm-serving-amd.html>`_ (October 2024).
+
+Quantization support
+---------------------
+
+Quantization reduces the precision of the model’s weights and activations, which significantly decreases the memory footprint.
+``fp8(w8a8)`` and ``AWQ`` quantization are supported for ROCm.
+
+FP8 quantization
+^^^^^^^^^^^^^^^^^
+
+`<https://github.com/ROCm/vllm>`__ supports FP8 (8-bit floating point) weight and activation quantization using hardware acceleration on the Instinct MI300X.
+Quantization of models with FP8 allows for a 2x reduction in model memory requirements and up to a 1.6x improvement in throughput with minimal impact on accuracy.
+
+AMD publishes Quark Quantized OCP FP8 models on Hugging Face. For example:
+
+* `Llama-3.1-8B-Instruct-FP8-KV <https://huggingface.co/amd/Llama-3.1-8B-Instruct-FP8-KV>`__
+* `Llama-3.1-70B-Instruct-FP8-KV <https://huggingface.co/amd/Llama-3.1-70B-Instruct-FP8-KV>`__
+* `Llama-3.1-405B-Instruct-FP8-KV <https://huggingface.co/amd/Llama-3.1-405B-Instruct-FP8-KV>`__
+* `Mixtral-8x7B-Instruct-v0.1-FP8-KV <https://huggingface.co/amd/Mixtral-8x7B-Instruct-v0.1-FP8-KV>`__
+* `Mixtral-8x22B-Instruct-v0.1-FP8-KV <https://huggingface.co/amd/Mixtral-8x22B-Instruct-v0.1-FP8-KV>`__
+
+To enable vLLM benchmarking to run on fp8 quantized models, use the ``--quantization`` parameter with value ``fp8`` (``--quantization fp8``).
+
+AWQ quantization
+^^^^^^^^^^^^^^^^
+
+You can quantize your own models by installing AutoAWQ or picking one of the 400+ models on Hugging Face. Be aware that
+that AWQ support in vLLM is currently underoptimized.
+
+To enable vLLM to run on ``awq`` quantized models, using ``--quantization`` parameter with ``awq`` (``--quantization awq``).
+
+You can find more specifics in the `vLLM AutoAWQ documentation <https://docs.vllm.ai/en/stable/quantization/auto_awq.html>`_.
+
+fp8 kv-cached-dtype
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Using ``fp8 kv-cache dtype`` can improve performance as it reduces the size
+of ``kv-cache``. As a result, it reduces the cost required for reading and
+writing the ``kv-cache``.
+
+To use this feature, specify ``--kv-cache-dtype`` as ``fp8``.
+
+To specify the quantization scaling config, use the
+``--quantization-param-path`` parameter. If the parameter is not specified,
+the default scaling factor of ``1`` is used, which can lead to less accurate
+results. To generate ``kv-cache`` scaling JSON file, see `FP8 KV
+Cache <https://github.com/vllm-project/vllm/blob/main/examples/fp8/README.md>`__
+in the vLLM GitHub repository.
+
+Two sample Llama scaling configuration files are in vLLM for ``llama2-70b`` and
+``llama2-7b``.
+
+If building the vLLM using
+`Dockerfile.rocm <https://github.com/vllm-project/vllm/blob/main/Dockerfile.rocm>`_
+for ``llama2-70b`` scale config, find the file at
+``/vllm-workspace/tests/fp8_kv/llama2-70b-fp8-kv/kv_cache_scales.json`` at
+runtime.
+
+Below is a sample command to run benchmarking with this feature enabled
+for the ``llama2-70b`` model:
+
+.. code-block:: shell
+
+   python3 /vllm-workspace/benchmarks/benchmark_throughput.py --model \
+   /path/to/llama2-70b-model --kv-cache-dtype "fp8" \
+   --quantization-param-path \
+   "/vllm-workspace/tests/fp8_kv/llama2-70b-fp8-kv/kv_cache_scales.json" \
+   --input-len 512 --output-len 256 --num-prompts 500
+
 
 .. _mi300x-tunableop:
 
@@ -724,45 +792,34 @@ For workflow instructions, refer to the `Offline Tuning documentation <https://g
 
 .. _mi300x-torchinductor-tuning:
 
-torch.compile (TorchInductor)
-=============================
+PyTorch inductor max-autotune tuning knobs
+==========================================
 
-``torch.compile`` uses TorchInductor, the default PyTorch compiler backend, to
-lower captured graphs into optimized code for CPUs and accelerators. On AMD
-GPUs, TorchInductor uses the Triton compiler for many generated kernels and
-also relies on ROCm libraries such as :doc:`MIOpen <miopen:index>`,
-:doc:`rocBLAS <rocblas:index>`, and :doc:`hipBLASLt <hipblaslt:index>` for
-library-backed operations. For an
-overview of TorchInductor, see the `PyTorch compiler overview
-<https://docs.pytorch.org/docs/stable/user_guide/torch_compiler/torch.compiler.html>`_.
-For the ``torch.compile`` API and the available compile modes such as
-``default``, ``reduce-overhead``, ``max-autotune``, and
-``max-autotune-no-cudagraphs``, see the `torch.compile documentation
-<https://docs.pytorch.org/docs/stable/generated/torch.compile.html>`_.
+The following are suggestions for optimizing matrix multiplication (GEMM) and
+convolution (``conv``) operations in PyTorch using ``inductor``, a part of the
+PyTorch compilation framework.
+
+Learn more about TorchInductor environment variables and usage in the
+`PyTorch documentation <https://pytorch.org/docs/2.3/torch.compiler_inductor_profiling.html>`_.
 
 .. note::
 
    Triton is not used if regular :doc:`MIOpen <miopen:index>` or
-   a library kernel from :doc:`rocBLAS <rocblas:index>` and/or
-   :doc:`hipBLASLt <hipblaslt:index>` performs faster for a specific operation.
+   :doc:`rocBLAS <rocblas:index>` performs faster for a specific operation.
 
-Inductor tuning knobs
----------------------
+.. note::
 
-The starting point for tuning with Inductor is to use
-``torch.compile(mode="max-autotune")``. When ``max-autotune`` is enabled, all
-Triton kernels generated by Inductor are
-benchmarked and optimized at compile time. These kernels include ``gemm``,
-``conv``, ``flex attention``, ``pointwise``, ``reduction``, ``persistent
-reduction``, and ``foreach``. A predefined list of Triton configurations is
-benchmarked, and the fastest one is selected for each shape. On GPU,
-``max-autotune`` also enables HIP Graphs by default. HIP Graphs can be
-especially beneficial when Triton kernels are short in duration and launch
-overhead is a significant fraction of runtime. Use
-``mode="max-autotune-no-cudagraphs"`` to enable the same autotuning without
-HIP Graphs.
+   Experimental: TunableOp (see the :ref:`PyTorch TunableOp <mi300x-tunableop>` section) can also be used in combination
+   with ``TorchInductor`` ``max-autotune`` mode to boost ATen GEMM performance but will further increase tuning time.
+   The environment variable ``TORCHINDUCTOR_AUTOTUNE_MULTI_DEVICE=1`` can be useful in single GPU workloads to distribute Triton GEMM tuning.
 
-Configuration considered for ``gemm`` and ``conv`` can be found in PyTorch source code:
+Triton backend
+--------------
+
+The goal is to leverage Triton to achieve better performance. To tune Triton kernels with ``gemm`` and convolution ops (``conv``), use the
+``torch.compile`` function with the ``max-autotune`` mode. This benchmarks a
+predefined list of Triton configurations and selects the fastest one for each
+shape. See the configurations in PyTorch source code:
 
 * `conv configurations for "max-autotune" <https://github.com/pytorch/pytorch/blob/a1d02b423c6b4ccacd25ebe86de43f650463bbc6/torch/_inductor/kernel/conv.py#L51>`_
 
@@ -772,35 +829,21 @@ This tuning will select the best Triton ``gemm`` configurations according to til
 ``(BLOCK_M, BLOCK_N, BLOCK_K), num_stages, num_warps`` and ``mfma`` instruction size ( ``matrix_instr_nonkdim`` ) 
 (see "Triton kernel optimization" section for more details).
 
-
-* Set ``torch._inductor.config.max_autotune = True`` or
-  ``TORCHINDUCTOR_MAX_AUTOTUNE=1`` to enable max-autotune for all supported Triton
-  kernels.
+* Set ``torch._inductor.config.max_autotune = True`` or ``TORCHINDUCTOR_MAX_AUTOTUNE=1``.
 
 * Or, for more fine-grained control:
 
-  ``torch._inductor.config.max_autotune_gemm = True`` or
-  ``TORCHINDUCTOR_MAX_AUTOTUNE_GEMM=1``
-     To enable tuning for ``gemm`` kernels only.
+  ``torch._inductor.config.max_autotune_gemm = True``
+     To enable tuning or lowering of ``mm``/``conv``\s.
 
-  ``torch._inductor.config.max_autotune_pointwise = True`` or
-  ``TORCHINDUCTOR_MAX_AUTOTUNE_POINTWISE=1``
-     To enable tuning for ``pointwise``, ``reduction``, ``persistent
-     reduction``, and ``foreach`` kernels.
+  ``torch._inductor.config.max_autotune.pointwise = True``
+     To enable tuning for ``pointwise``/``reduction`` ops.
 
-  ``torch._inductor.config.max_autotune_gemm_backends`` or ``TORCHINDUCTOR_MAX_AUTOTUNE_GEMM_BACKENDS``
+  ``torch._inductor.max_autotune_gemm_backends`` or ``TORCHINDUCTOR_MAX_AUTOTUNE_GEMM_BACKENDS``
      Selects the candidate backends for ``mm`` auto-tuning. Defaults to
      ``TRITON,ATEN``. 
      Limiting this to ``TRITON`` might improve performance by
-     enabling more fused ``mm`` kernels instead of going to
-     :doc:`rocBLAS <rocblas:index>` and/or :doc:`hipBLASLt <hipblaslt:index>`.
-
-* To expand the autotuning search space, set
-  ``TORCHINDUCTOR_MAX_AUTOTUNE_GEMM_SEARCH_SPACE="EXHAUSTIVE"``. For flex
-  attention autotuning, use
-  ``TORCHINDUCTOR_MAX_AUTOTUNE_FLEX_SEARCH_SPACE="EXHAUSTIVE"``. Note that
-  exhaustive autotuning is very slow and can significantly increase compile
-  time.
+     enabling more fused ``mm`` kernels instead of going to rocBLAS.
 
 * Inference can see large improvements on AMD GPUs by utilizing
   ``torch._inductor.config.freezing=True`` or the ``TORCHINDUCTOR_FREEZING=1`` variable, which
@@ -831,7 +874,7 @@ Composable Kernel backend
 You can enable the Composable Kernel (``CK``) backend by appending ``CK`` to the comma-separated list of backends. This allows the
 auto-tuning process to use kernels from the Composable Kernel library.
 
-``torch._inductor.config.max_autotune_gemm_backends`` or ``TORCHINDUCTOR_MAX_AUTOTUNE_GEMM_BACKENDS``.
+``torch._inductor.max_autotune_gemm_backends`` or ``TORCHINDUCTOR_MAX_AUTOTUNE_GEMM_BACKENDS``.
 
 Install the Composable Kernel library's Python wrapper via pip using the following command:
 
@@ -873,7 +916,7 @@ ROCm library tuning involves optimizing the performance of routine computational
 operations (such as ``GEMM``) provided by ROCm libraries like
 :ref:`hipBLASLt <mi300x-hipblaslt>`, :ref:`Composable Kernel <mi300x-ck>`,
 :ref:`MIOpen <mi300x-miopen>`, and :ref:`RCCL <mi300x-rccl>`. This tuning aims
-to maximize efficiency and throughput on Instinct MI300X and MI350X GPUs to gain
+to maximize efficiency and throughput on Instinct MI300X accelerators to gain 
 improved application performance.
 
 .. _mi300x-library-gemm:
@@ -895,30 +938,41 @@ hipBLASLt benchmarking
 The GEMM library
 `hipBLASLt <https://rocm.docs.amd.com/projects/hipBLASLt/en/latest/index.html>`_
 provides a benchmark tool for its supported operations. Refer to the
-`documentation <https://github.com/ROCm/hipBLASLt/blob/develop/clients/bench/README.md>`_
+`documentation <https://github.com/ROCm/hipBLASLt/blob/develop/clients/benchmarks/README.md>`_
 for details.
 
 * Example 1: Benchmark mix fp8 GEMM
 
   .. code-block:: shell
 
-     HIP_FORCE_DEV_KERNARG=1  hipblaslt-bench --alpha 1 --beta 0 -r f16_r \
-     --a_type f16_r --b_type f8_r --compute_type f32_f16_r \
-     --initialization trig_float  --cold_iters 100 --iters 1000 --rotating 256
+     export HIP_FORCE_DEV_KERNARG=1  hipblaslt-bench --alpha 1 --beta 0 -r \
+     f16_r --a_type f16_r --b_type f8_r --compute_type f32_f16_r \
+     --initialization trig_float  --cold_iters 100 -i 1000 --rotating 256
 
 * Example 2: Benchmark forward epilogues and backward epilogues
 
-  *  ``HIPBLASLT_EPILOGUE_RELU: "--activation_type relu";``
-  *  ``HIPBLASLT_EPILOGUE_BIAS: "--bias_vector";``
-  *  ``HIPBLASLT_EPILOGUE_RELU_BIAS: "--activation_type relu --bias_vector";``
-  *  ``HIPBLASLT_EPILOGUE_GELU: "--activation_type gelu";``
-  *  ``HIPBLASLT_EPILOGUE_DGELU: "--activation_type gelu --gradient";``
-  *  ``HIPBLASLT_EPILOGUE_GELU_BIAS: "--activation_type gelu --bias_vector";``
-  *  ``HIPBLASLT_EPILOGUE_GELU_AUX: "--activation_type gelu --use_e";``
-  *  ``HIPBLASLT_EPILOGUE_GELU_AUX_BIAS: "--activation_type gelu --bias_vector --use_e";``
-  *  ``HIPBLASLT_EPILOGUE_DGELU_BGRAD: "--activation_type gelu --bias_vector --gradient";``
-  *  ``HIPBLASLT_EPILOGUE_BGRADA: "--bias_vector --gradient --bias_source a";``
-  *  ``HIPBLASLT_EPILOGUE_BGRADB:  "--bias_vector --gradient --bias_source b";``
+  *  ``HIPBLASLT_EPILOGUE_RELU: "--activation_type relu";``
+
+  *  ``HIPBLASLT_EPILOGUE_BIAS: "--bias_vector";``
+
+  *  ``HIPBLASLT_EPILOGUE_RELU_BIAS: "--activation_type relu --bias_vector";``
+
+  *  ``HIPBLASLT_EPILOGUE_GELU: "--activation_type gelu";``
+
+  *  ``HIPBLASLT_EPILOGUE_DGELU": --activation_type gelu --gradient";``
+
+  *  ``HIPBLASLT_EPILOGUE_GELU_BIAS: "--activation_type gelu --bias_vector";``
+
+  *  ``HIPBLASLT_EPILOGUE_GELU_AUX: "--activation_type gelu --use_e";``
+
+  *  ``HIPBLASLT_EPILOGUE_GELU_AUX_BIAS: "--activation_type gelu --bias_vector --use_e";``
+
+  *  ``HIPBLASLT_EPILOGUE_DGELU_BGRAD: "--activation_type gelu --bias_vector --gradient";``
+
+  *  ``HIPBLASLT_EPILOGUE_BGRADA: "--bias_vector --gradient --bias_source a";``
+
+  *  ``HIPBLASLT_EPILOGUE_BGRADB:  "--bias_vector --gradient --bias_source b";``
+
 
 hipBLASLt auto-tuning using hipblaslt-bench
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -976,26 +1030,26 @@ The tuning tool is a two-step tool. It first runs the benchmark, then it creates
 
   .. code-block:: python
 
-     defaultBenchOptions = {"ProblemType": {
-         "TransposeA": 0,
-         "TransposeB": 0,
-         "ComputeInputDataType": "s",
-         "ComputeDataType": "s",
-         "DataTypeC": "s",
-         "DataTypeD": "s",
-         "UseBias": False
-     }, "TestConfig": {
-         "ColdIter": 20,
-         "Iter": 100,
-         "AlgoMethod": "all",
-         "RequestedSolutions": 2, # Only works in AlgoMethod heuristic
-         "SolutionIndex": None, # Only works in AlgoMethod index
-         "ApiMethod": "cpp",
-         "RotatingBuffer": 0,
-     }, "TuningParameters": {
-         "SplitK": [0]
-     }, "ProblemSizes": []}
-     defaultCreateLogicOptions = {}  # Currently unused
+     defaultBenchOptions = {"ProblemType": {
+         "TransposeA": 0,
+         "TransposeB": 0,
+         "ComputeInputDataType": "s",
+         "ComputeDataType": "s",
+         "DataTypeC": "s",
+         "DataTypeD": "s",
+         "UseBias": False
+     }, "TestConfig": {
+         "ColdIter": 20,
+         "Iter": 100,
+         "AlgoMethod": "all",
+         "RequestedSolutions": 2, # Only works in AlgoMethod heuristic
+         "SolutionIndex": None, # Only works in AlgoMethod index
+         "ApiMethod": "cpp",
+         "RotatingBuffer": 0,
+     }, "TuningParameters": {
+         "SplitK": [0]
+     }, "ProblemSizes": []}
+     defaultCreateLogicOptions = {}  # Currently unused
 
 * ``TestConfig``
    1. ``ColdIter``: This is number the warm-up iterations before starting the kernel benchmark.
@@ -1055,30 +1109,19 @@ a breakdown of the important sections:
 
      * ``aldebaran`` is MI200
 
-     * ``aquavanjaram`` is MI300 / MI350
+     * ``aquavanjaram`` is MI300
 
    .. code-block:: shell
 
       $ ls
       aldebaran  aquavanjaram  navi31  navi32
 
-   For MI300X (gfx942):
-
    .. code-block:: yaml
 
       LibraryLogic:
-        ScheduleName: "aquavanjaram"
-        DeviceNames: [Device 7400]
-        ArchitectureName: "gfx942"
-
-   For MI350X (gfx950):
-
-   .. code-block:: yaml
-
-      LibraryLogic:
-        ScheduleName: "aquavanjaram"
-        DeviceNames: [Device 75a0]
-        ArchitectureName: "gfx950"
+        ScheduleName: "aldebaran"
+        DeviceNames: [Device 0050, Device 0052, Device 0054, Device 0062, Device 7400]
+        ArchitectureName: "gfx90a"
 
 ``LibraryClient``
    If defined, this will enable step 4 of the tuning process, which means the final
@@ -1186,7 +1229,7 @@ command:
 
 .. code-block:: shell
 
-   merge.py original_dir new_tuned_yaml_dir output_dir 
+   merge.py original_dir new_tuned_yaml_dir output_dir 
 
 The following table describes the logic YAML files.
 
@@ -1213,11 +1256,6 @@ MI16x16 versus MI32x32
    ``v_mfma_f32_16x16x16f16``). See
    `<https://llvm.org/docs/AMDGPU/AMDGPUAsmGFX940.html#vop3p>`__.
 
-   .. note::
-
-      MI350X has doubled Matrix Core throughput for ≤16-bit types. Benchmark to
-      verify optimal instruction size for your workload.
-
 Clock differences among XCDs
    There can be a clock speed variation of 3% to 10% among different XCDs.
    Typically, XCD0 has the highest clock speed, while XCD7 has the lowest on
@@ -1227,8 +1265,8 @@ Clock differences among XCDs
    achievable.
 
 `WorkGroupMapping`
-   To maximize L2 cache efficiency, use multiples of the XCD number. Both MI300X
-   and MI350X have 8 XCDs, so use multiples of 8 (such as, 24, 32, 40).
+   To maximize L2 cache efficiency, use multiples of the XCD number. For MI300X,
+   this means using multiples of 8 (such as, 24, 32, 40).
 
 GEMM stride issues
    On MI300, if the matrix stride in GEMM is a multiple of 512 bytes, it can lead to
@@ -1404,23 +1442,15 @@ Use all eight GPUs
 
 In an :ref:`MI300X architecture <mi300x-node-level-arch-fig>`, there are
 dedicated links between each pair of GPUs in a fully connected topology.
-Both MI300X and MI350X share this 8-GPU fully connected design.
 Therefore, for collective operations, the best performance is achieved
 when all 8 GPUs and, hence, all the links between them are used. In the
 case of 2- or 4-GPU collective operations (generally less than 8 GPUs),
 you can only use a fraction of the potential bandwidth on the node.
 
-.. note::
-
-   MI350X uses 2 IODs (vs 4 on MI300X) with a faster direct connection
-   and Infinity Fabric links at 38.4 Gbps (vs 32 Gbps), yielding
-   1,075.2 GB/s P2P ring aggregate bandwidth (vs 896 GB/s) — roughly 20%
-   higher.
-
 The following figure shows an
 :doc:`MI300X node-level architecture </conceptual/gpu-arch/mi300>` of a
 system with AMD EPYC processors in a dual-socket configuration and eight
-AMD Instinct MI300X GPUs. The MI300X OAMs attach to the host system via
+AMD Instinct MI300X accelerators. The MI300X OAMs attach to the host system via
 PCIe Gen 5 x16 links (yellow lines). The GPUs use seven high-bandwidth,
 low-latency AMD Infinity Fabric™ links (red lines) to form a fully connected
 8-GPU system.
@@ -1429,9 +1459,9 @@ low-latency AMD Infinity Fabric™ links (red lines) to form a fully connected
 
 .. figure:: ../../../data/shared/mi300-node-level-arch.png
 
-   MI300 Series node-level architecture showing 8 fully interconnected MI300X
+   MI300 series node-level architecture showing 8 fully interconnected MI300X
    OAM modules connected to (optional) PCIe switches via re-timers and HGX
-   connectors. MI350 Series systems use the same 8-GPU fully connected topology.
+   connectors.
 
 .. _mi300x-rccl-disable-numa:
 
@@ -1447,16 +1477,15 @@ following command: ``cat /proc/sys/kernel/numa_balancing`` and
 checking whether the output is ``0``.
 
 If the output is ``1``, you can disable NUMA auto-balancing by running the
-following command: ``sudo sysctl kernel.numa_balancing=0``. For more details,
-see `AMD Instinct MI300X system optimization
-<https://instinct.docs.amd.com/projects/amdgpu-docs/en/latest/system-optimization/mi300x.html#disable-numa-auto-balancing>`_.
+following command: ``sudo sysctl kernel.numa_balancing=0``. For more
+details, see :ref:`AMD Instinct MI300X system optimization <mi300x-disable-numa>`.
 
 .. _mi300x-rccl-disable-acs:
 
 Disable ACS for multi-node RCCL
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Check if ACS is disabled with ``sudo lspci -vvv | grep -i "acsctl"``.
+Check if ACS is disabled with ``sudo lspci -vvv \| grep -i "acsctl"``.
 This will print many lines. Check if there are any that show ``SrcValid+``
 
 If there are any ``SrcValid+``, then use the following ``disable_acs.sh`` script
@@ -1465,48 +1494,83 @@ to disable ACS (requires ``sudo``).
 .. code-block:: shell
 
    #!/bin/bash
+
    #
+
    # Disable ACS on every device that supports it
+
    #
+
    PLATFORM=$(dmidecode --string system-product-name)
+
    logger "PLATFORM=${PLATFORM}"
+
    # Enforce platform check here.
+
    #case "${PLATFORM}" in
+
    #"OAM"*)
+
    #logger "INFO: Disabling ACS is no longer necessary for ${PLATFORM}"
+
    #exit 0
+
    #;;
+
    #*)
+
    #;;
+
    #esac
 
    # must be root to access extended PCI config space
+
    if [ "$EUID" -ne 0 ]; then
+
    echo "ERROR: $0 must be run as root"
+
    exit 1
+
    fi
 
-   for BDF in $(lspci -d "*:*:*" | awk '{print $1}'); do
-       # skip if it doesn't support ACS
-       setpci -v -s ${BDF} ECAP_ACS+0x6.w > /dev/null 2>&1
-       if [ $? -ne 0 ]; then
-           #echo "${BDF} does not support ACS, skipping"
-           continue
-       fi
+   for BDF in \`lspci -d "*:*:*" \| awk '{print $1}'`; do
 
-       logger "Disabling ACS on $(lspci -s ${BDF})"
-       setpci -v -s ${BDF} ECAP_ACS+0x6.w=0000
-       if [ $? -ne 0 ]; then
-           logger "Error disabling directTrans ACS on ${BDF}"
-           continue
-       fi
+   # skip if it doesn't support ACS
 
-       NEW_VAL=$(setpci -v -s ${BDF} ECAP_ACS+0x6.w | awk '{print $NF}')
-       if [ "${NEW_VAL}" != "0000" ]; then
-           logger "Failed to disable directTrans ACS on ${BDF}"
-           continue
-       fi
+   setpci -v -s ${BDF} ECAP_ACS+0x6.w > /dev/null 2>&1
+
+   if [ $? -ne 0 ]; then
+
+   #echo "${BDF} does not support ACS, skipping"
+
+   continue
+
+   fi
+
+   logger "Disabling ACS on \`lspci -s ${BDF}`"
+
+   setpci -v -s ${BDF} ECAP_ACS+0x6.w=0000
+
+   if [ $? -ne 0 ]; then
+
+   logger "Error enabling directTrans ACS on ${BDF}"
+
+   continue
+
+   fi
+
+   NEW_VAL=`setpci -v -s ${BDF} ECAP_ACS+0x6.w \| awk '{print $NF}'\`
+
+   if [ "${NEW_VAL}" != "0000" ]; then
+
+   logger "Failed to enabling directTrans ACS on ${BDF}"
+
+   continue
+
+   fi
+
    done
+
    exit 0
 
 .. _mi300x-rccl-unittests:
@@ -1587,7 +1651,7 @@ Auto-tunable kernel configuration involves adjusting memory access and computati
 resources assigned to each compute unit. It encompasses the usage of
 :ref:`LDS <mi300x-cu-fig>`, register, and task scheduling on a compute unit.
 
-The GPU contains global memory, local data share (LDS), and
+The accelerator or GPU contains global memory, local data share (LDS), and
 registers. Global memory has high access latency, but is large. LDS access has
 much lower latency, but is smaller. It is a fast on-CU software-managed memory
 that can be used to efficiently share data between all work items in a block.
@@ -1597,18 +1661,14 @@ Register access is the fastest yet smallest among the three.
 
 .. figure:: ../../../data/shared/compute-unit.png
 
-   Schematic representation of a CU in CDNA2 / CDNA3 / CDNA4 architectures.
-   Each CU has 4 SIMDs, which are grouped into 2 SIMD pairs (SP). 
-   Each SP has a 128 bytes/clock bus to LDS. But 2 SP cannot access LDS at the same time. 
-   So the actual read bandwidth of LDS is 128 bytes/clock.
-   MI300X also has direct L1->LDS. MI350's direct L1->LDS has larger vectorization.
+   Schematic representation of a CU in the CDNA2 or CDNA3 architecture.
 
 The following is a list of kernel arguments used for tuning performance and
-resource allocation on AMD GPUs, which helps in optimizing the
+resource allocation on AMD accelerators, which helps in optimizing the
 efficiency and throughput of various computational kernels.
 
 ``num_stages=n``
-   Adjusts the number of pipeline stages for different types of kernels. On AMD GPUs, set ``num_stages``
+   Adjusts the number of pipeline stages for different types of kernels. On AMD accelerators, set ``num_stages``
    according to the following rules:
 
    * For kernels with a single GEMM, set to ``2``.
@@ -1620,11 +1680,6 @@ efficiency and throughput of various computational kernels.
      (for example ReLU activation), set to ``2``.
 
    * For kernels that have no GEMMs, set to ``1``.
-
-   .. note::
-
-      MI350X's 160 KB LDS and doubled read bandwidth may allow higher
-      ``num_stages`` (3 or 4) for single-GEMM kernels. Benchmark to verify.
 
 ``waves_per_eu=n``
    Helps to manage Vector General Purpose Registers (VGPR) usage to achieve
@@ -1640,22 +1695,22 @@ efficiency and throughput of various computational kernels.
    * The occupancy of the kernel is limited by VGPR usage, and
 
    * The current VGPR usage is only a few above a boundary in
-     :ref:`Occupancy related to VGPR usage in an Instinct MI300X GPU <mi300x-occupancy-vgpr-table>`.
+     :ref:`Occupancy related to VGPR usage in an Instinct MI300X accelerator <mi300x-occupancy-vgpr-table>`.
 
 .. _mi300x-occupancy-vgpr-table:
 
 .. figure:: ../../../data/shared/occupancy-vgpr.png
-   :alt: Occupancy related to VGPR usage in an Instinct MI300X GPU.
+   :alt: Occupancy related to VGPR usage in an Instinct MI300X accelerator.
    :align: center
 
-   Occupancy related to VGPRs usage on an Instinct MI300X GPU
+   Occupancy related to VGPRs usage on an Instinct MI300X accelerator
 
-For example, according to the table, each Execution Unit (EU) has 512 available
-VGPRs, which are allocated in blocks of 16. If the current VGPR usage is 170,
-it will be rounded up to 176 due to the allocation granularity. In this case,
-the occupancy is limited to 2 waves per EU because :math:`176 \times 3 > 512`.
-So, if you set ``waves_per_eu`` to 3, the LLVM backend will attempt to reduce
-VGPR usage so that it might fit 3 waves per EU.
+For example, according to the table, the available VGPR is 512 per Execution
+Unit (EU), and VGPU is allocated at the unit of 16. If the current VGPR usage
+is 170, the actual requested VGPR will be 176, so the occupancy is only 2
+waves per EU since :math:`176 \times 3 > 512`. So, if you set
+``waves_per_eu`` to 3, the LLVM backend tries to bring VGPR usage down so
+that it might fit 3 waves per EU.
 
 ``BLOCK_M``, ``BLOCK_N``, ``BLOCK_K``
    Tile sizes to be tuned to balance the memory-to-computation ratio. The goal
@@ -1665,12 +1720,6 @@ VGPR usage so that it might fit 3 waves per EU.
    ratio but small enough to parallelize the greatest number of workgroups at
    the grid level.
 
-   .. note::
-
-      MI350X's 160 KB LDS (vs 64 KB on MI300X) enables larger tile sizes.
-      Explore larger ``BLOCK_M/N/K`` values to leverage the increased LDS
-      and doubled read bandwidth.
-
 ``matrix_instr_nonkdim``
    Experimental feature for Flash Attention-like kernels that determines the size of the Matrix Fused Multiply-Add
    (MFMA) instruction used.
@@ -1679,7 +1728,7 @@ VGPR usage so that it might fit 3 waves per EU.
 
    -  ``matrix_instr_nonkdim = 32``: ``mfma_32x32`` is used.
 
-   For GEMM kernels on an MI300X GPU, ``mfma_16x16`` typically outperforms ``mfma_32x32``, even for large
+   For GEMM kernels on an MI300X accelerator, ``mfma_16x16`` typically outperforms ``mfma_32x32``, even for large
    tile/GEMM sizes.
 
 
@@ -1694,15 +1743,11 @@ with 38 active. Each MI300X contains eight vertical XCDs, and a total of 304
 active compute units capable of parallel computation. The first consideration is
 the number of CUs a kernel can distribute its task across.
 
-.. note::
-
-   MI350X has 36 CUs per XCD (32 active), for a total of 256 active CUs.
-
 .. figure:: ../../../data/shared/xcd-sys-arch.png
 
    XCD-level system architecture showing 40 compute units,
    each with 32 KB L1 cache, a unified compute system with 4 ACE compute
-   GPUs, shared 4MB of L2 cache, and a hardware scheduler (HWS).
+   accelerators, shared 4MB of L2 cache, and a hardware scheduler (HWS).
 
 You can query hardware resources with the command ``rocminfo`` in the
 ``/opt/rocm/bin`` directory. For instance, query the number of CUs, number of
@@ -1711,7 +1756,9 @@ SIMD, and wavefront size using the following commands.
 .. code-block:: shell
 
    rocminfo | grep "Compute Unit"
+
    rocminfo | grep "SIMD"
+
    rocminfo | grep "Wavefront Size"
 
 For the MI300X, the goal is to have a minimum of 1024 thread
@@ -1784,7 +1831,7 @@ de-quantize the ``int4`` key-value from the ``int4`` data type to ``fp16``.
 
 From the IR snippet, you can see ``i32`` data is loaded from global memory to
 registers (``%190``). With a few element-wise operations in registers, it is
-stored in shared memory (``%269``) for the transpose operation (``%270``), which
+stored in shared memory (``%269``) for the transpose operation (``%270``), which
 needs data movement across different threads. With the transpose done, it is
 loaded from LDS to register again (``%276``), and with a few more
 element-wise operations, it is stored to LDS again (``%298``). The last step
@@ -1881,12 +1928,6 @@ but smallest access. Aim to limit load/store operations in global memory. If
 multiple threads in a block need the same data, transfer it from global memory
 to LDS for efficient access.
 
-.. note::
-
-   MI350X provides 160 KB LDS per CU (vs 64 KB on MI300X) with doubled read
-   bandwidth (256 bytes/clock) and direct L1→LDS loading, enabling
-   significantly more on-chip data reuse.
-
 See :doc:`HIP's performance guidelines <hip:how-to/performance_guidelines>` for
 greater detail.
 
@@ -1924,7 +1965,7 @@ something similar to the following:
    loaded at: [0x7fd4f100c000-0x7fd4f100e070]
 
 The kernel name and the code object file should be listed. In the
-example above, the kernel name is vector_add_assert_trap, but this might
+example above, the kernel name is vector_add_assert_trap, but this might
 also look like:
 
 .. code-block:: text
@@ -1954,6 +1995,7 @@ allocation.
 .. code-block:: text
 
    PYTORCH_NO_HIP_MEMORY_CACHING=1
+
    HSA_DISABLE_FRAGMENT_ALLOCATOR=1
 
 .. _mi300x-compute-kernel-occ:
@@ -1970,7 +2012,7 @@ Compute the occupancy of a kernel
 
    b. ``rm -rf ~/.triton/cache``
 
-   c. ``python kernel.py | grep "triton_gpu.shared = " | tail -n 1``
+   c. ``python kernel.py | | grep "triton_gpu.shared = " | tail -n 1``
 
    d. You should see something like ``triton_gpu.shared = 65536``, indicating
       65536 bytes of LDS are allocated for the kernel.
@@ -1981,7 +2023,7 @@ Compute the occupancy of a kernel
 
    b. ``rm -rf ~/.triton/cache``
 
-   c. ``python kernel.py | grep "triton_gpu.num-warps " | tail -n 1``
+   c. ``python kernel.py | | grep "triton_gpu.num-warps " | tail -n 1``
 
    d. You should see something like ``“triton_gpu.num-warps" = 8``, indicating 8
       waves per workgroup.
@@ -1990,8 +2032,7 @@ Compute the occupancy of a kernel
    :ref:`preceding table <mi300x-occupancy-vgpr-table>`. For example, waves per
    EU as ``occ_vgpr``.
 
-5. Compute occupancy limited by LDS based on L by: ``occ_lds = floor(65536 / L)``
-   (MI300X, 64 KB LDS) or ``occ_lds = floor(163840 / L)`` (MI350X, 160 KB LDS).
+5. Compute occupancy limited by LDS based on L by: ``occ_lds = floor(65536 / L)``.
 
 6. Then the occupancy is ``occ = min(floor(occ_vgpr * 4 / nW), occ_lds) * nW / 4``
 
@@ -1999,199 +2040,12 @@ Compute the occupancy of a kernel
       per CU.
 
    b. ``floor(occ_vgpr * 4 / nW)`` gives the occupancy of workgroups per CU
-      regarding VGPR usage.
+      regrading VGPR usage.
 
    c. The true ``occ`` is the minimum of the two.
 
 Find the full ``occ.sh`` at
 `<https://github.com/ROCm/triton/blob/triton-mlir/scripts/amd/occ.sh>`__.
-
-.. _mi300x-gluon-kernel-performance-optimization:
-
-Gluon kernel performance optimization
-=====================================
-
-`Gluon <https://github.com/triton-lang/triton/tree/main/python/triton/experimental/gluon>`_
-is a block-level programming language that ships alongside Triton. It compiles through the same
-Triton IR stack and keeps Python ergonomics, but exposes hardware details that
-Triton hides: explicit tensor **layouts**, explicit
-async-copy and barrier placement, and direct control over LDS usage. Use Gluon
-when the profiler shows Triton is bottlenecked on something you cannot express
-through autotune configs — typically layout conversions, suboptimal MFMA
-instruction selection, or pipelining depth.
-
-Triton vs. Gluon at a glance
-----------------------------
-
-.. list-table::
-   :header-rows: 1
-   :widths: 30 35 35
-
-   * - Aspect
-     - Triton
-     - Gluon
-   * - Abstraction level
-     - Block-level tiles
-     - Block-level tiles
-   * - Tensor layouts
-     - Compiler-inferred
-     - User-specified (blocked, MFMA, dot-operand, shared)
-   * - Pipelining and barriers
-     - Compiler-scheduled (``num_stages``)
-     - User-scheduled (``async_copy``, ``commit_group``, ``wait_group``)
-   * - MFMA instruction choice
-     - Heuristic with ``matrix_instr_nonkdim`` hint
-     - Explicit via ``AMDMFMALayout``
-   * - LDS swizzle / padding
-     - Hidden
-     - Explicit via ``PaddedSharedLayout`` or swizzled layouts
-   * - Authoring cost
-     - Low
-     - High
-   * - Typical use
-     - Most kernels; start here
-     - Hot kernels where Triton leaves performance on the table
-
-**Rule of thumb:** start in Triton, autotune, profile with ``rocprofv3`` or
-ROCm Compute Profiler. Drop to Gluon only for kernels where the profiler shows you are
-bottlenecked on something Triton will not let you fix.
-
-Layout selection
-----------------
-
-Gluon requires you to pick layouts explicitly. The three that matter most on
-MI300X / MI350X:
-
-``AMDMFMALayout``
-   Controls the output tile of MFMA instructions. Set ``transposed=True`` for
-   better accumulator register layout on CDNA. For a 256x256 tile with 4 waves,
-   ``warps_per_cta=[2, 2]`` balances MFMA distribution across M and N.
-
-``PaddedSharedLayout``
-   Preferred LDS layout for operand tiles. Padding eliminates bank conflicts
-   while preserving linear addressing and a single base VGPR. For a 256x64
-   FP16 operand, ``PaddedSharedLayout([[512, 16]], ...)`` is a good starting
-   point. For FP8 with ``kWidth=32``, use dual-pass padding such as
-   ``PaddedSharedLayout([[1024, 16], [2048, 32]], ...)``.
-
-``DotOperandLayout`` (``kWidth``)
-   Controls how operand tiles feed MFMA. Use ``kWidth=8`` for FP16. For FP8
-   without scales, use either ``kWidth=16`` or ``kWidth=32`` (both are valid;
-   both A and B operands must use the same value). For FP8 with scales or MXFP4,
-   use ``kWidth=16`` (required for scale-layout compatibility).
-
-Avoid raw (unpadded, unswizzled) shared layouts. They trigger 2-way to 4-way
-LDS bank conflicts and reduce the effective LDS service rate from
-256 B/cycle down to 64-128 B/cycle.
-
-MFMA instruction selection
---------------------------
-
-Match ``BLOCK_K`` to the MFMA K-dimension and aim for 1-2 MFMA instructions
-per K-step to amortize pipelining overhead.
-
-.. list-table::
-   :header-rows: 1
-   :widths: 20 35 15 30
-
-   * - Data type
-     - MFMA instruction
-     - K-dim
-     - Recommended ``BLOCK_K``
-   * - FP16 / BF16
-     - ``v_mfma_f32_16x16x32``
-     - 32
-     - 64
-   * - FP8 / BF8
-     - ``v_mfma_f32_16x16x128``
-     - 128
-     - 128
-   * - MXFP4
-     - ``v_mfma_scale_f32_16x16x128_f8f6f4`` (``cbsz=4``, ``blgp=4``)
-     - 128
-     - 256
-
-A 256x256 output tile is a good default. It balances register footprint
-against the 512 VGPR budget on CDNA3/CDNA4.
-
-.. note::
-
-   MI350X's 160 KB LDS (vs. 64 KB on MI300X) allows larger input tiles and
-   deeper prefetch. When porting a Gluon kernel from MI300X to MI350X,
-   explore larger ``BLOCK_M/N/K`` and one additional pipeline stage before
-   retuning layouts. However, for compute-bound gemm kernels, MI300X and MI350X should use the same tile size. 
-   This is limited by the 512 VGPRs for both CDNA3 and CDNA4.
-
-Global-memory loads and LDS staging
------------------------------------
-
-* **Use ``buffer_load_to_lds`` (direct L1-to-LDS async copy) instead of
-  staging through registers.** It saves approximately 100 VGPR per wave and
-  removes an entire register-movement phase from the loop. In the
-  `gfx950-gluon-tutorials <https://github.com/ROCm/gfx950-gluon-tutorials>`_
-  reference GEMM this change moved performance from 697 to 1113 TFLOPS.
-
-* **Distribute ``buffer_load`` instructions across the loop body.** TCP (the
-  per-CU L1) is 32 KB with a 12-entry VMEM queue; once full, TCP capacity
-  gates issue. Spread loads across ~1500 cycles of MFMA rather than clustering
-  them at the top of the iteration.
-
-* **Bundle tile and scale loads with ``commit_group`` / ``wait_group``.**
-  Required for mixed ``buffer_load_to_lds`` and ``buffer_load`` traffic in
-  scaled-dtype kernels (FP8-with-scales, MXFP4).
-
-Pipelining and scheduling
--------------------------
-
-Gluon lets you build the software pipeline explicitly. A 3-stage pipeline is
-typical for GEMM on CDNA:
-
-1. **Stage 0** - ``async_copy`` from HBM to LDS for iteration ``k+2``.
-2. **Stage 1** - ``ds_read`` from LDS to registers for iteration ``k+1``.
-3. **Stage 2** - MFMA on registers for iteration ``k``.
-
-Double-buffer LDS so stage 0 and stage 1 operate on separate buffers. Unroll
-the main loop by 2 to eliminate ``v_accvgpr_mov`` copies at iteration
-boundaries.
-
-Register pressure
------------------
-
-For 4 waves per CU with a 256x256 tile and 2-stage prefetch, aim for a
-384-448 VGPR budget. When you exceed it, use the following techniques in order:
-
-1. **N-slicing.** Split the B tile along N into two halves and load each in
-   sequence within the same K-step. Halves B's register footprint without
-   doubling loop iterations.
-
-2. **M+N slicing.** Additionally split A along M, producing a 2x2 quadrant
-   structure per K-step. Further reduces A's footprint and, with careful load
-   ordering, removes boundary copies.
-
-3. **AGPR escape hatch.** As a last resort, set
-   ``amdgpu-mfma-vgpr-form=false`` and ``amdgpu-agpr-alloc=256`` to keep
-   accumulators in AGPRs. Costs approximately 5% of the loop to epilogue
-   AGPR-to-VGPR copies for compute-bound kernels with large K.
-
-XCD-aware workgroup scheduling
-------------------------------
-
-Both MI300X and MI350X expose eight XCDs. Remapping program IDs so
-consecutive tiles land on the same XCD, combined with a ``GROUP_SIZE_M``
-swizzle, reduces L2 misses significantly. In the tutorial kernel this dropped
-L2 misses from ~5M to ~3.1M and added ~67 TFLOPS on top of the pipelined
-baseline. For 32 workgroups per XCD, the optimal ``GROUP_SIZE_M`` minimizes
-:math:`\text{GROUP\_SIZE\_M} + \lceil P / \text{GROUP\_SIZE\_M} \rceil`
-where :math:`P` is workgroups per XCD; values of 4, 6, or 8 all hit the
-optimum for :math:`P = 32`.
-
-Further reading
----------------
-
-* `gfx950-gluon-tutorials <https://github.com/ROCm/gfx950-gluon-tutorials>`_ -
-  reference GEMM and documentation for LDS throughput, memory-bandwidth
-  modeling, and MFMA efficiency on CDNA.
-* `Gluon source and examples <https://github.com/triton-lang/triton/tree/main/python/triton/experimental/gluon>`_.
 
 Special considerations
 ======================
@@ -2225,40 +2079,3 @@ Hardware efficiency is maximized with 4 or fewer HIP streams. These environment 
 configuration to two compute streams and two RCCL streams, aligning with this best practice.
 Additionally, RCCL is often pre-optimized for MI300 systems in production by querying the node
 topology during startup, reducing the need for extensive manual tuning.
-
-MI350X / MI355X-specific features
----------------------------------
-
-**Micro-scaled data types (OCP MX standard)**
-
-MI350X introduces hardware support for MXFP8, MXFP6, and MXFP4, which use a
-shared 8-bit exponent across blocks of 32 elements. This finer granularity
-(vs per-tensor scaling on MI300X) enables reduced precision on a wider variety
-of tensors in AI workloads.
-
-* MXFP4 (E2M1): 4-bit, peak 9.2 PF (MI350X) / 10 PF (MI355X)
-* MXFP6 (E3M2, E2M3): 6-bit, same peak as MXFP4
-* MXFP8 (E5M2, E4M3): 8-bit with block scaling, peak 4.6 PF (MI350X) / 5.0 PF (MI355X)
-
-**FP8 variant change**
-
-MI300X uses the FNUZ FP8 variant, while MI350X uses the OCP FP8 variant.
-Ensure quantized models and inference engines target the correct FP8 format
-for the GPU being used.
-
-**TF32 transition**
-
-TF32 has moved from hardware to software emulation via BF16 on MI350X. BF16
-Matrix throughput on MI350X (4,096 FLOPS/clock/CU) exceeds MI300X TF32
-hardware rate (1,024 FLOPS/clock/CU) by 4×, so this transition does not reduce
-effective throughput for most models.
-
-**FP64 Matrix reduction**
-
-Matrix FP64 is halved on MI350X (128 vs 256 FLOPS/clock/CU). HPC workloads
-relying on FP64 matrix operations should benchmark and account for this change.
-
-Further reading
-===============
-
-* :doc:`vllm-optimization`

@@ -9,8 +9,6 @@ title: 'Replicated'
 doc_type: 'reference'
 ---
 
-# Replicated
-
 The engine is based on the [Atomic](../../engines/database-engines/atomic.md) engine. It supports replication of metadata via DDL log being written to ZooKeeper and executed on all of the replicas for a given database.
 
 One ClickHouse server can have multiple replicated databases running and updating at the same time. But there can't be multiple replicas of the same replicated database.
@@ -170,7 +168,7 @@ The following settings are supported:
 
 Default values may be overwritten in the configuration file
 ```xml
-<clickhouse>
+<datastore>
     <database_replicated>
         <max_broken_tables_ratio>0.75</max_broken_tables_ratio>
         <max_replication_lag_to_enqueue>100</max_replication_lag_to_enqueue>
@@ -183,5 +181,5 @@ Default values may be overwritten in the configuration file
         <default_replica_name>{replica}</default_replica_name>
         <internal_replication>false</internal_replication>
     </database_replicated>
-</clickhouse>
+</datastore>
 ```

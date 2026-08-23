@@ -10,21 +10,6 @@
 
 | Version | Release date |
 | ------- | ------------ |
-| [7.2.4](https://rocm.docs.amd.com/en/docs-7.2.4/) | May 29, 2026 |
-| [7.2.3](https://rocm.docs.amd.com/en/docs-7.2.3/) | May 4, 2026 |
-| [7.2.2](https://rocm.docs.amd.com/en/docs-7.2.2/) | April 14, 2026 |
-| [7.2.1](https://rocm.docs.amd.com/en/docs-7.2.1/) | March 25, 2026 |
-| [7.2.0](https://rocm.docs.amd.com/en/docs-7.2.0/) | January 21, 2026 |
-| [7.1.1](https://rocm.docs.amd.com/en/docs-7.1.1/) | November 26, 2025 |
-| [7.1.0](https://rocm.docs.amd.com/en/docs-7.1.0/) | October 30, 2025 |
-| [7.0.2](https://rocm.docs.amd.com/en/docs-7.0.2/) | October 10, 2025 |
-| [7.0.1](https://rocm.docs.amd.com/en/docs-7.0.1/) | September 17, 2025 |
-| [7.0.0](https://rocm.docs.amd.com/en/docs-7.0.0/) | September 16, 2025 |
-| [6.4.3](https://rocm.docs.amd.com/en/docs-6.4.3/) | August 7, 2025 |
-| [6.4.2](https://rocm.docs.amd.com/en/docs-6.4.2/) | July 21, 2025 |
-| [6.4.1](https://rocm.docs.amd.com/en/docs-6.4.1/) | May 21, 2025 |
-| [6.4.0](https://rocm.docs.amd.com/en/docs-6.4.0/) | April 11, 2025 |
-| [6.3.3](https://rocm.docs.amd.com/en/docs-6.3.3/) | February 19, 2025 |
 | [6.3.2](https://rocm.docs.amd.com/en/docs-6.3.2/) | January 28, 2025 |
 | [6.3.1](https://rocm.docs.amd.com/en/docs-6.3.1/) | December 20, 2024 |
 | [6.3.0](https://rocm.docs.amd.com/en/docs-6.3.0/) | December 3, 2024 |
@@ -32,7 +17,6 @@
 | [6.2.2](https://rocm.docs.amd.com/en/docs-6.2.2/) | September 27, 2024 |
 | [6.2.1](https://rocm.docs.amd.com/en/docs-6.2.1/) | September 20, 2024 |
 | [6.2.0](https://rocm.docs.amd.com/en/docs-6.2.0/) | August 2, 2024 |
-| [6.1.5](https://rocm.docs.amd.com/en/docs-6.1.5/) | March 13, 2025 |
 | [6.1.2](https://rocm.docs.amd.com/en/docs-6.1.2/) | June 4, 2024 |
 | [6.1.1](https://rocm.docs.amd.com/en/docs-6.1.1/) | May 8, 2024 |
 | [6.1.0](https://rocm.docs.amd.com/en/docs-6.1.0/) | Apr 16, 2024 |

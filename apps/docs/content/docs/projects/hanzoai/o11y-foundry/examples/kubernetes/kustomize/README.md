@@ -8,7 +8,7 @@
 
 ## Overview
 
-Deploys O11y on Kubernetes using Kustomize. Foundry generates per-component directories with Kubernetes manifests and a root `kustomization.yaml`.
+Deploys SigNoz on Kubernetes using Kustomize. Foundry generates per-component directories with Kubernetes manifests and a root `kustomization.yaml`.
 
 ## Prerequisites
 
@@ -20,7 +20,7 @@ Deploys O11y on Kubernetes using Kustomize. Foundry generates per-component dire
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: o11y
+  name: signoz
 spec:
   deployment:
     flavor: kustomize
@@ -58,7 +58,7 @@ kubectl apply -k pours/deployment/
 pours/deployment/
   kustomization.yaml
   namespace.yaml
-  o11y/
+  signoz/
     statefulset.yaml
     service.yaml
     serviceaccount.yaml
@@ -101,13 +101,13 @@ pours/deployment/
 
 ```bash
 # Check pod status
-kubectl get pods -n o11y
+kubectl get pods -n signoz
 
-# Port-forward the O11y UI
-kubectl port-forward svc/o11y -n o11y 8080:8080
+# Port-forward the SigNoz UI
+kubectl port-forward svc/signoz -n signoz 8080:8080
 ```
 
-Open `http://localhost:8080` to access the O11y UI.
+Open `http://localhost:8080` to access the SigNoz UI.
 
 ## Customization
 
@@ -122,7 +122,7 @@ Use a Foundry patch to inject a `patches` block into the root `kustomization.yam
 ```yaml
 apiVersion: v1alpha1
 metadata:
-  name: o11y
+  name: signoz
 spec:
   deployment:
     flavor: kustomize
@@ -135,12 +135,12 @@ spec:
           value:
             - target:
                 kind: StatefulSet
-                name: o11y-o11y
+                name: signoz-signoz
               patch: |-
                 apiVersion: apps/v1
                 kind: StatefulSet
                 metadata:
-                  name: o11y-o11y
+                  name: signoz-signoz
                 spec:
                   template:
                     spec:
@@ -170,7 +170,7 @@ patches:
 - path: increase-resources.yaml
   target:
     kind: StatefulSet
-    name: o11y-clickhouse
+    name: signoz-clickhouse
 ```
 
 ```bash

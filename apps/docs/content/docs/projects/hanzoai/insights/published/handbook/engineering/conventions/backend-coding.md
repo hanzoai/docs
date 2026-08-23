@@ -70,6 +70,10 @@ Don’t log sensitive information. Make sure you never log:
 
 ### Testing
 
+A test suite is a shared, permanent liability: every test runs on every PR forever, costs CI time, can flake and block unrelated work, and is code someone has to maintain as the system changes.
+So judge a new test on two independent axes — **value** (does it catch a realistic regression we actually make?) and **cost** (how far down the test pyramid does it sit?).
+Maximize value and minimize cost; this never means "write fewer tests", it means drop the ones that catch nothing and push the rest as far down the pyramid as they go.
+
 - All new packages and most new significant functionality should come with unit tests
 - Significant features should come with integration and/or end-to-end tests
 - Analytics-related queries should be covered by snapshot tests for ease of reviewing
@@ -79,6 +83,37 @@ Don’t log sensitive information. Make sure you never log:
 - prefer assertions like `assert ['x', 'y'] == response.json()["results"]` over `assert len(response.json()["results"]) == 2`
   - that's because you want test output to give you the information you need to fix a failure
   - and because you want your assertions to be as concrete as possible it shouldn't be possible to break the code and the test pass
+
+#### Does this test earn its place?
+
+Before writing a test, answer in one sentence: **what realistic regression does this catch that no existing test already catches?**
+Name the bug, the code path, and the input that would break — "increases coverage", "good practice", and "the function exists" are not answers.
+A good answer sounds like _"if someone makes `parse_filters` drop the `team_id` clause, this fails"_.
+
+Most low-value tests are one of these — recognize them and extend an existing test (or delete the code) instead:
+
+- **Trivial / framework behavior**: getters, setters, constants, that Django saved a row or that DRF serialized a field. You're testing someone else's code, not yours.
+- **Change-detector tests**: asserting which private methods were called, with mocks wired to match the current code. They fail on every refactor and catch no real bug. Assert observable behavior through the public interface (return value, persisted state, emitted event, HTTP response), not the choreography that produces it. See [Change-Detector Tests Considered Harmful](https://testing.googleblog.com/2015/01/testing-on-toilet-change-detector-tests.html).
+- **Redundant coverage**: a new test that's a variation of an existing one is a `@parameterized` case (Python) or a `test.each` row (Jest), not a new test function.
+- **Coverage-chasing**: an uncovered line is information, not a defect — don't add a test just to move the number.
+
+#### Weight tests down the pyramid
+
+Each rung is roughly an order of magnitude slower and flakier than the one below:
+
+```text
+pure function  →  kea logic test  →  Django TestCase  →  Datastore-backed test  →  Playwright e2e
+   cheapest                                                                          most expensive
+```
+
+Aim for a ratio, not a cap: many tests at the bottom, very few at the top — if you want more coverage, add it at the bottom.
+When logic is hard to test cheaply, that's a design signal: extract it into a pure function (or a kea logic) and test that directly rather than standing up a database, a request, and a render.
+Escalating to the next rung is the last resort, not the default.
+
+- **Use `TestCase`, not `TransactionTestCase`, unless you truly need it.** `TransactionTestCase` flushes the DB between tests instead of rolling back a transaction — dramatically slower, and a common source of cross-test interference. For `transaction.on_commit` side effects use `self.captureOnCommitCallbacks(execute=True)`; reaching Datastore is not a reason to switch (`DatastoreTestMixin` runs on a plain `TestCase`).
+- Mock only true boundaries — network, external APIs, the clock, queues. Don't mock your own internal helpers; that's how change-detector tests are born.
+- Frontend: prefer a kea logic test (`logic.actions` / `logic.values`) over a full component render whenever the behavior lives in the logic, and don't snapshot large rendered trees — assert specific fields instead.
+- Keep tests deterministic and isolated: no `time.sleep` or arbitrary waits (use `freeze_time` or wait on a real condition), no real network or live external services, and they must pass in any order. Don't leave a `@skip`/`xfail`/`.only` without a one-line reason and a linked issue.
 
 #### Fast developer ("unit") tests
 
@@ -98,27 +133,54 @@ A good test should:
 - They give greater confidence (because you avoid the mistake of just testing a mock) but they're slower
 - They are generally less brittle in response to changes because they test at a higher level than developer tests (e.g. they test a Django API not a class used inside it)
 
-### Querying ClickHouse
+### Dataclasses
 
-**Always use InsightsQL instead of raw ClickHouse queries in product code.**
+Prefer a small dataclass over a tuple when returning or passing multiple values: always when two or more elements share a type (callers can silently swap them, e.g. `(start, end)` timestamps or `(username, password)` credentials), and when there are roughly 3+ elements, where positional access hurts readability.
 
-Querying ClickHouse directly from product code is a bad idea for several reasons:
+Use the house-default decorator:
+
+```python
+from insights.dataclasses import frozen
+
+
+@frozen
+class BillingPeriod:
+    start: datetime
+    end: datetime
+```
+
+`@frozen` applies `frozen=True` (immutable, hashable), `kw_only=True` (keyword-only construction, so same-typed fields can't be transposed), and `slots=True` (less memory, typo-safe attribute access).
+Every flag is overridable per class: `@frozen(slots=False)` when a class needs `functools.cached_property`, or an explicit `@dataclass(frozen=False, ...)` for a deliberately mutable builder.
+
+Consume results with dot notation (`result.field`).
+Don't unpack them back into positional locals (`a, b = result.a, result.b`), which recreates the swap hazard the dataclass exists to prevent.
+
+Name dataclasses after the domain concept (`DatastoreCredentials`, `BillingPeriod`), never `*Info`/`*Data`/`*Tuple`; use a `*Result` suffix only when the function's outcome genuinely is the concept.
+Mark secret fields with `field(repr=False)` so they stay out of logs and tracebacks.
+
+Enforcement: a new bare `@dataclass` without an explicit `frozen=` choice fails the ratchet in `insights/test/test_dataclass_defaults.py` (existing uses are grandfathered in its baseline) and is flagged inline by the `prefer-frozen-dataclasses` semgrep rule.
+
+### Querying Datastore
+
+**Always use InsightsQL instead of raw Datastore queries in product code.**
+
+Querying Datastore directly from product code is a bad idea for several reasons:
 
 1. **Data safety**: InsightsQL automatically scopes queries to the current team, preventing accidental cross-team data access. Raw queries that fetch data for multiple teams and separate it in code are risky—even if correct now, future changes could introduce data breaches.
 
 2. **Consistency**: InsightsQL handles property access, person mapping, and other Insights-specific concerns correctly and consistently.
 
-3. **Query attribution**: If you must query ClickHouse directly for a valid reason, ensure you [tag your queries appropriately](https://hanzo.ai/handbook/engineering/clickhouse/query-attribution) with the right product tag and ClickHouse user.
+3. **Query attribution**: If you must query Datastore directly for a valid reason, ensure you [tag your queries appropriately](https://hanzo.ai/handbook/engineering/datastore/query-attribution) with the right product tag and Datastore user.
 
-The only case where raw ClickHouse queries might be justified is cross-team queries, but even then consider alternatives:
+The only case where raw Datastore queries might be justified is cross-team queries, but even then consider alternatives:
 
 - Can you detect what you need via PostgreSQL instead? (e.g., checking feature usage via team settings)
-- Can you use one simple ClickHouse query to get team IDs, then run InsightsQL queries per-team for the actual data?
+- Can you use one simple Datastore query to get team IDs, then run InsightsQL queries per-team for the actual data?
 - Can you leverage existing cross-team infrastructure like usage reports?
 
 ### To ee or not to ee?
 
-We default to open but when adding a new feature we should consider if it should be MIT licensed or Enterprise edition licensed. Everything in the `ee` folder is covered by [a different license](https://github.com/Hanzo Insights/insights/blob/main/ee/LICENSE). It's easy to move things from `ee` to open, but not the other way.
+We default to open but when adding a new feature we should consider if it should be MIT licensed or Enterprise edition licensed. Everything in the `ee` folder is covered by [a different license](https://github.com/Insights/insights/blob/master/ee/LICENSE). It's easy to move things from `ee` to open, but not the other way.
 
 All the open source code is copied to [the insights-foss repo](https://github.com/insights/insights-foss) with the `ee` code stripped out. You need to consider whether your code will work if imports to `ee` are unavailable.
 
