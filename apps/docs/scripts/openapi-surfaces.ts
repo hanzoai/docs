@@ -171,6 +171,8 @@ export function cli(op: Operation, doc: Document, table: Map<string, CliCommand>
 export interface SdkLang {
   id: string;
   label: string;
+  /** The tab strip shows this — a file extension fits a chip; the name does not. */
+  ext: string;
   /** Fence language for syntax highlighting. */
   lang: string;
   /**
@@ -211,6 +213,7 @@ export const SDKS: SdkLang[] = [
     id: 'typescript',
     method: (op) => camelId(op.id),
     label: 'TypeScript',
+    ext: '.ts',
     lang: 'ts',
     render(op, doc) {
       const cls = `${pascalTag(op.product)}Api`;
@@ -231,6 +234,7 @@ export const SDKS: SdkLang[] = [
     id: 'python',
     method: (op) => snakeId(op.id),
     label: 'Python',
+    ext: '.py',
     lang: 'python',
     render(op, doc) {
       const cls = `${pascalTag(op.product)}Api`;
@@ -253,6 +257,7 @@ export const SDKS: SdkLang[] = [
     id: 'go',
     method: (op) => pascalId(op.id),
     label: 'Go',
+    ext: '.go',
     lang: 'go',
     render(op, doc) {
       const svc = `${pascalTag(op.product)}API`;
@@ -273,6 +278,7 @@ export const SDKS: SdkLang[] = [
     id: 'rust',
     method: (op) => snakeId(op.id),
     label: 'Rust',
+    ext: '.rs',
     lang: 'rust',
     render(op, doc) {
       const mod = `${snakeId(pascalTag(op.product))}_api`;
@@ -291,6 +297,7 @@ export const SDKS: SdkLang[] = [
     id: 'java',
     method: (op) => camelId(op.id),
     label: 'Java / Kotlin',
+    ext: '.java',
     lang: 'java',
     render(op, doc) {
       const cls = `${pascalTag(op.product)}Api`;
@@ -600,9 +607,9 @@ export function surfaces(
   L.push('</Tab>');
 
   L.push('<Tab value="SDK">');
-  L.push(`<Tabs items={[${SDKS.map((s) => `'${s.label}'`).join(', ')}]}>`);
+  L.push(`<Tabs items={[${SDKS.map((s) => `'${s.ext}'`).join(', ')}]}>`);
   for (const sdk of SDKS) {
-    L.push(`<Tab value="${sdk.label}">`);
+    L.push(`<Tab value="${sdk.ext}">`);
     L.push(...fence(sdk.lang, sdk.render(op, doc)));
     L.push('</Tab>');
   }
