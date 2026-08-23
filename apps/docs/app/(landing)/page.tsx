@@ -28,6 +28,7 @@ import {
 } from '@hanzo/docs-base-ui/components/ui/card';
 import { Grid } from '@hanzo/ui/grid';
 import { AgentActions } from '@/components/agent-actions';
+import { Tabs, Tab } from '@hanzo/docs-base-ui/components/tabs';
 import { HeroField } from '@/components/hero-field';
 import { CodeBlock } from '@/components/code-block';
 
@@ -291,39 +292,62 @@ export default function Page() {
           <p className="text-neutral-300 text-sm mb-8">
             Install the CLI, log in, and reach every capability from your terminal.
           </p>
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <CodeBlock
-              code={`# Install the Hanzo CLI
-curl -fsSL hanzo.sh | sh
+          {/* Install, then use — the same two steps /docs/quickstart shows, and
+              the same order of tabs, so the front page and the quickstart do not
+              teach different install lines. npm is first because it is the one
+              most readers already have. */}
+          <Tabs items={['npm', 'Script', 'Homebrew', 'pip']}>
+            <Tab value="npm">
+              <CodeBlock code={`npm i -g hanzo`} lang="bash" />
+            </Tab>
+            <Tab value="Script">
+              <CodeBlock code={`curl -fsSL hanzo.sh | sh`} lang="bash" />
+            </Tab>
+            <Tab value="Homebrew">
+              <CodeBlock code={`brew install hanzoai/tap/hanzo`} lang="bash" />
+            </Tab>
+            <Tab value="pip">
+              <CodeBlock code={`pip install hanzo`} lang="bash" />
+            </Tab>
+          </Tabs>
 
-# Sign in (opens a browser)
-hanzo auth login
+          <p className="text-neutral-300 text-sm mt-6 mb-3">
+            Sign in once, then reach every capability from the terminal — or from
+            your own code.
+          </p>
 
-# You're ready — try some things:
-hanzo "explain quantum computing"
-hanzo models list
-hanzo projects list
-hanzo projects deploy my-app`}
-              lang="bash"
-              wrapper={{ title: 'Terminal' }}
-            />
-            <CodeBlock
-              code={`# Or use the Python SDK directly
-pip install hanzoai
-
-# Use with any OpenAI-compatible code
-from hanzoai import Hanzo
-
-client = Hanzo()  # reads HANZO_API_KEY
-response = client.chat.completions.create(
-    model="zen4",
-    messages=[{"role": "user", "content": "Hello!"}]
-)
-print(response.choices[0].message.content)`}
-              lang="python"
-              wrapper={{ title: 'Python SDK' }}
-            />
-          </div>
+          <Tabs items={['CLI', 'TypeScript', 'Python', 'Go', 'HTTP']}>
+            <Tab value="CLI">
+              <CodeBlock
+                code={`hanzo auth login\n\nhanzo "explain quantum computing"\nhanzo models list\nhanzo projects deploy my-app`}
+                lang="bash"
+              />
+            </Tab>
+            <Tab value="TypeScript">
+              <CodeBlock
+                code={`import Hanzo from '@hanzo/ai'\n\nconst hanzo = new Hanzo() // reads HANZO_API_KEY\n\nconst r = await hanzo.chat.completions.create({\n  model: 'zen4',\n  messages: [{ role: 'user', content: 'Hello!' }],\n})\nconsole.log(r.choices[0].message.content)`}
+                lang="typescript"
+              />
+            </Tab>
+            <Tab value="Python">
+              <CodeBlock
+                code={`from hanzoai import Hanzo\n\nclient = Hanzo()  # reads HANZO_API_KEY\n\nr = client.chat.completions.create(\n    model="zen4",\n    messages=[{"role": "user", "content": "Hello!"}],\n)\nprint(r.choices[0].message.content)`}
+                lang="python"
+              />
+            </Tab>
+            <Tab value="Go">
+              <CodeBlock
+                code={`import "github.com/hanzoai/go-sdk"\n\nclient := hanzo.NewClient() // reads HANZO_API_KEY`}
+                lang="go"
+              />
+            </Tab>
+            <Tab value="HTTP">
+              <CodeBlock
+                code={`curl https://api.hanzo.ai/v1/chat/completions \\\n  -H "Authorization: Bearer $HANZO_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"model":"zen4","messages":[{"role":"user","content":"Hello!"}]}'`}
+                lang="bash"
+              />
+            </Tab>
+          </Tabs>
         </section>
 
         {/* -- Nine domains -- category-first ------------------------------- */}
