@@ -347,7 +347,7 @@ export default function Page() {
             your own code.
           </p>
 
-          <Tabs items={['CLI', 'TypeScript', 'Python', 'Go', 'HTTP']}>
+          <Tabs items={['CLI', 'TypeScript', 'Python', 'Go', 'Rust', 'HTTP']}>
             <Tab value="CLI">
               <CodeBlock
                 code={`hanzo auth login\n\nhanzo "explain quantum computing"\nhanzo models list\nhanzo projects deploy my-app`}
@@ -356,20 +356,26 @@ export default function Page() {
             </Tab>
             <Tab value="TypeScript">
               <CodeBlock
-                code={`import Hanzo from '@hanzo/ai'\n\nconst hanzo = new Hanzo() // reads HANZO_API_KEY\n\nconst r = await hanzo.chat.completions.create({\n  model: 'zen4',\n  messages: [{ role: 'user', content: 'Hello!' }],\n})\nconsole.log(r.choices[0].message.content)`}
+                code={`// npm i @hanzo/ai\nimport Hanzo from '@hanzo/ai'\n\nconst hanzo = new Hanzo() // reads HANZO_API_KEY\n\nconst r = await hanzo.chat.completions.create({\n  model: 'zen4',\n  messages: [{ role: 'user', content: 'Hello!' }],\n})\nconsole.log(r.choices[0].message.content)`}
                 lang="typescript"
               />
             </Tab>
             <Tab value="Python">
               <CodeBlock
-                code={`from hanzoai import Hanzo\n\nclient = Hanzo()  # reads HANZO_API_KEY\n\nr = client.chat.completions.create(\n    model="zen4",\n    messages=[{"role": "user", "content": "Hello!"}],\n)\nprint(r.choices[0].message.content)`}
+                code={`# pip install hanzoai\nfrom hanzoai import Hanzo\n\nclient = Hanzo()  # reads HANZO_API_KEY\n\nr = client.chat.completions.create(\n    model="zen4",\n    messages=[{"role": "user", "content": "Hello!"}],\n)\nprint(r.choices[0].message.content)`}
                 lang="python"
               />
             </Tab>
             <Tab value="Go">
               <CodeBlock
-                code={`import "github.com/hanzoai/go-sdk"\n\nclient := hanzo.NewClient() // reads HANZO_API_KEY`}
+                code={`// go get github.com/hanzoai/go-sdk\nimport "github.com/hanzoai/go-sdk"\n\nclient := hanzo.NewClient() // reads HANZO_API_KEY`}
                 lang="go"
+              />
+            </Tab>
+            <Tab value="Rust">
+              <CodeBlock
+                code={`// cargo add hanzo\nuse hanzo::Client;\n\nlet hanzo = Client::from_env()?; // reads HANZO_API_KEY`}
+                lang="rust"
               />
             </Tab>
             <Tab value="HTTP">

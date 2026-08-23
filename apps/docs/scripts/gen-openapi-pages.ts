@@ -482,7 +482,7 @@ function renderOperation(
     L.push('**Deprecated.** It still answers; a caller writing new code should not reach for it.');
     L.push('');
   }
-  L.push(`> [${text(p.title)} →](/docs/openapi/${p.name}) · [All API references →](/docs/openapi) · [Get started →](/docs/start)`);
+  L.push(`> [${text(p.title)} →](/docs/openapi/${p.name}) · [All API references →](/docs/openapi) · [Get started →](/docs/guides)`);
   L.push('');
   L.push('| | |');
   L.push('|---|---|');
@@ -616,7 +616,7 @@ function renderReached(name: string, door: string, hips: Corpus): string {
       'document, so it has no generated REST reference — it is reached another way.',
   );
   L.push('');
-  L.push(`> [All capabilities →](/docs/openapi) · [How the four surfaces line up →](/docs/start)`);
+  L.push(`> [All capabilities →](/docs/openapi) · [How the four surfaces line up →](/docs/guides)`);
   L.push('');
   L.push('| | |');
   L.push('|---|---|');
@@ -674,7 +674,7 @@ function renderProduct(
 
   const nav = [
     '[All API references →](/docs/openapi)',
-    '[Get started →](/docs/start)',
+    '[Get started →](/docs/guides)',
   ];
   L.push(`> ${nav.join(' · ')}`);
   L.push('');
@@ -797,7 +797,7 @@ function renderIndex(
   L.push('```');
   L.push('');
   L.push(
-    'Get a key at [console.hanzo.ai](https://console.hanzo.ai). New here? [Get started](/docs/start) walks the same journeys as CLI, SDK, HTTP and MCP.',
+    'Get a key at [console.hanzo.ai](https://console.hanzo.ai). New here? [Get started](/docs/guides) walks the same journeys as CLI, SDK, HTTP and MCP.',
   );
   L.push('');
   L.push('## Start anywhere');
