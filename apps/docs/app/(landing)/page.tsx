@@ -26,7 +26,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@hanzo/docs-base-ui/components/ui/card';
-import { Grid } from '@hanzo/ui/primitives/Grid';
+import { Grid } from '@hanzo/ui/grid';
 import { HeroField } from '@/components/hero-field';
 import { CodeBlock } from '@/components/code-block';
 
@@ -207,8 +207,7 @@ export default function Page() {
             measures the COLUMN, so the sidebar is simply part of the arithmetic
             and the row is right at every width without being told about any. */}
         <Grid
-          min={260}
-          max={3}
+          columns={{ min: 260, max: 3 }}
           gap={16}
           style={{ position: 'relative', marginTop: 48, width: '100%', maxWidth: 896 }}
         >
@@ -310,7 +309,7 @@ print(response.choices[0].message.content)`}
               second track, so a 40px difference in one number is the whole gap
               between 2-up and 1-up there. Measured at the three real container
               widths — 342 / 457 / 960 — this gives 1 / 2 / 3. */}
-          <Grid min={220} max={3} gap={12}>
+          <Grid columns={{ min: 220, max: 3 }} gap={12}>
             {domains.map((item) => {
               const isExternal = !!(item as { external?: boolean }).external;
               const linkProps = isExternal
