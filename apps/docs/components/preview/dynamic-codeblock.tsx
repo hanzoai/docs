@@ -1,5 +1,6 @@
 'use client';
 import { DynamicCodeBlock } from '@hanzo/docs-base-ui/components/dynamic-codeblock';
+import { shikiConfig } from '@/lib/shiki';
 import { useState } from 'react';
 import { bundledLanguages } from 'shiki';
 import {
@@ -43,12 +44,7 @@ export default function Example() {
       <DynamicCodeBlock
         lang={lang}
         code={code}
-        options={{
-          themes: {
-            light: 'catppuccin-latte',
-            dark: 'catppuccin-mocha',
-          },
-        }}
+        options={shikiConfig}
       />
     </div>
   );
