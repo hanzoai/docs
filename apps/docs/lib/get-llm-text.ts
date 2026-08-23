@@ -1,5 +1,4 @@
 import { type Page } from '@/lib/source';
-import { getSection } from './source/navigation';
 
 /**
  * Sections whose pages are GENERATED, so they have no file in git.
@@ -12,15 +11,11 @@ import { getSection } from './source/navigation';
 const GENERATED = new Set(['openapi', 'cli', 'start', 'mcp-tools', 'projects', 'pricing']);
 
 export async function getLLMText(page: Page) {
-  const section = getSection(page.slugs[0]);
-  const category =
-    {
-      framework: 'Hanzo Docs (Framework Mode)',
-      ui: 'Hanzo Docs UI (the default theme of Hanzo Docs)',
-      headless: 'Hanzo Docs Core (the core library of Hanzo Docs)',
-      mdx: 'Hanzo Docs MDX (the built-in content source)',
-      cli: 'Hanzo Docs CLI (the CLI tool for automating Hanzo Docs apps)',
-    }[section] ?? section;
+  // No category prefix. It was a lookup inherited from the docs framework's own
+  // manual — framework / ui / headless / mdx / cli — over a section name that
+  // resolved to "services" for most of this site, so every markdown twin an
+  // agent reads opened "# services: Quickstart". A heading that names the page
+  // is true; one that names a section we do not have is worse than none.
 
   // `getText('processed')` is the compiled markdown, and a page that FAILED to
   // compile has none — it throws rather than returning empty. Ported upstream
@@ -43,7 +38,7 @@ export async function getLLMText(page: Page) {
     ? ''
     : `Source: https://raw.githubusercontent.com/hanzoai/docs/refs/heads/main/apps/docs/content/docs/${page.path}\n`;
 
-  return `# ${category}: ${page.data.title}
+  return `# ${page.data.title}
 URL: ${page.url}
 ${source}
 ${page.data.description ?? ''}
