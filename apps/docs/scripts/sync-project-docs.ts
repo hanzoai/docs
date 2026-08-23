@@ -678,10 +678,31 @@ function applyPageRenames(
 
 function writeProjectIndexFiles(outputDir: string, orgs: string[], projects: RepoRecord[], dryRun: boolean) {
   const projectsRoot = outputDir;
+  // ONE org means the org folder can only ever have one value, and a rail level
+  // with one child says nothing — it read "Projects › hanzoai › arc", three
+  // clicks deep to reach a project whose org was never in question.
+  //
+  // The level is collapsed in the SIDEBAR and nowhere else: the files stay at
+  // projects/<org>/<slug>, so every /docs/projects/hanzoai/... URL that has ever
+  // been linked still resolves. Fumadocs takes a nested path in `pages`, so the
+  // root names each project directly and the org folder is simply not listed.
+  //
+  // It comes back on its own the day a second org is configured, because then
+  // the level distinguishes something. That is why this branches on the count
+  // rather than deleting the dimension.
+  const flat = orgs.length === 1;
   const rootMeta = {
     title: 'Projects',
     description: 'Documentation for all Hanzo projects.',
-    pages: ['index', ...orgs],
+    pages: flat
+      ? [
+          'index',
+          ...projects
+            .filter((project) => project.org === orgs[0])
+            .sort((a, b) => a.slug.localeCompare(b.slug))
+            .map((project) => `${orgs[0]}/${project.slug}`),
+        ]
+      : ['index', ...orgs],
   };
 
   if (!dryRun) {

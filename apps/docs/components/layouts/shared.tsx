@@ -64,7 +64,7 @@ export function baseOptions(): BaseLayoutProps {
       title: (
         <>
           {logo}
-          <span className="font-medium max-md:hidden">Hanzo</span>
+          <span className="font-medium max-md:hidden">Hanzo AI</span>
           {/* Says WHICH surface you are on. hanzo.ai, hanzo.app and this site share
               the wordmark, so without it the header is ambiguous the moment a reader
               arrives from search. It sits at the wordmark and not in the nav row
