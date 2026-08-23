@@ -15,6 +15,7 @@ import { findSiblings } from '@hanzo/docs-core/page-tree';
 import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
 import { getMDXComponents } from '@/components/mdx';
 import { Banner } from '@hanzo/docs-base-ui/components/banner';
+import { AgentActions } from '@/components/agent-actions';
 import { Installation } from '@/components/preview/installation';
 import { Customization } from '@/components/preview/customization';
 import {
@@ -56,13 +57,24 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
       toc={toc}
       tableOfContent={{
         style: 'clerk',
+        // At the HEAD of the right rail, not floating in the bar above the
+        // article. The header is its own grid area — "sidebar header toc" — so
+        // it stops exactly where the TOC column starts, and a control rendered
+        // there can never line up with the column beside it however it is
+        // padded. Put in the TOC's own header slot it shares that column: its
+        // left edge is "On this page"'s left edge, and the two read as one rail.
+        //
+        // It also follows the rail rather than the bar: below xl the TOC folds
+        // into a popover and this goes with it, which is where a reader on a
+        // narrow window looks for what acts on the page.
+        header: <AgentActions />,
       }}
     >
       <h1 className="text-[1.75em] font-semibold">{page.data.title}</h1>
       <p className="text-lg text-fd-muted-foreground mb-2">{page.data.description}</p>
-      {/* The page actions moved to the top bar as one control (AgentActions):
-          same three things, reachable from every page rather than only from
-          under a title, and one row of chrome instead of two. */}
+      {/* No page actions under the title: AgentActions is one control at the
+          head of the right rail, reachable from every page rather than only
+          from under a heading, and one row of chrome instead of two. */}
       <div className="border-b pb-6" />
       <div className="prose flex-1 text-fd-foreground/90">
         {page.data.preview && <PreviewRenderer preview={page.data.preview} />}
