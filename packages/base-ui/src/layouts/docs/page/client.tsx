@@ -197,7 +197,13 @@ export function PageTOCPopoverContent(props: ComponentProps<'div'>) {
     <CollapsibleContent
       data-toc-popover-content=""
       {...props}
-      className={cn('flex flex-col px-4 max-h-[50vh] md:px-6', props.className)}
+      className={cn(
+        // Rows may shrink below their content so the scroller inside takes the
+        // overflow; the max-h is what makes that reachable. Mirrors
+        // layouts/docs/page/slots/toc.tsx.
+        'grid grid-cols-[minmax(0,1fr)] auto-rows-[minmax(0,auto)] px-4 max-h-[50vh] md:px-6',
+        props.className,
+      )}
     >
       <div>{props.children}</div>
     </CollapsibleContent>
@@ -254,8 +260,10 @@ export function PageFooter({ items, children, className, ...props }: FooterProps
     <>
       <div
         className={cn(
-          '@container grid gap-4',
-          previous && next ? 'grid-cols-2' : 'grid-cols-1',
+          // See layouts/docs/page/slots/footer.tsx: auto-fit measures the
+          // column, so the container query, the JS column count and the
+          // card's col-span override all collapse into this one track.
+          'grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))]',
           className,
         )}
         {...props}
@@ -276,7 +284,9 @@ function FooterItem({ item, index }: { item: Item; index: 0 | 1 }) {
     <Link
       href={item.url}
       className={cn(
-        'flex flex-col gap-2 rounded-lg border p-4 text-sm transition-colors hover:bg-fd-accent/80 hover:text-fd-accent-foreground @max-lg:col-span-full',
+        // The column is stated so the track cannot be floored at its content's
+        // min-content width. See layouts/docs/page/slots/footer.tsx.
+        'grid grid-cols-[minmax(0,1fr)] gap-2 rounded-lg border p-4 text-sm transition-colors hover:bg-fd-accent/80 hover:text-fd-accent-foreground',
         index === 1 && 'text-end',
       )}
     >
