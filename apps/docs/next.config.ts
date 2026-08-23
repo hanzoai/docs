@@ -79,6 +79,21 @@ const config: NextConfig = {
   // HTTP redirects live in public/_redirects (Cloudflare Pages). This site
   // deploys as a static export (`out/`), which ignores next.config redirects(),
   // so declaring them here would be dead config.
+  // A page gets three minutes, not the default one.
+  //
+  // The deploy workflow builds PER SHA and never cancels — deliberately, because
+  // sharing a group meant every run sat in `waiting` until the next push swept
+  // it and no image was ever pushed. The cost of that correctness is that a
+  // burst of pushes runs several full 6,099-page builds at once on one box, and
+  // under that contention pages cross 60s and are RETRIED: measured on a
+  // five-build burst, /docs/console, /docs/credits and /docs/enso each failed
+  // "attempt 1 of 3" while the run was only two-thirds through its pages.
+  //
+  // A retry does not make a contended page faster; it makes the same page cost
+  // three times. Three minutes is above what any page here takes when a build
+  // has the box to itself, so on the normal path this changes nothing at all —
+  // it only stops a slow page being rebuilt twice more for being slow.
+  staticPageGenerationTimeout: 180,
   experimental: {
     // Reduce peak memory during webpack compilation for large builds.
     webpackMemoryOptimizations: true,
