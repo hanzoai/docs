@@ -23,7 +23,7 @@ import { prose, text } from './mdx';
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
 const FLOWS = path.join(APP_ROOT, 'openapi-specs/flows.yaml');
-const OUT_DIR = path.join(APP_ROOT, 'content/docs/start');
+const OUT_DIR = path.join(APP_ROOT, 'content/docs/guides');
 
 /**
  * flows.yaml's shape: a map of flow id to a summary, the operationIds in CALL
@@ -173,7 +173,7 @@ function renderFlow(
 function renderIndex(flows: Flow[], doc: Document): string {
   const L: string[] = [];
   L.push('---');
-  L.push('title: Start');
+  L.push('title: Guides');
   L.push(
     `description: ${JSON.stringify(
       `One task per page, each written four ways: a CLI command, an SDK call, an HTTP request and an MCP tool.`,
@@ -184,7 +184,7 @@ function renderIndex(flows: Flow[], doc: Document): string {
   L.push('');
   L.push("import { Cards, Card } from '@hanzo/docs-base-ui/components/card'");
   L.push('');
-  L.push('# Start');
+  L.push('# Guides');
   L.push('');
   // No counts in the prose. A number here is a fact about today's document that
   // reads as a claim about the product, and it is wrong the next time the
@@ -223,7 +223,7 @@ function renderIndex(flows: Flow[], doc: Document): string {
   L.push('');
   L.push('<Cards>');
   for (const f of flows) {
-    L.push(`  <Card title=${JSON.stringify(f.title)} href="/docs/start/${f.id}">`);
+    L.push(`  <Card title=${JSON.stringify(f.title)} href="/docs/guides/${f.id}">`);
     L.push(`    ${text(f.summary)}`);
     L.push('  </Card>');
   }
@@ -247,8 +247,13 @@ export async function genFlowPages(): Promise<void> {
   const d = door(cat.tools);
   const table = loadCliTable();
 
-  fs.rmSync(OUT_DIR, { recursive: true, force: true });
+  // Remove only what this generator writes. The authored guide folders
+  // (migrate, integrations) are siblings of these files, so a recursive wipe
+  // would delete them on every build.
   fs.mkdirSync(OUT_DIR, { recursive: true });
+  for (const f of fs.readdirSync(OUT_DIR)) {
+    if (f.endsWith('.mdx') || f === 'meta.json') fs.rmSync(path.join(OUT_DIR, f));
+  }
 
   let withCli = 0;
   let withMcp = 0;
@@ -273,11 +278,21 @@ export async function genFlowPages(): Promise<void> {
     path.join(OUT_DIR, 'meta.json'),
     JSON.stringify(
       {
-        title: 'Start',
+        title: 'Guides',
         description: 'One task per page, each written as CLI, SDK, HTTP and MCP.',
         // Not led by `index` — this folder's own `index.mdx` is its landing
         // page already, and naming it publishes `Start > Start`.
-        pages: flows.map((f) => f.id),
+        // The flows, then the authored guide folders that live beside them.
+        // Read from disk rather than listed here, so adding one is a directory
+        // and not an edit to this generator.
+        pages: [
+          ...flows.map((f) => f.id),
+          ...fs
+            .readdirSync(OUT_DIR, { withFileTypes: true })
+            .filter((e) => e.isDirectory())
+            .map((e) => e.name)
+            .sort(),
+        ],
       },
       null,
       2,

@@ -199,7 +199,7 @@ export interface FeedbackTextProps {
 /**
  * A feedback component for each content block in page, should be used with `remark-feedback-block`.
  *
- * See https://hanzoai.github.io/docs/docs/integrations/feedback.
+ * See https://hanzoai.github.io/docs/docs/guides/integrations/feedback.
  */
 export function FeedbackText({ onSendAction, children }: FeedbackTextProps) {
   const [popup, _setPopup] = useState<{

@@ -903,7 +903,7 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
     `**\`POST ${code(cat.door)}\`** is the agent-facing surface of the Hanzo cloud: one JSON-RPC 2.0 endpoint that answers \`tools/list\` with **${cat.meta.count} tools** and \`tools/call\` to run them. It is the same cloud the REST API serves — a tool here is an operation there, so an agent and a program reach identical behaviour.`,
   );
   L.push('');
-  L.push(`> [Browse the tool catalogue →](/docs/mcp-tools/all-tools) · [REST reference →](/docs/openapi) · [Get started →](/docs/start)`);
+  L.push(`> [Browse the tool catalogue →](/docs/mcp-tools/all-tools) · [REST reference →](/docs/openapi) · [Get started →](/docs/guides)`);
   L.push('');
 
   L.push('## Point a client at it');

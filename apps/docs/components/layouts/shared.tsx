@@ -16,9 +16,10 @@ import { HanzoDocsIcon } from '@/app/layout.client';
 // Ordered the way a reader arrives: the whole thing, then the guided path
 // through it, then the four surfaces they will write against.
 //
-// Guides points at /docs/start — six journeys, each shown as CLI, SDK, HTTP and
-// MCP. "Start" is what the section is called on disk and not what anyone looks
-// for in a nav bar; the page is unchanged and the word is the one people use.
+// Guides points at /docs/guides: six task journeys, each written as CLI, SDK,
+// HTTP and MCP, with the migration and integration guides nested beside them.
+// The nav item, the URL, the page title and the sidebar heading are one word,
+// which they were not — the nav said Guides and every other surface said Start.
 export const linkItems: LinkItemType[] = [
   {
     // Exact, not nested: /docs is a prefix of every page here, so nesting would
@@ -29,7 +30,7 @@ export const linkItems: LinkItemType[] = [
   },
   {
     text: 'Guides',
-    url: '/docs/start',
+    url: '/docs/guides',
     active: 'nested-url',
   },
   {

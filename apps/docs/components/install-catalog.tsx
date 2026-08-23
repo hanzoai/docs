@@ -51,7 +51,7 @@ const TARGETS: Target[] = [
   // Server
   { id: 'node', label: 'Node.js', kind: 'server', install: 'npm i @hanzo/event', docs: '/docs/sdks/typescript' },
   { id: 'python', label: 'Python', kind: 'server', install: 'pip install hanzoai', docs: '/docs/sdks/python' },
-  { id: 'go', label: 'Go', kind: 'server', install: 'go get github.com/hanzoai/go', docs: '/docs/sdks/go' },
+  { id: 'go', label: 'Go', kind: 'server', install: 'go get github.com/hanzoai/go-sdk', docs: '/docs/sdks/go' },
   { id: 'rust', label: 'Rust', kind: 'server', install: 'cargo add hanzo', docs: '/docs/sdks/rust' },
   { id: 'cpp', label: 'C++', kind: 'server', install: 'find_package(hanzo)', docs: '/docs/sdks/cpp' },
   { id: 'ruby', label: 'Ruby', kind: 'server', install: 'gem install hanzo' },
