@@ -176,12 +176,28 @@ export function NavAccount() {
       </a>
     )
 
+  // BOTH, and sign in first — the same order the column at the foot of the rail
+  // uses. Carrying only the key made this the one place the two controls
+  // disagreed: on the front page and on every phone, "API key" stood alone with
+  // no way to sign in beside it, so the commitment was the only thing offered.
+  //
+  // Short labels, because the bar is a fixed 56px row: the full phrase is what
+  // reflowed to three lines and spilled between 768 and 805px, which is why the
+  // long form lives in the column and this one does not.
   return (
-    <a
-      href="https://console.hanzo.ai"
-      className="rounded-lg bg-fd-primary px-2.5 py-1.5 text-sm font-medium text-fd-primary-foreground whitespace-nowrap transition-colors hover:opacity-90"
-    >
-      API key
-    </a>
+    <div className="flex items-center gap-2">
+      <Link
+        href="/login"
+        className="rounded-lg px-2 py-1.5 text-sm text-fd-muted-foreground whitespace-nowrap transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground max-sm:hidden"
+      >
+        Sign in
+      </Link>
+      <a
+        href="https://console.hanzo.ai"
+        className="rounded-lg bg-fd-primary px-2.5 py-1.5 text-sm font-medium text-fd-primary-foreground whitespace-nowrap transition-colors hover:opacity-90"
+      >
+        API key
+      </a>
+    </div>
   )
 }
