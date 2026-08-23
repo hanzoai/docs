@@ -3,6 +3,7 @@ import { genOpenapiPages } from './gen-openapi-pages';
 import { genFlowPages } from './gen-flow-pages';
 import { genMcpPages } from './gen-mcp-pages';
 import { genCliPages } from './gen-cli-pages';
+import { crossLink } from './cross-link';
 import { genPricingPage } from './gen-pricing-page';
 import { genKeyTypes } from './gen-key-types';
 import { syncCliCommands } from './sync-cli-commands';
@@ -45,6 +46,12 @@ async function main() {
   // The CLI's own command table, which has been synced on every build since it
   // was added and rendered on no page.
   await genCliPages();
+
+  // Cross-link the four surfaces, AFTER every generator: each names its pages
+  // with its own spelling of the capability and the spellings differ in both
+  // directions, so no generator can be handed its peers' sets. See
+  // scripts/cross-link.ts, which reads the finished directories instead.
+  crossLink();
   // The key types the authentication page teaches. Also from the document, and
   // BEFORE the checks below, because the check reads what it writes.
   genKeyTypes();
