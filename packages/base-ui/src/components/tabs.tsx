@@ -53,12 +53,17 @@ export function TabsList({
   className,
   ...props
 }: React.ComponentPropsWithRef<typeof Unstyled.TabsList>) {
+  const nested = useContext(TabsContext) !== null;
   return (
     <Unstyled.TabsList
       {...props}
       className={(s) =>
         cn(
           'flex gap-3.5 text-fd-secondary-foreground overflow-x-auto px-4 not-prose',
+          // One level down the row is a REFINEMENT of the choice above it — which
+          // language, having picked the SDK — so it reads to the right of the same
+          // header rather than opening a second box.
+          nested && 'justify-end gap-3 text-xs',
           typeof className === 'function' ? className(s) : className,
         )
       }
@@ -94,13 +99,20 @@ export function Tabs({
 }: TabsProps) {
   const [value, setValue] = useState(defaultValue);
   const collection = useMemo<CollectionKey[]>(() => [], []);
+  // Nested inside another Tabs: no border, no fill, no vertical margin — the
+  // parent already draws the frame, and drawing a second one is what made the
+  // SDK languages look like a separate widget bolted under the surface row. No
+  // negative offset to tuck it into the header: that would assume a header
+  // height, and the header grows whenever a label wraps.
+  const nested = useContext(TabsContext) !== null;
 
   return (
     <Unstyled.Tabs
       ref={ref}
       className={(s) =>
         cn(
-          'flex flex-col overflow-hidden rounded-xl border bg-fd-secondary my-4',
+          'flex flex-col overflow-hidden',
+          nested ? 'rounded-none border-0 bg-transparent my-0' : 'rounded-xl border bg-fd-secondary my-4',
           typeof className === 'function' ? className(s) : className,
         )
       }
