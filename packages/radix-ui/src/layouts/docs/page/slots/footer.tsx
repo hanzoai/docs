@@ -41,8 +41,18 @@ export function Footer({ items, children, className, ...props }: FooterProps) {
     <>
       <div
         className={cn(
-          '@container grid gap-4',
-          previous && next ? 'grid-cols-2' : 'grid-cols-1',
+          // One track statement replaces three rules that all said the same
+          // thing in different places: a container query on this element, a
+          // column count picked in JS from how many links exist, and a
+          // `@max-lg:col-span-full` on the card to undo the count again when
+          // the container got narrow.
+          //
+          // auto-fit measures the COLUMN, so it needs none of them. Two links
+          // sit side by side wherever two 16rem columns fit and stack where
+          // they do not; one link collapses the empty track and takes the full
+          // width on its own. `min(100%,16rem)` keeps the floor from
+          // overflowing a container narrower than the floor itself.
+          'grid gap-4 grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))]',
           className,
         )}
         {...props}
@@ -63,7 +73,15 @@ function FooterItem({ item, index }: { item: Item; index: 0 | 1 }) {
     <Link
       href={item.url}
       className={cn(
-        'flex flex-col gap-2 rounded-lg border p-4 text-sm transition-colors hover:bg-fd-accent/80 hover:text-fd-accent-foreground @max-lg:col-span-full',
+        // The column is stated rather than left implicit, so the track cannot be
+        // floored at the min-content width of whatever a caller puts in here.
+        //
+        // It is NOT what saves the truncating description below — measured, a
+        // bare `grid` ellipsises that line just as well, because `truncate`
+        // carries `overflow: hidden` and a scroll container contributes zero
+        // min-content width. The guard is for the siblings that have no
+        // overflow of their own.
+        'grid grid-cols-[minmax(0,1fr)] gap-2 rounded-lg border p-4 text-sm transition-colors hover:bg-fd-accent/80 hover:text-fd-accent-foreground',
         index === 1 && 'text-end',
       )}
     >

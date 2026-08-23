@@ -66,7 +66,7 @@ export function Sidebar({ footer, banner, collapsible = true, components, ...res
     <Base.SidebarViewport>
       {/* Marked so a sidebar filter can stand in for the tree while typing,
           instead of appearing above it and pushing it off screen. */}
-      <div className="flex flex-col gap-0.5" data-sidebar-tree>
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-0.5" data-sidebar-tree>
         {menuItems
           .filter((v) => v.type !== 'icon')
           .map((item, i, list) => (
@@ -83,7 +83,7 @@ export function Sidebar({ footer, banner, collapsible = true, components, ...res
         {/* gap-2, not the drawer's gap-3: this rail has a fixed height budget
             and the drawer does not, so a point spent here is a point the tree
             below never gets. */}
-        <div className="flex flex-col gap-2 p-4 pb-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-2 p-4 pb-2">
           <div className="flex">
             {slots.navTitle && (
               <slots.navTitle className="inline-flex text-[0.9375rem] items-center gap-2.5 font-medium me-auto" />
@@ -114,7 +114,7 @@ export function Sidebar({ footer, banner, collapsible = true, components, ...res
         </div>
         {viewport}
         {(slots.languageSelect || iconLinks.length > 0 || slots.themeSwitch || footer) && (
-          <div className="flex flex-col p-4 pt-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] p-4 pt-2">
             {slots.languageSelect && (
               <slots.languageSelect.root
                 variant="secondary"
@@ -156,7 +156,7 @@ export function Sidebar({ footer, banner, collapsible = true, components, ...res
         )}
       </SidebarContent>
       <SidebarDrawer>
-        <div className="flex flex-col gap-3 p-4 pb-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-3 p-4 pb-2">
           <div className="flex text-fd-muted-foreground items-center gap-1.5">
             <div className="flex flex-1">
               {iconLinks.map((item, i) => (
@@ -199,7 +199,9 @@ export function Sidebar({ footer, banner, collapsible = true, components, ...res
           {banner}
         </div>
         {viewport}
-        <div className="flex flex-col border-t p-4 pt-2 empty:hidden">{footer}</div>
+        <div className="grid grid-cols-[minmax(0,1fr)] border-t p-4 pt-2 empty:hidden">
+          {footer}
+        </div>
       </SidebarDrawer>
     </>
   );
@@ -239,7 +241,36 @@ function SidebarContent({ ref: refProp, className, children, ...props }: Compone
                 // so the nav fills it. `items-end` used to push the nav to the
                 // inner edge of a column that grew with the viewport, which is
                 // what left a widening empty strip inside the rail's own card.
-                'absolute flex flex-col w-full inset-s-0 inset-y-0 bg-fd-card text-sm border-e duration-250 *:w-(--fd-sidebar-width)',
+                //
+                // THREE rows: the banner, the tree, the footer. The rail has a
+                // definite height (inset-y-0), and the tree is the one region
+                // that absorbs whatever the other two leave — so it is the only
+                // row that is 1fr, and minmax(0,…) lets it be shorter than its
+                // own content, which is what makes its scroller scroll.
+                //
+                // As a flex column this was stated on the CHILD instead:
+                // SidebarViewport carries `min-h-0 flex-1`. That reads as a
+                // property of the viewport when it is really a fact about this
+                // rail, and it is invisible from here — the row model says it
+                // where the rows are. The `flex-1` is inert under grid and stays
+                // only because SidebarViewport is shared with the notebook and
+                // flux layouts, which are still flex columns; `min-h-0` is still
+                // load-bearing there and harmless here.
+                //
+                // The footer row is conditional (it renders only when there is a
+                // language select, icon links, a theme switch or a footer). An
+                // absent third child leaves row 3 at `auto`, which is zero — the
+                // first two rows are unaffected either way.
+                //
+                // The rows have to be NAMED. Left implicit, all three are `auto`
+                // and grid's default `align-content: stretch` splits the rail's
+                // leftover height equally between them — measured at 600px with
+                // a three-item tree, 193/213/193 instead of 44/512/44, so the
+                // banner and the footer each stand four times their own content.
+                // It only misbehaves when the tree is SHORT: at 40 items the two
+                // spellings are identical, which is how it would have passed a
+                // casual look and shipped.
+                'absolute grid grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] w-full inset-s-0 inset-y-0 bg-fd-card text-sm border-e duration-250 *:w-(--fd-sidebar-width)',
                 collapsed && [
                   'inset-y-2 rounded-xl transition-transform border w-(--fd-sidebar-width)',
                   hovered
@@ -297,7 +328,11 @@ function SidebarDrawer({
       <Base.SidebarDrawerOverlay className="fixed z-40 inset-0 backdrop-blur-xs data-[state=open]:animate-fd-fade-in data-[state=closed]:animate-fd-fade-out" />
       <Base.SidebarDrawerContent
         className={cn(
-          'fixed text-[0.9375rem] flex flex-col shadow-lg border-s inset-e-0 inset-y-0 w-[85%] max-w-[380px] z-40 bg-fd-background data-[state=open]:animate-fd-sidebar-in data-[state=closed]:animate-fd-sidebar-out',
+          // Same three rows as the desktop rail, and for the same reason: a
+          // definite height (inset-y-0) with one region — the tree — absorbing
+          // the leftover. Here all three children always render, so the row
+          // model is exact.
+          'fixed text-[0.9375rem] grid grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] shadow-lg border-s inset-e-0 inset-y-0 w-[85%] max-w-[380px] z-40 bg-fd-background data-[state=open]:animate-fd-sidebar-in data-[state=closed]:animate-fd-sidebar-out',
           className,
         )}
         {...props}
@@ -420,7 +455,7 @@ function SidebarFolderContent({
     <Base.SidebarFolderContent
       className={(state) =>
         cn(
-          'relative flex flex-col gap-0.5 pt-0.5',
+          'relative grid grid-cols-[minmax(0,1fr)] gap-0.5 pt-0.5',
           depth === 1 &&
             "before:content-[''] before:absolute before:w-px before:inset-y-1 before:bg-fd-border before:inset-s-2.5",
           typeof className === 'function' ? className(state) : className,
@@ -482,7 +517,7 @@ function SidebarTabsDropdown({
           <ChevronsUpDown className="shrink-0 ms-auto size-4 text-fd-muted-foreground" />
         </PopoverTrigger>
       )}
-      <PopoverContent className="flex flex-col gap-1 w-(--anchor-width) p-1 fd-scroll-container">
+      <PopoverContent className="grid grid-cols-[minmax(0,1fr)] gap-1 w-(--anchor-width) p-1 fd-scroll-container">
         {tabs.map((item) => {
           const isActive = selected && item.url === selected.url;
           if (!isActive && item.unlisted) return;

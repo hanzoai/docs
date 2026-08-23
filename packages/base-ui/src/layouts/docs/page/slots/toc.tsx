@@ -61,7 +61,14 @@ export function TOC({ container, header, footer, style = 'normal', list }: TOCPr
       id="nd-toc"
       {...container}
       className={cn(
-        'sticky top-(--fd-docs-row-1) h-[calc(var(--fd-docs-height)-var(--fd-docs-row-1))] flex flex-col [grid-area:toc] w-(--fd-toc-width) pt-12 pe-4 pb-2 xl:layout:[--fd-toc-width:268px] max-xl:hidden',
+        // The rail has a definite height, so its rows have to be allowed to be
+        // SHORTER than their content or the scroller inside never scrolls —
+        // `auto-rows-[minmax(0,auto)]` is that permission, stated once on the
+        // container. As a flex column the same thing happened implicitly, via
+        // every child's default flex-shrink, which is a rule you have to know
+        // rather than one you can read. The header and footer slots are
+        // optional, so the rows are auto-placed rather than a fixed template.
+        'sticky top-(--fd-docs-row-1) h-[calc(var(--fd-docs-height)-var(--fd-docs-row-1))] grid grid-cols-[minmax(0,1fr)] auto-rows-[minmax(0,auto)] [grid-area:toc] w-(--fd-toc-width) pt-12 pe-4 pb-2 xl:layout:[--fd-toc-width:268px] max-xl:hidden',
         container?.className,
       )}
     >
@@ -304,7 +311,12 @@ function ProgressCircle({
 function PageTOCPopoverContent(props: ComponentProps<'div'>) {
   return (
     <CollapsibleContent data-toc-popover-content="" {...props}>
-      <div className="flex flex-col px-4 max-h-[50vh] md:px-6">{props.children}</div>
+      {/* Bounded by max-h rather than a definite height, but the row model is
+          the same as the rail's: rows may shrink below their content so the
+          scroller inside takes the overflow. */}
+      <div className="grid grid-cols-[minmax(0,1fr)] auto-rows-[minmax(0,auto)] px-4 max-h-[50vh] md:px-6">
+        {props.children}
+      </div>
     </CollapsibleContent>
   );
 }
