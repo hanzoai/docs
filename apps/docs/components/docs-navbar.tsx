@@ -3,6 +3,7 @@
 import type { ComponentProps } from 'react';
 import { useDocsLayout } from '@hanzo/docs-base-ui/layouts/docs';
 import { useSidebar } from '@hanzo/docs-base-ui/components/sidebar/base';
+import { Grid } from '@hanzo/ui/grid';
 import { cn } from '@/lib/cn';
 import { DocsNavLinks } from '@/components/docs-nav-links';
 import { OrgBadge } from '@/components/org-badge';
@@ -40,8 +41,21 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
       id="nd-subnav"
       data-transparent={isNavTransparent}
       {...props}
+      // THREE TRACKS: the wordmark, the section links, the account controls.
+      // It was `flex items-center gap-3` with a `flex-1` wrapper in the middle
+      // whose only job was to push its neighbours apart — which is a row asking
+      // to be a grid. The stretch is a property of the TRACK, so saying it here
+      // deletes the wrapper and the class that made it stretch, and neither
+      // neighbour has to know the other exists.
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+        alignItems: 'center',
+        columnGap: 12,
+        ...props.style,
+      }}
       className={cn(
-        '[grid-area:header] sticky top-(--fd-docs-row-1) z-30 flex items-center gap-3 pe-2.5',
+        '[grid-area:header] sticky top-(--fd-docs-row-1) z-30 pe-2.5',
         // A COLLAPSED RAIL TAKES NO COLUMN, SO THIS BAR STARTS AT THE VIEWPORT EDGE.
         // container.tsx sets `--fd-sidebar-col: 0px` when collapsed, and the rail's
         // floating control is `fixed inset-s-4` at 66px wide — x∈[16,82] — at z-40,
@@ -65,10 +79,13 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
           once here and once six inches to the left. Below md the sidebar collapses
           into a drawer and this is the only place a wordmark can live, so it stays
           there rather than being dropped outright. */}
-      {slots.navTitle && (
+      {/* The three tracks are always present, so the wordmark's cell is emitted
+          even when the slot is not — a missing child would shift the links into
+          the wordmark's track and the controls into theirs. */}
+      {slots.navTitle ? (
         <slots.navTitle
           className={cn(
-            'inline-flex items-center gap-2.5 font-semibold',
+            'inline-grid grid-flow-col items-center gap-2.5 font-semibold',
             // Hidden on desktop only while the SIDEBAR is showing it — which it is
             // not when collapsed, and collapsed is exactly the landing page. Left
             // unconditional the front door rendered no wordmark at all: the rail
@@ -77,9 +94,15 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
             !collapsed && 'md:hidden',
           )}
         />
+      ) : (
+        <span />
       )}
 
-      <div className="flex flex-1 items-center">
+      {/* The links are `max-md:hidden`, and a hidden element is not a grid item
+          at all — so below md it would vacate the stretch track and the controls
+          would slide into it, left-aligned. The cell stays; only its contents
+          disappear. */}
+      <div>
         <DocsNavLinks />
       </div>
 
@@ -89,7 +112,7 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
           the site lost its Sign in and Console buttons: they were configured
           correctly and rendered by nobody. Named explicitly so the omission
           cannot happen silently again. */}
-      <div className="flex items-center gap-2">
+      <Grid columns={['auto', 'auto']} gap={8} style={{ alignItems: 'center' }}>
         {/* NO SEARCH HERE. The sidebar carries the search field itself, and the
             collapsed rail carries a search button beside its own toggle — so a
             third one on the far right was the same action offered twice on one
@@ -102,10 +125,6 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
             out of the bar between 768 and 805px. A column can afford a long
             label; this row carries the short one instead, and only when the rail
             is not on screen to carry either. */}
-        {/* One control for "hand this page to an agent", derived from the
-            pathname so it works on every page. It replaced a Copy Markdown
-            button and an Open menu buried under the title, plus a Copy prompt
-            that existed only on the front page. */}
         <OrgBadge />
         {/* Shown exactly where the rail is not showing it: below md the rail is
             a drawer, and on desktop only while it is collapsed. Everywhere else
@@ -113,7 +132,7 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
         <div className={cn(collapsed ? '' : 'md:hidden')}>
           <NavAccount />
         </div>
-      </div>
+      </Grid>
     </header>
   );
 }

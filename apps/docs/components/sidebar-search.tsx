@@ -28,10 +28,19 @@ export function SidebarSearch() {
     <button
       type="button"
       onClick={() => setOpenSearch(true)}
-      className="flex w-full items-center gap-2 rounded-lg border bg-fd-secondary/50 px-2.5 py-1.5 text-start transition-colors hover:bg-fd-accent"
+      // Icon, label, shortcut. The label used to claim the middle with `flex-1`;
+      // the middle track claims it now, so the label is just text and the two
+      // fixed ends cannot be squeezed by it.
+      className="w-full rounded-lg border bg-fd-secondary/50 px-2.5 py-1.5 text-start transition-colors hover:bg-fd-accent"
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'auto minmax(0, 1fr) auto',
+        alignItems: 'center',
+        columnGap: 8,
+      }}
     >
-      <Search className="size-4 shrink-0 text-fd-muted-foreground" />
-      <span className="flex-1 text-sm text-fd-muted-foreground">Search or ask AI</span>
+      <Search className="size-4 text-fd-muted-foreground" />
+      <span className="text-sm text-fd-muted-foreground">Search or ask AI</span>
       <kbd className="rounded border px-1.5 py-0.5 text-[10px] text-fd-muted-foreground">⌘K</kbd>
     </button>
   );

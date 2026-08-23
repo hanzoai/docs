@@ -69,11 +69,15 @@ export function Docs({
             return {
               ...option,
               icon: (
+                // One cell holding one glyph, centred. `place-items` is the
+                // grid word for it and needs no wrapper to align against.
                 <div
                   className="[&_svg]:size-full rounded-lg size-full text-(--tab-color) max-md:bg-(--tab-color)/10 max-md:border max-md:p-1.5"
                   style={
                     {
                       '--tab-color': color,
+                      display: 'grid',
+                      placeItems: 'center',
                     } as object
                   }
                 >
