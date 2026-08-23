@@ -1,0 +1,61 @@
+---
+title: Coding agents
+description: "Run a coding agent in your repo — ours, Claude Code or Codex — from one command."
+icon: Terminal
+---
+
+`hanzo code` runs a coding agent against the repository you are standing in.
+Three agents are supported, and naming one gets you that agent or a clear
+failure — they are separate products, never aliases of each other.
+
+```bash
+hanzo code                      # Hanzo Dev, the default
+hanzo code claude               # Claude Code
+hanzo code codex                # Codex
+```
+
+Give it a task as **one** argument, quoted:
+
+```bash
+hanzo code "fix the failing test in api/users"
+hanzo code claude "port this module to the new store"
+```
+
+## Naming the agent
+
+Every spelling below resolves in one place, so they cannot drift apart:
+
+| | Positional | Flag | Explicit |
+| --- | --- | --- | --- |
+| Hanzo Dev | `hanzo code dev` | `hanzo code --dev` | `hanzo code --backend dev` |
+| Claude Code | `hanzo code claude` | `hanzo code --claude` | `hanzo code --backend claude` |
+| Codex | `hanzo code codex` | `hanzo code --codex` | `hanzo code --backend codex` |
+
+`hanzo dev` is a top-level shorthand for `hanzo code dev`. `claude-code` and
+`cc` are accepted spellings of `claude`.
+
+Naming it twice is refused rather than resolved — `hanzo code claude --codex`
+tells you to name it once.
+
+## Approvals
+
+The agent auto-approves its own steps by default. Two ways out, in increasing
+order of how much they give up:
+
+```bash
+hanzo code --ask            # the backend asks before each step
+hanzo code --no-sandbox     # bypass approvals AND drop the sandbox
+```
+
+`--safe` is a synonym for `--ask`, and either wins over `autoApprove` in
+`~/.hanzo/settings.json`.
+
+## The other `hanzo code`
+
+`hanzo code context`, `hanzo code file` and `hanzo code index` are a different
+thing that shares the word: they are the [code intelligence
+API](/docs/openapi/code) — search and symbols across your indexed repositories,
+for you and for agents. They take no backend and run no agent.
+
+The rule is the first argument: a word that names a backend selects one, and
+anything else is a task or a subcommand.
