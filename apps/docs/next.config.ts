@@ -2,6 +2,7 @@ import createBundleAnalyzer from '@next/bundle-analyzer';
 import { createMDX } from '@hanzo/docs/mdx/next';
 import type { NextConfig } from 'next';
 import path from 'path';
+import { collectionsAlias } from './lib/collections-alias';
 
 // `__dirname`, the CommonJS global, not a `fileURLToPath(import.meta.url)`
 // shim. This app is `next.config.ts` like every other app in the monorepo, and
@@ -56,12 +57,7 @@ const config: NextConfig = {
   // resolve foreign refs. Stub → the no-op empty module, rendering children only.
   turbopack: {
     resolveAlias: {
-      'collections/server': './.docs/server.ts',
-      'collections/browser': './.docs/browser.ts',
-      'collections/dynamic': './.docs/dynamic.ts',
-      '@hanzo/mdx:collections/server': './.docs/server.ts',
-      '@hanzo/mdx:collections/browser': './.docs/browser.ts',
-      '@hanzo/mdx:collections/dynamic': './.docs/dynamic.ts',
+      ...collectionsAlias,
       // Ported docs written against the upstream framework name still say
       // `fumadocs-ui`; those components are ours, under our name.
       'fumadocs-ui/components/callout': '@hanzo/docs-ui/components/callout',

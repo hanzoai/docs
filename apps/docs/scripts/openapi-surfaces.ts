@@ -329,7 +329,7 @@ const py = (v: any): string =>
 /**
  * THE TOOL RULE, in one place and read in both directions.
  *
- * The door is a SUBSYSTEM door: `tools/list` answers 109 tools — `agents`,
+ * MCP is a SUBSYSTEM door: `tools/list` answers 109 tools — `agents`,
  * `billing`, `iam` — and each declares an `op` enum naming the operations it
  * dispatches to. So the unit a caller names is a pair, `{name: <subsystem>,
  * arguments: {op, input}}`, not a tool per operation.
@@ -339,24 +339,24 @@ const py = (v: any): string =>
  * document's 2480 operations are named that way, and not one is claimed by two
  * tools, so the map needs no tie-break.
  *
- * The door also names many operations by its OWN verb — `list_agents` where the
+ * MCP also names many operations by its OWN verb — `list_agents` where the
  * document says `get_agents` — and those aliases are not derivable from the
- * document (they are not a transformation of the id; the door's `describe` is
+ * document (they are not a transformation of the id; MCP's `describe` is
  * the only thing that resolves them). We do not guess: an operation the enums do
  * not name verbatim gets no call printed, and the page says to ask `describe`,
- * which resolves an operationId whichever verb the door prefers for it.
+ * which resolves an operationId whichever verb MCP prefers for it.
  *
  * The rule this replaces keyed a tool by the operationId AND by a method+path
  * slug. Under the flat door both were true; under this one the second key still
- * matches — against tool names the door stopped serving twelve days ago — so it
- * printed `get_v1_agents` as a tool for an operation the door now answers
+ * matches — against tool names MCP stopped serving twelve days ago — so it
+ * printed `get_v1_agents` as a tool for an operation MCP now answers
  * "unknown tool" to. A key that keeps matching after the thing it names is gone
  * is worse than no key.
  */
 export interface Door {
   /** operationId -> the tool whose enum names it, where one does. */
   index: Map<string, string>;
-  /** product name -> the tool of that name, where the door has one. */
+  /** product name -> the tool of that name, where MCP has one. */
   byProduct: Map<string, McpTool>;
 }
 
@@ -371,13 +371,13 @@ export const door = (tools: Iterable<McpTool>): Door => {
 };
 
 /**
- * THE TOOL THAT SERVES A CAPABILITY — asked of the door, not of the name.
+ * THE TOOL THAT SERVES A CAPABILITY — asked of MCP, not of the name.
  *
- * The door groups its tools its own way, and the obvious join — look for a tool
- * CALLED `s3` — answers "there is none" for a capability the door serves
+ * MCP groups its tools its own way, and the obvious join — look for a tool
+ * CALLED `s3` — answers "there is none" for a capability MCP serves
  * perfectly well under another word. Measured against the vendored list, `s3` is
  * served by `storage` and `network` by `zt`; a name lookup reports both as
- * unreachable from MCP and sends the reader to HTTP for a call the door already
+ * unreachable from MCP and sends the reader to HTTP for a call MCP already
  * takes.
  *
  * So the name is the FIRST question and never the only one. What settles it is
@@ -393,9 +393,9 @@ export const door = (tools: Iterable<McpTool>): Door => {
 export interface Server {
   tool: McpTool;
   /**
-   * Of this capability's operations, those the door names by the DOCUMENT's own
+   * Of this capability's operations, those MCP names by the DOCUMENT's own
    * id — through any tool, because a caller who has the id can call it wherever
-   * the door filed it. This is the reachability number; `tool` is the separate
+   * MCP filed it. This is the reachability number; `tool` is the separate
    * question of who to address, and the two are kept apart on purpose.
    */
   named: number;
@@ -418,7 +418,7 @@ export function server(p: Product, d: Door): Server | undefined {
 }
 
 /**
- * Every tool the door lists, resolved to the operations it names. A tool absent
+ * Every tool MCP lists, resolved to the operations it names. A tool absent
  * from the map names none the document describes.
  */
 export function toolOperations(doc: Document, tools: Iterable<McpTool>): Map<string, Operation[]> {
@@ -433,8 +433,8 @@ export function toolOperations(doc: Document, tools: Iterable<McpTool>): Map<str
 }
 
 /**
- * The door exposes a SUBSET of the document, so whether a given operation can be
- * called by name is a question only the door answers. We look it up in the
+ * MCP exposes a SUBSET of the document, so whether a given operation can be
+ * called by name is a question only MCP answers. We look it up in the
  * vendored index and return null when it is absent, rather than printing a call
  * that would come back "unknown tool".
  *
@@ -462,7 +462,7 @@ export function mcp(
   };
 }
 
-/** Ask the door what an operation IT NAMES does, and what it takes. */
+/** Ask MCP what an operation IT NAMES does, and what it takes. */
 export const describeCall = (op: string): string =>
   JSON.stringify(
     { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'describe', arguments: { op } } },
@@ -581,7 +581,7 @@ function clientLag(op: Operation): string {
  *
  * The flow pages and every product's quickstart show the same thing, so they
  * render through the same function. Two callers of a copy is two renderers the
- * day one of them learns something: when the door regrouped, a copy would have
+ * day one of them learns something: when MCP regrouped, a copy would have
  * been fixed on the flows and left lying on 188 product pages.
  */
 export function surfaces(
@@ -636,24 +636,24 @@ export function surfaces(
       ),
     );
   } else {
-    // The door has its own verb for most operations, and only the door knows
+    // MCP has its own verb for most operations, and only MCP knows
     // which. `describe` was printed here for the operation itself, on the
     // strength of two ids that happened to resolve — probed across five
     // products, `get_kv`, `get_audit` and `get_agents` resolve while
     // `get_models` and `get_billing_tier` answer `unknown tool`. So describing
-    // an id the door has not declared is a call that fails, and offering it
+    // an id MCP has not declared is a call that fails, and offering it
     // taught two of five readers a dead end.
     //
     // What IS known is the tool that serves this product and the operations that
-    // tool declares. So the page teaches the door's own discovery — a real tool,
+    // tool declares. So the page teaches MCP's own discovery — a real tool,
     // a real op it names, a call that runs — instead of guessing at this one.
     const own = doc.products.find((p) => p.name === op.product);
     const serving = own && server(own, d);
     const read = serving && readOp(serving.tool);
     if (serving && read) {
       L.push(
-        `The door reaches **${text(op.product)}** through the \`${serving.tool.name}\` tool, which names its ${ops(serving.tool).length} operations ` +
-          `with its own verbs — this one among them, under a name only the door declares. \`describe\` explains any of them:`,
+        `MCP reaches **${text(op.product)}** through the \`${serving.tool.name}\` tool, which names its ${ops(serving.tool).length} operations ` +
+          `with its own verbs — this one among them, under a name only MCP declares. \`describe\` explains any of them:`,
       );
       L.push('');
       L.push(
@@ -666,7 +666,7 @@ export function surfaces(
       );
     } else {
       L.push(
-        `The door declares no tool for **${text(op.product)}** — \`tools/list\` on \`${MCP_DOOR}\` names the products it does reach. Use HTTP or an SDK.`,
+        `MCP declares no tool for **${text(op.product)}** — \`tools/list\` on \`${MCP_DOOR}\` names the products it does reach. Use HTTP or an SDK.`,
       );
     }
   }

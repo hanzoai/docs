@@ -146,7 +146,7 @@ function request(op: Operation, raw: any): string[] {
       '',
       reads
         ? `\`${op.method.toUpperCase()} ${code(op.path)}\` takes no parameters and no body — the credential is the whole request.`
-        : `The document declares no body for \`${op.method.toUpperCase()} ${code(op.path)}\`. The handler is typed in cloud but its shape is not yet emitted, so the fields are not listed here — ask the MCP door's \`describe\` for \`${code(op.id)}\`, which answers from the running route.`,
+        : `The document declares no body for \`${op.method.toUpperCase()} ${code(op.path)}\`. The handler is typed in cloud but its shape is not yet emitted, so the fields are not listed here — ask MCP's \`describe\` for \`${code(op.id)}\`, which answers from the running route.`,
       '',
     ];
   }
@@ -336,7 +336,7 @@ function quickstart(p: Product, doc: Document, table: Map<string, CliCommand>, d
   L.push(
     runnable(op)
       ? `Then the first call — a read that needs nothing but the key. \`${op.method.toUpperCase()} ${code(op.path)}\`, operation \`${op.id}\`:`
-      : // Said plainly rather than papered over: this product's front door takes
+      : // Said plainly rather than papered over: this product's entry point takes
         // arguments, and a sample that pretended otherwise would fail on the
         // reader's first attempt instead of on ours.
         `Then the first call. This one takes arguments — the placeholders are yours to fill. \`${op.method.toUpperCase()} ${code(op.path)}\`, operation \`${op.id}\`:`,
@@ -482,7 +482,7 @@ function renderOperation(
     L.push('**Deprecated.** It still answers; a caller writing new code should not reach for it.');
     L.push('');
   }
-  L.push(`> [${text(p.title)} →](/docs/openapi/${p.name}) · [All API references →](/docs/openapi) · [Six flows, four surfaces →](/docs/start)`);
+  L.push(`> [${text(p.title)} →](/docs/openapi/${p.name}) · [All API references →](/docs/openapi) · [Get started →](/docs/start)`);
   L.push('');
   L.push('| | |');
   L.push('|---|---|');
@@ -627,7 +627,7 @@ function renderReached(name: string, door: string, hips: Corpus): string {
   L.push('');
   L.push(
     'This reference is generated from the public API document, one page per operation. This ' +
-      'capability contributes no operation to that document — which is a fact about its door, not ' +
+      'capability contributes no operation to that document — which is a fact about its address, not ' +
       'about whether it is finished. It is GA and it runs in every deployment. ' +
       `It is reached at ${text(door)}.`,
   );
@@ -674,7 +674,7 @@ function renderProduct(
 
   const nav = [
     '[All API references →](/docs/openapi)',
-    '[Six flows, four surfaces →](/docs/start)',
+    '[Get started →](/docs/start)',
   ];
   L.push(`> ${nav.join(' · ')}`);
   L.push('');
@@ -766,7 +766,7 @@ function renderIndex(
     L.push(
       `The other ${reached.length} carry no operation in it. Most answer somewhere a document cannot describe — a port, a \`/.well-known/\` convention, ` +
         `another app's router, a control plane the address relays onto — and two are the operator surface, which serves ordinary HTTP and is withheld because its audience is not a customer. ` +
-        `All ${reached.length} are GA and run in every deployment; each page names its own door and prints no endpoint table it does not have.`,
+        `All ${reached.length} are GA and run in every deployment; each page names its own address and prints no endpoint table it does not have.`,
     );
     L.push('');
   }
@@ -797,7 +797,7 @@ function renderIndex(
   L.push('```');
   L.push('');
   L.push(
-    'Get a key at [console.hanzo.ai](https://console.hanzo.ai). New here? [Six flows, four surfaces](/docs/start) walks the same journeys as CLI, SDK, HTTP and MCP.',
+    'Get a key at [console.hanzo.ai](https://console.hanzo.ai). New here? [Get started](/docs/start) walks the same journeys as CLI, SDK, HTTP and MCP.',
   );
   L.push('');
   L.push('## Start anywhere');

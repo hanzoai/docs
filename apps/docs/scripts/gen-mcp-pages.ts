@@ -16,17 +16,17 @@ import { toolOperations } from './openapi-surfaces';
 import { load, MCP_DOOR, ops as doorOps, readOp, type McpCatalog, type McpTool } from './sync-mcp-tools';
 import { code, fence, firstSentence, prose, text, yamlString } from './mdx';
 
-// THE MCP REFERENCE, generated from the door.
+// THE MCP REFERENCE, generated from MCP.
 //
 // `POST /v1/mcp` is the agent-facing surface of the cloud: a JSON-RPC 2.0
 // endpoint whose `tools/list` names every tool an MCP client can call. This
-// script renders one page per tool — the door's own description, its whole
+// script renders one page per tool — MCP's own description, its whole
 // declared argument schema as a table, the operation it dispatches to, and a
 // `tools/call` envelope built from that same schema.
 //
 // Nothing here is written about a tool. Every sentence on a tool page came off
 // the wire in `tools/list`, exactly as the API reference comes off the document.
-// The one authored page is `index.mdx`, which explains what the door IS and how
+// The one authored page is `index.mdx`, which explains what MCP IS and how
 // to point a client at it — a concept, not a signature.
 //
 // The tool list is VENDORED (openapi-specs/mcp-tools.json) by sync-mcp-tools,
@@ -36,7 +36,7 @@ import { code, fence, firstSentence, prose, text, yamlString } from './mdx';
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
 // This reference joins a LIVE door against a PINNED document, so the two can
-// legitimately disagree — a route the door has renamed since the pin resolves
+// legitimately disagree — a route MCP has renamed since the pin resolves
 // to no operation. Pages that report such a tool name the release, so the
 // reader can tell "the document does not describe this" from "the copy we hold
 // does not describe this yet". The release is `.spec-lock`'s, the cloud commit
@@ -46,7 +46,7 @@ const rel = release();
 const pinned = rel ? ` (pinned at \`${rel}\`)` : '';
 const OUT_DIR = path.join(APP_ROOT, 'content/docs/mcp-tools');
 
-/** The client command that registers the door, over its streamable HTTP transport. */
+/** The client command that registers MCP, over its streamable HTTP transport. */
 const ADD_COMMAND = `claude mcp add --transport http hanzo-cloud ${MCP_DOOR}`;
 
 /** Slugs this section spends on its own pages, so no product folder may take them. */
@@ -91,7 +91,7 @@ const productHref = (product: string): string => `/docs/mcp-tools/${slugOf(produ
 /**
  * Where a tool's page lives, which depends on how many tools its product has.
  *
- * A product with ONE tool IS one page, at the product's own address. The door
+ * A product with ONE tool IS one page, at the product's own address. MCP
  * publishes one action-routed tool per capability, so 80 of 81 products are in
  * that case: wrapping each in a folder bought a nav entry whose only child
  * carried the folder's own name — `Agents > agents` — and an index page whose
@@ -104,12 +104,12 @@ const toolHref = (product: string, tool: string, siblings: number): string =>
 
 // ------------------------------------------------------------------ schema
 
-/** A `$ref` into the tool's own `$defs`, as the door writes them. */
+/** A `$ref` into the tool's own `$defs`, as MCP writes them. */
 const refName = (r: unknown): string =>
   typeof r === 'string' && r.startsWith('#/$defs/') ? r.slice('#/$defs/'.length) : '';
 
 /**
- * A field's type as the door declares it — and only as the door declares it.
+ * A field's type as MCP declares it — and only as MCP declares it.
  * A node with no `type` is printed as such rather than guessed at.
  */
 function typeOf(node: any): string {
@@ -130,7 +130,7 @@ function typeOf(node: any): string {
 //
 // A tool argument is declared TWICE, and neither declaration is complete.
 //
-//   the door      names the field, gives it a type and usually a description,
+//   MCP      names the field, gives it a type and usually a description,
 //                 and says nothing else — measured across the whole catalogue,
 //                 not one tool marks a field required, carries a default, or
 //                 enumerates a value set.
@@ -139,9 +139,9 @@ function typeOf(node: any): string {
 //                 default and its format — because that is what the REST API
 //                 validates against.
 //
-// A reference that prints only the door's half leaves an empty Required column
+// A reference that prints only MCP's half leaves an empty Required column
 // on every field the API will reject the call without — hundreds of them. So
-// the two are joined here: shape from the door, constraints from the document,
+// the two are joined here: shape from MCP, constraints from the document,
 // and every page states which column came from which. Nothing is inferred — a
 // field with no answer in either source prints `—`.
 
@@ -149,7 +149,7 @@ function typeOf(node: any): string {
 const conjoin = (xs: string[]): string =>
   xs.length < 2 ? (xs[0] ?? '') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
 
-/** What the operation declares about one argument, over and above the door. */
+/** What the operation declares about one argument, over and above MCP. */
 interface Constraint {
   required: boolean;
   /** The declared value set, verbatim. */
@@ -158,7 +158,7 @@ interface Constraint {
   def: string;
   /** `date-time`, `uuid`, … — a shape the type alone does not carry. */
   format: string;
-  /** The operation's own prose for the field, used only where the door has none. */
+  /** The operation's own prose for the field, used only where MCP has none. */
   description: string;
 }
 
@@ -166,7 +166,7 @@ interface Constraint {
  * One operation's half, keyed by field name.
  *
  * A tool's flat `arguments` object is the operation's path, query and body
- * parameters merged — the door erases the distinction — so both are read into
+ * parameters merged — MCP erases the distinction — so both are read into
  * one map, body last because a body property is the more specific declaration
  * where a name appears in both.
  */
@@ -192,7 +192,7 @@ function declaredBy(op: Operation): Map<string, Constraint> {
 /**
  * The document's half — what EVERY operation the tool could be agrees on.
  *
- * A handful of tool names resolve to two operations, and the door does not say
+ * A handful of tool names resolve to two operations, and MCP does not say
  * which it dispatches to. Reading the first would attribute one route's rules to
  * a call that might take the other's, so a constraint survives here only if
  * every candidate declares it, identically. Where they differ the field falls
@@ -220,9 +220,9 @@ export function constraintsOf(ops: Operation[] | undefined): Map<string, Constra
 }
 
 /**
- * Arguments the operation requires that the door's schema never names.
+ * Arguments the operation requires that MCP's schema never names.
  *
- * `GET /v1/webhooks/{id}` cannot address a webhook without `id`, and the door
+ * `GET /v1/webhooks/{id}` cannot address a webhook without `id`, and MCP
  * publishes `{"properties":{}}` for the tool that calls it. The reference cannot
  * say how to supply the value, so it says that, rather than printing "call it
  * with an empty object" and teaching a call that cannot resolve a resource.
@@ -263,7 +263,7 @@ const fieldsOf = (schema: any, con: Map<string, Constraint> = new Map()): Field[
           : c?.format
             ? `\`${code(c.format)}\``
             : '',
-        // The door's prose wins; the operation's is the fallback, never a
+        // MCP's prose wins; the operation's is the fallback, never a
         // second copy of the same sentence.
         description: String(p.description ?? '') || (c?.description ?? ''),
       };
@@ -271,13 +271,13 @@ const fieldsOf = (schema: any, con: Map<string, Constraint> = new Map()): Field[
 };
 
 /**
- * A LEGEND is a description that is really one line per value — what the door
+ * A LEGEND is a description that is really one line per value — what MCP
  * publishes for a grouped tool's `op`, where each line is `name — what it does`.
  *
  * A table cell cannot hold it. Markdown has no line break inside one, so `text`
  * folds the newlines away and twelve operations arrive as a single run-on
  * sentence: "create_chat — Implements the … create_chat_completion — Implements
- * the …". The door's data was right the whole time; flattening it is what made
+ * the …". MCP's data was right the whole time; flattening it is what made
  * the one field a reader most needs unreadable.
  *
  * Two or more lines that all carry the separator is the shape, and nothing else
@@ -318,11 +318,11 @@ function fieldTable(fields: Field[]): string[] {
 /**
  * Which source filled which column, said out loud on every page that has one.
  *
- * The Required, Default and Values columns are almost never the door's — it
+ * The Required, Default and Values columns are almost never MCP's — it
  * publishes a type and a description and stops. Printing them without saying
- * where they came from would imply the door declares them; leaving them empty
+ * where they came from would imply MCP declares them; leaving them empty
  * would imply the answer is "none". Both are computed from the schemas in hand,
- * so the sentence narrows on its own the day the door starts publishing more.
+ * so the sentence narrows on its own the day MCP starts publishing more.
  */
 function sourceNotice(
   schema: any,
@@ -356,16 +356,16 @@ function sourceNotice(
   // Whether the document contributed anything HERE, rather than whether it could.
   // A subsystem tool's own fields are `op` and `input`; the operations declare
   // the fields that go INSIDE `input`, so their names do not meet and every
-  // column on such a page is the door's. Claiming otherwise credited routes for
+  // column on such a page is MCP's. Claiming otherwise credited routes for
   // a Required column they had no part in.
   const joined = fields.some((f) => con.has(f.name));
   const routes = ops.map((o) => `\`${o.method.toUpperCase()} ${code(o.path)}\``);
   if (!joined) {
     L.push(
       `\`tools/list\` declares ${conjoin(doorSays)} for each field and nothing further, and every column ` +
-        "above is the door's own. This tool takes an operation name and that operation's arguments, so what " +
+        "above is MCP's own. This tool takes an operation name and that operation's arguments, so what " +
         'the document constrains is what goes inside `input`, field by field, on the operation you name — ' +
-        'ask `describe` for that. A `—` means the door does not constrain the field.',
+        'ask `describe` for that. A `—` means MCP does not constrain the field.',
     );
     return L;
   }
@@ -377,7 +377,7 @@ function sourceNotice(
             ? `${routes[0]}, the operation this tool dispatches to — the same declaration the REST API validates against. `
             : `${conjoin(routes)} — the ${routes.length} operations the document names for this tool — and carries only what they agree on. `)
         : '') +
-      `A \`—\` means neither the door nor ${routes.length === 1 ? 'that operation' : 'those operations'} constrains the field.`,
+      `A \`—\` means neither MCP nor ${routes.length === 1 ? 'that operation' : 'those operations'} constrains the field.`,
   );
   return L;
 }
@@ -385,7 +385,7 @@ function sourceNotice(
 /**
  * Every object a tool's fields are made of, enumerated.
  *
- * The door writes a nested object two ways: as a named `$defs` entry a field
+ * MCP writes a nested object two ways: as a named `$defs` entry a field
  * `$ref`s, and INLINE on the field itself. Both are objects with fields, so both
  * get a table — an inline one used to collapse to the word `object` in the Type
  * column and its fields went unpublished, which is the same page failing to
@@ -491,7 +491,7 @@ function sample(
       invented.push(at);
       return '2026-01-01T00:00:00Z';
     default:
-      // The door declared no type. Say so in the value rather than picking one.
+      // MCP declared no type. Say so in the value rather than picking one.
       return node?.properties ? {} : `<${name}>`;
   }
 }
@@ -519,10 +519,10 @@ export function callEnvelope(
   for (const name of minimal ? required : declared) {
     args[name] = sample(schema.properties![name], name, defs, con.get(name), invented, name);
   }
-  // A subsystem tool's `op` is the one argument the door itself enumerates, and
+  // A subsystem tool's `op` is the one argument MCP itself enumerates, and
   // the sample above never looked there — so the call a reader was invited to
-  // paste said `"op": "<op>"`, which the door answers `unknown tool: <op>` to.
-  // Print an operation the door names, and a READ, so the invitation is safe.
+  // paste said `"op": "<op>"`, which MCP answers `unknown tool: <op>` to.
+  // Print an operation MCP names, and a READ, so the invitation is safe.
   const read = readOp(tool);
   if (read && read !== tool.name && 'op' in args) args.op = read;
   const body = JSON.stringify(
@@ -566,13 +566,13 @@ function productOf(ops: Operation[] | undefined): string {
 }
 
 /**
- * The tools this reference publishes: the door's answer, less the operator
+ * The tools this reference publishes: MCP's answer, less the operator
  * surface.
  *
  * A tool whose operations are ALL internal is internal. Without this the
  * /v1/admin routes were printed in full on 78 tool pages, again in the catalogue
  * and again in the section nav — the same leak the REST reference had, through a
- * different door. The door still answers them to whoever is authorised to call
+ * different door. MCP still answers them to whoever is authorised to call
  * them; what changes is only what docs.hanzo.ai publishes.
  *
  * `some` was right while a tool was one operation and is wrong now that a tool is
@@ -615,13 +615,13 @@ function renderTool(
   L.push(`title: ${yamlString(title ?? tool.name)}`);
   L.push(
     `description: ${yamlString(
-      firstSentence(tool.description) || `An MCP tool on the Hanzo cloud door.`,
+      firstSentence(tool.description) || `An MCP tool on the Hanzo cloud MCP server.`,
     )}`,
   );
   L.push('---');
   L.push('');
 
-  // 1. What it is — the door's own prose, verbatim.
+  // 1. What it is — MCP's own prose, verbatim.
   L.push(prose(tool.description));
   L.push('');
 
@@ -630,7 +630,7 @@ function renderTool(
   L.push('| | |');
   L.push('|---|---|');
   L.push(`| **Tool** | \`${code(tool.name)}\` |`);
-  L.push(`| **Door** | \`${code(cat.door)}\` |`);
+  L.push(`| **Address** | \`${code(cat.door)}\` |`);
   L.push('| **Method** | `tools/call` (JSON-RPC 2.0) |');
   L.push(
     `| **Arguments** | ${fields.length}${
@@ -654,7 +654,7 @@ function renderTool(
   if (!fields.length) {
     L.push(
       absent.length
-        ? 'The door declares no arguments for this tool.'
+        ? 'MCP declares no arguments for this tool.'
         : 'This tool declares no arguments. Call it with an empty `arguments` object.',
     );
   } else {
@@ -662,14 +662,14 @@ function renderTool(
     L.push(...sourceNotice(schema, fields, ops, con));
   }
   // The gap, stated where a reader would otherwise be misled into an empty
-  // object: the operation cannot run without these, and the door never names
+  // object: the operation cannot run without these, and MCP never names
   // them, so this reference cannot say where they go.
   if (absent.length) {
     L.push('');
     L.push(
       `\`${code(ops![0].method.toUpperCase())} ${code(ops![0].path)}\` requires ` +
         `${absent.map((n) => `\`${code(n)}\``).join(', ')}, which \`tools/list\` does not declare on this tool. ` +
-        'Where that value goes in a `tools/call` is not something the door publishes, so this page does not ' +
+        'Where that value goes in a `tools/call` is not something MCP publishes, so this page does not ' +
         'guess — the same capability over plain HTTP is fully specified in the API reference below.',
     );
   }
@@ -706,9 +706,9 @@ function renderTool(
         ? `${conjoin(invented.map((n) => `\`${code(n)}\``))} ${invented.length === 1 ? 'holds a stand-in' : 'hold stand-ins'} that cannot be spelled that way — ` +
           'JSON gives a number, a boolean and a timestamp no placeholder form — so ' +
           `${invented.length === 1 ? 'that value is' : 'those values are'} this page's, not the API's. ` +
-          'Neither the door nor the operation declares one. '
+          'Neither MCP nor the operation declares one. '
         : '') +
-      '`tools/list` needs no credential; `tools/call` does — called without one the door answers HTTP 200 ' +
+      '`tools/list` needs no credential; `tools/call` does — called without one MCP answers HTTP 200 ' +
       'with a JSON-RPC result whose `isError` is set and whose text says what was missing. ' +
       '[How to get a key →](/docs/mcp-tools#credentials)',
   );
@@ -719,26 +719,26 @@ function renderTool(
   L.push('');
   if (!ops?.length) {
     L.push(
-      `The door exposes \`${code(tool.name)}\`, but the copy of the OpenAPI document this build holds${pinned} ` +
+      `MCP exposes \`${code(tool.name)}\`, but the copy of the OpenAPI document this build holds${pinned} ` +
         'describes no operation for it — neither under that name nor at the route the name implies. That is ' +
-        'either a route the document has yet to declare, or one the door has renamed since the pin. Everything ' +
+        'either a route the document has yet to declare, or one MCP has renamed since the pin. Everything ' +
         'on this page comes from `tools/list`; there is no REST reference to link to until the two agree.',
     );
   } else {
-    // What the tool reaches, and what this page can name. The door dispatches a
+    // What the tool reaches, and what this page can name. MCP dispatches a
     // whole subsystem — `agents` reaches 25 operations — and names most of them
     // with its own verb (`list_agents` for `get_agents`), which is not derivable
     // from the document; only `describe` resolves those. So the table below is
-    // the ones the door names EXACTLY as the document ids them, and the sentence
-    // says how many it is out of. Before the door regrouped, a tool WAS one
+    // the ones MCP names EXACTLY as the document ids them, and the sentence
+    // says how many it is out of. Before MCP regrouped, a tool WAS one
     // operation, and this said "the document uses this name for N operations and
-    // the door does not say which it dispatches to" — a sentence about a name
+    // MCP does not say which it dispatches to" — a sentence about a name
     // collision, printed on a page about a subsystem, where it is simply untrue.
     const reachable = doorOps(tool).length;
     if (reachable > ops.length) {
       L.push(
-        `\`${code(tool.name)}\` dispatches to ${reachable} operations. ${ops.length} of them the door names exactly as the document ids ` +
-          `${ops.length === 1 ? 'it' : 'them'}, and ${ops.length === 1 ? 'that one is' : 'those are'} below; for the rest the door has its own verb, which \`describe\` resolves.`,
+        `\`${code(tool.name)}\` dispatches to ${reachable} operations. ${ops.length} of them MCP names exactly as the document ids ` +
+          `${ops.length === 1 ? 'it' : 'them'}, and ${ops.length === 1 ? 'that one is' : 'those are'} below; for the rest MCP has its own verb, which \`describe\` resolves.`,
       );
       L.push('');
     } else if (ops.length > 1) {
@@ -763,7 +763,7 @@ function renderTool(
   L.push('---');
   L.push('');
   L.push(
-    `[All ${cat.tools.length} tools](/docs/mcp-tools/all-tools) · [The door](/docs/mcp-tools) · [API reference](/docs/openapi)`,
+    `[All ${cat.tools.length} tools](/docs/mcp-tools/all-tools) · [MCP](/docs/mcp-tools) · [API reference](/docs/openapi)`,
   );
   L.push('');
   L.push(provenance(cat));
@@ -780,8 +780,8 @@ function renderProductIndex(product: string, tools: McpTool[], cat: McpCatalog, 
   L.push(
     `description: ${yamlString(
       known
-        ? `${tools.length} MCP tools on the Hanzo cloud door that call the ${product} API.`
-        : `${tools.length} MCP tools the door exposes that the OpenAPI document does not describe.`,
+        ? `${tools.length} MCP tools on the Hanzo cloud MCP server that call the ${product} API.`
+        : `${tools.length} MCP tools MCP exposes that the OpenAPI document does not describe.`,
     )}`,
   );
   L.push('---');
@@ -793,7 +793,7 @@ function renderProductIndex(product: string, tools: McpTool[], cat: McpCatalog, 
             ? ` in the [${text(product)} API reference](/docs/openapi/${canonical(doc, product)})`
             : ' on api.hanzo.ai'
         }.`
-      : `The door lists ${tools.length} tool${tools.length === 1 ? '' : 's'} that resolve to no operation in the copy of the OpenAPI document this build holds${pinned}. Each is either a route the document has yet to declare or one the door has renamed since the pin; both are documented from \`tools/list\` alone rather than left out.`,
+      : `MCP lists ${tools.length} tool${tools.length === 1 ? '' : 's'} that resolve to no operation in the copy of the OpenAPI document this build holds${pinned}. Each is either a route the document has yet to declare or one MCP has renamed since the pin; both are documented from \`tools/list\` alone rather than left out.`,
   );
   L.push('');
   L.push('| Tool | Route | Arguments | Required | Description |');
@@ -812,7 +812,7 @@ function renderProductIndex(product: string, tools: McpTool[], cat: McpCatalog, 
   L.push('');
   L.push('---');
   L.push('');
-  L.push(`[All ${cat.tools.length} tools](/docs/mcp-tools/all-tools) · [The door](/docs/mcp-tools)`);
+  L.push(`[All ${cat.tools.length} tools](/docs/mcp-tools/all-tools) · [MCP](/docs/mcp-tools)`);
   L.push('');
   L.push(provenance(cat));
   L.push('');
@@ -876,7 +876,7 @@ function renderCatalog(groups: Map<string, McpTool[]>, cat: McpCatalog, mapped: 
 }
 
 /**
- * The one conceptual page: what the door is and how to reach it.
+ * The one conceptual page: what MCP is and how to reach it.
  *
  * Prose here explains a concept. It states no signature — every count, every
  * protocol version and every route on it is interpolated from the vendored
@@ -903,12 +903,12 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
     `**\`POST ${code(cat.door)}\`** is the agent-facing surface of the Hanzo cloud: one JSON-RPC 2.0 endpoint that answers \`tools/list\` with **${cat.meta.count} tools** and \`tools/call\` to run them. It is the same cloud the REST API serves — a tool here is an operation there, so an agent and a program reach identical behaviour.`,
   );
   L.push('');
-  L.push(`> [Browse the tool catalogue →](/docs/mcp-tools/all-tools) · [REST reference →](/docs/openapi) · [Six flows, four surfaces →](/docs/start)`);
+  L.push(`> [Browse the tool catalogue →](/docs/mcp-tools/all-tools) · [REST reference →](/docs/openapi) · [Get started →](/docs/start)`);
   L.push('');
 
   L.push('## Point a client at it');
   L.push('');
-  L.push('The door speaks streamable HTTP, so a client needs the URL and nothing else:');
+  L.push('MCP speaks streamable HTTP, so a client needs the URL and nothing else:');
   L.push('');
   L.push(...fence('bash', ADD_COMMAND));
   L.push('');
@@ -922,7 +922,7 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
   );
   L.push('');
   if (h) {
-    L.push(`The door answers \`initialize\` with protocol \`${code(h.protocolVersion)}\`, naming itself \`${code(h.serverName)}\`${h.serverVersion ? ` version \`${code(h.serverVersion)}\`` : ' with no version string'}, and advertises \`${code(JSON.stringify(h.capabilities))}\`.`);
+    L.push(`MCP answers \`initialize\` with protocol \`${code(h.protocolVersion)}\`, naming itself \`${code(h.serverName)}\`${h.serverVersion ? ` version \`${code(h.serverVersion)}\`` : ' with no version string'}, and advertises \`${code(JSON.stringify(h.capabilities))}\`.`);
     L.push('');
   }
 
@@ -930,7 +930,7 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
   L.push('');
   L.push(
     '`tools/list` is answered without a credential — that is how this reference is generated. `tools/call` is not: ' +
-      'the door replies HTTP 200 with a JSON-RPC result whose `isError` is set, and whose text names what was missing' +
+      'MCP replies HTTP 200 with a JSON-RPC result whose `isError` is set, and whose text names what was missing' +
       (h?.anonymousCall
         ? ` — asked for \`${code(h.anonymousProbe)}\` with no credential it answered \`${code(h.anonymousCall)}\`. Each tool refuses in its own terms, so treat that as the shape of the answer, not the wording.`
         : '.'),
@@ -943,7 +943,7 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
     ([, s]) => s?.type === 'http' && s?.scheme === 'bearer' && s?.description,
   );
   L.push(
-    'The door takes the same bearer credential as the REST API' +
+    'MCP takes the same bearer credential as the REST API' +
       (bearer
         ? ` — the document's \`${code(bearer[0])}\` scheme: ${text(bearer[1].description).replace(/\.$/, '')}`
         : '') +
@@ -974,7 +974,7 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
   );
   L.push('');
   L.push(
-    `The door exposes a subset of the document, not all of it: ${cat.meta.count} tools against ${doc.operations.length} operations. Whether an operation has a tool is a question only the door answers, so every page here asks it rather than assuming.`,
+    `MCP exposes a subset of the document, not all of it: ${cat.meta.count} tools against ${doc.operations.length} operations. Whether an operation has a tool is a question only MCP answers, so every page here asks it rather than assuming.`,
   );
   L.push('');
   L.push('### How a tool page is built');
@@ -983,14 +983,14 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
     'Each argument is declared twice, and neither declaration is whole. `tools/list` names a field and gives ' +
       'it a type and usually a description — across the whole catalogue it marks nothing required, carries no ' +
       'default and enumerates no value set. The operation the tool dispatches to declares the rest, because ' +
-      'that is what the API validates against. So a tool page takes its **shape** from the door and its ' +
+      'that is what the API validates against. So a tool page takes its **shape** from MCP and its ' +
       '**constraints** from the document, and says on every table which column came from which. A `—` means ' +
       'neither source constrains the field; it is never a guess, and where the two cannot be joined the page ' +
       'says that instead.',
   );
   L.push('');
   L.push(
-    `The door is read live at build time; the document is a pinned snapshot${pinned}. They can disagree, and where they do the page reports it rather than smoothing it over.`,
+    `MCP is read live at build time; the document is a pinned snapshot${pinned}. They can disagree, and where they do the page reports it rather than smoothing it over.`,
   );
   L.push('');
 
@@ -1002,7 +1002,7 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
     );
   } else {
     L.push(
-      "An org is not limited to the tools above. Register an external MCP server and its tools join the same surface for everyone in the org — one connection for a client, whatever it is wired to behind the door.",
+      "An org is not limited to the tools above. Register an external MCP server and its tools join the same surface for everyone in the org — one connection for a client, whatever it is wired to behind MCP.",
     );
     L.push('');
     L.push('| Route | Operation | What it does |');
@@ -1018,7 +1018,7 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
     if (post && Object.keys(props).length) {
       // Registering a server is the one write on this page, so its body is
       // enumerated here in full rather than left to a link — same table as
-      // every tool page, filled from the document instead of the door.
+      // every tool page, filled from the document instead of MCP.
       //
       // The catalog route is NOT named in prose: the `listing` field's own
       // description names it, and that description is the document's. A
@@ -1067,7 +1067,7 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
   L.push('## The local server is a different thing');
   L.push('');
   L.push(
-    'This page is the **cloud** door — a URL, no install, your org\'s data. The [Hanzo MCP server](/docs/mcp) is the one that runs beside your editor and reaches your filesystem, shell and git. They compose: a client can hold both connections at once.',
+    'This page is the **cloud** MCP server — a URL, no install, your org\'s data. The [Hanzo MCP server](/docs/mcp) is the one that runs beside your editor and reaches your filesystem, shell and git. They compose: a client can hold both connections at once.',
   );
   L.push('');
   L.push('---');
@@ -1129,7 +1129,7 @@ export async function genMcpPages(outDir: string = OUT_DIR): Promise<{ pages: nu
 
   let pages = 0;
   for (const [product, tools] of ordered) {
-    // ONE TOOL IS ONE PAGE. The door publishes one action-routed tool per
+    // ONE TOOL IS ONE PAGE. MCP publishes one action-routed tool per
     // capability, so all but one product arrives here with a single tool named
     // for it. A folder around that is two pages where there is one thing: a nav
     // entry whose only child repeats the folder's own name, and an index whose
