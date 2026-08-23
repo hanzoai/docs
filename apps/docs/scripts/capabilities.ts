@@ -66,7 +66,7 @@ export function domains(file: string = CAPABILITIES): Domain[] {
 }
 
 /**
- * The door a capability answers on when it is NOT a `/v1` address.
+ * Where a capability answers when it is NOT at a `/v1` address.
  *
  * A wire adaptor binds a port, a discovery convention answers under
  * `/.well-known/`, a co-resident claims requests on another app's router, and a

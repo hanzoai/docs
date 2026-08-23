@@ -29,8 +29,8 @@ describe('tag -> client class', () => {
   });
 });
 
-// The MCP door names a tool for the operationId minus its OWN first segment.
-// Verified against the live door: `POST https://api.hanzo.ai/v1/mcp` answers
+// The MCP server names a tool for the operationId minus its OWN first segment.
+// Verified against the live server: `POST https://api.hanzo.ai/v1/mcp` answers
 // tools/list with 730 tools, 729 of which this rule reproduces exactly (the
 // odd one out is `get_v1_pricing_policy`). The cases below are taken from that
 // answer, including the pair that proves the rule is NOT product-relative:
@@ -75,16 +75,16 @@ describe('operationId -> method name', () => {
 
 // A GROUPED TOOL NAMES A SUBSYSTEM, NOT AN OPERATION.
 //
-// The door re-projected: it used to publish one tool per operation, so the tool
+// The server re-projected: it used to publish one tool per operation, so the tool
 // name WAS the operationId and the join was a name lookup. It now publishes one
 // tool per subsystem carrying its operations in an `op` enum — `account` is not
 // an operationId, so a name lookup answers nothing and every tool page would
 // read "the document does not describe this".
 //
-// The enum is therefore the join, tried first. The name path stays for a door
+// The enum is therefore the join, tried first. The name path stays for a server
 // that still serves the flat shape, and this pins BOTH so neither can be
 // dropped as dead code while the fleet is mid-projection.
-describe('the tool -> operation join reads the shape the door serves', () => {
+describe('the tool -> operation join reads the shape the server serves', () => {
   const opWith = (id: string, method: any, p: string): any => ({
     product: 'x', id, name: id, tag: 'x', method, path: p,
     summary: '', description: '', parameters: [], deprecated: false,
@@ -103,7 +103,7 @@ describe('the tool -> operation join reads the shape the door serves', () => {
   });
 
   it('names no operation for a tool whose enum the document does not carry', () => {
-    // The reference joins a LIVE door to a PINNED document, so a door ahead of
+    // The reference joins a LIVE server to a PINNED document, so a server ahead of
     // the pin legitimately names ids the document lacks. That must read as
     // unmapped, never as a wrong operation.
     const m = toolOperations(doc, [{ name: 'admission', inputSchema: { properties: { op: { enum: ['get_flag_waitlist'] } } } }]);

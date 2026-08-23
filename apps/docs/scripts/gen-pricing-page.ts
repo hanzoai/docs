@@ -25,7 +25,7 @@ import { text, yamlString } from './mdx';
 // catalogue carries prices and context windows but no benchmark, so the quality
 // half of each tier's contract comes from hanzo.ai/enso. See GPQA below.
 //
-// Snapshot, like the document and the MCP door: fetched when reachable, and the
+// Snapshot, like the document and the MCP server: fetched when reachable, and the
 // committed copy when not, so a builder with no egress still renders a truthful
 // page. `meta.captured` records when the copy on disk was taken and
 // `meta.source` whether THIS build refreshed it, so the page states its own

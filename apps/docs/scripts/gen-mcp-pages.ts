@@ -35,7 +35,7 @@ import { code, fence, firstSentence, prose, text, yamlString } from './mdx';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const APP_ROOT = path.resolve(SCRIPT_DIR, '..');
-// This reference joins a LIVE door against a PINNED document, so the two can
+// This reference joins a LIVE server against a PINNED document, so the two can
 // legitimately disagree — a route MCP has renamed since the pin resolves
 // to no operation. Pages that report such a tool name the release, so the
 // reader can tell "the document does not describe this" from "the copy we hold
@@ -572,13 +572,13 @@ function productOf(ops: Operation[] | undefined): string {
  * A tool whose operations are ALL internal is internal. Without this the
  * /v1/admin routes were printed in full on 78 tool pages, again in the catalogue
  * and again in the section nav — the same leak the REST reference had, through a
- * different door. MCP still answers them to whoever is authorised to call
+ * different surface. MCP still answers them to whoever is authorised to call
  * them; what changes is only what docs.hanzo.ai publishes.
  *
  * `some` was right while a tool was one operation and is wrong now that a tool is
  * a subsystem: one operator operation among thirty would have withdrawn the whole
  * subsystem's page. `every` withholds exactly the tool that is nothing but the
- * operator surface — which on this door is the one named `admin`, all 56 of it.
+ * operator surface — which on this server is the one named `admin`, all 56 of it.
  */
 export function published(cat: McpCatalog, mapped: Map<string, Operation[]>): McpTool[] {
   return cat.tools.filter((t) => {
@@ -587,7 +587,7 @@ export function published(cat: McpCatalog, mapped: Map<string, Operation[]>): Mc
   });
 }
 
-// `meta.count` is what the DOOR answered and stays that; `tools.length` is what
+// `meta.count` is what the SERVER answered and stays that; `tools.length` is what
 // this reference documents. Where they differ the stamp says so, so a reader
 // who counts the pages and compares is not left thinking one of them is wrong.
 const provenance = (cat: McpCatalog): string =>
@@ -1032,7 +1032,7 @@ function renderIndex(cat: McpCatalog, doc: Document, groups: Map<string, McpTool
         // The summary whole, not a first sentence: these summaries carry dotted
         // hostnames, and a sentence-splitter cuts them at the first full stop.
         L.push(
-          `Registering by \`url\` wires up a server the org runs or trusts. The other source is \`${code(catalog.method.toUpperCase())} ${code(catalog.path)}\` — ${text(catalog.summary || firstSentence(catalog.description))} Its entries are enabled by id through the \`listing\` field above, and either way the server's tools appear on this door.`,
+          `Registering by \`url\` wires up a server the org runs or trusts. The other source is \`${code(catalog.method.toUpperCase())} ${code(catalog.path)}\` — ${text(catalog.summary || firstSentence(catalog.description))} Its entries are enabled by id through the \`listing\` field above, and either way the registered server's tools appear on this endpoint.`,
         );
         L.push('');
       }

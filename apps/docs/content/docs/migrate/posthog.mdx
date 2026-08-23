@@ -65,8 +65,8 @@ browser, which is what proves the write is yours to read.
 | Personal API key `phx_…` | A bearer, minted at `POST /v1/account/keys` |
 | Project, by numeric id in every path | Your org and project, from the validated key |
 | `POST /capture/` | `POST /v1/event` |
-| `POST /batch/` | The same door. A batch is a body, not a path — an array already is one |
-| `$pageview`, `$identify`, custom events | The same names, the same door |
+| `POST /batch/` | The same endpoint. A batch is a body, not a path — an array already is one |
+| `$pageview`, `$identify`, custom events | The same names, the same endpoint |
 | `posthog-js` snippet | `GET /v1/event/tag.js` — one script tag carrying `data-key="pk-…"` |
 | Autocapture | The tag captures pageviews, initial and SPA, plus uncaught errors |
 | Web analytics tiles | `GET /v1/event/overview` — pageviews, visitors, sessions for one window |
@@ -74,7 +74,7 @@ browser, which is what proves the write is yours to read.
 | Activity / live events | `GET /v1/event/insights/events` |
 | Group analytics | `groupType` and `groupId` on the event; `groups` on the decide call |
 | Error tracking | `GET /v1/event/errors`. Sentry SDKs report unchanged at `POST /v1/event/{project}/envelope` |
-| Replay chunks, sent as `$snapshot` events | `POST /v1/event/replay` — its own door, rrweb carried byte for byte |
+| Replay chunks, sent as `$snapshot` events | `POST /v1/event/replay` — its own endpoint, rrweb carried byte for byte |
 | Data pipelines / destinations | `/v1/destination` (5) — ga4, meta, tiktok, linkedin, x, reddit |
 
 ### Flags and experiments
@@ -241,7 +241,7 @@ control collapses to zero exposed, and the numbers mean nothing. Deciding is
 also not terminal and does not revert: a second call overwrites the winner with
 no record of the first, and restoring a split is a flag write.
 
-**Replay is an ingest door, not a search.** `POST /v1/event/replay` takes rrweb
+**Replay is an ingest endpoint, not a search.** `POST /v1/event/replay` takes rrweb
 batches keyed by `sessionId` — 70 characters at most, 512 KiB a batch — and is
 all-or-nothing, so a 200 means the recording is durable rather than buffered.
 Filtering recordings by rage click or console error is not an API route, and a

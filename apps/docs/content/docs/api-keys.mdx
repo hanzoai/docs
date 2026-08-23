@@ -8,7 +8,7 @@ description: How a request proves who it is — the two Hanzo key types, which o
 
 Every request to the Hanzo platform is authenticated with a bearer token. There
 are two kinds of key, they are not interchangeable, and the difference is what
-each one resolves to when the door reads it.
+each one resolves to when the edge reads it.
 
 ## The two types
 
@@ -16,7 +16,7 @@ each one resolves to when the door reads it.
 
 ### What each one resolves to
 
-A **secret key** resolves to **you**. The door looks it up and gets your user
+A **secret key** resolves to **you**. The edge looks it up and gets your user
 row, which makes it session-equivalent: anything you can do in the console, a
 holder of your `sk-` can do over HTTP. That is why it belongs on a server and
 nowhere else.
@@ -24,7 +24,7 @@ nowhere else.
 A **publishable key** resolves to **your organization** and stops there — it
 never yields a principal, so it cannot read anything. It identifies; it does not
 authenticate. That is the property that makes it safe to ship in a browser
-bundle, and it is enforced at the door rather than promised: a `pk-` presented
+bundle, and it is enforced at the edge rather than promised: a `pk-` presented
 as a bearer credential is refused outright, no matter which endpoint it arrives
 at. One `pk-` covers events, product insights and error capture, which is why
 you do not need a separate key or a separate DSN for each.

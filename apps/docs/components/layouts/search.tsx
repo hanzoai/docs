@@ -78,7 +78,7 @@ export default function CustomSearchDialog(props: SharedProps) {
     return map;
   }, [full]);
   // ASKING IS A DIFFERENT INTENTION FROM FINDING, and until now only one of them
-  // had a door. The field says "search or ask", full-text search matches TERMS,
+  // had one. The field says "search or ask", full-text search matches TERMS,
   // and a question is mostly terms that are not in any page — measured, "api
   // key", "quickstart" and "kms" all return results while "how do I get an api
   // key" returns none. So the reader most in need of an answer got the emptiest

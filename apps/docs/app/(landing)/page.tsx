@@ -223,7 +223,7 @@ export default function Page() {
 
             It also has to be here rather than in the bar: this page has no table
             of contents, which is where the doc pages host it, so without this the
-            front door offered no way to hand anything to an agent at all. */}
+            the landing page offered no way to hand anything to an agent at all. */}
         <div className="relative mt-6" style={{ display: 'grid', justifyItems: 'center', rowGap: 8 }}>
           <AgentActions />
           <p className="text-xs text-neutral-400">

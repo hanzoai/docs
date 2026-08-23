@@ -76,7 +76,7 @@ export interface Operation {
   /** Full operationId, e.g. `get_v1_tools`. */
   id: string;
   /**
-   * The MCP door's tool name for this operation, which is the operationId
+   * The MCP server's tool name for this operation, which is the operationId
    * itself — see the note where it is computed.
    */
   name: string;
@@ -447,7 +447,7 @@ export function spellings(name: string): string[] {
 /**
  * A PROJECTION'S name for a capability, resolved to the DOCUMENT'S name.
  *
- * The CLI's command table and the MCP door's tool list are each generated from
+ * The CLI's command table and the MCP server's tool list are each generated from
  * cloud at their own lock, so each can spell a capability the way cloud spelled
  * it then. When cloud swept its addresses to the singular, `hanzo sandboxes`
  * and the `sandboxes` tool went on saying `sandboxes` while the document said
@@ -592,11 +592,11 @@ export function loadDocument(file: string): Document {
       const resolved: Operation = {
         product: product_,
         id,
-        // The door's tool name IS the operationId. It was the id minus its own
+        // The server's tool name IS the operationId. It was the id minus its own
         // first segment while hanzoai/openapi prefixed every id with the spec it
         // came from (`cloud_get_v1_tools`); one document needs no such
         // disambiguator and that prefix is gone, so the ids are bare. Measured
-        // against the door's own tools/list: 802 of 833 names are the
+        // against the server's own tools/list: 802 of 833 names are the
         // operationId exactly, where stripping a segment resolves 89.
         name: id,
         method,

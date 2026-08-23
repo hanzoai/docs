@@ -9,7 +9,7 @@
 # them: it reads paths, tags, summaries and schemas, all of which cloud emits
 # itself. So the projection bought the reference nothing and cost it currency.
 # Measured the day this changed, the pinned projection was 19 cloud releases
-# behind, and four relay-door products — download, files, upload, exec — were
+# behind, and four relay products — download, files, upload, exec — were
 # rendered with twelve operations each where cloud's document has one, one, one
 # and two. Every one of those extra entries was the same heading repeated.
 #

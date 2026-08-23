@@ -7,7 +7,7 @@ Sentry takes a stack trace off a running application, groups it by fingerprint
 into an issue, and keeps the traces, logs and recordings around it. Two
 capabilities answer that: **`/v1/o11y`** (381 operations) holds the issues,
 traces, alert rules and dashboards, and **`/v1/event`** (12 operations) is the
-ingest door, which accepts the Sentry envelope byte-for-byte — an application
+ingest endpoint, which accepts the Sentry envelope byte-for-byte — an application
 already instrumented reports here by changing its DSN and nothing else.
 
 The structural difference is where the tenant comes from. Sentry names the
@@ -41,7 +41,7 @@ curl -sS "https://api.hanzo.ai/v1/o11y/sentinel/issues?status=unresolved&period=
 
 Step 2 returns `data.dsn`. Paste it into `Sentry.init` and an already-instrumented
 application reports to `POST /v1/event/{project}/envelope` with nothing else
-changed — that door is credentialed by the DSN key, not by the bearer above. Step
+changed — that endpoint is credentialed by the DSN key, not by the bearer above. Step
 3 is the read side: the org came from the key, so `project` is an optional
 narrowing rather than a required path segment.
 
@@ -50,7 +50,7 @@ narrowing rather than a required path segment.
 | Capability | What it does | Operations |
 |---|---|---|
 | `/v1/o11y` | Issues, traces, alert rules, dashboards and logs — everything you read | 381, across 287 paths |
-| `/v1/event` | The ingest door. Takes the Sentry envelope byte-for-byte, keyed by the DSN | 12 |
+| `/v1/event` | The ingest endpoint. Takes the Sentry envelope byte-for-byte, keyed by the DSN | 12 |
 | `/v1/webhook` | Where an issue leaves the platform. Each endpoint carries its 7-day delivery and failure counts | 8 |
 
 ## Nouns
