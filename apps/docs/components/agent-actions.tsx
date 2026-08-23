@@ -81,6 +81,8 @@ export function AgentActions() {
   // hanzo dev takes the prompt as its argument, so this is the same intention
   // as "open in ChatGPT" for the agent that runs where the code is.
   const copyDev = async () => {
+    // The CLI runs in the reader's terminal against their repo, so it takes a
+    // command rather than a URL — copied, not opened.
     await navigator.clipboard.writeText(`hanzo dev ${JSON.stringify(promptFor(here))}`)
     flash('dev')
     setOpen(false)
@@ -94,6 +96,7 @@ export function AgentActions() {
 
   const item =
     'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-start text-sm text-fd-popover-foreground transition-colors hover:bg-fd-accent'
+  const group = 'px-2 pt-2 pb-1 text-xs font-medium text-fd-muted-foreground'
 
   return (
     <div ref={box} className="relative">
@@ -113,6 +116,19 @@ export function AgentActions() {
           role="menu"
           className="absolute end-0 top-full z-50 mt-1 w-60 overflow-hidden rounded-lg border bg-fd-popover p-1 shadow-lg"
         >
+          {/* Ours, opened directly. Everything below this is the same page
+              handed to somebody else's agent, which is why the two are separated
+              rather than mixed into one list of eight. */}
+          <div className={group}>Use with Hanzo</div>
+          <a role="menuitem" target="_blank" rel="noreferrer" href="https://hanzo.app" className={item}>
+            Open in Hanzo App
+          </a>
+          <button role="menuitem" onClick={copyDev} className={item}>
+            Open in Hanzo CLI
+          </button>
+
+          <div className="my-1 border-t" />
+          <div className={group}>Use with any agent</div>
           <button role="menuitem" onClick={copyPrompt} className={item}>
             Copy prompt
           </button>
@@ -145,12 +161,6 @@ export function AgentActions() {
           >
             Open in Claude
           </a>
-          <div className="my-1 border-t" />
-          {/* Our own agent, which runs in the reader's terminal against their
-              repo — so it takes a command rather than a URL. */}
-          <button role="menuitem" onClick={copyDev} className={item}>
-            Open in Hanzo Dev
-          </button>
           <div className="my-1 border-t" />
           {/* The skill for whatever this page is about, so an agent can pick up
               the capability rather than only this one page's text. */}
