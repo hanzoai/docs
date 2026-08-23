@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { DocsLayout, type DocsLayoutProps } from '@hanzo/docs-base-ui/layouts/docs';
 import { DocsNavbar } from '@/components/docs-navbar';
-import { baseOptions, logo } from '@/components/layouts/shared';
+import { Brand } from '@/components/brand';
+import { baseOptions } from '@/components/layouts/shared';
 import { source } from '@/lib/source';
 import { getSection } from '@/lib/source/navigation';
 import { SidebarSearch } from '@/components/sidebar-search';
@@ -42,12 +43,8 @@ export function Docs({
       tree={source.getPageTree()}
       nav={{
         ...base.nav,
-        title: (
-          <>
-            {logo}
-            <span className="font-medium max-md:hidden">Hanzo</span>
-          </>
-        ),
+        // The mark and the wordmark are alternatives, not a pair — see Brand.
+        title: <Brand />,
       }}
       sidebar={{
         prefetch: false,
