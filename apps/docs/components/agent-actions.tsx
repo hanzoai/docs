@@ -59,10 +59,10 @@ export function AgentActions() {
     }
   }, [open])
 
-  // Only doc pages have a markdown twin, so the control says nothing elsewhere
-  // rather than offering a copy that would 404.
-  if (!pathname.startsWith('/docs')) return null
-
+  // Every page can be handed to an agent; only a doc page has a markdown twin.
+  // This returned null off /docs, which took the control off the FRONT PAGE —
+  // the one page a reader is most likely to hand over.
+  const hasMarkdown = pathname.startsWith('/docs')
   const md = markdownUrlFor(pathname)
   const here = typeof window === 'undefined' ? `https://docs.hanzo.ai${pathname}` : window.location.href
 
@@ -116,12 +116,16 @@ export function AgentActions() {
           <button role="menuitem" onClick={copyPrompt} className={item}>
             Copy prompt
           </button>
-          <button role="menuitem" onClick={copyMarkdown} className={item}>
-            Copy page as Markdown
-          </button>
-          <a role="menuitem" href={md} className={item}>
-            View as Markdown
-          </a>
+          {hasMarkdown && (
+            <>
+              <button role="menuitem" onClick={copyMarkdown} className={item}>
+                Copy page as Markdown
+              </button>
+              <a role="menuitem" href={md} className={item}>
+                View as Markdown
+              </a>
+            </>
+          )}
           <div className="my-1 border-t" />
           <a
             role="menuitem"
