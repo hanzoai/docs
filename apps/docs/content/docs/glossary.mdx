@@ -1,0 +1,125 @@
+---
+title: Glossary
+description: One name per idea, and the names other systems use for the same idea. Read the second column when a word here does not match the word you arrived with.
+---
+
+**After this page you know which word to use, and which word you already knew
+means the same thing.**
+
+One idea usually has several names — one from the paper it was described in, one
+from the product you last used, one someone coined in a hallway. Every alias you
+carry costs a translation on every conversation. So: one name per idea, and the
+**Also called** column is the translation table. If you arrived with a different
+word, find it there.
+
+<Callout>
+The rule that generates the rest: **name the thing, not the metaphor.** A word
+that only works if you already know what it stands for teaches nothing.
+</Callout>
+
+## Reading an operation
+
+The vocabulary of a single API call. This is the set worth learning first —
+everything else in these docs is written in it.
+
+| Term | What it is | Also called |
+|---|---|---|
+| **capability** | The first path segment after `/v1/` — `agents`, `iam`, `event`. The unit a product is organised into. | service, module, resource group |
+| **operation** | One thing you can do. Named once, reachable from every surface. | endpoint, method, action, call |
+| **verb** | The word naming an operation in the CLI — `hanzo <capability> <verb>`. | subcommand, action |
+| **address** | Where an operation is reached: method plus path, e.g. `POST /v1/agents`. | endpoint, route, URL, URI |
+| **surface** | One of the four ways to reach an operation: HTTP, CLI, SDK, MCP. The operation is the same; only the spelling changes. | interface, transport, client |
+| **request** / **response** | What you send; what comes back. | — |
+
+`path` means the path *portion* of an address, or a parameter located in it.
+`URL` means a full absolute one. Neither is a synonym for **address**.
+
+## Who is calling
+
+| Term | What it is | Also called |
+|---|---|---|
+| **caller** | Whoever is making this request. The everyday word, and the right one in most sentences. | client, consumer, requester |
+| **principal** | The identity a request acts *as*, once the credential has been checked. Use it when that binding is the subject. | subject, actor, identity |
+| **credential** | Anything that proves a principal. The genus; the next two rows are species. | — |
+| **key** | A credential you hold as a string. Two classes: `sk-` secret (server-side only) and `pk-` publishable (safe in a browser). | API key, secret key |
+| **token** | A credential with an expiry and claims inside it. | access token, bearer token, JWT |
+| **claim** | One assertion carried inside a token (RFC 7519). | attribute, assertion |
+| **scope** | The subset of an authority a credential may exercise (RFC 6749). | permission, grant |
+| **member** | A person's membership in an org. A *user* is a person; a *member* is that relation. | seat |
+| **application** | A non-human principal — an integration, a service, a bot. | service account, machine identity, client |
+
+## What you act on
+
+| Term | What it is | Also called |
+|---|---|---|
+| **org** | The tenant. The boundary every record is scoped to, and for most capabilities a physically separate database. | tenant, organization, account, workspace, team |
+| **project** | A scope inside one org. Never an alternative to an org. | environment, workspace |
+| **environment** | A label on a deploy — derived, not a stored resource. | stage, tier |
+| **agent** | A definition: a model, a system prompt, and a set of tool names. | assistant, bot, persona |
+| **session** | One continuing conversation with an agent. | thread, conversation |
+| **run** | One execution of something — an agent turn, a workflow, a job. Bounded, has a status, can be read back. | execution, invocation, job, task |
+| **sandbox** | An isolated compute environment with a lease that ends it. | container, pod, workspace, VM |
+| **workflow** | Steps composed into one durable execution. | pipeline, DAG, orchestration |
+| **release** | The artifact a deploy produces. `deploy` is the verb, `release` is the noun. | build, version, revision |
+| **webhook** | A subscription that delivers events to a URL you own. | callback, subscription |
+| **event** | One thing that happened, in an envelope. | message, record, notification |
+| **credit** | The unit of account. 1,000 credits = $1.00. | token (never — that word is a credential here), unit |
+| **balance** | What you currently have. | — |
+
+## Names that are ours
+
+The house vocabulary. None of these is guessable, so each gets a sentence.
+
+| Name | What it is |
+|---|---|
+| **IAM** | Identity and Access Management — the one service that issues and checks every credential. |
+| **KMS** | Key Management Service — where secrets live. Nothing else stores one. |
+| **o11y** | Observability, abbreviated by letter count (o + 11 letters + y). Logs, metrics, traces. |
+| **ZAP** | Zero-Copy App Proto — the binary protocol our services speak to each other. |
+| **visor** | The compute you rent: machines, GPUs, clusters. |
+| **enso** | Our frontier model family. |
+| **Zen** | Our open-weight model family. |
+| **Base** | The managed instance product — a database and backend per org. |
+| **Pack** | The zero-configuration builder that turns a repository into a deployable image. |
+| **egress** | Outbound traffic. In billing it is the per-gigabyte charge; in architecture it is the one process permitted to make outbound calls holding a credential. |
+| **HIP** | Hanzo Improvement Proposal — a numbered design document. |
+| **Quasar** | The consensus engine, from Lux, with a post-quantum certificate profile. |
+| **zt** | Hanzo Zero Trust — the identity-addressed overlay network. Built on OpenZiti. |
+| **zrok** | The sharing layer over that overlay: one command publishes a local port. |
+
+## Distribution and storage
+
+Only the terms these docs actually use.
+
+| Term | What it is | Also called |
+|---|---|---|
+| **replica** | A process holding a copy of some data. | follower, secondary, standby |
+| **writer** | The one replica permitted to write a given database. | primary, leader, master |
+| **version** | A number that only increases, compared to reject a stale writer or a stale read. | fencing token, epoch, term, ballot, generation |
+| **lock** | Mutual exclusion. Held until released; no time limit. | mutex |
+| **lease** | A lock **with an expiry**. The expiry is the entire difference — it is what lets another process safely conclude the holder is gone. | time-bounded lock |
+| **quorum** | How many members must agree before a decision counts. | majority, threshold |
+| **consensus** | Agreement among processes on one value despite failures. | agreement |
+| **pin** | A recorded exact version that a build resolves to. | lock, constraint |
+| **tag** | A **mutable** name for an image. Two reads of one tag may differ. | label |
+| **digest** | The content hash of an image. Immutable by construction. | content address, sha |
+
+## Words we do not use
+
+| Not used | Use instead | Why |
+|---|---|---|
+| endpoint, route | **address** | Three words for the location of one operation. |
+| tenant, organization, workspace, account | **org** | One tenancy primitive, one name. |
+| execution, invocation, job, task | **run** | Same object at four ages. |
+| fencing token, epoch, term, ballot | **version** | Four papers, one number. |
+| lease, where nothing expires | **lock** | The expiry is the definition, and it decides whether failover is possible. |
+| wire, seam, glue, plumbing | name the interface | A metaphor tells a reader nothing about the type. |
+| plane, for anything but control and data | name the thing | Control plane and data plane are from RFC 3746. A set of services is not a plane. |
+
+<Callout type="warn">
+**Words that mean two things.** `secret` is a key class (`sk-`), a product
+(`/v1/secrets`) and a loose synonym for credential — only the first two are
+correct here. `store` is a provisioned datastore instance, not a database file
+and not object storage. `node` is a compute machine in `visor` and a voting
+participant in consensus. When either could be read, say which.
+</Callout>
