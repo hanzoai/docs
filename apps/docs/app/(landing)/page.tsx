@@ -11,7 +11,7 @@ import {
   Server,
   Shield,
   ShoppingCart,
-  Sparkles,
+  Sparkle,
   Terminal,
   Workflow,
 } from 'lucide-react';
@@ -45,7 +45,7 @@ const domains = [
   {
     name: 'Intelligence',
     desc: 'The mind of the cloud — every model, agent, and tool you can call. Models, Agents, MCP, Embeddings, Prompts, GPUs, Functions.',
-    icon: Sparkles,
+    icon: Sparkle,
     href: '/docs/openapi/ai',
     tag: 'Intelligence',
   },
@@ -556,7 +556,7 @@ export default function Page() {
         <Card className="border-white/[0.08] bg-white/[0.02] shadow-none py-0 gap-0 rounded-2xl overflow-hidden">
           <CardContent className="p-8 md:p-10">
             <div className="flex items-center gap-3 mb-4">
-              <Sparkles className="size-5 text-neutral-400" />
+              <Sparkle className="size-5 text-neutral-400" />
               <CardTitle className="text-2xl font-bold tracking-tight">
                 Zen
               </CardTitle>

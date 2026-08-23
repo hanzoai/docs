@@ -5,7 +5,7 @@
 // the current models/prices without a rebuild. Grouped by family, searchable,
 // theme-aware via Fumadocs fd-* tokens.
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Copy, Check, Cpu, Sparkles, Zap, Box } from 'lucide-react';
+import { Search, Copy, Check, Cpu, Sparkle, Zap, Box } from 'lucide-react';
 import { PROVIDER_ICONS, providerKey } from '@/components/provider-icons';
 
 const ENDPOINT = 'https://api.hanzo.ai/v1/models';
@@ -30,7 +30,7 @@ type Model = {
 type Family = { id: string; name: string; description?: string; icon?: string; models: string[] };
 type Catalog = { data: Model[]; families?: Family[]; summary?: Record<string, number>; updated?: string };
 
-const FAMILY_ICON: Record<string, typeof Sparkles> = { Sparkles, Zap, Cpu, Box };
+const FAMILY_ICON: Record<string, typeof Sparkle> = { Sparkle, Zap, Cpu, Box };
 
 // The models trained here, and what to call their group. `owned_by` is the
 // catalogue's raw key; these are the names we use for them.
@@ -199,7 +199,7 @@ export function ModelsCatalog() {
         fams.push({
           id: `${OURS[p] ? 'family' : 'provider'}-${p}`,
           name: OURS[p] ?? p,
-          icon: OURS[p] ? 'Sparkles' : 'Box',
+          icon: OURS[p] ? 'Sparkle' : 'Box',
           models: [],
           resolved: models,
         }),

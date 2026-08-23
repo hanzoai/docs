@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { Check, ChevronDown, Sparkles } from 'lucide-react'
+import { Check, ChevronDown, Sparkle } from 'lucide-react'
 
 import { AGENT_SETUP_PROMPT } from '@/lib/agent-setup-prompt'
 
@@ -103,7 +103,7 @@ export function AgentActions() {
         aria-expanded={open}
         className="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm text-fd-muted-foreground transition-colors hover:bg-fd-accent hover:text-fd-foreground"
       >
-        {done ? <Check className="size-3.5" /> : <Sparkles className="size-3.5" />}
+        {done ? <Check className="size-3.5" /> : <Sparkle className="size-3.5" />}
         <span className="max-sm:hidden">{done ? 'Copied' : 'Use Agent'}</span>
         <ChevronDown className="size-3 opacity-60 max-sm:hidden" />
       </button>
