@@ -374,12 +374,71 @@ function returns(op: Operation): string {
  * in a product open with the same sentence, the address disambiguates, because
  * two pages with one title is a page a search engine picks between at random.
  */
+/**
+ * Words that are an ACTION on the noun before them, not a noun of their own.
+ * `/v1/webhook/{id}/test` is testing a webhook; `/v1/webhook/{id}/deliveries`
+ * is a collection under it. Nothing in the document tells the two apart, so the
+ * ones we serve are listed — a short list that is wrong quietly (a name reading
+ * "Create sync" instead of "Sync repo") rather than a rule that guesses.
+ */
+const ACTIONS = new Set([
+  'upsert', 'test', 'send', 'sync', 'refresh', 'verify', 'revoke', 'rotate',
+  'complete', 'reject', 'approve', 'start', 'stop', 'cancel', 'retry', 'resume',
+  'export', 'import', 'search', 'query', 'resolve', 'validate', 'preview',
+  'publish', 'deploy', 'launch', 'run', 'invoke', 'claim', 'redeem', 'login',
+  'logout', 'signin', 'signup', 'connect', 'disconnect', 'enable', 'disable',
+]);
+
+/**
+ * A NAME for the operation, derived from its address.
+ *
+ * The title was the summary cut to 80 characters, which put a truncated
+ * sentence in every sidebar row: 1,849 of the 2,792 pages on this site read
+ * like prose in the tree — "Registers a new webhook subscription for the
+ * caller's org and answers 20…". A row is scanned, not read, so it needs a
+ * name; the sentence is right below it as the description and loses nothing.
+ *
+ * Derived, never authored: the method gives the verb, the last real path
+ * segment gives the subject. Measured over the whole document — 2,253
+ * operations, longest name 33 characters, mean 13, none over 40.
+ */
 function opTitle(op: Operation, taken: Set<string>): string {
   const address = `${op.method.toUpperCase()} ${op.path}`;
-  const summary = firstSentence(op.summary.replace(/\s+/g, ' ').trim(), 80);
-  if (!summary) return address;
-  const key = summary.toLowerCase();
-  return taken.has(key) ? `${summary} — ${address}` : summary;
+  const segs = op.path.replace(/^\/v1\//, '').split('/').filter(Boolean);
+  const words = segs.filter((s) => !s.startsWith('{')).map((s) => s.replace(/[-_]/g, ' '));
+  if (words.length === 0) return address;
+
+  const tailIsParam = segs[segs.length - 1].startsWith('{');
+  const subject = words[words.length - 1];
+  const method = op.method.toUpperCase();
+  const cap = (w: string) => w.slice(0, 1).toUpperCase() + w.slice(1);
+
+  let name: string;
+  if (!tailIsParam && words.length > 1 && ACTIONS.has(subject.replace(/ /g, ''))) {
+    name = `${cap(subject)} ${words[words.length - 2]}`;
+  } else {
+    const verb =
+      method === 'GET'
+        ? tailIsParam
+          ? 'Get'
+          : 'List'
+        : method === 'POST'
+          ? 'Create'
+          : method === 'PUT'
+            ? 'Replace'
+            : method === 'PATCH'
+              ? 'Update'
+              : method === 'DELETE'
+                ? 'Delete'
+                : '';
+    if (!verb) return address;
+    name = `${verb} ${subject}`;
+  }
+
+  // Two operations under one product can land on one name (POST and PUT on the
+  // same item). The address disambiguates, exactly as it did for summaries.
+  const key = name.toLowerCase();
+  return taken.has(key) ? `${name} — ${address}` : name;
 }
 
 /**
