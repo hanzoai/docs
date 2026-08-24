@@ -104,13 +104,29 @@ jobs:
             echo "::error::KMS_CLIENT_ID/KMS_CLIENT_SECRET are unset, so the ingest key cannot be read. Add them as org secrets on this forge."
             exit 1
           fi
-          token="$(curl -sf "$KMS/v1/kms/auth/login" -H 'Content-Type: application/json' \
-            -d "{\"clientId\":\"$KMS_CLIENT_ID\",\"clientSecret\":\"$KMS_CLIENT_SECRET\"}" \
-            | sed -n 's/.*"accessToken"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
-          [ -n "$token" ] || { echo "::error::KMS login failed at $KMS"; exit 1; }
-          key="$(curl -sf "$KMS/v1/kms/secrets/deploy/PUBLISHABLE_KEY?env=prod" \
-            -H "Authorization: Bearer $token" \
-            | sed -n 's/.*"value"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+          # `curl -sf` under `set -euo pipefail` makes every message below it
+          # unreachable: -f turns a refusal into exit 22, the pipeline carries it,
+          # -e ends the script, and the line that would say WHICH call failed
+          # never runs. Two diagnoses of a real outage produced "exitcode '22'"
+          # and nothing else. Ask for the status instead, and say what came back.
+          login_code="$(curl -s -o /tmp/kms_login.json -w '%{http_code}' --max-time 30 \
+            "$KMS/v1/kms/auth/login" -H 'Content-Type: application/json' \
+            -d "{\"clientId\":\"$KMS_CLIENT_ID\",\"clientSecret\":\"$KMS_CLIENT_SECRET\"}" || echo 000)"
+          if [ "$login_code" != "200" ]; then
+            echo "::error::KMS login at $KMS answered $login_code. 401 means this forge's KMS_CLIENT_ID/KMS_CLIENT_SECRET are rejected; 000 means the endpoint was unreachable from the build container."
+            exit 1
+          fi
+          token="$(sed -n 's/.*"accessToken"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' /tmp/kms_login.json)"
+          [ -n "$token" ] || { echo "::error::KMS login returned 200 with no accessToken"; exit 1; }
+
+          secret_code="$(curl -s -o /tmp/kms_secret.json -w '%{http_code}' --max-time 30 \
+            "$KMS/v1/kms/secrets/deploy/PUBLISHABLE_KEY?env=prod" \
+            -H "Authorization: Bearer $token" || echo 000)"
+          if [ "$secret_code" != "200" ]; then
+            echo "::error::reading deploy/PUBLISHABLE_KEY (env=prod) answered $secret_code. 403 means this client may not read that path; 404 means the secret is not there."
+            exit 1
+          fi
+          key="$(sed -n 's/.*"value"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' /tmp/kms_secret.json)"
           # Fail closed. An empty build-arg produces an image that builds, serves,
           # and looks correct while every event it emits is unattributed — the
           # exact silent hole this step exists to close, and one no amount of
