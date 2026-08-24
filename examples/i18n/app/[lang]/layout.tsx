@@ -1,17 +1,14 @@
 import '@hanzo/docs-ui/style.css';
 import { RootProvider } from '@hanzo/docs-ui/provider/next';
-import { Inter } from 'next/font/google';
+import { ZenSans } from '@hanzo/font/sans';
+import { ZenMono } from '@hanzo/font/mono';
 import { translations } from '@/lib/layout.shared';
 import { i18nProvider } from '@hanzo/docs-ui/i18n';
-
-const inter = Inter({
-  subsets: ['latin'],
-});
 
 export default async function Layout({ params, children }: LayoutProps<'/[lang]'>) {
   const { lang } = await params;
   return (
-    <html lang={lang} className={inter.className} suppressHydrationWarning>
+    <html lang={lang} className={ZenSans.className} suppressHydrationWarning>
       <body
         style={{
           display: 'flex',
