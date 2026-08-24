@@ -120,10 +120,17 @@ jobs:
           ask() {  # ask <outfile> <curl args...>  -> prints the status code
             local out="$1"; shift
             local code=""
-            for _ in 1 2 3; do
+            for wait in 0 5 15 45; do
+              [ "$wait" = 0 ] || sleep "$wait"
+              # `|| code=000` on the ASSIGNMENT, never `|| echo 000` inside the
+              # substitution: -w already prints 000 when curl fails, so a second
+              # one makes the variable "000000", which matches nothing below and
+              # turns an outage into a refusal that never retries.
               code="$(curl -s -o "$out" -w '%{http_code}' --max-time 30 "$@")" || code=000
-              [ "$code" = "000" ] || break
-              sleep 3
+              case "$code" in
+                000|429|5*) continue ;;   # lost, throttled, or the gateway's own
+                *) break ;;               # an answer, including a refusal
+              esac
             done
             printf '%s' "$code"
           }
