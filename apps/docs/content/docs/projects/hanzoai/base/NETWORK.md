@@ -12,14 +12,14 @@ on `~/work/hanzo/storage` (`hanzoai/s3`) or GCS for PITR.
 
 ## Problem
 
-Base apps (ATS, BD, TA, IAM, KMS, AML, …) each carry SQLite files —
-often per-user or per-org — and need HA with real durability, no
-split-brain, and uniform ops across dev / test / main.
+Base apps (IAM, KMS, AML, and every app built on Base) each carry
+SQLite files — often per-user or per-org — and need HA with real
+durability, no split-brain, and uniform ops across dev / test / main.
 
 Pre-existing options fall short:
 
 - **Raw StatefulSet + RWO PVC, replicas > 1** → split-brain, silent
-  DB divergence (current mainnet ATS/TA state).
+  DB divergence.
 - **LiteFS + Consul** → three moving parts (FUSE, LTX, Consul) and a
   single-primary election we don't need; we already have quasar.
 - **Litestream + single writer** → backup, not HA.
@@ -70,34 +70,26 @@ physical files plus a fixed logical consensus grouping:
   tail-sync (not a file copy — new pod subscribes to the vshard's
   DAG and materialises from frames).
 
-**Per-file encryption** (SQLCipher, opt-in):
+**Encryption at rest is decided a layer up, and not here.**
 
-- `BASE_ENCRYPT=sqlcipher` activates per-file page-level encryption.
-- Each physical file has its own 256-bit Data Encryption Key (DEK).
-- DEKs are wrapped by a per-org Key Encryption Key (KEK) held in
-  KMS; KEK is wrapped by a platform KEK-of-KEKs. On `open(shard)`:
-  1. If `<shard>.dekwrap` exists on disk: fetch KEK from KMS,
-     unwrap DEK.
-  2. If not: generate DEK, wrap with KEK, persist `<shard>.dekwrap`.
-- DEKs cached in memory, per-shard, with LRU eviction (default
-  4096 hot files). Cold files drop their DEK; re-fetch on next
-  access costs one KMS round-trip.
-- WAL frames leaving the pod carry **ciphertext** pages only —
-  quasar replication, gateway transit, and archive storage never
-  see plaintext. PQ sig from quasar is over the ciphertext.
-- Right-to-be-forgotten = delete the `.dekwrap` (+ quasar tombstone
-  for the vshard's frame range). Ciphertext becomes unreadable
-  globally, including in archive segments.
+This section used to describe a per-file scheme with its own DEKs, `.dekwrap`
+files beside each shard, an LRU of unwrapped keys and a KEK-of-KEKs — and an
+env table for driving it. None of that was ever built, and the variables the
+table listed (`BASE_VSHARDS`, `BASE_KMS_URL`, `BASE_KEK_SCOPE`,
+`BASE_DEK_CACHE_SIZE`) are read by no code in this repo. A knob that does
+nothing is worse than a missing one: it reads as a control an operator has
+already exercised.
 
-**Env additions for this layer:**
+What is real: an org's Base opens under a key derived for that org
+(`plugins/org`, `hanzoai/cek`), so one tenant's file is unreadable with
+another's key. The process's own database takes its protection from the volume
+it sits on. `BASE_ENCRYPT` is **refused at startup** rather than ignored,
+because setting it and seeing no complaint is how a deployment comes to believe
+it has page encryption.
 
-| var                      | values                                        | notes |
-|--------------------------|-----------------------------------------------|-------|
-| `BASE_VSHARDS`           | `256` default, power-of-two                   | fixed at deploy; resharding is a separate tool. |
-| `BASE_ENCRYPT`           | `sqlcipher` \| `off` (default)                | opt-in page encryption. |
-| `BASE_KMS_URL`           | `https://kms.<env>.<your-domain>`              | for KEK fetch/wrap. |
-| `BASE_KEK_SCOPE`         | `platform` \| `org` (default)                 | grain of the KEK. |
-| `BASE_DEK_CACHE_SIZE`    | `4096` default                                | LRU cap for unwrapped DEKs in RAM. |
+A frame leaving a pod therefore carries whatever the page held. Treat the
+replication plane and the archive bucket as holding the same data the database
+does.
 
 ### Write path
 
@@ -169,7 +161,7 @@ that `txseq`. PITR for free.
 
 Backend is pluggable via `github.com/hanzoai/s3` client surface:
 
-- S3 (`s3://…`) — MinIO-protocol, used by `~/work/hanzo/storage`.
+- S3 (`s3://…`) — the S3 API, served by `hanzoai/s3`.
 - GCS (`gs://…`) — native client, used for production in GCP-hosted
   clusters.
 - off — archive disabled; durability = quasar DAG only.
@@ -179,7 +171,7 @@ Backend is pluggable via `github.com/hanzoai/s3` client surface:
 | var                         | values                                      | notes |
 |-----------------------------|---------------------------------------------|-------|
 | `BASE_NETWORK`              | `quasar` \| `standalone` (default)          | standalone = today's behaviour, no network. |
-| `BASE_SHARD_KEY`            | `user_id` \| `org_id` \| `<header name>`    | required when `BASE_NETWORK=quasar`. |
+| `BASE_SHARD_KEY`            | `user_id` \| `org_id` \| `header:<Name>`    | required when `BASE_NETWORK=quasar`. Names the shard's ONE source: a field on the verified identity, or the named request header. |
 | `BASE_REPLICATION`          | `1` \| `2` \| `3` \| …                      | ≤ `BASE_PEERS` count. |
 | `BASE_PEERS`                | CSV of `host:port` DNS                      | operator-emitted in k8s; explicit in compose. |
 | `BASE_NODE_ROLE`            | `validator` (default) \| `archive`          |  |
@@ -188,21 +180,39 @@ Backend is pluggable via `github.com/hanzoai/s3` client surface:
 | `BASE_LISTEN_P2P`           | `:9999` default                             | quasar p2p port. |
 | `BASE_SHARD_BACKLOG_MAX`    | bytes (64 MiB default)                      | R6 per-shard archive backlog cap; drop-oldest beyond. |
 | `BASE_SHARD_BACKLOG_SEGMENTS` | integer (100 000 default)                 | R6 segment-count cap; first-to-hit with MAX drops. |
-| `BASE_TLS_CA`               | path to PEM bundle                          | R5 mTLS CA for peer verification. Unset ⇒ no TLS. |
-| `BASE_TLS_SERVER_CERT`      | path to PEM                                 | R5 server cert presented to inbound peers. |
-| `BASE_TLS_SERVER_KEY`       | path to PEM                                 | R5 server key. |
-| `BASE_TLS_ALLOWED_SANS`     | CSV of DNS SANs                             | R5 SAN allowlist. Typically = `BASE_PEERS` stripped of `:9999`. |
 
-### R1–R8 fix notes
+**The peer transport presents no certificate.**
+
+Four names used to stand in this table — `BASE_TLS_CA`, `BASE_TLS_SERVER_CERT`,
+`BASE_TLS_SERVER_KEY`, `BASE_TLS_ALLOWED_SANS` — against a config surface that
+no request ever reached. They are **refused at startup** now, for the reason
+`BASE_ENCRYPT` is: an operator who mounts a keypair, sets one of these and sees
+no complaint has been told that peers authenticate.
+
+Wiring it needs two things this repo does not have. The transport is a
+`luxfi/zap` node, which takes one `*tls.Config` and uses it both for the
+listener it binds and for every peer it dials — and Go dials with the config
+verbatim, so one config cannot name the several peers it is dialling. That is
+upstream. Certificates also need an issuer: the estate's cert-manager builds
+internal CAs with pod-DNS SANs elsewhere in the cluster, so the pattern exists,
+but nothing issues one for a Base pod today.
+
+Until both land, peers authenticate by reachability — see the trust-set note
+below.
+
+### What the transport and archive enforce
+
+The R-numbers are the labels the env surface above uses; each is glossed
+here so the table reads on its own.
 
 - **R1 (frame/envelope shardID binding)**: inbound envelopes whose inner
   `Frame.ShardID` disagrees with `Envelope.ShardID` are rejected at the
   transport boundary; the apply loop re-checks as defence-in-depth.
 - **R2 (localSeq monotonic)**: `Shard.localSeq` advances strictly by
-  +1 per finalised frame. Out-of-order frames buffer (cap 1024). An
-  attacker-forged high-Seq frame stays in the buffer forever because
-  its predecessors never arrive, so the gateway's `txseq` check cannot
-  be fooled into reporting "caught up".
+  +1 per finalised frame. Out-of-order frames buffer (cap 1024). A
+  frame arriving far ahead of the sequence waits there for
+  predecessors that never come, so it cannot advance `localSeq` and
+  the gateway's `txseq` check cannot read as "caught up".
 - **R3 (archive authorship)**: segments are `LBN2` — Ed25519 signature
   over body || CRC32 || pubkey. Writers refuse to encode without a
   signer; readers refuse to decode without a verifier; `LBN1` hard-
@@ -211,10 +221,9 @@ Backend is pluggable via `github.com/hanzoai/s3` client surface:
   operator emits a StatefulSet (`spec.network.workload: StatefulSet`
   default) so `BASE_PEERS` pod-ordinal DNS resolves. Deployment is
   permitted only at `replicas == 1`.
-- **R5 (mTLS on p2p)**: `TLSConfig` wires Ed25519/EC mTLS with SAN
-  pinning against the BASE_PEERS list. Transport wire-format is ZAP
-  (LP-200) over QUIC; `TLSConfig.ServerConfig() / ClientConfig()` land
-  the crypto surface.
+- **R5 (peer identity)**: not held. The transport establishes none, and
+  the config surface that read as though it did is gone — see the note
+  under the env table, and the trust-set property below.
 - **R6 (backlog caps)**: per-shard cap 64 MiB / 100 k segments,
   drop-oldest with `base_shard_backlog_drops_total` metric.
 - **R7 (HPA workload kind)**: operator threads workload kind into the
@@ -223,6 +232,47 @@ Backend is pluggable via `github.com/hanzoai/s3` client surface:
 - **R8 (nanos-suffixed object keys)**: `objectKey(…, startSeq, nanos)`
   produces unique keys per flush; `Range` dedupes by
   `(startSeq + frameIndex)` when multiple segments overlap.
+
+### What this layer leaves to you
+
+Standing properties of the design, each with the thing you do about it.
+
+- **`BASE_PEERS` is the trust set, and reachability is the whole of it.**
+  The transport carries no peer identity, so a peer is whatever answers
+  at one of those addresses, and the NodeID it states in the handshake
+  is its own word. Every entry may submit frames for any shard this node
+  owns; there is no second, finer authority inside the set. **Keep the
+  list to peers of the same service in the same namespace, and put a
+  NetworkPolicy in front of `BASE_LISTEN_P2P`** — a cluster that allows
+  all in-namespace ingress puts that port in reach of every pod in it.
+  Treat adding an entry as granting write access to the group's shards.
+
+- **`BASE_SHARD_KEY: header:<Name>` lets the client choose its shard.**
+  A header is whatever the caller sends. It exists because compose dev
+  needs a shard key with no token, and it is the only form that reads
+  one — every other form reads the verified identity, so a request
+  carrying none resolves no shard and runs local. **Use `user_id` or
+  `org_id` in anything but local dev.** The shard picks which pod
+  serves a write, so a caller choosing its own picks its own writer.
+
+- **`BASE_ENCRYPT` is refused.** Setting it stops the process with a
+  message naming what actually protects data at rest, rather than
+  starting quietly and leaving the operator to assume. The encryption
+  that is real is a layer up: per-org Base shards open under a per-org
+  key. **Put the data directory on an encrypted volume.**
+
+- **A shard costs an engine.** Each holds a 1024-entry channel, and
+  nothing has been exercised past single-digit shard counts. **Pick a
+  shard key whose cardinality you can bound** — `org_id` over `user_id`
+  where a tenant is the natural unit — and size before you scale.
+
+- **`network/attack_vectors_test.go` is the executable half of this
+  section.** The tests that pass are the defences listed above; the
+  tests that skip name what this package does not defend, and print
+  themselves on every CI run. The `network-attack-suite` gate in
+  `hanzo.yml` holds the two apart — a defence that stopped holding
+  cannot become a skip, and a marker cannot quietly become an
+  assertion.
 
 ## Layout
 
@@ -409,9 +459,10 @@ never diverges. Same code path as prod.
    catches up (txseq matches). No row loss, no duplication.
 3. **Archive PITR**: write 1000 rows, record txseq, write 100 more.
    Restore to the first txseq from GCS archive; DB has exactly 1000.
-4. **k8s operator**: apply `LiquidBD` with `network.replication: 3`.
-   Verify: headless svc, 3 pods with BASE_PEERS env, HPA, PDB
-   minAvailable=2, archive sidecar when `archive != off`.
+4. **k8s operator**: apply a Base-backed CR with
+   `network.replication: 3`. Verify: headless svc, 3 pods with
+   BASE_PEERS env, HPA, PDB minAvailable=2, archive sidecar when
+   `archive != off`.
 5. **Autoscale**: drive `base_hot_shards` > `hotShardsTarget` via
    synthetic load; verify KEDA scales Deployment up, new pod joins
    the network, existing shards rebalance.
@@ -429,6 +480,6 @@ never diverges. Same code path as prod.
 
 ## Deprecations
 
-- `~/work/hanzo/base-ha` is superseded. After `base/network` lands
-  and ATS/BD/TA/IAM/KMS/AML migrate, archive `base-ha` to the
-  deprecations page. The repo stays read-only for history.
+- `base-ha` is superseded. Once `base/network` has landed and the
+  services on it have migrated, archive `base-ha` to the deprecations
+  page. The repo stays read-only for history.
