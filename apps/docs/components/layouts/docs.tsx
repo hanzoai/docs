@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { DocsLayout, type DocsLayoutProps } from '@hanzo/docs-base-ui/layouts/docs';
 import { DocsNavbar } from '@/components/docs-navbar';
 import { Brand } from '@/components/brand';
+import { HanzoDocsIcon } from '@/app/layout.client';
 import { baseOptions } from '@/components/layouts/shared';
 import { source } from '@/lib/source';
 import { getSection } from '@/lib/source/navigation';
@@ -48,6 +49,10 @@ export function Docs({
       }}
       sidebar={{
         prefetch: false,
+        // The collapsed rail's control IS the mark — see SidebarProps.mark. The
+        // mark itself, not <Brand/>: Brand answers "what fits the space", and
+        // the space here is always the collapsed one.
+        mark: <HanzoDocsIcon className="size-4.5" />,
         // The tree shows 12 rows so it fits one screen; the filter is how a
         // reader reaches the ~1,600 pages it does not list. Titles and paths are
         // computed here, on the server, from the same source the tree comes from.

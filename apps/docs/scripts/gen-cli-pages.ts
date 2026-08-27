@@ -172,7 +172,7 @@ function renderIndex(gs: Group[], commands: number, covered: number): string {
   );
   L.push('');
   L.push('```bash');
-  L.push('curl -fsSL https://hanzo.ai/install | sh');
+  L.push('curl -fsSL hanzo.sh | sh');
   L.push('hanzo auth login');
   L.push('```');
   L.push('');
