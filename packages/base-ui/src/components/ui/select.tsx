@@ -108,5 +108,15 @@ export function SelectItem({
 }
 
 export function SelectSeparator({ className, ...props }: ComponentProps<typeof Separator>) {
-  return <Separator className={cn('mx-1 my-1 h-px bg-fd-border', className)} {...props} />;
+  return (
+    <Separator
+      className={(state) =>
+        cn(
+          'mx-1 my-1 h-px bg-fd-border',
+          typeof className === 'function' ? className(state) : className,
+        )
+      }
+      {...props}
+    />
+  );
 }
