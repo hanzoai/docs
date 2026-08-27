@@ -2,7 +2,6 @@ import { fileURLToPath } from 'node:url';
 import type { Registry } from '@hanzo/docs-cli/build';
 import * as path from 'node:path';
 import { commonComponents, findSlotComponents } from '../../shared/registry.ts';
-import type { Registry } from 'fuma-cli/compiler';
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../src');
 
@@ -12,12 +11,6 @@ export const registry: Registry = {
   dir,
   tsconfigPath: '../tsconfig.json',
   packageJson: '../package.json',
-  env: {
-    ui: '@hanzo/docs-base-ui',
-  },
-  onResolve(ref) {
-    return resolveExternal(ref, '@hanzo/docs-base-ui', dir) ?? ref;
-  },
   components: [
     ...commonComponents,
     ...(await findSlotComponents(dir)),
