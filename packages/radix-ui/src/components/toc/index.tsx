@@ -6,7 +6,6 @@ import {
   type RefObject,
   use,
   useEffect,
-  useEffectEvent,
   useRef,
 } from 'react';
 import { cn } from '@/utils/cn';
