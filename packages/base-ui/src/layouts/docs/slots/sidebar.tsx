@@ -40,6 +40,24 @@ export interface SidebarProps extends ComponentProps<'aside'> {
   footer?: ReactNode;
 
   /**
+   * The brand mark, drawn on the collapsed rail's own control.
+   *
+   * A collapsed rail put two things in the top-left corner: this control,
+   * showing a sidebar glyph, and the layout's title beside it showing the mark
+   * — two targets, one of which was not a target. They are one control now: the
+   * mark is what is there at rest, because it is what a reader recognises at
+   * that size, and the glyph replaces it under the pointer, which is the moment
+   * the control has something to say about what it does.
+   *
+   * It is NOT the `navTitle` slot. That slot is a link to the site root, and an
+   * anchor inside a button wins the click — the control would navigate home
+   * rather than open the rail. Pass the mark itself.
+   *
+   * Absent, the control is the glyph alone and nothing here changes.
+   */
+  mark?: ReactNode;
+
+  /**
    * Support collapsing the sidebar on desktop mode
    *
    * @defaultValue true
@@ -55,7 +73,7 @@ export function SidebarProvider(props: SidebarProviderProps) {
   return <Base.SidebarProvider {...props} />;
 }
 
-export function Sidebar({ footer, banner, collapsible = true, components, ...rest }: SidebarProps) {
+export function Sidebar({ footer, banner, mark, collapsible = true, components, ...rest }: SidebarProps) {
   const {
     menuItems,
     slots,
@@ -79,7 +97,7 @@ export function Sidebar({ footer, banner, collapsible = true, components, ...res
 
   return (
     <>
-      <SidebarContent {...rest}>
+      <SidebarContent {...rest} mark={mark}>
         {/* gap-2, not the drawer's gap-3: this rail has a fixed height budget
             and the drawer does not, so a point spent here is a point the tree
             below never gets. */}
@@ -219,7 +237,13 @@ export function SidebarTrigger(props: ComponentProps<'button'>) {
   return <Base.SidebarTrigger {...props} />;
 }
 
-function SidebarContent({ ref: refProp, className, children, ...props }: ComponentProps<'aside'>) {
+function SidebarContent({
+  ref: refProp,
+  className,
+  children,
+  mark,
+  ...props
+}: ComponentProps<'aside'> & Pick<SidebarProps, 'mark'>) {
   const ref = useRef<HTMLElement>(null);
 
   return (
@@ -307,9 +331,21 @@ function SidebarContent({ ref: refProp, className, children, ...props }: Compone
                   size: 'icon-sm',
                   className: 'rounded-lg',
                 }),
+                mark && 'group/mark relative',
               )}
             >
-              <SidebarIcon />
+              {mark ? (
+                <>
+                  {/* Both are laid on the same spot and cross-faded, so the
+                      button never changes size and the corner never reflows. */}
+                  <span className="inline-flex transition-opacity group-hover/mark:opacity-0">
+                    {mark}
+                  </span>
+                  <SidebarIcon className="absolute opacity-0 transition-opacity group-hover/mark:opacity-100" />
+                </>
+              ) : (
+                <SidebarIcon />
+              )}
             </Base.SidebarCollapseTrigger>
           </div>
         </>

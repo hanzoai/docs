@@ -104,13 +104,54 @@ jobs:
             echo "::error::KMS_CLIENT_ID/KMS_CLIENT_SECRET are unset, so the ingest key cannot be read. Add them as org secrets on this forge."
             exit 1
           fi
-          token="$(curl -sf "$KMS/v1/kms/auth/login" -H 'Content-Type: application/json' \
-            -d "{\"clientId\":\"$KMS_CLIENT_ID\",\"clientSecret\":\"$KMS_CLIENT_SECRET\"}" \
-            | sed -n 's/.*"accessToken"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
-          [ -n "$token" ] || { echo "::error::KMS login failed at $KMS"; exit 1; }
-          key="$(curl -sf "$KMS/v1/kms/secrets/deploy/PUBLISHABLE_KEY?env=prod" \
-            -H "Authorization: Bearer $token" \
-            | sed -n 's/.*"value"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+          # `curl -sf` under `set -euo pipefail` makes every message below it
+          # unreachable: -f turns a refusal into exit 22, the pipeline carries it,
+          # -e ends the script, and the line that would say WHICH call failed
+          # never runs. Two diagnoses of a real outage produced "exitcode '22'"
+          # and nothing else. Ask for the status instead, and say what came back.
+          # Retried because the answer can be lost rather than refused. cloud
+          # serves KMS as a plugin over a unix socket and that socket drops
+          # responses mid-write under load — 47 `kms.sock … broken pipe` in one
+          # hour, measured, with the pod at 0 restarts. curl reports 000 for it,
+          # which is indistinguishable here from unreachable, so the only honest
+          # move is to ask again. A real refusal (401/403/404) returns a code and
+          # is NOT retried — this waits out a dropped answer, it does not paper
+          # over a rejection.
+          ask() {  # ask <outfile> <curl args...>  -> prints the status code
+            local out="$1"; shift
+            local code=""
+            for wait in 0 5 15 45; do
+              [ "$wait" = 0 ] || sleep "$wait"
+              # `|| code=000` on the ASSIGNMENT, never `|| echo 000` inside the
+              # substitution: -w already prints 000 when curl fails, so a second
+              # one makes the variable "000000", which matches nothing below and
+              # turns an outage into a refusal that never retries.
+              code="$(curl -s -o "$out" -w '%{http_code}' --max-time 30 "$@")" || code=000
+              case "$code" in
+                000|429|5*) continue ;;   # lost, throttled, or the gateway's own
+                *) break ;;               # an answer, including a refusal
+              esac
+            done
+            printf '%s' "$code"
+          }
+          login_code="$(ask /tmp/kms_login.json \
+            "$KMS/v1/kms/auth/login" -H 'Content-Type: application/json' \
+            -d "{\"clientId\":\"$KMS_CLIENT_ID\",\"clientSecret\":\"$KMS_CLIENT_SECRET\"}")"
+          if [ "$login_code" != "200" ]; then
+            echo "::error::KMS login at $KMS answered $login_code after 3 tries. 401 means this forge's KMS_CLIENT_ID/KMS_CLIENT_SECRET are rejected; 000 means the endpoint was unreachable from the build container."
+            exit 1
+          fi
+          token="$(sed -n 's/.*"accessToken"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' /tmp/kms_login.json)"
+          [ -n "$token" ] || { echo "::error::KMS login returned 200 with no accessToken"; exit 1; }
+
+          secret_code="$(ask /tmp/kms_secret.json \
+            "$KMS/v1/kms/secrets/deploy/PUBLISHABLE_KEY?env=prod" \
+            -H "Authorization: Bearer $token")"
+          if [ "$secret_code" != "200" ]; then
+            echo "::error::reading deploy/PUBLISHABLE_KEY (env=prod) answered $secret_code after 3 tries. 403 means this client may not read that path; 404 means the secret is not there."
+            exit 1
+          fi
+          key="$(sed -n 's/.*"value"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' /tmp/kms_secret.json)"
           # Fail closed. An empty build-arg produces an image that builds, serves,
           # and looks correct while every event it emits is unattributed — the
           # exact silent hole this step exists to close, and one no amount of

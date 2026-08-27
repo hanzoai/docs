@@ -86,12 +86,13 @@ export function DocsNavbar(props: ComponentProps<'header'>) {
         <slots.navTitle
           className={cn(
             'inline-grid grid-flow-col items-center gap-2.5 font-semibold',
-            // Hidden on desktop only while the SIDEBAR is showing it — which it is
-            // not when collapsed, and collapsed is exactly the landing page. Left
-            // unconditional the landing page rendered no wordmark at all: the rail
-            // that owns it was off-screen and this copy was suppressed for a
-            // neighbour that was not drawing.
-            !collapsed && 'md:hidden',
+            // Desktop always has a copy of this somewhere to the left, so this one
+            // is mobile's. Open, the rail's header draws it as the wordmark;
+            // collapsed, the rail's own control draws it as the mark. It was
+            // conditional on `collapsed` back when the collapsed case had nobody
+            // drawing it — that left the corner with a mark and a toggle side by
+            // side, which is the pair they are no longer.
+              'md:hidden',
           )}
         />
       ) : (

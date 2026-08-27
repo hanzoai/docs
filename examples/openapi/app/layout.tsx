@@ -1,20 +1,12 @@
 import { RootProvider } from '@hanzo/docs/ui/provider/next';
 import './global.css';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { ZenSans } from '@hanzo/font/sans';
+import { ZenMono } from '@hanzo/font/mono';
 import type { ReactNode } from 'react';
-
-const inter = Inter({
-  subsets: ['latin'],
-});
-
-const mono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-});
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${inter.className} ${mono.variable}`} suppressHydrationWarning>
+    <html lang="en" className={`${ZenSans.className} ${ZenMono.variable}`} suppressHydrationWarning>
       <body className="flex flex-col min-h-screen">
         <RootProvider>{children}</RootProvider>
       </body>
