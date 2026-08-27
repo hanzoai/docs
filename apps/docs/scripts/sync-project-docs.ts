@@ -93,12 +93,14 @@ export async function syncProjectDocs() {
     process.env.HANZO_DOCS_INCLUDE_PRIVATE === '1' || config.includePrivate === true;
   const prune = process.env.HANZO_DOCS_PRUNE !== '0';
 
-  const octokit = await createOctokit();
   const projects: RepoRecord[] = [];
 
   ensureDir(outputDir, dryRun);
 
   for (const org of orgs) {
+    // Per org, because an installation token is issued to ONE installation and
+    // an org is what an App is installed on.
+    const octokit = await createOctokit(org);
     const repos = await listOrgRepos(octokit, org);
     const tasks = repos
       .filter((repo) => !excludeRepos.has(repo.name))
@@ -192,13 +194,54 @@ function ensureDir(dir: string, dryRun: boolean) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
-async function createOctokit(): Promise<Octokit> {
+// ONE CREDENTIAL, asked for by org, for every GitHub read in this file.
+//
+// A GitHub App installation token is preferred wherever the App is configured,
+// because the quota it spends belongs to the installation rather than to a
+// person. With no credential at all the sync gets 60 requests an hour and stops
+// partway through the READMEs -- which is what it did, reporting `Request quota
+// exhausted` and then rendering the pages it had.
+//
+// The App is the same one cloud's integrations product uses, so it is named the
+// same way (GITHUB_APP_ID + GITHUB_APP_PRIVATE_KEY) and there is one spelling of
+// it in the estate. Anything that goes wrong reaching it falls back to the token
+// the caller already had: an App that cannot be asked is a reason to use the
+// other credential, never a reason to fail the build.
+const credentials = new Map<string, Promise<string | undefined>>();
+
+function credential(org: string): Promise<string | undefined> {
+  let token = credentials.get(org);
+  if (!token) {
+    token = mintCredential(org);
+    credentials.set(org, token);
+  }
+  return token;
+}
+
+async function mintCredential(org: string): Promise<string | undefined> {
   const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || process.env.GH_PAT;
+  const appId = process.env.GITHUB_APP_ID?.trim();
+  const privateKey = process.env.GITHUB_APP_PRIVATE_KEY?.trim();
+  if (!appId || !privateKey) return token;
+  try {
+    const { App } = await import('octokit');
+    const app = new App({ appId, privateKey: privateKey.replace(/\\n/g, '\n') });
+    const installation = await app.octokit.request('GET /orgs/{org}/installation', { org });
+    const installed = await app.getInstallationOctokit(installation.data.id);
+    const auth = (await installed.auth({ type: 'installation' })) as { token?: string };
+    return auth?.token ?? token;
+  } catch (error) {
+    console.warn(`[projects] ${org}: the App could not be asked (${(error as Error).message}); using the configured token`);
+    return token;
+  }
+}
+
+async function createOctokit(org: string): Promise<Octokit> {
   // Dynamic import so the octokit dep tree only loads when the sync
   // step is actually running. Avoids a bun-vs-pnpm-symlink ENOENT at
   // top-level import time during local builds with HANZO_DOCS_SYNC=0.
   const { Octokit } = await import('octokit');
-  return new Octokit({ auth: token || undefined });
+  return new Octokit({ auth: (await credential(org)) || undefined });
 }
 
 async function listOrgRepos(octokit: Octokit, org: string) {
@@ -443,7 +486,7 @@ async function fetchDocsFromRemote({
   const tarballUrl = `https://codeload.github.com/${org}/${repo.name}/tar.gz/${repo.default_branch}`;
 
   const headers: Record<string, string> = {};
-  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || process.env.GH_PAT;
+  const token = await credential(org);
   if (token) headers.Authorization = `token ${token}`;
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
