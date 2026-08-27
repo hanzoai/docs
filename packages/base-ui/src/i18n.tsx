@@ -1,5 +1,10 @@
-import type { I18nProviderProps, Translations } from '@/contexts/i18n';
-import type { I18nConfig } from '@hanzo/docs-core/i18n';
+import type { I18nProviderProps } from '@/contexts/i18n';
+import type {
+  I18nConfig,
+  TranslationsAPI,
+  TranslationsAPIExtension,
+  TranslationValue,
+} from '@hanzo/docs-core/i18n';
 
 export type Translations = {
   displayName: string;
