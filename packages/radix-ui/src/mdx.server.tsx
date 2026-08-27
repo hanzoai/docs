@@ -1,5 +1,5 @@
 import type { LoaderConfig, LoaderOutput, Page } from '@hanzo/docs-core/source';
-import { type ComponentProps, type FC, useEffectEvent } from 'react';
+import type { ComponentProps, FC } from 'react';
 import defaultMdxComponents from '@/mdx';
 
 /**

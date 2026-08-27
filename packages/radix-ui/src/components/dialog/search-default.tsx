@@ -1,7 +1,7 @@
 'use client';
 
 import { useDocsSearch } from '@hanzo/docs-core/search/client';
-import { type ReactNode, useEffectEvent, useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { useOnChange } from '@hanzo/docs-core/utils/use-on-change';
 import { useI18n } from '@/contexts/i18n';
 import {

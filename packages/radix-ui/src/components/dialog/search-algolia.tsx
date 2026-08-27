@@ -1,7 +1,7 @@
 'use client';
 
 import { type AlgoliaOptions, useDocsSearch } from '@hanzo/docs-core/search/client';
-import { type ReactNode, useEffectEvent, useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { useOnChange } from '@hanzo/docs-core/utils/use-on-change';
 import {
   SearchDialog,
