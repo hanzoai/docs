@@ -1,15 +1,11 @@
 import { RootProvider } from '@hanzo/docs/ui/provider/next';
 import '@hanzo/docs/ui/style.css';
-import { Inter } from 'next/font/google';
+import { Zen } from '@hanzo/font';
 import type { ReactNode } from 'react';
-
-const inter = Inter({
-  subsets: ['latin'],
-});
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={inter.className} suppressHydrationWarning>
+    <html lang="en" className={Zen.className} suppressHydrationWarning>
       <body
         style={{
           display: 'flex',
