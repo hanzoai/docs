@@ -59,9 +59,14 @@ const config: NextConfig = {
     resolveAlias: {
       ...collectionsAlias,
       // Ported docs written against the upstream framework name still say
-      // `fumadocs-ui`; those components are ours, under our name.
-      'fumadocs-ui/components/callout': '@hanzo/docs-ui/components/callout',
-      'fumadocs-ui/components/tabs': '@hanzo/docs-ui/components/tabs',
+      // `fumadocs-ui`; those components are ours, under our name. They resolve to
+      // the base-ui adapter because that is the one this site renders with — the
+      // layout, the provider and the MDX map all come from it. Aliasing to the
+      // radix adapter pulled a second copy of the component library into the
+      // bundle, and a Tabs from the other copy cannot see this one's context, so
+      // a nested Tabs drew its own frame instead of tucking under its parent.
+      'fumadocs-ui/components/callout': '@hanzo/docs-base-ui/components/callout',
+      'fumadocs-ui/components/tabs': '@hanzo/docs-base-ui/components/tabs',
       '@docusaurus': './lib/empty-project-module.js',
       '@theme': './lib/empty-project-module.js',
       '@theme/Tabs': './lib/empty-project-module.js',
@@ -118,9 +123,10 @@ const config: NextConfig = {
       'collections/browser': path.resolve(__dirname, '.docs/browser.ts'),
       'collections/dynamic': path.resolve(__dirname, '.docs/dynamic.ts'),
 
-      // (a) Upstream framework name -> the same components under ours
-      'fumadocs-ui/components/callout': '@hanzo/docs-ui/components/callout',
-      'fumadocs-ui/components/tabs': '@hanzo/docs-ui/components/tabs',
+      // (a) Upstream framework name -> the same components under ours,
+      //     on the base-ui adapter this site renders with (see turbopack above)
+      'fumadocs-ui/components/callout': '@hanzo/docs-base-ui/components/callout',
+      'fumadocs-ui/components/tabs': '@hanzo/docs-base-ui/components/tabs',
 
       // Other doc-platform packages -> no-op stub
       '@docusaurus': emptyProjectModule,
@@ -223,7 +229,6 @@ const config: NextConfig = {
   //     JSX runtime resolve correctly only when the app build compiles them
   transpilePackages: [
     '@hanzo/docs',
-    '@hanzo/docs-ui',
     '@hanzo/docs-base-ui',
     '@hanzo/docs-core',
     '@hanzo/docs-openapi',
