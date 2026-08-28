@@ -1,16 +1,10 @@
 import './global.css';
 import '@hanzo/docs/ui/style.css';
 import { RootProvider } from '@hanzo/docs/ui/provider/next';
-import { Inter } from 'next/font/google';
+import { Zen } from '@hanzo/font';
 import type { ReactNode } from 'react';
 import { SearchDialog } from '../components/search-dialog';
 import { brand } from '../lib/config';
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-});
 
 export const metadata = {
   title: {
@@ -30,7 +24,7 @@ export const metadata = {
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html lang="en" className={Zen.variable} suppressHydrationWarning>
       <body className="min-h-svh bg-fd-background font-sans antialiased">
         <RootProvider
           search={{

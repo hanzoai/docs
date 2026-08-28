@@ -1,12 +1,8 @@
 import '@hanzo/docs/ui/style.css';
 import { RootProvider } from '@hanzo/docs/ui/provider/next';
-import { Inter } from 'next/font/google';
+import { Zen } from '@hanzo/font';
 import { defineI18nUI } from '@hanzo/docs/ui/i18n';
 import { i18n } from '@/lib/i18n';
-
-const inter = Inter({
-  subsets: ['latin'],
-});
 
 const { provider } = defineI18nUI(i18n, {
   translations: {
@@ -42,7 +38,7 @@ const { provider } = defineI18nUI(i18n, {
 export default async function Layout({ params, children }: LayoutProps<'/[lang]'>) {
   const { lang } = await params;
   return (
-    <html lang={lang} className={inter.className} suppressHydrationWarning>
+    <html lang={lang} className={Zen.className} suppressHydrationWarning>
       <body
         style={{
           display: 'flex',
