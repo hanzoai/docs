@@ -4,7 +4,7 @@ import {
   DocsBody,
   DocsDescription,
   DocsTitle,
-} from '@hanzo/docs-ui/page';
+} from '@hanzo/docs-base-ui/page';
 import { notFound } from 'next/navigation';
 import { getMDXComponents } from '@/mdx-components';
 

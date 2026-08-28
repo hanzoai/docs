@@ -4,9 +4,9 @@ import {
   DocsBody,
   DocsDescription,
   DocsTitle,
-} from '@hanzo/docs-ui/page';
+} from '@hanzo/docs-base-ui/page';
 import { notFound } from 'next/navigation';
-import defaultMdxComponents from '@hanzo/docs-ui/mdx';
+import defaultMdxComponents from '@hanzo/docs-base-ui/mdx';
 
 export default async function Page(props: {
   params: Promise<{ slug?: string[] }>;
