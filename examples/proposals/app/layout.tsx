@@ -1,7 +1,7 @@
 import './global.css';
 import '@hanzo/docs/ui/style.css';
 import { RootProvider } from '@hanzo/docs/ui/provider/next';
-import { ZenSans } from '@hanzo/font/sans';
+import { Zen } from '@hanzo/font/sans';
 import { ZenMono } from '@hanzo/font/mono';
 import type { ReactNode } from 'react';
 import { SearchDialog } from '../components/search-dialog';
@@ -25,7 +25,7 @@ export const metadata = {
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={ZenSans.variable} suppressHydrationWarning>
+    <html lang="en" className={Zen.variable} suppressHydrationWarning>
       <body className="min-h-svh bg-fd-background font-sans antialiased">
         <RootProvider
           search={{
