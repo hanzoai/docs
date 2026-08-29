@@ -353,7 +353,7 @@ Insights.capture('button_clicked', {
       </section>
 
       {/* ── Footer ───────────────────────────────────────── */}
-      <footer className="border-t border-border">
+      <section className="border-t border-border">
         <div className="mx-auto max-w-7xl px-6 py-12">
           <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-8 mb-10">
             <div className="lg:col-span-2">
@@ -402,7 +402,7 @@ Insights.capture('button_clicked', {
             </div>
           </div>
         </div>
-      </footer>
+      </section>
     </main>
   );
 }

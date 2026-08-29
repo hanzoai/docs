@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { HomeLayout } from '@hanzo/docs/ui/layouts/home';
 import { baseOptions, linkItems, logo } from '@/lib/layout.shared';
+import { Footer } from '@/components/footer';
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
@@ -17,6 +18,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      <Footer />
     </HomeLayout>
   );
 }
