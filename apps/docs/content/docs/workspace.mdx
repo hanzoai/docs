@@ -1,0 +1,176 @@
+---
+icon: LayoutGrid
+title: Workspace
+description: Build sheet for the Hanzo workspace — layout, dimensions, and the Slack part each piece answers to.
+---
+
+import { Callout } from '@hanzo/docs-ui/components/callout'
+
+# Workspace
+
+A Slack user opens this and needs no instructions. Same layout, same words, same
+gestures. The only difference is the name, and what sits under **More**.
+
+## 1. The screen
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│  ←  →  🕘            [ Search Hanzo            ]              ?    ◍      │  48
+├──────┬────────────────┬───────────────────────────────────┬──────────────┤
+│  A   │ Acme      ▾  ✎ │ # general · 12 members            │ Thread     ✕ │
+│      ├────────────────┼───────────────────────────────────┤              │
+│ Home │ Threads        │ Messages · Canvas · Files · Pins  │              │
+│ DMs  │ Huddles        ├───────────────────────────────────┤   replies    │
+│ Act. │ Drafts & sent  │                                   │              │
+│ Later│                │          message list             │              │
+│ More │ ▾ Channels     │                                   │              │
+│      │   # general    │                                   │              │
+│      │   # design     │                                   │              │
+│      │   + Add        ├───────────────────────────────────┤              │
+│      │ ▾ Direct msgs  │  composer + format bar            │              │
+│  +   │   Kim          │                                   │              │
+│  ◍   │                │                                   │              │
+└──────┴────────────────┴───────────────────────────────────┴──────────────┘
+   76         260                     fills                       380
+```
+
+| Part | Size | Shown |
+|---|---|---|
+| Top bar | 48 tall | always |
+| Search | 440 × 32, centred | always |
+| Back / forward | 2 buttons | 640 and up |
+| Rail | 76 wide | always |
+| Rail item | 64 wide, icon over label | always |
+| Workspace mark | 34 × 34 | top of rail |
+| Sidebar | 260 wide | column at 640+, drawer below |
+| Pane | fills | always |
+| Thread panel | 380 wide | on demand, right |
+| Column gap | 8 | 640 and up |
+
+## 2. The rail
+
+Slack order, Slack words.
+
+| Item | Shows | UI |
+|---|---|---|
+| Workspace mark | Org initial. Click to switch workspace. | have |
+| Home | Channels and DMs in the sidebar | have |
+| DMs | Every direct message, newest first | need |
+| Activity | Mentions, replies, reactions | need |
+| Later | Saved messages and files | need |
+| More | Chat · Dev · Drive · Agents · Tasks · Inbox | need |
+| + Create | Filled circle, bottom. Becomes ✕ when open. | have |
+| Avatar | You, with a presence dot | need |
+
+<Callout type="warn" title="Products go under More">
+Hanzo's own rooms do not belong on the rail. A Slack user's first five items must
+be the five they already know.
+</Callout>
+
+## 3. The sidebar
+
+260 wide. Header, then rows, then folders.
+
+- **Header** — workspace name + `▾` left, `✎` compose right.
+- **Rows** — Threads · Huddles · Drafts & sent.
+- **Channels** — collapsible. `#` public, lock private. Bold = unread. Ends with **+ Add channels**.
+- **Direct messages** — collapsible. Avatar, name, presence dot.
+- **Apps** — collapsible. Ends with **+ Add apps**.
+
+Parts that already exist in `@hanzo/ui/chat`: `Sidebar`, `SidebarHeader`,
+`SidebarSection`, `SidebarFolder`, `SidebarItem`, `SidebarUser`, `SidebarNewChat`.
+
+## 4. A channel
+
+| Part | Contents | UI |
+|---|---|---|
+| Header | `#` name · topic · face pile · member count · huddle | have |
+| Tabs | Messages · Canvas · Files · Pins | need |
+| Message | Avatar · name · time · text. Grouped by sender. | have |
+| Hover bar | emoji · reply in thread · share · save · more | need |
+| Reactions | Pills under the message. Count. Click to join. | need |
+| Thread | Right panel, 380. `n replies` on the parent. | need |
+| Composer | Format bar · attach · emoji · mention · send | have |
+| Empty channel | "This is the very beginning of #name" + two buttons | have |
+
+## 5. The + menu
+
+Slack's seven rows, in Slack's order. Opens upward, 260 wide.
+
+| Row | Runs on |
+|---|---|
+| Message | Chat |
+| Channel | hanzo.team |
+| Huddle | meet.hanzo.ai |
+| Canvas | hanzo.team |
+| List | Tasks |
+| Workflow | auto.hanzo.ai |
+| Invite people | hanzo.id |
+
+## 6. Where each feature already lives
+
+Nothing here needs building. It needs one UI over it.
+
+| Slack calls it | Runs on | Read through |
+|---|---|---|
+| Channels, DMs | hanzo.team | `/v1/team/rooms` |
+| Threads, reactions | hanzo.team | `/v1/team/*` |
+| Huddles | meet.hanzo.ai | link out |
+| Canvas | hanzo.team | link out |
+| Workflow Builder | auto.hanzo.ai | `/v1/auto/flows` |
+| Files | Hanzo Cloud | `/v1/s3/buckets` |
+| Members, invites | hanzo.id | IAM |
+| Apps | MCP registry | `/v1/tools/mcp/servers` |
+| Slack AI | Enso | `/v1/chat/completions` |
+
+## 7. Build order
+
+1. Route `/v1/team/rooms` in cloud. The sidebar fills. Everything below depends on it.
+2. Rail: Home · DMs · Activity · Later · More. Products move under More.
+3. Rail foot: avatar with presence dot.
+4. Sidebar rows: Threads · Huddles · Drafts & sent.
+5. Message hover bar: react · reply · share · save · more.
+6. Reaction pills.
+7. Thread panel, 380 wide, right side.
+8. Channel tabs: Messages · Canvas · Files · Pins.
+9. Top bar: history clock, help.
+10. Activity and Later views.
+
+## 8. Words
+
+Use Slack's noun everywhere a Slack user expects it. Never invent a synonym.
+
+| Say | Never |
+|---|---|
+| Workspace | org, tenant |
+| Channel | room, space |
+| Direct message | DM thread, private chat |
+| Thread | sub-conversation |
+| Huddle | call, meeting |
+| Later | saved, bookmarks |
+| Activity | notifications, feed |
+
+## 9. Start
+
+1. Open [hanzo.ai/chat](https://hanzo.ai/chat). No account needed.
+2. Type at the bottom. Press Enter.
+3. Sign in, top right.
+4. Check the workspace name, top left. Click `▾` to switch.
+5. Leave the model on **Enso**. It picks a model per question.
+6. Press **+** → **Invite people**.
+7. Press **+** → **Channel**.
+
+## 10. Models
+
+| Fact | Value |
+|---|---|
+| Models | 536 |
+| Providers | 57 |
+| Enso tiers | `enso-flash` · `enso` · `enso-ultra` |
+| Escalate past Flash | 1 in 5 |
+| Saved vs top rate | 69% |
+| Best case | 83% |
+
+<Callout type="warn" title="Not 90%">
+The calculator will not produce it. A hard-coded 89% was published once and pulled.
+</Callout>
