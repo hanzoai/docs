@@ -4,6 +4,7 @@ import { baseUrl, createMetadata } from '@/lib/metadata';
 import { Body } from '@/app/layout.client';
 import { Provider } from './provider';
 import type { ReactNode } from 'react';
+import { Zen, ZenMono } from '@hanzo/font';
 import { TreeContextProvider } from '@hanzo/docs/ui/contexts/tree';
 import { source } from '@/lib/source';
 import { NextProvider } from '@hanzo/docs/core/framework/next';
@@ -26,7 +27,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={`${Zen.variable} ${ZenMono.variable}`} suppressHydrationWarning>
       <Body>
         <NextProvider>
           <TreeContextProvider tree={source.getPageTree()}>
