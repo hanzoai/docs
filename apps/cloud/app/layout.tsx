@@ -1,6 +1,7 @@
 import './global.css';
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
+import { Zen, ZenMono } from '@hanzo/font';
 
 export const metadata: Metadata = {
   title: 'Hanzo Cloud — AI Infrastructure Platform',
@@ -31,7 +32,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className={`${Zen.variable} ${ZenMono.variable} dark`}>
       <body className="antialiased">{children}</body>
     </html>
   );

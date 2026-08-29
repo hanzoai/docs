@@ -14,19 +14,6 @@ import type { Translations } from '@hanzo/docs/ui/i18n';
 import { i18n } from '@/lib/i18n';
 import NotFound from './routes/not-found';
 
-export const links: Route.LinksFunction = () => [
-  { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-  {
-    rel: 'preconnect',
-    href: 'https://fonts.gstatic.com',
-    crossOrigin: 'anonymous',
-  },
-  {
-    rel: 'stylesheet',
-    href: 'https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap',
-  },
-];
-
 const cn: Partial<Translations> = {
   search: 'Translated Content',
 };

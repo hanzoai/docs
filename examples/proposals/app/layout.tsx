@@ -1,8 +1,7 @@
 import './global.css';
 import '@hanzo/docs/ui/style.css';
 import { RootProvider } from '@hanzo/docs/ui/provider/next';
-import { Zen } from '@hanzo/font/sans';
-import { ZenMono } from '@hanzo/font/mono';
+import { Zen } from '@hanzo/font';
 import type { ReactNode } from 'react';
 import { SearchDialog } from '../components/search-dialog';
 import { brand } from '../lib/config';
