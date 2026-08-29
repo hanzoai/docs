@@ -347,7 +347,7 @@ export default function Page() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border">
+      <section className="border-t border-border">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-8">
           <div className="flex items-center gap-2 text-sm text-text-dim">
             <CloudIcon className="size-4" />
@@ -374,7 +374,7 @@ export default function Page() {
             </a>
           </div>
         </div>
-      </footer>
+      </section>
     </main>
   );
 }

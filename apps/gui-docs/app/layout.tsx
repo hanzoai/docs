@@ -1,3 +1,6 @@
+// Brand tokens load before the app's own sheet so the theme can override
+// where the two meet.
+import '@hanzo/brand/styles/variables.css';
 import './global.css';
 import type { Viewport } from 'next';
 import { baseUrl, createMetadata } from '@/lib/metadata';
@@ -7,6 +10,7 @@ import type { ReactNode } from 'react';
 import { TreeContextProvider } from '@hanzo/docs/ui/contexts/tree';
 import { source } from '@/lib/source';
 import { NextProvider } from '@hanzo/docs/core/framework/next';
+import { Analytics } from '@hanzo/docs-analytics';
 
 export const metadata = createMetadata({
   title: {
@@ -33,6 +37,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <Provider>{children}</Provider>
           </TreeContextProvider>
         </NextProvider>
+        <Analytics product="gui-docs" />
       </Body>
     </html>
   );

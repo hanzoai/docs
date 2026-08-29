@@ -1,7 +1,12 @@
+// Brand tokens load before the app's own sheet so the theme can override
+// where the two meet.
+import '@hanzo/brand/styles/variables.css';
 import './global.css';
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { Zen, ZenMono } from '@hanzo/font';
+import { Analytics } from '@hanzo/docs-analytics';
+import { Footer } from '@/components/footer';
 
 export const metadata: Metadata = {
   title: 'Hanzo Team — Project Management & Collaboration',
@@ -33,7 +38,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${Zen.variable} ${ZenMono.variable} dark`}>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">{children}
+        <Footer />
+        <Analytics product="team" /></body>
       <script defer src="https://analytics.hanzo.ai/script.js" data-website-id="9e8eaacf-fb42-4b3b-a95f-11c58d50aec0" data-do-not-track="true" data-exclude-search="true" />
     </html>
   );

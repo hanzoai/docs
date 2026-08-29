@@ -334,7 +334,7 @@ export default function Page() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/[0.06]">
+      <section className="border-t border-white/[0.06]">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-8">
           <span className="text-sm text-text-dim">Hanzo Team</span>
           <div className="flex items-center gap-6 text-sm text-text-dim">
@@ -349,7 +349,7 @@ export default function Page() {
             </a>
           </div>
         </div>
-      </footer>
+      </section>
     </main>
   );
 }
