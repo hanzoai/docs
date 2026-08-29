@@ -1,3 +1,6 @@
+// Brand tokens load before the app's own sheet so the theme can override
+// where the two meet.
+import '@hanzo/brand/styles/variables.css';
 import './global.css';
 import type { Viewport } from 'next';
 import { baseUrl, createMetadata } from '@/lib/metadata';

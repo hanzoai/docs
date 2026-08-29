@@ -182,7 +182,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-fd-border">
+      <section className="border-t border-fd-border">
         <div className="mx-auto max-w-6xl px-6 py-12">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-10">
             <div className="lg:col-span-2">
@@ -237,7 +237,7 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      </footer>
+      </section>
     </main>
   );
 }

@@ -213,7 +213,7 @@ export function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t py-10 px-6 mx-auto w-full max-w-[1400px] md:px-12">
+      <section className="border-t py-10 px-6 mx-auto w-full max-w-[1400px] md:px-12">
         <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2">
@@ -249,7 +249,7 @@ export function App() {
             </div>
           </div>
         </div>
-      </footer>
+      </section>
     </>
   );
 }

@@ -4,6 +4,9 @@ const withMDX = createMDX();
 
 /** @type {import('next').NextConfig} */
 const config = {
+  // Both ship ESM with 'use client' boundaries, so the client/server split
+  // and the JSX runtime resolve only when the app build compiles them.
+  transpilePackages: ['@hanzogui/shell', '@hanzo/brand'],
   output: 'export',
   reactStrictMode: true,
   // The generated collection modules live in the generator's outDir (`.docs/`),

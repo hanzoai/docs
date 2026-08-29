@@ -1,5 +1,6 @@
 import { HomeLayout } from '@hanzo/docs-base-ui/layouts/home';
 import type { ReactNode } from 'react';
+import { Footer } from '@/components/footer';
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
@@ -14,6 +15,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       ]}
     >
       {children}
+      <Footer />
     </HomeLayout>
   );
 }

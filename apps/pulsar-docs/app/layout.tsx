@@ -1,9 +1,13 @@
+// Brand tokens load before the app's own sheet so the theme can override
+// where the two meet.
+import '@hanzo/brand/styles/variables.css';
 import './global.css';
 import 'katex/dist/katex.min.css';
 import type { Viewport } from 'next';
 import { baseUrl, createMetadata } from '@/lib/metadata';
 import { RootProvider } from '@hanzo/docs-base-ui/provider/next';
 import type { ReactNode } from 'react';
+import { Analytics } from '@hanzo/docs-analytics';
 
 export const metadata = createMetadata({
   title: {
@@ -26,7 +30,8 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className="antialiased">
-        <RootProvider>{children}</RootProvider>
+        <RootProvider>{children}
+        <Analytics product="pulsar-docs" /></RootProvider>
       </body>
     </html>
   );
