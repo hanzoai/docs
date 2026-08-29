@@ -1,7 +1,7 @@
 import './global.css';
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
-import { Analytics } from '@hanzo/docs-analytics';
+import { Zen, ZenMono } from '@hanzo/font';
 
 export const metadata: Metadata = {
   title: 'Hanzo Flow — Visual AI Workflow Builder',
@@ -32,11 +32,9 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body className="antialiased">
-        {children}
-        <Analytics product="flow-docs" />
-      </body>
+    <html lang="en" className={`${Zen.variable} ${ZenMono.variable} dark`}>
+      <body className="antialiased">{children}</body>
+      <script defer src="https://analytics.hanzo.ai/script.js" data-website-id="811b5039-8438-453a-9c8a-e1f4cff05353" data-do-not-track="true" data-exclude-search="true" />
     </html>
   );
 }

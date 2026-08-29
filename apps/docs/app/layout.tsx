@@ -7,7 +7,8 @@ import { baseUrl, createMetadata } from '@/lib/metadata';
 import { Body } from '@/app/layout.client';
 import { Provider } from './provider';
 import type { ReactNode } from 'react';
-import { TreeContextProvider } from '@hanzo/docs-base-ui/contexts/tree';
+import { Zen, ZenMono } from '@hanzo/font';
+import { TreeContextProvider } from '@hanzo/docs/ui/contexts/tree';
 import { source } from '@/lib/source';
 import { NextProvider } from '@hanzo/docs/core/framework/next';
 import { Analytics } from '@hanzo/docs-analytics';
@@ -20,14 +21,6 @@ export const metadata = createMetadata({
   description:
     'Documentation for Hanzo AI Cloud — every model, every tool, one key.',
   metadataBase: baseUrl,
-  // Hanzo Edit convention: a page self-declares its source so the widget can
-  // resolve the file under the current route and open a PR against it. Repo-wide
-  // default; a route that maps 1:1 to a file may add `hanzo:path` of its own.
-  other: {
-    'hanzo:repo': 'hanzo-docs/docs',
-    'hanzo:branch': 'main',
-    'hanzo:provider': 'github',
-  },
 });
 
 export const viewport: Viewport = {
@@ -39,7 +32,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={`${Zen.variable} ${ZenMono.variable}`} suppressHydrationWarning>
       <Body>
         <NextProvider>
           <TreeContextProvider tree={source.getPageTree()}>

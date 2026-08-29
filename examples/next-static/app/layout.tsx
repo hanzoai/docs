@@ -1,5 +1,4 @@
-import { Zen } from '@hanzo/font/sans';
-import { ZenMono } from '@hanzo/font/mono';
+import { Zen } from '@hanzo/font';
 import { Provider } from '@/components/provider';
 import './global.css';
 

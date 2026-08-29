@@ -1,7 +1,6 @@
 import { RootProvider } from '@hanzo/docs/ui/provider/next';
 import './global.css';
-import { Zen } from '@hanzo/font/sans';
-import { ZenMono } from '@hanzo/font/mono';
+import { Zen, ZenMono } from '@hanzo/font';
 import type { ReactNode } from 'react';
 
 export default function Layout({ children }: { children: ReactNode }) {
