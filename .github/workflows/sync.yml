@@ -15,8 +15,18 @@ jobs:
         with:
           fetch-depth: 0
       - env:
+          FORGE_TOKEN: ${{ secrets.FORGE_TOKEN }}
           HANZO_GIT_TOKEN: ${{ secrets.HANZO_GIT_TOKEN }}
         run: |
           set -euo pipefail
-          test -n "$HANZO_GIT_TOKEN" || { echo "::error::HANZO_GIT_TOKEN is unset; the forge never sees this push"; exit 1; }
-          git push "https://sync:${HANZO_GIT_TOKEN}@git.hanzo.ai/hanzoai/docs.git" HEAD:refs/heads/main
+          # FORGE_TOKEN is the fleet's git.hanzo.ai write credential (the identity
+          # every other write-back uses); HANZO_GIT_TOKEN is the older one the image
+          # build reads. Hanzo Git takes the token as the HTTP username.
+          for tok in "$FORGE_TOKEN" "$HANZO_GIT_TOKEN"; do
+            [ -n "$tok" ] || continue
+            if git push "https://${tok}@git.hanzo.ai/hanzoai/docs.git" HEAD:refs/heads/main; then
+              exit 0
+            fi
+          done
+          echo "::error::no configured token could push to git.hanzo.ai; the forge never sees this push"
+          exit 1
