@@ -39,12 +39,20 @@ curl -sS -X POST https://api.hanzo.ai/v1/sandbox/lease \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H 'Content-Type: application/json' \
   -d '{"class":"dev","project":"billing","ttlSec":900}'
+# 4. which agent answers where: a default for the workspace, another agent in one room
+curl -sS -X PUT https://api.hanzo.ai/v1/channels/agent \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"channel":"slack","default":"eng","rooms":{"C024BE91L":"des"}}'
 ```
 
 Step 2 is what a Centaur persona becomes: a row the org owns, with a model, instructions, a tool
 list, an optional schedule and an avatar. Every org is seeded with `@dev`, `@des` and `@vi` as
 ordinary rows of the same kind. Step 3 is the sandbox a Slack turn leases when the agent calls
-`lease_sandbox`; the [E2B guide](/docs/guides/migrate/e2b) covers that surface call by call.
+`lease_sandbox`; the [E2B guide](/docs/guides/migrate/e2b) covers that surface call by call. Step 4
+is what Centaur's per-channel persona defaults become: `default` answers every room without a
+binding of its own, `rooms` maps a Slack channel id to the agent that answers there, and several
+personas behind one bot are several agents, each with its own model, instructions and tools.
 
 ### Core capabilities
 
@@ -168,6 +176,7 @@ agentic run are the same object with different lease lengths — so its isolatio
 | Rails Console | [console.hanzo.ai](/docs/console) — Agents, Agent Builder, integrations, keys, org |
 | Static API keys, HS256 JWT | Hanzo IAM |
 | `overlays.sources[]` git layering | Per-org rows for tools, prompts, skills and agents, managed from the API and console |
+| Per-channel persona defaults (`SLACKBOTV2_CHANNEL_DEFAULTS`) | `PUT /v1/channels/agent` — a default agent per transport and an agent per room, set by an org admin |
 | Helm chart, k3s, `just up` | `docker run ghcr.io/hanzoai/cloud`; operator and Helm in production |
 
 ## The call
@@ -252,10 +261,6 @@ connector, or it calls the API.
 **Git-sourced overlays.** Centaur layers tools, workflows, personas and prompts from an ordered
 list of repositories mounted into every pod. Hanzo keeps each of those as rows the org owns; copy
 `.agents/skills` across unchanged and publish the ones worth sharing to hanzo.market.
-
-**One agent per transport, today.** Which agent answers Slack is set per deployment; binding an
-agent to a specific room from the org's own settings is the next step on that surface. Until then,
-several personas behind one bot are one agent whose instructions route — as they are in Centaur.
 
 **A warm pool.** The pod goes first and the project volume stays, so the next lease for the same
 project attaches the same checkout and dependencies. The cost a pool hides is paid once per project
