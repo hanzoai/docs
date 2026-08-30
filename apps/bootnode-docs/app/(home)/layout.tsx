@@ -5,5 +5,10 @@ import { linkItems } from '@/lib/layout.shared';
 import { Footer } from '@/components/footer';
 
 export default function Layout({ children }: { children: ReactNode }) {
-  return <HomeLayout {...baseOptions()} links={linkItems}>{children}</HomeLayout>;
+  return (
+    <HomeLayout {...baseOptions()} links={linkItems}>
+      {children}
+      <Footer />
+    </HomeLayout>
+  );
 }
