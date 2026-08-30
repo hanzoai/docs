@@ -21,15 +21,17 @@ jobs:
           set -euo pipefail
           # FORGE_TOKEN is the fleet's git.hanzo.ai write credential (the identity
           # every other write-back uses); HANZO_GIT_TOKEN is the older one the image
-          # build reads. Hanzo Git reads the token from an Authorization header, so no
-          # password prompt is ever reached.
+          # build reads.
           export GIT_TERMINAL_PROMPT=0
+          # Hanzo Git checks basic auth as <token owner>:<token>, so the owner has
+          # to be named; hanzo-dev is the fleet's service identity.
           for tok in "$FORGE_TOKEN" "$HANZO_GIT_TOKEN"; do
             [ -n "$tok" ] || continue
-            if git -c "http.extraHeader=Authorization: token ${tok}" \
-                 push https://git.hanzo.ai/hanzoai/docs.git HEAD:refs/heads/main; then
-              exit 0
-            fi
+            for user in hanzo-dev hanzoai; do
+              if git push "https://${user}:${tok}@git.hanzo.ai/hanzoai/docs.git" HEAD:refs/heads/main; then
+                exit 0
+              fi
+            done
           done
           echo "::error::no configured token could push to git.hanzo.ai; the forge never sees this push"
           exit 1
