@@ -1,0 +1,22 @@
+# The one GitHub-side job. Builds run on Hanzo Git from .hanzo/workflows/, so
+# main has to reach the forge — this pushes it there and does nothing else. It
+# went missing when .github/workflows was emptied, and docs.hanzo.ai then served
+# a build from 24 August while main moved twelve commits.
+name: Sync main to Hanzo Git
+on:
+  push:
+    branches: [main]
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - env:
+          HANZO_GIT_TOKEN: ${{ secrets.HANZO_GIT_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$HANZO_GIT_TOKEN" || { echo "::error::HANZO_GIT_TOKEN is unset; the forge never sees this push"; exit 1; }
+          git push "https://sync:${HANZO_GIT_TOKEN}@git.hanzo.ai/hanzoai/docs.git" HEAD:refs/heads/main
