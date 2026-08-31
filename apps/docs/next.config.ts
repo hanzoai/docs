@@ -67,6 +67,12 @@ const config: NextConfig = {
       // a nested Tabs drew its own frame instead of tucking under its parent.
       'fumadocs-ui/components/callout': '@hanzo/docs-base-ui/components/callout',
       'fumadocs-ui/components/tabs': '@hanzo/docs-base-ui/components/tabs',
+      // Content that still names the radix adapter (`@hanzo/docs-ui`) — the studio
+      // submodule's pages — resolves to the same base-ui components, for the same
+      // reason: this site renders on ONE adapter, and this package is not one of
+      // its dependencies since every docs site moved onto the same chrome.
+      '@hanzo/docs-ui/components/callout': '@hanzo/docs-base-ui/components/callout',
+      '@hanzo/docs-ui/components/tabs': '@hanzo/docs-base-ui/components/tabs',
       '@docusaurus': './lib/empty-project-module.js',
       '@theme': './lib/empty-project-module.js',
       '@theme/Tabs': './lib/empty-project-module.js',
@@ -127,6 +133,8 @@ const config: NextConfig = {
       //     on the base-ui adapter this site renders with (see turbopack above)
       'fumadocs-ui/components/callout': '@hanzo/docs-base-ui/components/callout',
       'fumadocs-ui/components/tabs': '@hanzo/docs-base-ui/components/tabs',
+      '@hanzo/docs-ui/components/callout': '@hanzo/docs-base-ui/components/callout',
+      '@hanzo/docs-ui/components/tabs': '@hanzo/docs-base-ui/components/tabs',
 
       // Other doc-platform packages -> no-op stub
       '@docusaurus': emptyProjectModule,
