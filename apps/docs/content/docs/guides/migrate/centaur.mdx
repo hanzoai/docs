@@ -31,8 +31,8 @@ curl -sS -X POST https://api.hanzo.ai/v1/account/keys \
 curl -sS -X POST https://api.hanzo.ai/v1/agents \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H 'Content-Type: application/json' \
-  -d '{"name":"eng","model":"zen4-pro","instructions":"You are the engineering agent…",
-       "tools":["slack_post_message","lease_sandbox","run_in_sandbox","read_sandbox_file","write_sandbox_file"]}'
+  -d '{"name":"eng","model":"zen4","instructions":"You are the engineering agent…",
+       "tools":["lease_sandbox","run_in_sandbox","read_sandbox_file","write_sandbox_file"]}'
 
 # 3. the computer it works on — dev attaches the project's disk and carries dev, git and hanzo-mcp
 curl -sS -X POST https://api.hanzo.ai/v1/sandbox/lease \
@@ -48,8 +48,8 @@ curl -sS -X PUT https://api.hanzo.ai/v1/channels/agent \
 ```
 
 Step 2 is what a Centaur persona becomes: a row the org owns, with a model, instructions, a tool
-list, an optional schedule and an avatar. Every org is seeded with `@dev`, `@des` and `@vi` as
-ordinary rows of the same kind. Step 3 is the sandbox a Slack turn leases when the agent calls
+list, an optional schedule and an avatar. Every org is seeded with built-in personas — `@dev`, `@des`, `@vi` and
+others — as ordinary rows of the same kind. Step 3 is the sandbox a Slack turn leases when the agent calls
 `lease_sandbox`; the [E2B guide](/docs/guides/migrate/e2b) covers that surface call by call. Step 4
 is what Centaur's per-channel persona defaults become: `default` answers every room without a
 binding of its own, `rooms` maps a Slack channel id to the agent that answers there, and several
@@ -75,7 +75,7 @@ the description, and several are the kind that is not noticed until something go
 
 **The sandbox runs on the node kernel.** `sandbox.runtimeClassName` defaults to `""`
 (`contrib/chart/values.yaml:317`; `runtime_class_name: None` in
-`centaur-sandbox-agent-k8s/src/lib.rs:143`). With no RuntimeClass, every agent pod runs under the
+`services/api-rs/crates/centaur-sandbox-agent-k8s/src/lib.rs:143`). With no RuntimeClass, every agent pod runs under the
 cluster's default runtime — runc — sharing the host kernel with every other agent's pod, with each
 sandbox's proxy pod and, unless `nodeSelector` is set (default `{}`, `values.yaml:310`), with the
 control plane. A runc container is a process boundary, not a virtualization boundary: a kernel
@@ -87,7 +87,7 @@ connection. gVisor is supported, but it is something the operator must know to t
 which makes every sandbox BestEffort. One agent running a build, a fuzzer or an accidental fork
 bomb takes the node's CPU and memory from every neighbour, and the kubelet evicts BestEffort pods
 first — other people's sessions included. The chart's own comment on the control plane
-(`values.yaml:557-559`) recommends Guaranteed QoS for `api-rs` "so runaway sandboxes are evicted
+(`values.yaml:558-560`) recommends Guaranteed QoS for `api-rs` "so runaway sandboxes are evicted
 before the control plane", which names the failure mode without closing it.
 
 **A host path is mounted into every sandbox.** The repository cache is a DaemonSet writing to
@@ -114,8 +114,9 @@ token that reads a whole vault and is itself stored in the cluster.
 
 **Static keys and a shared signing secret.** The API is authorized by a static admin key, one
 static key per ingress bot, and HS256 JWTs signed with one shared secret
-(`centaur-api-server/src/auth.rs`, `api_jwt.rs`). Requests from localhost bypass authentication.
-There is no OIDC, no per-user token and no token exchange.
+(`centaur-api-server/src/auth.rs`, `api_jwt.rs`). Its quickstart notes that requests from localhost bypass the API key
+(`docs/pages/quickstart.mdx:111`). There is no OIDC and no token exchange; per-user tokens are
+HS256 JWTs on that one shared secret.
 
 **Everyone's messages in one database.** Transcripts, executions and events for every thread live
 in one Postgres database, and the ETL workflows ingest public channels, private channels and DMs
@@ -142,8 +143,8 @@ agentic run are the same object with different lease lengths — so its isolatio
   delivered on stdin over the exec channel. An attacker with the pod has what its owner had, for
   as long as the lease lasts.
 - **Egress is closed and specific.** The sandbox network policy denies everything, then allows
-  DNS, 80/443 to the public internet excluding private ranges and the cloud metadata address, and
-  one pinned address for git over SSH. Provider calls go through `egress`, which holds the key,
+  DNS, 80/443 to the public internet excluding private ranges and the cloud metadata address, 443
+  to the platform's own ingress, and one pinned address for git over SSH. Provider calls go through `egress`, which holds the key,
   writes every header itself and reports who paid.
 - **Tenants are separate at the storage layer.** Each organization's agents, sessions, tools and
   channels live in that organization's own store — see [multitenancy](/docs/concepts/multitenancy).
@@ -151,7 +152,7 @@ agentic run are the same object with different lease lengths — so its isolatio
 - **Identity is Hanzo IAM.** OIDC with PKCE, client credentials, token exchange, SCIM, service
   accounts and MFA. Direct messages to the bot default to pairing — a stranger gets a code, a
   member approves it — and every turn runs on behalf of the sender, billed to the org.
-- **Spend is bounded.** A sandbox class has a price per lease, a run has a bounded number of tool
+- **Spend is bounded.** A sandbox class has a price per hour, a run has a bounded number of tool
   rounds and a wall clock, and a tool dispatch is attributed to the org and user who asked. A
   runaway agent costs a bounded amount and is stoppable from the session stream.
 
@@ -166,12 +167,12 @@ agentic run are the same object with different lease lengths — so its isolatio
 | iron-proxy placeholder substitution | `egress` for provider keys; IAM token exchange for identity; `/v1/integrations/connectors` for a person's own accounts |
 | 1Password vault | Hanzo KMS — sealed secrets, per-secret agent policy, per-agent audit trail |
 | Slackbot, Teamsbot, Discordbot | `/v1/channels` |
-| Githubbot, Linearbot | GitHub and Linear webhooks under `/v1/integrations`; issues mirror into the native todo and fire automation triggers |
+| Githubbot, Linearbot | GitHub and Linear webhooks under `/v1/integrations`; issues mirror into the native todo and fire automation triggers for flows |
 | Persona (`type = "persona"` tool entry) | Agent (`/v1/agents`) |
 | Python tool plugin → CLI shim | Every `/v1` operation is a tool; `hanzo-mcp` serves the catalogue over stdio in the pod |
-| Absurd durable workflow | `/v1/tasks`; `hanzo-tasks` (Python), `tasks/pkg/sdk` (Go), `@hanzo/tasks` (TypeScript) |
+| Absurd durable workflow | `/v1/tasks`; worker SDKs `tasks/pkg/sdk` (Go) and `@hanzoai/tasks` (TypeScript); from Python, `/v1/tasks` over the API |
 | Workflow `SCHEDULE`, Console scheduled tasks, Hermes cron | Agent `schedule`; `/v1/tasks` schedules |
-| Workflow `WEBHOOKS` | [`/v1/webhook`](/docs/webhooks) |
+| Workflow `WEBHOOKS` | `POST /v1/auto/hooks/{source}/{event}` — delivers one event to the org's automation triggers |
 | `.agents/skills` and Console skills | `/.well-known/agent-skills/` and hanzo.market |
 | Company-context ETL and RLS | `/v1/sync` and `/v1/knowledge` |
 | Rails Console | [console.hanzo.ai](/docs/console) — Agents, Agent Builder, integrations, keys, org |
@@ -187,7 +188,7 @@ Centaur's HTTP surface is small and each route has a direct counterpart.
 | Centaur | Hanzo |
 |---|---|
 | `POST /api/session/{thread_key}` | `POST /v1/agents/sessions` |
-| `POST /api/session/{thread_key}/messages` | `POST /v1/agents/sessions/{id}/events` with `type: message` |
+| `POST /api/session/{thread_key}/messages` | `POST /v1/agents/sessions/{id}/events` with `kind: message` |
 | `POST /api/session/{thread_key}/execute` | `POST /v1/agents/{ref}/run` naming the session |
 | `POST /api/session/{thread_key}/interrupt` | `POST /v1/agents/sessions/{id}/stop` |
 | `GET /api/session/{thread_key}/events?after_event_id=` | `GET /v1/agents/sessions/{id}` to replay; `GET /v1/agents/sessions/stream` to watch |
@@ -195,10 +196,10 @@ Centaur's HTTP surface is small and each route has a direct counterpart.
 | `POST /api/workflows/runs`, `GET …/runs/{id}`, `POST …/cancel` | `/v1/tasks` — start, signal-with-start, query, cancel, terminate, reset |
 | `GET /api/workflows/schedules` | `/v1/tasks` schedules |
 | `POST /api/workflows/events` | `/v1/tasks` signal |
-| `ANY /api/webhooks/{slug}` | `/v1/webhook` |
+| `ANY /api/webhooks/{slug}` | `POST /v1/auto/hooks/{source}/{event}` |
 | `/api/slack/channels`, `/api/slack/files/…` | `POST /v1/channels/slack/send`; `/v1/integrations/connectors/slack` |
 | `/api/admin/slack/archive-imports`, `dm-sync`, `google/docs-sync`, `granola/sync` | `/v1/sync` |
-| `POST /mcp` | the `mcp` plugin and `hanzo-mcp` |
+| `POST /mcp` | `POST /v1/mcp`, and `hanzo-mcp` over stdio |
 | Console `/api/v1/secrets`, `broker_credentials`, `oauth_apps` | `/v1/kms`; `/v1/integrations/connectors` |
 | Console `/api/v1/principals`, `roles`, `grants`, `api_keys` | `/v1/iam`; `/v1/account/keys` |
 | Console `scheduled_tasks` | `PATCH /v1/agents/{ref}` with `schedule` |
@@ -209,14 +210,14 @@ Inside a tool or a workflow:
 | Centaur | Hanzo |
 |---|---|
 | `secret("NAME")` (`centaur_sdk`) | a connector read through `hanzo-mcp`; a provider key never reaches the process at all |
-| `ctx.step(name, fn)` | an activity — `hanzo-tasks`, `tasks/pkg/sdk`, `@hanzo/tasks` |
+| `ctx.step(name, fn)` | an activity — `tasks/pkg/sdk` (Go), `@hanzoai/tasks` (TypeScript) |
 | `ctx.sleep`, `ctx.sleep_until` | workflow sleep |
 | `ctx.wait_for_event(name, type, correlation_id)` | a signal |
 | `ctx.start_workflow` | a child workflow |
-| `ctx.run_agent`, `ctx.run_agents([...], max_concurrency)` | `POST /v1/agents/{ref}/run`; `FanOutWorkflow` in `hanzo-tasks` |
+| `ctx.run_agent`, `ctx.run_agents([...], max_concurrency)` | `POST /v1/agents/{ref}/run`, once per agent, from the workflow |
 | `ctx.post_to_slack(channel, text)` | `POST /v1/channels/slack/send` |
 | `centaur-tools list`, `centaur-tools call` | the same operations over MCP, or `hanzo` subcommands |
-| `--codex`, `--claude`, `--amp`, `--model`, `-rsn` | `dev` flags; `tool` and `model` on a coding run |
+| `--codex`, `--claude`, `--amp`, `--model`, `-rsn` | `dev` flags; `tool` and `agentRef` on a coding run |
 
 A Centaur turn, end to end, and the Hanzo turn it becomes:
 
@@ -241,7 +242,8 @@ as the lease, delivered on stdin. `git` finds it through a credential helper sco
 host; `hanzo` keeps it in its own store. It appears in no pod spec and no Kubernetes object.
 
 **Provider keys** belong to the organization and are money. They live sealed in KMS and are spent
-by `egress`, off the managed cluster, on the caller's behalf. See the [Vault](/docs/guides/migrate/vault)
+server-side on the caller's behalf — by `egress`, the off-cluster broker, as it takes over each
+provider — never by anything running in the pod. See the [Vault](/docs/guides/migrate/vault)
 and [Doppler](/docs/guides/migrate/doppler) guides for the custody side.
 
 **A person's own external accounts** — GitHub, Google, Slack, Linear — are enrolled once under
