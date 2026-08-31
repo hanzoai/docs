@@ -12,6 +12,7 @@ import { TreeContextProvider } from '@hanzo/docs/ui/contexts/tree';
 import { source } from '@/lib/source';
 import { NextProvider } from '@hanzo/docs/core/framework/next';
 import { Analytics } from '@hanzo/docs-analytics';
+import { AppearanceDock } from '@/components/appearance-dock';
 
 export const metadata = createMetadata({
   title: {
@@ -41,16 +42,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </NextProvider>
         <Analytics product="docs" />
         {/*
-          Hanzo Edit — the same widget every other Hanzo app carries, served by
-          hanzo.app. It was kept out of this app because its shadow-DOM FAB pins
-          to right/bottom 16px at z-index 2147483000, the exact corner fumadocs
-          floated "Ask AI" into: the two overlapped and the label read as "As".
-          That was a corner collision, not a reason to run a second chat surface —
-          so Ask AI is gone and this is the one launcher in that corner. Reads the
-          hanzo:repo/branch/provider metas above and resolves the file under the
-          current route itself.
+          Help and appearance, bottom-right — the same corner control hanzo.ai
+          carries. The Hanzo Edit launcher used to hold this corner; it is an
+          authoring tool on a published page, and hanzo.ai dropped it for the
+          same reason. A reader of the docs edits them in the repo.
         */}
-        <script async src="https://hanzo.app/edit.js" />
+        <AppearanceDock />
       </Body>
     </html>
   );
