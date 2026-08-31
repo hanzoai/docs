@@ -40,7 +40,9 @@ export function Docs({
       // Desktop top bar. The stock slot is md:hidden, so doc pages had no header
       // and the API/CLI/MCP/SDKs nav had nowhere to render. DocsNavbar is a client
       // MODULE — an inline function here crashes the server at the RSC boundary.
-      slots={{ header: DocsNavbar }}
+      // The theme control lives in the bottom-right dock (components/appearance-dock),
+      // the same corner hanzo.ai keeps it in — so the rail carries none.
+      slots={{ header: DocsNavbar, themeSwitch: false }}
       tree={source.getPageTree()}
       nav={{
         ...base.nav,
