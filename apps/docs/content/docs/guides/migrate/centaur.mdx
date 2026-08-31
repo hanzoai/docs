@@ -59,11 +59,11 @@ personas behind one bot are several agents, each with its own model, instruction
 
 | Capability | What it does |
 |---|---|
-| [`/v1/channels`](/docs/usage/teams) | Slack, Teams, Discord, Telegram and WhatsApp behind one registry. Pairing and allowlist policy per org; every turn runs as the person who sent it. |
+| [`/v1/channels`](/docs/usage/teams) | Slack, Teams, Discord, Telegram, WhatsApp, and GitHub and Linear issues, behind one registry. Pairing and allowlist policy per org; every turn runs as the person who sent it. |
 | [`/v1/agents`](/docs/concepts/agents) | Named agents with model, instructions, tools and schedule; sessions with an ordered durable event log, parent/child trees and an SSE stream. |
 | [`/v1/sandbox`](/docs/concepts/sandboxes) | One gVisor or Kata pod per lease, a per-project volume, exec as the only way in, three clocks to end it. |
 | [`/v1/tasks` and `/v1/auto`](/docs/concepts/workflows) | The durable engine, embedded in the process, and the flow editor over it. |
-| `/v1/integrations` | Org connectors and each person's own connectors; the inbound webhooks for GitHub and Linear. |
+| `/v1/integrations` | Org connectors and each person's own connectors; the GitHub and Linear webhooks that turn an issue comment into a channel turn, mirror issues into the todo and fire automation triggers. |
 | `egress` | Provider keys spent on the caller's behalf, off the managed cluster; a caller asks for a call, never for a key. |
 | [`/.well-known/agent-skills/`](/docs/mcp) | The org's skills catalogue, and every `/v1` operation as an MCP tool. |
 
@@ -167,7 +167,7 @@ agentic run are the same object with different lease lengths — so its isolatio
 | iron-proxy placeholder substitution | `egress` for provider keys; IAM token exchange for identity; `/v1/integrations/connectors` for a person's own accounts |
 | 1Password vault | Hanzo KMS — sealed secrets, per-secret agent policy, per-agent audit trail |
 | Slackbot, Teamsbot, Discordbot | `/v1/channels` |
-| Githubbot, Linearbot | GitHub and Linear webhooks under `/v1/integrations`; issues mirror into the native todo and fire automation triggers for flows |
+| Githubbot, Linearbot | `github` and `linear` are channels transports: an issue is a room, a comment that mentions the App is a turn, the reply is a comment; issues also mirror into the native todo and fire automation triggers |
 | Persona (`type = "persona"` tool entry) | Agent (`/v1/agents`) |
 | Python tool plugin → CLI shim | Every `/v1` operation is a tool; `hanzo-mcp` serves the catalogue over stdio in the pod |
 | Absurd durable workflow | `/v1/tasks`; worker SDKs `tasks/pkg/sdk` (Go) and `@hanzoai/tasks` (TypeScript); from Python, `/v1/tasks` over the API |
