@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-base-ui/components/dynamic-codeblock';
+export * from '@hanzo/docs-gui/components/dynamic-codeblock';

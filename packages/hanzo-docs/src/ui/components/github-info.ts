@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-base-ui/components/github-info';
+export * from '@hanzo/docs-gui/components/github-info';
