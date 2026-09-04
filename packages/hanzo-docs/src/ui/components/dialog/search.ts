@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-base-ui/components/dialog/search';
+export * from '@hanzo/docs-gui/components/dialog/search';
