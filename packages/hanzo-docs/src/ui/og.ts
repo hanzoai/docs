@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-base-ui/og';
+export * from '@hanzo/docs-gui/og';

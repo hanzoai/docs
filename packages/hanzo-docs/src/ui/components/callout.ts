@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-base-ui/components/callout';
+export * from '@hanzo/docs-gui/components/callout';

@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-base-ui/utils/use-copy-button';
+export * from '@hanzo/docs-gui/utils/use-copy-button';

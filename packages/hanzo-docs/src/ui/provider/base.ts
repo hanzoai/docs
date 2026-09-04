@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-base-ui/provider/base';
+export * from '@hanzo/docs-gui/provider/base';

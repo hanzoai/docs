@@ -1,1 +1,1 @@
-export * from '@hanzo/docs-base-ui/components/banner';
+export * from '@hanzo/docs-gui/components/banner';
