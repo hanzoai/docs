@@ -1,0 +1,160 @@
+---
+title: Budgets
+description: An agent is quoted before it spends and refused when it would breach. Four ceilings, integer micro-USD, and a refusal the agent can read while it is still running.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**After this page you can cap what an agent spends, read what it has spent, and
+tell a budget refusal from a model failure.**
+
+## What a budget is
+
+Every model call and every priced tool call an agent makes is **quoted before it
+is made** — an upper bound on what the call could cost — and that quote is
+checked, in this order, against four things:
+
+1. **your organization's balance** — can it be paid for at all
+2. **the agent's period cap** — `cap_micro_usd`, less what this period spent
+3. **the task ceiling** — `max_task_micro_usd`, less what this run spent
+4. **the session's budget** — `budget_micro_usd`, less what this session spent
+
+Any one of them refuses the call. There is no flag and no bypass: a run reaches
+a model only through the gate.
+
+## Money is integer micro-USD
+
+Every amount is an integer number of micro-USD, in a field suffixed
+`_micro_usd`. **1,000,000 is one dollar**, so `11902000` is $11.902 and `250` is
+a fortieth of a cent. A call costs fractions of a cent; a cap kept in cents
+could not see one.
+
+## Stating a budget
+
+All three fields are required when you define an agent.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "triage",
+    "model": "zen-1",
+    "instructions": "Triage inbound issues.",
+    "cap_micro_usd": 20000000,
+    "max_task_micro_usd": 500000,
+    "period": "month"
+  }'
+```
+
+That agent may spend **$20 a month**, and no single run of it may spend more
+than **$0.50**.
+
+- `cap_micro_usd` must be positive. A cap of zero would mean no limit and no
+  record, which is the state a budget exists to remove.
+- `max_task_micro_usd` must be positive and cannot exceed the cap.
+- `period` is `day`, `week` or `month`.
+
+Periods are **calendar-aligned in UTC**: `month` means the month, not thirty
+days from the first call, and `week` starts on Monday. The window rolls on the
+first call after it turns over, and `consumed_micro_usd` goes back to zero.
+
+## Reading what it spent
+
+```
+GET /v1/agent/{ref}/spend
+```
+
+```json
+{
+  "cap_micro_usd": 20000000,
+  "max_task_micro_usd": 500000,
+  "period": "month",
+  "consumed_micro_usd": 11902000,
+  "remaining_micro_usd": 8098000,
+  "by_component": { "model": 11431000, "computer": 402000, "tool": 69000 }
+}
+```
+
+`by_component` splits the spend three ways: **model** is every completion the
+agent bought, **computer** is the runtime it was resident for, **tool** is a
+priced tool call. A component with no spend is **absent, not zero**.
+
+## What a refusal looks like
+
+A breach answers `402` with the code `budget_exceeded`:
+
+```json
+{
+  "error": {
+    "code": "budget_exceeded",
+    "message": "task budget exceeded: this call would cost up to 620000 micro-USD and 118000 remain",
+    "event": "budget.exceeded",
+    "scope": "task",
+    "component": "model",
+    "quote_micro_usd": 620000,
+    "remaining_micro_usd": 118000
+  }
+}
+```
+
+`scope` names which ceiling refused — `agent`, `task` or `session` — so you know
+whether to raise the month, the run or this one session.
+
+<Callout>
+**The agent is told in band.** Under a session the same payload is appended to
+the session's event stream as a status event from `budget`, so an agent reads
+its own refusal while it is still running and can wrap up — write what it has,
+say why it stopped — rather than crash on a failed call.
+</Callout>
+
+`budget_exceeded` is not a model failure. A call the model failed is retried; a
+call the budget refused is not, because retrying it would refuse it again.
+
+## Quotes are upper bounds, settlement is actual
+
+The quote errs large on purpose: the prompt as it will be sent, plus the largest
+completion the request allows — `max_tokens`, or 4,096 when the request names
+none — at the platform's inference rate.
+
+When the call has happened, what the gateway **actually reported** is settled
+against every tally the quote was checked against, and the difference comes back
+to the cap. A call that failed never settles, so it is never billed and its
+headroom returns.
+
+This is why an agent can be refused with headroom that looks sufficient: the
+gate compares the ceiling of the next call, not its likely cost.
+
+## A session's own budget
+
+A session may carry a ceiling of its own, under the agent's:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent/sessions/$ID/budget \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"budget_micro_usd": 2000000}'
+```
+
+A session that reaches its own budget is **paused, not failed** — work resumes
+the moment you raise the cap or remove it. Three rules:
+
+- a replacement must be **strictly greater** than what the session has consumed
+- **removal is one-way**: `{"budget_micro_usd": null}` takes the cap off for
+  good, and that session cannot be given one again
+- a session **created without** a budget cannot be given one later
+
+Each of those refuses with `409` rather than quietly doing something else.
+
+## An agent defined before budgets existed
+
+It carries a cap of zero and is **not capped** — its spend is still tallied and
+readable at `/spend`, and an update gives it a cap. Refusing every agent defined
+before the feature shipped would be an outage, not a policy.
+
+## Next
+
+- **[Agents](/docs/concepts/agents)** — the definition a budget hangs on.
+- **[Agents reference](/docs/openapi/agents)** — every operation, generated.
+- **[Pricing](https://hanzo.ai/pricing)** — what the platform charges, and what
+  the fee on a model call is.
