@@ -1,41 +1,71 @@
 ---
-title: Usage
-description: Learn how to use Hanzo Dev for interactive and non-interactive AI-powered development.
+title: The Interactive Session
+description: Work with Hanzo Dev in the terminal — prompts, mentions, shell commands, keys and project instructions.
 index: true
 ---
 
-Hanzo Dev provides multiple modes of operation for AI-powered development assistance.
-
-## Interactive Mode
-
-Launch the TUI for conversational coding:
+Run `dev` in a repository to open a session. Give the first task on the command line to start straight away:
 
 ```bash
-dev "Help me refactor this function"
+dev "add input validation to the signup handler"
 ```
 
-## Non-Interactive Mode
+## In the composer
 
-Run single tasks headlessly:
+| Type | What happens |
+| --- | --- |
+| A message, then **Enter** | Sends it. |
+| **Tab** while a turn is running | Queues the message for when the turn ends. |
+| `@` | Mentions a file, skill or plugin. |
+| `$` | Mentions a skill or app. |
+| `!` followed by a command | Runs that shell command yourself. |
+| `/` | Opens the [slash commands](/docs/dev/usage/slash-commands). |
+| A path to an image file | Attaches the image. |
+
+To attach images at launch, pass `-i`:
 
 ```bash
-dev exec "Add error handling to main.py"
+dev -i screenshot.png "what's wrong with this layout?"
 ```
 
-## Auto Drive
+## Keys
 
-Fully automated multi-turn task execution:
+| Key | Action |
+| --- | --- |
+| **Esc** | Interrupt the running turn. |
+| **Esc** twice | Pick an earlier message of yours; **Enter** forks the conversation before it so you can edit and resend. |
+| **Up** / **Down** | Recall earlier messages. |
+| **Ctrl+R** | Search message history. |
+| **Alt+,** / **Alt+.** | Lower / raise reasoning effort. |
+| **Ctrl+T** | Open the transcript. |
+| **Ctrl+G** | Edit the message in your external editor. |
+| **Ctrl+L** | Clear the terminal. |
+| **Shift+Enter** | Insert a newline. |
+| **?** | Show all shortcuts. |
+
+Remap any of them with `/keymap`.
+
+## Project instructions: AGENTS.md
+
+Run `/init` and Hanzo Dev writes an `AGENTS.md` describing the repository. Edit it: it is read at the start of every session, so it is where conventions, architecture notes and "do not touch" rules belong.
+
+Hanzo Dev reads, in order:
+
+1. `~/.hanzo/dev/AGENTS.md` — your own instructions for every project.
+2. `AGENTS.md` in each directory from the repository root down to the directory you started in.
+
+Together they are limited to 32 KiB (`project_doc_max_bytes`); anything beyond is cut off. Project files are read only in a [trusted](/docs/dev/configuration#trust) directory.
+
+## Choose a model
+
+Pick a model and reasoning effort with `/model`, or start with one:
 
 ```bash
-dev auto "Refactor the database module"
+dev -m enso
 ```
 
-## Multi-Agent Orchestration
+Model ids come from the Hanzo gateway, which is the only authority on the catalog.
 
-Fan out work across multiple AI agents:
+## Run several sessions
 
-```bash
-/plan <task>    # Create a comprehensive plan
-/solve <problem> # Solve challenging problems
-/code <task>    # Perform coding tasks
-```
+Sessions are saved as you work. [Sessions](/docs/dev/usage/sessions) covers resuming, forking and switching between them.

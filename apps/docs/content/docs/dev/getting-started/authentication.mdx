@@ -1,49 +1,61 @@
 ---
-title: Authentication
-description: Set up authentication for Hanzo Dev.
+title: Sign in
+description: Sign in to Hanzo Dev with your Hanzo account, and authenticate CI with a Hanzo API key.
 ---
 
-## Authentication
-
-Hanzo Dev supports multiple authentication methods.
-
-### API Key
-
-Set your API key via environment variable:
-
-```bash
-export OPENAI_API_KEY="sk-..."
-```
-
-Or login interactively:
+## Sign in
 
 ```bash
 dev login
 ```
 
-### Login with API Key from stdin
+A picker opens:
 
-```bash
-printenv OPENAI_API_KEY | dev login --with-api-key
-```
+| Choice | What it does |
+| --- | --- |
+| **Hanzo account (recommended)** | Signs in through Hanzo IAM. Requires the Hanzo CLI (`curl -fsSL https://hanzo.sh \| sh`); `dev login` runs its sign-in for you. |
+| ChatGPT account | Signs in to ChatGPT in the browser and switches the provider to OpenAI. |
+| Paste a Hanzo API key | Saves the key you paste (input is hidden). |
+| Paste an OpenAI API key | Saves the key and switches the provider to OpenAI. |
 
-### Check Status
+Choosing a Hanzo account or a Hanzo key sets `model_provider = "hanzo"` and `model = "enso-auto"` in your [configuration](/docs/dev/configuration). Choosing ChatGPT or an OpenAI key sets `model_provider = "openai"`.
+
+## Check who is signed in
 
 ```bash
 dev login status
 ```
 
-### Logout
+With the Hanzo provider this prints `Signed in to Hanzo.`, or tells you to run `dev login`.
+
+## Sign out
 
 ```bash
 dev logout
 ```
 
-### Environment Variables
+This removes a saved Hanzo API key, or signs the Hanzo CLI out, and then deletes the stored credentials.
 
-| Variable | Description |
-| --- | --- |
-| `OPENAI_API_KEY` | OpenAI API key |
-| `CODE_HOME` | Override config directory (default: `~/.hanzo`) |
-| `CODEX_HOME` | Legacy config directory (fallback) |
-| `CODEX_SECURE_MODE` | Enable security hardening when set to `"1"` |
+## CI and other headless machines
+
+Set a Hanzo API key in the environment:
+
+```bash
+export HANZO_USER_KEY="hk-..."
+```
+
+`HANZO_USER_KEY` takes precedence over every stored credential, so nothing else needs to be set up on the machine.
+
+## How Hanzo Dev finds your credential
+
+With the Hanzo provider, the first of these that is present wins:
+
+1. The `HANZO_USER_KEY` environment variable.
+2. A key saved with `dev login` (`~/.hanzo/dev/hanzo-api-key`).
+3. The Hanzo CLI's account (`hanzo auth token`).
+
+## Where credentials live
+
+Everything Hanzo Dev stores is under its home directory, `~/.hanzo/dev`. Set `DEV_HOME` to use a different directory.
+
+In the default home, `~/.hanzo/dev/auth.json` is a link to the shared `~/.hanzo/auth.json`, so signing in to one Hanzo tool signs you in to all of them. A home set with `DEV_HOME` keeps its own credentials.

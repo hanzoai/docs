@@ -1,39 +1,44 @@
 ---
-title: Execution Policy
-description: Control how Hanzo Dev executes commands with execution policy rules.
+title: Command Rules
+description: Allow, prompt for, or forbid specific commands with .rules files.
 ---
 
-## Execution Policy
+Rules decide what happens when the agent wants to run a command that matches them: run it, ask you first, or refuse it. They work alongside the [sandbox and approval policy](/docs/dev/configuration/sandbox).
 
-Hanzo Dev uses execution policies to control what commands the agent can run and when approval is required.
+## Write a rule
 
-### Sandbox Modes
+Rules live in files ending in `.rules`, written in Starlark:
 
-| Mode | Description |
-| --- | --- |
-| `off` | No sandboxing (commands run directly) |
-| `workspace-read` | Read-only access to workspace |
-| `workspace-write` | Read/write access to workspace (default for full-auto) |
-| `network-off` | Disable network access |
+```python title="~/.hanzo/dev/rules/team.rules"
+prefix_rule(
+    pattern = ["git", ["push", "reset"]],
+    decision = "prompt",
+    justification = "Pushing and resetting change shared history.",
+)
 
-### Approval Policies
-
-| Policy | Description |
-| --- | --- |
-| `always` | Always ask for approval before executing |
-| `on-failure` | Ask only when a command fails (default for full-auto) |
-| `on-request` | Ask when the model explicitly requests approval |
-| `never` | Never ask for approval |
-
-### Usage
-
-```bash
-# Set sandbox mode
-dev --sandbox workspace-write "your prompt"
-
-# Set approval policy
-dev --ask-for-approval on-failure "your prompt"
-
-# Full auto (sandboxed + auto-approve)
-dev --full-auto "your prompt"
+prefix_rule(
+    pattern = ["rm", "-rf"],
+    decision = "forbidden",
+    justification = "Use `git clean` for build output instead.",
+    match = ["rm -rf build"],
+    not_match = ["rm build.log"],
+)
 ```
+
+| Argument | Meaning |
+| --- | --- |
+| `pattern` | Tokens the command must start with, in order. A list inside the pattern is a set of alternatives. |
+| `decision` | `allow` (default), `prompt` or `forbidden`. |
+| `justification` | Why the rule exists. Shown when it prompts or refuses — for `forbidden`, say what to do instead. |
+| `match`, `not_match` | Example commands that must and must not match. They are checked when the rules load, so a wrong pattern fails loudly. |
+
+## Where rules are read from
+
+| Location | Scope |
+| --- | --- |
+| `~/.hanzo/dev/rules/*.rules` | Every project. |
+| `.codex/rules/*.rules` in the repository | This project, when the directory is [trusted](/docs/dev/configuration#trust). |
+
+When you approve a command and choose to allow that command from now on, Hanzo Dev appends an `allow` rule for it to `~/.hanzo/dev/rules/default.rules`.
+
+`dev exec --ignore-rules` runs without your own and the project's rules.

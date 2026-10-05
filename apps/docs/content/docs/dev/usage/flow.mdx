@@ -1,0 +1,61 @@
+---
+title: Flows
+description: Make a failing test pass with dev flow fix, and tune Kai, the decision layer, in kai.toml.
+---
+
+A flow runs a fixed sequence of steps over your repository. Each step is a deterministic tool, a decision by Kai, or a code change written by Zen. Flows use your Hanzo credential (see [Sign in](/docs/dev/getting-started/authentication)).
+
+## Fix a failing test
+
+```bash
+dev flow fix --test "cargo test -p parser"
+```
+
+1. The files of the repository are ranked against the failure, and Kai picks the one to change.
+2. Zen writes a diff for it.
+3. The test command runs.
+4. Kai decides: done, retry, or escalate — within what the tests and the budget allow.
+
+A retried or escalated attempt is undone before the next one. The command prints a summary and exits `1` when the flow escalates.
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `--test <CMD>` | required | The command whose failure is the task. |
+| `--goal <TEXT>` | empty | What the change is for, in words. |
+| `--max <N>` | `3` | Most attempts. |
+| `--control kai\|rule` | `kai` | `rule` leaves the decision to the tests and the budget alone. |
+| `--timeout <SECONDS>` | `600` | The longest one test run may take. |
+
+If Kai does not answer, the flow continues as with `--control rule`.
+
+## Kai in the session
+
+Kai can also advise the agent loop — which tools the model sees, whether a command is risky, which model tier and how much reasoning a turn gets, which files it starts from, and whether the agent is progressing or done. It runs only when `~/.hanzo/dev/kai.toml` exists.
+
+```toml title="~/.hanzo/dev/kai.toml"
+[ops.risk]
+mode = "enforced"
+
+[ops.tools]
+mode = "advisory"
+k = 8
+```
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `url` | `https://api.hanzo.ai/v1` | Where decisions are asked (`POST {url}/decisions`). |
+| `model` | `laya-agent` | The model every decision is put to. |
+| `zen` | `zen6-coder` | The model a flow's code-writing steps call. |
+| `trace` | `kai/decisions.jsonl` | Decision log, relative to `~/.hanzo/dev`. |
+| `[ops.<operation>]` | | One table per operation: `tools`, `risk`, `model`, `reasoning`, `context`, `progress`, `complete`. |
+
+Each operation takes:
+
+| Key | Meaning |
+| --- | --- |
+| `mode` | `shadow` (default) records the decision only. `advisory` also shows it. `enforced` lets it act — and only ever toward the stricter outcome. |
+| `program` | The decision program to ask; each operation has its own default. |
+| `thresholds` | Thresholds merged over the program's own. |
+| `k` | How many candidates a selection keeps (`tools` defaults to 8, `context` to 4). |
+
+When Kai does not answer — a refused connection, a timeout, or a server error — Hanzo Dev stops asking for 60 seconds and the session runs exactly as it would without Kai.

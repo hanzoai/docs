@@ -1,47 +1,77 @@
 ---
-title: Sandboxing
-description: How Hanzo Dev sandboxes command execution for safety.
+title: Sandbox and Approvals
+description: Control what the commands Hanzo Dev runs can touch, and when it asks you first.
 ---
 
-## Sandbox & Approvals
+Two settings govern every command the agent runs: the **sandbox mode** limits what the command can read, write and reach, and the **approval policy** says when the agent asks you first.
 
-Hanzo Dev enforces sandboxing to prevent unintended side effects when the agent executes commands.
+## Sandbox modes
 
-### Sandbox Modes
-
-| Mode | Description |
+| Mode | The agent's commands can |
 | --- | --- |
-| `off` | No sandboxing (commands run directly) |
-| `workspace-read` | Read-only access to workspace |
-| `workspace-write` | Read/write access to workspace (default for full-auto) |
-| `network-off` | Disable network access |
-| `danger-full-access` | Full access (use with caution) |
+| `read-only` | Read files. Nothing is written and there is no network. |
+| `workspace-write` | Read files, and write inside the workspace and temp directories. No network unless you allow it. |
+| `danger-full-access` | Do anything — no sandbox. |
 
-### Approval Policies
+Set it in `config.toml`, or for one run with `-s`:
 
-| Policy | Description |
-| --- | --- |
-| `always` | Always ask for approval |
-| `on-failure` | Ask only on command failure |
-| `on-request` | Ask when model requests approval |
-| `never` | Never ask for approval |
-
-### Usage
-
-```bash
-# Read-only mode (safest)
-dev --sandbox workspace-read "analyze this codebase"
-
-# Write mode with approval on failure
-dev --sandbox workspace-write --ask-for-approval on-failure "refactor"
-
-# Full auto (sandboxed writes, auto-approve)
-dev --full-auto "fix all linting errors"
-
-# Bypass all safety (DANGEROUS)
-dev --dangerously-bypass-approvals-and-sandbox "your prompt"
+```toml
+sandbox_mode = "workspace-write"
 ```
 
-### Mid-Session Changes
+```bash
+dev -s workspace-write
+```
 
-Change approval level during a conversation with `/approvals` in the TUI.
+When `sandbox_mode` is not set, a directory with a recorded [trust decision](/docs/dev/configuration#trust) runs with `workspace-write`, and any other directory with `read-only`. On Windows, `workspace-write` needs the Windows sandbox set up; without it Hanzo Dev runs `read-only` (see [Platform sandboxing](/docs/dev/configuration/platform-sandboxing#windows)).
+
+### Widen workspace-write
+
+```toml
+[sandbox_workspace_write]
+writable_roots = ["/home/me/.cache/build"]   # more writable directories
+network_access = true                        # allow outbound network (default false)
+```
+
+For one run, `--add-dir <DIR>` makes another directory writable.
+
+## Approval policy
+
+| Policy | Behaviour |
+| --- | --- |
+| `on-request` | The model asks you when a command needs more than the sandbox allows (default). |
+| `never` | Never asks. A refused command fails back to the model. |
+
+```toml
+approval_policy = "on-request"
+```
+
+```bash
+dev -a never
+```
+
+`dev exec` always runs with `never`.
+
+To approve commands automatically within `workspace-write`, start with `--approve-for-me`: approval requests go to an automatic reviewer instead of to you. When it refuses something you want, `/approve` allows one retry. [Command rules](/docs/dev/usage/execpolicy) allow, prompt for, or forbid specific commands.
+
+## Change it during a session
+
+`/permissions` chooses what the agent is allowed to do from inside a session. `/status` shows the current sandbox and approval policy.
+
+## Turning everything off
+
+```bash
+dev --dangerously-bypass-approvals-and-sandbox
+```
+
+runs every command without a sandbox and without asking. Use it only where something else isolates the machine, such as a disposable container.
+
+## Try the sandbox
+
+`dev sandbox` runs one command inside the sandbox, so you can see what it allows:
+
+```bash
+dev sandbox -- touch /etc/hosts
+```
+
+[Platform sandboxing](/docs/dev/configuration/platform-sandboxing) explains how each operating system enforces it.

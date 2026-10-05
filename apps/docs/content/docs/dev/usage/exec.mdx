@@ -1,62 +1,88 @@
 ---
-title: Non-Interactive Mode
-description: Run Hanzo Dev headless for single tasks and CI/CD pipelines.
+title: Headless Runs and CI
+description: Run Hanzo Dev to completion without the interface with dev exec, and review changes with dev review.
 ---
 
-## Non-Interactive Mode
-
-Run Hanzo Dev without the TUI for single tasks:
+`dev exec` runs one task to completion and exits. It never stops to ask for approval: a command the sandbox refuses fails back to the model.
 
 ```bash
-dev exec "Add error handling to main.py"
+dev exec "add error handling to main.py"
 ```
 
-### Options
+If you give no prompt, or `-`, the prompt is read from stdin. If you pipe stdin and also give a prompt, stdin is appended to the prompt as a `<stdin>` block:
 
-| Option | Description |
+```bash
+git diff | dev exec "write a commit message for this diff"
+```
+
+## Let it edit files
+
+`dev exec` uses the sandbox mode your [configuration](/docs/dev/configuration/sandbox#sandbox-modes) resolves to, which is `read-only` unless the directory is trusted or you have set `sandbox_mode`. Give a run write access to the workspace with `-s`:
+
+```bash
+dev exec -s workspace-write "fix all lint errors"
+```
+
+See [Sandbox and approvals](/docs/dev/configuration/sandbox).
+
+## Outside a Git repository
+
+`dev exec` refuses to run outside a Git repository unless you pass `--skip-git-repo-check`.
+
+## Output
+
+| Flag | Effect |
 | --- | --- |
-| `--auto` | Run Auto Drive instead of single turn |
-| `--auto-review` | Use Auto Review models and limits |
-| `--json` | Print events to stdout as JSONL |
-| `--color <MODE>` | Color output: `always`, `never`, `auto` |
-| `--max-seconds <N>` | Maximum wall-clock time budget |
-| `--turn-cap <N>` | Maximum Auto Drive coordinator turns |
-| `--include-plan-tool` | Include planning tool in conversation |
-| `--output-last-message <FILE>` | Write final message to file |
-| `--output-schema <FILE>` | JSON Schema for structured output |
-| `--skip-git-repo-check` | Allow running outside Git repos |
-
-### Examples
+| `--json` | Print every event to stdout as JSON lines. |
+| `-o, --output-last-message <FILE>` | Write the agent's final message to a file. |
+| `--output-schema <FILE>` | Require the final message to match a JSON Schema. |
+| `--color always\|never\|auto` | Color for human-readable output (default `auto`). |
+| `--ephemeral` | Do not save the session to disk. |
 
 ```bash
-# Full auto mode (sandboxed)
-dev exec --full-auto "Fix all linting errors"
-
-# Auto Drive with time limit
-dev exec --auto --max-seconds 300 "Implement the TODO items"
-
-# JSON output for scripting
-dev exec --json "List all functions in src/"
+dev exec --output-schema schema.json -o result.json "list the public functions in src/"
 ```
 
-### CI/CD Integration
+## Exit status
+
+`dev exec` exits `0` on success and `1` on any error — a bad `-c` override, a configuration error, a missing prompt, or an error during the run.
+
+## CI
 
 ```yaml
-- name: Update changelog via Hanzo Dev
+- name: Update the changelog
   run: |
     npm install -g @hanzo/dev
-    export OPENAI_API_KEY="${{ secrets.OPENAI_KEY }}"
-    dev exec --full-auto "update CHANGELOG for next release"
+    dev exec -s workspace-write "update CHANGELOG.md for the next release"
+  env:
+    HANZO_USER_KEY: ${{ secrets.HANZO_USER_KEY }}
 ```
 
-### Resuming Sessions
-
-Resume a previous headless run to continue the same conversation:
+## Continue a headless run
 
 ```bash
-# Resume most recent session
-dev exec "continue the task" resume --last
-
-# Resume specific session by ID
-dev exec resume 7f9f9a2e-1b3c-4c7a-9b0e-123456789abc "continue"
+dev exec resume --last "now add tests for it"
+dev exec resume 7f9f9a2e-1b3c-4c7a-9b0e-123456789abc "now add tests for it"
 ```
+
+The session is named by its id or name. With `--last`, a single argument is the prompt.
+
+## Review changes
+
+`dev review` reviews the repository's changes and prints the findings:
+
+```bash
+dev review --uncommitted
+dev review --base main
+dev review --commit 1a2b3c4
+dev review "focus on error handling"
+```
+
+| Option | Reviews |
+| --- | --- |
+| `--uncommitted` | Staged, unstaged and untracked changes. |
+| `--base <BRANCH>` | Changes against a base branch. |
+| `--commit <SHA>` | The changes one commit introduced (`--title` labels it). |
+| `[PROMPT]` | Your own review instructions (`-` reads them from stdin). |
+
+Choose one of the four.

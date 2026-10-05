@@ -1,60 +1,49 @@
 ---
-title: Installation
-description: Install Hanzo Dev from npm, Homebrew, or build from source.
+title: Install
+description: Install Hanzo Dev from npm.
 ---
-
-## System Requirements
-
-| Requirement | Details |
-| --- | --- |
-| Operating systems | macOS 12+, Ubuntu 20.04+/Debian 10+, or Windows 11 **via WSL2** |
-| Git (optional, recommended) | 2.23+ for built-in PR helpers |
-| RAM | 4 GB minimum (8 GB recommended) |
-
-## Install via npm
 
 ```bash
 npm install -g @hanzo/dev
 ```
 
-## Install via npx
+This installs the `dev` command. It needs Node.js 16 or later.
+
+The package carries a prebuilt native binary for each supported platform:
+
+| OS | Architectures |
+| --- | --- |
+| macOS | Apple silicon (arm64), Intel (x64) |
+| Linux | x64, arm64 |
+| Windows | x64 |
+
+## Install the Hanzo toolset
+
+A new configuration attaches the Hanzo MCP toolset to every session by running the `hanzo-mcp` command. Install it so that command is on your `PATH`:
 
 ```bash
-npx @hanzo/dev
+npm install -g @hanzo/mcp
 ```
 
-## DotSlash
+See [MCP servers and plugins](/docs/dev/usage/mcp).
 
-The GitHub Release also contains a [DotSlash](https://dotslash-cli.com/) file for Hanzo Dev named `dev`. Using a DotSlash file makes it possible to make a lightweight commit to source control to ensure all contributors use the same version of the executable, regardless of platform.
-
-## Build from Source
+## Check the install
 
 ```bash
-# Clone the repository
-git clone https://github.com/hanzoai/dev.git
-cd dev
-
-# Install the Rust toolchain if necessary
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-source "$HOME/.cargo/env"
-
-# Build (~20 min cold, ~2 min incremental)
-./build-fast.sh
-
-# Launch the TUI
-./hanzo-dev/target/dev-fast/dev
+dev --version
+dev doctor
 ```
 
-## Tracing / Verbose Logging
+`dev doctor` reports on the installation, configuration, sign-in, terminal, sandbox and network, and suggests a fix for anything that fails. It changes nothing.
 
-Hanzo Dev is written in Rust and honors the `RUST_LOG` environment variable.
+## Update
 
-The TUI defaults to `RUST_LOG=hanzo_core=info,hanzo_tui=info` and writes logs to `~/.hanzo/log/codex-tui.log`. Override the log directory with `-c log_dir=...` for a single run.
+Run the install command again:
 
 ```bash
-tail -F ~/.hanzo/log/codex-tui.log
+npm install -g @hanzo/dev
 ```
 
-Non-interactive mode (`dev exec`) defaults to `RUST_LOG=error` with inline output.
+## Next
 
-See the Rust [`RUST_LOG` documentation](https://docs.rs/env_logger/latest/env_logger/#enabling-logging) for all configuration options.
+[Sign in](/docs/dev/getting-started/authentication).

@@ -1,99 +1,42 @@
 ---
-title: Advanced Usage
-description: CI/CD integration, MCP configuration, verbose logging, and advanced workflows.
+title: Logs and Diagnostics
+description: Diagnose a Hanzo Dev installation, inspect the effective configuration, and turn on a log file.
 ---
 
-## Non-Interactive / CI Mode
-
-Run Hanzo Dev headless in pipelines:
-
-```yaml
-- name: Update changelog via Hanzo Dev
-  run: |
-    npm install -g @hanzo/dev
-    export OPENAI_API_KEY="${{ secrets.OPENAI_KEY }}"
-    dev exec --full-auto "update CHANGELOG for next release"
-```
-
-### Resuming Non-Interactive Sessions
+## Diagnose the installation
 
 ```bash
-# Picker
-dev resume
-
-# Most recent
-dev resume --last
-
-# Specific session
-dev resume <SESSION_ID>
+dev doctor
 ```
 
-## Tracing / Verbose Logging
+`dev doctor` checks the installation, configuration, sign-in, terminal, Git, sandbox, MCP servers and network reachability. Every row is ok, warning or fail, with a fix for each failure. It changes nothing, and exits `1` when a check fails.
 
-Enable debug mode for detailed logging:
+| Option | Effect |
+| --- | --- |
+| `--summary` | Only the grouped rows and the final count. |
+| `--all` | Expand long lists. |
+| `--json` | A redacted, machine-readable report. |
+
+## See where a setting came from
+
+Inside a session, `/debug-config` shows each configuration layer and what it set. `/status` shows the session's model, sandbox, approval policy and token usage.
+
+## Write a log file
+
+Set `log_dir` in `config.toml`, and the interactive session writes `codex-tui.log` there:
+
+```toml title="~/.hanzo/dev/config.toml"
+log_dir = "/home/me/dev-logs"
+```
 
 ```bash
-dev --debug "your prompt"
+tail -F /home/me/dev-logs/codex-tui.log
 ```
 
-When `--debug` is enabled, request/response JSON is partitioned into helper-specific folders under `~/.hanzo/debug_logs/`:
+Choose a directory of your own: a log file in `~/.hanzo/dev/log/` is removed every time a session starts. Set `RUST_LOG` to change what is logged, e.g. `RUST_LOG=debug dev`.
 
-- `auto/coordinator`
-- `auto/observer/bootstrap`
-- `auto/observer/cadence`
-- `auto/observer/cross_check`
-- `guided_terminal/agent_install_flow`
-- `tui/rate_limit_refresh`
-- `ui/theme_spinner`
-- `cli/manual_prompt`
+`dev exec` prints errors to stderr; `RUST_LOG` raises its level too.
 
-Monitor logs in real-time:
+## Send logs to the maintainers
 
-```bash
-tail -F ~/.hanzo/debug_logs/codex-tui.log
-```
-
-Without `--debug`, only critical crash/error logs are written to `~/.hanzo/debug_logs/critical.log.*`.
-
-## Model Context Protocol (MCP)
-
-Configure MCP servers in `~/.code/config.toml`:
-
-```toml
-[mcp_servers.server-name]
-command = "npx"
-args = ["-y", "mcp-server"]
-env = { "API_KEY" = "value" }
-```
-
-### Using Hanzo Dev as an MCP Server
-
-Hanzo Dev can also run as an MCP server:
-
-```bash
-dev mcp
-```
-
-Test with the MCP inspector:
-
-```bash
-npx @modelcontextprotocol/inspector dev mcp
-```
-
-Send a `tools/list` request to see the available `dev` tool that accepts a catch-all of inputs including a `config` map for overrides.
-
-### MCP Management
-
-```bash
-# Add a custom MCP server
-dev mcp add my-search -- /path/to/search-mcp
-
-# Add remote server with auth
-dev mcp add api-tool --url https://api.example.com --bearer-token $TOKEN
-
-# List configured servers
-dev mcp list --json
-
-# Remove a server
-dev mcp remove my-search
-```
+`/feedback` inside a session sends its logs.

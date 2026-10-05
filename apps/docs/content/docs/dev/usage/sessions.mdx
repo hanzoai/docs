@@ -1,0 +1,66 @@
+---
+title: Sessions
+description: Resume, fork, archive and delete Hanzo Dev sessions, and switch between the ones running.
+---
+
+Every session is saved as you work, so you can come back to it, branch from it, or put it away.
+
+## Resume
+
+```bash
+dev resume            # pick from a list
+dev resume --last     # the most recent one
+dev resume <SESSION>  # by id or name
+```
+
+The list shows sessions started in the current directory; add `--all` to include the others. Inside a session, `/resume` does the same.
+
+## Fork
+
+Start a new session from an earlier one and leave the original as it was:
+
+```bash
+dev fork              # pick from a list
+dev fork --last
+dev fork <SESSION>
+```
+
+Inside a session, `/fork` forks the current chat.
+
+## Name
+
+`/rename <name>` names the current session, so `dev resume <name>` finds it.
+
+## Switch between running sessions
+
+```bash
+dev agents
+```
+
+opens an overview of the sessions running here; `/agents` opens it from inside a session.
+
+Send a message to a session that is already running:
+
+```bash
+dev queue --thread <SESSION> --message "also update the docs"
+```
+
+## Archive and delete
+
+```bash
+dev archive <SESSION>     # move it out of the list
+dev unarchive <SESSION>   # bring it back
+dev delete <SESSION>      # remove it for good, after confirming
+```
+
+`dev delete --force` skips the confirmation, and then the session must be named by its id. Inside a session, `/archive` and `/delete` act on the current one and exit.
+
+## Where sessions are stored
+
+| Path | Contents |
+| --- | --- |
+| `~/.hanzo/dev/sessions/YYYY/MM/DD/rollout-*.jsonl` | One file per session. |
+| `~/.hanzo/dev/archived_sessions/` | Archived sessions. |
+| `~/.hanzo/dev/history.jsonl` | Your message history (set `[history] persistence = "none"` to stop saving it). |
+
+To run without saving anything, use `dev exec --ephemeral`.

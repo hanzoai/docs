@@ -1,85 +1,56 @@
 ---
 title: Skills
-description: Extend Hanzo Dev with reusable skill bundles.
+description: Teach Hanzo Dev reusable procedures with SKILL.md files.
 ---
 
-> This is an experimental feature and may change.
+A skill is a folder with a `SKILL.md` file: a name, a description of when to use it, and instructions. Hanzo Dev lists your skills to the model, which loads one when the task matches its description.
 
-Hanzo Dev can discover reusable "skills" on disk. A skill is a small bundle with a name, short description, and optional body instructions.
+## Write a skill
 
-## Enable Skills
+```markdown title=".agents/skills/release-notes/SKILL.md"
+---
+name: release-notes
+description: Draft release notes from the commits since the last tag. Use when asked for release notes or a changelog entry.
+---
 
-Skills are behind the `skills` feature flag and **enabled by default**.
+1. Find the last tag with `git describe --tags --abbrev=0`.
+2. Summarize `git log <tag>..HEAD` by user-visible change.
+3. ...
+```
 
-Disable in config:
+| Field | Rule |
+| --- | --- |
+| `name` | At most 64 characters. Defaults to the folder name. |
+| `description` | Required and non-empty. This is what the model reads to decide when to use the skill, so say what it does and when. |
+
+Keep scripts, references and examples next to `SKILL.md` in the same folder.
+
+## Where skills live
+
+| Location | Scope |
+| --- | --- |
+| `.agents/skills/<name>/SKILL.md` in the repository — in any directory from the root down to where you started | This repository |
+| `~/.agents/skills/<name>/SKILL.md` | Every repository |
+
+Hanzo Dev also ships a few built-in skills.
+
+## Use a skill
+
+Mention it with `$` in the composer — `$release-notes` — or browse them with `/skills`. The model can also pick one on its own from its description.
+
+## Turn skills off
+
+Disable one skill in `config.toml`:
 
 ```toml
-[features]
-skills = false
+[[skills.config]]
+name = "release-notes"
+enabled = false
 ```
 
-Override for a single run:
+Turn off the built-in skills:
 
-```bash
-dev -c features.skills=true
+```toml
+[skills.bundled]
+enabled = false
 ```
-
-## Where Skills Live
-
-Discovery roots (highest precedence first):
-
-1. **Repo**: `.agents/skills/**/SKILL.md` and `.codex/skills/**/SKILL.md`, from the
-   current directory up to the repo root.
-2. **Home**: `~/.agents/skills/**/SKILL.md`.
-3. **User**: `$CODE_HOME/skills/**/SKILL.md` (default: `~/.code/skills/`, and the
-   legacy `~/.codex/skills/` is read too).
-4. **System**: the `.system` skills that ship with Hanzo Dev, installed under
-   `$CODE_HOME`.
-5. **Admin**: `/etc/codex/skills/**/SKILL.md`.
-
-Names are deduped in that order, so a repo skill wins over a user skill of the
-same name, and a user skill wins over a system one.
-
-Behavior:
-
-- Recursive scan; only files named exactly `SKILL.md` are loaded.
-- Hidden entries and symlinks are skipped.
-- Duplicate skill names are deduped by precedence (first match wins).
-- Render order is by name, then path.
-
-## File Format
-
-YAML frontmatter + body. Required frontmatter fields:
-
-- `name` — non-empty, max 64 chars, single-line
-- `description` — non-empty, max 1024 chars, single-line
-
-Extra keys are ignored.
-
-## Loading and Rendering
-
-- Skills load once at startup.
-- When valid skills exist, Hanzo Dev appends a runtime-only `## Skills` section after `AGENTS.md`.
-- Invalid skills are ignored and surfaced as startup errors in the TUI.
-
-## Create a Skill
-
-1. Create `~/.code/skills/<skill-name>/`.
-2. Add `SKILL.md`:
-
-   ```markdown
-   ---
-   name: your-skill-name
-   description: what it does and when to use it
-   ---
-
-   # Optional body
-   Add instructions, references, examples, or scripts (kept on disk).
-   ```
-
-3. Restart Hanzo Dev.
-
-## Managing Skills
-
-- Use `/skills` in the TUI to browse and toggle skills.
-- Use the Settings overlay (Skills section) for configuration.

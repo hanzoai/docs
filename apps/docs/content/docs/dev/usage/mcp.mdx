@@ -1,0 +1,81 @@
+---
+title: MCP Servers and Plugins
+description: Give Hanzo Dev more tools with MCP servers, and install plugins from marketplaces.
+---
+
+## The Hanzo toolset
+
+A new configuration attaches one MCP server, the Hanzo toolset:
+
+```toml title="~/.hanzo/dev/config.toml"
+[mcp_servers.hanzo]
+command = "hanzo-mcp"
+args = []
+```
+
+It runs the `hanzo-mcp` command, installed with `npm install -g @hanzo/mcp`.
+
+## Add a server
+
+```bash
+# A local server, started as a process
+dev mcp add search --env API_KEY=... -- npx -y my-search-mcp
+
+# A remote server over streamable HTTP
+dev mcp add docs --url https://mcp.example.com/mcp --bearer-token-env-var DOCS_TOKEN
+```
+
+`dev mcp add` writes the server to `config.toml`. Then:
+
+```bash
+dev mcp list          # every configured server (--json for JSON)
+dev mcp get search    # one server
+dev mcp login docs    # OAuth sign-in for a remote server
+dev mcp logout docs
+dev mcp remove search
+```
+
+Inside a session, `/mcp` lists the tools the servers provide.
+
+## Configure a server
+
+```toml title="~/.hanzo/dev/config.toml"
+# A local server
+[mcp_servers.search]
+command = "npx"
+args = ["-y", "my-search-mcp"]
+env = { API_KEY = "..." }
+startup_timeout_sec = 30   # default 30
+tool_timeout_sec = 300     # default 300
+
+# A remote server
+[mcp_servers.docs]
+url = "https://mcp.example.com/mcp"
+bearer_token_env_var = "DOCS_TOKEN"
+enabled_tools = ["search", "fetch"]
+```
+
+| Key | Applies to | Meaning |
+| --- | --- | --- |
+| `command`, `args`, `env`, `cwd` | local | How to start the server. |
+| `url`, `bearer_token_env_var`, `http_headers` | remote | Where it is and how to authenticate. |
+| `enabled` | both | `false` keeps it configured but off (default `true`). |
+| `required` | both | `true` makes `dev exec` exit with an error if the server fails to start (default `false`). |
+| `enabled_tools`, `disabled_tools` | both | Allow or hide specific tools. |
+| `startup_timeout_sec`, `tool_timeout_sec` | both | Timeouts in seconds. |
+
+A key that belongs to the other kind of server is an error.
+
+## Plugins
+
+A plugin bundles skills, MCP servers, apps and hooks, and is installed from a marketplace.
+
+```bash
+dev plugin marketplace add owner/repo     # a Git repository or local path
+dev plugin list                           # installed plugins
+dev plugin add <PLUGIN>@<MARKETPLACE>
+dev plugin remove <PLUGIN>
+dev plugin marketplace upgrade            # update every Git marketplace
+```
+
+Inside a session, `/plugins` browses them.

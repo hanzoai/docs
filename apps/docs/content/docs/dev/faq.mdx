@@ -1,57 +1,38 @@
 ---
 title: FAQ
-description: Frequently asked questions about Hanzo Dev.
+description: Common questions about Hanzo Dev.
 ---
 
-## Which models are supported?
+## Which models can I use?
 
-We recommend the built-in presets that wrap GPT-5.2 (e.g., `code-gpt-5.2-codex`). The default reasoning level is medium — upgrade to high for complex tasks with `/model`.
+Any model the Hanzo gateway serves. The default is `enso-auto`; pick another with `/model` or `dev -m <model>`. Browse the catalog with `curl https://catalog.hanzo.ai/v1/models`.
 
-You can also use other models via API-based auth with the `--model` flag.
+## How do I stop it from editing my files?
 
-## How do I stop Hanzo Dev from editing my files?
-
-By default, Hanzo Dev can modify files in your current working directory (Auto mode). To prevent edits, run in read-only mode:
+Run read-only:
 
 ```bash
-dev --sandbox read-only
+dev -s read-only
 ```
 
-Or change the approval level mid-conversation with `/approvals`.
+or set `sandbox_mode = "read-only"` in `config.toml`. See [Sandbox and approvals](/docs/dev/configuration/sandbox).
 
 ## Does it work on Windows?
 
-Running directly on Windows may work but is not officially supported. We recommend [Windows Subsystem for Linux (WSL2)](https://learn.microsoft.com/en-us/windows/wsl/install).
+Yes, natively on Windows x64. Set `[windows] sandbox = "elevated"` and run `/setup-default-sandbox` once so the agent can write inside the workspace; until then it runs read-only. See [Platform sandboxing](/docs/dev/configuration/platform-sandboxing#windows).
 
-## Why can't Hanzo Dev find my agents on Windows?
+## Where does it keep its files?
 
-Agent discovery on Windows can be affected by PATH and file extensions. Solutions:
+In `~/.hanzo/dev`, or the directory `DEV_HOME` names: `config.toml`, credentials, `sessions/`, `history.jsonl`, `rules/`, and `kai.toml` if you create one.
 
-### Use absolute paths (recommended)
+## Why doesn't it read my project's `.codex/config.toml` or `AGENTS.md`?
 
-```toml
-[[agents]]
-name = "claude"
-command = "C:\\Users\\YourUser\\AppData\\Roaming\\npm\\claude.cmd"
-enabled = true
-```
+The directory is not trusted. See [Trust](/docs/dev/configuration#trust).
 
-### Find your npm global install location
+## Does my usage go through Hanzo?
 
-```cmd
-npm config get prefix
-```
+With the Hanzo provider, model calls go to `api.hanzo.ai` and are metered on your Hanzo account. Signing in with ChatGPT or an OpenAI key switches the provider to OpenAI.
 
-### Verify PATH includes npm directory
+## Where does Hanzo Dev come from?
 
-```powershell
-$env:PATH -split ';' | Select-String "npm"
-```
-
-### Check file extensions
-
-On Windows, Hanzo Dev looks for executables with extensions: `.exe`, `.cmd`, `.bat`, `.com`. Include the correct extension when using absolute paths.
-
-## What is the relationship to OpenAI Codex?
-
-Hanzo Dev is a Rust-native agentic development CLI: multi-agent orchestration, MCP client and server, a sandboxed execution policy, and direct integration with Hanzo AI infrastructure. The name is unrelated to OpenAI's 2021 Codex model, which was deprecated in March 2023.
+It is built from [github.com/hanzoai/dev](https://github.com/hanzoai/dev), Apache-2.0. It is a fork of open-source coding agents; the repository's `NOTICE` lists them.

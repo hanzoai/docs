@@ -1,37 +1,37 @@
 ---
 title: Platform Sandboxing
-description: OS-specific sandboxing mechanisms in Hanzo Dev.
+description: How macOS, Linux and Windows enforce the Hanzo Dev sandbox.
 ---
 
-The sandboxing mechanism varies by operating system.
+The [sandbox mode](/docs/dev/configuration/sandbox) is enforced by the operating system. `dev sandbox -- <command>` runs a command under the same enforcement.
 
-## macOS 12+
+## macOS
 
-Uses Apple Seatbelt via `sandbox-exec` with a profile that matches the selected `--sandbox` mode.
+Commands run under Apple Seatbelt (`/usr/bin/sandbox-exec`) with a profile built from the sandbox mode.
+
+To see what the sandbox refused while a command ran:
+
+```bash
+dev sandbox --log-denials -- npm test
+```
 
 ## Linux
 
-Uses Landlock plus seccomp to apply the configured sandbox policy.
+Commands run under bubblewrap for the filesystem, with seccomp and `no_new_privs` applied in-process. Hanzo Dev uses `bwrap` from your `PATH`; if there is none, it uses the copy it ships and warns you.
 
-In containerized environments (e.g., Docker), the host must support these APIs. If it does not, configure the container to provide isolation and run Hanzo Dev with `--sandbox danger-full-access` inside the container instead.
+WSL1 is not supported; use WSL2.
+
+In a container that does not allow these mechanisms, let the container be the isolation and run with `--dangerously-bypass-approvals-and-sandbox` inside it.
 
 ## Windows
 
-Hanzo Dev launches commands with a restricted Windows token and an allowlist tied to declared workspace roots. Writes are blocked outside those roots; common escape vectors like alternate data streams, UNC paths, and device handles are proactively denied.
+Turn the Windows sandbox on in `config.toml`:
 
-The CLI also inserts stub executables (wrapping tools like `ssh`) ahead of the host `PATH` to intercept risky tools before they escape the sandbox.
+```toml
+[windows]
+sandbox = "elevated"
+```
 
-### Known Limitations
+`elevated` is the full sandbox and needs a one-time setup, which `/setup-default-sandbox` runs. `unelevated` runs commands with a restricted token instead. Until `[windows] sandbox` is set, Hanzo Dev runs in `read-only` even where it would otherwise use `workspace-write`.
 
-Running the smoketest suite currently passes **37/41** cases. The remaining gaps:
-
-| Test | Description |
-| --- | --- |
-| ADS write denied (#32) | Alternate data streams can still be written inside workspace |
-| Protected path case-variation (#33) | `.GiT` bypasses protections for `.git` |
-| PATH stub bypass (#35) | Workspace shim not reliably executed |
-| Start-Process https (#41) | `Start-Process 'https://…'` succeeds via Explorer |
-
-### Contributing to Windows Sandboxing
-
-If you can iterate on Windows sandboxing, aim to close the four smoketest failures and rerun the test suite until all **41/41** pass.
+`/sandbox-add-read-dir <absolute path>` lets the sandbox read another directory.
