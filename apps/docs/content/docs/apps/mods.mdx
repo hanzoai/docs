@@ -1,0 +1,212 @@
+---
+title: Building Apps & Mods
+description: Build fully static App Mods with @hanzo/mod, mount them into the @hanzo/app shell, author in-process TypeScript plugins, and expose unified MCP tools.
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# Building Apps & Mods
+
+Hanzo's frontend architecture is **100% static client-side execution** (`output: 'export'`), backed by a unified, flat API gateway at `https://api.hanzo.ai/v1`. 
+
+Because all dynamic operations — authentication, agent orchestration, LLM inference, vector memory, database storage, and tool calling — run through authenticated `/v1` endpoints, **App Mods do not require custom backend servers**. They run entirely in the browser as static React/ESM modules mounted into the `@hanzo/app` shell.
+
+---
+
+## Architecture: `@hanzo/app` vs `@hanzo/mod`
+
+| Component | Role | When to Use |
+|-----------|------|-------------|
+| **`@hanzo/app`** | The **Host Shell**. Provides the left navigation rail, responsive drawer, top header bar, window manager, keyboard shortcuts, and global settings. | Pre-built container deployed at `hanzo.ai` and `hanzo.team`. **Do not fork or rebuild** unless creating an entirely different operating environment. |
+| **`@hanzo/mod`** | The **Pluggable Contract**. Defines the route, pane views, status bar controls, and capabilities for a modular app or room. | **Build your custom app here.** Any package satisfying the `@hanzo/mod` interface mounts directly into `@hanzo/app`. |
+
+```
+@hanzo/app (Host Shell - Static Export)
+├── Left Rail & Drawer (Global Navigation)
+├── Header Bar & Window Controls (IAM Session, Model Pickers, Upgrade Links)
+└── Active Room / Pane
+    ├── /chat   → Chat Mod (Composer, Personas, Skills, Tools)
+    ├── /dev    → Dev Mod (Code, Builder, Customize Hub, Sandboxes)
+    ├── /studio → Studio Mod (Generative Media Canvas)
+    ├── /tabs   → Tabs Mod (Terminal & VM Multiplexer)
+    └── /your-app → Your Custom App Mod (@hanzo/mod)
+```
+
+---
+
+## 1. Creating a Fully Static App Mod
+
+A Hanzo App Mod is an ESM module that exports a standard `Mod` descriptor:
+
+```ts title="src/index.tsx"
+import type { Mod } from '@hanzo/mod';
+import { Sparkles } from 'lucide-react';
+import { Pane } from './Pane';
+import { Bar } from './Bar';
+
+export const analyticsMod: Mod = {
+  id: 'analytics',
+  title: 'Analytics & Observability',
+  icon: Sparkles,
+  path: '/analytics',
+  // Main view mounted into the shell's viewport
+  Pane,
+  // Optional controls rendered into the top bar
+  Bar,
+  // Model permissions and sandbox requirements
+  capabilities: ['web', 'mcp'],
+};
+
+export default analyticsMod;
+```
+
+### Accessing Platform Services in Your Mod
+
+Your static mod inherits the authenticated session from the host shell. You never need to manage OAuth redirects or store raw secret keys inside client bundles:
+
+```tsx title="src/Pane.tsx"
+import { useIam } from '@hanzo/iam/react';
+import { useAi } from '@hanzo/ai/react';
+import { Button, YStack, Text } from '@hanzo/ui';
+
+export function Pane() {
+  const { session, org } = useIam();
+  const { chat } = useAi();
+
+  const handleRun = async () => {
+    // Calls api.hanzo.ai/v1 automatically authenticated with the user's session
+    const response = await chat({
+      model: 'enso',
+      messages: [{ role: 'user', content: 'Analyze active cluster telemetry.' }],
+      tools: ['builtin:exec', 'builtin:fs'],
+    });
+    console.log(response);
+  };
+
+  return (
+    <YStack flex={1} p="$4" gap="$3">
+      <Text fontSize="$5" fontWeight="600">Analytics for {org?.name}</Text>
+      <Button onPress={handleRun}>Run Analysis</Button>
+    </YStack>
+  );
+}
+```
+
+---
+
+## 2. In-Process TypeScript Plugins (Mods)
+
+While an App Mod provides a full UI surface, an **In-Process Plugin** augments the AI runtime with custom tools and logic without spinning up separate containers ([HIP-0105](https://github.com/hanzoai/hips/blob/main/HIPs/hip-0105-in-process-extension-runtime-standard.md) & [HIP-0106](https://github.com/hanzoai/hips/blob/main/HIPs/hip-0106-hanzo-plugin-contract.md)).
+
+Plugins compile on the fly via `POST /v1/tools/plugins/build` and execute inside an isolated JavaScript/WASM runtime:
+
+### Creating a Plugin in the Workspace
+
+1. Open **Customize** in Hanzo Dev (`/dev/customize/plugins`) or via **Settings &rarr; Plugins**.
+2. Click **`+ Build plugin`**.
+3. Choose either **TypeScript** or **Describe an API**:
+   - **TypeScript**: Write connector logic conforming to the plugin contract.
+   - **Describe an API**: Paste an OpenAPI spec or plain-English description; Hanzo's compiler generates the TypeScript connector automatically.
+4. **Credential Isolation**: A plugin never stores API keys. It references a linked connector, whose encrypted credentials are injected from KMS only at execution time.
+
+```ts title="Sample In-Process Plugin"
+export default {
+  name: 'linear-sync',
+  provider: 'linear', // Borrows credentials from the Linear connector
+  actions: {
+    async createIssue({ title, teamId }, context) {
+      const res = await context.fetch('https://api.linear.app/graphql', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${context.token}` },
+        body: JSON.stringify({
+          query: `mutation { issueCreate(input: { title: "${title}", teamId: "${teamId}" }) { success } }`,
+        }),
+      });
+      return res.json();
+    },
+  },
+};
+```
+
+---
+
+## 3. Creating Skills (`SKILL.md`)
+
+Skills are prompt and behavioral playbooks that agents read before starting a task.
+
+### Where Skills Live
+Hanzo discovers skills automatically from three locations (highest precedence first):
+1. **Repo**: `.hanzo/skills/**/SKILL.md` (checked into your project)
+2. **User**: `~/.hanzo/skills/**/SKILL.md` (global across your machine)
+3. **Platform**: Authored in the web UI at `/dev/customize` (shared across your organization)
+
+### File Format
+
+```markdown title=".hanzo/skills/code-review/SKILL.md"
+---
+name: code-review
+description: Rigorous code review verifying security, performance, and style.
+---
+
+# Code Review Playbook
+
+When performing a code review:
+1. Check for memory leaks and unbounded state accumulation.
+2. Verify all API routes enforce IAM authentication and permission scopes.
+3. Validate that inputs are properly sanitized before reaching database queries.
+```
+
+In the chat composer or Dev TUI, invoke skills directly with `/skills` or `@skill-name`.
+
+---
+
+## 4. The Unified Tool Plane & MCP Integration
+
+All tools across Hanzo are unified under a single, action-routed registry at `GET /v1/tools` ([HIP-1213](https://github.com/hanzoai/hips/blob/main/HIPs/hip-1213-tools-the-tool-plane.md)).
+
+```
+Unified Tool Plane (/v1/tools)
+├── Built-in Tools   fs, exec, git, web, memory, code
+├── Skills           All active SKILL.md bundles (PUT /v1/tools/activation)
+├── Plugins          In-process TypeScript connectors (/v1/tools/plugins)
+├── MCP Servers      External Model Context Protocol tools over HTTP/stdio
+└── Personas/Agents  Pre-configured system models (Dev, Vi, Maya, Feynman, Des, Einstein)
+```
+
+### Are MCP Servers Default Selectable?
+- **Yes.** Any server added by URL (e.g. `https://my-server.com/sse`) or installed from the shelf has its tools immediately exposed to model turns.
+- In the **Chat composer**, click `+` to toggle skills, personas, or active tool groups.
+- In **Settings &rarr; Capabilities**, configure sandbox VM permissions:
+  - Filesystem (Read / Write)
+  - Shell & Terminal Execution (in isolated VM sandboxes)
+  - Live Web Search & Crawling
+  - MCP Protocol Server endpoint
+
+---
+
+## 5. Publishing to the Hanzo Marketplace
+
+Depending on what you have built, listing is straightforward:
+
+<Cards>
+  <Card title="MCP Servers" description="Automatically mirrored from registry.modelcontextprotocol.io" />
+  <Card title="Native Connectors" description="Submit integration descriptors to the open-source Hanzo catalog" />
+  <Card title="Full Cloud Apps" description="Deploy to platform.hanzo.ai using a standard hanzo.yaml manifest" />
+</Cards>
+
+1. **MCP Servers**:
+   - Any server published to `registry.modelcontextprotocol.io` with `streamable-http` transport is automatically ingested into Hanzo's marketplace shelf.
+2. **Native Integrations & Channels**:
+   - Submit a pull request to [`github.com/hanzoai/app`](https://github.com/hanzoai/app) adding your integration descriptor to `lib/integrations.ts`.
+3. **Full Cloud Applications**:
+   - Add a `hanzo.yaml` manifest to your repository:
+     ```yaml
+     name: my-cloud-app
+     type: web
+     build:
+       builder: dockerfile
+     routing:
+       domain: my-cloud-app.hanzo.app
+       port: 3000
+     ```
+   - In Hanzo Dev, click **"Add to project" &rarr; "Publish"** (`POST /v1/platform/apps`). The platform provisions TLS certificates, builds the container image, and publishes your application.
