@@ -1,0 +1,301 @@
+---
+title: Next-step router
+description: A small judge that coding and ops agents call before an expensive or risky step.
+---
+
+Any coding or ops agent — Grok Bot, Claude Code, Codex, Hanzo Dev, or one of Hanzo's own bots — can call a small judge before an expensive or risky step. The judge sees only four fields (`goal`, `task_type`, `last_error`, `repeats`) and returns exactly one action.
+
+It runs on Kai 1.9, which is in production, through the Decisions API at `https://api.hanzo.ai/v1/decisions`. Send `model` set to `kai`. A live response reports `routing.checkpoint` of `kai-1.9`. The Decisions API also accepts `typesafe/jev-1.13` for comparison. Hanzo bots use `kai`.
+
+## Why
+
+Agents retry the same failure, open a browser again for a file they already have, and keep researching after they have enough sources. Those steps are slow, and on a shared machine they crowd out other work.
+
+Recent Hanzo Developer runs were killed by repeated identical tool calls and by fetching the full 5MB `openapi.json`. The router exists so the next run stops that loop, reuses the artifact it already fetched, or caps the research, before another large call goes out.
+
+## The five actions
+
+The model picks one action. In active mode the caller does the matching thing.
+
+| Action | When it fits | What the caller does |
+| --- | --- | --- |
+| `proceed` | Nothing suggests the next step will fail | Continue |
+| `reuse_cache` | A fresh artifact for this work already exists | Use it and skip the fetch or browser session |
+| `stop_retry` | The same approach failed the same way | Abandon that approach and report why |
+| `research_capped` | Enough sources are already gathered | Stop at 5 sources and write up |
+| `ask_human` | The step sends, publishes, pays, or deletes | Pause and ask the user |
+
+`ask_human` is never overridden. A later rule can force `ask_human`, and nothing can replace it with another action.
+
+### Hard rules
+
+The router applies these rules after the model answers. They also run when the model call fails and the result has fallen open to `proceed`.
+
+1. **Risky words force `ask_human`.** If `goal` or `task_type` contains `send`, `publish`, `post`, `pay`, `purchase`, `delete`, `merge`, or `deploy`, the action is `ask_human`. The check is case-insensitive, on word boundaries, and includes common inflections (`sending`, `published`, `payment`, `deleted`, `merging`, `deploying`). `last_error` is not scanned. `post` matches the word `post`, so a goal that says "post the update" pauses.
+2. **`stop_retry` needs `repeats >= 2`.** When `repeats` is 2 or more, `last_error` is non-empty, and the model said `proceed` or `research_capped`, the action becomes `stop_retry`. One failure is not a pattern: a `stop_retry` with `repeats` below 2 is downgraded to `proceed`. `reuse_cache` is left alone by this rule.
+3. **`ask_human` wins.** The risky-word check runs last. A repeated failure that also says "deploy" or "delete" still ends as `ask_human`.
+4. **Fail open to `proceed`.** If every model call fails or the output is invalid, the action starts as `proceed` and the result includes `error`. Rules 1–3 still run on that result, so a risky verb still pauses and a repeated error still stops the retry. The caller's own approval rules still apply on top of the router.
+
+`"enabled": false` returns `proceed` with `disabled: true` and skips the API call and rules 1–3. The risky-word check is off in that mode, so the caller's own approval rules are the gate. See [Rollout](#rollout).
+
+The Decisions response puts the model's pick in `answers.action.choice`. Grok Bot's `router.py` applies the rules before it prints a line. Agents that call the API themselves apply the same rules to that choice. A chat-completions fallback returns a JSON object with `action` instead, and the same rules apply to it.
+
+## Call the API
+
+`POST https://api.hanzo.ai/v1/decisions` with `Authorization: Bearer $HANZO_API_KEY`. The body is the four fields under `state`, plus one question named `action`. Question types are `boolean`, `choice`, and `score`. This router asks a `choice`. `observe` / `handle` lets you decide again over saved state.
+
+`decisions_model` is `kai`. If that call fails, the router tries `fallback_models` in order — `zen6`, then `zen6-flash` — through `POST https://api.hanzo.ai/v1/chat/completions` with a strict `json_schema` enum of the five actions. `zen6` is a reasoning model, so set `max_tokens` high enough for the reasoning trace and the JSON object. The fallback example uses 4096. The default timeout is 20 seconds.
+
+### curl
+
+```bash
+curl https://api.hanzo.ai/v1/decisions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d @- <<'EOF'
+{
+  "model": "kai",
+  "state": {
+    "goal": "fetch the OpenAPI spec",
+    "task_type": "research",
+    "last_error": "timeout reading openapi.json",
+    "repeats": 3
+  },
+  "questions": {
+    "action": {
+      "type": "choice",
+      "instructions": "What should the agent do next",
+      "criteria": {
+        "proceed": "nothing suggests the next step will fail",
+        "reuse_cache": "a fresh artifact for this already exists",
+        "stop_retry": "the same approach failed the same way",
+        "research_capped": "enough sources are already gathered",
+        "ask_human": "the step sends, publishes, pays or deletes"
+      }
+    }
+  }
+}
+EOF
+```
+
+Real response from Kai 1.9 (`routing.checkpoint` is `kai-1.9`). The choice is `answers.action.choice`:
+
+```json
+{
+  "id": "dec_cd5150869ea48424a1accd4c1ad08791",
+  "model": "kai",
+  "provider": "Hanzo",
+  "answers": {
+    "action": {
+      "type": "choice",
+      "choice": "stop_retry",
+      "confidence": 0.2187,
+      "probabilities": {
+        "proceed": 0.2239,
+        "reuse_cache": 0.1607,
+        "stop_retry": 0.3749,
+        "research_capped": 0.0908,
+        "ask_human": 0.1496
+      },
+      "answer_confidence": 0.3749
+    }
+  },
+  "routing": {
+    "backend": "kai",
+    "checkpoint": "kai-1.9"
+  },
+  "latency_ms": 309.6
+}
+```
+
+To compare against Jev, send the same body with `"model": "typesafe/jev-1.13"`. Hanzo bots send `kai`.
+
+### Python
+
+Stdlib only, same Decisions request the router sends for Kai.
+
+```python
+#!/usr/bin/env python3
+"""Ask Kai for one next-step action. Key from $HANZO_API_KEY, never printed."""
+import json, os, urllib.request
+
+API = "https://api.hanzo.ai/v1/decisions"
+body = {
+    "model": "kai",
+    "state": {
+        "goal": "fetch the OpenAPI spec",
+        "task_type": "research",
+        "last_error": "timeout reading openapi.json",
+        "repeats": 3,
+    },
+    "questions": {
+        "action": {
+            "type": "choice",
+            "instructions": "What should the agent do next",
+            "criteria": {
+                "proceed": "nothing suggests the next step will fail",
+                "reuse_cache": "a fresh artifact for this already exists",
+                "stop_retry": "the same approach failed the same way",
+                "research_capped": "enough sources are already gathered",
+                "ask_human": "the step sends, publishes, pays or deletes",
+            },
+        }
+    },
+}
+req = urllib.request.Request(
+    API,
+    data=json.dumps(body).encode(),
+    method="POST",
+    headers={
+        "Authorization": "Bearer " + os.environ["HANZO_API_KEY"],
+        "Content-Type": "application/json",
+    },
+)
+with urllib.request.urlopen(req, timeout=20) as res:
+    payload = json.load(res)
+print(payload["answers"]["action"]["choice"])
+```
+
+### Fallback through chat completions
+
+`zen6`, then `zen6-flash`, use the OpenAI-compatible chat completions API. The schema is a strict enum over the five actions. Give `zen6` enough `max_tokens` for its reasoning trace.
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d @- <<'EOF'
+{
+  "model": "zen6",
+  "max_tokens": 4096,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a next-step router. Pick exactly one action: proceed, reuse_cache, stop_retry, research_capped, ask_human."
+    },
+    {
+      "role": "user",
+      "content": "goal: fetch the OpenAPI spec\ntask_type: research\nlast_error: timeout reading openapi.json\nrepeats: 3"
+    }
+  ],
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "name": "route",
+      "strict": true,
+      "schema": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["action", "confidence", "probabilities", "reason"],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["proceed", "reuse_cache", "stop_retry", "research_capped", "ask_human"]
+          },
+          "confidence": { "type": "number" },
+          "probabilities": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["proceed", "reuse_cache", "stop_retry", "research_capped", "ask_human"],
+            "properties": {
+              "proceed": { "type": "number" },
+              "reuse_cache": { "type": "number" },
+              "stop_retry": { "type": "number" },
+              "research_capped": { "type": "number" },
+              "ask_human": { "type": "number" }
+            }
+          },
+          "reason": { "type": "string" }
+        }
+      }
+    }
+  }
+}
+EOF
+```
+
+If `zen6` fails, repeat that body with `"model": "zen6-flash"`.
+
+## Using it with Grok Bot
+
+The bots share one computer. The router lives at `/home/box/hanzo-router/`, and every bot calls the same CLI:
+
+```bash
+python3 /home/box/hanzo-router/router.py --goal "..." --task-type "..." --last-error "..." --repeats N --bot <name>
+```
+
+```bash
+python3 /home/box/hanzo-router/router.py \
+  --goal "fetch the OpenAPI spec" \
+  --task-type research \
+  --last-error "timeout reading openapi.json" \
+  --repeats 2 \
+  --bot grok
+```
+
+The CLI prints one JSON line: `action`, `confidence`, `probabilities`, `reason`, `model`, `latency_ms`, and `mode`. It adds `error` when the call failed open, `fallback_errors` when Kai failed and a later model answered, and `override` plus `model_action` when a hard rule replaced the model's choice. `disabled: true` is set when the router is turned off. `model` is the id that actually answered (`kai`, or `zen6` / `zen6-flash` on fallback).
+
+A shared Grok Bot skill named `next-step-router` tells every bot when to call it:
+
+- before a browser session
+- before a research pass
+- before retrying a failed step
+- before starting a coding run or a subagent
+- before any send, publish, pay, or delete step
+
+In shadow mode the skill still calls the CLI, so the line is logged, then continues the original step. In active mode it follows `action`.
+
+## Rollout
+
+Start in shadow mode for about a week. `config.json` is read on every call:
+
+```json
+{
+  "enabled": true,
+  "mode": "shadow",
+  "decisions_model": "kai",
+  "fallback_models": ["zen6", "zen6-flash"],
+  "timeout_s": 20,
+  "min_confidence": 0.0
+}
+```
+
+`min_confidence` is the floor for the model's confidence. At `0.0` that floor does not replace the choice. The hard rules still run after it.
+
+| `mode` | Behavior |
+| --- | --- |
+| `shadow` | Call and log, then ignore the answer and work as usual. |
+| `active` | Honor the action. |
+
+Read the report for disagreements between the logged action and what the bot actually did, then set `mode` to `active`:
+
+```bash
+python3 /home/box/hanzo-router/report.py --since YYYY-MM-DD
+```
+
+`--include-test` includes rows written with the CLI's `--test` flag. A missing or unreadable `config.json` is treated as disabled (`enabled` defaults to false, `mode` to `shadow`).
+
+### Kill switches
+
+1. **`bypass router` in a user message.** The skill skips the router for that run.
+2. **`"enabled": false` in `config.json`.** No API call. The CLI returns `proceed` with `disabled: true` and does not apply the risky-word check. The caller's own approval rules still apply.
+
+## Using it from other agents
+
+Claude Code, Codex, and Hanzo Dev call the same Decisions API with the same body: `POST https://api.hanzo.ai/v1/decisions` and `model` `kai`. If Kai fails, fall back to `zen6`, then `zen6-flash`, through `/v1/chat/completions` with the strict `json_schema` enum above. Apply the [hard rules](#hard-rules) to `answers.action.choice` (or to the fallback `action`) before acting on it, and keep the agent's own approval rules.
+
+An MCP tool that wraps the call and the rules is **Planned**.
+
+## Logging and privacy
+
+Every CLI call appends one line to `/home/box/hanzo-router/decisions.jsonl`:
+
+| Field | Contents |
+| --- | --- |
+| `timestamp` | ISO-8601 in `America/Los_Angeles` |
+| `bot` | `--bot` name |
+| `goal`, `task_type`, `last_error`, `repeats` | The four inputs, unchanged |
+| `result` | The full decision, including `error` or `override` when set |
+| `mode` | `shadow` or `active` at call time |
+
+`HANZO_API_KEY` is never printed or logged. `decisions.jsonl` is readable by every bot on the machine. The four fields are also the entire prompt sent to the API. Never put secrets, tokens, credentials, or message bodies in them. Pass a short goal, a task type, the error string, and the repeat count.
