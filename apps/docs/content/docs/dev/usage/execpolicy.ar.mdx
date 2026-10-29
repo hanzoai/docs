@@ -1,0 +1,39 @@
+---
+title: سياسة التنفيذ
+description: تحكّم في طريقة تنفيذ Hanzo Dev للأوامر بقواعد سياسة التنفيذ.
+---
+
+## سياسة التنفيذ
+
+يستخدم Hanzo Dev سياسات تنفيذ ليقرر أي الأوامر يستطيع الوكيل تشغيلها ومتى يلزم الموافقة.
+
+### أوضاع العزل
+
+| الوضع | الوصف |
+| --- | --- |
+| `off` | بلا عزل (تعمل الأوامر مباشرة) |
+| `workspace-read` | وصول للقراءة فقط إلى مساحة العمل |
+| `workspace-write` | وصول للقراءة والكتابة إلى مساحة العمل (الافتراضي لـ full-auto) |
+| `network-off` | يعطّل الوصول إلى الشبكة |
+
+### سياسات الموافقة
+
+| السياسة | الوصف |
+| --- | --- |
+| `always` | يطلب الموافقة دائمًا قبل التنفيذ |
+| `on-failure` | يطلب فقط عند فشل أمر (الافتراضي لـ full-auto) |
+| `on-request` | يطلب عندما يطلب النموذج الموافقة صراحة |
+| `never` | لا يطلب الموافقة أبدًا |
+
+### الاستخدام
+
+```bash
+# Set sandbox mode
+dev --sandbox workspace-write "your prompt"
+
+# Set approval policy
+dev --ask-for-approval on-failure "your prompt"
+
+# Full auto (sandboxed + auto-approve)
+dev --full-auto "your prompt"
+```

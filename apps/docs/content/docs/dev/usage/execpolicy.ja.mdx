@@ -1,0 +1,39 @@
+---
+title: 実行ポリシー
+description: 実行ポリシーの規則で、Hanzo Dev がコマンドをどう実行するかを制御します。
+---
+
+## 実行ポリシー
+
+Hanzo Dev は実行ポリシーで、エージェントがどのコマンドを実行できるか、いつ承認が必要かを制御します。
+
+### サンドボックスのモード
+
+| モード | 説明 |
+| --- | --- |
+| `off` | サンドボックスなし（コマンドは直接実行される） |
+| `workspace-read` | ワークスペースへの読み取り専用アクセス |
+| `workspace-write` | ワークスペースへの読み書きアクセス（full-auto の既定） |
+| `network-off` | ネットワークアクセスを無効にする |
+
+### 承認ポリシー
+
+| ポリシー | 説明 |
+| --- | --- |
+| `always` | 実行の前に必ず承認を求める |
+| `on-failure` | コマンドが失敗したときだけ求める（full-auto の既定） |
+| `on-request` | モデルが明示的に承認を求めたときに求める |
+| `never` | 承認を求めない |
+
+### 使い方
+
+```bash
+# Set sandbox mode
+dev --sandbox workspace-write "your prompt"
+
+# Set approval policy
+dev --ask-for-approval on-failure "your prompt"
+
+# Full auto (sandboxed + auto-approve)
+dev --full-auto "your prompt"
+```

@@ -1,0 +1,39 @@
+---
+title: 執行原則
+description: 用執行原則規則控制 Hanzo Dev 如何執行指令。
+---
+
+## 執行原則
+
+Hanzo Dev 用執行原則控制代理可以執行哪些指令，以及何時需要核准。
+
+### 沙箱模式
+
+| 模式 | 說明 |
+| --- | --- |
+| `off` | 無沙箱（指令直接執行） |
+| `workspace-read` | 對工作區唯讀 |
+| `workspace-write` | 對工作區可讀寫（full-auto 的預設值） |
+| `network-off` | 關閉網路存取 |
+
+### 核准原則
+
+| 原則 | 說明 |
+| --- | --- |
+| `always` | 執行前始終要求核准 |
+| `on-failure` | 僅在指令失敗時要求（full-auto 的預設值） |
+| `on-request` | 在模型明確要求核准時要求 |
+| `never` | 從不要求核准 |
+
+### 用法
+
+```bash
+# Set sandbox mode
+dev --sandbox workspace-write "your prompt"
+
+# Set approval policy
+dev --ask-for-approval on-failure "your prompt"
+
+# Full auto (sandboxed + auto-approve)
+dev --full-auto "your prompt"
+```
