@@ -1,0 +1,52 @@
+---
+title: Google ADK
+description: "ADK는 LiteLlm을 통해 OpenAI 호환 엔드포인트에 닿습니다. 그 매개변수는 api_base이며 base_url이 아닙니다."
+---
+
+ADK에는 기본 OpenAI 커넥터가 없습니다. LiteLLM 래퍼를 통해 하나에 닿습니다. `LiteLlm`, 매개변수는 **`api_base`**입니다. 철자에 유의하세요 — `base_url`이 아닙니다.
+
+```bash
+pip install google-adk "litellm>=1.84"
+```
+
+```python
+from google.adk.agents import LlmAgent
+from google.adk.models.lite_llm import LiteLlm
+
+model = LiteLlm(
+    model="openai/zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = LlmAgent(model=model, name="hanzo_agent", instruction="Answer precisely.")
+```
+
+`POST /v1/chat/completions`에 도달합니다.
+
+`openai/` 접두사는 LiteLLM의 공급자 형식이며 OpenAI 호환 경로를 고르는 것입니다. 그 뒤 구간이 모델 id입니다. `LiteLlm`은 `extra_headers`와 `extra_body`도 받습니다. ADK는 `litellm>=1.84`를 요구하고, LiteLLM 자신의 문서는 버전 1.82.7과 1.82.8에 대한 보안 권고를 담고 있습니다. 그보다 위로 고정하세요.
+
+## MCP
+
+`McpToolset`은 에이전트의 `tools` 목록에 바로 들어갑니다. 원격 서버의 URL은 `StreamableHTTPConnectionParams`의 `url` 매개변수입니다.
+
+```python
+from google.adk.agents import LlmAgent
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
+
+toolset = McpToolset(
+    connection_params=StreamableHTTPConnectionParams(
+        url="https://api.hanzo.ai/v1/mcp",
+        headers={
+            "Authorization": "Bearer sk-...",
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        },
+    )
+)
+
+agent = LlmAgent(model=model, name="hanzo_agent", instruction="Answer precisely.", tools=[toolset])
+```
+
+`StdioConnectionParams`와 `SseConnectionParams`가 형제이고, `tool_filter`는 에이전트가 보는 것을 좁힙니다.

@@ -1,0 +1,55 @@
+---
+title: AutoGen
+description: "OpenAIChatCompletionClient base_url alır ve model adı OpenAI'nin sunduklarından biri değilse yanında model_info ister."
+---
+
+`OpenAIChatCompletionClient` **`base_url`** alır; model OpenAI'de barındırılmadığında zorunlu olarak belgelenmiştir. İnsanları yakalayan kısım: SDK'nın tanımadığı her model adı ayrıca **`model_info`** ister ve o olmadan istemci çağırmak yerine hata yükseltir.
+
+```bash
+pip install "autogen-ext[openai]"
+```
+
+```python
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelFamily
+
+client = OpenAIChatCompletionClient(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    model_info={
+        "vision": False,
+        "function_calling": True,
+        "json_output": True,
+        "family": ModelFamily.UNKNOWN,
+        "structured_output": True,
+    },
+)
+
+# ... use the client, then release it
+await client.close()
+```
+
+`POST /v1/chat/completions` adresine düşer.
+
+Bir modelin `GET /v1/models` kaydı `supports_vision` veya `supports_tools` bildirdiğinde bunlar `vision` ve `function_calling` ile eşleşir. Kayıtların çoğu hiçbirini bildirmez ve AutoGen'in başvurusu bu istemcinin OpenAI dışı modellere karşı denenmediğini açıkça söyler — yalnızca denediğinizi iddia edin.
+
+## MCP
+
+URL, `StreamableHttpServerParams` öğesinin `url` alanıdır.
+
+```python
+from autogen_ext.tools.mcp import StreamableHttpMcpToolAdapter, StreamableHttpServerParams
+
+params = StreamableHttpServerParams(
+    url="https://api.hanzo.ai/v1/mcp",
+    headers={"Authorization": "Bearer sk-..."},
+    timeout=30.0,
+    sse_read_timeout=300.0,
+    terminate_on_close=True,
+)
+
+adapter = await StreamableHttpMcpToolAdapter.from_server_params(params, "describe")
+```
+
+`StdioServerParams` ve `SseServerParams` kardeşlerdir; `mcp_server_tools()` bir sunucudaki her aracı teker teker uyarlayıcı yerine tek çağrıda kurar.

@@ -1,0 +1,50 @@
+---
+title: Vercel AI SDK
+description: "createOpenAICompatible menerima baseURL. Dua penyedia lain pada parameter yang sama mencapai bentuk responses dan messages."
+---
+
+`createOpenAICompatible` menerima **`baseURL`**. `name` wajib di sampingnya; `apiKey` diubah menjadi header `Authorization: Bearer` sebelum header apa pun yang Anda teruskan sendiri.
+
+```bash
+npm i ai @ai-sdk/openai-compatible
+```
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText } from 'ai';
+
+const hanzo = createOpenAICompatible({
+  name: 'hanzo',
+  apiKey: process.env.HANZO_API_KEY,
+  baseURL: 'https://api.hanzo.ai/v1',
+});
+
+const { text } = await generateText({
+  model: hanzo('zen5'),
+  prompt: 'Name the three laws of thermodynamics.',
+});
+```
+
+Mendarat di `POST /v1/chat/completions`.
+
+Dua penyedia saudara menerima `baseURL` yang sama dan mencapai bentuk lain: `createOpenAI` dari `@ai-sdk/openai`, yang bawaannya adalah Responses sejak AI SDK 5, mendarat di `POST /v1/responses`; `createAnthropic` dari `@ai-sdk/anthropic` mendarat di `POST /v1/messages`.
+
+## MCP
+
+`createMCPClient` berasal dari `@ai-sdk/mcp` dan di-await. URL berada pada transport, yang SDK sarankan berupa HTTP di produksi.
+
+```ts
+import { createMCPClient } from '@ai-sdk/mcp';
+
+const mcp = await createMCPClient({
+  transport: {
+    type: 'http',
+    url: 'https://api.hanzo.ai/v1/mcp',
+    headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` },
+  },
+});
+
+const tools = await mcp.tools();
+```
+
+Serahkan `tools` ke `generateText` atau `streamText` sebagai argumen `tools`.

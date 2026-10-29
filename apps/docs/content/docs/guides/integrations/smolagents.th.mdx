@@ -1,0 +1,42 @@
+---
+title: smolagents
+description: "OpenAIModel รับ api_base คลาสคือ OpenAIModel — OpenAIServerModel หายไปจากเอกสารอ้างอิงแล้ว"
+---
+
+`OpenAIModel` รับ **`api_base`** ซึ่งเอกสารบอกว่าเป็น URL ฐานของเซิร์ฟเวอร์ API ที่เข้ากันได้กับ OpenAI สังเกตการสะกด — ไม่ใช่ `base_url` — และสังเกตชื่อคลาส: เอกสารอ้างอิงบันทึก `OpenAIModel` และ `OpenAIServerModel` ไม่ปรากฏในนั้นอีกแล้ว
+
+```bash
+pip install smolagents
+```
+
+```python
+import os
+from smolagents import OpenAIModel, CodeAgent
+
+model = OpenAIModel(
+    model_id="zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key=os.environ["HANZO_API_KEY"],
+)
+
+agent = CodeAgent(tools=[], model=model)
+agent.run("How many seconds in a fortnight?")
+```
+
+ลงที่ `POST /v1/chat/completions`
+
+ลายเซ็นเต็มคือ `OpenAIModel(model_id, api_base=None, api_key=None, organization=None, project=None, client_kwargs=None, custom_role_conversions=None, flatten_messages_as_text=False, **kwargs)` อาร์กิวเมนต์การสร้าง — `temperature`, `max_tokens`, `top_p` — รับตอนสร้างและส่งต่อทุกครั้งที่เรียก `LiteLLMModel` คือคลาสพี่น้องและรับ `api_base` เช่นกัน
+
+## MCP
+
+`MCPClient` รับ `url` และ `transport` และเป็นตัวจัดการบริบทที่ให้เครื่องมือออกมา
+
+```python
+from smolagents import MCPClient, CodeAgent
+
+with MCPClient({"url": "https://api.hanzo.ai/v1/mcp", "transport": "streamable-http"}) as tools:
+    agent = CodeAgent(tools=tools, model=model)
+    agent.run("What is my account balance?")
+```
+
+`ToolCollection.from_mcp` คือจุดเข้าอีกจุด บน dict เดียวกัน มันต้องการ `trust_remote_code=True` `streamable-http` คือทรานสปอร์ตเริ่มต้น

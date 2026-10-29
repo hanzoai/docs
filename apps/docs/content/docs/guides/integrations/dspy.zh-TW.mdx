@@ -1,0 +1,42 @@
+---
+title: DSPy
+description: "dspy.LM 經由 kwargs 取得 api_base，再轉交 LiteLLM。請以 provider/name 形式為模型命名。"
+---
+
+`dspy.LM` 接受 **`api_base`**。注意拼法——它不是 `base_url`。這個參數不在明確的簽章裡；它落進 `**kwargs`，DSPy 再轉給 LiteLLM，而 API 參考把它稱為 LM 的一個欄位。
+
+```bash
+pip install dspy
+```
+
+```python
+import dspy
+
+lm = dspy.LM(
+    "openai/zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    model_type="chat",
+)
+dspy.configure(lm=lm)
+
+qa = dspy.Predict("question -> answer")
+print(qa(question="What moves the tides?").answer)
+```
+
+會打到 `POST /v1/chat/completions`。
+
+`openai/` 前綴是 LiteLLM 的提供者形式；後面那段是模型 id。`model_type` 接受 `chat`、`text` 或 `responses`，因此同一個建構函式就能抵達 `POST /v1/responses`。
+
+## MCP
+
+DSPy 是轉換 MCP 工具，而不是自己持有用戶端。`dspy.Tool.from_mcp_tool(client, tool)` 把每一個變成 `dspy.Tool`，你再交給 `dspy.ReAct` 這類模組，所以伺服器 URL 是設在 MCP SDK 用戶端上，而不是任何 DSPy 參數。
+
+```python
+import dspy
+
+tools = [dspy.Tool.from_mcp_tool(session, tool) for tool in (await session.list_tools()).tools]
+react = dspy.ReAct("question -> answer", tools=tools)
+```
+
+`session` 是 MCP Python SDK 的 `ClientSession`，依照那個 SDK 的連線方式接上——對 `https://api.hanzo.ai/v1/mcp` 而言，就是它的 streamable HTTP 用戶端，bearer 標頭在那裡設定。

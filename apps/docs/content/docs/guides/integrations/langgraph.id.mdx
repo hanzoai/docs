@@ -1,0 +1,51 @@
+---
+title: LangGraph
+description: "URL dasar ada pada model, bukan pada agen. ChatOpenAI menerima base_url; serahkan instansnya ke create_agent."
+---
+
+URL dasar ada pada objek model, bukan pada agen. `ChatOpenAI` menerima **`base_url`** (alias `openai_api_base`), dan `create_agent` menerima instans model yang sudah diinisialisasi — itulah jalur yang membawa URL dasar khusus, karena bentuk string `"provider:model"` tidak bisa.
+
+```bash
+pip install langchain-openai langgraph
+```
+
+```python
+from langchain_openai import ChatOpenAI
+from langchain.agents import create_agent
+
+model = ChatOpenAI(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = create_agent(model=model, tools=[])
+result = agent.invoke({"messages": [{"role": "user", "content": "Hello"}]})
+```
+
+Mendarat di `POST /v1/chat/completions`.
+
+Urutan resolusi alamat, kecocokan pertama yang menang: argumen eksplisit `base_url` atau `openai_api_base`, lalu `OPENAI_API_BASE` yang dibaca LangChain saat inisialisasi, lalu `OPENAI_BASE_URL` yang dibaca klien `openai` di bawahnya. Menyetel argumen membuat dua yang lain tidak relevan, dan itulah sebabnya cuplikan menyetelnya.
+
+## MCP
+
+`langchain-mcp-adapters` memegang klien. URL adalah kunci `url` dari entri per server.
+
+```bash
+pip install langchain-mcp-adapters
+```
+
+```python
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
+client = MultiServerMCPClient({
+    "hanzo": {
+        "transport": "http",
+        "url": "https://api.hanzo.ai/v1/mcp",
+        "headers": {"Authorization": "Bearer sk-..."},
+    }
+})
+
+tools = await client.get_tools()
+agent = create_agent(model=model, tools=tools)
+```

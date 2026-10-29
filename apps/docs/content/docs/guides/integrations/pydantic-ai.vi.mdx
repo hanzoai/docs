@@ -1,0 +1,44 @@
+---
+title: Pydantic AI
+description: "OpenAIProvider nhận base_url. Lớp mô hình bạn chọn quyết định bạn đổ về chat completions hay responses."
+---
+
+`OpenAIProvider` nhận **`base_url`** và `api_key`, rồi được trao cho một lớp mô hình dưới dạng `provider=`.
+
+```bash
+pip install pydantic-ai
+```
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
+
+model = OpenAIChatModel(
+    'zen5',
+    provider=OpenAIProvider(base_url='https://api.hanzo.ai/v1', api_key='sk-...'),
+)
+
+agent = Agent(model)
+print(agent.run_sync('Hello').output)
+```
+
+Đổ về `POST /v1/chat/completions`.
+
+Hãy chọn lớp mô hình có chủ đích, vì hai lớp đổ về hai địa chỉ khác nhau. `OpenAIChatModel`, tiền tố `openai-chat:`, là thứ đứng sau mọi nhà cung cấp tương thích OpenAI và đạt tới `POST /v1/chat/completions`. `OpenAIResponsesModel`, tiền tố trần `openai:` và mặc định hiện đại, đạt tới `POST /v1/responses`. Cả hai đều được phục vụ; lớp chat là mặc định an toàn hơn trước một endpoint tương thích.
+
+`OPENAI_BASE_URL` và `OPENAI_API_KEY` là các tương đương môi trường, và `OpenAIProvider` cũng nhận một client dựng sẵn dưới dạng `openai_client`.
+
+## MCP
+
+`MCPToolset` nhận URL máy chủ làm đối số vị trí đầu tiên. Một URL thuần được coi là HTTP streamable; SSE chỉ khi đường dẫn kết thúc bằng `/sse`.
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai.mcp import MCPToolset
+
+toolset = MCPToolset('https://api.hanzo.ai/v1/mcp')
+agent = Agent(model, toolsets=[toolset])
+```
+
+Nó cũng đọc một tệp cấu hình JSON mang đối tượng `mcpServers`.

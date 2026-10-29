@@ -1,0 +1,55 @@
+---
+title: AutoGen
+description: "OpenAIChatCompletionClient prende base_url, e model_info accanto ogni volta che il nome del modello non è uno che OpenAI serve."
+---
+
+`OpenAIChatCompletionClient` prende **`base_url`**, documentato come richiesto quando il modello non è ospitato su OpenAI. La parte che coglie la gente: qualsiasi nome di modello che l'SDK non riconosce ha bisogno anche di **`model_info`**, e senza di esso il client solleva invece di chiamare.
+
+```bash
+pip install "autogen-ext[openai]"
+```
+
+```python
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelFamily
+
+client = OpenAIChatCompletionClient(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    model_info={
+        "vision": False,
+        "function_calling": True,
+        "json_output": True,
+        "family": ModelFamily.UNKNOWN,
+        "structured_output": True,
+    },
+)
+
+# ... use the client, then release it
+await client.close()
+```
+
+Arriva su `POST /v1/chat/completions`.
+
+Dove il record di un modello in `GET /v1/models` dichiara `supports_vision` o `supports_tools`, quelli corrispondono a `vision` e `function_calling`. La maggior parte dei record non ne dichiara nessuno, e il riferimento di AutoGen dice chiaramente che questo client non è testato contro modelli non OpenAI — quindi afferma solo ciò che hai esercitato.
+
+## MCP
+
+L'URL è il campo `url` di `StreamableHttpServerParams`.
+
+```python
+from autogen_ext.tools.mcp import StreamableHttpMcpToolAdapter, StreamableHttpServerParams
+
+params = StreamableHttpServerParams(
+    url="https://api.hanzo.ai/v1/mcp",
+    headers={"Authorization": "Bearer sk-..."},
+    timeout=30.0,
+    sse_read_timeout=300.0,
+    terminate_on_close=True,
+)
+
+adapter = await StreamableHttpMcpToolAdapter.from_server_params(params, "describe")
+```
+
+`StdioServerParams` e `SseServerParams` sono i fratelli; `mcp_server_tools()` costruisce ogni strumento di un server in una sola chiamata invece di un adattatore alla volta.

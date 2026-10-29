@@ -1,0 +1,38 @@
+---
+title: Letta
+description: "Bir kurucu değil, bir yapılandırma akışı. /connect üzerinden OpenAI ile uyumlu bir sağlayıcı ekleyin, sonra modeli seçin."
+---
+
+Letta kod düzeyinde bir taban URL parametresi açmaz. Adres bir yapılandırma akışıyla girilir.
+
+Letta uygulamasında **`/connect`** açın ya da CLI'da `letta connect` çalıştırın; aynı akışı açar. Türü **OpenAI ile uyumlu API** olan özel bir sağlayıcı ekleyin ve ona taban URL ile anahtarı verin:
+
+```
+base URL:  https://api.hanzo.ai/v1
+API key:   sk-...
+```
+
+Sonra `/model` modeli seçer. `POST /v1/chat/completions` adresine düşer.
+
+Letta'nın belirttiği iki kısıt vardır ve Hanzo ikisini de karşılar. Uç nokta sohbet tamamlamalarını ve araç çağırmayı desteklemelidir — bu yüzden `GET /v1/models` kaydı `supports_tools` diyen bir model seçin. Ve bulutta barındırılan bir ajan, yalnızca localhost üzerinden değil, genel internetten erişilebilen bir uç noktaya ihtiyaç duyar.
+
+Letta, OpenAI ile uyumlu sağlayıcılara açık bir `reasoning_effort` gönderir: `none`, `minimal`, `low`, `medium`, `high`, `xhigh` veya `max` değerlerinden biri, ve uç noktanın bunu kabul etmesini, yeniden eşlemesini ya da reddetmesini bekler.
+
+`LETTA_BASE_URL` başka bir şeydir ve bunu yapmaz. Kendi barındırdığınız bir Letta sunucusunun adresidir, örneğin `http://localhost:8283` — sunucunun kendi adresi, çıkarımın gittiği yerle ilgisizdir.
+
+## MCP
+
+Sunucular Letta Agent SDK içindeki `mcpServers` alanına, ada göre anahtarlanmış olarak girer; uzaktaki için `url` vardır.
+
+```json
+{
+  "mcpServers": {
+    "hanzo": {
+      "url": "https://api.hanzo.ai/v1/mcp",
+      "headers": { "Authorization": "Bearer sk-..." }
+    }
+  }
+}
+```
+
+Anahtar ad alanı olur: araçlar `mcp__hanzo__<tool>` olarak gelir. Bağlantılar oturum başlarken eşzamanlı açılır ve ulaşılamayan bir sunucu diğerlerini bekletmez.

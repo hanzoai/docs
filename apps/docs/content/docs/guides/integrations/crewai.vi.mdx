@@ -1,0 +1,62 @@
+---
+title: CrewAI
+description: "LLM nhận base_url. custom_openai=True là thứ cho phép bạn đặt một id mô hình mà CrewAI không nhận ra."
+---
+
+`LLM` nhận **`base_url`**. Thêm tiền tố `openai/` cho mô hình để LiteLLM định tuyến nó qua đường tương thích OpenAI.
+
+```bash
+pip install crewai
+```
+
+```python
+from crewai import LLM, Agent
+
+llm = LLM(
+    model="openai/zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = Agent(
+    role="Researcher",
+    goal="Answer precisely",
+    backstory="You check before you answer.",
+    llm=llm,
+)
+```
+
+Đổ về `POST /v1/chat/completions`.
+
+Với một id mô hình mà CrewAI không nhận là tên OpenAI, thêm **`custom_openai=True`** — cờ đó là thứ cho một id mô hình cổng đi qua mà không bị viết lại:
+
+```python
+llm = LLM(
+    model="anthropic/claude-sonnet-4-6",
+    custom_openai=True,
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+```
+
+Các tương đương môi trường là `OPENAI_API_KEY` và `OPENAI_BASE_URL`.
+
+## MCP
+
+Máy chủ MCP là hạng nhất trên Agent, trong một danh sách `mcps`. URL là tham số `url`.
+
+```python
+from crewai import Agent
+from crewai.mcp import MCPServerHTTP
+
+server = MCPServerHTTP(
+    url="https://api.hanzo.ai/v1/mcp",
+    headers={"Authorization": "Bearer sk-..."},
+    streamable=True,
+    cache_tools_list=True,
+)
+
+agent = Agent(role="Researcher", goal="Answer precisely", backstory="", llm=llm, mcps=[server])
+```
+
+Để kiểm soát vòng đời thủ công có `MCPServerAdapter` từ `crewai_tools`, cài bằng `pip install 'crewai-tools[mcp]'`, nhận một dict gồm `url` và `transport`.

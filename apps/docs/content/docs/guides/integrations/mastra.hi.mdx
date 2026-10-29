@@ -1,0 +1,51 @@
+---
+title: Mastra
+description: "कोई प्रदाता फ़ैक्टरी नहीं। बेस URL एजेंट के model ऑब्जेक्ट का url फ़ील्ड है, एक रूटिंग id के बगल में।"
+---
+
+Mastra के पास इसके लिए कोई प्रदाता फ़ैक्टरी नहीं है। पता एजेंट के `model` ऑब्जेक्ट का एक फ़ील्ड है: **`id`** और **`url`**।
+
+```bash
+npm i @mastra/core
+```
+
+```ts
+import { Agent } from "@mastra/core/agent";
+
+export const agent = new Agent({
+  id: "researcher",
+  name: "Researcher",
+  instructions: "Answer precisely.",
+  model: {
+    id: "hanzo/zen5",
+    url: "https://api.hanzo.ai/v1",
+    apiKey: process.env.HANZO_API_KEY,
+  },
+});
+```
+
+`POST /v1/chat/completions` पर पहुँचता है।
+
+दो बातें जिन पर दस्तावेज़ स्पष्ट हैं। `url` OpenAI-संगत एंडपॉइंट का बेस URL होना चाहिए, कभी एक अलग चैट एंडपॉइंट नहीं। और `id` एक रूटिंग रूप है: `provider/model` जब रिमोट नंगे मॉडल नाम की अपेक्षा करता है, `gateway/provider/model` जब रिमोट का अपना मॉडल नेमस्पेस पहले से प्रदाता रखता है। प्रति-मॉडल `headers` समर्थित हैं, क्लाइंट के हेडर पर प्रलेखित प्राथमिकता के साथ।
+
+## MCP
+
+`MCPClient` `@mastra/mcp` से आता है। URL एक `url` कुंजी है जो नामित सर्वर के हिसाब से एक `URL` ऑब्जेक्ट रखती है।
+
+```ts
+import { MCPClient } from '@mastra/mcp';
+
+export const mcp = new MCPClient({
+  id: 'hanzo-mcp',
+  servers: {
+    hanzo: {
+      url: new URL('https://api.hanzo.ai/v1/mcp'),
+      requestInit: { headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` } },
+    },
+  },
+});
+
+const tools = await mcp.listTools();
+```
+
+`listToolsets()` प्रति-अनुरोध रूप है, जब टूल समवर्ती उपयोगकर्ताओं के बीच साझा नहीं होने चाहिए।

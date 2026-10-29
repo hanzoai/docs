@@ -1,0 +1,38 @@
+---
+title: Letta
+description: "コンストラクタではなく設定フローです。/connect から OpenAI 互換プロバイダを足し、それからモデルを選びます。"
+---
+
+Letta はコード上のベース URL パラメータを出しません。アドレスは設定フローから入れます。
+
+Letta アプリで **`/connect`** を開くか、CLI で `letta connect` を実行します。同じフローが開きます。種類が **OpenAI 互換 API** のカスタムプロバイダを足し、ベース URL とキーを渡します。
+
+```
+base URL:  https://api.hanzo.ai/v1
+API key:   sk-...
+```
+
+それから `/model` でモデルを選びます。`POST /v1/chat/completions` に着地します。
+
+Letta が述べる制約は二つで、Hanzo はその両方を満たします。エンドポイントはチャット補完とツール呼び出しに対応している必要があります。`GET /v1/models` の記録が `supports_tools` と言うモデルを選んでください。そしてクラウド上のエージェントには、localhost だけではなく公開インターネットから届くエンドポイントが要ります。
+
+Letta は OpenAI 互換プロバイダへ明示的な `reasoning_effort` を送ります。`none`、`minimal`、`low`、`medium`、`high`、`xhigh`、`max` のいずれかで、エンドポイントがそれを受け入れるか、割り当て直すか、拒否するかを期待します。
+
+`LETTA_BASE_URL` は別物で、これにはなりません。自分でホストした Letta サーバーのアドレス、たとえば `http://localhost:8283` です。サーバー自身のアドレスであり、推論の行き先とは無関係です。
+
+## MCP
+
+サーバーは Letta Agent SDK の `mcpServers` に、名前をキーとして入り、遠隔のものには `url` を付けます。
+
+```json
+{
+  "mcpServers": {
+    "hanzo": {
+      "url": "https://api.hanzo.ai/v1/mcp",
+      "headers": { "Authorization": "Bearer sk-..." }
+    }
+  }
+}
+```
+
+キーが名前空間になります。ツールは `mcp__hanzo__<tool>` として届きます。接続はセッション初期化時に同時に始まり、届かないサーバーが一つあっても他を止めません。

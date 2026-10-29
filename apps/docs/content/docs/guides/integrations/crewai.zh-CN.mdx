@@ -1,0 +1,62 @@
+---
+title: CrewAI
+description: "LLM 接收 base_url。custom_openai=True 让你写出 CrewAI 认不出的模型 id。"
+---
+
+`LLM` 接收 **`base_url`**。给模型加上 `openai/` 前缀，LiteLLM 就会把它走 OpenAI 兼容路径。
+
+```bash
+pip install crewai
+```
+
+```python
+from crewai import LLM, Agent
+
+llm = LLM(
+    model="openai/zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = Agent(
+    role="Researcher",
+    goal="Answer precisely",
+    backstory="You check before you answer.",
+    llm=llm,
+)
+```
+
+落到 `POST /v1/chat/completions`。
+
+对于 CrewAI 认不出是 OpenAI 名称的模型 id，加上 **`custom_openai=True`**——这个标志让网关模型 id 原样通过、不被改写：
+
+```python
+llm = LLM(
+    model="anthropic/claude-sonnet-4-6",
+    custom_openai=True,
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+```
+
+环境变量对应项是 `OPENAI_API_KEY` 和 `OPENAI_BASE_URL`。
+
+## MCP
+
+MCP 服务器在 Agent 上是一等公民，放在 `mcps` 列表里。URL 是 `url` 参数。
+
+```python
+from crewai import Agent
+from crewai.mcp import MCPServerHTTP
+
+server = MCPServerHTTP(
+    url="https://api.hanzo.ai/v1/mcp",
+    headers={"Authorization": "Bearer sk-..."},
+    streamable=True,
+    cache_tools_list=True,
+)
+
+agent = Agent(role="Researcher", goal="Answer precisely", backstory="", llm=llm, mcps=[server])
+```
+
+要手动管生命周期，用 `crewai_tools` 里的 `MCPServerAdapter`，用 `pip install 'crewai-tools[mcp]'` 安装，它接收含 `url` 和 `transport` 的 dict。

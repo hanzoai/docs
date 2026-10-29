@@ -1,0 +1,48 @@
+---
+title: LlamaIndex
+description: "OpenAILike api_base alır — base_url değil — ve is_chat_model ayarlanmalıdır, çünkü varsayılan completions uç noktasıdır."
+---
+
+`OpenAILike` **`api_base`** alır. Yazıma dikkat edin — bu `base_url` değildir. Sınıf kendi paketinde gelir ve üçüncü taraf uç noktalarla uyumlu kılınmış, OpenAI modeli üzerinde ince bir sarmalayıcıdır.
+
+```bash
+pip install llama-index-llms-openai-like
+```
+
+```python
+from llama_index.llms.openai_like import OpenAILike
+
+llm = OpenAILike(
+    model="zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    context_window=1000000,
+    is_chat_model=True,
+    is_function_calling_model=True,
+)
+
+print(llm.complete("Hello"))
+```
+
+`POST /v1/chat/completions` adresine düşer.
+
+Üç varsayılanın üzerine yazılmalıdır, yoksa sarmalayıcı model hakkında yanılır. **`is_chat_model` varsayılanı `False` değeridir**, bu da `complete()` çağrısını sohbet yerine completions uç noktasına gönderir. `is_function_calling_model` varsayılanı `False` değeridir, bu yüzden model üzerine kurulu bir ajan, araç çağrısı beklediğiniz yerde düzyazı üretir. Ve `context_window` varsayılanı modelin değil OpenAI'ninkidir — gerçeğini o modelin `GET /v1/models` kaydından alın.
+
+`llama-index-embeddings-openai-like`, geri getirme tarafının eş paketidir ve `POST /v1/embeddings` adresine ulaşır.
+
+## MCP
+
+`BasicMCPClient` sunucu URL'sini ilk konumsal argüman olarak alır ve taşımayı ondan çıkarır.
+
+```bash
+pip install llama-index-tools-mcp
+```
+
+```python
+from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
+
+client = BasicMCPClient("https://api.hanzo.ai/v1/mcp")
+tools = await McpToolSpec(client=client).to_tool_list_async()
+```
+
+`/mcp` ile biten bir URL streamable HTTP'dir, `/sse` ile biten SSE'dir ve `args` içeren bir komut olan ilk argüman yerel bir süreçtir.

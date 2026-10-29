@@ -1,0 +1,44 @@
+---
+title: Pydantic AI
+description: "OpenAIProvider toma base_url. La clase de modelo que elijas decide si llegas a chat completions o a responses."
+---
+
+`OpenAIProvider` toma **`base_url`** y `api_key`, y se entrega a una clase de modelo como `provider=`.
+
+```bash
+pip install pydantic-ai
+```
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
+
+model = OpenAIChatModel(
+    'zen5',
+    provider=OpenAIProvider(base_url='https://api.hanzo.ai/v1', api_key='sk-...'),
+)
+
+agent = Agent(model)
+print(agent.run_sync('Hello').output)
+```
+
+Llega a `POST /v1/chat/completions`.
+
+Elige la clase de modelo a propósito, porque las dos llegan a direcciones distintas. `OpenAIChatModel`, prefijo `openai-chat:`, es lo que respalda a cada proveedor compatible con OpenAI y llega a `POST /v1/chat/completions`. `OpenAIResponsesModel`, el prefijo desnudo `openai:` y el predeterminado moderno, llega a `POST /v1/responses`. Ambos se sirven; la clase de chat es el predeterminado más seguro frente a un endpoint compatible.
+
+`OPENAI_BASE_URL` y `OPENAI_API_KEY` son los equivalentes de entorno, y `OpenAIProvider` también acepta un cliente ya construido como `openai_client`.
+
+## MCP
+
+`MCPToolset` toma la URL del servidor como su primer argumento posicional. Una URL simple se trata como HTTP streamable; SSE solo si la ruta termina en `/sse`.
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai.mcp import MCPToolset
+
+toolset = MCPToolset('https://api.hanzo.ai/v1/mcp')
+agent = Agent(model, toolsets=[toolset])
+```
+
+También lee un archivo de configuración JSON que lleva un objeto `mcpServers`.

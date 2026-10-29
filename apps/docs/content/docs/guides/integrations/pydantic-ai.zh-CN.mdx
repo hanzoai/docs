@@ -1,0 +1,44 @@
+---
+title: Pydantic AI
+description: "OpenAIProvider 接收 base_url。你选哪个模型类，决定落到 chat completions 还是 responses。"
+---
+
+`OpenAIProvider` 接收 **`base_url`** 和 `api_key`，再作为 `provider=` 交给一个模型类。
+
+```bash
+pip install pydantic-ai
+```
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
+
+model = OpenAIChatModel(
+    'zen5',
+    provider=OpenAIProvider(base_url='https://api.hanzo.ai/v1', api_key='sk-...'),
+)
+
+agent = Agent(model)
+print(agent.run_sync('Hello').output)
+```
+
+落到 `POST /v1/chat/completions`。
+
+要有意地选模型类，因为两者落到不同地址。`OpenAIChatModel`，前缀 `openai-chat:`，支撑每一个 OpenAI 兼容提供方，到达 `POST /v1/chat/completions`。`OpenAIResponsesModel`，裸前缀 `openai:`，也是现代默认，到达 `POST /v1/responses`。两者都提供；面对兼容端点时，聊天类是更稳妥的默认。
+
+`OPENAI_BASE_URL` 和 `OPENAI_API_KEY` 是环境变量对应项，`OpenAIProvider` 也接受一个预先建好的客户端，作为 `openai_client`。
+
+## MCP
+
+`MCPToolset` 把服务器 URL 当作第一个位置参数。普通 URL 当作 streamable HTTP；只有路径以 `/sse` 结尾才是 SSE。
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai.mcp import MCPToolset
+
+toolset = MCPToolset('https://api.hanzo.ai/v1/mcp')
+agent = Agent(model, toolsets=[toolset])
+```
+
+它也会读取一份带 `mcpServers` 对象的 JSON 配置文件。

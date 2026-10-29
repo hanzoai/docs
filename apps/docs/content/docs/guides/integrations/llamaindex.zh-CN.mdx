@@ -1,0 +1,48 @@
+---
+title: LlamaIndex
+description: "OpenAILike 接收 api_base——不是 base_url——并且必须设置 is_chat_model，因为它默认走向 completions 端点。"
+---
+
+`OpenAILike` 接收 **`api_base`**。注意拼写——它不是 `base_url`。这个类装在自己的包里，是 OpenAI 模型上的一层薄封装，用来兼容第三方端点。
+
+```bash
+pip install llama-index-llms-openai-like
+```
+
+```python
+from llama_index.llms.openai_like import OpenAILike
+
+llm = OpenAILike(
+    model="zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    context_window=1000000,
+    is_chat_model=True,
+    is_function_calling_model=True,
+)
+
+print(llm.complete("Hello"))
+```
+
+落到 `POST /v1/chat/completions`。
+
+三个默认值必须改掉，否则封装会对模型判断错误。**`is_chat_model` 默认为 `False`**，这会把 `complete()` 发到 completions 端点而不是聊天。`is_function_calling_model` 默认为 `False`，所以建在这个模型上的代理会在你期待工具调用的地方写出散文。而 `context_window` 默认用的是 OpenAI 的值，不是这个模型的——真正的值从该模型在 `GET /v1/models` 里的记录取。
+
+`llama-index-embeddings-openai-like` 是检索一侧对应的包，到达 `POST /v1/embeddings`。
+
+## MCP
+
+`BasicMCPClient` 把服务器 URL 当作第一个位置参数，并从它推断传输方式。
+
+```bash
+pip install llama-index-tools-mcp
+```
+
+```python
+from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
+
+client = BasicMCPClient("https://api.hanzo.ai/v1/mcp")
+tools = await McpToolSpec(client=client).to_tool_list_async()
+```
+
+以 `/mcp` 结尾的 URL 是 streamable HTTP，以 `/sse` 结尾的是 SSE，而第一个参数若是带 `args` 的命令，那就是本地进程。

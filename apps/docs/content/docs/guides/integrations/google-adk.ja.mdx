@@ -1,0 +1,52 @@
+---
+title: Google ADK
+description: "ADK は LiteLlm を通して OpenAI 互換エンドポイントに届きます。そのパラメータは api_base で、base_url ではありません。"
+---
+
+ADK にネイティブな OpenAI コネクタはありません。LiteLLM のラッパーを通して届きます。`LiteLlm`、パラメータは **`api_base`** です。綴りに注意 — `base_url` ではありません。
+
+```bash
+pip install google-adk "litellm>=1.84"
+```
+
+```python
+from google.adk.agents import LlmAgent
+from google.adk.models.lite_llm import LiteLlm
+
+model = LiteLlm(
+    model="openai/zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = LlmAgent(model=model, name="hanzo_agent", instruction="Answer precisely.")
+```
+
+`POST /v1/chat/completions` に着地します。
+
+`openai/` プレフィックスは LiteLLM のプロバイダ形式で、OpenAI 互換の経路を選ぶものです。その後ろの部分がモデル id です。`LiteLlm` は `extra_headers` と `extra_body` も取ります。ADK は `litellm>=1.84` を要求し、LiteLLM 自身のドキュメントはバージョン 1.82.7 と 1.82.8 に対するセキュリティ勧告を載せています。それらより上に固定してください。
+
+## MCP
+
+`McpToolset` はエージェントの `tools` リストへ直接入ります。遠隔サーバーでは URL は `StreamableHTTPConnectionParams` の `url` パラメータです。
+
+```python
+from google.adk.agents import LlmAgent
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
+
+toolset = McpToolset(
+    connection_params=StreamableHTTPConnectionParams(
+        url="https://api.hanzo.ai/v1/mcp",
+        headers={
+            "Authorization": "Bearer sk-...",
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        },
+    )
+)
+
+agent = LlmAgent(model=model, name="hanzo_agent", instruction="Answer precisely.", tools=[toolset])
+```
+
+`StdioConnectionParams` と `SseConnectionParams` が兄弟で、`tool_filter` はエージェントが見るものを絞ります。

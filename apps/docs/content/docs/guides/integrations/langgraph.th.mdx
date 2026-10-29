@@ -1,0 +1,51 @@
+---
+title: LangGraph
+description: "URL ฐานอยู่ที่โมเดล ไม่ใช่ที่เอเจนต์ ChatOpenAI รับ base_url ส่งอินสแตนซ์ให้ create_agent"
+---
+
+URL ฐานอยู่ที่อ็อบเจกต์โมเดล ไม่ใช่ที่เอเจนต์ `ChatOpenAI` รับ **`base_url`** (นามแฝง `openai_api_base`) และ `create_agent` รับอินสแตนซ์โมเดลที่เริ่มต้นแล้ว — นั่นคือเส้นทางที่ถือ URL ฐานกำหนดเอง เพราะรูปแบบสตริง `"provider:model"` ทำไม่ได้
+
+```bash
+pip install langchain-openai langgraph
+```
+
+```python
+from langchain_openai import ChatOpenAI
+from langchain.agents import create_agent
+
+model = ChatOpenAI(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = create_agent(model=model, tools=[])
+result = agent.invoke({"messages": [{"role": "user", "content": "Hello"}]})
+```
+
+ลงที่ `POST /v1/chat/completions`
+
+ลำดับการแก้ที่อยู่ รายการแรกที่ตรงชนะ: อาร์กิวเมนต์ชัดเจน `base_url` หรือ `openai_api_base` จากนั้น `OPENAI_API_BASE` ที่ LangChain อ่านตอนเริ่ม จากนั้น `OPENAI_BASE_URL` ที่ไคลเอนต์ `openai` ข้างใต้เป็นผู้อ่าน การตั้งอาร์กิวเมนต์ทำให้สองอย่างที่เหลือไม่มีความหมาย จึงเป็นเหตุให้ตัวอย่างตั้งมัน
+
+## MCP
+
+`langchain-mcp-adapters` ถือไคลเอนต์ URL คือคีย์ `url` ของรายการต่อเซิร์ฟเวอร์
+
+```bash
+pip install langchain-mcp-adapters
+```
+
+```python
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
+client = MultiServerMCPClient({
+    "hanzo": {
+        "transport": "http",
+        "url": "https://api.hanzo.ai/v1/mcp",
+        "headers": {"Authorization": "Bearer sk-..."},
+    }
+})
+
+tools = await client.get_tools()
+agent = create_agent(model=model, tools=tools)
+```

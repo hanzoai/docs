@@ -1,0 +1,51 @@
+---
+title: LangGraph
+description: "Die Basis-URL steht am Modell, nicht am Agenten. ChatOpenAI nimmt base_url; übergeben Sie die Instanz an create_agent."
+---
+
+Die Basis-URL steht am Modellobjekt, nicht am Agenten. `ChatOpenAI` nimmt **`base_url`** (Alias `openai_api_base`), und `create_agent` akzeptiert eine initialisierte Modellinstanz — das ist der Weg, der eine eigene Basis-URL trägt, denn die Zeichenkettenform `"provider:model"` kann das nicht.
+
+```bash
+pip install langchain-openai langgraph
+```
+
+```python
+from langchain_openai import ChatOpenAI
+from langchain.agents import create_agent
+
+model = ChatOpenAI(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = create_agent(model=model, tools=[])
+result = agent.invoke({"messages": [{"role": "user", "content": "Hello"}]})
+```
+
+Landet auf `POST /v1/chat/completions`.
+
+Auflösungsreihenfolge der Adresse, der erste Treffer gewinnt: das explizite Argument `base_url` oder `openai_api_base`, dann `OPENAI_API_BASE`, das LangChain bei der Initialisierung liest, dann `OPENAI_BASE_URL`, das der darunterliegende `openai`-Client liest. Das Argument zu setzen macht die beiden anderen gegenstandslos, deshalb setzt es das Snippet.
+
+## MCP
+
+`langchain-mcp-adapters` hält den Client. Die URL ist der Schlüssel `url` eines Eintrags je Server.
+
+```bash
+pip install langchain-mcp-adapters
+```
+
+```python
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
+client = MultiServerMCPClient({
+    "hanzo": {
+        "transport": "http",
+        "url": "https://api.hanzo.ai/v1/mcp",
+        "headers": {"Authorization": "Bearer sk-..."},
+    }
+})
+
+tools = await client.get_tools()
+agent = create_agent(model=model, tools=tools)
+```

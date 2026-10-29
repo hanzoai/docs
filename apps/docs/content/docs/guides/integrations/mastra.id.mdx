@@ -1,0 +1,51 @@
+---
+title: Mastra
+description: "Tidak ada pabrik penyedia. URL dasar adalah bidang url pada objek model agen, di samping id perutean."
+---
+
+Mastra tidak punya pabrik penyedia untuk ini. Alamatnya adalah bidang objek `model` agen: **`id`** dan **`url`**.
+
+```bash
+npm i @mastra/core
+```
+
+```ts
+import { Agent } from "@mastra/core/agent";
+
+export const agent = new Agent({
+  id: "researcher",
+  name: "Researcher",
+  instructions: "Answer precisely.",
+  model: {
+    id: "hanzo/zen5",
+    url: "https://api.hanzo.ai/v1",
+    apiKey: process.env.HANZO_API_KEY,
+  },
+});
+```
+
+Mendarat di `POST /v1/chat/completions`.
+
+Dua hal yang dinyatakan eksplisit oleh dokumentasi. `url` harus berupa URL dasar endpoint yang kompatibel dengan OpenAI, bukan endpoint obrolan tersendiri. Dan `id` adalah bentuk perutean: `provider/model` saat sisi jauh mengharapkan nama model polos, `gateway/provider/model` saat ruang nama model milik sisi jauh sudah membawa penyedia. `headers` per model didukung, dengan prioritas yang terdokumentasi di atas header klien.
+
+## MCP
+
+`MCPClient` berasal dari `@mastra/mcp`. URL adalah kunci `url` yang menampung objek `URL`, per server bernama.
+
+```ts
+import { MCPClient } from '@mastra/mcp';
+
+export const mcp = new MCPClient({
+  id: 'hanzo-mcp',
+  servers: {
+    hanzo: {
+      url: new URL('https://api.hanzo.ai/v1/mcp'),
+      requestInit: { headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` } },
+    },
+  },
+});
+
+const tools = await mcp.listTools();
+```
+
+`listToolsets()` adalah varian per permintaan, untuk saat alat tidak boleh dibagi antar pengguna yang bersamaan.

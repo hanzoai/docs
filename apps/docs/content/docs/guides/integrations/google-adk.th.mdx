@@ -1,0 +1,52 @@
+---
+title: Google ADK
+description: "ADK ไปถึงเอนด์พอยต์ที่เข้ากันได้กับ OpenAI ผ่าน LiteLlm ซึ่งพารามิเตอร์คือ api_base — ไม่ใช่ base_url"
+---
+
+ADK ไม่มีตัวเชื่อม OpenAI ในตัว มันไปถึงหนึ่งตัวผ่านตัวห่อ LiteLLM: `LiteLlm` พารามิเตอร์ **`api_base`** สังเกตการสะกด — ไม่ใช่ `base_url`
+
+```bash
+pip install google-adk "litellm>=1.84"
+```
+
+```python
+from google.adk.agents import LlmAgent
+from google.adk.models.lite_llm import LiteLlm
+
+model = LiteLlm(
+    model="openai/zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = LlmAgent(model=model, name="hanzo_agent", instruction="Answer precisely.")
+```
+
+ลงที่ `POST /v1/chat/completions`
+
+คำนำหน้า `openai/` คือรูปแบบผู้ให้บริการของ LiteLLM และเป็นสิ่งที่เลือกทางที่เข้ากันได้กับ OpenAI ส่วนที่ตามมาคือ id ของโมเดล `LiteLlm` ยังรับ `extra_headers` และ `extra_body` ADK ต้องการ `litellm>=1.84` และเอกสารของ LiteLLM เองมีคำเตือนด้านความปลอดภัยต่อเวอร์ชัน 1.82.7 และ 1.82.8 — ปักหมุดให้สูงกว่านั้น
+
+## MCP
+
+`McpToolset` เข้าไปในรายการ `tools` ของเอเจนต์ตรง ๆ สำหรับเซิร์ฟเวอร์ระยะไกล URL คือพารามิเตอร์ `url` ของ `StreamableHTTPConnectionParams`
+
+```python
+from google.adk.agents import LlmAgent
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
+
+toolset = McpToolset(
+    connection_params=StreamableHTTPConnectionParams(
+        url="https://api.hanzo.ai/v1/mcp",
+        headers={
+            "Authorization": "Bearer sk-...",
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        },
+    )
+)
+
+agent = LlmAgent(model=model, name="hanzo_agent", instruction="Answer precisely.", tools=[toolset])
+```
+
+`StdioConnectionParams` และ `SseConnectionParams` คือคลาสพี่น้อง และ `tool_filter` ทำให้สิ่งที่เอเจนต์เห็นแคบลง

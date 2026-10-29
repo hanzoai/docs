@@ -1,0 +1,50 @@
+---
+title: Vercel AI SDK
+description: "createOpenAICompatible 接受 baseURL。同一個參數上的另外兩個提供者分別抵達 responses 與 messages 形狀。"
+---
+
+`createOpenAICompatible` 接受 **`baseURL`**。旁邊的 `name` 是必填；`apiKey` 會先變成 `Authorization: Bearer` 標頭，再輪到你自己傳入的任何標頭。
+
+```bash
+npm i ai @ai-sdk/openai-compatible
+```
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText } from 'ai';
+
+const hanzo = createOpenAICompatible({
+  name: 'hanzo',
+  apiKey: process.env.HANZO_API_KEY,
+  baseURL: 'https://api.hanzo.ai/v1',
+});
+
+const { text } = await generateText({
+  model: hanzo('zen5'),
+  prompt: 'Name the three laws of thermodynamics.',
+});
+```
+
+會打到 `POST /v1/chat/completions`。
+
+兩個姊妹提供者接受同一個 `baseURL`，抵達另外的形狀：來自 `@ai-sdk/openai` 的 `createOpenAI`，自 AI SDK 5 起預設是 Responses，會打到 `POST /v1/responses`；來自 `@ai-sdk/anthropic` 的 `createAnthropic` 會打到 `POST /v1/messages`。
+
+## MCP
+
+`createMCPClient` 來自 `@ai-sdk/mcp`，而且要 await。URL 放在傳輸層上，SDK 建議正式環境用 HTTP。
+
+```ts
+import { createMCPClient } from '@ai-sdk/mcp';
+
+const mcp = await createMCPClient({
+  transport: {
+    type: 'http',
+    url: 'https://api.hanzo.ai/v1/mcp',
+    headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` },
+  },
+});
+
+const tools = await mcp.tools();
+```
+
+把 `tools` 交給 `generateText` 或 `streamText`，當作它的 `tools` 參數。

@@ -1,0 +1,42 @@
+---
+title: smolagents
+description: "OpenAIModel nhận api_base. Lớp là OpenAIModel — OpenAIServerModel đã biến mất khỏi tài liệu tham chiếu."
+---
+
+`OpenAIModel` nhận **`api_base`**, được ghi là URL cơ sở của máy chủ API tương thích OpenAI. Chú ý chính tả — đó không phải `base_url` — và chú ý tên lớp: tài liệu tham chiếu ghi `OpenAIModel`, và `OpenAIServerModel` không còn xuất hiện trong đó.
+
+```bash
+pip install smolagents
+```
+
+```python
+import os
+from smolagents import OpenAIModel, CodeAgent
+
+model = OpenAIModel(
+    model_id="zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key=os.environ["HANZO_API_KEY"],
+)
+
+agent = CodeAgent(tools=[], model=model)
+agent.run("How many seconds in a fortnight?")
+```
+
+Đổ về `POST /v1/chat/completions`.
+
+Chữ ký đầy đủ là `OpenAIModel(model_id, api_base=None, api_key=None, organization=None, project=None, client_kwargs=None, custom_role_conversions=None, flatten_messages_as_text=False, **kwargs)`. Các đối số sinh — `temperature`, `max_tokens`, `top_p` — được nhận lúc khởi tạo và chuyển tiếp ở mọi lần gọi. `LiteLLMModel` là lớp anh em và cũng nhận `api_base`.
+
+## MCP
+
+`MCPClient` nhận `url` và `transport`, và là một trình quản lý ngữ cảnh cho ra các công cụ.
+
+```python
+from smolagents import MCPClient, CodeAgent
+
+with MCPClient({"url": "https://api.hanzo.ai/v1/mcp", "transport": "streamable-http"}) as tools:
+    agent = CodeAgent(tools=tools, model=model)
+    agent.run("What is my account balance?")
+```
+
+`ToolCollection.from_mcp` là điểm vào còn lại, trên cùng dict đó; nó đòi `trust_remote_code=True`. `streamable-http` là transport mặc định.

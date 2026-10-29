@@ -1,0 +1,42 @@
+---
+title: smolagents
+description: "OpenAIModel recebe api_base. A classe é OpenAIModel — OpenAIServerModel saiu da referência."
+---
+
+`OpenAIModel` recebe **`api_base`**, documentado como a URL base do servidor de API compatível com a OpenAI. Atenção à grafia — não é `base_url` — e ao nome da classe: a referência documenta `OpenAIModel`, e `OpenAIServerModel` não aparece mais nela.
+
+```bash
+pip install smolagents
+```
+
+```python
+import os
+from smolagents import OpenAIModel, CodeAgent
+
+model = OpenAIModel(
+    model_id="zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key=os.environ["HANZO_API_KEY"],
+)
+
+agent = CodeAgent(tools=[], model=model)
+agent.run("How many seconds in a fortnight?")
+```
+
+Chega em `POST /v1/chat/completions`.
+
+A assinatura completa é `OpenAIModel(model_id, api_base=None, api_key=None, organization=None, project=None, client_kwargs=None, custom_role_conversions=None, flatten_messages_as_text=False, **kwargs)`. Argumentos de geração — `temperature`, `max_tokens`, `top_p` — são aceitos na construção e encaminhados em toda chamada. `LiteLLMModel` é o irmão e também recebe `api_base`.
+
+## MCP
+
+`MCPClient` recebe `url` e `transport`, e é um gerenciador de contexto que produz as ferramentas.
+
+```python
+from smolagents import MCPClient, CodeAgent
+
+with MCPClient({"url": "https://api.hanzo.ai/v1/mcp", "transport": "streamable-http"}) as tools:
+    agent = CodeAgent(tools=tools, model=model)
+    agent.run("What is my account balance?")
+```
+
+`ToolCollection.from_mcp` é o outro ponto de entrada, no mesmo dict; exige `trust_remote_code=True`. `streamable-http` é o transporte padrão.

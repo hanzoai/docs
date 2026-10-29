@@ -1,0 +1,44 @@
+---
+title: Pydantic AI
+description: "OpenAIProvider menerima base_url. Kelas model yang Anda pilih menentukan apakah Anda mendarat di chat completions atau responses."
+---
+
+`OpenAIProvider` menerima **`base_url`** dan `api_key`, lalu diserahkan ke kelas model sebagai `provider=`.
+
+```bash
+pip install pydantic-ai
+```
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
+
+model = OpenAIChatModel(
+    'zen5',
+    provider=OpenAIProvider(base_url='https://api.hanzo.ai/v1', api_key='sk-...'),
+)
+
+agent = Agent(model)
+print(agent.run_sync('Hello').output)
+```
+
+Mendarat di `POST /v1/chat/completions`.
+
+Pilih kelas model dengan sengaja, karena keduanya mendarat di alamat yang berbeda. `OpenAIChatModel`, awalan `openai-chat:`, adalah yang menopang setiap penyedia yang kompatibel dengan OpenAI dan mencapai `POST /v1/chat/completions`. `OpenAIResponsesModel`, awalan polos `openai:` dan bawaan modern, mencapai `POST /v1/responses`. Keduanya dilayani; kelas obrolan adalah bawaan yang lebih aman terhadap endpoint yang kompatibel.
+
+`OPENAI_BASE_URL` dan `OPENAI_API_KEY` adalah padanan lingkungan, dan `OpenAIProvider` juga menerima klien yang sudah dibangun sebagai `openai_client`.
+
+## MCP
+
+`MCPToolset` menerima URL server sebagai argumen posisional pertama. URL polos diperlakukan sebagai HTTP streamable; SSE hanya jika jalur berakhiran `/sse`.
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai.mcp import MCPToolset
+
+toolset = MCPToolset('https://api.hanzo.ai/v1/mcp')
+agent = Agent(model, toolsets=[toolset])
+```
+
+Ia juga membaca berkas konfigurasi JSON yang membawa objek `mcpServers`.

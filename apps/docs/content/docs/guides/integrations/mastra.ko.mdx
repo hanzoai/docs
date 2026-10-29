@@ -1,0 +1,51 @@
+---
+title: Mastra
+description: "공급자 팩토리가 없습니다. 기본 URL은 에이전트의 model 객체에 있는 url 필드이며, 라우팅 id 옆에 있습니다."
+---
+
+Mastra에는 이를 위한 공급자 팩토리가 없습니다. 주소는 에이전트의 `model` 객체 필드입니다. **`id`**와 **`url`**입니다.
+
+```bash
+npm i @mastra/core
+```
+
+```ts
+import { Agent } from "@mastra/core/agent";
+
+export const agent = new Agent({
+  id: "researcher",
+  name: "Researcher",
+  instructions: "Answer precisely.",
+  model: {
+    id: "hanzo/zen5",
+    url: "https://api.hanzo.ai/v1",
+    apiKey: process.env.HANZO_API_KEY,
+  },
+});
+```
+
+`POST /v1/chat/completions`에 도달합니다.
+
+문서가 분명히 하는 두 가지. `url`은 OpenAI 호환 엔드포인트의 기본 URL이어야 하며, 개별 채팅 엔드포인트여서는 안 됩니다. 그리고 `id`는 라우팅 형식입니다. 원격이 맨 모델 이름을 기대하면 `provider/model`, 원격 자신의 모델 네임스페이스가 이미 공급자를 담고 있으면 `gateway/provider/model`입니다. 모델별 `headers`가 지원되며, 클라이언트의 헤더보다 문서화된 우선순위를 가집니다.
+
+## MCP
+
+`MCPClient`는 `@mastra/mcp`에서 옵니다. URL은 이름 있는 서버마다 `URL` 객체를 담는 `url` 키입니다.
+
+```ts
+import { MCPClient } from '@mastra/mcp';
+
+export const mcp = new MCPClient({
+  id: 'hanzo-mcp',
+  servers: {
+    hanzo: {
+      url: new URL('https://api.hanzo.ai/v1/mcp'),
+      requestInit: { headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` } },
+    },
+  },
+});
+
+const tools = await mcp.listTools();
+```
+
+`listToolsets()`는 요청 단위 변형으로, 도구를 동시 사용자 사이에 공유하면 안 될 때 씁니다.

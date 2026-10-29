@@ -1,0 +1,55 @@
+---
+title: AutoGen
+description: "OpenAIChatCompletionClient toma base_url, y model_info a su lado siempre que el nombre del modelo no sea uno que OpenAI sirva."
+---
+
+`OpenAIChatCompletionClient` toma **`base_url`**, documentado como obligatorio cuando el modelo no está alojado en OpenAI. La parte que pilla a la gente: cualquier nombre de modelo que el SDK no reconozca también necesita **`model_info`**, y sin él el cliente lanza en lugar de llamar.
+
+```bash
+pip install "autogen-ext[openai]"
+```
+
+```python
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelFamily
+
+client = OpenAIChatCompletionClient(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    model_info={
+        "vision": False,
+        "function_calling": True,
+        "json_output": True,
+        "family": ModelFamily.UNKNOWN,
+        "structured_output": True,
+    },
+)
+
+# ... use the client, then release it
+await client.close()
+```
+
+Llega a `POST /v1/chat/completions`.
+
+Donde el registro de un modelo en `GET /v1/models` declara `supports_vision` o `supports_tools`, esos se corresponden con `vision` y `function_calling`. La mayoría de los registros no declaran ninguno, y la referencia de AutoGen dice con claridad que este cliente no está probado contra modelos que no sean de OpenAI — así que afirma solo lo que hayas ejercitado.
+
+## MCP
+
+La URL es el campo `url` de `StreamableHttpServerParams`.
+
+```python
+from autogen_ext.tools.mcp import StreamableHttpMcpToolAdapter, StreamableHttpServerParams
+
+params = StreamableHttpServerParams(
+    url="https://api.hanzo.ai/v1/mcp",
+    headers={"Authorization": "Bearer sk-..."},
+    timeout=30.0,
+    sse_read_timeout=300.0,
+    terminate_on_close=True,
+)
+
+adapter = await StreamableHttpMcpToolAdapter.from_server_params(params, "describe")
+```
+
+`StdioServerParams` y `SseServerParams` son los hermanos; `mcp_server_tools()` construye cada herramienta de un servidor en una sola llamada en lugar de un adaptador cada vez.

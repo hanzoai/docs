@@ -1,0 +1,55 @@
+---
+title: AutoGen
+description: "OpenAIChatCompletionClient nhận base_url, và model_info bên cạnh mỗi khi tên mô hình không phải tên mà OpenAI phục vụ."
+---
+
+`OpenAIChatCompletionClient` nhận **`base_url`**, được ghi là bắt buộc khi mô hình không được lưu trữ trên OpenAI. Phần khiến người ta vấp: bất kỳ tên mô hình nào SDK không nhận ra cũng cần **`model_info`**, và thiếu nó thì client ném lỗi thay vì gọi.
+
+```bash
+pip install "autogen-ext[openai]"
+```
+
+```python
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelFamily
+
+client = OpenAIChatCompletionClient(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    model_info={
+        "vision": False,
+        "function_calling": True,
+        "json_output": True,
+        "family": ModelFamily.UNKNOWN,
+        "structured_output": True,
+    },
+)
+
+# ... use the client, then release it
+await client.close()
+```
+
+Đổ về `POST /v1/chat/completions`.
+
+Ở chỗ bản ghi mô hình trong `GET /v1/models` khai báo `supports_vision` hoặc `supports_tools`, chúng ánh xạ tới `vision` và `function_calling`. Hầu hết bản ghi không khai báo cái nào, và tài liệu tham chiếu AutoGen nói thẳng rằng client này chưa được thử với mô hình không phải của OpenAI — nên chỉ khẳng định những gì bạn đã chạy.
+
+## MCP
+
+URL là trường `url` của `StreamableHttpServerParams`.
+
+```python
+from autogen_ext.tools.mcp import StreamableHttpMcpToolAdapter, StreamableHttpServerParams
+
+params = StreamableHttpServerParams(
+    url="https://api.hanzo.ai/v1/mcp",
+    headers={"Authorization": "Bearer sk-..."},
+    timeout=30.0,
+    sse_read_timeout=300.0,
+    terminate_on_close=True,
+)
+
+adapter = await StreamableHttpMcpToolAdapter.from_server_params(params, "describe")
+```
+
+`StdioServerParams` và `SseServerParams` là các lớp anh em; `mcp_server_tools()` dựng mọi công cụ trên một máy chủ trong một lần gọi, thay vì từng bộ thích ứng một.

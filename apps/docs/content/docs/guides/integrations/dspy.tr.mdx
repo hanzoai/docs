@@ -1,0 +1,42 @@
+---
+title: DSPy
+description: "dspy.LM api_base değerini kwargs üzerinden alır ve LiteLLM'e iletir. Modeli provider/name biçiminde adlandırın."
+---
+
+`dspy.LM` **`api_base`** alır. Yazıma dikkat edin — bu `base_url` değildir. Parametre açık imzada yoktur; `**kwargs` içine düşer, DSPy bunu LiteLLM'e iletir ve API başvurusu onu bir LM alanı olarak adlandırır.
+
+```bash
+pip install dspy
+```
+
+```python
+import dspy
+
+lm = dspy.LM(
+    "openai/zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    model_type="chat",
+)
+dspy.configure(lm=lm)
+
+qa = dspy.Predict("question -> answer")
+print(qa(question="What moves the tides?").answer)
+```
+
+`POST /v1/chat/completions` adresine düşer.
+
+`openai/` öneki LiteLLM'in sağlayıcı biçimidir; ondan sonraki parça model id'sidir. `model_type` `chat`, `text` veya `responses` alır, bu yüzden `POST /v1/responses` aynı kurucudan ulaşılabilir.
+
+## MCP
+
+DSPy bir istemciye sahip olmak yerine MCP araçlarını dönüştürür. `dspy.Tool.from_mcp_tool(client, tool)` her birini, `dspy.ReAct` gibi bir modüle verdiğiniz bir `dspy.Tool` haline getirir; bu yüzden sunucu URL'si herhangi bir DSPy parametresinde değil, MCP SDK istemcisinde yapılandırılır.
+
+```python
+import dspy
+
+tools = [dspy.Tool.from_mcp_tool(session, tool) for tool in (await session.list_tools()).tools]
+react = dspy.ReAct("question -> answer", tools=tools)
+```
+
+`session`, MCP Python SDK'sından bir `ClientSession`'dır ve o SDK'nın bağlandığı şekilde bağlanır — `https://api.hanzo.ai/v1/mcp` için bu, bearer üstbilgisinin orada ayarlandığı streamable HTTP istemcisidir.

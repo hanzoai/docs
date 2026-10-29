@@ -1,0 +1,47 @@
+---
+title: Agno
+description: "OpenAILike принимает base_url. Родственный класс достигает формы responses на том же параметре."
+---
+
+`OpenAILike` принимает **`base_url`**. Он расширяет совместимый с OpenAI интерфейс, поэтому каждый параметр `OpenAIChat` работает и на нём.
+
+```bash
+pip install agno openai
+```
+
+```python
+from agno.agent import Agent
+from agno.models.openai.like import OpenAILike
+
+model = OpenAILike(
+    id="zen5",
+    api_key="sk-...",
+    base_url="https://api.hanzo.ai/v1",
+)
+
+agent = Agent(model=model)
+agent.print_response("Share a 2 sentence horror story.")
+```
+
+Попадает на `POST /v1/chat/completions`.
+
+`id` по умолчанию равен `not-provided`, поэтому это единственное поле, которое нужно задать. `OpenResponses` из `agno.models.openai` — родственный класс на том же параметре `base_url`, и он достигает `POST /v1/responses`.
+
+## MCP
+
+`MCPTools` принимает `transport` и `url`.
+
+```python
+from agno.agent import Agent
+from agno.tools.mcp import MCPTools
+
+mcp_tools = MCPTools(
+    transport="streamable-http",
+    url="https://api.hanzo.ai/v1/mcp",
+    headers={"Authorization": "Bearer sk-..."},
+)
+
+agent = Agent(id="hanzo-agent", name="Hanzo Agent", model=model, tools=[mcp_tools])
+```
+
+Две вещи, которые отмечает документация. Не запускайте AgentOS с `reload=True`, пока подключён `MCPTools`. И соединение само не обновляется — задайте `refresh_connection=True` для долгоживущего агента.

@@ -1,0 +1,62 @@
+---
+title: CrewAI
+description: "LLM은 base_url을 받습니다. custom_openai=True가 CrewAI가 알아보지 못하는 모델 id를 이름 짓게 합니다."
+---
+
+`LLM`은 **`base_url`**을 받습니다. 모델에 `openai/`를 붙여 LiteLLM이 OpenAI 호환 경로로 라우팅하게 하세요.
+
+```bash
+pip install crewai
+```
+
+```python
+from crewai import LLM, Agent
+
+llm = LLM(
+    model="openai/zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = Agent(
+    role="Researcher",
+    goal="Answer precisely",
+    backstory="You check before you answer.",
+    llm=llm,
+)
+```
+
+`POST /v1/chat/completions`에 도달합니다.
+
+CrewAI가 OpenAI 이름으로 알아보지 못하는 모델 id에는 **`custom_openai=True`**를 더합니다. 이 플래그가 게이트웨이 모델 id를 다시 쓰지 않고 통과시킵니다.
+
+```python
+llm = LLM(
+    model="anthropic/claude-sonnet-4-6",
+    custom_openai=True,
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+```
+
+환경 변수 대응은 `OPENAI_API_KEY`와 `OPENAI_BASE_URL`입니다.
+
+## MCP
+
+MCP 서버는 Agent에서 일급이며 `mcps` 목록에 둡니다. URL은 `url` 매개변수입니다.
+
+```python
+from crewai import Agent
+from crewai.mcp import MCPServerHTTP
+
+server = MCPServerHTTP(
+    url="https://api.hanzo.ai/v1/mcp",
+    headers={"Authorization": "Bearer sk-..."},
+    streamable=True,
+    cache_tools_list=True,
+)
+
+agent = Agent(role="Researcher", goal="Answer precisely", backstory="", llm=llm, mcps=[server])
+```
+
+수명 주기를 직접 제어하려면 `crewai_tools`의 `MCPServerAdapter`가 있고, `pip install 'crewai-tools[mcp]'`로 설치하며 `url`과 `transport`의 dict를 받습니다.

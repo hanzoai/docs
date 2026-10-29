@@ -1,0 +1,51 @@
+---
+title: LangGraph
+description: "L'URL di base sta sul modello, non sull'agente. ChatOpenAI prende base_url; consegna l'istanza a create_agent."
+---
+
+L'URL di base sta sull'oggetto modello, non sull'agente. `ChatOpenAI` prende **`base_url`** (alias `openai_api_base`), e `create_agent` accetta un'istanza di modello già inizializzata — ed è il percorso che porta un URL di base personalizzato, perché la forma stringa `"provider:model"` non può.
+
+```bash
+pip install langchain-openai langgraph
+```
+
+```python
+from langchain_openai import ChatOpenAI
+from langchain.agents import create_agent
+
+model = ChatOpenAI(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = create_agent(model=model, tools=[])
+result = agent.invoke({"messages": [{"role": "user", "content": "Hello"}]})
+```
+
+Arriva su `POST /v1/chat/completions`.
+
+Ordine di risoluzione dell'indirizzo, vince la prima corrispondenza: l'argomento esplicito `base_url` o `openai_api_base`, poi `OPENAI_API_BASE` che LangChain legge all'init, poi `OPENAI_BASE_URL` che legge il client `openai` sottostante. Impostare l'argomento rende gli altri due irrilevanti, ed è per questo che lo snippet lo imposta.
+
+## MCP
+
+`langchain-mcp-adapters` tiene il client. L'URL è la chiave `url` di una voce per server.
+
+```bash
+pip install langchain-mcp-adapters
+```
+
+```python
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
+client = MultiServerMCPClient({
+    "hanzo": {
+        "transport": "http",
+        "url": "https://api.hanzo.ai/v1/mcp",
+        "headers": {"Authorization": "Bearer sk-..."},
+    }
+})
+
+tools = await client.get_tools()
+agent = create_agent(model=model, tools=tools)
+```

@@ -1,0 +1,48 @@
+---
+title: LlamaIndex
+description: "OpenAILike prende api_base — non base_url — e ha bisogno che is_chat_model sia impostato, perché di default punta all'endpoint completions."
+---
+
+`OpenAILike` prende **`api_base`**. Nota l'ortografia — non è `base_url`. La classe arriva nel suo pacchetto ed è un involucro sottile sul modello OpenAI, reso compatibile con endpoint di terze parti.
+
+```bash
+pip install llama-index-llms-openai-like
+```
+
+```python
+from llama_index.llms.openai_like import OpenAILike
+
+llm = OpenAILike(
+    model="zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    context_window=1000000,
+    is_chat_model=True,
+    is_function_calling_model=True,
+)
+
+print(llm.complete("Hello"))
+```
+
+Arriva su `POST /v1/chat/completions`.
+
+Tre predefiniti vanno sovrascritti, altrimenti l'involucro sbaglia sul modello. **`is_chat_model` vale di default `False`**, il che manda `complete()` all'endpoint completions invece che al chat. `is_function_calling_model` vale di default `False`, quindi un agente costruito sul modello produrrà prosa dove ti aspettavi una chiamata a strumento. E `context_window` vale di default quello di OpenAI, non quello del modello — prendi quello vero dal record di quel modello in `GET /v1/models`.
+
+`llama-index-embeddings-openai-like` è il pacchetto corrispondente sul lato retrieval, e raggiunge `POST /v1/embeddings`.
+
+## MCP
+
+`BasicMCPClient` prende l'URL del server come primo argomento posizionale e ne deduce il trasporto.
+
+```bash
+pip install llama-index-tools-mcp
+```
+
+```python
+from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
+
+client = BasicMCPClient("https://api.hanzo.ai/v1/mcp")
+tools = await McpToolSpec(client=client).to_tool_list_async()
+```
+
+Un URL che finisce con `/mcp` è HTTP streamable, uno che finisce con `/sse` è SSE, e un primo argomento che è un comando con `args` è un processo locale.

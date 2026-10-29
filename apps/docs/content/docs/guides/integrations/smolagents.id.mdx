@@ -1,0 +1,42 @@
+---
+title: smolagents
+description: "OpenAIModel menerima api_base. Kelasnya OpenAIModel — OpenAIServerModel sudah hilang dari referensi."
+---
+
+`OpenAIModel` menerima **`api_base`**, didokumentasikan sebagai URL dasar server API yang kompatibel dengan OpenAI. Perhatikan ejaannya — ini bukan `base_url` — dan perhatikan nama kelasnya: referensi mendokumentasikan `OpenAIModel`, dan `OpenAIServerModel` tidak lagi muncul di sana.
+
+```bash
+pip install smolagents
+```
+
+```python
+import os
+from smolagents import OpenAIModel, CodeAgent
+
+model = OpenAIModel(
+    model_id="zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key=os.environ["HANZO_API_KEY"],
+)
+
+agent = CodeAgent(tools=[], model=model)
+agent.run("How many seconds in a fortnight?")
+```
+
+Mendarat di `POST /v1/chat/completions`.
+
+Tanda tangan lengkapnya adalah `OpenAIModel(model_id, api_base=None, api_key=None, organization=None, project=None, client_kwargs=None, custom_role_conversions=None, flatten_messages_as_text=False, **kwargs)`. Argumen generasi — `temperature`, `max_tokens`, `top_p` — diterima saat konstruksi dan diteruskan pada setiap panggilan. `LiteLLMModel` adalah saudara dan juga menerima `api_base`.
+
+## MCP
+
+`MCPClient` menerima `url` dan `transport`, dan merupakan pengelola konteks yang menghasilkan alat.
+
+```python
+from smolagents import MCPClient, CodeAgent
+
+with MCPClient({"url": "https://api.hanzo.ai/v1/mcp", "transport": "streamable-http"}) as tools:
+    agent = CodeAgent(tools=tools, model=model)
+    agent.run("What is my account balance?")
+```
+
+`ToolCollection.from_mcp` adalah titik masuk lain, pada dict yang sama; ia mensyaratkan `trust_remote_code=True`. `streamable-http` adalah transport bawaan.

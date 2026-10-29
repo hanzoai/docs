@@ -1,0 +1,44 @@
+---
+title: Pydantic AI
+description: "يأخذ OpenAIProvider المعامل base_url. صنف النموذج الذي تختاره يقرّر هل تصل إلى chat completions أم responses."
+---
+
+يأخذ `OpenAIProvider` المعاملين **`base_url`** و`api_key`، ويُسلَّم إلى صنف نموذج بصفة `provider=`.
+
+```bash
+pip install pydantic-ai
+```
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
+
+model = OpenAIChatModel(
+    'zen5',
+    provider=OpenAIProvider(base_url='https://api.hanzo.ai/v1', api_key='sk-...'),
+)
+
+agent = Agent(model)
+print(agent.run_sync('Hello').output)
+```
+
+يصل إلى `POST /v1/chat/completions`.
+
+اختر صنف النموذج عن قصد، لأن الاثنين يصلان إلى عنوانين مختلفين. `OpenAIChatModel`، بالبادئة `openai-chat:`، هو ما يسند كل مزوّد متوافق مع OpenAI ويصل إلى `POST /v1/chat/completions`. `OpenAIResponsesModel`، البادئة المجردة `openai:` والافتراضي الحديث، يصل إلى `POST /v1/responses`. كلاهما يُخدَم؛ صنف المحادثة هو الافتراضي الأكثر أمانًا أمام نقطة نهاية متوافقة.
+
+`OPENAI_BASE_URL` و`OPENAI_API_KEY` هما مكافئا البيئة، ويقبل `OpenAIProvider` أيضًا عميلًا مبنيًا مسبقًا بصفة `openai_client`.
+
+## MCP
+
+يأخذ `MCPToolset` عنوان URL للخادم كوسيطه الموضعي الأول. يُعامل عنوان URL العادي كـ HTTP قابل للبث؛ وSSE فقط إذا انتهى المسار بـ `/sse`.
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai.mcp import MCPToolset
+
+toolset = MCPToolset('https://api.hanzo.ai/v1/mcp')
+agent = Agent(model, toolsets=[toolset])
+```
+
+ويقرأ أيضًا ملف إعداد JSON يحمل كائن `mcpServers`.

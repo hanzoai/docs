@@ -1,0 +1,51 @@
+---
+title: LangGraph
+description: "Taban URL modelde durur, ajanda değil. ChatOpenAI base_url alır; örneği create_agent işlevine verin."
+---
+
+Taban URL model nesnesinde durur, ajanda değil. `ChatOpenAI` **`base_url`** alır (takma ad `openai_api_base`) ve `create_agent` başlatılmış bir model örneği kabul eder — özel bir taban URL taşıyan yol budur, çünkü `"provider:model"` dize biçimi bunu yapamaz.
+
+```bash
+pip install langchain-openai langgraph
+```
+
+```python
+from langchain_openai import ChatOpenAI
+from langchain.agents import create_agent
+
+model = ChatOpenAI(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = create_agent(model=model, tools=[])
+result = agent.invoke({"messages": [{"role": "user", "content": "Hello"}]})
+```
+
+`POST /v1/chat/completions` adresine düşer.
+
+Adresin çözülme sırası, ilk eşleşme kazanır: açık `base_url` veya `openai_api_base` argümanı, sonra LangChain'in başlangıçta okuduğu `OPENAI_API_BASE`, sonra alttaki `openai` istemcisinin okuduğu `OPENAI_BASE_URL`. Argümanı ayarlamak diğer ikisini önemsiz kılar; parçacığın onu ayarlamasının nedeni budur.
+
+## MCP
+
+`langchain-mcp-adapters` istemciyi tutar. URL, sunucu başına bir girdinin `url` anahtarıdır.
+
+```bash
+pip install langchain-mcp-adapters
+```
+
+```python
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
+client = MultiServerMCPClient({
+    "hanzo": {
+        "transport": "http",
+        "url": "https://api.hanzo.ai/v1/mcp",
+        "headers": {"Authorization": "Bearer sk-..."},
+    }
+})
+
+tools = await client.get_tools()
+agent = create_agent(model=model, tools=tools)
+```

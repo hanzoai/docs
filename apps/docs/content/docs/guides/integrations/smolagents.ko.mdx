@@ -1,0 +1,42 @@
+---
+title: smolagents
+description: "OpenAIModel은 api_base를 받습니다. 클래스는 OpenAIModel입니다. OpenAIServerModel은 레퍼런스에서 사라졌습니다."
+---
+
+`OpenAIModel`은 **`api_base`**를 받습니다. OpenAI 호환 API 서버의 기본 URL로 문서화되어 있습니다. 철자에 유의하세요 — `base_url`이 아닙니다 — 그리고 클래스 이름에도 유의하세요. 레퍼런스가 적는 것은 `OpenAIModel`이고, `OpenAIServerModel`은 더 이상 나오지 않습니다.
+
+```bash
+pip install smolagents
+```
+
+```python
+import os
+from smolagents import OpenAIModel, CodeAgent
+
+model = OpenAIModel(
+    model_id="zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key=os.environ["HANZO_API_KEY"],
+)
+
+agent = CodeAgent(tools=[], model=model)
+agent.run("How many seconds in a fortnight?")
+```
+
+`POST /v1/chat/completions`에 도달합니다.
+
+전체 시그니처는 `OpenAIModel(model_id, api_base=None, api_key=None, organization=None, project=None, client_kwargs=None, custom_role_conversions=None, flatten_messages_as_text=False, **kwargs)`입니다. 생성 인자 — `temperature`, `max_tokens`, `top_p` — 는 생성 때 받아 매 호출에 넘깁니다. `LiteLLMModel`은 형제이며 역시 `api_base`를 받습니다.
+
+## MCP
+
+`MCPClient`는 `url`과 `transport`를 받으며, 도구를 내놓는 컨텍스트 관리자입니다.
+
+```python
+from smolagents import MCPClient, CodeAgent
+
+with MCPClient({"url": "https://api.hanzo.ai/v1/mcp", "transport": "streamable-http"}) as tools:
+    agent = CodeAgent(tools=tools, model=model)
+    agent.run("What is my account balance?")
+```
+
+`ToolCollection.from_mcp`가 다른 진입점이며 같은 dict를 씁니다. `trust_remote_code=True`가 필요합니다. `streamable-http`가 기본 트랜스포트입니다.

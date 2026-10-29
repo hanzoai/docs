@@ -1,0 +1,55 @@
+---
+title: AutoGen
+description: "OpenAIChatCompletionClient 接收 base_url，只要模型名不是 OpenAI 提供的，旁边还要 model_info。"
+---
+
+`OpenAIChatCompletionClient` 接收 **`base_url`**，文档写明模型不托管在 OpenAI 上时它是必需的。容易绊住人的一点：SDK 认不出的任何模型名还需要 **`model_info`**，没有它客户端会抛出，而不是去调用。
+
+```bash
+pip install "autogen-ext[openai]"
+```
+
+```python
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelFamily
+
+client = OpenAIChatCompletionClient(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    model_info={
+        "vision": False,
+        "function_calling": True,
+        "json_output": True,
+        "family": ModelFamily.UNKNOWN,
+        "structured_output": True,
+    },
+)
+
+# ... use the client, then release it
+await client.close()
+```
+
+落到 `POST /v1/chat/completions`。
+
+模型在 `GET /v1/models` 里的记录若声明了 `supports_vision` 或 `supports_tools`，它们对应 `vision` 和 `function_calling`。多数记录两者都不声明，而 AutoGen 的参考明白写出，这个客户端没有针对非 OpenAI 模型做过测试——所以只声称你实际跑过的。
+
+## MCP
+
+URL 是 `StreamableHttpServerParams` 的 `url` 字段。
+
+```python
+from autogen_ext.tools.mcp import StreamableHttpMcpToolAdapter, StreamableHttpServerParams
+
+params = StreamableHttpServerParams(
+    url="https://api.hanzo.ai/v1/mcp",
+    headers={"Authorization": "Bearer sk-..."},
+    timeout=30.0,
+    sse_read_timeout=300.0,
+    terminate_on_close=True,
+)
+
+adapter = await StreamableHttpMcpToolAdapter.from_server_params(params, "describe")
+```
+
+`StdioServerParams` 和 `SseServerParams` 是兄弟；`mcp_server_tools()` 一次调用就建好服务器上的每个工具，而不是一次一个适配器。

@@ -1,0 +1,42 @@
+---
+title: smolagents
+description: "OpenAIModel 接受 api_base。類別名稱是 OpenAIModel——OpenAIServerModel 已從參考文件中消失。"
+---
+
+`OpenAIModel` 接受 **`api_base`**，文件把它寫成 OpenAI 相容 API 伺服器的基底 URL。注意拼法——它不是 `base_url`——也注意類別名稱：參考文件寫的是 `OpenAIModel`，`OpenAIServerModel` 已不再出現。
+
+```bash
+pip install smolagents
+```
+
+```python
+import os
+from smolagents import OpenAIModel, CodeAgent
+
+model = OpenAIModel(
+    model_id="zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key=os.environ["HANZO_API_KEY"],
+)
+
+agent = CodeAgent(tools=[], model=model)
+agent.run("How many seconds in a fortnight?")
+```
+
+會打到 `POST /v1/chat/completions`。
+
+完整簽章是 `OpenAIModel(model_id, api_base=None, api_key=None, organization=None, project=None, client_kwargs=None, custom_role_conversions=None, flatten_messages_as_text=False, **kwargs)`。生成參數——`temperature`、`max_tokens`、`top_p`——在建構時接受，並在每次呼叫時轉送。`LiteLLMModel` 是姊妹，同樣接受 `api_base`。
+
+## MCP
+
+`MCPClient` 接受 `url` 與 `transport`，是一個產出工具的情境管理器。
+
+```python
+from smolagents import MCPClient, CodeAgent
+
+with MCPClient({"url": "https://api.hanzo.ai/v1/mcp", "transport": "streamable-http"}) as tools:
+    agent = CodeAgent(tools=tools, model=model)
+    agent.run("What is my account balance?")
+```
+
+`ToolCollection.from_mcp` 是另一個入口，用同一個 dict；它要求 `trust_remote_code=True`。`streamable-http` 是預設傳輸。

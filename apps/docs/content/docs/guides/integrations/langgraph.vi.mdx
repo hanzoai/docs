@@ -1,0 +1,51 @@
+---
+title: LangGraph
+description: "URL cơ sở nằm trên mô hình, không trên agent. ChatOpenAI nhận base_url; trao thực thể cho create_agent."
+---
+
+URL cơ sở nằm trên đối tượng mô hình, không trên agent. `ChatOpenAI` nhận **`base_url`** (bí danh `openai_api_base`), và `create_agent` nhận một thực thể mô hình đã khởi tạo — đó là đường mang URL cơ sở tùy chỉnh, vì dạng chuỗi `"provider:model"` không làm được.
+
+```bash
+pip install langchain-openai langgraph
+```
+
+```python
+from langchain_openai import ChatOpenAI
+from langchain.agents import create_agent
+
+model = ChatOpenAI(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = create_agent(model=model, tools=[])
+result = agent.invoke({"messages": [{"role": "user", "content": "Hello"}]})
+```
+
+Đổ về `POST /v1/chat/completions`.
+
+Thứ tự phân giải địa chỉ, khớp đầu tiên thắng: đối số tường minh `base_url` hoặc `openai_api_base`, rồi `OPENAI_API_BASE` mà LangChain đọc lúc khởi tạo, rồi `OPENAI_BASE_URL` mà client `openai` bên dưới đọc. Đặt đối số làm hai cái kia không còn nghĩa, nên đoạn mã đặt nó.
+
+## MCP
+
+`langchain-mcp-adapters` giữ client. URL là khóa `url` của một mục theo từng máy chủ.
+
+```bash
+pip install langchain-mcp-adapters
+```
+
+```python
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
+client = MultiServerMCPClient({
+    "hanzo": {
+        "transport": "http",
+        "url": "https://api.hanzo.ai/v1/mcp",
+        "headers": {"Authorization": "Bearer sk-..."},
+    }
+})
+
+tools = await client.get_tools()
+agent = create_agent(model=model, tools=tools)
+```

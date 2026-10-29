@@ -1,0 +1,47 @@
+---
+title: Agno
+description: "يأخذ OpenAILike المعامل base_url. صنف شقيق يصل إلى شكل responses على المعامل نفسه."
+---
+
+يأخذ `OpenAILike` المعامل **`base_url`**. يوسّع الواجهة المتوافقة مع OpenAI، لذلك يعمل كل معامل من `OpenAIChat` عليه أيضًا.
+
+```bash
+pip install agno openai
+```
+
+```python
+from agno.agent import Agent
+from agno.models.openai.like import OpenAILike
+
+model = OpenAILike(
+    id="zen5",
+    api_key="sk-...",
+    base_url="https://api.hanzo.ai/v1",
+)
+
+agent = Agent(model=model)
+agent.print_response("Share a 2 sentence horror story.")
+```
+
+يصل إلى `POST /v1/chat/completions`.
+
+القيمة الافتراضية لـ `id` هي `not-provided`، فهو الحقل الوحيد الذي يجب ضبطه. `OpenResponses` من `agno.models.openai` هو الصنف الشقيق على معامل `base_url` نفسه ويصل إلى `POST /v1/responses`.
+
+## MCP
+
+يأخذ `MCPTools` المعاملين `transport` و`url`.
+
+```python
+from agno.agent import Agent
+from agno.tools.mcp import MCPTools
+
+mcp_tools = MCPTools(
+    transport="streamable-http",
+    url="https://api.hanzo.ai/v1/mcp",
+    headers={"Authorization": "Bearer sk-..."},
+)
+
+agent = Agent(id="hanzo-agent", name="Hanzo Agent", model=model, tools=[mcp_tools])
+```
+
+أمران تشير إليهما الوثائق. لا تشغّل AgentOS مع `reload=True` بينما `MCPTools` مُرفق. والاتصال لا يُحدَّث من تلقاء نفسه — اضبط `refresh_connection=True` لوكيل طويل العمر.
