@@ -1,0 +1,56 @@
+---
+title: "arcalabs : ingénierie des titres au niveau de l'assembleur"
+description: "st-contracts commité en février 2019. Jetons de titres ERC-1400, motifs de proxy évolutifs, et ce que signifie construire de l'infrastructure financière au niveau de l'assembleur de l'EVM."
+author: Zach Kelling
+date: 2019-02-21
+---
+
+# arcalabs : ingénierie des titres au niveau de l'assembleur
+
+Le dépôt st-contracts a été mis en ligne sous arcalabs le 21 février 2019. Des contrats de jetons de titres implémentant ERC-1400, avec des motifs de proxy évolutifs conçus pour la conformité réglementaire. Ce texte porte sur ce que ce travail a réellement exigé, et pourquoi il a fallu descendre au niveau de l'assembleur.
+
+## Ce que sont les jetons de titres
+
+Un jeton ERC-20 est sans permission par conception. N'importe qui peut en détenir un, le transférer, le brûler. C'est le but : la résistance à la censure est une fonction, pas un défaut.
+
+Un jeton de titre est différent. Il représente une part de propriété dans un actif réel — actions, dette, immobilier, parts de fonds. Le droit des titres impose des restrictions de transfert : exigences d'investisseur qualifié, limites de juridiction, périodes de blocage, obligations d'information. Le contrat du jeton doit appliquer ces restrictions de façon programmatique, sinon ce n'est qu'un ERC-20 sous un autre nom.
+
+ERC-1400 est le standard qui a émergé pour cela. Il a introduit des restrictions de transfert via un contrôle `canTransfer` : avant toute exécution de transfert, le contrat vérifie que le destinataire a le droit de détenir le jeton. Il a ajouté les transferts forcés pour les actes de conformité (un tribunal peut contraindre le transfert de l'actif ; le contrat doit savoir le faire). Il a ajouté la gestion des partitions — différentes tranches du même titre, avec des caractéristiques différentes.
+
+C'est de l'infrastructure financière à la couche du contrat intelligent. L'enjeu n'est pas celui d'un protocole DeFi : si le contrat du jeton a un défaut, de vrais titres sont en risque. La barre de correction est plus haute.
+
+## Pourquoi des proxys évolutifs
+
+Les titres sont des instruments de longue durée. Un jeton de titre émis en 2019 peut devoir appliquer des règles de restriction de transfert de 2024. L'EVM ne permet pas de modifier le code d'un contrat déployé. Si la logique est figée au déploiement, soit vous redéployez (ce qui veut dire migrer tous les détenteurs, tous les soldes, tout l'état), soit vous restez coincé avec le comportement que vous avez livré.
+
+Le motif du proxy résout cela : déployer un contrat proxy dont l'adresse ne change jamais, et un contrat de logique qui porte l'implémentation réelle. Les détenteurs interagissent avec le proxy. Le proxy délègue les appels au contrat de logique. Quand il faut faire évoluer la logique, vous déployez une nouvelle implémentation et vous mettez à jour le pointeur du proxy.
+
+Le piège : les motifs de proxy sont subtils. Les appels délégués exécutent le code du contrat de logique dans le contexte de stockage du proxy. La disposition du stockage dans le contrat de logique doit être compatible avec celle du proxy, sinon vous corrompez l'état. Le mécanisme de mise à jour lui-même doit être protégé — une mise à jour non autorisée est catastrophique.
+
+Bien faire cela a exigé de parcourir le code au niveau de Solidity, puis au niveau du bytecode de l'EVM. On ne peut pas faire confiance au compilateur pour prendre les décisions nécessaires ici. Les insertions d'assembleur permettent de vérifier exactement ce qui se passe avec les emplacements de stockage, les données d'appel et les valeurs de retour.
+
+## Travail EVM au niveau de l'assembleur
+
+L'EVM est une machine à pile. Le compilateur Solidity produit du bytecode EVM. La plupart du temps, la sortie du compilateur suffit et il n'est pas utile de l'inspecter. Pour les motifs de proxy et pour les chemins critiques en gas, si.
+
+L'assembleur en ligne de Solidity (blocs `assembly { }` en Yul) donne un accès direct aux opérations de l'EVM : `sload` et `sstore` pour le stockage, `calldataload` pour lire les données d'appel, `delegatecall` pour le transfert du proxy, `returndatacopy` pour traiter les valeurs de retour. La fonction de transfert du proxy, écrite en assembleur, fait environ 30 lignes qui traitent n'importe quel appel correctement, avec un surcoût de gas minimal.
+
+Le cadrage HPC (calcul haute performance) qu'utilisait arcalabs était délibéré. Le calcul sur Ethereum est cher. Chaque instruction coûte du gas. Les chemins chauds optimisés en assembleur — validation des transferts, transfert du proxy, émission d'événements — sont sensiblement moins chers que leurs équivalents Solidity. À tout volume réel de transactions, l'économie de gas compte.
+
+## Le lien avec DEVxDAO
+
+DEVxDAO était une DAO sur la chaîne qui finançait du travail d'infrastructure de chaîne de blocs. arcalabs a reçu une subvention pour le travail sur les jetons de titres — la reconnaissance formelle que l'infrastructure ERC-1400 était un bien public digne d'être financé, pas seulement du travail commercial.
+
+Le modèle de DAO était imparfait (toute DAO précoce l'est), mais la thèse était juste : certains travaux d'infrastructure n'ont pas de modèle commercial évident et ont besoin de financement par subvention. Des contrats de jetons de titres en source ouverte, utilisables par n'importe quel projet, sont de ce type. Le lien avec DEVxDAO était la forme institutionnelle de l'intuition cypherpunk — l'infrastructure financière devrait être publique.
+
+## Ce qu'enseigne le travail à ce niveau
+
+Écrire de l'assembleur EVM enseigne que l'ordinateur ne sait pas ce que vous voulez dire. Il exécute ce que vous avez écrit, précisément, sans interprétation. Si vous avez écrit la mauvaise chose, il exécute la mauvaise chose, et le contrat de jeton de titre a un défaut qui peut ne se manifester que dans des conditions précises, des années après le déploiement.
+
+C'est éclairant. La discipline d'écrire de l'assembleur — où chaque instruction est explicite, où rien n'est implicite, où l'on peut suivre exactement ce qui arrive à chaque bit — est la discipline que l'on veut pour toute infrastructure financière, même lorsqu'on écrit à un niveau d'abstraction plus élevé. La question n'est pas « est-ce que cela a l'air juste ? ». C'est « qu'est-ce que ceci exécute exactement, et est-ce ce que je veux ? ».
+
+Cette discipline est ce qui distingue le travail d'arcalabs du développement habituel de contrats intelligents. Nous construisions pour la correction en conditions adverses, pour la longévité, pour l'adaptation réglementaire. Le niveau de l'assembleur est l'endroit où l'on prouve la correction, pas où on l'affirme.
+
+---
+
+*zeekay — les jetons de titres exigent de l'ingénierie de sécurité. arcalabs.*

@@ -1,0 +1,56 @@
+---
+title: "arcalabs: kỹ thuật chứng khoán ở mức hợp ngữ"
+description: "st-contracts được đưa lên tháng 2 năm 2019. Token chứng khoán ERC-1400, mẫu proxy nâng cấp được, và việc xây hạ tầng tài chính ở mức hợp ngữ của EVM nghĩa là gì."
+author: Zach Kelling
+date: 2019-02-21
+---
+
+# arcalabs: kỹ thuật chứng khoán ở mức hợp ngữ
+
+Kho st-contracts được đưa lên dưới arcalabs vào ngày 21 tháng 2 năm 2019. Hợp đồng token chứng khoán hiện thực ERC-1400, với mẫu proxy nâng cấp được, dựng cho tuân thủ quy định. Bài này nói việc đó thực sự gồm những gì và vì sao phải xuống tới mức hợp ngữ.
+
+## Token chứng khoán là gì
+
+Token ERC-20 không cần phép theo thiết kế. Ai cũng có thể giữ một cái, chuyển một cái, đốt một cái. Đó là ý — chống kiểm duyệt là một tính năng, không phải lỗi.
+
+Token chứng khoán thì khác. Nó đại diện phần sở hữu trong một tài sản thật — vốn cổ phần, nợ, bất động sản, suất quỹ. Luật chứng khoán đặt hạn chế chuyển nhượng: yêu cầu nhà đầu tư được công nhận, giới hạn thẩm quyền, thời gian khóa, nghĩa vụ công bố. Hợp đồng token phải cưỡng chế các hạn chế đó bằng chương trình, nếu không nó chỉ là ERC-20 mang tên khác.
+
+ERC-1400 là chuẩn nổi lên cho việc này. Nó đưa hạn chế chuyển nhượng qua một kiểm tra `canTransfer` — trước khi bất kỳ lần chuyển nào chạy, hợp đồng xác nhận người nhận được phép giữ token. Nó thêm chuyển nhượng cưỡng bức cho hành động tuân thủ (tòa có thể buộc chuyển tài sản; hợp đồng phải xử lý được). Nó thêm quản lý phân vùng — các tranche khác nhau của cùng một chứng khoán, với đặc tính khác nhau.
+
+Đây là hạ tầng tài chính ở lớp hợp đồng thông minh. Cái đặt cược khác một giao thức DeFi — nếu hợp đồng token có lỗi, chứng khoán thật đang gặp rủi ro. Thanh đúng đắn cao hơn.
+
+## Vì sao proxy nâng cấp được
+
+Chứng khoán là công cụ sống lâu. Một token chứng khoán phát hành năm 2019 có thể phải cưỡng chế quy tắc hạn chế chuyển nhượng của năm 2024. EVM không cho đổi mã hợp đồng đã triển khai. Nếu logic đóng băng lúc triển khai, hoặc bạn triển khai lại (nghĩa là chuyển mọi người giữ, mọi số dư, mọi trạng thái) hoặc bạn kẹt với hành vi đã giao.
+
+Mẫu proxy giải việc này: triển khai một hợp đồng proxy có địa chỉ không bao giờ đổi, và một hợp đồng logic giữ hiện thực thật. Người giữ tương tác với proxy. Proxy ủy thác lời gọi sang hợp đồng logic. Khi cần nâng logic, bạn triển khai một hiện thực mới và cập nhật con trỏ của proxy.
+
+Cái bẫy: mẫu proxy tinh vi. Lời gọi ủy thác chạy mã của hợp đồng logic trong ngữ cảnh lưu trữ của proxy. Bố trí lưu trữ trong hợp đồng logic phải tương thích với bố trí lưu trữ của proxy, nếu không bạn làm hỏng trạng thái. Chính cơ chế nâng cấp phải được bảo vệ — một lần nâng không được phép là thảm họa.
+
+Làm đúng việc này đòi hỏi đi qua mã ở mức Solidity rồi ở mức bytecode của EVM. Không thể tin trình biên dịch sẽ lấy các quyết định cần ở đây. Chèn hợp ngữ cho phép kiểm đúng điều gì xảy ra với các ô lưu trữ, với dữ liệu lời gọi, với giá trị trả về.
+
+## Việc EVM ở mức hợp ngữ
+
+EVM là máy xếp chồng. Trình biên dịch Solidity sinh bytecode EVM. Phần lớn thời gian đầu ra của trình biên dịch ổn và không cần soi. Với mẫu proxy và với các đường tới hạn về gas thì cần.
+
+Hợp ngữ nội tuyến trong Solidity (khối `assembly { }` với Yul) cho truy cập thẳng các phép của EVM: `sload` và `sstore` cho lưu trữ, `calldataload` để đọc dữ liệu lời gọi, `delegatecall` cho việc chuyển tiếp của proxy, `returndatacopy` để xử lý giá trị trả về. Hàm chuyển tiếp của proxy, viết bằng hợp ngữ, khoảng 30 dòng xử lý mọi lời gọi cho đúng với chi phí gas tối thiểu.
+
+Khung HPC (tính toán hiệu năng cao) mà arcalabs dùng là có chủ ý. Tính toán trên Ethereum đắt. Mỗi lệnh tốn gas. Các đường nóng được tối ưu bằng hợp ngữ — kiểm chuyển nhượng, chuyển tiếp proxy, phát sự kiện — rẻ hơn một cách có nghĩa so với bản Solidity tương ứng. Ở bất kỳ khối lượng giao dịch thật nào, phần gas tiết kiệm được đều đáng kể.
+
+## Mối nối với DEVxDAO
+
+DEVxDAO là một DAO trên chuỗi cấp vốn cho việc làm hạ tầng chuỗi khối. arcalabs nhận một khoản tài trợ cho việc làm token chứng khoán — sự công nhận chính thức rằng hạ tầng ERC-1400 là một hàng hóa công đáng được cấp vốn, không chỉ là việc thương mại.
+
+Mô hình DAO thì chưa hoàn hảo (mọi DAO thời đầu đều chưa hoàn hảo) nhưng luận điểm thì đúng: một số việc hạ tầng không có mô hình thương mại rõ và cần tài trợ. Hợp đồng token chứng khoán nguồn mở mà dự án nào cũng dùng được là loại việc đó. Mối nối với DEVxDAO là dạng thể chế của trực giác cypherpunk — hạ tầng tài chính nên là của chung.
+
+## Xây ở mức này dạy gì
+
+Viết hợp ngữ EVM dạy rằng máy tính không biết bạn định nói gì. Nó thực thi đúng cái bạn viết, chính xác, không diễn giải. Viết sai thì nó thực thi cái sai, và hợp đồng token chứng khoán có một lỗi có thể chỉ lộ ra dưới điều kiện cụ thể nhiều năm sau khi triển khai.
+
+Điều đó làm sáng. Kỷ luật viết hợp ngữ — nơi mỗi lệnh đều tường minh, không gì ngầm, và có thể lần đúng điều gì xảy ra với từng bit — là kỷ luật bạn muốn cho mọi hạ tầng tài chính, kể cả khi viết ở mức trừu tượng cao hơn. Câu hỏi không phải «cái này trông có đúng không?». Là «cái này thực thi chính xác điều gì, và đó có phải điều tôi muốn?».
+
+Kỷ luật đó làm cho việc của arcalabs khác việc phát triển hợp đồng thông minh thông thường. Chúng tôi xây cho sự đúng dưới điều kiện đối nghịch, cho tuổi thọ, cho sự thích ứng với quy định. Mức hợp ngữ là nơi bạn chứng minh sự đúng, không phải nơi bạn khẳng định nó.
+
+---
+
+*zeekay — token chứng khoán cần kỹ thuật an ninh. arcalabs.*

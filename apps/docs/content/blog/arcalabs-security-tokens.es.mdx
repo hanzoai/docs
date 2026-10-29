@@ -1,0 +1,56 @@
+---
+title: "arcalabs: ingeniería de valores a nivel de ensamblador"
+description: "st-contracts se confirmó en febrero de 2019. Tokens de valores ERC-1400, patrones de proxy actualizables, y qué significa construir infraestructura financiera al nivel de ensamblado de la EVM."
+author: Zach Kelling
+date: 2019-02-21
+---
+
+# arcalabs: ingeniería de valores a nivel de ensamblador
+
+El repositorio st-contracts se publicó bajo arcalabs el 21 de febrero de 2019. Contratos de tokens de valores que implementan ERC-1400, con patrones de proxy actualizables pensados para el cumplimiento normativo. Este texto trata de qué implicó realmente ese trabajo y por qué exigió bajar al nivel del ensamblador.
+
+## Qué son los tokens de valores
+
+Un token ERC-20 es sin permisos por diseño. Cualquiera puede tener uno, transferirlo, quemarlo. Ese es el punto: la resistencia a la censura es una función, no un fallo.
+
+Un token de valor es distinto. Representa una participación en la propiedad de un activo real: capital, deuda, inmuebles, participaciones de un fondo. La ley de valores impone restricciones a la transferencia: requisitos de inversor acreditado, límites de jurisdicción, periodos de bloqueo, obligaciones de divulgación. El contrato del token tiene que imponer estas restricciones de forma programática, o es solo un ERC-20 con otro nombre.
+
+ERC-1400 fue el estándar que surgió para esto. Introdujo restricciones de transferencia mediante una comprobación `canTransfer`: antes de que cualquier transferencia se ejecute, el contrato valida que el destinatario puede poseer el token. Añadió transferencias forzosas para acciones de cumplimiento (un tribunal puede obligar a transferir el activo; el contrato tiene que poder hacerlo). Añadió gestión de particiones: distintos tramos del mismo valor, con características distintas.
+
+Esto es infraestructura financiera en la capa del contrato inteligente. Lo que está en juego no es lo mismo que en un protocolo DeFi: si el contrato del token tiene un fallo, hay valores reales en riesgo. El listón de corrección es más alto.
+
+## Por qué proxies actualizables
+
+Los valores son instrumentos de larga vida. Un token de valor emitido en 2019 puede tener que imponer reglas de restricción de transferencia de 2024. La EVM no permite cambiar el código de un contrato ya desplegado. Si la lógica queda congelada en el despliegue, o redespliegas (y eso significa migrar a todos los tenedores, todos los saldos, todo el estado) o te quedas con el comportamiento que publicaste.
+
+El patrón proxy resuelve esto: despliegas un contrato proxy cuya dirección no cambia nunca, y un contrato de lógica que contiene la implementación real. Los tenedores interactúan con el proxy. El proxy delega las llamadas al contrato de lógica. Cuando hay que actualizar la lógica, despliegas una implementación nueva y actualizas el puntero del proxy.
+
+La trampa: los patrones proxy son sutiles. Las llamadas delegadas ejecutan el código del contrato de lógica en el contexto de almacenamiento del proxy. La disposición del almacenamiento en el contrato de lógica tiene que ser compatible con la del proxy, o corrompes el estado. El propio mecanismo de actualización tiene que estar protegido: una actualización no autorizada es catastrófica.
+
+Hacerlo bien exigió recorrer el código al nivel de Solidity y después al nivel del bytecode de la EVM. No puedes fiarte de que el compilador tome las decisiones que aquí necesitas. Las inserciones de ensamblador permiten verificar exactamente qué ocurre con las ranuras de almacenamiento, con los datos de llamada y con los valores de retorno.
+
+## Trabajo de EVM a nivel de ensamblador
+
+La EVM es una máquina de pila. El compilador de Solidity genera bytecode de la EVM. La mayor parte del tiempo la salida del compilador basta y no hace falta inspeccionarla. En los patrones proxy y en los caminos críticos por gas, sí.
+
+El ensamblador en línea de Solidity (bloques `assembly { }` con Yul) da acceso directo a las operaciones de la EVM: `sload` y `sstore` para el almacenamiento, `calldataload` para leer los datos de llamada, `delegatecall` para el reenvío del proxy, `returndatacopy` para manejar los valores de retorno. La función de reenvío del proxy, escrita en ensamblador, son unas 30 líneas que atienden cualquier llamada de forma correcta con una sobrecarga mínima de gas.
+
+El marco de HPC (computación de alto rendimiento) que usó arcalabs fue deliberado. La computación en Ethereum es cara. Cada instrucción cuesta gas. Los caminos calientes optimizados en ensamblador —validación de transferencias, reenvío del proxy, emisión de eventos— son sensiblemente más baratos que sus equivalentes en Solidity. A cualquier volumen real de transacciones, el ahorro de gas importa.
+
+## La conexión con DEVxDAO
+
+DEVxDAO era una DAO en cadena que financiaba trabajo de infraestructura de cadena de bloques. arcalabs recibió una subvención por el trabajo de tokens de valores: el reconocimiento formal de que la infraestructura ERC-1400 era un bien público digno de financiación, no solo trabajo comercial.
+
+El modelo de DAO era imperfecto (toda DAO temprana lo es), pero la tesis era correcta: cierto trabajo de infraestructura no tiene un modelo comercial obvio y necesita financiación por subvención. Los contratos de tokens de valores de código abierto que cualquier proyecto puede usar son ese tipo de trabajo. La conexión con DEVxDAO fue la forma institucional de la intuición cypherpunk: la infraestructura financiera debería ser pública.
+
+## Qué enseña construir a este nivel
+
+Escribir ensamblador de la EVM enseña que el ordenador no sabe lo que quieres decir. Ejecuta lo que escribiste, con precisión, sin interpretación. Si escribiste lo incorrecto, ejecuta lo incorrecto, y el contrato del token de valor tiene un fallo que quizá solo se manifieste bajo condiciones concretas, años después del despliegue.
+
+Eso aclara. La disciplina de escribir ensamblador —donde cada instrucción es explícita, donde nada es implícito, donde puedes seguir exactamente qué le ocurre a cada bit— es la disciplina que quieres para toda infraestructura financiera, incluso cuando escribes a un nivel de abstracción más alto. La pregunta no es «¿esto parece correcto?». Es «¿qué ejecuta esto exactamente, y es lo que quiero?».
+
+Esa disciplina es lo que distingue el trabajo de arcalabs del desarrollo habitual de contratos inteligentes. Construíamos para la corrección en condiciones adversarias, para la longevidad, para la adaptación normativa. El nivel del ensamblador es donde se demuestra la corrección, no donde se afirma.
+
+---
+
+*zeekay — los tokens de valores necesitan ingeniería de seguridad. arcalabs.*
