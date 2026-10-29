@@ -1,0 +1,157 @@
+---
+title: Hanzo Chat
+description: Hanzo Cloud 上のチャットアプリ — enso と Zen のモデル、MCP ツール、エージェント、ファイルアップロードと RAG。chat.hanzo.ai でホストするか、自分でホストします。
+index: true
+---
+
+import { Cards, Card } from '@hanzo/docs-base-ui/components/card'
+import { LayoutGrid } from 'lucide-react'
+
+# Hanzo Chat
+
+Hanzo Chat は Hanzo Cloud 上のチャットアプリで、[LibreChat](https://librechat.ai) の上に構築されています。自社モデル — フロンティア系列の **enso** とオープンウェイト系列の **Zen** — を、MCP ツール、設定可能なエージェント、RAG 付きファイルアップロード、画像理解、会話履歴、プリセット、プラグインとともに動かします。外部ラボのモデルも載せており、同じモデルメニューに現れます。
+
+ホストされたサービスとして [chat.hanzo.ai](https://chat.hanzo.ai) で、または Docker によるセルフホストで利用できます。
+
+## クイックスタート
+
+### ホスト版（推奨）
+
+1. [chat.hanzo.ai](https://chat.hanzo.ai) を開く
+2. Hanzo アカウントでサインインする
+3. **$5 の無料クレジット**が自動で適用される
+4. モデルを選んで会話を始める
+
+### セルフホスト
+
+```bash
+git clone https://github.com/hanzoai/chat
+cd chat
+cp .env.example .env
+# Edit .env with your HANZO_API_KEY
+docker compose up -d
+# Open http://localhost:3081
+```
+
+### API
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen5",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+## SDK の使い方
+
+### Python
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="sk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen5",
+    messages=[{"role": "user", "content": "Hello, Zen."}]
+)
+print(response.choices[0].message.content)
+```
+
+### TypeScript
+
+```typescript
+import Hanzo from '@hanzo/ai'
+
+const client = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+
+const completion = await client.chat.completions.create({
+  model: 'zen5',
+  messages: [{ role: 'user', content: 'Hello, Zen.' }],
+})
+console.log(completion.choices[0].message.content)
+```
+
+### 既存の HTTP クライアント
+
+`/v1/chat/completions` は chat-completions の JSON 形を受け取り、同じ形を返します。したがって
+その形に対してすでに書かれたクライアントは、ベース URL が
+`https://api.hanzo.ai/v1` を指し、Hanzo のキーを送ればここで動きます。モデル id はベンダー間で
+持ち運べません — `zen5` と `enso` はここだけにあります。
+
+## アーキテクチャ
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        HANZO CHAT                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │ React Client │  │ Node.js API  │  │    DocumentDB    │  │
+│  │              │  │              │  │                  │  │
+│  │ - Chat UI    │  │ - REST API   │  │ - Messages       │  │
+│  │ - Model Sel  │  │ - WebSocket  │  │ - Conversations  │  │
+│  │ - File Upload│  │ - MCP Broker │  │ - Users          │  │
+│  │ - Agents     │  │ - Auth       │  │ - Presets        │  │
+│  └──────────────┘  └──────────────┘  └──────────────────┘  │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │              Provider Layer (AI API)            │    │
+│  │  Zen · OpenAI · Anthropic · Google · Meta · …       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Search       │  KV     │  S3     │  RAG API       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## エンドポイント
+
+| 環境 | URL |
+|-------------|-----|
+| 本番 | `https://chat.hanzo.ai` |
+| API | `https://api.hanzo.ai/v1` |
+| ローカル | `http://localhost:3081` |
+
+## 料金
+
+- 新規アカウントごとに **$5 の無料クレジット**（30 日で期限切れ）
+- **前払い** — [console.hanzo.ai](https://console.hanzo.ai) でクレジットを追加
+- 入力 **$0.34/MTok** から（`zen5-flash`）
+- **予想外の請求なし** — クレジットが尽きるとサービスは止まります
+
+<Cards>
+  <Card title="機能" href="/docs/chat/features">
+    プリセット、ファイルアップロード、RAG、検索、画像理解、会話の管理
+  </Card>
+  <Card title="設定" href="/docs/chat/configuration">
+    chat.yaml の参照、エンドポイント、MCP ツール、モデル設定
+  </Card>
+  <Card title="モデル" href="/docs/chat/models">
+    メニューのすべてのモデル。コンテキスト窓と料金つき
+  </Card>
+  <Card title="エージェント" href="/docs/chat/agents">
+    システムプロンプトとツールアクセスを持つカスタム AI エージェント
+  </Card>
+  <Card title="セルフホスト" href="/docs/chat/self-hosting">
+    Docker、Kubernetes、クラウド配備のガイド
+  </Card>
+  <Card title="認証" href="/docs/chat/authentication">
+    Hanzo IAM、OAuth2、ソーシャルログイン、SSO
+  </Card>
+</Cards>
+
+{/* domain-index */}
+
+## この節では
+
+<Cards>
+  <Card icon={<LayoutGrid />} title="Hanzo Dev" href="/docs/dev" description="端末向けの AI コーディングアシスタント。Hanzo Dev を導入し、設定し、運用します。" />
+  <Card icon={<LayoutGrid />} title="連携" href="/docs/guides/integrations" description="ブロブストレージ、Slack、Mixpanel、Insights をプロジェクトにつなぎます。" />
+  <Card icon={<LayoutGrid />} title="連携と拡張" href="/docs/apps" description="ブラウザ、エディタ、デスクトップ、ドキュメント、デザインツール、業務アプリに Hanzo を導入してつなぎます — ひとつ…" />
+</Cards>

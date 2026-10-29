@@ -1,0 +1,40 @@
+---
+icon: LayoutDashboard
+title: Konsole
+description: Die einheitliche Cloud-Konsole für Hanzo Cloud -- verwalten Sie jedes Produkt, jeden Schlüssel und jede Organisation aus einer App unter console.hanzo.ai.
+---
+
+# Konsole
+
+Die Hanzo-Konsole ist die einheitliche Steuerungsoberfläche für Hanzo Cloud -- die App, die Sie gerade sehen. Sie bringt jedes Cloud-Produkt an einen Ort: Identität, Schlüssel, Geheimnisse, Modelle, Abrechnung, Bereitstellungen und Dashboards, alles im Geltungsbereich Ihrer Organisation.
+
+## Eine App für jedes Produkt
+
+Die Konsole rendert aus einem einzigen Produktkatalog, deshalb ist jeder Hanzo-Cloud-Dienst über dieselbe Navigation, Übersicht und Befehlspalette erreichbar. Jedes Produkt ist ein natives Modul -- kein Absprung-Link -- gestützt auf die echte `/v1`-API:
+
+- **KI** -- Modelle, Playground, Anbieter, Embeddings
+- **Sicherheit** -- [IAM](/docs/openapi/iam), [KMS](/docs/openapi/kms), [Authz](/docs/openapi/authz), [MPC](/docs/openapi), [Zero Trust](/docs/openapi/network)
+- **Beobachten** -- [Dashboards](/docs/openapi/o11y), Kosten, [Abrechnung](/docs/openapi/billing), Status
+- **Bereitstellen** -- Projekte, Umgebungen, Funktionen, Cluster
+
+## Anmeldung und Geltungsbereich
+
+Die Konsole meldet sich über Hanzo IAM unter [hanzo.id](https://hanzo.id) als Anwendung `hanzo-cloud` an. Ihre Sitzung ist auf eine **Organisation** begrenzt, und ein globaler Administrator kann den Geltungsbereich auf eine beliebige Organisation umschalten; die Daten werden an Ort und Stelle neu zugeordnet, während die Markenidentität fest bleibt. Siehe [IAM](/docs/openapi/iam) und [Organisationen](/docs/openapi/iam).
+
+## Wie sie ausgeliefert wird
+
+Die Konsole ist eine Einzelseitenanwendung, die per `go:embed` direkt in die Hanzo-Cloud-Binärdatei eingebettet und unter `console.hanzo.ai` ausgeliefert wird. Sie ist ein reiner Client über dem einheitlichen `/v1`-Backend -- sie hält keine eigene Datenbank; jede Ansicht sind echte Daten aus einer Dienst-API.
+
+```bash
+# The console calls the same API you can call directly, with the same key
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer sk-..."
+```
+
+## Verwandt
+
+- [IAM](/docs/openapi/iam) -- die Identität und der Organisationsbereich hinter jeder Konsolenansicht
+- [API-Schlüssel](/docs/api-keys) -- Schlüssel aus der Konsole für die API anlegen
+- [Dashboards](/docs/openapi/o11y) -- Oberflächen für Analytik und Beobachtbarkeit
+- [Abrechnung](/docs/openapi/billing) -- Saldo, Nutzung und Rechnungen
+- [API](/docs/openapi) -- dieselbe `/v1`-Oberfläche, die die Konsole darstellt

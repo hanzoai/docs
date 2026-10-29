@@ -1,0 +1,93 @@
+---
+icon: Wallet
+title: Créditos y facturación
+description: Qué es un crédito, cómo una llamada lo descuenta, dónde vive el saldo y qué ocurre cuando llega a cero.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Después de esta página sabes qué estás gastando, dónde leerlo y qué
+ocurre cuando se agota.**
+
+No hay licencia por puesto ni mínimo. Tienes un saldo, cada llamada medida
+lo descuenta a una tarifa publicada, y una cuenta que no envía nada no paga
+nada.
+
+## Los cuatro nombres
+
+El dinero son cuatro capacidades, y no se solapan.
+
+| | Qué responde | Dirección |
+|---|---|---|
+| **[Precios](/docs/openapi/pricing)** | cuánto cuesta una unidad, antes de gastarla | `/v1/pricing` |
+| **[Uso](/docs/openapi/usage)** | lo que realmente consumiste | `/v1/usage` |
+| **[Facturación](/docs/openapi/billing)** | tu saldo, tus créditos y tus facturas | `/v1/billing` |
+| **[Comercio](/docs/openapi/commerce)** | el libro mayor que leen todas las anteriores | `/v1/commerce` |
+
+Léelos en ese orden y toda la economía es una frase: **precios** dice
+la tarifa, **uso** dice la cantidad, **facturación** dice el dinero, y
+**comercio** es el libro mayor sobre el que los otros tres son lentes.
+
+## Leer tu saldo
+
+```bash
+hanzo billing balance
+```
+
+```bash
+curl https://api.hanzo.ai/v1/billing/balance \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Los créditos se compran — o se conceden — en `https://api.hanzo.ai/v1/billing/credits`,
+y cada descuento es un asiento del libro mayor, así que el saldo nunca es un número
+que alguien mantuviera a mano. Lo que consumiste es una lectura aparte, porque el consumo
+y el dinero son preguntas distintas:
+
+```bash
+hanzo usage summary
+```
+
+## Dos techos, y no son lo mismo
+
+<Callout>
+Un **saldo** es lo que tienes. Una **asignación** y un **tope** son lo que se te
+permite gastar de él. Confundir los tres es la razón habitual de que una llamada
+sea rechazada mientras el saldo sigue pareciendo sano.
+</Callout>
+
+- **[Asignación](/docs/openapi/allowance)** — una concesión permanente contra la que
+  quien llama gasta, en `/v1/allowance`. Es cómo una organización entrega a un proyecto, una clave o un
+  miembro un presupuesto sin entregar todo el saldo.
+- **El tope móvil** — un techo de ventana deslizante sobre el gasto de IA, aplicado en la
+  puerta de inferencia. Se reinicia de forma continua y no en un límite: el gasto más antiguo
+  que la ventana sale de la suma móvil, así que no hay precipicio mensual
+  ni reinicio a medianoche. Es un gancho en la puerta y no una capacidad
+  propia, así que no tiene dirección ni página; los topes en sí son
+  indicadores de la plataforma que edita un operador.
+
+## Qué ocurre en cero
+
+Una llamada medida se rechaza. Se rechaza en la puerta, antes de que ocurra el trabajo,
+así que nunca se te factura una llamada que iba a fallar — y el rechazo
+nombra el motivo en lugar de devolver un error genérico, de modo que un cliente puede distinguir
+«sin crédito» de «clave incorrecta» sin adivinar. Las lecturas que no cuestan nada siguen
+respondiendo: siempre puedes consultar un saldo que no puedes gastar.
+
+## Qué llamadas cuestan algo
+
+La mayoría no. Una capacidad declara su precio junto a su código — gratis, fija o
+medida — y las gratuitas son la mayoría: listar tus proyectos, leer las
+entregas de un webhook, obtener tu propio perfil. Lo que se mide es lo que
+consume un recurso real — tokens de inferencia, segundos de sandbox, un SMS saliente, una
+página rastreada.
+
+Cada página de capacidad da su propia respuesta, y [Precios](/docs/pricing)
+lleva la tabla de tarifas de cada modelo y herramienta.
+
+## Siguiente
+
+- **[Precios](/docs/pricing)** — las tarifas, por millón de tokens y por llamada.
+- **[Uso](/docs/openapi/usage)** — la API de informes.
+- **[Autenticación](/docs/api-keys)** — una clave puede limitarse a un modelo, un
+  proyecto o una capacidad, que es la otra mitad de controlar el gasto.

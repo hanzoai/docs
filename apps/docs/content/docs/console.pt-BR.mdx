@@ -1,0 +1,40 @@
+---
+icon: LayoutDashboard
+title: Console
+description: O console unificado na nuvem do Hanzo Cloud -- gerencie cada produto, chave e organização em um só app em console.hanzo.ai.
+---
+
+# Console
+
+O console do Hanzo é a superfície de controle unificada do Hanzo Cloud -- o app que você está vendo. Ele reúne cada produto de nuvem em um só lugar: identidade, chaves, segredos, modelos, faturamento, implantações e painéis, tudo no escopo da sua organização.
+
+## Um app para cada produto
+
+O console é renderizado a partir de um único catálogo de produtos, então cada serviço do Hanzo Cloud é alcançável pela mesma navegação, visão geral e paleta de comandos. Cada produto é um módulo nativo -- não um link para fora -- apoiado na API `/v1` real:
+
+- **IA** -- modelos, playground, provedores, embeddings
+- **Segurança** -- [IAM](/docs/openapi/iam), [KMS](/docs/openapi/kms), [Authz](/docs/openapi/authz), [MPC](/docs/openapi), [Zero Trust](/docs/openapi/network)
+- **Observação** -- [painéis](/docs/openapi/o11y), custo, [faturamento](/docs/openapi/billing), status
+- **Implantação** -- projetos, ambientes, funções, clusters
+
+## Entrada e escopo
+
+O console entra pelo Hanzo IAM em [hanzo.id](https://hanzo.id) como o aplicativo `hanzo-cloud`. Sua sessão tem o escopo de uma **organização**, e um administrador global pode trocar o escopo para qualquer organização; os dados são reenquadrados no lugar enquanto a identidade da marca permanece fixa. Veja [IAM](/docs/openapi/iam) e [Organizações](/docs/openapi/iam).
+
+## Como ele é entregue
+
+O console é um aplicativo de página única embutido (`go:embed`) diretamente no binário do Hanzo Cloud e servido em `console.hanzo.ai`. É um cliente puro sobre o backend unificado `/v1` -- não guarda banco de dados próprio; cada visão são dados reais de uma API de serviço.
+
+```bash
+# The console calls the same API you can call directly, with the same key
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer sk-..."
+```
+
+## Relacionados
+
+- [IAM](/docs/openapi/iam) -- a identidade e o escopo da organização por trás de cada visão do console
+- [Chaves de API](/docs/api-keys) -- crie chaves no console para a API
+- [Painéis](/docs/openapi/o11y) -- superfícies de análise e observabilidade
+- [Faturamento](/docs/openapi/billing) -- saldo, uso e faturas
+- [API](/docs/openapi) -- a mesma superfície `/v1` que o console renderiza

@@ -1,0 +1,40 @@
+---
+icon: LayoutDashboard
+title: Console
+description: La console cloud unifiée de Hanzo Cloud -- gérez chaque produit, clé et organisation depuis une seule app sur console.hanzo.ai.
+---
+
+# Console
+
+La console Hanzo est la surface de contrôle unifiée de Hanzo Cloud -- l'app que vous regardez. Elle rassemble chaque produit cloud en un seul endroit : identité, clés, secrets, modèles, facturation, déploiements et tableaux de bord, le tout limité au périmètre de votre organisation.
+
+## Une app pour chaque produit
+
+La console se rend à partir d'un catalogue de produits unique, si bien que chaque service Hanzo Cloud est accessible depuis la même navigation, la vue d'ensemble et la palette de commandes. Chaque produit est un module natif -- pas un lien externe -- adossé à la véritable API `/v1` :
+
+- **IA** -- modèles, bac à sable, fournisseurs, embeddings
+- **Sécurité** -- [IAM](/docs/openapi/iam), [KMS](/docs/openapi/kms), [Authz](/docs/openapi/authz), [MPC](/docs/openapi), [Zero Trust](/docs/openapi/network)
+- **Observation** -- [tableaux de bord](/docs/openapi/o11y), coût, [facturation](/docs/openapi/billing), état
+- **Déploiement** -- projets, environnements, fonctions, clusters
+
+## Connexion et périmètre
+
+La console se connecte via Hanzo IAM sur [hanzo.id](https://hanzo.id) en tant qu'application `hanzo-cloud`. Votre session est limitée à une **organisation**, et un administrateur global peut changer le périmètre vers n'importe quelle organisation ; les données se recadrent sur place tandis que l'identité de marque reste fixe. Voir [IAM](/docs/openapi/iam) et [Organisations](/docs/openapi/iam).
+
+## Comment elle est livrée
+
+La console est une application monopage intégrée (`go:embed`) directement dans le binaire Hanzo Cloud et servie sur `console.hanzo.ai`. C'est un client pur au-dessus du backend unifié `/v1` -- elle ne détient aucune base de données propre ; chaque vue est une donnée réelle issue d'une API de service.
+
+```bash
+# The console calls the same API you can call directly, with the same key
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer sk-..."
+```
+
+## Voir aussi
+
+- [IAM](/docs/openapi/iam) -- l'identité et le périmètre d'organisation derrière chaque vue de la console
+- [Clés d'API](/docs/api-keys) -- créez des clés depuis la console pour l'API
+- [Tableaux de bord](/docs/openapi/o11y) -- surfaces d'analytique et d'observabilité
+- [Facturation](/docs/openapi/billing) -- solde, usage et factures
+- [API](/docs/openapi) -- la même surface `/v1` que la console affiche

@@ -1,0 +1,157 @@
+---
+title: Hanzo Chat
+description: L'app di chat su Hanzo Cloud — modelli enso e Zen, strumenti MCP, agenti, caricamento file e RAG. Ospitata su chat.hanzo.ai, oppure in self-hosting.
+index: true
+---
+
+import { Cards, Card } from '@hanzo/docs-base-ui/components/card'
+import { LayoutGrid } from 'lucide-react'
+
+# Hanzo Chat
+
+Hanzo Chat è l'app di chat su Hanzo Cloud, costruita su [LibreChat](https://librechat.ai). Esegue i nostri modelli — la famiglia di frontiera **enso** e la famiglia a pesi aperti **Zen** — con strumenti MCP, agenti configurabili, caricamento di file con RAG, visione, cronologia delle conversazioni, preimpostazioni e plugin. Sono presenti anche modelli di laboratori esterni, e compaiono nello stesso menu dei modelli.
+
+Disponibile come servizio ospitato su [chat.hanzo.ai](https://chat.hanzo.ai) oppure in self-hosting tramite Docker.
+
+## Avvio rapido
+
+### Ospitato (consigliato)
+
+1. Vai su [chat.hanzo.ai](https://chat.hanzo.ai)
+2. Accedi con il tuo account Hanzo
+3. Il tuo **credito gratuito di $5** viene applicato automaticamente
+4. Scegli un modello e inizia a conversare
+
+### Self-hosting
+
+```bash
+git clone https://github.com/hanzoai/chat
+cd chat
+cp .env.example .env
+# Edit .env with your HANZO_API_KEY
+docker compose up -d
+# Open http://localhost:3081
+```
+
+### API
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen5",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+## Uso dell'SDK
+
+### Python
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="sk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen5",
+    messages=[{"role": "user", "content": "Hello, Zen."}]
+)
+print(response.choices[0].message.content)
+```
+
+### TypeScript
+
+```typescript
+import Hanzo from '@hanzo/ai'
+
+const client = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+
+const completion = await client.chat.completions.create({
+  model: 'zen5',
+  messages: [{ role: 'user', content: 'Hello, Zen.' }],
+})
+console.log(completion.choices[0].message.content)
+```
+
+### Client HTTP esistenti
+
+`/v1/chat/completions` accetta e restituisce la forma JSON chat-completions, quindi un
+client già scritto contro quella forma funziona qui non appena il suo URL di base punta a
+`https://api.hanzo.ai/v1` e invia una chiave Hanzo. Gli identificatori di modello non sono portabili
+tra fornitori — `zen5` e `enso` esistono solo qui.
+
+## Architettura
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        HANZO CHAT                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │ React Client │  │ Node.js API  │  │    DocumentDB    │  │
+│  │              │  │              │  │                  │  │
+│  │ - Chat UI    │  │ - REST API   │  │ - Messages       │  │
+│  │ - Model Sel  │  │ - WebSocket  │  │ - Conversations  │  │
+│  │ - File Upload│  │ - MCP Broker │  │ - Users          │  │
+│  │ - Agents     │  │ - Auth       │  │ - Presets        │  │
+│  └──────────────┘  └──────────────┘  └──────────────────┘  │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │              Provider Layer (AI API)            │    │
+│  │  Zen · OpenAI · Anthropic · Google · Meta · …       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Search       │  KV     │  S3     │  RAG API       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Endpoint
+
+| Ambiente | URL |
+|-------------|-----|
+| Produzione | `https://chat.hanzo.ai` |
+| API | `https://api.hanzo.ai/v1` |
+| Locale | `http://localhost:3081` |
+
+## Prezzi
+
+- **Credito gratuito di $5** su ogni nuovo account (scade dopo 30 giorni)
+- **Fatturazione prepagata** — aggiungi crediti tramite [console.hanzo.ai](https://console.hanzo.ai)
+- **A partire da $0.34/MTok** in ingresso (`zen5-flash`)
+- **Nessuna fattura a sorpresa** — il servizio si ferma quando i crediti sono esauriti
+
+<Cards>
+  <Card title="Funzioni" href="/docs/chat/features">
+    Preimpostazioni, caricamento file, RAG, ricerca, visione, gestione delle conversazioni
+  </Card>
+  <Card title="Configurazione" href="/docs/chat/configuration">
+    Riferimento di chat.yaml, endpoint, strumenti MCP, configurazione dei modelli
+  </Card>
+  <Card title="Modelli" href="/docs/chat/models">
+    Ogni modello del menu, con la sua finestra di contesto e la tariffa
+  </Card>
+  <Card title="Agenti" href="/docs/chat/agents">
+    Agenti di IA personalizzati con prompt di sistema e accesso agli strumenti
+  </Card>
+  <Card title="Self-hosting" href="/docs/chat/self-hosting">
+    Guide di distribuzione con Docker, Kubernetes e nel cloud
+  </Card>
+  <Card title="Autenticazione" href="/docs/chat/authentication">
+    Hanzo IAM, OAuth2, accesso social, SSO
+  </Card>
+</Cards>
+
+{/* domain-index */}
+
+## In questa sezione
+
+<Cards>
+  <Card icon={<LayoutGrid />} title="Hanzo Dev" href="/docs/dev" description="Assistente di programmazione con IA per il terminale. Installa, configura e gestisci Hanzo Dev." />
+  <Card icon={<LayoutGrid />} title="Integrazioni" href="/docs/guides/integrations" description="Collega archiviazione a oggetti, Slack, Mixpanel e Insights al tuo progetto." />
+  <Card icon={<LayoutGrid />} title="Integrazioni ed estensioni" href="/docs/apps" description="Installa e collega Hanzo nel browser, nell'editor, sul desktop, nella documentazione, negli strumenti di design e nelle app aziendali — uno…" />
+</Cards>

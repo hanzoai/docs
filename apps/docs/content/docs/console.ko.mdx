@@ -1,0 +1,40 @@
+---
+icon: LayoutDashboard
+title: 콘솔
+description: Hanzo Cloud의 통합 클라우드 콘솔 -- console.hanzo.ai의 한 앱에서 모든 제품, 키, 조직을 관리합니다.
+---
+
+# 콘솔
+
+Hanzo 콘솔은 Hanzo Cloud의 통합 제어 표면입니다. 지금 보고 있는 앱 그 자체입니다. 모든 클라우드 제품을 한곳에 모읍니다. 신원, 키, 비밀, 모델, 청구, 배포, 대시보드가 모두 조직 범위 안에 있습니다.
+
+## 모든 제품을 위한 하나의 앱
+
+콘솔은 단일 제품 카탈로그에서 그려지므로, 모든 Hanzo Cloud 서비스에 같은 탐색, 개요, 명령 팔레트에서 닿습니다. 각 제품은 바깥 링크가 아니라 네이티브 모듈이며, 실제 `/v1` API를 기반으로 합니다.
+
+- **AI** -- 모델, 플레이그라운드, 공급자, embeddings
+- **보안** -- [IAM](/docs/openapi/iam), [KMS](/docs/openapi/kms), [Authz](/docs/openapi/authz), [MPC](/docs/openapi), [Zero Trust](/docs/openapi/network)
+- **관측** -- [대시보드](/docs/openapi/o11y), 비용, [청구](/docs/openapi/billing), 상태
+- **배포** -- 프로젝트, 환경, 함수, 클러스터
+
+## 로그인과 범위
+
+콘솔은 [hanzo.id](https://hanzo.id)의 Hanzo IAM을 통해 `hanzo-cloud` 애플리케이션으로 로그인합니다. 세션은 **조직**으로 범위가 정해지고, 전역 관리자는 범위를 아무 조직으로나 바꿀 수 있습니다. 브랜드 정체성은 고정된 채 데이터는 그 자리에서 범위를 다시 잡습니다. [IAM](/docs/openapi/iam)과 [조직](/docs/openapi/iam)을 보세요.
+
+## 전달 방식
+
+콘솔은 Hanzo Cloud 바이너리에 직접 포함된(`go:embed`) 단일 페이지 앱이며 `console.hanzo.ai`에서 제공됩니다. 통합 `/v1` 백엔드 위의 순수한 클라이언트입니다. 자체 데이터베이스는 두지 않으며, 각 화면은 서비스 API의 실제 데이터입니다.
+
+```bash
+# The console calls the same API you can call directly, with the same key
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer sk-..."
+```
+
+## 관련
+
+- [IAM](/docs/openapi/iam) -- 콘솔의 각 화면 뒤에 있는 신원과 조직 범위
+- [API 키](/docs/api-keys) -- API용 키를 콘솔에서 만듭니다
+- [대시보드](/docs/openapi/o11y) -- 분석과 관측 가능성 표면
+- [청구](/docs/openapi/billing) -- 잔액, 사용량, 청구서
+- [API](/docs/openapi) -- 콘솔이 그리는 것과 같은 `/v1` 표면

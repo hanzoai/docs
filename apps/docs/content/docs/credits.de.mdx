@@ -1,0 +1,93 @@
+---
+icon: Wallet
+title: Credits und Abrechnung
+description: Was ein Credit ist, wie ein Aufruf ihn abbucht, wo das Guthaben liegt und was geschieht, wenn es null erreicht.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Nach dieser Seite wissen Sie, was Sie ausgeben, wo Sie es ablesen und was
+geschieht, wenn es aufgebraucht ist.**
+
+Es gibt keine Sitzplatzlizenz und kein Minimum. Sie halten ein Guthaben, jeder gemessene Aufruf
+bucht es zu einem veröffentlichten Tarif ab, und ein Konto, das nichts sendet, wird
+mit nichts belastet.
+
+## Die vier Substantive
+
+Geld sind vier Fähigkeiten, und sie überlappen sich nicht.
+
+| | Was sie beantwortet | Adresse |
+|---|---|---|
+| **[Preise](/docs/openapi/pricing)** | was eine Einheit kostet, bevor Sie sie ausgeben | `/v1/pricing` |
+| **[Nutzung](/docs/openapi/usage)** | was Sie tatsächlich verbraucht haben | `/v1/usage` |
+| **[Abrechnung](/docs/openapi/billing)** | Ihr Guthaben, Ihre Credits und Ihre Rechnungen | `/v1/billing` |
+| **[Handel](/docs/openapi/commerce)** | das Hauptbuch, das jede der obigen liest | `/v1/commerce` |
+
+Lesen Sie sie in dieser Reihenfolge, und die ganze Ökonomie ist ein Satz: **Preise** nennt
+den Tarif, **Nutzung** nennt die Menge, **Abrechnung** nennt das Geld, und
+**Handel** ist das Hauptbuch, auf das die anderen drei Linsen sind.
+
+## Ihr Guthaben lesen
+
+```bash
+hanzo billing balance
+```
+
+```bash
+curl https://api.hanzo.ai/v1/billing/balance \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Credits werden gekauft — oder gewährt — unter `https://api.hanzo.ai/v1/billing/credits`,
+und jede Abbuchung ist eine Hauptbuchbuchung, sodass das Guthaben nie eine Zahl ist, die jemand
+von Hand gepflegt hat. Was Sie verbraucht haben, ist eine eigene Abfrage, weil Verbrauch
+und Geld getrennte Fragen sind:
+
+```bash
+hanzo usage summary
+```
+
+## Zwei Decken, und sie sind nicht dasselbe
+
+<Callout>
+Ein **Guthaben** ist, was Sie haben. Eine **Zuwendung** und eine **Obergrenze** sind, was Sie
+daraus ausgeben dürfen. Die drei zu verwechseln ist der übliche Grund, warum ein Aufruf
+abgelehnt wird, während das Guthaben noch gesund aussieht.
+</Callout>
+
+- **[Zuwendung](/docs/openapi/allowance)** — eine dauerhafte Gewährung, gegen die ein Aufrufer
+  ausgibt, unter `/v1/allowance`. So gibt eine Organisation einem Projekt, einem Schlüssel oder einem
+  Mitglied ein Budget, ohne das ganze Guthaben zu übergeben.
+- **Die gleitende Obergrenze** — eine Decke im nachlaufenden Fenster für KI-Ausgaben, angewandt am
+  Inferenz-Tor. Sie setzt sich fortlaufend zurück und nicht an einer Grenze: Ausgaben, die älter
+  sind als das Fenster, fallen aus der nachlaufenden Summe, sodass es keine monatliche Klippe
+  und keinen Mitternachts-Reset gibt. Sie ist ein Haken am Tor und keine eigene
+  Fähigkeit, deshalb hat sie weder Adresse noch Seite; die Obergrenzen selbst sind
+  Plattformschalter, die ein Betreiber bearbeitet.
+
+## Was bei null geschieht
+
+Ein gemessener Aufruf wird abgelehnt. Er wird am Tor abgelehnt, bevor die Arbeit geschieht,
+sodass Ihnen nie ein Aufruf berechnet wird, der fehlschlagen sollte — und die Ablehnung
+nennt den Grund, statt einen allgemeinen Fehler zurückzugeben, damit ein Client
+„kein Credit“ von „falscher Schlüssel“ unterscheiden kann, ohne zu raten. Lesezugriffe, die nichts kosten, antworten
+weiter: Sie können immer ein Guthaben prüfen, das Sie nicht ausgeben können.
+
+## Welche Aufrufe etwas kosten
+
+Die meisten nicht. Eine Fähigkeit erklärt ihren Preis neben ihrem Code — kostenlos, pauschal oder
+gemessen — und die kostenlosen sind die Mehrheit: Projekte auflisten, die
+Zustellungen eines Webhooks lesen, das eigene Profil abrufen. Gemessen wird, was
+eine echte Ressource verbraucht — Inferenz-Tokens, Sandbox-Sekunden, eine ausgehende SMS, eine
+durchsuchte Seite.
+
+Jede Fähigkeitsseite nennt ihre eigene Antwort, und [Preise](/docs/pricing)
+trägt die Tariftabelle für jedes Modell und jedes Werkzeug.
+
+## Weiter
+
+- **[Preise](/docs/pricing)** — die Tarife, pro Million Tokens und pro Aufruf.
+- **[Nutzung](/docs/openapi/usage)** — die Berichts-API.
+- **[Authentifizierung](/docs/api-keys)** — ein Schlüssel kann auf ein Modell, ein
+  Projekt oder eine Fähigkeit beschränkt werden, und das ist die andere Hälfte der Ausgabenkontrolle.

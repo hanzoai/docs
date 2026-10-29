@@ -1,0 +1,93 @@
+---
+icon: Wallet
+title: Krediler ve faturalandırma
+description: Kredinin ne olduğu, bir çağrının onu nasıl düşürdüğü, bakiyenin nerede durduğu ve sıfıra ulaşınca ne olduğu.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Bu sayfadan sonra ne harcadığınızı, bunu nerede okuyacağınızı ve
+tükendiğinde ne olduğunu bilirsiniz.**
+
+Koltuk lisansı yoktur ve asgari yoktur. Bir bakiye tutarsınız, ölçülen her çağrı
+onu yayımlanmış bir ücretle düşürür ve hiçbir şey göndermeyen bir hesaptan
+hiçbir şey tahsil edilmez.
+
+## Dört ad
+
+Para dört yetenektir ve bunlar örtüşmez.
+
+| | Neyi yanıtlar | Adres |
+|---|---|---|
+| **[Fiyatlandırma](/docs/openapi/pricing)** | bir birimin maliyeti, harcamadan önce | `/v1/pricing` |
+| **[Kullanım](/docs/openapi/usage)** | gerçekten tükettiğiniz şey | `/v1/usage` |
+| **[Faturalandırma](/docs/openapi/billing)** | bakiyeniz, kredileriniz ve faturalarınız | `/v1/billing` |
+| **[Ticaret](/docs/openapi/commerce)** | yukarıdakilerin her birinin okuduğu defter | `/v1/commerce` |
+
+Onları bu sırayla okuyun; bütün ekonomi tek cümledir: **fiyatlandırma** ücreti
+söyler, **kullanım** miktarı söyler, **faturalandırma** parayı söyler ve
+**ticaret**, diğer üçünün mercek olduğu defterdir.
+
+## Bakiyenizi okumak
+
+```bash
+hanzo billing balance
+```
+
+```bash
+curl https://api.hanzo.ai/v1/billing/balance \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Krediler `https://api.hanzo.ai/v1/billing/credits` adresinde satın alınır — ya da verilir —
+ve her düşüş bir defter kaydıdır, bu yüzden bakiye hiç kimsenin elle
+tuttuğu bir sayı değildir. Tükettiğiniz şey ayrı bir okumadır, çünkü tüketim
+ve para ayrı sorulardır:
+
+```bash
+hanzo usage summary
+```
+
+## İki tavan, ve aynı şey değiller
+
+<Callout>
+**Bakiye** sahip olduğunuzdur. **Ödenek** ve **tavan**, ondan harcamanıza
+izin verilen şeydir. Üçünü karıştırmak, bakiye hâlâ sağlıklı görünürken bir çağrının
+reddedilmesinin alışılmış nedenidir.
+</Callout>
+
+- **[Ödenek](/docs/openapi/allowance)** — çağıranın karşısında harcadığı sürekli bir
+  bağış, `/v1/allowance` adresinde. Bir kuruluşun bir projeye, bir anahtara veya bir
+  üyeye bakiyenin tamamını vermeden bütçe vermesinin yoludur.
+- **Yuvarlanan tavan** — çıkarım kapısında uygulanan, yapay zekâ harcamasına ait kayan pencereli bir
+  tavan. Bir sınırda değil, sürekli sıfırlanır: pencereden eski harcama
+  kayan toplamdan düşer, bu yüzden aylık bir uçurum
+  ve gece yarısı sıfırlaması yoktur. Kendi başına bir yetenek değil, kapı üzerindeki bir kancadır,
+  bu yüzden adresi ve sayfası yoktur; tavanların kendisi bir operatörün düzenlediği
+  platform bayraklarıdır.
+
+## Sıfırda ne olur
+
+Ölçülen bir çağrı reddedilir. İş gerçekleşmeden önce kapıda reddedilir,
+böylece başarısız olacak bir çağrı için asla ücretlendirilmezsiniz — ve ret
+genel bir hata döndürmek yerine nedeni adlandırır, böylece bir istemci tahmin etmeden
+«kredi bitti» ile «kötü anahtar»ı ayırır. Hiçbir maliyeti olmayan okumalar yanıtlamaya
+devam eder: harcayamadığınız bir bakiyeyi her zaman kontrol edebilirsiniz.
+
+## Hangi çağrılar bir şey tutar
+
+Çoğu tutmaz. Bir yetenek fiyatını kodunun yanında bildirir — ücretsiz, sabit ya da
+ölçülen — ve ücretsiz olanlar çoğunluktadır: projelerinizi listelemek, bir
+webhook'un teslimatlarını okumak, kendi profilinizi almak. Ölçülen şey,
+gerçek bir kaynak tüketen şeydir — çıkarım belirteçleri, sandbox saniyeleri, giden bir SMS, 
+taranmış bir sayfa.
+
+Her yetenek sayfası kendi yanıtını belirtir ve [Fiyatlandırma](/docs/pricing)
+her model ve araç için ücret tablosunu taşır.
+
+## Sonraki
+
+- **[Fiyatlandırma](/docs/pricing)** — ücretler, milyon belirteç başına ve çağrı başına.
+- **[Kullanım](/docs/openapi/usage)** — raporlama API'si.
+- **[Kimlik doğrulama](/docs/api-keys)** — bir anahtar bir modele, bir
+  projeye veya bir yeteneğe sınırlanabilir; bu, harcamayı denetlemenin diğer yarısıdır.

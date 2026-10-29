@@ -1,0 +1,157 @@
+---
+title: Hanzo Chat
+description: Hanzo Cloud 上的聊天應用程式 — enso 與 Zen 模型、MCP 工具、代理、檔案上傳與 RAG。託管於 chat.hanzo.ai，也可自行託管。
+index: true
+---
+
+import { Cards, Card } from '@hanzo/docs-base-ui/components/card'
+import { LayoutGrid } from 'lucide-react'
+
+# Hanzo Chat
+
+Hanzo Chat 是 Hanzo Cloud 上的聊天應用程式，建構於 [LibreChat](https://librechat.ai)。它執行我們自己的模型——前沿系列 **enso** 與開放權重系列 **Zen**——並帶有 MCP 工具、可設定的代理、含 RAG 的檔案上傳、視覺、對話紀錄、預設與外掛。外部實驗室的模型也會提供，並出現在同一個模型選單裡。
+
+可作為託管服務在 [chat.hanzo.ai](https://chat.hanzo.ai) 使用，或透過 Docker 自行託管。
+
+## 快速開始
+
+### 託管（建議）
+
+1. 開啟 [chat.hanzo.ai](https://chat.hanzo.ai)
+2. 使用你的 Hanzo 帳戶登入
+3. **$5 免費點數**會自動入帳
+4. 選擇一個模型並開始聊天
+
+### 自行託管
+
+```bash
+git clone https://github.com/hanzoai/chat
+cd chat
+cp .env.example .env
+# Edit .env with your HANZO_API_KEY
+docker compose up -d
+# Open http://localhost:3081
+```
+
+### API
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen5",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+## SDK 用法
+
+### Python
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="sk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen5",
+    messages=[{"role": "user", "content": "Hello, Zen."}]
+)
+print(response.choices[0].message.content)
+```
+
+### TypeScript
+
+```typescript
+import Hanzo from '@hanzo/ai'
+
+const client = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+
+const completion = await client.chat.completions.create({
+  model: 'zen5',
+  messages: [{ role: 'user', content: 'Hello, Zen.' }],
+})
+console.log(completion.choices[0].message.content)
+```
+
+### 既有的 HTTP 用戶端
+
+`/v1/chat/completions` 接受並傳回 chat-completions 的 JSON 形狀，因此
+已經按該形狀寫好的用戶端，只要把基底網址指向
+`https://api.hanzo.ai/v1` 並送出 Hanzo 金鑰，就能在這裡運作。模型 id 不能在
+供應商之間搬移——`zen5` 和 `enso` 只存在於這裡。
+
+## 架構
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        HANZO CHAT                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │ React Client │  │ Node.js API  │  │    DocumentDB    │  │
+│  │              │  │              │  │                  │  │
+│  │ - Chat UI    │  │ - REST API   │  │ - Messages       │  │
+│  │ - Model Sel  │  │ - WebSocket  │  │ - Conversations  │  │
+│  │ - File Upload│  │ - MCP Broker │  │ - Users          │  │
+│  │ - Agents     │  │ - Auth       │  │ - Presets        │  │
+│  └──────────────┘  └──────────────┘  └──────────────────┘  │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │              Provider Layer (AI API)            │    │
+│  │  Zen · OpenAI · Anthropic · Google · Meta · …       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Search       │  KV     │  S3     │  RAG API       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 端點
+
+| 環境 | URL |
+|-------------|-----|
+| 正式環境 | `https://chat.hanzo.ai` |
+| API | `https://api.hanzo.ai/v1` |
+| 本機 | `http://localhost:3081` |
+
+## 價格
+
+- 每個新帳戶 **$5 免費點數**（30 天後過期）
+- **預付** — 透過 [console.hanzo.ai](https://console.hanzo.ai) 加入點數
+- 輸入 **$0.34/MTok** 起（`zen5-flash`）
+- **沒有意外帳單** — 點數用盡後服務停止
+
+<Cards>
+  <Card title="功能" href="/docs/chat/features">
+    預設、檔案上傳、RAG、搜尋、視覺、對話管理
+  </Card>
+  <Card title="設定" href="/docs/chat/configuration">
+    chat.yaml 參考、端點、MCP 工具、模型設定
+  </Card>
+  <Card title="模型" href="/docs/chat/models">
+    選單中的每個模型，及其脈絡視窗與費率
+  </Card>
+  <Card title="代理" href="/docs/chat/agents">
+    帶系統提示與工具存取的自訂人工智慧代理
+  </Card>
+  <Card title="自行託管" href="/docs/chat/self-hosting">
+    Docker、Kubernetes 與雲端部署指南
+  </Card>
+  <Card title="身分驗證" href="/docs/chat/authentication">
+    Hanzo IAM、OAuth2、社群登入、SSO
+  </Card>
+</Cards>
+
+{/* domain-index */}
+
+## 本節內容
+
+<Cards>
+  <Card icon={<LayoutGrid />} title="Hanzo Dev" href="/docs/dev" description="面向終端機的人工智慧程式設計助手。安裝、設定並運作 Hanzo Dev。" />
+  <Card icon={<LayoutGrid />} title="整合" href="/docs/guides/integrations" description="把物件儲存、Slack、Mixpanel 和 Insights 接到你的專案。" />
+  <Card icon={<LayoutGrid />} title="整合與延伸" href="/docs/apps" description="在瀏覽器、編輯器、桌面、文件、設計工具和業務應用程式中安裝並連接 Hanzo — 一個…" />
+</Cards>

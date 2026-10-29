@@ -1,0 +1,157 @@
+---
+title: Hanzo Chat
+description: Ứng dụng chat trên Hanzo Cloud — mô hình enso và Zen, công cụ MCP, tác tử, tải tệp lên và RAG. Được lưu trữ tại chat.hanzo.ai, hoặc bạn tự lưu trữ.
+index: true
+---
+
+import { Cards, Card } from '@hanzo/docs-base-ui/components/card'
+import { LayoutGrid } from 'lucide-react'
+
+# Hanzo Chat
+
+Hanzo Chat là ứng dụng chat trên Hanzo Cloud, xây trên [LibreChat](https://librechat.ai). Nó chạy các mô hình của chúng tôi — họ biên **enso** và họ trọng số mở **Zen** — với công cụ MCP, tác tử cấu hình được, tải tệp lên kèm RAG, thị giác, lịch sử hội thoại, thiết lập sẵn và plugin. Mô hình từ phòng thí nghiệm bên ngoài cũng được mang theo, và xuất hiện trong cùng một menu mô hình.
+
+Có sẵn như dịch vụ lưu trữ tại [chat.hanzo.ai](https://chat.hanzo.ai) hoặc tự lưu trữ qua Docker.
+
+## Bắt đầu nhanh
+
+### Lưu trữ (khuyến nghị)
+
+1. Vào [chat.hanzo.ai](https://chat.hanzo.ai)
+2. Đăng nhập bằng tài khoản Hanzo của bạn
+3. **Tín dụng miễn phí $5** được áp dụng tự động
+4. Chọn một mô hình và bắt đầu trò chuyện
+
+### Tự lưu trữ
+
+```bash
+git clone https://github.com/hanzoai/chat
+cd chat
+cp .env.example .env
+# Edit .env with your HANZO_API_KEY
+docker compose up -d
+# Open http://localhost:3081
+```
+
+### API
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen5",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+## Dùng SDK
+
+### Python
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="sk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen5",
+    messages=[{"role": "user", "content": "Hello, Zen."}]
+)
+print(response.choices[0].message.content)
+```
+
+### TypeScript
+
+```typescript
+import Hanzo from '@hanzo/ai'
+
+const client = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+
+const completion = await client.chat.completions.create({
+  model: 'zen5',
+  messages: [{ role: 'user', content: 'Hello, Zen.' }],
+})
+console.log(completion.choices[0].message.content)
+```
+
+### Máy khách HTTP sẵn có
+
+`/v1/chat/completions` nhận và trả về dạng JSON chat-completions, nên một
+máy khách đã viết theo dạng đó hoạt động ở đây khi URL gốc của nó trỏ tới
+`https://api.hanzo.ai/v1` và gửi một khóa Hanzo. Mã mô hình không mang sang
+nhà cung cấp khác — `zen5` và `enso` chỉ tồn tại ở đây.
+
+## Kiến trúc
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        HANZO CHAT                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │ React Client │  │ Node.js API  │  │    DocumentDB    │  │
+│  │              │  │              │  │                  │  │
+│  │ - Chat UI    │  │ - REST API   │  │ - Messages       │  │
+│  │ - Model Sel  │  │ - WebSocket  │  │ - Conversations  │  │
+│  │ - File Upload│  │ - MCP Broker │  │ - Users          │  │
+│  │ - Agents     │  │ - Auth       │  │ - Presets        │  │
+│  └──────────────┘  └──────────────┘  └──────────────────┘  │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │              Provider Layer (AI API)            │    │
+│  │  Zen · OpenAI · Anthropic · Google · Meta · …       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Search       │  KV     │  S3     │  RAG API       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Điểm cuối
+
+| Môi trường | URL |
+|-------------|-----|
+| Sản xuất | `https://chat.hanzo.ai` |
+| API | `https://api.hanzo.ai/v1` |
+| Cục bộ | `http://localhost:3081` |
+
+## Giá
+
+- **Tín dụng miễn phí $5** trên mọi tài khoản mới (hết hạn sau 30 ngày)
+- **Thanh toán trả trước** — thêm tín dụng qua [console.hanzo.ai](https://console.hanzo.ai)
+- **Từ $0.34/MTok** đầu vào (`zen5-flash`)
+- **Không hóa đơn bất ngờ** — dịch vụ dừng khi tín dụng cạn
+
+<Cards>
+  <Card title="Tính năng" href="/docs/chat/features">
+    Thiết lập sẵn, tải tệp lên, RAG, tìm kiếm, thị giác, quản lý hội thoại
+  </Card>
+  <Card title="Cấu hình" href="/docs/chat/configuration">
+    Tham chiếu chat.yaml, điểm cuối, công cụ MCP, cấu hình mô hình
+  </Card>
+  <Card title="Mô hình" href="/docs/chat/models">
+    Mọi mô hình trong menu, với cửa sổ ngữ cảnh và mức giá
+  </Card>
+  <Card title="Tác tử" href="/docs/chat/agents">
+    Tác tử AI tùy chỉnh với prompt hệ thống và quyền dùng công cụ
+  </Card>
+  <Card title="Tự lưu trữ" href="/docs/chat/self-hosting">
+    Hướng dẫn triển khai Docker, Kubernetes và đám mây
+  </Card>
+  <Card title="Xác thực" href="/docs/chat/authentication">
+    Hanzo IAM, OAuth2, đăng nhập xã hội, SSO
+  </Card>
+</Cards>
+
+{/* domain-index */}
+
+## Trong mục này
+
+<Cards>
+  <Card icon={<LayoutGrid />} title="Hanzo Dev" href="/docs/dev" description="Trợ lý lập trình dùng AI cho terminal của bạn. Cài đặt, cấu hình và vận hành Hanzo Dev." />
+  <Card icon={<LayoutGrid />} title="Tích hợp" href="/docs/guides/integrations" description="Nối lưu trữ blob, Slack, Mixpanel và Insights với dự án của bạn." />
+  <Card icon={<LayoutGrid />} title="Tích hợp và phần mở rộng" href="/docs/apps" description="Cài và nối Hanzo trên trình duyệt, trình soạn thảo, máy tính, tài liệu, công cụ thiết kế và ứng dụng nghiệp vụ — một…" />
+</Cards>

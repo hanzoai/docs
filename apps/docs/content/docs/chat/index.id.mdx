@@ -1,0 +1,157 @@
+---
+title: Hanzo Chat
+description: Aplikasi obrolan di Hanzo Cloud — model enso dan Zen, alat MCP, agen, unggah berkas, dan RAG. Dihosting di chat.hanzo.ai, atau host sendiri.
+index: true
+---
+
+import { Cards, Card } from '@hanzo/docs-base-ui/components/card'
+import { LayoutGrid } from 'lucide-react'
+
+# Hanzo Chat
+
+Hanzo Chat adalah aplikasi obrolan di Hanzo Cloud, dibangun di atas [LibreChat](https://librechat.ai). Ia menjalankan model kami sendiri — keluarga perbatasan **enso** dan keluarga bobot terbuka **Zen** — dengan alat MCP, agen yang dapat diatur, unggah berkas dengan RAG, penglihatan, riwayat percakapan, preset, dan plugin. Model dari laboratorium luar juga dibawa, dan muncul di menu model yang sama.
+
+Tersedia sebagai layanan terhosting di [chat.hanzo.ai](https://chat.hanzo.ai) atau dihosting sendiri lewat Docker.
+
+## Mulai cepat
+
+### Terhosting (disarankan)
+
+1. Buka [chat.hanzo.ai](https://chat.hanzo.ai)
+2. Masuk dengan akun Hanzo Anda
+3. **Kredit gratis $5** Anda diterapkan secara otomatis
+4. Pilih model dan mulai mengobrol
+
+### Host sendiri
+
+```bash
+git clone https://github.com/hanzoai/chat
+cd chat
+cp .env.example .env
+# Edit .env with your HANZO_API_KEY
+docker compose up -d
+# Open http://localhost:3081
+```
+
+### API
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen5",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+## Penggunaan SDK
+
+### Python
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="sk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen5",
+    messages=[{"role": "user", "content": "Hello, Zen."}]
+)
+print(response.choices[0].message.content)
+```
+
+### TypeScript
+
+```typescript
+import Hanzo from '@hanzo/ai'
+
+const client = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+
+const completion = await client.chat.completions.create({
+  model: 'zen5',
+  messages: [{ role: 'user', content: 'Hello, Zen.' }],
+})
+console.log(completion.choices[0].message.content)
+```
+
+### Klien HTTP yang sudah ada
+
+`/v1/chat/completions` menerima dan mengembalikan bentuk JSON chat-completions, jadi
+klien yang sudah ditulis terhadap bentuk itu bekerja di sini begitu URL dasarnya menunjuk ke
+`https://api.hanzo.ai/v1` dan mengirim kunci Hanzo. Pengenal model tidak portabel
+antar vendor — `zen5` dan `enso` hanya ada di sini.
+
+## Arsitektur
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        HANZO CHAT                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │ React Client │  │ Node.js API  │  │    DocumentDB    │  │
+│  │              │  │              │  │                  │  │
+│  │ - Chat UI    │  │ - REST API   │  │ - Messages       │  │
+│  │ - Model Sel  │  │ - WebSocket  │  │ - Conversations  │  │
+│  │ - File Upload│  │ - MCP Broker │  │ - Users          │  │
+│  │ - Agents     │  │ - Auth       │  │ - Presets        │  │
+│  └──────────────┘  └──────────────┘  └──────────────────┘  │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │              Provider Layer (AI API)            │    │
+│  │  Zen · OpenAI · Anthropic · Google · Meta · …       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Search       │  KV     │  S3     │  RAG API       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Titik akhir
+
+| Lingkungan | URL |
+|-------------|-----|
+| Produksi | `https://chat.hanzo.ai` |
+| API | `https://api.hanzo.ai/v1` |
+| Lokal | `http://localhost:3081` |
+
+## Harga
+
+- **Kredit gratis $5** di setiap akun baru (kedaluwarsa dalam 30 hari)
+- **Penagihan prabayar** — tambahkan kredit lewat [console.hanzo.ai](https://console.hanzo.ai)
+- **Mulai dari $0.34/MTok** masukan (`zen5-flash`)
+- **Tanpa tagihan kejutan** — layanan berhenti ketika kredit habis
+
+<Cards>
+  <Card title="Fitur" href="/docs/chat/features">
+    Preset, unggah berkas, RAG, pencarian, penglihatan, pengelolaan percakapan
+  </Card>
+  <Card title="Konfigurasi" href="/docs/chat/configuration">
+    Rujukan chat.yaml, titik akhir, alat MCP, konfigurasi model
+  </Card>
+  <Card title="Model" href="/docs/chat/models">
+    Setiap model di menu, dengan jendela konteks dan tarifnya
+  </Card>
+  <Card title="Agen" href="/docs/chat/agents">
+    Agen AI kustom dengan prompt sistem dan akses alat
+  </Card>
+  <Card title="Host sendiri" href="/docs/chat/self-hosting">
+    Panduan penyebaran Docker, Kubernetes, dan cloud
+  </Card>
+  <Card title="Autentikasi" href="/docs/chat/authentication">
+    Hanzo IAM, OAuth2, masuk sosial, SSO
+  </Card>
+</Cards>
+
+{/* domain-index */}
+
+## Di bagian ini
+
+<Cards>
+  <Card icon={<LayoutGrid />} title="Hanzo Dev" href="/docs/dev" description="Asisten pemrograman bertenaga AI untuk terminal Anda. Pasang, atur, dan operasikan Hanzo Dev." />
+  <Card icon={<LayoutGrid />} title="Integrasi" href="/docs/guides/integrations" description="Hubungkan penyimpanan blob, Slack, Mixpanel, dan Insights ke proyek Anda." />
+  <Card icon={<LayoutGrid />} title="Integrasi dan ekstensi" href="/docs/apps" description="Pasang dan hubungkan Hanzo di peramban, editor, desktop, dokumen, alat desain, dan aplikasi bisnis — satu…" />
+</Cards>

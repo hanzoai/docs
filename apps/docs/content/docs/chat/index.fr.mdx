@@ -1,0 +1,157 @@
+---
+title: Hanzo Chat
+description: L'application de chat sur Hanzo Cloud — modèles enso et Zen, outils MCP, agents, envois de fichiers et RAG. Hébergée sur chat.hanzo.ai, ou à auto-héberger.
+index: true
+---
+
+import { Cards, Card } from '@hanzo/docs-base-ui/components/card'
+import { LayoutGrid } from 'lucide-react'
+
+# Hanzo Chat
+
+Hanzo Chat est l'application de chat sur Hanzo Cloud, construite sur [LibreChat](https://librechat.ai). Elle exécute nos propres modèles — la famille frontière **enso** et la famille à poids ouverts **Zen** — avec des outils MCP, des agents configurables, l'envoi de fichiers avec RAG, la vision, l'historique des conversations, des préréglages et des plugins. Les modèles de laboratoires extérieurs sont également proposés, et apparaissent dans le même menu de modèles.
+
+Disponible comme service hébergé sur [chat.hanzo.ai](https://chat.hanzo.ai) ou auto-hébergée via Docker.
+
+## Démarrage rapide
+
+### Hébergé (recommandé)
+
+1. Allez sur [chat.hanzo.ai](https://chat.hanzo.ai)
+2. Connectez-vous avec votre compte Hanzo
+3. Votre **crédit gratuit de $5** est appliqué automatiquement
+4. Choisissez un modèle et commencez à discuter
+
+### Auto-hébergé
+
+```bash
+git clone https://github.com/hanzoai/chat
+cd chat
+cp .env.example .env
+# Edit .env with your HANZO_API_KEY
+docker compose up -d
+# Open http://localhost:3081
+```
+
+### API
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen5",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+## Utilisation du SDK
+
+### Python
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="sk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen5",
+    messages=[{"role": "user", "content": "Hello, Zen."}]
+)
+print(response.choices[0].message.content)
+```
+
+### TypeScript
+
+```typescript
+import Hanzo from '@hanzo/ai'
+
+const client = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+
+const completion = await client.chat.completions.create({
+  model: 'zen5',
+  messages: [{ role: 'user', content: 'Hello, Zen.' }],
+})
+console.log(completion.choices[0].message.content)
+```
+
+### Clients HTTP existants
+
+`/v1/chat/completions` accepte et renvoie la forme JSON chat-completions, donc un
+client déjà écrit contre cette forme fonctionne ici dès que son URL de base pointe vers
+`https://api.hanzo.ai/v1` et qu'il envoie une clé Hanzo. Les identifiants de modèle ne se transportent pas
+d'un fournisseur à l'autre — `zen5` et `enso` n'existent qu'ici.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        HANZO CHAT                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │ React Client │  │ Node.js API  │  │    DocumentDB    │  │
+│  │              │  │              │  │                  │  │
+│  │ - Chat UI    │  │ - REST API   │  │ - Messages       │  │
+│  │ - Model Sel  │  │ - WebSocket  │  │ - Conversations  │  │
+│  │ - File Upload│  │ - MCP Broker │  │ - Users          │  │
+│  │ - Agents     │  │ - Auth       │  │ - Presets        │  │
+│  └──────────────┘  └──────────────┘  └──────────────────┘  │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │              Provider Layer (AI API)            │    │
+│  │  Zen · OpenAI · Anthropic · Google · Meta · …       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Search       │  KV     │  S3     │  RAG API       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Points d'accès
+
+| Environnement | URL |
+|-------------|-----|
+| Production | `https://chat.hanzo.ai` |
+| API | `https://api.hanzo.ai/v1` |
+| Local | `http://localhost:3081` |
+
+## Tarifs
+
+- **Crédit gratuit de $5** sur chaque nouveau compte (expire au bout de 30 jours)
+- **Facturation prépayée** — ajoutez des crédits via [console.hanzo.ai](https://console.hanzo.ai)
+- **À partir de $0.34/MTok** en entrée (`zen5-flash`)
+- **Pas de factures surprises** — le service s'arrête lorsque les crédits sont épuisés
+
+<Cards>
+  <Card title="Fonctions" href="/docs/chat/features">
+    Préréglages, envois de fichiers, RAG, recherche, vision, gestion des conversations
+  </Card>
+  <Card title="Configuration" href="/docs/chat/configuration">
+    Référence de chat.yaml, points d'accès, outils MCP, configuration des modèles
+  </Card>
+  <Card title="Modèles" href="/docs/chat/models">
+    Chaque modèle du menu, avec sa fenêtre de contexte et son tarif
+  </Card>
+  <Card title="Agents" href="/docs/chat/agents">
+    Agents d'IA personnalisés avec invites système et accès aux outils
+  </Card>
+  <Card title="Auto-hébergement" href="/docs/chat/self-hosting">
+    Guides de déploiement Docker, Kubernetes et cloud
+  </Card>
+  <Card title="Authentification" href="/docs/chat/authentication">
+    Hanzo IAM, OAuth2, connexion sociale, SSO
+  </Card>
+</Cards>
+
+{/* domain-index */}
+
+## Dans cette section
+
+<Cards>
+  <Card icon={<LayoutGrid />} title="Hanzo Dev" href="/docs/dev" description="Assistant de programmation à IA pour votre terminal. Installez, configurez et exploitez Hanzo Dev." />
+  <Card icon={<LayoutGrid />} title="Intégrations" href="/docs/guides/integrations" description="Connectez le stockage d'objets, Slack, Mixpanel et Insights à votre projet." />
+  <Card icon={<LayoutGrid />} title="Intégrations et extensions" href="/docs/apps" description="Installez et connectez Hanzo dans le navigateur, l'éditeur, le bureau, la documentation, les outils de conception et les applications métier — un…" />
+</Cards>

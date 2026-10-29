@@ -1,0 +1,93 @@
+---
+icon: Wallet
+title: Tín dụng và thanh toán
+description: Tín dụng là gì, một lệnh gọi trừ nó như thế nào, số dư nằm ở đâu và chuyện gì xảy ra khi số dư về không.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Sau trang này bạn biết mình đang chi gì, đọc nó ở đâu, và chuyện gì
+xảy ra khi nó cạn.**
+
+Không có giấy phép theo chỗ ngồi và không có mức tối thiểu. Bạn giữ một số dư, mỗi lệnh gọi được đo
+trừ nó theo một mức giá đã công bố, và tài khoản không gửi gì thì không bị
+tính gì.
+
+## Bốn danh từ
+
+Tiền là bốn năng lực, và chúng không chồng lên nhau.
+
+| | Nó trả lời điều gì | Địa chỉ |
+|---|---|---|
+| **[Giá](/docs/openapi/pricing)** | một đơn vị tốn bao nhiêu, trước khi bạn chi | `/v1/pricing` |
+| **[Mức dùng](/docs/openapi/usage)** | những gì bạn thực sự đã tiêu thụ | `/v1/usage` |
+| **[Thanh toán](/docs/openapi/billing)** | số dư, tín dụng và hóa đơn của bạn | `/v1/billing` |
+| **[Thương mại](/docs/openapi/commerce)** | sổ cái mà mỗi mục ở trên đều đọc | `/v1/commerce` |
+
+Đọc chúng theo thứ tự đó và toàn bộ nền kinh tế là một câu: **giá** nói
+mức giá, **mức dùng** nói số lượng, **thanh toán** nói tiền, và
+**thương mại** là sổ cái mà ba mục kia là thấu kính hướng vào.
+
+## Đọc số dư của bạn
+
+```bash
+hanzo billing balance
+```
+
+```bash
+curl https://api.hanzo.ai/v1/billing/balance \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Tín dụng được mua — hoặc được cấp — tại `https://api.hanzo.ai/v1/billing/credits`,
+và mỗi lần trừ là một bút toán sổ cái, nên số dư không bao giờ là con số mà ai đó
+giữ bằng tay. Những gì bạn đã tiêu thụ là một lần đọc riêng, vì tiêu thụ
+và tiền là hai câu hỏi khác nhau:
+
+```bash
+hanzo usage summary
+```
+
+## Hai trần, và chúng không phải một
+
+<Callout>
+**Số dư** là những gì bạn có. **Hạn mức** và **trần** là những gì bạn được
+phép chi từ đó. Nhầm ba thứ này là lý do thường gặp khiến một lệnh gọi
+bị từ chối trong khi số dư trông vẫn khỏe.
+</Callout>
+
+- **[Hạn mức](/docs/openapi/allowance)** — một khoản cấp thường trực mà người gọi chi
+  vào đó, tại `/v1/allowance`. Đó là cách một tổ chức trao cho một dự án, một khóa hoặc một
+  thành viên một ngân sách mà không trao cả số dư.
+- **Trần trượt** — trần cửa sổ đuôi trên chi tiêu AI, áp tại
+  cổng suy luận. Nó đặt lại liên tục chứ không tại một mốc: khoản chi cũ hơn
+  cửa sổ rời khỏi tổng đuôi, nên không có vách tháng
+  và không có lần đặt lại lúc nửa đêm. Nó là một móc trên cổng chứ không phải một năng lực
+  riêng, nên không có địa chỉ và không có trang; bản thân các trần là
+  cờ nền tảng mà người vận hành sửa.
+
+## Chuyện gì xảy ra ở mức không
+
+Một lệnh gọi được đo bị từ chối. Nó bị từ chối tại cổng, trước khi công việc diễn ra,
+nên bạn không bao giờ bị tính tiền cho một lệnh gọi sắp thất bại — và lời từ chối
+nêu lý do thay vì trả về một lỗi chung, để máy khách phân biệt
+«hết tín dụng» với «khóa sai» mà không phải đoán. Những lần đọc không tốn gì vẫn
+trả lời: bạn luôn có thể kiểm tra một số dư mà bạn không thể chi.
+
+## Lệnh gọi nào tốn gì đó
+
+Hầu hết thì không. Một năng lực khai báo giá cạnh mã của nó — miễn phí, phẳng, hoặc
+được đo — và những cái miễn phí là đa số: liệt kê dự án, đọc
+các lần giao của một webhook, lấy hồ sơ của chính bạn. Thứ được đo là thứ
+tiêu thụ một tài nguyên thật — token suy luận, giây sandbox, một SMS đi, một
+trang đã thu thập.
+
+Mỗi trang năng lực nêu câu trả lời của riêng nó, và [Giá](/docs/pricing)
+mang bảng mức giá cho mọi mô hình và công cụ.
+
+## Tiếp theo
+
+- **[Giá](/docs/pricing)** — các mức giá, theo mỗi triệu token và theo mỗi lệnh gọi.
+- **[Mức dùng](/docs/openapi/usage)** — API báo cáo.
+- **[Xác thực](/docs/api-keys)** — một khóa có thể giới hạn vào một mô hình, một
+  dự án hoặc một năng lực, đó là nửa còn lại của việc kiểm soát chi tiêu.

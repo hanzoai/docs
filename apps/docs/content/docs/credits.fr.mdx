@@ -1,0 +1,93 @@
+---
+icon: Wallet
+title: Crédits et facturation
+description: Ce qu'est un crédit, comment un appel en débite un, où se trouve le solde, et ce qui se passe lorsqu'il atteint zéro.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Après cette page, vous savez ce que vous dépensez, où le lire, et ce qui
+se passe lorsque c'est épuisé.**
+
+Il n'y a ni licence par siège ni minimum. Vous détenez un solde, chaque appel mesuré
+le débite à un tarif publié, et un compte qui n'envoie rien n'est facturé
+de rien.
+
+## Les quatre noms
+
+L'argent se compose de quatre capacités, et elles ne se recouvrent pas.
+
+| | Ce qu'elle répond | Adresse |
+|---|---|---|
+| **[Tarifs](/docs/openapi/pricing)** | ce que coûte une unité, avant de la dépenser | `/v1/pricing` |
+| **[Consommation](/docs/openapi/usage)** | ce que vous avez réellement consommé | `/v1/usage` |
+| **[Facturation](/docs/openapi/billing)** | votre solde, vos crédits et vos factures | `/v1/billing` |
+| **[Commerce](/docs/openapi/commerce)** | le grand livre que chacune des lignes ci-dessus lit | `/v1/commerce` |
+
+Lisez-les dans cet ordre et toute l'économie tient en une phrase : **tarifs** indique
+le taux, **consommation** indique la quantité, **facturation** indique l'argent, et
+**commerce** est le grand livre dont les trois autres sont des lentilles.
+
+## Lire votre solde
+
+```bash
+hanzo billing balance
+```
+
+```bash
+curl https://api.hanzo.ai/v1/billing/balance \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Les crédits s'achètent — ou se reçoivent — à `https://api.hanzo.ai/v1/billing/credits`,
+et chaque débit est une écriture du grand livre, si bien que le solde n'est jamais un nombre
+que quelqu'un aurait tenu à la main. Ce que vous avez consommé est une lecture séparée, parce que la consommation
+et l'argent sont des questions distinctes :
+
+```bash
+hanzo usage summary
+```
+
+## Deux plafonds, et ils ne sont pas les mêmes
+
+<Callout>
+Un **solde** est ce que vous avez. Une **allocation** et un **plafond** sont ce que vous êtes
+autorisé à en dépenser. Confondre les trois est la raison habituelle pour laquelle un appel
+est refusé alors que le solde paraît encore sain.
+</Callout>
+
+- **[Allocation](/docs/openapi/allowance)** — une dotation permanente sur laquelle
+  l'appelant dépense, à `/v1/allowance`. C'est ainsi qu'une organisation remet à un projet, une clé ou un
+  membre un budget sans remettre l'ensemble du solde.
+- **Le plafond glissant** — un plafond sur fenêtre glissante des dépenses d'IA, appliqué à la
+  porte d'inférence. Il se réinitialise en continu plutôt qu'à une frontière : les dépenses plus anciennes
+  que la fenêtre sortent de la somme glissante, donc il n'y a ni falaise mensuelle
+  ni remise à zéro à minuit. C'est un crochet sur la porte plutôt qu'une capacité
+  à part entière, donc il n'a ni adresse ni page ; les plafonds eux-mêmes sont des
+  indicateurs de la plateforme qu'un opérateur modifie.
+
+## Ce qui se passe à zéro
+
+Un appel mesuré est refusé. Il est refusé à la porte, avant que le travail n'ait lieu,
+donc vous n'êtes jamais facturé pour un appel qui allait échouer — et le refus
+nomme la raison au lieu de renvoyer une erreur générique, afin qu'un client distingue
+« plus de crédit » de « mauvaise clé » sans deviner. Les lectures qui ne coûtent rien continuent
+de répondre : vous pouvez toujours consulter un solde que vous ne pouvez pas dépenser.
+
+## Quels appels coûtent quelque chose
+
+La plupart ne coûtent rien. Une capacité déclare son prix à côté de son code — gratuit, forfaitaire ou
+mesuré — et les gratuites sont la majorité : lister vos projets, lire les
+livraisons d'un webhook, récupérer votre propre profil. Ce qui est mesuré est ce qui
+consomme une ressource réelle — des jetons d'inférence, des secondes de sandbox, un SMS sortant, une
+page explorée.
+
+Chaque page de capacité donne sa propre réponse, et [Tarifs](/docs/pricing)
+porte le tableau des tarifs de chaque modèle et outil.
+
+## Suite
+
+- **[Tarifs](/docs/pricing)** — les tarifs, par million de jetons et par appel.
+- **[Consommation](/docs/openapi/usage)** — l'API de reporting.
+- **[Authentification](/docs/api-keys)** — une clé peut être limitée à un modèle, un
+  projet ou une capacité, ce qui est l'autre moitié du contrôle des dépenses.

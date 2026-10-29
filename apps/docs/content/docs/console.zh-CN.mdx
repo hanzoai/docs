@@ -1,0 +1,40 @@
+---
+icon: LayoutDashboard
+title: 控制台
+description: Hanzo Cloud 的统一云控制台 -- 在 console.hanzo.ai 的一个应用里管理每一项产品、密钥和组织。
+---
+
+# 控制台
+
+Hanzo 控制台是 Hanzo Cloud 的统一控制面 -- 就是你正在看的这个应用。它把每一项云产品放到同一处：身份、密钥、机密、模型、账单、部署和仪表板，全部限定在你的组织范围内。
+
+## 一个应用覆盖每项产品
+
+控制台从单一产品目录渲染，因此每一项 Hanzo Cloud 服务都能从同一套导航、概览和命令面板到达。每项产品都是原生模块 -- 不是跳转到外部的链接 -- 并由真实的 `/v1` API 支撑：
+
+- **AI** -- 模型、演练场、提供商、embeddings
+- **安全** -- [IAM](/docs/openapi/iam)、[KMS](/docs/openapi/kms)、[Authz](/docs/openapi/authz)、[MPC](/docs/openapi)、[Zero Trust](/docs/openapi/network)
+- **观测** -- [仪表板](/docs/openapi/o11y)、成本、[账单](/docs/openapi/billing)、状态
+- **部署** -- 项目、环境、函数、集群
+
+## 登录与范围
+
+控制台通过 [hanzo.id](https://hanzo.id) 上的 Hanzo IAM，以 `hanzo-cloud` 应用的身份登录。你的会话限定在一个**组织**内，全局管理员可以把范围切换到任意组织；品牌标识保持不变，数据就地重新限定范围。参见 [IAM](/docs/openapi/iam) 和[组织](/docs/openapi/iam)。
+
+## 它如何交付
+
+控制台是直接嵌入（`go:embed`）Hanzo Cloud 二进制文件的单页应用，并在 `console.hanzo.ai` 上提供。它是统一 `/v1` 后端之上的纯客户端 -- 自己不持有数据库；每个视图都是服务 API 的真实数据。
+
+```bash
+# The console calls the same API you can call directly, with the same key
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer sk-..."
+```
+
+## 相关
+
+- [IAM](/docs/openapi/iam) -- 每个控制台视图背后的身份与组织范围
+- [API 密钥](/docs/api-keys) -- 从控制台为 API 创建密钥
+- [仪表板](/docs/openapi/o11y) -- 分析与可观测性界面
+- [账单](/docs/openapi/billing) -- 余额、用量与发票
+- [API](/docs/openapi) -- 控制台所渲染的同一套 `/v1` 表面

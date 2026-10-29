@@ -1,0 +1,40 @@
+---
+icon: LayoutDashboard
+title: Bảng điều khiển
+description: Bảng điều khiển đám mây thống nhất cho Hanzo Cloud -- quản lý mọi sản phẩm, khóa và tổ chức từ một ứng dụng tại console.hanzo.ai.
+---
+
+# Bảng điều khiển
+
+Bảng điều khiển Hanzo là bề mặt điều khiển thống nhất của Hanzo Cloud -- chính ứng dụng bạn đang xem. Nó gom mọi sản phẩm đám mây vào một chỗ: danh tính, khóa, bí mật, mô hình, thanh toán, triển khai và bảng điều khiển, tất cả trong phạm vi tổ chức của bạn.
+
+## Một ứng dụng cho mọi sản phẩm
+
+Bảng điều khiển kết xuất từ một danh mục sản phẩm duy nhất, nên mọi dịch vụ Hanzo Cloud đều tới được từ cùng điều hướng, tổng quan và bảng lệnh. Mỗi sản phẩm là một mô-đun gốc -- không phải liên kết ra ngoài -- dựa trên API `/v1` thật:
+
+- **AI** -- mô hình, sân chơi, nhà cung cấp, embeddings
+- **Bảo mật** -- [IAM](/docs/openapi/iam), [KMS](/docs/openapi/kms), [Authz](/docs/openapi/authz), [MPC](/docs/openapi), [Zero Trust](/docs/openapi/network)
+- **Quan sát** -- [bảng thông tin](/docs/openapi/o11y), chi phí, [thanh toán](/docs/openapi/billing), trạng thái
+- **Triển khai** -- dự án, môi trường, hàm, cụm
+
+## Đăng nhập và phạm vi
+
+Bảng điều khiển đăng nhập qua Hanzo IAM tại [hanzo.id](https://hanzo.id) với tư cách ứng dụng `hanzo-cloud`. Phiên của bạn được khoanh trong một **tổ chức**, và quản trị viên toàn cục có thể chuyển phạm vi sang bất kỳ tổ chức nào; dữ liệu được khoanh lại tại chỗ trong khi nhận diện thương hiệu giữ nguyên. Xem [IAM](/docs/openapi/iam) và [Tổ chức](/docs/openapi/iam).
+
+## Cách nó được phát hành
+
+Bảng điều khiển là ứng dụng một trang được nhúng (`go:embed`) thẳng vào tệp nhị phân Hanzo Cloud và phục vụ tại `console.hanzo.ai`. Đó là máy khách thuần trên backend `/v1` thống nhất -- không giữ cơ sở dữ liệu riêng; mỗi khung nhìn là dữ liệu thật từ API dịch vụ.
+
+```bash
+# The console calls the same API you can call directly, with the same key
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer sk-..."
+```
+
+## Liên quan
+
+- [IAM](/docs/openapi/iam) -- danh tính và phạm vi tổ chức đứng sau mỗi khung nhìn của bảng điều khiển
+- [Khóa API](/docs/api-keys) -- tạo khóa từ bảng điều khiển cho API
+- [Bảng thông tin](/docs/openapi/o11y) -- bề mặt phân tích và khả năng quan sát
+- [Thanh toán](/docs/openapi/billing) -- số dư, mức dùng và hóa đơn
+- [API](/docs/openapi) -- cùng bề mặt `/v1` mà bảng điều khiển kết xuất

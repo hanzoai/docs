@@ -1,0 +1,40 @@
+---
+icon: LayoutDashboard
+title: Consola
+description: La consola unificada en la nube de Hanzo Cloud -- gestiona cada producto, clave y organización desde una sola app en console.hanzo.ai.
+---
+
+# Consola
+
+La consola de Hanzo es la superficie de control unificada de Hanzo Cloud -- la app que estás viendo. Reúne cada producto en la nube en un solo lugar: identidad, claves, secretos, modelos, facturación, despliegues y paneles, todo con el alcance de tu organización.
+
+## Una app para cada producto
+
+La consola se renderiza a partir de un único catálogo de productos, así que cada servicio de Hanzo Cloud se alcanza desde la misma navegación, la vista general y la paleta de comandos. Cada producto es un módulo nativo -- no un enlace hacia fuera -- respaldado por la API `/v1` real:
+
+- **IA** -- modelos, entorno de pruebas, proveedores, embeddings
+- **Seguridad** -- [IAM](/docs/openapi/iam), [KMS](/docs/openapi/kms), [Authz](/docs/openapi/authz), [MPC](/docs/openapi), [Zero Trust](/docs/openapi/network)
+- **Observación** -- [paneles](/docs/openapi/o11y), costo, [facturación](/docs/openapi/billing), estado
+- **Despliegue** -- proyectos, entornos, funciones, clústeres
+
+## Inicio de sesión y alcance
+
+La consola inicia sesión a través de Hanzo IAM en [hanzo.id](https://hanzo.id) como la aplicación `hanzo-cloud`. Tu sesión tiene el alcance de una **organización**, y un administrador global puede cambiar el alcance a cualquier organización; los datos se reescopan en el sitio mientras la identidad de marca permanece fija. Consulta [IAM](/docs/openapi/iam) y [Organizaciones](/docs/openapi/iam).
+
+## Cómo se entrega
+
+La consola es una aplicación de una sola página incrustada (`go:embed`) directamente en el binario de Hanzo Cloud y se sirve en `console.hanzo.ai`. Es un cliente puro sobre el backend unificado `/v1` -- no tiene base de datos propia; cada vista son datos reales de una API de servicio.
+
+```bash
+# The console calls the same API you can call directly, with the same key
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer sk-..."
+```
+
+## Relacionado
+
+- [IAM](/docs/openapi/iam) -- la identidad y el alcance de organización detrás de cada vista de la consola
+- [Claves de API](/docs/api-keys) -- crea claves desde la consola para la API
+- [Paneles](/docs/openapi/o11y) -- superficies de analítica y observabilidad
+- [Facturación](/docs/openapi/billing) -- saldo, uso y facturas
+- [API](/docs/openapi) -- la misma superficie `/v1` que renderiza la consola

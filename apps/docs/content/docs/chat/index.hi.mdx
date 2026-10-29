@@ -1,0 +1,157 @@
+---
+title: Hanzo Chat
+description: Hanzo Cloud पर चैट ऐप — enso और Zen मॉडल, MCP उपकरण, एजेंट, फ़ाइल अपलोड और RAG। chat.hanzo.ai पर होस्ट, या स्वयं होस्ट करें।
+index: true
+---
+
+import { Cards, Card } from '@hanzo/docs-base-ui/components/card'
+import { LayoutGrid } from 'lucide-react'
+
+# Hanzo Chat
+
+Hanzo Chat, Hanzo Cloud पर चैट ऐप है, जो [LibreChat](https://librechat.ai) पर बना है। यह हमारे अपने मॉडल चलाता है — सीमांत परिवार **enso** और खुले भार वाला परिवार **Zen** — MCP उपकरणों, विन्यास योग्य एजेंटों, RAG के साथ फ़ाइल अपलोड, दृष्टि, बातचीत के इतिहास, प्रीसेट और प्लगइन के साथ। बाहर की प्रयोगशालाओं के मॉडल भी आते हैं, और उसी मॉडल मेनू में दिखते हैं।
+
+[chat.hanzo.ai](https://chat.hanzo.ai) पर होस्ट की गई सेवा के रूप में उपलब्ध है, या Docker से स्वयं होस्ट करें।
+
+## त्वरित आरंभ
+
+### होस्ट किया हुआ (अनुशंसित)
+
+1. [chat.hanzo.ai](https://chat.hanzo.ai) पर जाएँ
+2. अपने Hanzo खाते से साइन इन करें
+3. आपका **$5 का मुफ़्त क्रेडिट** अपने आप लग जाता है
+4. एक मॉडल चुनें और बातचीत शुरू करें
+
+### स्वयं होस्ट
+
+```bash
+git clone https://github.com/hanzoai/chat
+cd chat
+cp .env.example .env
+# Edit .env with your HANZO_API_KEY
+docker compose up -d
+# Open http://localhost:3081
+```
+
+### API
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen5",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+## SDK का उपयोग
+
+### Python
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="sk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen5",
+    messages=[{"role": "user", "content": "Hello, Zen."}]
+)
+print(response.choices[0].message.content)
+```
+
+### TypeScript
+
+```typescript
+import Hanzo from '@hanzo/ai'
+
+const client = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+
+const completion = await client.chat.completions.create({
+  model: 'zen5',
+  messages: [{ role: 'user', content: 'Hello, Zen.' }],
+})
+console.log(completion.choices[0].message.content)
+```
+
+### मौजूदा HTTP क्लाइंट
+
+`/v1/chat/completions` chat-completions का JSON आकार लेता और लौटाता है, इसलिए
+उस आकार के विरुद्ध पहले से लिखा क्लाइंट यहाँ तब काम करता है जब उसका आधार URL
+`https://api.hanzo.ai/v1` की ओर इशारा करे और वह Hanzo कुंजी भेजे। मॉडल पहचान पत्र विक्रेताओं के बीच
+साथ नहीं चलते — `zen5` और `enso` केवल यहीं हैं।
+
+## वास्तुकला
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        HANZO CHAT                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │ React Client │  │ Node.js API  │  │    DocumentDB    │  │
+│  │              │  │              │  │                  │  │
+│  │ - Chat UI    │  │ - REST API   │  │ - Messages       │  │
+│  │ - Model Sel  │  │ - WebSocket  │  │ - Conversations  │  │
+│  │ - File Upload│  │ - MCP Broker │  │ - Users          │  │
+│  │ - Agents     │  │ - Auth       │  │ - Presets        │  │
+│  └──────────────┘  └──────────────┘  └──────────────────┘  │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │              Provider Layer (AI API)            │    │
+│  │  Zen · OpenAI · Anthropic · Google · Meta · …       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Search       │  KV     │  S3     │  RAG API       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## अंत बिंदु
+
+| वातावरण | URL |
+|-------------|-----|
+| उत्पादन | `https://chat.hanzo.ai` |
+| API | `https://api.hanzo.ai/v1` |
+| स्थानीय | `http://localhost:3081` |
+
+## मूल्य
+
+- हर नए खाते पर **$5 का मुफ़्त क्रेडिट** (30 दिनों में समाप्त)
+- **पूर्वभुगतान बिलिंग** — [console.hanzo.ai](https://console.hanzo.ai) से क्रेडिट जोड़ें
+- इनपुट **$0.34/MTok** से शुरू (`zen5-flash`)
+- **अचानक बिल नहीं** — क्रेडिट समाप्त होने पर सेवा रुक जाती है
+
+<Cards>
+  <Card title="सुविधाएँ" href="/docs/chat/features">
+    प्रीसेट, फ़ाइल अपलोड, RAG, खोज, दृष्टि, बातचीत प्रबंधन
+  </Card>
+  <Card title="विन्यास" href="/docs/chat/configuration">
+    chat.yaml संदर्भ, अंत बिंदु, MCP उपकरण, मॉडल विन्यास
+  </Card>
+  <Card title="मॉडल" href="/docs/chat/models">
+    मेनू का हर मॉडल, अपनी संदर्भ खिड़की और दर के साथ
+  </Card>
+  <Card title="एजेंट" href="/docs/chat/agents">
+    सिस्टम प्रॉम्प्ट और उपकरण पहुँच वाले कस्टम कृत्रिम बुद्धि एजेंट
+  </Card>
+  <Card title="स्वयं होस्टिंग" href="/docs/chat/self-hosting">
+    Docker, Kubernetes और क्लाउड परिनियोजन मार्गदर्शिकाएँ
+  </Card>
+  <Card title="प्रमाणीकरण" href="/docs/chat/authentication">
+    Hanzo IAM, OAuth2, सामाजिक साइन-इन, SSO
+  </Card>
+</Cards>
+
+{/* domain-index */}
+
+## इस अनुभाग में
+
+<Cards>
+  <Card icon={<LayoutGrid />} title="Hanzo Dev" href="/docs/dev" description="आपके टर्मिनल के लिए कृत्रिम बुद्धि वाला कोडिंग सहायक। Hanzo Dev स्थापित करें, विन्यास करें और चलाएँ।" />
+  <Card icon={<LayoutGrid />} title="एकीकरण" href="/docs/guides/integrations" description="ब्लॉब भंडारण, Slack, Mixpanel और Insights को अपनी परियोजना से जोड़ें।" />
+  <Card icon={<LayoutGrid />} title="एकीकरण और विस्तार" href="/docs/apps" description="ब्राउज़र, संपादक, डेस्कटॉप, दस्तावेज़, डिज़ाइन उपकरणों और व्यावसायिक ऐप में Hanzo स्थापित करें और जोड़ें — एक…" />
+</Cards>
