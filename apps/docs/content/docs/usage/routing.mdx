@@ -1,6 +1,6 @@
 ---
 title: Smart routing
-description: Send model "auto" to api.hanzo.ai and each prompt is routed to the model that fits the task and your SLO — for up to 90% lower AI spend.
+description: Send model "auto" and each prompt is routed to a model that fits the task and your SLO. You pay that model's fixed per-token price — no routing fee.
 ---
 
 import { Steps, Step } from '@hanzo/docs-base-ui/components/steps';
@@ -8,11 +8,9 @@ import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
 
 # Smart routing
 
-Set `model: "auto"` on a Hanzo Cloud chat completion and each prompt is routed
-to the model that fits the task and your service-level objective — a local
-[Zen](https://huggingface.co/zenlm) model, a cheap tier, or a frontier model.
-You are billed as whatever actually served the request, and every response
-carries an `X-Routed-Model` header so the choice is transparent.
+Most prompts in a real workload are easy, and sending every one of them to the most expensive model you have is a habit, not a design. Set `model: "auto"` on a Hanzo Cloud chat completion and each prompt is routed to a model that fits the task and your service-level objective — a local [Zen](https://huggingface.co/zenlm) model, a cheaper tier, or a frontier model when the prompt actually needs one.
+
+You are billed as whatever actually served the request, at that model's fixed per-token price. There is no percentage added for the routing. Every response carries an `X-Routed-Model` header so the choice is visible, which matters: a router you cannot audit is a router you should not trust with a budget.
 
 The value is cost. Most prompts in a real workload are easy and never need a
 frontier model. Routing the easy ones to on-device or open models — and

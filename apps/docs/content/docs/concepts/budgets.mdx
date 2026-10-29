@@ -5,14 +5,11 @@ description: An agent is quoted before it spends and refused when it would breac
 
 import { Callout } from '@hanzo/docs-base-ui/components/callout'
 
-**After this page you can cap what an agent spends, read what it has spent, and
-tell a budget refusal from a model failure.**
+An agent with a credit card and no ceiling will find the ceiling for you, usually on a Friday. A budget is the ceiling you set first. This page is how to cap what an agent may spend, how to read what it already spent, and how to tell "we refused this because of money" from "the model failed." Those two look similar in a log and they are not similar at all. Retrying the second can help. Retrying the first spends nothing and changes nothing, which is its own kind of confusing.
 
 ## What a budget is
 
-Every model call and every priced tool call an agent makes is **quoted before it
-is made** — an upper bound on what the call could cost — and that quote is
-checked, in this order, against four things:
+Every model call and every priced tool call an agent makes is **quoted before it is made** — an upper bound on what the call could cost — and that quote is checked, in this order, against four things:
 
 1. **your organization's balance** — can it be paid for at all
 2. **the agent's period cap** — `cap_micro_usd`, less what this period spent
@@ -24,10 +21,7 @@ a model only through the gate.
 
 ## Money is integer micro-USD
 
-Every amount is an integer number of micro-USD, in a field suffixed
-`_micro_usd`. **1,000,000 is one dollar**, so `11902000` is $11.902 and `250` is
-a fortieth of a cent. A call costs fractions of a cent; a cap kept in cents
-could not see one.
+Every amount is an integer number of micro-USD, in a field suffixed `_micro_usd`. **1,000,000 is one dollar**, so `11902000` is $11.902 and `250` is a fortieth of a cent. This looks fussy. It is the opposite. A call costs fractions of a cent, and a cap kept in cents could not see one — it would round the thing you are trying to measure into invisibility. Integers also mean two services cannot disagree about a rounding mode. The number is the number.
 
 ## Stating a budget
 
@@ -156,5 +150,4 @@ before the feature shipped would be an outage, not a policy.
 
 - **[Agents](/docs/concepts/agents)** — the definition a budget hangs on.
 - **[Agents reference](/docs/openapi/agents)** — every operation, generated.
-- **[Pricing](https://hanzo.ai/pricing)** — what the platform charges, and what
-  the fee on a model call is.
+- **[Pricing](https://hanzo.ai/pricing)** — what the platform charges for a model call, at a fixed price per token.

@@ -1,7 +1,7 @@
 ---
 icon: Plug
 title: MCP
-description: The unified Hanzo MCP — one server that gives Claude Code, Cursor, and any MCP client a single tool surface plus your connected cloud services.
+description: One MCP server for Claude Code, Cursor, and any MCP client — a single tool surface, plus the cloud services you have connected.
 index: true
 ---
 
@@ -9,15 +9,17 @@ import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
 
 # MCP
 
-One Model Context Protocol server, one tool surface. Add **`hanzo-mcp`** to Claude Code (or Cursor, Claude Desktop, or any MCP client) and every Hanzo capability shows up through a single connection — no per-tool wiring.
+An agent is only as useful as the tools it can reach, and wiring those tools one by one is how a promising afternoon becomes a config file. MCP — the Model Context Protocol — is the agreement that lets an agent discover tools. This page is Hanzo's server for that agreement.
 
-> Looking for the hosted MCP server instead? **[Cloud MCP](/docs/mcp-tools)** is a URL with nothing to install, and its every tool is enumerated in the [tool catalogue](/docs/mcp-tools/all-tools). This page is the server that runs beside your editor.
+Add **`hanzo-mcp`** to Claude Code, or to Cursor, Claude Desktop, or any other MCP client, and the Hanzo capabilities show up through a single connection. You are not registering each tool by hand.
+
+> Looking for the hosted server instead? **[Cloud MCP](/docs/mcp-tools)** is a URL with nothing to install, and its tools are enumerated in the [tool catalogue](/docs/mcp-tools/all-tools). This page is the server that runs beside your editor, on the machine where the files are.
 
 ```bash title="Add the Hanzo MCP to Claude Code"
 claude mcp add hanzo -- npx -y @hanzo/mcp serve
 ```
 
-That one command exposes the full surface:
+That one command is the whole install. What it exposes:
 
 - **13 unified tools** — `fs`, `exec`, `code`, `git`, `fetch`, `workspace`, `ui`, plus optional `think`, `memory`, `hanzo`, `plan`, `tasks`, `mode`. One action-routed tool per capability (HIP-0300), so the client sees a small, stable set instead of hundreds of overlapping names.
 - **Cloud services** — the `hanzo` tool routes to your platform natively: IAM (identity), Commerce, Storage, and the AI API at `api.hanzo.ai/v1`, authenticated with your token.
@@ -70,14 +72,15 @@ Beyond the unified server, Hanzo can also **host** any MCP server for you — de
 hanzo mcp launch npx @modelcontextprotocol/server-filesystem
 ```
 
-## Key Capabilities
+## What hosting actually is
 
-- **Any MCP server** — Filesystem, Git, SQL, KV, Slack, GitHub, Notion, and more
-- **1-click Deploy** — Launch any MCP server with a single command
-- **Auto Scaling** — Scale from 0 to thousands of instances automatically
-- **$0 Idle Cost** — Pay only for what you use, no idle charges
-- **Secure Sandboxing** — Isolated containers with fine-grained permissions
-- **15+ Regions** — Edge deployment for lowest latency globally
+Running an MCP server yourself is a perfectly good choice. Hosting one here is the other choice, and it helps to know which problems it is taking off your desk:
+
+- **Any MCP server** — filesystem, Git, SQL, KV, Slack, GitHub, Notion, and the rest of the list further down.
+- **One command to launch** — `hanzo mcp launch`, and the package. That is the "one click." It is a command, which is better, because you can put it in a script.
+- **Scaling, including to zero** — from idle up to thousands of instances. Idle costs $0. You pay for the work.
+- **A sandbox** — the server runs in an isolated container, with permissions you can draw tightly. Read this one twice before you hand a hosted server a production token. The token is the part that can do damage. The sandbox is the part that limits how.
+- **15+ regions** — the server can sit near the agent calling it. Distance is latency, and an agent waiting on a tool feels it on every step.
 
 ## Launch Methods
 
@@ -161,11 +164,11 @@ hanzo mcp deploy
 | **Web** | Browser automation, Puppeteer, Screenshots |
 | **Custom** | Any Docker container or npm/pip package |
 
-## Next Evolution: ZAP
+## A faster wire, when you need one
 
-MCP made tool integration easy. **ZAP makes it fast.** Zero-Copy Agent Protocol is the next evolution: zero-copy serialization, 40-50x lower overhead, built for agent swarms at scale.
+MCP is how an agent finds a tool. [ZAP](/docs/zap) is a faster way to carry the call: zero-copy serialization, on the order of 40–50× less overhead, meant for many agents at once. It includes an MCP gateway mode, so you can move a server across without rewriting the agent on the same afternoon.
 
-ZAP includes **MCP Gateway Mode** for seamless migration.
+The card below says 10–100×. This paragraph says 40–50× overhead. They are not the same measurement. When two numbers share a page, believe the one that tells you what it measured, and if you are about to bet a design on either, time it on your own traffic. We would.
 
 <Cards>
   <Card title="ZAP Protocol" description="10-100x faster, post-quantum secure" href="/docs/zap" />

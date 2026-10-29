@@ -7,15 +7,15 @@ description: Install the CLI, log in, and make your first call — then see that
 import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs'
 import { Callout } from '@hanzo/docs-base-ui/components/callout'
 
-**After this page you have a working credential and one call that answered.**
+You should leave this page with two ordinary things: a credential that works, and one call that came back with an answer. That is the whole goal. Everything else on the page is in service of those two.
 
-Hanzo is one cloud behind one key. Every capability — inference, identity,
-storage, money, agents — answers at `https://api.hanzo.ai`, and the CLI, the
-SDKs and the MCP tools are all generated from the same description of it. So
-there is nothing to wire up per service: get a key once and everything is
-reachable.
+Hanzo is a cloud with a lot of parts — models, identity, storage, money, agents — and they all answer at `https://api.hanzo.ai`. The CLI, the SDKs, and the MCP tools are generated from one description of that cloud, which is why you do not wire each service up by hand. Get a key once. The rest is reachable from it.
+
+People often skip the first real call and then wonder, an hour later, whether the key was the problem. Do the call. It is the cheapest experiment on this page.
 
 ## 1. Install
+
+Four ways in, because people arrive with different tools already on the machine. They install the same `hanzo` program. Pick the one that matches what you already use.
 
 <Tabs items={['npm', 'Script', 'Homebrew', 'From source']}>
 <Tab value="npm">
@@ -50,6 +50,8 @@ hanzo version
 
 ## 2. Log in
 
+A person and a server log in differently, and mixing them up is the first real mistake available to you. Get this one right and a lot of later confusion does not happen.
+
 ```bash
 hanzo auth login
 ```
@@ -61,7 +63,7 @@ who you are; `hanzo auth list` shows every identity on this machine and
 
 For a server, mint a key instead of logging a person in: **console.hanzo.ai →
 API keys**. A secret key resolves to *you*, so it belongs on a server and never
-in a browser — [Authentication](/docs/api-keys) is the whole rule.
+in a browser — [Authentication](/docs/api-keys) is the whole rule. The distinction feels fussy until a key leaks from a frontend, and then it feels obvious.
 
 ```bash
 export HANZO_API_KEY=sk-...
@@ -69,8 +71,7 @@ export HANZO_API_KEY=sk-...
 
 ## 3. List the models
 
-The catalogue of models the gateway currently serves. It is a read, it needs
-nothing but the key, and it is the same operation on all four surfaces.
+This is the catalogue the gateway is serving right now. It is a read, it needs nothing but the key, and — this is the part worth noticing — it is the same operation whether you ask from the CLI, an SDK, raw HTTP, or an MCP tool. Four spellings, one question. If the four answers ever disagree, believe the HTTP one: that is the gateway itself.
 
 <Tabs items={['CLI', 'SDK', 'HTTP', 'MCP']}>
 <Tab value="CLI">
@@ -163,8 +164,7 @@ operation; `describe` explains any operation's input.
 </Tab>
 </Tabs>
 
-Those are one API seen from four places, and the tabs above are the whole
-difference. Pick the one you will write in:
+Those four tabs are one API, seen from four chairs. The difference is spelling, not capability. Pick the chair you will actually sit in:
 
 - **[CLI](/docs/cli)** — every capability as a command group, one page each.
 - **[SDKs](/docs/sdks)** — Python, TypeScript, Go, Rust, C++, Swift and Kotlin,
@@ -172,11 +172,11 @@ difference. Pick the one you will write in:
 - **[MCP](/docs/mcp)** — one endpoint an agent connects to; [the tools](/docs/mcp-tools)
   are listed one per capability.
 
-HTTP needs no page: it is `https://api.hanzo.ai` and the key you just exported.
+HTTP needs no page of its own. It is `https://api.hanzo.ai` and the key you exported above.
 
 ## 4. Send a completion
 
-This is the first step that draws down credit; everything above is free to run.
+This is the first step that spends anything. Everything above was free to run, which is why it was safe to experiment. From here, a call draws down credit.
 
 ```bash
 hanzo chat completions --model zen-1 --messages '[{"role":"user","content":"hello"}]'
@@ -194,7 +194,7 @@ zero; [Pricing](/docs/pricing) is the rate for every model and tool.
 
 ## 5. Run the cloud locally
 
-The same binary that serves `api.hanzo.ai` runs on your machine:
+The same binary that serves `api.hanzo.ai` runs on your machine. That sentence is easy to read past. It means the laptop is not a toy version of the API. It is the API, with a shorter network cable.
 
 ```bash
 hanzo up cloud
@@ -207,10 +207,12 @@ means and what it needs.
 
 ## Where to go next
 
+You have a key and a call that worked. The rest of the docs are for when you want to know *why* the next thing behaves the way it does.
+
 - **[Six flows, four surfaces](/docs/guides)** — hello, chat, money, store, agent,
   tools. The whole product in miniature, each journey shown four ways.
 - **[Concepts](/docs/concepts)** — orgs, projects, sandboxes, agents, memory and
-  workflows. Read these once and the rest of the API explains itself.
+  workflows. Seven ideas. Read them once and a capability you have never opened starts to look familiar.
 - **[Capabilities](/docs/openapi)** — all of them, grouped. Each page says what
   the capability is, how to reach it from all four surfaces, and links its
   specification.

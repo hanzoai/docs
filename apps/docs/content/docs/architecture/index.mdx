@@ -6,11 +6,15 @@ index: true
 
 # Architecture
 
-This section explains how Hanzo Cloud is put together — what runs today, and where the platform is headed. We keep the two clearly separated: the product pages elsewhere in these docs describe shipped behavior, while the platform direction here is design work being ratified through the [Hanzo Improvement Proposals (HIPs)](https://hips.hanzo.ai). For the principles behind it all, see [Engineering Philosophy](/docs/architecture/philosophy).
+There are two kinds of sentence on a platform, and mixing them up is how a reader builds on something that does not exist yet. This section keeps them apart.
+
+**Today** is what runs. The product pages elsewhere describe that, and you can call it. **Direction** is design, being written down and argued over in the [Hanzo Improvement Proposals](https://hips.hanzo.ai). A draft is a draft. If a sentence here excites you, check whether it is in the first section or the second before you depend on it. The principles under both are in [Engineering Philosophy](/docs/architecture/philosophy), which is the *why* with the scaffolding still visible.
 
 ## Today
 
-Hanzo Cloud is **one Go binary**. A single API key at `api.hanzo.ai` reaches every capability — AI inference, identity, secrets, storage, commerce, and more — because those capabilities are **native subsystems compiled into that one binary** (`cloud`, `CGO_ENABLED=0`, static), each served under `/v1/<capability>` and described by the one document the binary emits, [hanzoai/cloud](https://github.com/hanzoai/cloud)'s `openapi.yaml`. Ingress and routing are native subsystems too, so the binary is its own entry point rather than sitting behind a separate gateway or ingress tier. This single-binary consolidation is the unified cloud binary (HIP-0106), already substantially shipped — and it is the same binary that powers [the network you can run yourself](/docs/network).
+Hanzo Cloud is **one Go binary**. That is the fact the rest of the shape hangs on, so it is worth taking slowly.
+
+A single API key at `api.hanzo.ai` reaches every capability — inference, identity, secrets, storage, commerce, and the rest — because those capabilities are **native subsystems compiled into that one binary** (`cloud`, `CGO_ENABLED=0`, static). Each is served under `/v1/<capability>` and described by the one document the binary emits, [hanzoai/cloud](https://github.com/hanzoai/cloud)'s `openapi.yaml`. Ingress and routing are native subsystems too, so the binary is its own front door rather than a process sitting behind a separate gateway. This is the unified cloud binary (HIP-0106), already substantially shipped, and it is the same binary that powers [the network you can run yourself](/docs/network). One artifact, many addresses. The addresses are a map, not a collection of products.
 
 Every capability is grouped into exactly one of **nine domains**. [The reference](/docs/openapi) counts them and lists them all:
 

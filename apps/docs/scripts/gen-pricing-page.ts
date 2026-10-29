@@ -265,7 +265,7 @@ function render(p: Pricing): string {
     'icon: CircleDollarSign',
     'title: Pricing',
     `description: ${yamlString(
-      'What a request costs — the three Enso tiers, per-token billing for every other model, and the per-call rates for tools, images and audio.',
+      'What a request costs — Enso at a fixed price per token, the same for every other model, and per-call rates for tools, images and audio.',
     )}`,
     '---',
     '',
@@ -275,12 +275,15 @@ function render(p: Pricing): string {
     '',
     '# Pricing',
     '',
-    '**After this page you can work out what a request will cost before you send',
-    'it, and pick the tier that makes that number worth paying.**',
+    'You should leave this page able to work out what a request will cost before',
+    'you send it, and able to pick the tier that makes that number worth paying.',
+    'The arithmetic is not the hard part. Knowing which number is the real one is.',
     '',
     'You are billed for what you use — tokens for a chat model, calls for a tool,',
     'images for an image model. There is no seat licence and no minimum: an',
-    'account that sends nothing is charged nothing.',
+    'account that sends nothing is charged nothing. Routing does not add a',
+    'percentage. A routed call costs the fixed per-token price of the model',
+    'that served it.',
     '',
     'Every rate below is per **million tokens** unless the table says otherwise,',
     'in US dollars.',
@@ -292,9 +295,10 @@ function render(p: Pricing): string {
     w(
       '## The Enso tiers',
       '',
-      'Enso is Hanzo\'s own family and the default for serious work. The three',
-      'tiers are one price/quality contract each — same endpoint, same request',
-      'shape, and moving between them is a one-string change to `model`.',
+      'Enso is Hanzo\'s small language model, and it also routes. Each tier is a',
+      'fixed price per token — same endpoint, same request shape, and moving',
+      'between them is a one-string change to `model`. There is no routing fee',
+      'on top of the rate in the table.',
       '',
       '| Model | GPQA-Diamond | Context | Input | Output |',
       '|---|---|---|---|---|',
@@ -325,8 +329,15 @@ function render(p: Pricing): string {
         '',
       );
     }
-    for (const m of tiers) {
-      if (m.description) w(`- \`${text(m.name)}\` — ${text(m.description)}`);
+    const described = tiers.filter((m) => m.description);
+    if (described.length) {
+      w(
+        'The lines below are the gateway\'s own one-line descriptions, copied',
+        'through rather than rewritten here. The paragraph above is the product:',
+        'a small model that routes, billed at the rate in the table.',
+        '',
+      );
+      for (const m of described) w(`- \`${text(m.name)}\` — ${text(m.description)}`);
     }
     w('', '[What each tier is for, in depth →](/docs/enso)', '');
   }
@@ -435,7 +446,7 @@ function render(p: Pricing): string {
     '',
     '<Cards>',
     '  <Card icon={<Boxes />} title="Models" href="/docs/models" description="The live catalogue — every model id and its current rate." />',
-    '  <Card icon={<Sparkle />} title="Enso" href="/docs/enso" description="What the three tiers are and how to pick between them." />',
+    '  <Card icon={<Sparkle />} title="Enso" href="/docs/enso" description="The small model that also routes, and how to pick a tier." />',
     '  <Card icon={<Key />} title="API keys" href="/docs/api-keys" description="Mint the key these requests are billed against." />',
     '  <Card icon={<Code />} title="Pricing API" href="/docs/openapi/pricing" description="Every pricing endpoint, generated from the spec." />',
     '</Cards>',

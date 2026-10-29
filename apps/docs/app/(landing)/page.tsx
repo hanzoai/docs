@@ -34,7 +34,7 @@ const domains = [
   },
   {
     name: 'Intelligence',
-    desc: 'The mind of the cloud — every model, agent, and tool you can call. Models, Agents, MCP, Embeddings, Prompts, GPUs, Functions.',
+    desc: 'Models, agents, and tools you can call — the part that answers. Models, Agents, MCP, Embeddings, Prompts, GPUs, Functions.',
     icon: Sparkle,
     href: '/docs/openapi/ai',
     tag: 'Intelligence',
@@ -55,7 +55,7 @@ const domains = [
   },
   {
     name: 'Observability',
-    desc: 'See exactly what your system is doing, live. Metrics, Logs, Traces, Sessions, Evals, Analytics.',
+    desc: 'What the system is actually doing, while it does it. Metrics, Logs, Traces, Sessions, Evals, Analytics.',
     icon: Activity,
     href: '/docs/openapi/o11y',
     tag: 'Observe',
@@ -69,7 +69,7 @@ const domains = [
   },
   {
     name: 'Platform',
-    desc: 'Ship your code and run it anywhere. Gateway, Machines, Edge, Registry.',
+    desc: 'Your code, running next to the rest of the platform. Gateway, Machines, Edge, Registry.',
     icon: Server,
     href: '/docs/openapi/gateway',
     tag: 'Platform',
@@ -161,7 +161,7 @@ export default function Page() {
           style={{ display: 'inline-grid', gridAutoFlow: 'column', alignItems: 'center', columnGap: 8 }}
         >
           <span className="rounded-full bg-white" style={{ width: 6, height: 6 }} />
-          Meet Enso — our frontier model, default on every surface
+          Meet Enso — a small model that also routes, at a fixed price per token
           <ArrowRight className="size-3.5" />
         </Link>
 
@@ -174,9 +174,12 @@ export default function Page() {
           <span className="text-[#e5e5e5]">Build anything<br className="hidden sm:block" /> with Hanzo.</span>
         </h1>
         <p className="relative mt-5 max-w-xl text-neutral-300 text-lg md:text-xl leading-relaxed">
-          Every model. Every tool. One key. Start in the browser, ship from your
-          terminal, and when you want it on your own hardware, take the whole thing
-          with you — it is the same software we run in production.
+          One key, and behind it more than 500 models plus the rest of the
+          platform — storage, identity, agents, billing. Start in the browser if
+          you would rather describe a thing, or from a terminal if you would
+          rather type it. When you want it on your own hardware, you take the
+          same software we run. It is not a smaller cousin of the cloud. It is
+          the cloud.
         </p>
 
         {/* -- Install command -- the main CTA ------------------------------ */}
@@ -276,7 +279,7 @@ export default function Page() {
             {
               eyebrow: 'Lower level',
               title: 'Build with API',
-              body: 'Over 400 models behind one REST endpoint, with SDKs for every language we ship.',
+              body: '500+ models behind one REST endpoint, with an SDK for every language we ship.',
               href: '/docs/openapi',
             },
           ].map((d) => (
@@ -321,7 +324,7 @@ export default function Page() {
             Quick Start
           </h2>
           <p className="text-neutral-300 text-sm mb-8">
-            Install the CLI, log in, and reach every capability from your terminal.
+            Install the CLI and log in. The same key then reaches every capability — from the terminal, or from the language you already write.
           </p>
           {/* Install, then use — the same two steps /docs/quickstart shows, and
               the same order of tabs, so the front page and the quickstart do not
@@ -343,8 +346,7 @@ export default function Page() {
           </Tabs>
 
           <p className="text-neutral-300 text-sm mt-6 mb-3">
-            Sign in once, then reach every capability from the terminal — or from
-            your own code.
+            Sign in once. After that the terminal and your own code are two views of the same key.
           </p>
 
           <Tabs items={['CLI', 'TypeScript', 'Python', 'Go', 'Rust', 'HTTP']}>
@@ -393,7 +395,7 @@ export default function Page() {
             One binary. The whole platform.
           </h2>
           <p className="text-neutral-300 text-sm mb-8">
-            Every capability has one name and one route. Browse by domain — click any card to go deep.
+            The list is long because the platform does a lot of jobs. The idea under it is short: one name, one route, nine domains. Open any card when you want the long version.
           </p>
           {/* 220, not 240: the column at 768 is 457px, and 240 needs 492 for a
               second track, so a 40px difference in one number is the whole gap
@@ -475,7 +477,7 @@ export default function Page() {
             Developer Tools
           </h2>
           <p className="text-neutral-300 text-sm mb-8">
-            SDKs, APIs, and protocols for every stack.
+            The same contract, reached from the language and the protocol you already have.
           </p>
           {/* 230 is the 1 / 2 / 4 story the three breakpoints told, measured at
               the column rather than the window: 1-up on a phone, 2-up once the
@@ -513,7 +515,7 @@ export default function Page() {
             Every model, one API
           </h2>
           <p className="text-neutral-300 text-sm mb-8">
-            Over 400 models across every major provider — call any of them with one credential, one request shape.
+            500+ models, from the labs you already know. One credential, one request shape, whichever id you pass.
           </p>
           <Grid columns={{ min: 120, max: 8 }} gap={12}>
             {[
@@ -678,8 +680,11 @@ export default function Page() {
               <span className="rounded-full bg-white/5 px-2 py-0.5 font-mono text-xs text-neutral-400">44 models</span>
             </div>
             <p className="text-neutral-300 text-sm leading-relaxed max-w-2xl">
-              Frontier AI models from 4B edge to 1T+ reasoning. MoDE (Mixture of Diverse Experts) architecture.
-              Text, code, vision, audio, video, 3D, and safety. Open weights on HuggingFace.
+              Zen is the open-weight family: from a 4B model that fits at the edge
+              up to 1T+ reasoning, built as a mixture of diverse experts. Text,
+              code, vision, audio, video, 3D, and a safety model. The weights are
+              on Hugging Face, which is the point of calling them open — you can
+              take them with you.
             </p>
             <Grid columns={{ min: 130, max: 6 }} gap={12}>
               {[
@@ -733,7 +738,7 @@ export default function Page() {
             Start building
           </h2>
           <p className="relative text-neutral-400 text-sm mb-3">
-            Free tier with generous limits. No credit card required.
+            There is a free tier, and it does not ask for a card. The limits live on the pricing page, where a number can be checked.
           </p>
           <div className="relative font-mono text-sm text-neutral-400 mb-8">
             curl hanzo.sh | sh

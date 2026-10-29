@@ -1,7 +1,7 @@
 ---
 icon: Circle
 title: Meet Enso
-description: Hanzo's own model family — enso, enso-flash, and enso-ultra. What each one is for, and how to pick.
+description: Hanzo's small language model. It also routes. Three tiers, one request shape, a fixed price per token, and how to pick.
 ---
 
 import { Callout } from '@hanzo/docs-base-ui/components/callout'
@@ -9,13 +9,11 @@ import { Tabs, Tab } from '@hanzo/docs-base-ui/components/tabs'
 
 # Meet enso
 
-**After this page you can pick the right enso model for a job, switch between
-them with a one-string change, and work out what a request will cost before you
-send it.**
+Enso is Hanzo's own small language model, and it also routes. You talk to it the way you talk to any other model on the gateway: one endpoint, one key, one request shape. The only thing you change is the `model` string.
 
-enso is Hanzo's own model family. There are three of them. They share one
-endpoint, one key, and one request shape — the only thing that changes between
-them is the `model` string.
+There are three strings, because "small, and also routes" is two jobs wearing one name. `enso-flash` and `enso` are the model itself, at two sizes of context and two prices. `enso-ultra` is the tier that routes: it tries a model sized to the question, and calls in a panel only when the question turns out to be hard. You do not pay a percentage for that. Each tier has a fixed price per token, published by the gateway, and that price is the whole bill.
+
+By the end of this page you can pick a tier, switch with a one-string change, and work out what a request will cost before you send it. The last of those is the one people skip, and then the invoice is a surprise. It does not have to be.
 
 ## See them for yourself
 
@@ -37,8 +35,7 @@ by hand.
 ## Which one
 
 <Callout title="Start with enso-flash.">
-It is the cheapest tier, and most work never needs more than it. Reach for a
-bigger model when flash actually disappoints you, not before.
+It is the cheapest tier, and most work never needs more than it. Move up when flash has actually disappointed you on a prompt you care about, not before. Switching later is one word in the request. Paying for a larger tier "to be safe," on every call, is how a small model becomes an expensive habit.
 </Callout>
 
 | Model | Context | In / Out (per 1M tokens) | Reach for it when |
@@ -47,33 +44,18 @@ bigger model when flash actually disappoints you, not before.
 | `enso` | 1,000,000 | $4 / $20 | The answer's quality matters more than its cost — hard reasoning, long documents, code that has to be right. |
 | `enso-ultra` | 1,000,000 | $5 / $25 | Being right matters more than being cheap. |
 
-Those figures are the gateway's own, read from `/v1/models`. Across the range
-that is 2.5x on input and about 6x on output — a narrower spread than the tier
-names suggest, so trading up costs less than it sounds like it should. On the
-mixed request priced at the bottom of this page, the three come to $0.006,
-$0.018 and $0.0225: 1x, 3x and 3.75x, not the order of magnitude "ultra"
-implies.
+Those figures are a reading of the gateway, taken from `/v1/models`. If this page and that endpoint ever disagree, believe the endpoint. We type more slowly than it does, and the catalogue is allowed to grow a tier this table has not met yet. When it does, the new id is real and this table is late. The arithmetic further down is worked from the rates printed here, so it moves when the rates do. Across the range that is 2.5× on input and about 6× on output — a narrower spread than the tier names suggest, so trading up costs less than the names make it sound. On the mixed request priced at the bottom of this page, the three come to $0.006, $0.018 and $0.0225: 1×, 3× and 3.75×. "Ultra" is not an order of magnitude. It is a modest step, and the step is a fixed per-token price, not a routing surcharge.
 
 `enso-flash` is also the one tier that does **not** carry the million-token
 window. If your input is large, that — not price — is the reason to move up.
 
-Note that the columns above are about **cost**, not speed. Price and latency are
-independent here, and not in the direction the names suggest — measure before
-you assume, using the next section.
+The columns above are about **cost**, not speed. Price and latency are independent here, and not in the direction the names suggest. "Ultra" is not a promise that the answer will take longer, and "flash" is not a promise that it will be quick. Measure, using the next section. Anyone who tells you the names are the measurement, including this page, is guessing.
 
 ### What makes enso-ultra different
 
-`enso` is a model. `enso-ultra` is a *strategy*. Instead of answering directly,
-it probes with a model sized to the task, escalates to a panel of models only
-when the task turns out to be hard, then verifies the candidate answers and
-selects the best one.
+`enso` is the model. `enso-ultra` is a *strategy* wrapped around routing. Instead of answering directly, it probes with a model sized to the task, escalates to a panel only when the task turns out to be hard, then checks the candidate answers and keeps the best one. An easy question never pays for the panel. That is the whole trick, and it is a good trick, provided you remember you are buying a procedure and not a bigger brain.
 
-You pay for that in money rather than in context: ultra carries the same
-million-token window `enso` does, so moving up from `enso` costs you nothing in
-input size. The tier that cannot take your whole codebase in one prompt is
-`enso-flash`, at 262,144 tokens. The panel is billed by the token like anything
-else, which puts ultra a quarter above `enso` per million — $5/$25 against
-$4/$20, not a different order of cost.
+You pay for that procedure at a fixed per-token rate, not as a percentage of whatever the panel consulted. Ultra carries the same million-token window `enso` does, so moving up from `enso` costs you nothing in input size. The tier that cannot take a very large prompt in one go is `enso-flash`, at 262,144 tokens. The published ultra rate sits a quarter above `enso` per million — $5/$25 against $4/$20 — which is a different price, not a different kind of bill.
 
 ## Measure them yourself
 
