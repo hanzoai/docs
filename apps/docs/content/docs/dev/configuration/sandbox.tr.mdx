@@ -1,0 +1,47 @@
+---
+title: Kum havuzu
+description: Hanzo Dev'in güvenlik için komut yürütmeyi nasıl yalıttığı.
+---
+
+## Kum havuzu ve onaylar
+
+Hanzo Dev, ajan komut çalıştırırken istenmeyen yan etkileri önlemek için kum havuzunu zorunlu kılar.
+
+### Kum havuzu kipleri
+
+| Kip | Açıklama |
+| --- | --- |
+| `off` | Kum havuzu yok (komutlar doğrudan çalışır) |
+| `workspace-read` | Çalışma alanına salt okunur erişim |
+| `workspace-write` | Çalışma alanına okuma ve yazma erişimi (full-auto için varsayılan) |
+| `network-off` | Ağ erişimini kapatır |
+| `danger-full-access` | Tam erişim (dikkatle kullanın) |
+
+### Onay ilkeleri
+
+| İlke | Açıklama |
+| --- | --- |
+| `always` | Her zaman onay ister |
+| `on-failure` | Yalnızca komut başarısız olunca ister |
+| `on-request` | Model onay istediğinde ister |
+| `never` | Hiç onay istemez |
+
+### Kullanım
+
+```bash
+# Read-only mode (safest)
+dev --sandbox workspace-read "analyze this codebase"
+
+# Write mode with approval on failure
+dev --sandbox workspace-write --ask-for-approval on-failure "refactor"
+
+# Full auto (sandboxed writes, auto-approve)
+dev --full-auto "fix all linting errors"
+
+# Bypass all safety (DANGEROUS)
+dev --dangerously-bypass-approvals-and-sandbox "your prompt"
+```
+
+### Oturum ortasında değişiklik
+
+Bir konuşma sırasında onay düzeyini TUI içinde `/approvals` ile değiştirin.

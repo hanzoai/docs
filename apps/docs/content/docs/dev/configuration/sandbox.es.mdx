@@ -1,0 +1,47 @@
+---
+title: Aislamiento
+description: Cómo Hanzo Dev aísla la ejecución de comandos por seguridad.
+---
+
+## Aislamiento y aprobaciones
+
+Hanzo Dev impone el aislamiento para evitar efectos secundarios no deseados cuando el agente ejecuta comandos.
+
+### Modos de aislamiento
+
+| Modo | Descripción |
+| --- | --- |
+| `off` | Sin aislamiento (los comandos se ejecutan directamente) |
+| `workspace-read` | Acceso de solo lectura al espacio de trabajo |
+| `workspace-write` | Acceso de lectura y escritura al espacio de trabajo (predeterminado en full-auto) |
+| `network-off` | Desactiva el acceso a la red |
+| `danger-full-access` | Acceso completo (úsalo con cuidado) |
+
+### Políticas de aprobación
+
+| Política | Descripción |
+| --- | --- |
+| `always` | Pide aprobación siempre |
+| `on-failure` | Pide solo cuando un comando falla |
+| `on-request` | Pide cuando el modelo solicita aprobación |
+| `never` | Nunca pide aprobación |
+
+### Uso
+
+```bash
+# Read-only mode (safest)
+dev --sandbox workspace-read "analyze this codebase"
+
+# Write mode with approval on failure
+dev --sandbox workspace-write --ask-for-approval on-failure "refactor"
+
+# Full auto (sandboxed writes, auto-approve)
+dev --full-auto "fix all linting errors"
+
+# Bypass all safety (DANGEROUS)
+dev --dangerously-bypass-approvals-and-sandbox "your prompt"
+```
+
+### Cambios a mitad de sesión
+
+Cambia el nivel de aprobación durante una conversación con `/approvals` en la TUI.

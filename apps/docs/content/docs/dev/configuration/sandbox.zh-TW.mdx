@@ -1,0 +1,47 @@
+---
+title: 沙箱
+description: Hanzo Dev 如何為安全而隔離指令執行。
+---
+
+## 沙箱與核准
+
+Hanzo Dev 強制使用沙箱，以免代理執行指令時產生意外的副作用。
+
+### 沙箱模式
+
+| 模式 | 說明 |
+| --- | --- |
+| `off` | 無沙箱（指令直接執行） |
+| `workspace-read` | 對工作區唯讀 |
+| `workspace-write` | 對工作區可讀寫（full-auto 的預設值） |
+| `network-off` | 關閉網路存取 |
+| `danger-full-access` | 完全存取（請謹慎使用） |
+
+### 核准原則
+
+| 原則 | 說明 |
+| --- | --- |
+| `always` | 始終要求核准 |
+| `on-failure` | 僅在指令失敗時要求 |
+| `on-request` | 在模型要求核准時要求 |
+| `never` | 從不要求核准 |
+
+### 用法
+
+```bash
+# Read-only mode (safest)
+dev --sandbox workspace-read "analyze this codebase"
+
+# Write mode with approval on failure
+dev --sandbox workspace-write --ask-for-approval on-failure "refactor"
+
+# Full auto (sandboxed writes, auto-approve)
+dev --full-auto "fix all linting errors"
+
+# Bypass all safety (DANGEROUS)
+dev --dangerously-bypass-approvals-and-sandbox "your prompt"
+```
+
+### 工作階段中途更改
+
+在對話中用 TUI 裡的 `/approvals` 更改核准級別。

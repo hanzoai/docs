@@ -1,0 +1,47 @@
+---
+title: サンドボックス
+description: Hanzo Dev が安全のためにコマンド実行をどう隔離するか。
+---
+
+## サンドボックスと承認
+
+Hanzo Dev は、エージェントがコマンドを実行するときの意図しない副作用を防ぐため、サンドボックスを強制します。
+
+### サンドボックスのモード
+
+| モード | 説明 |
+| --- | --- |
+| `off` | サンドボックスなし（コマンドは直接実行される） |
+| `workspace-read` | ワークスペースへの読み取り専用アクセス |
+| `workspace-write` | ワークスペースへの読み書きアクセス（full-auto の既定） |
+| `network-off` | ネットワークアクセスを無効にする |
+| `danger-full-access` | 全アクセス（慎重に使う） |
+
+### 承認ポリシー
+
+| ポリシー | 説明 |
+| --- | --- |
+| `always` | 常に承認を求める |
+| `on-failure` | コマンドが失敗したときだけ求める |
+| `on-request` | モデルが承認を求めたときに求める |
+| `never` | 承認を求めない |
+
+### 使い方
+
+```bash
+# Read-only mode (safest)
+dev --sandbox workspace-read "analyze this codebase"
+
+# Write mode with approval on failure
+dev --sandbox workspace-write --ask-for-approval on-failure "refactor"
+
+# Full auto (sandboxed writes, auto-approve)
+dev --full-auto "fix all linting errors"
+
+# Bypass all safety (DANGEROUS)
+dev --dangerously-bypass-approvals-and-sandbox "your prompt"
+```
+
+### セッションの途中で変える
+
+会話の途中で承認の水準を変えるには、TUI で `/approvals` を使います。

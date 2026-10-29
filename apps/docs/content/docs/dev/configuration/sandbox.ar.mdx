@@ -1,0 +1,47 @@
+---
+title: العزل
+description: كيف يعزل Hanzo Dev تنفيذ الأوامر من أجل الأمان.
+---
+
+## العزل والموافقات
+
+يفرض Hanzo Dev العزل لمنع الآثار الجانبية غير المقصودة عندما ينفّذ الوكيل الأوامر.
+
+### أوضاع العزل
+
+| الوضع | الوصف |
+| --- | --- |
+| `off` | بلا عزل (تعمل الأوامر مباشرة) |
+| `workspace-read` | وصول للقراءة فقط إلى مساحة العمل |
+| `workspace-write` | وصول للقراءة والكتابة إلى مساحة العمل (الافتراضي لـ full-auto) |
+| `network-off` | يعطّل الوصول إلى الشبكة |
+| `danger-full-access` | وصول كامل (استخدمه بحذر) |
+
+### سياسات الموافقة
+
+| السياسة | الوصف |
+| --- | --- |
+| `always` | يطلب الموافقة دائمًا |
+| `on-failure` | يطلب فقط عند فشل أمر |
+| `on-request` | يطلب عندما يطلب النموذج الموافقة |
+| `never` | لا يطلب الموافقة أبدًا |
+
+### الاستخدام
+
+```bash
+# Read-only mode (safest)
+dev --sandbox workspace-read "analyze this codebase"
+
+# Write mode with approval on failure
+dev --sandbox workspace-write --ask-for-approval on-failure "refactor"
+
+# Full auto (sandboxed writes, auto-approve)
+dev --full-auto "fix all linting errors"
+
+# Bypass all safety (DANGEROUS)
+dev --dangerously-bypass-approvals-and-sandbox "your prompt"
+```
+
+### تغييرات في منتصف الجلسة
+
+غيّر مستوى الموافقة أثناء محادثة باستخدام `/approvals` في TUI.

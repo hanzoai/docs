@@ -1,0 +1,47 @@
+---
+title: Sandbox
+description: Cách Hanzo Dev cô lập việc thực thi lệnh để giữ an toàn.
+---
+
+## Sandbox và phê duyệt
+
+Hanzo Dev bắt buộc sandbox để tránh tác dụng phụ ngoài ý muốn khi tác nhân thực thi lệnh.
+
+### Chế độ sandbox
+
+| Chế độ | Mô tả |
+| --- | --- |
+| `off` | Không sandbox (lệnh chạy trực tiếp) |
+| `workspace-read` | Chỉ đọc không gian làm việc |
+| `workspace-write` | Đọc và ghi không gian làm việc (mặc định của full-auto) |
+| `network-off` | Tắt truy cập mạng |
+| `danger-full-access` | Truy cập đầy đủ (hãy dùng thận trọng) |
+
+### Chính sách phê duyệt
+
+| Chính sách | Mô tả |
+| --- | --- |
+| `always` | Luôn hỏi phê duyệt |
+| `on-failure` | Chỉ hỏi khi lệnh thất bại |
+| `on-request` | Hỏi khi mô hình yêu cầu phê duyệt |
+| `never` | Không bao giờ hỏi phê duyệt |
+
+### Cách dùng
+
+```bash
+# Read-only mode (safest)
+dev --sandbox workspace-read "analyze this codebase"
+
+# Write mode with approval on failure
+dev --sandbox workspace-write --ask-for-approval on-failure "refactor"
+
+# Full auto (sandboxed writes, auto-approve)
+dev --full-auto "fix all linting errors"
+
+# Bypass all safety (DANGEROUS)
+dev --dangerously-bypass-approvals-and-sandbox "your prompt"
+```
+
+### Thay đổi giữa phiên
+
+Đổi mức phê duyệt trong một hội thoại bằng `/approvals` ở TUI.

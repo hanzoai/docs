@@ -1,0 +1,47 @@
+---
+title: Bac à sable
+description: Comment Hanzo Dev isole l'exécution des commandes pour la sécurité.
+---
+
+## Bac à sable et approbations
+
+Hanzo Dev impose un bac à sable pour éviter les effets de bord involontaires lorsque l'agent exécute des commandes.
+
+### Modes de bac à sable
+
+| Mode | Description |
+| --- | --- |
+| `off` | Pas de bac à sable (les commandes s'exécutent directement) |
+| `workspace-read` | Accès en lecture seule à l'espace de travail |
+| `workspace-write` | Accès en lecture et écriture à l'espace de travail (par défaut pour full-auto) |
+| `network-off` | Désactive l'accès au réseau |
+| `danger-full-access` | Accès complet (à utiliser avec prudence) |
+
+### Politiques d'approbation
+
+| Politique | Description |
+| --- | --- |
+| `always` | Demande toujours une approbation |
+| `on-failure` | Demande seulement en cas d'échec d'une commande |
+| `on-request` | Demande lorsque le modèle sollicite une approbation |
+| `never` | Ne demande jamais d'approbation |
+
+### Utilisation
+
+```bash
+# Read-only mode (safest)
+dev --sandbox workspace-read "analyze this codebase"
+
+# Write mode with approval on failure
+dev --sandbox workspace-write --ask-for-approval on-failure "refactor"
+
+# Full auto (sandboxed writes, auto-approve)
+dev --full-auto "fix all linting errors"
+
+# Bypass all safety (DANGEROUS)
+dev --dangerously-bypass-approvals-and-sandbox "your prompt"
+```
+
+### Changements en cours de session
+
+Changez le niveau d'approbation pendant une conversation avec `/approvals` dans la TUI.

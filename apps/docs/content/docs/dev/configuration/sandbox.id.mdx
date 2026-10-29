@@ -1,0 +1,47 @@
+---
+title: Sandbox
+description: Bagaimana Hanzo Dev mengisolasi eksekusi perintah demi keamanan.
+---
+
+## Sandbox dan persetujuan
+
+Hanzo Dev memaksakan sandbox agar tidak ada efek samping yang tidak diinginkan saat agen menjalankan perintah.
+
+### Mode sandbox
+
+| Mode | Deskripsi |
+| --- | --- |
+| `off` | Tanpa sandbox (perintah berjalan langsung) |
+| `workspace-read` | Akses baca saja ke ruang kerja |
+| `workspace-write` | Akses baca dan tulis ke ruang kerja (bawaan untuk full-auto) |
+| `network-off` | Menonaktifkan akses jaringan |
+| `danger-full-access` | Akses penuh (gunakan dengan hati-hati) |
+
+### Kebijakan persetujuan
+
+| Kebijakan | Deskripsi |
+| --- | --- |
+| `always` | Selalu meminta persetujuan |
+| `on-failure` | Meminta hanya saat perintah gagal |
+| `on-request` | Meminta saat model meminta persetujuan |
+| `never` | Tidak pernah meminta persetujuan |
+
+### Penggunaan
+
+```bash
+# Read-only mode (safest)
+dev --sandbox workspace-read "analyze this codebase"
+
+# Write mode with approval on failure
+dev --sandbox workspace-write --ask-for-approval on-failure "refactor"
+
+# Full auto (sandboxed writes, auto-approve)
+dev --full-auto "fix all linting errors"
+
+# Bypass all safety (DANGEROUS)
+dev --dangerously-bypass-approvals-and-sandbox "your prompt"
+```
+
+### Perubahan di tengah sesi
+
+Ubah tingkat persetujuan selama percakapan dengan `/approvals` di TUI.

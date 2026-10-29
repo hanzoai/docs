@@ -1,0 +1,47 @@
+---
+title: Sandbox
+description: Wie Hanzo Dev die Befehlsausführung zur Sicherheit isoliert.
+---
+
+## Sandbox und Freigaben
+
+Hanzo Dev erzwingt eine Sandbox, damit der Agent beim Ausführen von Befehlen keine unbeabsichtigten Nebenwirkungen erzeugt.
+
+### Sandbox-Modi
+
+| Modus | Beschreibung |
+| --- | --- |
+| `off` | Keine Sandbox (Befehle laufen direkt) |
+| `workspace-read` | Nur-Lese-Zugriff auf den Arbeitsbereich |
+| `workspace-write` | Lese- und Schreibzugriff auf den Arbeitsbereich (Standard für full-auto) |
+| `network-off` | Netzwerkzugriff abschalten |
+| `danger-full-access` | Voller Zugriff (mit Vorsicht verwenden) |
+
+### Freigaberichtlinien
+
+| Richtlinie | Beschreibung |
+| --- | --- |
+| `always` | Immer um Freigabe fragen |
+| `on-failure` | Nur bei einem fehlgeschlagenen Befehl fragen |
+| `on-request` | Fragen, wenn das Modell eine Freigabe verlangt |
+| `never` | Nie um Freigabe fragen |
+
+### Verwendung
+
+```bash
+# Read-only mode (safest)
+dev --sandbox workspace-read "analyze this codebase"
+
+# Write mode with approval on failure
+dev --sandbox workspace-write --ask-for-approval on-failure "refactor"
+
+# Full auto (sandboxed writes, auto-approve)
+dev --full-auto "fix all linting errors"
+
+# Bypass all safety (DANGEROUS)
+dev --dangerously-bypass-approvals-and-sandbox "your prompt"
+```
+
+### Änderungen mitten in der Sitzung
+
+Die Freigabestufe ändern Sie während eines Gesprächs mit `/approvals` in der TUI.

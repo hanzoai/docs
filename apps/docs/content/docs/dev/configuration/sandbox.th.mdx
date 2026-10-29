@@ -1,0 +1,47 @@
+---
+title: แซนด์บ็อกซ์
+description: Hanzo Dev แยกการรันคำสั่งเพื่อความปลอดภัยอย่างไร
+---
+
+## แซนด์บ็อกซ์และการอนุมัติ
+
+Hanzo Dev บังคับแซนด์บ็อกซ์เพื่อกันผลข้างเคียงที่ไม่ตั้งใจเมื่อเอเจนต์รันคำสั่ง
+
+### โหมดแซนด์บ็อกซ์
+
+| โหมด | คำอธิบาย |
+| --- | --- |
+| `off` | ไม่มีแซนด์บ็อกซ์ (คำสั่งรันตรง) |
+| `workspace-read` | เข้าถึงพื้นที่ทำงานแบบอ่านอย่างเดียว |
+| `workspace-write` | เข้าถึงพื้นที่ทำงานแบบอ่านและเขียน (ค่าเริ่มต้นของ full-auto) |
+| `network-off` | ปิดการเข้าถึงเครือข่าย |
+| `danger-full-access` | เข้าถึงเต็มที่ (ใช้ด้วยความระมัดระวัง) |
+
+### นโยบายการอนุมัติ
+
+| นโยบาย | คำอธิบาย |
+| --- | --- |
+| `always` | ขออนุมัติเสมอ |
+| `on-failure` | ขอเฉพาะเมื่อคำสั่งล้มเหลว |
+| `on-request` | ขอเมื่อโมเดลขออนุมัติ |
+| `never` | ไม่ขออนุมัติเลย |
+
+### การใช้งาน
+
+```bash
+# Read-only mode (safest)
+dev --sandbox workspace-read "analyze this codebase"
+
+# Write mode with approval on failure
+dev --sandbox workspace-write --ask-for-approval on-failure "refactor"
+
+# Full auto (sandboxed writes, auto-approve)
+dev --full-auto "fix all linting errors"
+
+# Bypass all safety (DANGEROUS)
+dev --dangerously-bypass-approvals-and-sandbox "your prompt"
+```
+
+### การเปลี่ยนกลางเซสชัน
+
+เปลี่ยนระดับการอนุมัติระหว่างการสนทนาด้วย `/approvals` ใน TUI

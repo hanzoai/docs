@@ -1,0 +1,47 @@
+---
+title: Sandbox
+description: Como o Hanzo Dev isola a execução de comandos por segurança.
+---
+
+## Sandbox e aprovações
+
+O Hanzo Dev impõe o sandbox para evitar efeitos colaterais indesejados quando o agente executa comandos.
+
+### Modos de sandbox
+
+| Modo | Descrição |
+| --- | --- |
+| `off` | Sem sandbox (os comandos rodam direto) |
+| `workspace-read` | Acesso somente leitura ao espaço de trabalho |
+| `workspace-write` | Acesso de leitura e escrita ao espaço de trabalho (padrão do full-auto) |
+| `network-off` | Desativa o acesso à rede |
+| `danger-full-access` | Acesso total (use com cuidado) |
+
+### Políticas de aprovação
+
+| Política | Descrição |
+| --- | --- |
+| `always` | Sempre pede aprovação |
+| `on-failure` | Pede só quando um comando falha |
+| `on-request` | Pede quando o modelo solicita aprovação |
+| `never` | Nunca pede aprovação |
+
+### Uso
+
+```bash
+# Read-only mode (safest)
+dev --sandbox workspace-read "analyze this codebase"
+
+# Write mode with approval on failure
+dev --sandbox workspace-write --ask-for-approval on-failure "refactor"
+
+# Full auto (sandboxed writes, auto-approve)
+dev --full-auto "fix all linting errors"
+
+# Bypass all safety (DANGEROUS)
+dev --dangerously-bypass-approvals-and-sandbox "your prompt"
+```
+
+### Mudanças no meio da sessão
+
+Mude o nível de aprovação durante uma conversa com `/approvals` na TUI.
