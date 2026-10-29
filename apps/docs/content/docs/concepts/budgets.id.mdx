@@ -1,0 +1,132 @@
+---
+title: Anggaran
+description: Agen dikutip sebelum ia membelanjakan dan ditolak saat ia akan menembus. Empat langit-langit, mikro-USD bulat, dan penolakan yang dapat dibaca agen selagi masih berjalan.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Setelah halaman ini Anda dapat membatasi apa yang dibelanjakan agen, membaca apa yang telah ia belanjakan, dan membedakan penolakan anggaran dari kegagalan model.**
+
+## Apa itu anggaran
+
+Setiap panggilan model dan setiap panggilan alat berharga yang dibuat agen **dikutip sebelum dibuat** — batas atas dari apa yang bisa dikenakan panggilan itu — dan kutipan itu diperiksa, dalam urutan ini, terhadap empat hal:
+
+1. **saldo organisasi Anda** — apakah bisa dibayar sama sekali
+2. **batas periode agen** — `cap_micro_usd`, dikurangi yang dibelanjakan periode ini
+3. **langit-langit tugas** — `max_task_micro_usd`, dikurangi yang dibelanjakan jalankan ini
+4. **anggaran sesi** — `budget_micro_usd`, dikurangi yang dibelanjakan sesi ini
+
+Salah satu menolak panggilan. Tidak ada bendera dan tidak ada jalan pintas: jalankan mencapai model hanya lewat pintu.
+
+## Uang adalah mikro-USD bulat
+
+Setiap jumlah adalah bilangan bulat mikro-USD, pada bidang berakhiran
+`_micro_usd`. **1.000.000 adalah satu dolar**, jadi `11902000` adalah $11,902 dan `250` adalah seperempat puluh sen. Panggilan menghabiskan pecahan sen; batas yang disimpan dalam sen tidak akan melihat satu.
+
+## Menyatakan anggaran
+
+Ketiga bidang wajib saat Anda mendefinisikan agen.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "triage",
+    "model": "zen-1",
+    "instructions": "Triage inbound issues.",
+    "cap_micro_usd": 20000000,
+    "max_task_micro_usd": 500000,
+    "period": "month"
+  }'
+```
+
+Agen itu boleh membelanjakan **$20 sebulan**, dan tidak satu pun jalankannya boleh membelanjakan lebih dari **$0,50**.
+
+- `cap_micro_usd` harus positif. Batas nol berarti tidak ada batas dan tidak ada catatan, yaitu keadaan yang ada untuk dihapus oleh anggaran.
+- `max_task_micro_usd` harus positif dan tidak boleh melebihi batas.
+- `period` adalah `day`, `week`, atau `month`.
+
+Periode **sejajar kalender dalam UTC**: `month` berarti bulan itu, bukan tiga puluh hari dari panggilan pertama, dan `week` mulai pada Senin. Jendela bergulir pada panggilan pertama setelah ia berputar, dan `consumed_micro_usd` kembali ke nol.
+
+## Membaca apa yang ia belanjakan
+
+```
+GET /v1/agent/{ref}/spend
+```
+
+```json
+{
+  "cap_micro_usd": 20000000,
+  "max_task_micro_usd": 500000,
+  "period": "month",
+  "consumed_micro_usd": 11902000,
+  "remaining_micro_usd": 8098000,
+  "by_component": { "model": 11431000, "computer": 402000, "tool": 69000 }
+}
+```
+
+`by_component` membagi belanja tiga jalan: **model** adalah setiap pelengkapan yang dibeli agen, **computer** adalah waktu jalan tempat ia tinggal, **tool** adalah panggilan alat berharga. Komponen tanpa belanja **absen, bukan nol**.
+
+## Wujud penolakan
+
+Tembusan menjawab `402` dengan kode `budget_exceeded`:
+
+```json
+{
+  "error": {
+    "code": "budget_exceeded",
+    "message": "task budget exceeded: this call would cost up to 620000 micro-USD and 118000 remain",
+    "event": "budget.exceeded",
+    "scope": "task",
+    "component": "model",
+    "quote_micro_usd": 620000,
+    "remaining_micro_usd": 118000
+  }
+}
+```
+
+`scope` menamai langit-langit mana yang menolak — `agent`, `task`, atau `session` — agar Anda tahu apakah menaikkan bulan, jalankan, atau sesi yang satu ini.
+
+<Callout>
+**Agen diberi tahu di dalam jalur.** Di bawah sesi muatan yang sama ditambahkan ke aliran peristiwa sesi sebagai peristiwa status dari `budget`, jadi agen membaca penolakannya sendiri selagi masih berjalan dan dapat merampungkan — menulis apa yang ia punya, mengatakan mengapa ia berhenti — alih-alih jatuh pada panggilan yang gagal.
+</Callout>
+
+`budget_exceeded` bukan kegagalan model. Panggilan yang gagal pada model dicoba lagi; panggilan yang ditolak anggaran tidak, karena mencobanya lagi akan menolaknya lagi.
+
+## Kutipan adalah batas atas, penyelesaian adalah yang nyata
+
+Kutipan sengaja keliru besar: prompt sebagaimana akan dikirim, ditambah pelengkapan terbesar yang diizinkan permintaan — `max_tokens`, atau 4.096 bila permintaan tidak menamai satu pun — pada tarif inferensi platform.
+
+Setelah panggilan terjadi, apa yang **benar-benar dilaporkan** gerbang diselesaikan terhadap setiap jumlah yang kutipan diperiksa padanya, dan selisihnya kembali ke batas. Panggilan yang gagal tidak pernah diselesaikan, jadi tidak pernah ditagih dan ruangnya kembali.
+
+Karena itu agen dapat ditolak dengan ruang yang tampak cukup: pintu membandingkan langit-langit panggilan berikutnya, bukan biaya yang mungkin.
+
+## Anggaran milik sesi
+
+Sesi boleh membawa langit-langit sendiri, di bawah milik agen:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent/sessions/$ID/budget \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"budget_micro_usd": 2000000}'
+```
+
+Sesi yang mencapai anggarannya sendiri **dijeda, bukan gagal** — kerja berlanjut saat Anda menaikkan batas atau melepasnya. Tiga aturan:
+
+- pengganti harus **lebih besar secara ketat** daripada yang telah dikonsumsi sesi
+- **pelepasan satu arah**: `{"budget_micro_usd": null}` melepas batas untuk selamanya, dan sesi itu tidak dapat diberi satu lagi
+- sesi yang **dibuat tanpa** anggaran tidak dapat diberi satu kemudian
+
+Masing-masing menolak dengan `409` alih-alih diam-diam melakukan hal lain.
+
+## Agen yang didefinisikan sebelum anggaran ada
+
+Ia membawa batas nol dan **tidak dibatasi** — belanjanya tetap dijumlahkan dan dapat dibaca di `/spend`, dan pembaruan memberinya batas. Menolak setiap agen yang didefinisikan sebelum fitur dikirim akan menjadi gangguan, bukan kebijakan.
+
+## Berikutnya
+
+- **[Agen](/docs/concepts/agents)** — definisi tempat anggaran bergantung.
+- **[Referensi agen](/docs/openapi/agents)** — setiap operasi, dihasilkan.
+- **[Harga](https://hanzo.ai/pricing)** — apa yang ditagih platform, dan berapa biaya panggilan model.

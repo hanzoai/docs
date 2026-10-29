@@ -1,0 +1,160 @@
+---
+title: Budget
+description: A un agente si fa un preventivo prima che spenda e si rifiuta quando sfonderebbe. Quattro soffitti, micro-USD interi, e un rifiuto che l’agente può leggere mentre sta ancora girando.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Dopo questa pagina puoi limitare quanto spende un agente, leggere quanto ha speso, e
+distinguere un rifiuto di budget da un fallimento del modello.**
+
+## Che cos’è un budget
+
+Ogni chiamata a un modello e ogni chiamata a uno strumento a pagamento che un agente fa è **preventivata prima di
+essere fatta** — un limite superiore di quanto la chiamata potrebbe costare — e quel preventivo è
+controllato, in quest’ordine, contro quattro cose:
+
+1. **il saldo della tua organizzazione** — se può essere pagata affatto
+2. **il tetto di periodo dell’agente** — `cap_micro_usd`, meno quanto ha speso questo periodo
+3. **il soffitto del compito** — `max_task_micro_usd`, meno quanto ha speso questa esecuzione
+4. **il budget della sessione** — `budget_micro_usd`, meno quanto ha speso questa sessione
+
+Uno qualunque rifiuta la chiamata. Non c’è flag e non c’è scappatoia: un’esecuzione raggiunge
+un modello solo attraverso la porta.
+
+## Il denaro è micro-USD interi
+
+Ogni importo è un numero intero di micro-USD, in un campo con suffisso
+`_micro_usd`. **1.000.000 è un dollaro**, quindi `11902000` è 11,902 $ e `250` è
+un quarantesimo di centesimo. Una chiamata costa frazioni di centesimo; un tetto tenuto in centesimi
+non potrebbe vederne uno.
+
+## Dichiarare un budget
+
+Tutti e tre i campi sono richiesti quando definisci un agente.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "triage",
+    "model": "zen-1",
+    "instructions": "Triage inbound issues.",
+    "cap_micro_usd": 20000000,
+    "max_task_micro_usd": 500000,
+    "period": "month"
+  }'
+```
+
+Quell’agente può spendere **20 $ al mese**, e nessuna singola esecuzione può spendere più
+di **0,50 $**.
+
+- `cap_micro_usd` deve essere positivo. Un tetto di zero vorrebbe dire nessun limite e nessuna
+  registrazione, che è lo stato che un budget esiste per togliere.
+- `max_task_micro_usd` deve essere positivo e non può superare il tetto.
+- `period` è `day`, `week` o `month`.
+
+I periodi sono **allineati al calendario in UTC**: `month` significa il mese, non trenta
+giorni dalla prima chiamata, e `week` inizia di lunedì. La finestra ruota alla
+prima chiamata dopo il passaggio, e `consumed_micro_usd` torna a zero.
+
+## Leggere quanto ha speso
+
+```
+GET /v1/agent/{ref}/spend
+```
+
+```json
+{
+  "cap_micro_usd": 20000000,
+  "max_task_micro_usd": 500000,
+  "period": "month",
+  "consumed_micro_usd": 11902000,
+  "remaining_micro_usd": 8098000,
+  "by_component": { "model": 11431000, "computer": 402000, "tool": 69000 }
+}
+```
+
+`by_component` divide la spesa in tre: **model** è ogni completamento che
+l’agente ha comprato, **computer** è il runtime in cui è stato residente, **tool** è una
+chiamata a strumento a pagamento. Un componente senza spesa è **assente, non zero**.
+
+## Come appare un rifiuto
+
+Uno sfondamento risponde `402` con il codice `budget_exceeded`:
+
+```json
+{
+  "error": {
+    "code": "budget_exceeded",
+    "message": "task budget exceeded: this call would cost up to 620000 micro-USD and 118000 remain",
+    "event": "budget.exceeded",
+    "scope": "task",
+    "component": "model",
+    "quote_micro_usd": 620000,
+    "remaining_micro_usd": 118000
+  }
+}
+```
+
+`scope` nomina quale soffitto ha rifiutato — `agent`, `task` o `session` — così sai
+se alzare il mese, l’esecuzione o questa sola sessione.
+
+<Callout>
+**All’agente viene detto in banda.** Sotto una sessione lo stesso carico è aggiunto al
+flusso di eventi della sessione come evento di stato da `budget`, così un agente legge
+il proprio rifiuto mentre sta ancora girando e può chiudere — scrivere ciò che ha,
+dire perché si è fermato — invece di andare in crash su una chiamata fallita.
+</Callout>
+
+`budget_exceeded` non è un fallimento del modello. Una chiamata che il modello ha fallito viene ritentata; una
+chiamata che il budget ha rifiutato no, perché ritentarla la rifiuterebbe di nuovo.
+
+## I preventivi sono limiti superiori, il saldo è il reale
+
+Il preventivo sbaglia in grande di proposito: il prompt come sarà inviato, più il completamento
+più grande che la richiesta consente — `max_tokens`, o 4.096 quando la richiesta non ne nomina
+nessuno — alla tariffa di inferenza della piattaforma.
+
+Quando la chiamata è avvenuta, ciò che il gateway ha **davvero riportato** viene saldato
+contro ogni conteggio a cui il preventivo è stato controllato, e la differenza torna
+al tetto. Una chiamata fallita non si salda mai, quindi non viene mai addebitata e il suo
+margine torna.
+
+Per questo un agente può essere rifiutato con un margine che sembra sufficiente: la
+porta confronta il soffitto della chiamata successiva, non il suo costo probabile.
+
+## Il budget proprio di una sessione
+
+Una sessione può portare un soffitto proprio, sotto quello dell’agente:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent/sessions/$ID/budget \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"budget_micro_usd": 2000000}'
+```
+
+Una sessione che raggiunge il proprio budget è **in pausa, non fallita** — il lavoro riprende
+nel momento in cui alzi il tetto o lo togli. Tre regole:
+
+- una sostituzione deve essere **strettamente maggiore** di quanto la sessione ha consumato
+- **la rimozione è a senso unico**: `{"budget_micro_usd": null}` toglie il tetto per
+  sempre, e a quella sessione non se ne può dare un altro
+- una sessione **creata senza** un budget non può riceverne uno dopo
+
+Ognuna di queste rifiuta con `409` invece di fare altro in silenzio.
+
+## Un agente definito prima che esistessero i budget
+
+Porta un tetto di zero e **non è limitato** — la sua spesa è comunque conteggiata e
+leggibile su `/spend`, e un aggiornamento gli dà un tetto. Rifiutare ogni agente definito
+prima che la funzione fosse distribuita sarebbe un’interruzione, non una politica.
+
+## Avanti
+
+- **[Agenti](/docs/concepts/agents)** — la definizione a cui un budget si aggancia.
+- **[Riferimento degli agenti](/docs/openapi/agents)** — ogni operazione, generata.
+- **[Prezzi](https://hanzo.ai/pricing)** — quanto addebita la piattaforma, e qual è
+  la tariffa di una chiamata a un modello.

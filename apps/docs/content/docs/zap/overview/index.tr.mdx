@@ -1,0 +1,151 @@
+---
+title: Genel bakış
+description: ZAP mimarisi ve temel kavramlar
+index: true
+---
+
+# ZAP'a genel bakış
+
+ZAP (Zero-Copy App Proto), yapay zeka aracı ekosistemleri için tasarlanmış yeni nesil bir iletişim protokolüdür. Cap'n Proto üzerine kuruludur ve üretim aracı dağıtımlarının istediği performansı ve güvenliği sağlar.
+
+## Temel kavramlar
+
+### Sıfır kopya serileştirme
+
+MCP'nin kullandığı JSON-RPC'den farklı olarak ZAP, Cap'n Proto'nun sıfır kopya serileştirmesine dayanır:
+
+- **Ayrıştırma yükü yok**: veri tel biçiminden doğrudan okunur
+- **Paylaşılan bellek**: iletiler süreçler arasında kopyalanmadan geçer
+- **Sıkı kodlama**: ikili biçim JSON'dan 2-10 kat küçüktür
+
+```c
+struct ToolCall {
+  id @0 :Text;
+  name @1 :Text;
+  args @2 :Data;  # JSON arguments as bytes
+  metadata @3 :Metadata;
+}
+```
+
+### Arayüz tabanlı RPC
+
+ZAP, Cap'n Proto'nun yetenek tabanlı RPC sistemini kullanır:
+
+```c
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+  subscribe @5 (uri :Text) -> (stream :ResourceStream);
+  listPrompts @6 () -> (prompts :PromptList);
+  getPrompt @7 (name :Text, args :Metadata) -> (messages :List(PromptMessage));
+  log @8 (level :LogLevel, message :Text, data :Data);
+}
+```
+
+### MCP uyumluluğu
+
+ZAP, Gateway arayüzü üzerinden MCP ile tam geriye dönük uyumluluğu korur:
+
+```c
+interface Gateway extends(Zap) {
+  addServer @0 (name :Text, url :Text, config :ServerConfig) -> (id :Text);
+  removeServer @1 (id :Text) -> ();
+  listServers @2 () -> (servers :List(ConnectedServer));
+  serverStatus @3 (id :Text) -> (status :ServerStatus);
+}
+```
+
+Gateway şunları köprüleyebilir:
+- **stdio**: olağan MCP sunucu süreçleri
+- **http**: HTTP tabanlı MCP uçları
+- **websocket**: WebSocket bağlantıları
+- **zap**: yerel ZAP protokolü
+- **unix**: Unix etki alanı soketleri
+
+## Mimari
+
+```
++------------------+     +------------------+
+|   AI Agent       |     |   AI Agent       |
+|   (ZAP Client)   |     |   (ZAP Client)   |
++--------+---------+     +--------+---------+
+         |                        |
+         v                        v
++------------------------------------------+
+|              ZAP Gateway                  |
+|  +--------+  +--------+  +--------+      |
+|  | MCP    |  | MCP    |  | ZAP    |      |
+|  | Server |  | Server |  | Server |      |
+|  +--------+  +--------+  +--------+      |
++------------------------------------------+
+         |                        |
+         v                        v
++------------------+     +------------------+
+|   Coordinator    |     |   DID Registry   |
+|   (Discovery)    |     |   (Identity)     |
++------------------+     +------------------+
+```
+
+## Temel özellikler
+
+### Araçlar
+
+Araçlar, aracıların çağırabildiği işlevlerdir:
+
+```c
+struct Tool {
+  name @0 :Text;
+  description @1 :Text;
+  schema @2 :Data;  # JSON Schema as bytes
+  annotations @3 :Metadata;
+}
+```
+
+### Kaynaklar
+
+Kaynaklar, isteğe bağlı akışlı veri kaynaklarıdır:
+
+```c
+struct Resource {
+  uri @0 :Text;
+  name @1 :Text;
+  description @2 :Text;
+  mimeType @3 :Text;
+  annotations @4 :Metadata;
+}
+
+interface ResourceStream {
+  next @0 () -> (content :ResourceContent, done :Bool);
+  cancel @1 () -> ();
+}
+```
+
+### İstemler
+
+İstemler, yeniden kullanılabilir ileti şablonlarıdır:
+
+```c
+struct Prompt {
+  name @0 :Text;
+  description @1 :Text;
+  arguments @2 :List(Argument);
+}
+```
+
+## Güvenlik modeli
+
+ZAP, katmanlı bir güvenlik uygular:
+
+1. **Taşıma güvenliği**: kuantum sonrası hibrit el sıkışma (X25519 + ML-KEM-768)
+2. **İleti kimlik doğrulaması**: ML-DSA-65 imzaları
+3. **Kimlik**: W3C DID tabanlı düğüm kimliği
+4. **Mutabakat**: çok taraflı işlemler için Corona eşik imzası
+
+## Next Steps
+
+- [Başlarken](/docs/guides) - İlk ZAP aracınızı kurup çalıştırın
+- [Şema dili](/docs/zap/schema) - Cap'n Proto şema biçimini öğrenin
+- [Protokol belirtimi](/docs/zap/protocol) - Tel biçimini anlayın

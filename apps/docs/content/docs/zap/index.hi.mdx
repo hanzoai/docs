@@ -1,0 +1,100 @@
+---
+title: ZAP प्रोटोकॉल
+description: Zero-Copy App Proto — AI एजेंटों की बातचीत के लिए उच्च-प्रदर्शन Cap'n Proto RPC। MCP से 10-100 गुना तेज़, पोस्ट-क्वांटम सुरक्षा के साथ।
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# ZAP प्रोटोकॉल
+
+**ZAP** (Zero-Copy App Proto) AI एजेंटों के लिए Cap'n Proto पर बना उच्च-प्रदर्शन संचार प्रोटोकॉल है। यह MCP के साथ पूरा मेल, 10-100 गुना प्रदर्शन, पोस्ट-क्वांटम सुरक्षा और 11 प्रोग्रामिंग भाषाओं का मूल समर्थन देता है।
+
+```bash title="Install"
+curl -fsSL https://hanzo.sh | sh && hanzo mcp launch zap
+```
+
+## ZAP क्यों
+
+- **ज़ीरो-कॉपी प्रदर्शन** — Cap'n Proto का ज़ीरो-कॉपी सीरियलाइज़ेशन पार्सिंग का खर्च हटाता है
+- **MCP संगत** — Model Context Protocol सर्वरों के साथ पूरा पश्चगामी मेल
+- **पोस्ट-क्वांटम सुरक्षा** — लंबे भविष्य के लिए ML-KEM और ML-DSA क्रिप्टोग्राफी
+- **कई भाषाएँ** — Rust, Go, Python, JavaScript, C++ और 6 और भाषाओं के लिए मूल बाइंडिंग
+- **एजेंट सहमति** — कई एजेंटों के जवाब जोड़ने के लिए अंतर्निहित मतदान
+- **W3C DID** — विकेंद्रीकृत पहचान का मूल समर्थन
+
+<Cards>
+  <Card
+    title="अवलोकन"
+    description="आर्किटेक्चर और मूल अवधारणाएँ"
+    href="/docs/zap/overview"
+  />
+  <Card
+    title="शुरुआत"
+    description="ZAP इंस्टॉल करें और पहला एजेंट बनाएँ"
+    href="/docs/zap/getting-started"
+  />
+  <Card
+    title="स्कीमा भाषा"
+    description="Cap'n Proto स्कीमा संदर्भ"
+    href="/docs/zap/schema"
+  />
+  <Card
+    title="प्रोटोकॉल विनिर्देश"
+    description="वायर प्रारूप और RPC विवरण"
+    href="/docs/zap/protocol"
+  />
+  <Card
+    title="भाषा बाइंडिंग"
+    description="11 भाषाओं के SDK दस्तावेज़"
+    href="/docs/zap/bindings"
+  />
+  <Card
+    title="उन्नत विषय"
+    description="पोस्ट-क्वांटम क्रिप्टो, सहमति, ब्लॉकचेन"
+    href="/docs/zap/advanced"
+  />
+</Cards>
+
+## संक्षिप्त उदाहरण
+
+```c title="zap.capnp"
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+}
+```
+
+```rust title="Rust Example"
+use zap_protocol::{Zap, ClientInfo};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = Zap::connect("zap://localhost:9000").await?;
+    let info = client.init(ClientInfo::new("my-agent", "1.0.0")).await?;
+
+    let tools = client.list_tools().await?;
+    for tool in tools {
+        println!("Tool: {} - {}", tool.name, tool.description);
+    }
+
+    Ok(())
+}
+```
+
+## ZAP बनाम MCP
+
+| सुविधा | MCP | ZAP |
+|---------|-----|-----|
+| सीरियलाइज़ेशन | JSON-RPC | Cap'n Proto |
+| प्रदर्शन | आधार रेखा | 10-100 गुना तेज़ |
+| मेमोरी | अधिक (पार्सिंग) | ज़ीरो-कॉपी |
+| पोस्ट-क्वांटम | नहीं | ML-KEM, ML-DSA |
+| थ्रेशहोल्ड हस्ताक्षर | नहीं | Corona |
+| DID समर्थन | नहीं | W3C DIDs |
+| एजेंट सहमति | नहीं | अंतर्निहित मतदान |
+
+ZAP में **MCP Gateway मोड** है, ताकि मौजूदा MCP सर्वरों से आसानी से जाया जा सके।

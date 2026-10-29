@@ -1,0 +1,135 @@
+---
+title: 예산
+description: 에이전트는 쓰기 전에 견적되고, 뚫으려 하면 거절된다. 네 개의 천장, 정수 마이크로 미국 달러, 그리고 아직 도는 동안 에이전트가 읽을 수 있는 거절.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**이 페이지 다음에는 에이전트가 쓰는 액을 막고, 쓴 액을 읽고, 예산 거절을 모델 실패와 가를 수 있다.**
+
+## 예산이란
+
+에이전트가 하는 모든 모델 호출과 가격이 있는 도구 호출은 **이루어지기 전에 견적된다** —
+그 호출이 들 수 있는 상한이다. 그 견적은 이 순서로 네 가지에 맞춘다:
+
+1. **조직의 잔액** — 아예 낼 수 있는가
+2. **에이전트의 기간 상한** — `cap_micro_usd`에서 이 기간이 쓴 것을 뺀다
+3. **과제의 천장** — `max_task_micro_usd`에서 이 실행이 쓴 것을 뺀다
+4. **세션의 예산** — `budget_micro_usd`에서 이 세션이 쓴 것을 뺀다
+
+어느 하나라도 호출을 거절한다. 깃발도 없고 우회로도 없다. 실행이 모델에 닿는 것은 문을 통해서뿐이다.
+
+## 돈은 정수 마이크로 미국 달러다
+
+모든 금액은 마이크로 미국 달러의 정수이고, 필드 접미사는
+`_micro_usd`다. **1,000,000이 일 달러**이므로 `11902000`은 11.902달러이고 `250`은
+일 센트의 사십분의 일이다. 호출은 센트의 분수만 든다. 센트로 둔 상한은
+그 하나를 볼 수 없다.
+
+## 예산을 말하기
+
+에이전트를 정의할 때 세 필드는 모두 필요하다.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "triage",
+    "model": "zen-1",
+    "instructions": "Triage inbound issues.",
+    "cap_micro_usd": 20000000,
+    "max_task_micro_usd": 500000,
+    "period": "month"
+  }'
+```
+
+이 에이전트는 **한 달에 20달러**를 쓸 수 있고, 한 번의 실행이 **0.50달러**를 넘겨 쓸 수 없다.
+
+- `cap_micro_usd`는 양수여야 한다. 상한 영은 제한도 기록도 없다는 뜻이고, 예산이 없애기 위해 있는 상태다.
+- `max_task_micro_usd`는 양수여야 하고 상한을 넘을 수 없다.
+- `period`는 `day`, `week`, `month`다.
+
+기간은 **UTC에서 달력에 맞는다**. `month`는 달이지, 첫 호출로부터 삼십 일이 아니다. `week`는 월요일에 시작한다. 창은 넘어간 뒤의 첫 호출에 구르고, `consumed_micro_usd`는 영으로 돌아간다.
+
+## 쓴 것을 읽기
+
+```
+GET /v1/agent/{ref}/spend
+```
+
+```json
+{
+  "cap_micro_usd": 20000000,
+  "max_task_micro_usd": 500000,
+  "period": "month",
+  "consumed_micro_usd": 11902000,
+  "remaining_micro_usd": 8098000,
+  "by_component": { "model": 11431000, "computer": 402000, "tool": 69000 }
+}
+```
+
+`by_component`는 지출을 셋으로 가른다. **model**은 에이전트가 산 모든 완성, **computer**는 그것이 머물던 실행 시간, **tool**은 가격이 있는 도구 호출이다. 지출이 없는 성분은 **영이 아니라 없다**.
+
+## 거절의 모습
+
+돌파는 `402`와 코드 `budget_exceeded`로 답한다:
+
+```json
+{
+  "error": {
+    "code": "budget_exceeded",
+    "message": "task budget exceeded: this call would cost up to 620000 micro-USD and 118000 remain",
+    "event": "budget.exceeded",
+    "scope": "task",
+    "component": "model",
+    "quote_micro_usd": 620000,
+    "remaining_micro_usd": 118000
+  }
+}
+```
+
+`scope`는 어느 천장이 거절했는지 이름 붙인다 — `agent`, `task`, `session` — 달을 올릴지, 실행을 올릴지, 이 세션 하나를 올릴지 알게 한다.
+
+<Callout>
+**에이전트에게는 대역 안에서 알린다.** 세션 아래에서는 같은 짐이 `budget`에서 온 상태 사건으로 세션의 사건 흐름에 붙는다. 그래서 에이전트는 아직 도는 동안 자기 거절을 읽고 마무리할 수 있다 — 가진 것을 쓰고, 왜 멈췄는지 말한다 — 실패한 호출에서 죽는 대신.
+</Callout>
+
+`budget_exceeded`는 모델 실패가 아니다. 모델이 실패한 호출은 다시 시도된다. 예산이 거절한 호출은 그렇지 않다. 다시 시도하면 또 거절되기 때문이다.
+
+## 견적은 상한, 정산은 실제
+
+견적은 일부러 크게 틀린다. 보내질 그대로의 프롬프트에, 요청이 허용하는 가장 큰 완성 — `max_tokens`, 하나도 이름 붙이지 않으면 4,096 — 을 플랫폼의 추론 요금으로 더한다.
+
+호출이 일어난 뒤, 게이트웨이가 **실제로 보고한** 것이 견적을 맞춰 본 모든 합계에 대해 정산되고, 차이는 상한으로 돌아온다. 실패한 호출은 정산되지 않으므로 청구되지 않고, 여유는 돌아온다.
+
+그래서 여유가 충분해 보여도 에이전트는 거절될 수 있다. 문은 다음 호출의 천장을 비교하지, 그럴듯한 비용을 비교하지 않는다.
+
+## 세션 자신의 예산
+
+세션은 에이전트의 아래에 자기 천장을 실을 수 있다:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent/sessions/$ID/budget \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"budget_micro_usd": 2000000}'
+```
+
+자기 예산에 닿은 세션은 **실패가 아니라 일시 정지**다 — 상한을 올리거나 빼는 순간 일이 다시 간다. 규칙은 셋이다:
+
+- 대체는 세션이 소비한 것보다 **엄격히 커야** 한다
+- **빼는 것은 한 방향**이다. `{"budget_micro_usd": null}`은 상한을 영원히 벗기고, 그 세션에는 다시 줄 수 없다
+- **예산 없이 만들어진** 세션에는 나중에 줄 수 없다
+
+각각은 조용히 다른 일을 하는 대신 `409`로 거절한다.
+
+## 예산이 있기 전에 정의된 에이전트
+
+상한 영을 지니고 **막혀 있지 않다** — 지출은 그래도 합산되어 `/spend`에서 읽을 수 있고, 업데이트가 상한을 준다. 기능이 나가기 전에 정의된 모든 에이전트를 거절하는 것은 방침이 아니라 중단이다.
+
+## 다음
+
+- **[에이전트](/docs/concepts/agents)** — 예산이 걸리는 정의.
+- **[에이전트 레퍼런스](/docs/openapi/agents)** — 모든 연산, 생성됨.
+- **[요금](https://hanzo.ai/pricing)** — 플랫폼이 받는 것, 그리고 모델 호출의 수수료.

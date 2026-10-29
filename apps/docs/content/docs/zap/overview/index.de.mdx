@@ -1,0 +1,151 @@
+---
+title: Überblick
+description: Die Architektur von ZAP und die Grundbegriffe
+index: true
+---
+
+# ZAP im Überblick
+
+ZAP (Zero-Copy App Proto) ist ein Kommunikationsprotokoll der nächsten Generation, eigens für Ökosysteme von KI-Agenten. Auf Cap'n Proto aufgebaut, liefert es die Leistung und Sicherheit, die Produktivbereitstellungen von Agenten brauchen.
+
+## Grundbegriffe
+
+### Serialisierung ohne Kopie
+
+Anders als das von MCP genutzte JSON-RPC setzt ZAP auf die Zero-Copy-Serialisierung von Cap'n Proto:
+
+- **Kein Parsing-Aufwand**: Daten werden direkt aus dem Drahtformat gelesen
+- **Gemeinsamer Speicher**: Nachrichten gehen ohne Kopie zwischen Prozessen
+- **Kompakte Kodierung**: Das Binärformat ist 2- bis 10-mal kleiner als JSON
+
+```c
+struct ToolCall {
+  id @0 :Text;
+  name @1 :Text;
+  args @2 :Data;  # JSON arguments as bytes
+  metadata @3 :Metadata;
+}
+```
+
+### Schnittstellenbasiertes RPC
+
+ZAP nutzt das fähigkeitsbasierte RPC-System von Cap'n Proto:
+
+```c
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+  subscribe @5 (uri :Text) -> (stream :ResourceStream);
+  listPrompts @6 () -> (prompts :PromptList);
+  getPrompt @7 (name :Text, args :Metadata) -> (messages :List(PromptMessage));
+  log @8 (level :LogLevel, message :Text, data :Data);
+}
+```
+
+### MCP-Kompatibilität
+
+ZAP bleibt über die Gateway-Schnittstelle vollständig abwärtskompatibel mit MCP:
+
+```c
+interface Gateway extends(Zap) {
+  addServer @0 (name :Text, url :Text, config :ServerConfig) -> (id :Text);
+  removeServer @1 (id :Text) -> ();
+  listServers @2 () -> (servers :List(ConnectedServer));
+  serverStatus @3 (id :Text) -> (status :ServerStatus);
+}
+```
+
+Das Gateway kann anbinden:
+- **stdio**: übliche MCP-Serverprozesse
+- **http**: HTTP-basierte MCP-Endpunkte
+- **websocket**: WebSocket-Verbindungen
+- **zap**: natives ZAP-Protokoll
+- **unix**: Unix-Domain-Sockets
+
+## Architektur
+
+```
++------------------+     +------------------+
+|   AI Agent       |     |   AI Agent       |
+|   (ZAP Client)   |     |   (ZAP Client)   |
++--------+---------+     +--------+---------+
+         |                        |
+         v                        v
++------------------------------------------+
+|              ZAP Gateway                  |
+|  +--------+  +--------+  +--------+      |
+|  | MCP    |  | MCP    |  | ZAP    |      |
+|  | Server |  | Server |  | Server |      |
+|  +--------+  +--------+  +--------+      |
++------------------------------------------+
+         |                        |
+         v                        v
++------------------+     +------------------+
+|   Coordinator    |     |   DID Registry   |
+|   (Discovery)    |     |   (Identity)     |
++------------------+     +------------------+
+```
+
+## Zentrale Funktionen
+
+### Werkzeuge
+
+Werkzeuge sind Funktionen, die Agenten aufrufen können:
+
+```c
+struct Tool {
+  name @0 :Text;
+  description @1 :Text;
+  schema @2 :Data;  # JSON Schema as bytes
+  annotations @3 :Metadata;
+}
+```
+
+### Ressourcen
+
+Ressourcen sind Datenquellen, optional mit Streaming:
+
+```c
+struct Resource {
+  uri @0 :Text;
+  name @1 :Text;
+  description @2 :Text;
+  mimeType @3 :Text;
+  annotations @4 :Metadata;
+}
+
+interface ResourceStream {
+  next @0 () -> (content :ResourceContent, done :Bool);
+  cancel @1 () -> ();
+}
+```
+
+### Aufforderungen
+
+Aufforderungen sind wiederverwendbare Nachrichtenvorlagen:
+
+```c
+struct Prompt {
+  name @0 :Text;
+  description @1 :Text;
+  arguments @2 :List(Argument);
+}
+```
+
+## Sicherheitsmodell
+
+ZAP setzt Sicherheit in der Tiefe um:
+
+1. **Transportsicherheit**: postquantischer hybrider Handshake (X25519 + ML-KEM-768)
+2. **Nachrichtenauthentisierung**: ML-DSA-65-Signaturen
+3. **Identität**: Knotenidentität auf Basis von W3C DID
+4. **Konsens**: Corona-Schwellensignatur für Mehrparteienoperationen
+
+## Next Steps
+
+- [Erste Schritte](/docs/guides) - Installieren und starten Sie Ihren ersten ZAP-Agenten
+- [Schemasprache](/docs/zap/schema) - Das Cap'n-Proto-Schemaformat lernen
+- [Protokollspezifikation](/docs/zap/protocol) - Das Drahtformat verstehen

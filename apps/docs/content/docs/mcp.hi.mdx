@@ -1,0 +1,173 @@
+---
+icon: Plug
+title: MCP
+description: एकीकृत Hanzo MCP — एक सर्वर जो Claude Code, Cursor और किसी भी MCP क्लाइंट को एक उपकरण सतह देता है, साथ ही आपकी जुड़ी क्लाउड सेवाएँ।
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# MCP
+
+एक मॉडल संदर्भ प्रोटोकॉल सर्वर, एक उपकरण सतह। **`hanzo-mcp`** को Claude Code में जोड़ें (या Cursor, Claude Desktop, या किसी MCP क्लाइंट में) और हर Hanzo क्षमता एक ही कनेक्शन से दिखती है — उपकरण-दर-उपकरण तार जोड़े बिना।
+
+> इसके बजाय होस्ट किया MCP सर्वर ढूँढ रहे हैं? **[क्लाउड MCP](/docs/mcp-tools)** एक URL है जिसमें कुछ स्थापित नहीं करना, और उसका हर उपकरण [उपकरण सूची](/docs/mcp-tools/all-tools) में गिना है। यह पृष्ठ वह सर्वर है जो आपके संपादक के पास चलता है।
+
+```bash title="Add the Hanzo MCP to Claude Code"
+claude mcp add hanzo -- npx -y @hanzo/mcp serve
+```
+
+वह एक आदेश पूरी सतह खोलता है:
+
+- **13 एकीकृत उपकरण** — `fs`, `exec`, `code`, `git`, `fetch`, `workspace`, `ui`, तथा वैकल्पिक `think`, `memory`, `hanzo`, `plan`, `tasks`, `mode`। प्रति क्षमता एक क्रिया-मार्गित उपकरण (HIP-0300), ताकि क्लाइंट सैकड़ों अतिव्यापी नामों के बजाय छोटा स्थिर समुच्चय देखे।
+- **क्लाउड सेवाएँ** — `hanzo` उपकरण आपके मंच तक देशी रूप से ले जाता है: IAM (पहचान), Commerce, Storage, और `api.hanzo.ai/v1` पर कृत्रिम बुद्धि API, आपके टोकन से प्रमाणित।
+- **आपके संयोजक** — GitHub, Slack, Google, Discord, X और अन्य, कंसोल में जोड़ने के बाद उसी कनेक्शन से।
+
+वही सतह तीन तरह जाती है — TypeScript (`@hanzo/mcp`), Python (PyPI पर `hanzo-mcp`), और Rust (`hanzo-mcp::brain`) — एक-से-एक प्रतिबिंबित, MCP परिवहन **stdio** और **streamable-http** पर।
+
+## क्लाइंट विन्यास
+
+```json title="Claude Desktop / Cursor — mcp config"
+{
+  "mcpServers": {
+    "hanzo": {
+      "command": "npx",
+      "args": ["-y", "@hanzo/mcp", "serve"]
+    }
+  }
+}
+```
+
+एक बार साइन इन करें (`hanzo auth login`) और `hanzo` क्लाउड उपकरण तथा आपके संयोजक अपने आप प्रमाणित होते हैं; स्थानीय उपकरण (`fs`, `exec`, `git`, …) बिना खाते चलते हैं।
+
+## उपकरण अनुक्रमणिका
+
+मंच जो उपकरण दिखा सकता है वे `GET api.hanzo.ai/v1/tools` पर अनुक्रमित हैं (प्रमाणित)। आज पाँच स्रोतों में **1,468 उपकरण** हैं — एकीकृत सर्वर उन्हें ऊपर की सघन क्रिया-मार्गित सतह से दिखाता है:
+
+| स्रोत | यह क्या है |
+|--------|-----------|
+| `builtin` | मूल स्थानीय उपकरण (fs, exec, git, code, …) |
+| `skill` | पैक की हुई कौशल |
+| `connector` | जुड़ी क्लाउड एकीकरण (GitHub, Slack, Google, Discord, X, …) |
+| `agent` | एजेंट प्रवेश बिंदु |
+| `function` | उपयोगकर्ता-परिभाषित फलन |
+
+---
+
+## संयोजक
+
+Hanzo जिससे जुड़ सकता है, वह इस बात से कि आप कैसे जुड़ते हैं — देशी संयोजक जिन्हें आप कंसोल में एक बार जोड़ते हैं (GitHub ऐप, OAuth2), और [आधिकारिक रजिस्ट्री](https://registry.modelcontextprotocol.io) से जीवित अनुक्रमित खुला MCP पारिस्थितिकी तंत्र। दोनों में खोजें।
+
+<ConnectorsCatalog />
+
+---
+
+## सेवा के रूप में MCP
+
+एकीकृत सर्वर से आगे, Hanzo आपके लिए कोई भी MCP सर्वर **होस्ट** कर सकता है — किसी भी npx, uvx या कस्टम पैकेज से परिनियोजन, तत्काल विस्तार और शून्य आधारभूत संरचना जिसे संभालना हो।
+
+```bash title="Launch an MCP server"
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+```
+
+## मुख्य क्षमताएँ
+
+- **कोई भी MCP सर्वर** — फ़ाइल प्रणाली, Git, SQL, KV, Slack, GitHub, Notion और अन्य
+- **एक क्लिक परिनियोजन** — एक आदेश से कोई भी MCP सर्वर चलाएँ
+- **स्वतः विस्तार** — 0 से हज़ारों उदाहरणों तक अपने आप
+- **निष्क्रिय लागत $0** — केवल उपयोग का भुगतान, निष्क्रिय शुल्क नहीं
+- **सुरक्षित पृथक्करण** — सूक्ष्म अनुमतियों वाले पृथक् कंटेनर
+- **15 से अधिक क्षेत्र** — विश्व में न्यूनतम विलंब के लिए किनारे पर परिनियोजन
+
+## प्रवर्तन विधियाँ
+
+### NPX पैकेज
+
+```bash
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+hanzo mcp launch npx @modelcontextprotocol/server-github
+hanzo mcp launch npx @modelcontextprotocol/server-slack
+```
+
+### UVX / Python
+
+```bash
+hanzo mcp launch uvx mcp-server-sqlite
+hanzo mcp launch uvx mcp-server-postgres
+```
+
+### कस्टम सर्वर
+
+```bash
+hanzo mcp launch git://github.com/you/mcp-server
+hanzo mcp launch docker://your-org/mcp-custom:latest
+```
+
+## विन्यास
+
+एक विन्यास फ़ाइल से कई सर्वर परिनियोजित करें:
+
+```yaml title="mcp-config.yaml"
+version: "1"
+servers:
+  filesystem:
+    package: "@modelcontextprotocol/server-filesystem"
+    runtime: npx
+    args: ["/workspace"]
+
+  database:
+    package: "mcp-server-postgres"
+    runtime: uvx
+    env:
+      DATABASE_URL: "${secrets.DATABASE_URL}"
+
+  github:
+    package: "@modelcontextprotocol/server-github"
+    runtime: npx
+    env:
+      GITHUB_TOKEN: "${secrets.GITHUB_TOKEN}"
+
+  custom:
+    image: "your-org/mcp-custom:latest"
+    runtime: docker
+    replicas: 3
+```
+
+```bash
+hanzo mcp deploy
+```
+
+## उद्यम सुविधाएँ
+
+<Cards>
+  <Card title="प्रबंधित होस्टिंग" description="स्वतः विस्तार और निगरानी के साथ Hanzo Cloud पर परिनियोजन" />
+  <Card title="सुरक्षित पृथक्करण" description="सूक्ष्म अनुमतियों वाले पृथक् कंटेनर" />
+  <Card title="किनारे पर परिनियोजन" description="न्यूनतम विलंब के लिए 15 से अधिक वैश्विक क्षेत्र" />
+  <Card title="संस्करण नियंत्रण" description="संस्करण पिन करें, तुरंत वापस लें, लेखा परीक्षा पथ" />
+  <Card title="उपकरण संघ" description="कई MCP सर्वरों को एकीकृत अंत बिंदुओं में जोड़ें" />
+  <Card title="विन्यास प्रबंधन" description="केंद्रीय रहस्य और वातावरण चर प्रबंधन" />
+</Cards>
+
+## उपलब्ध उपकरण
+
+| श्रेणी | उपकरण |
+|----------|-------|
+| **भंडारण** | फ़ाइल प्रणाली, S3, Google Drive, Notion |
+| **डेटाबेस** | SQL, MySQL, SQLite, KV, DocumentDB |
+| **विकास उपकरण** | Git, GitHub, GitLab, Linear, Jira |
+| **संचार** | Slack, Discord, ईमेल, Twilio |
+| **क्लाउड** | AWS, GCP, Azure, Kubernetes |
+| **कृत्रिम बुद्धि/अधिगम** | Hugging Face, Weights & Biases, MLflow |
+| **वेब** | ब्राउज़र स्वचालन, Puppeteer, स्क्रीनशॉट |
+| **कस्टम** | कोई भी Docker कंटेनर या npm/pip पैकेज |
+
+## अगला विकास: ZAP
+
+MCP ने उपकरण एकीकरण आसान किया। **ZAP उसे तेज़ करता है।** शून्य-प्रतिलिपि एजेंट प्रोटोकॉल अगला विकास है: शून्य-प्रतिलिपि क्रमांकन, 40-50 गुना कम उपरिव्यय, पैमाने पर एजेंट झुंडों के लिए।
+
+ZAP में निर्बाध स्थानांतरण के लिए **MCP गेटवे मोड** है।
+
+<Cards>
+  <Card title="ZAP प्रोटोकॉल" description="10-100 गुना तेज़, उत्तर-क्वांटम सुरक्षित" href="/docs/zap" />
+  <Card title="गेटवे सेवा" description="हर मॉडल के लिए एक API" href="/docs/services/gateway" />
+</Cards>

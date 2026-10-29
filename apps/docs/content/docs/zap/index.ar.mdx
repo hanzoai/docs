@@ -1,0 +1,100 @@
+---
+title: بروتوكول ZAP
+description: Zero-Copy App Proto — استدعاء RPC عالي الأداء عبر Cap'n Proto لتواصل وكلاء الذكاء الاصطناعي. أسرع من MCP بـ 10 إلى 100 مرة، مع أمن ما بعد الكم.
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# بروتوكول ZAP
+
+**ZAP** (Zero-Copy App Proto) بروتوكول اتصال عالي الأداء لوكلاء الذكاء الاصطناعي، مبني على Cap'n Proto. يوفّر توافقًا كاملًا مع MCP وتحسينًا في الأداء من 10 إلى 100 مرة وأمن ما بعد الكم ودعمًا أصليًا لإحدى عشرة لغة برمجة.
+
+```bash title="Install"
+curl -fsSL https://hanzo.sh | sh && hanzo mcp launch zap
+```
+
+## لماذا ZAP
+
+- **أداء بلا نسخ** — تسلسل Cap'n Proto بلا نسخ يلغي تكلفة التحليل
+- **متوافق مع MCP** — توافق رجعي كامل مع خوادم Model Context Protocol
+- **أمن ما بعد الكم** — تشفير ML-KEM و ML-DSA لأمن يصمد طويلًا
+- **لغات متعددة** — روابط أصلية لـ Rust و Go و Python و JavaScript و C++ وست لغات أخرى
+- **إجماع الوكلاء** — تصويت مدمج لتجميع ردود عدة وكلاء
+- **W3C DID** — دعم أصلي للهوية اللامركزية
+
+<Cards>
+  <Card
+    title="نظرة عامة"
+    description="البنية والمفاهيم الأساسية"
+    href="/docs/zap/overview"
+  />
+  <Card
+    title="البدء"
+    description="ثبّت ZAP وابنِ وكيلك الأول"
+    href="/docs/zap/getting-started"
+  />
+  <Card
+    title="لغة المخطط"
+    description="مرجع مخطط Cap'n Proto"
+    href="/docs/zap/schema"
+  />
+  <Card
+    title="مواصفات البروتوكول"
+    description="صيغة السلك وتفاصيل RPC"
+    href="/docs/zap/protocol"
+  />
+  <Card
+    title="روابط اللغات"
+    description="توثيق الحزمة لإحدى عشرة لغة"
+    href="/docs/zap/bindings"
+  />
+  <Card
+    title="مواضيع متقدمة"
+    description="تشفير ما بعد الكم والإجماع وسلسلة الكتل"
+    href="/docs/zap/advanced"
+  />
+</Cards>
+
+## مثال سريع
+
+```c title="zap.capnp"
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+}
+```
+
+```rust title="Rust Example"
+use zap_protocol::{Zap, ClientInfo};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = Zap::connect("zap://localhost:9000").await?;
+    let info = client.init(ClientInfo::new("my-agent", "1.0.0")).await?;
+
+    let tools = client.list_tools().await?;
+    for tool in tools {
+        println!("Tool: {} - {}", tool.name, tool.description);
+    }
+
+    Ok(())
+}
+```
+
+## ZAP مقابل MCP
+
+| الميزة | MCP | ZAP |
+|---------|-----|-----|
+| التسلسل | JSON-RPC | Cap'n Proto |
+| الأداء | خط الأساس | أسرع بـ 10 إلى 100 مرة |
+| الذاكرة | مرتفعة (تحليل) | بلا نسخ |
+| ما بعد الكم | لا | ML-KEM, ML-DSA |
+| التوقيع العتبي | لا | Corona |
+| دعم DID | لا | W3C DIDs |
+| إجماع الوكلاء | لا | تصويت مدمج |
+
+يتضمن ZAP **وضع Gateway لـ MCP** للانتقال بسلاسة من خوادم MCP القائمة.

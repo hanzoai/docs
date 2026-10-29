@@ -1,0 +1,159 @@
+---
+title: Bütçeler
+description: Bir aracı harcamadan önce fiyatlanır ve aşacak olsa reddedilir. Dört tavan, tamsayı mikro ABD doları ve aracının hâlâ çalışırken okuyabildiği bir ret.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Bu sayfadan sonra bir aracının ne harcadığını sınırlayabilir, ne harcadığını okuyabilir ve
+bir bütçe reddini bir model başarısızlığından ayırabilirsiniz.**
+
+## Bütçe nedir
+
+Bir aracının yaptığı her model çağrısı ve her fiyatlı araç çağrısı **yapılmadan önce
+fiyatlanır** — çağrının mal olabileceği şeyin üst sınırı — ve bu fiyat,
+şu sırayla dört şeye karşı denetlenir:
+
+1. **kuruluşunuzun bakiyesi** — hiç ödenebilir mi
+2. **aracının dönem tavanı** — `cap_micro_usd`, bu dönemin harcadığı düşülerek
+3. **görev tavanı** — `max_task_micro_usd`, bu çalıştırmanın harcadığı düşülerek
+4. **oturumun bütçesi** — `budget_micro_usd`, bu oturumun harcadığı düşülerek
+
+Herhangi biri çağrıyı reddeder. Bayrak yoktur, yan yol yoktur: bir çalıştırma bir modele
+yalnızca kapıdan ulaşır.
+
+## Para tamsayı mikro ABD dolarıdır
+
+Her tutar, `_micro_usd` sonekli bir alanda, tamsayı mikro ABD dolarıdır.
+**1.000.000 bir dolardır**, bu yüzden `11902000` 11,902 $ ve `250`
+bir sentin kırkta biridir. Bir çağrı sentin kesirlerine mal olur; sent cinsinden tutulan bir tavan
+birini göremezdi.
+
+## Bütçe belirtmek
+
+Bir aracı tanımlarken üç alanın üçü de gerekir.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "triage",
+    "model": "zen-1",
+    "instructions": "Triage inbound issues.",
+    "cap_micro_usd": 20000000,
+    "max_task_micro_usd": 500000,
+    "period": "month"
+  }'
+```
+
+Bu aracı **ayda 20 $** harcayabilir ve tek bir çalıştırması **0,50 $** değerinden
+fazla harcayamaz.
+
+- `cap_micro_usd` pozitif olmalıdır. Sıfır tavan, sınır yok ve kayıt yok demek olurdu;
+  bütçenin kaldırmak için var olduğu durum budur.
+- `max_task_micro_usd` pozitif olmalıdır ve tavanı aşamaz.
+- `period` `day`, `week` ya da `month` olur.
+
+Dönemler **UTC’de takvime hizalıdır**: `month` ay demektir, ilk çağrıdan otuz
+gün değil, ve `week` pazartesi başlar. Pencere, devrildikten sonraki
+ilk çağrıda yuvarlanır ve `consumed_micro_usd` sıfıra döner.
+
+## Ne harcadığını okumak
+
+```
+GET /v1/agent/{ref}/spend
+```
+
+```json
+{
+  "cap_micro_usd": 20000000,
+  "max_task_micro_usd": 500000,
+  "period": "month",
+  "consumed_micro_usd": 11902000,
+  "remaining_micro_usd": 8098000,
+  "by_component": { "model": 11431000, "computer": 402000, "tool": 69000 }
+}
+```
+
+`by_component` harcamayı üçe ayırır: **model** aracının satın aldığı her tamamlamadır,
+**computer** içinde yerleşik kaldığı çalışma zamanıdır, **tool** fiyatlı bir
+araç çağrısıdır. Harcaması olmayan bir bileşen **yoktur, sıfır değildir**.
+
+## Bir ret nasıl görünür
+
+Bir aşma `402` ile ve `budget_exceeded` koduyla yanıtlar:
+
+```json
+{
+  "error": {
+    "code": "budget_exceeded",
+    "message": "task budget exceeded: this call would cost up to 620000 micro-USD and 118000 remain",
+    "event": "budget.exceeded",
+    "scope": "task",
+    "component": "model",
+    "quote_micro_usd": 620000,
+    "remaining_micro_usd": 118000
+  }
+}
+```
+
+`scope` hangi tavanın reddettiğini adlandırır — `agent`, `task` ya da `session` — böylece
+ayı mı, çalıştırmayı mı yoksa bu tek oturumu mu yükselteceğinizi bilirsiniz.
+
+<Callout>
+**Aracıya bant içinde söylenir.** Bir oturumun altında aynı yük, oturumun olay
+akışına `budget` kaynaklı bir durum olayı olarak eklenir; böylece aracı kendi
+reddini hâlâ çalışırken okur ve toparlayabilir — elindekini yazar,
+neden durduğunu söyler — başarısız bir çağrıda çökmek yerine.
+</Callout>
+
+`budget_exceeded` bir model başarısızlığı değildir. Modelin başarısız olduğu bir çağrı yeniden denenir;
+bütçenin reddettiği bir çağrı denenmez, çünkü yeniden denemek onu yine reddederdi.
+
+## Fiyatlar üst sınırdır, mutabakat gerçektir
+
+Fiyat bilerek büyük yanılır: gönderileceği hâliyle istem, artı isteğin izin verdiği
+en büyük tamamlama — `max_tokens`, ya da istek hiçbiri demiyorsa 4.096 —
+platformun çıkarım ücretinden.
+
+Çağrı olduktan sonra, ağ geçidinin **gerçekten bildirdiği** şey, fiyatın denetlediği
+her toplama karşı mutabık kılınır ve fark tavana geri gelir. Başarısız olan bir çağrı
+hiç mutabık kılınmaz, bu yüzden hiç faturalanmaz ve payı geri döner.
+
+Bu yüzden bir aracı, yeterli görünen bir payla reddedilebilir: kapı
+sonraki çağrının tavanını karşılaştırır, olası maliyetini değil.
+
+## Bir oturumun kendi bütçesi
+
+Bir oturum, aracınınkinin altında, kendi tavanını taşıyabilir:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent/sessions/$ID/budget \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"budget_micro_usd": 2000000}'
+```
+
+Kendi bütçesine ulaşan bir oturum **duraklatılır, başarısız sayılmaz** — tavanı yükselttiğiniz
+ya da kaldırdığınız anda iş sürer. Üç kural:
+
+- bir yerine koyma, oturumun tükettiğinden **kesinlikle büyük** olmalıdır
+- **kaldırma tek yönlüdür**: `{"budget_micro_usd": null}` tavanı temelli
+  indirir ve o oturuma bir daha verilemez
+- **bütçesiz oluşturulan** bir oturuma sonradan biri verilemez
+
+Bunların her biri sessizce başka bir şey yapmak yerine `409` ile reddeder.
+
+## Bütçeler var olmadan önce tanımlanmış bir aracı
+
+Sıfır tavan taşır ve **sınırlı değildir** — harcaması yine de toplanır ve
+`/spend` adresinde okunur, bir güncelleme ona tavan verir. Özellik çıkmadan önce tanımlanmış
+her aracının reddedilmesi bir kesinti olurdu, politika değil.
+
+## Sonraki
+
+- **[Aracılar](/docs/concepts/agents)** — bir bütçenin asıldığı tanım.
+- **[Aracı başvurusu](/docs/openapi/agents)** — her işlem, üretilmiş.
+- **[Fiyatlandırma](https://hanzo.ai/pricing)** — platformun ne aldığı ve bir model
+  çağrısındaki ücretin ne olduğu.

@@ -1,0 +1,173 @@
+---
+icon: Plug
+title: MCP
+description: 統一された Hanzo MCP — Claude Code、Cursor、任意の MCP クライアントに一つのツール面と、接続済みのクラウドサービスを渡す一つのサーバ。
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# MCP
+
+モデルコンテキストプロトコルのサーバ一つ、ツール面一つ。**`hanzo-mcp`** を Claude Code（または Cursor、Claude Desktop、任意の MCP クライアント）に加えると、Hanzo の各機能が一つの接続で現れます — ツールごとの配線はありません。
+
+> ホストされた MCP サーバをお探しですか。**[クラウド MCP](/docs/mcp-tools)** はインストール不要の URL で、そのすべてのツールは [ツール目録](/docs/mcp-tools/all-tools) に列挙されています。このページは、エディタのそばで動くサーバです。
+
+```bash title="Add the Hanzo MCP to Claude Code"
+claude mcp add hanzo -- npx -y @hanzo/mcp serve
+```
+
+その一つのコマンドが面全体を出します。
+
+- **統一ツール 13** — `fs`、`exec`、`code`、`git`、`fetch`、`workspace`、`ui`、加えて任意の `think`、`memory`、`hanzo`、`plan`、`tasks`、`mode`。機能ごとに動作で振り分ける一つのツール（HIP-0300）なので、クライアントは重なる名前が何百もある代わりに、小さく安定した集合を見ます。
+- **クラウドサービス** — `hanzo` ツールはプラットフォームへネイティブに振り分けます。IAM（アイデンティティ）、Commerce、Storage、そして `api.hanzo.ai/v1` の AI API。トークンで認証されます。
+- **あなたのコネクタ** — GitHub、Slack、Google、Discord、X など。コンソールで結ぶと、同じ接続から現れます。
+
+同じ面は三通りで届きます — TypeScript（`@hanzo/mcp`）、Python（PyPI の `hanzo-mcp`）、Rust（`hanzo-mcp::brain`）— 一対一で写され、MCP の **stdio** と **streamable-http** の上です。
+
+## クライアントの設定
+
+```json title="Claude Desktop / Cursor — mcp config"
+{
+  "mcpServers": {
+    "hanzo": {
+      "command": "npx",
+      "args": ["-y", "@hanzo/mcp", "serve"]
+    }
+  }
+}
+```
+
+一度サインインする（`hanzo auth login`）と、クラウドツール `hanzo` とコネクタは自動で認証されます。ローカルのツール（`fs`、`exec`、`git`、…）はアカウントなしで動きます。
+
+## ツール索引
+
+プラットフォームが出せるすべてのツールは `GET api.hanzo.ai/v1/tools` に索引されます（認証あり）。今日は五つの源から **1,468 ツール**です — 統一サーバは、上の動作振り分けの詰まった面を通してそれらを出します。
+
+| 源 | 何か |
+|--------|-----------|
+| `builtin` | 中核のローカルツール（fs、exec、git、code、…） |
+| `skill` | 梱包された技能 |
+| `connector` | 結ばれたクラウド連携（GitHub、Slack、Google、Discord、X、…） |
+| `agent` | エージェントの入口 |
+| `function` | 利用者が定義した関数 |
+
+---
+
+## コネクタ
+
+Hanzo がつながれるものすべてを、つなぎ方で分けます — コンソールで一度結ぶネイティブコネクタ（GitHub アプリ、OAuth2）と、[公式レジストリ](https://registry.modelcontextprotocol.io) からライブに索引される開かれた MCP の生態系。両方を検索します。
+
+<ConnectorsCatalog />
+
+---
+
+## サービスとしての MCP
+
+統一サーバの先で、Hanzo は任意の MCP サーバをあなたのために**ホスト**できます — 任意の npx、uvx、または独自パッケージから配備し、即座にスケールし、管理する基盤はゼロです。
+
+```bash title="Launch an MCP server"
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+```
+
+## 主な機能
+
+- **任意の MCP サーバ** — ファイルシステム、Git、SQL、KV、Slack、GitHub、Notion など
+- **ワンクリック配備** — 一つのコマンドで任意の MCP サーバを起動
+- **自動スケール** — 0 から数千インスタンスまで自動
+- **待機費用 $0** — 使った分だけ。待機料金はありません
+- **安全なサンドボックス** — 細かい権限の隔離コンテナ
+- **15 を超える地域** — 世界で最も低い遅延のためのエッジ配備
+
+## 起動方法
+
+### NPX パッケージ
+
+```bash
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+hanzo mcp launch npx @modelcontextprotocol/server-github
+hanzo mcp launch npx @modelcontextprotocol/server-slack
+```
+
+### UVX / Python
+
+```bash
+hanzo mcp launch uvx mcp-server-sqlite
+hanzo mcp launch uvx mcp-server-postgres
+```
+
+### 独自サーバ
+
+```bash
+hanzo mcp launch git://github.com/you/mcp-server
+hanzo mcp launch docker://your-org/mcp-custom:latest
+```
+
+## 設定
+
+一つの設定ファイルで複数のサーバを配備します。
+
+```yaml title="mcp-config.yaml"
+version: "1"
+servers:
+  filesystem:
+    package: "@modelcontextprotocol/server-filesystem"
+    runtime: npx
+    args: ["/workspace"]
+
+  database:
+    package: "mcp-server-postgres"
+    runtime: uvx
+    env:
+      DATABASE_URL: "${secrets.DATABASE_URL}"
+
+  github:
+    package: "@modelcontextprotocol/server-github"
+    runtime: npx
+    env:
+      GITHUB_TOKEN: "${secrets.GITHUB_TOKEN}"
+
+  custom:
+    image: "your-org/mcp-custom:latest"
+    runtime: docker
+    replicas: 3
+```
+
+```bash
+hanzo mcp deploy
+```
+
+## 企業向け機能
+
+<Cards>
+  <Card title="マネージドホスティング" description="自動スケールと監視つきで Hanzo Cloud に配備" />
+  <Card title="安全なサンドボックス" description="細かい権限の隔離コンテナ" />
+  <Card title="エッジ配備" description="最も低い遅延のための 15 を超える世界の地域" />
+  <Card title="バージョン管理" description="版を固定し、即座に戻し、監査の跡" />
+  <Card title="ツール連合" description="複数の MCP サーバを統一エンドポイントにまとめる" />
+  <Card title="設定管理" description="秘密の集中と環境変数の管理" />
+</Cards>
+
+## 使えるツール
+
+| 区分 | ツール |
+|----------|-------|
+| **ストレージ** | ファイルシステム、S3、Google Drive、Notion |
+| **データベース** | SQL、MySQL、SQLite、KV、DocumentDB |
+| **開発ツール** | Git、GitHub、GitLab、Linear、Jira |
+| **通信** | Slack、Discord、メール、Twilio |
+| **クラウド** | AWS、GCP、Azure、Kubernetes |
+| **AI/ML** | Hugging Face、Weights & Biases、MLflow |
+| **ウェブ** | ブラウザ自動化、Puppeteer、画面キャプチャ |
+| **独自** | 任意の Docker コンテナまたは npm/pip パッケージ |
+
+## 次の進化: ZAP
+
+MCP はツール統合を簡単にしました。**ZAP はそれを速くします。** ゼロコピー・エージェント・プロトコルが次の進化です。コピーのない直列化、40〜50 倍低いオーバーヘッド、規模のあるエージェントの群れのためです。
+
+ZAP には、切れ目のない移行のための **MCP ゲートウェイモード** があります。
+
+<Cards>
+  <Card title="ZAP プロトコル" description="10〜100 倍速く、耐量子" href="/docs/zap" />
+  <Card title="ゲートウェイサービス" description="すべてのモデルに一つの API" href="/docs/services/gateway" />
+</Cards>

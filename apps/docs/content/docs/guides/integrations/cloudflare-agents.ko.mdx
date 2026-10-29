@@ -1,0 +1,64 @@
+---
+title: Cloudflare Agents
+description: "자체 기본 URL 매개변수가 없습니다. Agent 안에서 openai 클라이언트를 만들고 거기에 baseURL을 설정합니다."
+---
+
+Cloudflare Agents에는 자체 기본 URL 매개변수가 없습니다. 문서화된 구성은 Agent 안에서 만드는 평범한 `openai` 클라이언트이며, 거기에 **`baseURL`**을 설정합니다.
+
+```bash
+npm i agents openai
+```
+
+```ts
+import { Agent } from "agents";
+import { OpenAI } from "openai";
+
+export class Researcher extends Agent {
+  async onRequest(request: Request): Promise<Response> {
+    const client = new OpenAI({
+      apiKey: this.env.HANZO_API_KEY,
+      baseURL: "https://api.hanzo.ai/v1",
+    });
+
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
+
+    this.ctx.waitUntil(
+      (async () => {
+        const stream = await client.chat.completions.create({
+          model: "zen5",
+          messages: [{ role: "user", content: await request.text() }],
+          stream: true,
+        });
+        for await (const part of stream) {
+          writer.write(encoder.encode(part.choices[0]?.delta?.content || ""));
+        }
+        writer.close();
+      })(),
+    );
+
+    return new Response(readable);
+  }
+}
+```
+
+`POST /v1/chat/completions`에 도달합니다.
+
+키는 Worker 비밀에 두세요 — `wrangler secret put HANZO_API_KEY` — 그러면 `this.env`에 도착합니다. 스트리밍은 `ctx.waitUntil` 안에서 돌아서, 응답이 아직 쓰이는 동안 Worker가 철거되지 않습니다.
+
+문서화된 다른 길은 AI SDK이며, `AIChatAgent`와 시작 템플릿이 이미 씁니다. [Vercel AI SDK 페이지](/docs/guides/integrations/vercel-ai-sdk)의 모든 것은 Cloudflare Agent 안에서도 그대로 적용됩니다.
+
+## MCP
+
+MCP는 클라이언트 라이브러리가 아니라 Agent 위의 메서드입니다. `addMcpServer`는 id와 `authUrl`을 돌려줍니다. null이 아닌 `authUrl`은 그 서버가 OAuth 왕복을 원한다는 뜻이고, 우리 것은 원하지 않습니다.
+
+```ts
+export class Researcher extends Agent {
+  async onStart() {
+    await this.addMcpServer("hanzo", "https://api.hanzo.ai/v1/mcp");
+  }
+}
+```
+
+연결된 서버와 그 도구는 Agent의 MCP 상태에서 읽을 수 있습니다.

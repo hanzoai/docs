@@ -1,0 +1,100 @@
+---
+title: ZAP プロトコル
+description: Zero-Copy App Proto — AI エージェント間通信向けの高性能 Cap'n Proto RPC。MCP より 10〜100 倍速く、耐量子セキュリティ付き。
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# ZAP プロトコル
+
+**ZAP**（Zero-Copy App Proto）は、Cap'n Proto の上に構築された、AI エージェント向けの高性能な通信プロトコルです。MCP と完全に互換で、性能は 10〜100 倍、耐量子セキュリティと 11 言語のネイティブ対応を備えます。
+
+```bash title="Install"
+curl -fsSL https://hanzo.sh | sh && hanzo mcp launch zap
+```
+
+## ZAP を使う理由
+
+- **ゼロコピー性能** — Cap'n Proto のゼロコピー直列化が解析のオーバーヘッドをなくします
+- **MCP 互換** — Model Context Protocol サーバーとの完全な後方互換
+- **耐量子セキュリティ** — 長く使える ML-KEM と ML-DSA の暗号
+- **多言語** — Rust、Go、Python、JavaScript、C++ と、さらに 6 言語のネイティブバインディング
+- **エージェントのコンセンサス** — 複数エージェントの応答をまとめる組み込みの投票
+- **W3C DID** — 分散型 ID のネイティブ対応
+
+<Cards>
+  <Card
+    title="概要"
+    description="アーキテクチャと中心概念"
+    href="/docs/zap/overview"
+  />
+  <Card
+    title="はじめに"
+    description="ZAP を入れて最初のエージェントを作る"
+    href="/docs/zap/getting-started"
+  />
+  <Card
+    title="スキーマ言語"
+    description="Cap'n Proto スキーマのリファレンス"
+    href="/docs/zap/schema"
+  />
+  <Card
+    title="プロトコル仕様"
+    description="ワイヤ形式と RPC の詳細"
+    href="/docs/zap/protocol"
+  />
+  <Card
+    title="言語バインディング"
+    description="11 言語の SDK ドキュメント"
+    href="/docs/zap/bindings"
+  />
+  <Card
+    title="高度な話題"
+    description="耐量子暗号、コンセンサス、ブロックチェーン"
+    href="/docs/zap/advanced"
+  />
+</Cards>
+
+## 短い例
+
+```c title="zap.capnp"
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+}
+```
+
+```rust title="Rust Example"
+use zap_protocol::{Zap, ClientInfo};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = Zap::connect("zap://localhost:9000").await?;
+    let info = client.init(ClientInfo::new("my-agent", "1.0.0")).await?;
+
+    let tools = client.list_tools().await?;
+    for tool in tools {
+        println!("Tool: {} - {}", tool.name, tool.description);
+    }
+
+    Ok(())
+}
+```
+
+## ZAP と MCP
+
+| 機能 | MCP | ZAP |
+|---------|-----|-----|
+| 直列化 | JSON-RPC | Cap'n Proto |
+| 性能 | 基準 | 10〜100 倍速い |
+| メモリ | 高い（解析） | ゼロコピー |
+| 耐量子 | いいえ | ML-KEM, ML-DSA |
+| しきい値署名 | いいえ | Corona |
+| DID 対応 | いいえ | W3C DIDs |
+| エージェントのコンセンサス | いいえ | 組み込みの投票 |
+
+ZAP には、既存の MCP サーバーからスムーズに移るための **MCP Gateway モード** があります。

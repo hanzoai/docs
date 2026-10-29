@@ -1,0 +1,151 @@
+---
+title: 概览
+description: 理解 ZAP 的架构与核心概念
+index: true
+---
+
+# ZAP 概览
+
+ZAP（Zero-Copy App Proto）是专为 AI 智能体生态设计的下一代通信协议。它基于 Cap'n Proto，提供生产环境部署智能体所需的性能与安全。
+
+## 核心概念
+
+### 零拷贝序列化
+
+与 MCP 使用的 JSON-RPC 不同，ZAP 依靠 Cap'n Proto 的零拷贝序列化：
+
+- **没有解析开销**：数据直接从线路格式读取
+- **共享内存**：消息在进程之间传递时不必拷贝
+- **紧凑编码**：二进制格式比 JSON 小 2–10 倍
+
+```c
+struct ToolCall {
+  id @0 :Text;
+  name @1 :Text;
+  args @2 :Data;  # JSON arguments as bytes
+  metadata @3 :Metadata;
+}
+```
+
+### 基于接口的 RPC
+
+ZAP 使用 Cap'n Proto 基于能力的 RPC 系统：
+
+```c
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+  subscribe @5 (uri :Text) -> (stream :ResourceStream);
+  listPrompts @6 () -> (prompts :PromptList);
+  getPrompt @7 (name :Text, args :Metadata) -> (messages :List(PromptMessage));
+  log @8 (level :LogLevel, message :Text, data :Data);
+}
+```
+
+### MCP 兼容性
+
+ZAP 通过 Gateway 接口与 MCP 保持完全向后兼容：
+
+```c
+interface Gateway extends(Zap) {
+  addServer @0 (name :Text, url :Text, config :ServerConfig) -> (id :Text);
+  removeServer @1 (id :Text) -> ();
+  listServers @2 () -> (servers :List(ConnectedServer));
+  serverStatus @3 (id :Text) -> (status :ServerStatus);
+}
+```
+
+Gateway 可以桥接：
+- **stdio**：常规 MCP 服务器进程
+- **http**：基于 HTTP 的 MCP 端点
+- **websocket**：WebSocket 连接
+- **zap**：原生 ZAP 协议
+- **unix**：Unix 域套接字
+
+## 架构
+
+```
++------------------+     +------------------+
+|   AI Agent       |     |   AI Agent       |
+|   (ZAP Client)   |     |   (ZAP Client)   |
++--------+---------+     +--------+---------+
+         |                        |
+         v                        v
++------------------------------------------+
+|              ZAP Gateway                  |
+|  +--------+  +--------+  +--------+      |
+|  | MCP    |  | MCP    |  | ZAP    |      |
+|  | Server |  | Server |  | Server |      |
+|  +--------+  +--------+  +--------+      |
++------------------------------------------+
+         |                        |
+         v                        v
++------------------+     +------------------+
+|   Coordinator    |     |   DID Registry   |
+|   (Discovery)    |     |   (Identity)     |
++------------------+     +------------------+
+```
+
+## 主要功能
+
+### 工具
+
+工具是智能体可以调用的函数：
+
+```c
+struct Tool {
+  name @0 :Text;
+  description @1 :Text;
+  schema @2 :Data;  # JSON Schema as bytes
+  annotations @3 :Metadata;
+}
+```
+
+### 资源
+
+资源是数据来源，可以选择流式读取：
+
+```c
+struct Resource {
+  uri @0 :Text;
+  name @1 :Text;
+  description @2 :Text;
+  mimeType @3 :Text;
+  annotations @4 :Metadata;
+}
+
+interface ResourceStream {
+  next @0 () -> (content :ResourceContent, done :Bool);
+  cancel @1 () -> ();
+}
+```
+
+### 提示
+
+提示是可复用的消息模板：
+
+```c
+struct Prompt {
+  name @0 :Text;
+  description @1 :Text;
+  arguments @2 :List(Argument);
+}
+```
+
+## 安全模型
+
+ZAP 采用纵深防御：
+
+1. **传输安全**：后量子混合握手（X25519 + ML-KEM-768）
+2. **消息鉴别**：ML-DSA-65 签名
+3. **身份**：基于 W3C DID 的节点身份
+4. **共识**：多方操作用的 Corona 门限签名
+
+## Next Steps
+
+- [入门](/docs/guides) - 安装并运行你的第一个 ZAP 智能体
+- [模式语言](/docs/zap/schema) - 了解 Cap'n Proto 模式格式
+- [协议规范](/docs/zap/protocol) - 理解线路格式

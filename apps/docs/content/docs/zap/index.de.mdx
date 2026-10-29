@@ -1,0 +1,100 @@
+---
+title: ZAP-Protokoll
+description: Zero-Copy App Proto — Hochleistungs-RPC mit Cap'n Proto für die Kommunikation von KI-Agenten. 10- bis 100-mal schneller als MCP, mit Post-Quanten-Sicherheit.
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# ZAP-Protokoll
+
+**ZAP** (Zero-Copy App Proto) ist ein Hochleistungskommunikationsprotokoll für KI-Agenten auf Basis von Cap'n Proto. Es bietet volle MCP-Kompatibilität, 10- bis 100-fache Leistungsgewinne, Post-Quanten-Sicherheit und native Unterstützung für 11 Programmiersprachen.
+
+```bash title="Install"
+curl -fsSL https://hanzo.sh | sh && hanzo mcp launch zap
+```
+
+## Warum ZAP
+
+- **Leistung ohne Kopie** — Die Zero-Copy-Serialisierung von Cap'n Proto beseitigt den Parsing-Aufwand
+- **MCP-kompatibel** — Volle Abwärtskompatibilität mit Model-Context-Protocol-Servern
+- **Post-Quanten-Sicherheit** — ML-KEM- und ML-DSA-Kryptografie für zukunftssichere Sicherheit
+- **Mehrere Sprachen** — Native Bindungen für Rust, Go, Python, JavaScript, C++ und 6 weitere
+- **Agentenkonsens** — Eingebaute Abstimmung, um Antworten mehrerer Agenten zusammenzufassen
+- **W3C DID** — Native Unterstützung für dezentrale Identität
+
+<Cards>
+  <Card
+    title="Überblick"
+    description="Architektur und Grundbegriffe"
+    href="/docs/zap/overview"
+  />
+  <Card
+    title="Erste Schritte"
+    description="ZAP installieren und den ersten Agenten bauen"
+    href="/docs/zap/getting-started"
+  />
+  <Card
+    title="Schemasprache"
+    description="Referenz zum Cap'n-Proto-Schema"
+    href="/docs/zap/schema"
+  />
+  <Card
+    title="Protokollspezifikation"
+    description="Drahtformat und RPC-Details"
+    href="/docs/zap/protocol"
+  />
+  <Card
+    title="Sprachbindungen"
+    description="SDK-Dokumentation für 11 Sprachen"
+    href="/docs/zap/bindings"
+  />
+  <Card
+    title="Fortgeschrittene Themen"
+    description="Post-Quanten-Kryptografie, Konsens, Blockchain"
+    href="/docs/zap/advanced"
+  />
+</Cards>
+
+## Kurzes Beispiel
+
+```c title="zap.capnp"
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+}
+```
+
+```rust title="Rust Example"
+use zap_protocol::{Zap, ClientInfo};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = Zap::connect("zap://localhost:9000").await?;
+    let info = client.init(ClientInfo::new("my-agent", "1.0.0")).await?;
+
+    let tools = client.list_tools().await?;
+    for tool in tools {
+        println!("Tool: {} - {}", tool.name, tool.description);
+    }
+
+    Ok(())
+}
+```
+
+## ZAP und MCP
+
+| Merkmal | MCP | ZAP |
+|---------|-----|-----|
+| Serialisierung | JSON-RPC | Cap'n Proto |
+| Leistung | Ausgangswert | 10- bis 100-mal schneller |
+| Speicher | Hoch (Parsing) | Zero-Copy |
+| Post-Quanten | Nein | ML-KEM, ML-DSA |
+| Schwellenwert-Signatur | Nein | Corona |
+| DID-Unterstützung | Nein | W3C DIDs |
+| Agentenkonsens | Nein | Eingebaute Abstimmung |
+
+ZAP enthält den **MCP-Gateway-Modus**, damit der Wechsel von bestehenden MCP-Servern reibungslos bleibt.

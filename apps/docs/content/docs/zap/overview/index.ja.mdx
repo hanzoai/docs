@@ -1,0 +1,151 @@
+---
+title: 概要
+description: ZAP のアーキテクチャと中心概念
+index: true
+---
+
+# ZAP の概要
+
+ZAP（Zero-Copy App Proto）は、AI エージェントのエコシステムのために設計された次世代の通信プロトコルです。Cap'n Proto の上に構築され、本番のエージェント配備に必要な性能と安全性を届けます。
+
+## 中心概念
+
+### ゼロコピー直列化
+
+MCP が使う JSON-RPC とは違い、ZAP は Cap'n Proto のゼロコピー直列化に乗っています:
+
+- **解析のオーバーヘッドなし**: データはワイヤ形式から直接読みます
+- **共有メモリ**: メッセージはコピーせずプロセス間を渡ります
+- **密な符号化**: バイナリ形式は JSON より 2〜10 倍小さい
+
+```c
+struct ToolCall {
+  id @0 :Text;
+  name @1 :Text;
+  args @2 :Data;  # JSON arguments as bytes
+  metadata @3 :Metadata;
+}
+```
+
+### インターフェースベースの RPC
+
+ZAP は Cap'n Proto のケイパビリティベース RPC を使います:
+
+```c
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+  subscribe @5 (uri :Text) -> (stream :ResourceStream);
+  listPrompts @6 () -> (prompts :PromptList);
+  getPrompt @7 (name :Text, args :Metadata) -> (messages :List(PromptMessage));
+  log @8 (level :LogLevel, message :Text, data :Data);
+}
+```
+
+### MCP 互換
+
+ZAP は Gateway インターフェースを通じて MCP との完全な後方互換を保ちます:
+
+```c
+interface Gateway extends(Zap) {
+  addServer @0 (name :Text, url :Text, config :ServerConfig) -> (id :Text);
+  removeServer @1 (id :Text) -> ();
+  listServers @2 () -> (servers :List(ConnectedServer));
+  serverStatus @3 (id :Text) -> (status :ServerStatus);
+}
+```
+
+Gateway は次を橋渡しできます:
+- **stdio**: 通常の MCP サーバープロセス
+- **http**: HTTP ベースの MCP エンドポイント
+- **websocket**: WebSocket 接続
+- **zap**: ネイティブな ZAP プロトコル
+- **unix**: Unix ドメインソケット
+
+## アーキテクチャ
+
+```
++------------------+     +------------------+
+|   AI Agent       |     |   AI Agent       |
+|   (ZAP Client)   |     |   (ZAP Client)   |
++--------+---------+     +--------+---------+
+         |                        |
+         v                        v
++------------------------------------------+
+|              ZAP Gateway                  |
+|  +--------+  +--------+  +--------+      |
+|  | MCP    |  | MCP    |  | ZAP    |      |
+|  | Server |  | Server |  | Server |      |
+|  +--------+  +--------+  +--------+      |
++------------------------------------------+
+         |                        |
+         v                        v
++------------------+     +------------------+
+|   Coordinator    |     |   DID Registry   |
+|   (Discovery)    |     |   (Identity)     |
++------------------+     +------------------+
+```
+
+## 主な機能
+
+### ツール
+
+ツールは、エージェントが呼び出せる関数です:
+
+```c
+struct Tool {
+  name @0 :Text;
+  description @1 :Text;
+  schema @2 :Data;  # JSON Schema as bytes
+  annotations @3 :Metadata;
+}
+```
+
+### リソース
+
+リソースはデータ源で、必要ならストリームにもできます:
+
+```c
+struct Resource {
+  uri @0 :Text;
+  name @1 :Text;
+  description @2 :Text;
+  mimeType @3 :Text;
+  annotations @4 :Metadata;
+}
+
+interface ResourceStream {
+  next @0 () -> (content :ResourceContent, done :Bool);
+  cancel @1 () -> ();
+}
+```
+
+### プロンプト
+
+プロンプトは再利用できるメッセージのひな型です:
+
+```c
+struct Prompt {
+  name @0 :Text;
+  description @1 :Text;
+  arguments @2 :List(Argument);
+}
+```
+
+## セキュリティモデル
+
+ZAP は多層のセキュリティを実装します:
+
+1. **トランスポートの安全性**: 耐量子のハイブリッドハンドシェイク（X25519 + ML-KEM-768）
+2. **メッセージ認証**: ML-DSA-65 署名
+3. **アイデンティティ**: W3C DID に基づくノードの識別
+4. **コンセンサス**: 複数当事者の操作向け Corona しきい値署名
+
+## Next Steps
+
+- [はじめに](/docs/guides) - 最初の ZAP エージェントを入れて動かす
+- [スキーマ言語](/docs/zap/schema) - Cap'n Proto のスキーマ形式を学ぶ
+- [プロトコル仕様](/docs/zap/protocol) - ワイヤ形式を理解する

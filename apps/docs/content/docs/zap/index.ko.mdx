@@ -1,0 +1,100 @@
+---
+title: ZAP 프로토콜
+description: Zero-Copy App Proto — AI 에이전트 통신을 위한 고성능 Cap'n Proto RPC. MCP보다 10–100배 빠르고, 포스트 양자 보안을 갖춥니다.
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# ZAP 프로토콜
+
+**ZAP**(Zero-Copy App Proto)는 Cap'n Proto 위에 만든, AI 에이전트용 고성능 통신 프로토콜입니다. MCP와 완전히 호환되고, 성능은 10–100배이며, 포스트 양자 보안과 11개 언어의 네이티브 지원을 제공합니다.
+
+```bash title="Install"
+curl -fsSL https://hanzo.sh | sh && hanzo mcp launch zap
+```
+
+## ZAP를 쓰는 이유
+
+- **제로 카피 성능** — Cap'n Proto의 제로 카피 직렬화가 파싱 부담을 없앱니다
+- **MCP 호환** — Model Context Protocol 서버와 완전히 하위 호환
+- **포스트 양자 보안** — 오래 버티는 보안을 위한 ML-KEM 및 ML-DSA 암호
+- **여러 언어** — Rust, Go, Python, JavaScript, C++ 및 6개 언어의 네이티브 바인딩
+- **에이전트 합의** — 여러 에이전트의 응답을 모으는 내장 투표
+- **W3C DID** — 탈중앙 신원에 대한 기본 지원
+
+<Cards>
+  <Card
+    title="개요"
+    description="아키텍처와 핵심 개념"
+    href="/docs/zap/overview"
+  />
+  <Card
+    title="시작하기"
+    description="ZAP을 설치하고 첫 에이전트를 만들기"
+    href="/docs/zap/getting-started"
+  />
+  <Card
+    title="스키마 언어"
+    description="Cap'n Proto 스키마 레퍼런스"
+    href="/docs/zap/schema"
+  />
+  <Card
+    title="프로토콜 명세"
+    description="와이어 형식과 RPC 세부 사항"
+    href="/docs/zap/protocol"
+  />
+  <Card
+    title="언어 바인딩"
+    description="11개 언어의 SDK 문서"
+    href="/docs/zap/bindings"
+  />
+  <Card
+    title="고급 주제"
+    description="포스트 양자 암호, 합의, 블록체인"
+    href="/docs/zap/advanced"
+  />
+</Cards>
+
+## 짧은 예
+
+```c title="zap.capnp"
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+}
+```
+
+```rust title="Rust Example"
+use zap_protocol::{Zap, ClientInfo};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = Zap::connect("zap://localhost:9000").await?;
+    let info = client.init(ClientInfo::new("my-agent", "1.0.0")).await?;
+
+    let tools = client.list_tools().await?;
+    for tool in tools {
+        println!("Tool: {} - {}", tool.name, tool.description);
+    }
+
+    Ok(())
+}
+```
+
+## ZAP 대 MCP
+
+| 기능 | MCP | ZAP |
+|---------|-----|-----|
+| 직렬화 | JSON-RPC | Cap'n Proto |
+| 성능 | 기준 | 10–100배 빠름 |
+| 메모리 | 높음(파싱) | 제로 카피 |
+| 포스트 양자 | 아니오 | ML-KEM, ML-DSA |
+| 임계값 서명 | 아니오 | Corona |
+| DID 지원 | 아니오 | W3C DIDs |
+| 에이전트 합의 | 아니오 | 내장 투표 |
+
+ZAP에는 기존 MCP 서버에서 매끄럽게 옮기기 위한 **MCP Gateway 모드**가 있습니다.

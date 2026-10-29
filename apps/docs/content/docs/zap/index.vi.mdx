@@ -1,0 +1,100 @@
+---
+title: Giao thức ZAP
+description: Zero-Copy App Proto — RPC Cap'n Proto hiệu năng cao cho giao tiếp giữa các tác nhân AI. Nhanh hơn MCP từ 10 đến 100 lần, với bảo mật hậu lượng tử.
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# Giao thức ZAP
+
+**ZAP** (Zero-Copy App Proto) là giao thức truyền thông hiệu năng cao cho tác nhân AI, xây trên Cap'n Proto. Nó tương thích đầy đủ với MCP, nhanh hơn 10–100 lần, có bảo mật hậu lượng tử và hỗ trợ gốc cho 11 ngôn ngữ lập trình.
+
+```bash title="Install"
+curl -fsSL https://hanzo.sh | sh && hanzo mcp launch zap
+```
+
+## Vì sao dùng ZAP
+
+- **Hiệu năng không sao chép** — Việc tuần tự hóa không sao chép của Cap'n Proto bỏ chi phí phân tích
+- **Tương thích MCP** — Tương thích ngược đầy đủ với máy chủ Model Context Protocol
+- **Bảo mật hậu lượng tử** — Mật mã ML-KEM và ML-DSA để bảo mật lâu dài
+- **Nhiều ngôn ngữ** — Liên kết gốc cho Rust, Go, Python, JavaScript, C++ và 6 ngôn ngữ nữa
+- **Đồng thuận tác nhân** — Bỏ phiếu tích hợp để gộp câu trả lời của nhiều tác nhân
+- **W3C DID** — Hỗ trợ gốc cho danh tính phi tập trung
+
+<Cards>
+  <Card
+    title="Tổng quan"
+    description="Kiến trúc và khái niệm cốt lõi"
+    href="/docs/zap/overview"
+  />
+  <Card
+    title="Bắt đầu"
+    description="Cài ZAP và dựng tác nhân đầu tiên"
+    href="/docs/zap/getting-started"
+  />
+  <Card
+    title="Ngôn ngữ lược đồ"
+    description="Tham chiếu lược đồ Cap'n Proto"
+    href="/docs/zap/schema"
+  />
+  <Card
+    title="Đặc tả giao thức"
+    description="Định dạng trên dây và chi tiết RPC"
+    href="/docs/zap/protocol"
+  />
+  <Card
+    title="Liên kết ngôn ngữ"
+    description="Tài liệu SDK cho 11 ngôn ngữ"
+    href="/docs/zap/bindings"
+  />
+  <Card
+    title="Chủ đề nâng cao"
+    description="Mật mã hậu lượng tử, đồng thuận, chuỗi khối"
+    href="/docs/zap/advanced"
+  />
+</Cards>
+
+## Ví dụ nhanh
+
+```c title="zap.capnp"
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+}
+```
+
+```rust title="Rust Example"
+use zap_protocol::{Zap, ClientInfo};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = Zap::connect("zap://localhost:9000").await?;
+    let info = client.init(ClientInfo::new("my-agent", "1.0.0")).await?;
+
+    let tools = client.list_tools().await?;
+    for tool in tools {
+        println!("Tool: {} - {}", tool.name, tool.description);
+    }
+
+    Ok(())
+}
+```
+
+## ZAP và MCP
+
+| Tính năng | MCP | ZAP |
+|---------|-----|-----|
+| Tuần tự hóa | JSON-RPC | Cap'n Proto |
+| Hiệu năng | Mốc nền | Nhanh hơn 10–100 lần |
+| Bộ nhớ | Cao (phân tích) | Không sao chép |
+| Hậu lượng tử | Không | ML-KEM, ML-DSA |
+| Ký ngưỡng | Không | Corona |
+| Hỗ trợ DID | Không | W3C DIDs |
+| Đồng thuận tác nhân | Không | Bỏ phiếu tích hợp |
+
+ZAP có **chế độ Gateway MCP** để chuyển từ các máy chủ MCP hiện có mà không gián đoạn.

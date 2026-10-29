@@ -1,0 +1,132 @@
+---
+title: Ngân sách
+description: Tác nhân được báo giá trước khi chi và bị từ chối khi nó sẽ vượt. Bốn trần, micro-USD nguyên, và một lần từ chối mà tác nhân đọc được khi vẫn đang chạy.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Sau trang này bạn có thể giới hạn tác nhân chi bao nhiêu, đọc nó đã chi bao nhiêu, và phân biệt từ chối ngân sách với thất bại của mô hình.**
+
+## Ngân sách là gì
+
+Mỗi lần gọi mô hình và mỗi lần gọi công cụ có giá mà tác nhân thực hiện đều được **báo giá trước khi thực hiện** — cận trên của chi phí lần gọi có thể tốn — và báo giá đó được kiểm, theo thứ tự này, với bốn thứ:
+
+1. **số dư tổ chức của bạn** — liệu có trả được không
+2. **trần kỳ của tác nhân** — `cap_micro_usd`, trừ phần kỳ này đã chi
+3. **trần nhiệm vụ** — `max_task_micro_usd`, trừ phần lần chạy này đã chi
+4. **ngân sách của phiên** — `budget_micro_usd`, trừ phần phiên này đã chi
+
+Bất kỳ cái nào cũng từ chối lần gọi. Không có cờ và không có đường vòng: một lần chạy chỉ tới mô hình qua cửa.
+
+## Tiền là micro-USD nguyên
+
+Mỗi khoản là một số nguyên micro-USD, trong trường có hậu tố
+`_micro_usd`. **1.000.000 là một đô la**, nên `11902000` là 11,902 đô la và `250` là một phần bốn mươi của một xu. Một lần gọi tốn phân số của một xu; trần giữ bằng xu không thấy được một xu đó.
+
+## Nêu ngân sách
+
+Cả ba trường đều bắt buộc khi bạn định nghĩa tác nhân.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "triage",
+    "model": "zen-1",
+    "instructions": "Triage inbound issues.",
+    "cap_micro_usd": 20000000,
+    "max_task_micro_usd": 500000,
+    "period": "month"
+  }'
+```
+
+Tác nhân đó được chi **20 đô la một tháng**, và không lần chạy nào của nó được chi quá **0,50 đô la**.
+
+- `cap_micro_usd` phải dương. Trần bằng không nghĩa là không giới hạn và không ghi nhận, đúng trạng thái mà ngân sách tồn tại để bỏ đi.
+- `max_task_micro_usd` phải dương và không được vượt trần.
+- `period` là `day`, `week` hoặc `month`.
+
+Các kỳ **khớp lịch theo UTC**: `month` nghĩa là tháng đó, không phải ba mươi ngày kể từ lần gọi đầu, và `week` bắt đầu vào thứ Hai. Cửa sổ lăn ở lần gọi đầu sau khi nó sang, và `consumed_micro_usd` về không.
+
+## Đọc nó đã chi bao nhiêu
+
+```
+GET /v1/agent/{ref}/spend
+```
+
+```json
+{
+  "cap_micro_usd": 20000000,
+  "max_task_micro_usd": 500000,
+  "period": "month",
+  "consumed_micro_usd": 11902000,
+  "remaining_micro_usd": 8098000,
+  "by_component": { "model": 11431000, "computer": 402000, "tool": 69000 }
+}
+```
+
+`by_component` chia chi thành ba: **model** là mỗi lần hoàn thành tác nhân đã mua, **computer** là thời gian chạy nó cư trú, **tool** là một lần gọi công cụ có giá. Thành phần không chi thì **vắng, không phải không**.
+
+## Từ chối trông thế nào
+
+Một lần vượt trả lời `402` với mã `budget_exceeded`:
+
+```json
+{
+  "error": {
+    "code": "budget_exceeded",
+    "message": "task budget exceeded: this call would cost up to 620000 micro-USD and 118000 remain",
+    "event": "budget.exceeded",
+    "scope": "task",
+    "component": "model",
+    "quote_micro_usd": 620000,
+    "remaining_micro_usd": 118000
+  }
+}
+```
+
+`scope` nêu trần nào đã từ chối — `agent`, `task` hoặc `session` — để bạn biết nâng tháng, lần chạy, hay riêng phiên này.
+
+<Callout>
+**Tác nhân được báo trong băng.** Dưới một phiên, cùng tải được nối vào luồng sự kiện của phiên như một sự kiện trạng thái từ `budget`, nên tác nhân đọc sự từ chối của chính nó khi vẫn đang chạy và có thể khép lại — viết những gì nó có, nói vì sao nó dừng — thay vì đổ ở một lần gọi thất bại.
+</Callout>
+
+`budget_exceeded` không phải thất bại của mô hình. Lần gọi mô hình thất bại thì được thử lại; lần gọi ngân sách từ chối thì không, vì thử lại sẽ bị từ chối lần nữa.
+
+## Báo giá là cận trên, quyết toán là thực tế
+
+Báo giá cố ý lệch lớn: lời nhắc như sẽ được gửi, cộng lần hoàn thành lớn nhất mà yêu cầu cho phép — `max_tokens`, hoặc 4.096 khi yêu cầu không nêu cái nào — theo giá suy luận của nền tảng.
+
+Khi lần gọi đã xảy ra, điều cổng **thực sự báo** được quyết toán với mọi tổng mà báo giá đã được kiểm, và phần chênh trở lại trần. Lần gọi thất bại không bao giờ quyết toán, nên không bao giờ bị tính phí và khoảng trống của nó trở lại.
+
+Vì thế tác nhân có thể bị từ chối dù khoảng trống trông đủ: cửa so sánh trần của lần gọi kế, không phải chi phí có thể của nó.
+
+## Ngân sách riêng của phiên
+
+Phiên có thể mang trần của riêng nó, dưới trần của tác nhân:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent/sessions/$ID/budget \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"budget_micro_usd": 2000000}'
+```
+
+Phiên chạm ngân sách của mình thì **tạm dừng, không thất bại** — việc tiếp tục ngay khi bạn nâng trần hoặc bỏ nó. Ba quy tắc:
+
+- phần thay phải **lớn hơn nghiêm ngặt** những gì phiên đã tiêu
+- **bỏ là một chiều**: `{"budget_micro_usd": null}` gỡ trần vĩnh viễn, và phiên đó không được trao lại
+- phiên **được tạo không có** ngân sách thì sau này không được trao một cái
+
+Mỗi cái từ chối bằng `409` thay vì lặng lẽ làm việc khác.
+
+## Tác nhân được định nghĩa trước khi có ngân sách
+
+Nó mang trần bằng không và **không bị giới hạn** — chi của nó vẫn được cộng và đọc được tại `/spend`, và một bản cập nhật cho nó một trần. Từ chối mọi tác nhân được định nghĩa trước khi tính năng ra mắt sẽ là một sự cố, không phải một chính sách.
+
+## Tiếp theo
+
+- **[Tác nhân](/docs/concepts/agents)** — định nghĩa mà ngân sách treo vào.
+- **[Tham chiếu tác nhân](/docs/openapi/agents)** — mọi thao tác, được sinh.
+- **[Giá](https://hanzo.ai/pricing)** — nền tảng tính gì, và phí của một lần gọi mô hình là gì.

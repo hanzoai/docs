@@ -1,0 +1,151 @@
+---
+title: अवलोकन
+description: ZAP की आर्किटेक्चर और मूल अवधारणाएँ
+index: true
+---
+
+# ZAP का अवलोकन
+
+ZAP (Zero-Copy App Proto) AI एजेंट पारिस्थितिकी के लिए बना अगली पीढ़ी का संचार प्रोटोकॉल है। Cap'n Proto पर बना होने से यह उत्पादन में एजेंट तैनाती के लिए ज़रूरी प्रदर्शन और सुरक्षा देता है।
+
+## मूल अवधारणाएँ
+
+### ज़ीरो-कॉपी सीरियलाइज़ेशन
+
+MCP वाले JSON-RPC से अलग, ZAP Cap'n Proto के ज़ीरो-कॉपी सीरियलाइज़ेशन पर टिका है:
+
+- **पार्सिंग का खर्च नहीं**: डेटा वायर प्रारूप से सीधे पढ़ा जाता है
+- **साझा मेमोरी**: संदेश प्रक्रियाओं के बीच बिना कॉपी के जाते हैं
+- **सघन एन्कोडिंग**: बाइनरी प्रारूप JSON से 2-10 गुना छोटा है
+
+```c
+struct ToolCall {
+  id @0 :Text;
+  name @1 :Text;
+  args @2 :Data;  # JSON arguments as bytes
+  metadata @3 :Metadata;
+}
+```
+
+### इंटरफ़ेस-आधारित RPC
+
+ZAP Cap'n Proto का क्षमता-आधारित RPC सिस्टम इस्तेमाल करता है:
+
+```c
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+  subscribe @5 (uri :Text) -> (stream :ResourceStream);
+  listPrompts @6 () -> (prompts :PromptList);
+  getPrompt @7 (name :Text, args :Metadata) -> (messages :List(PromptMessage));
+  log @8 (level :LogLevel, message :Text, data :Data);
+}
+```
+
+### MCP संगतता
+
+ZAP Gateway इंटरफ़ेस के ज़रिए MCP के साथ पूरा पश्चगामी मेल रखता है:
+
+```c
+interface Gateway extends(Zap) {
+  addServer @0 (name :Text, url :Text, config :ServerConfig) -> (id :Text);
+  removeServer @1 (id :Text) -> ();
+  listServers @2 () -> (servers :List(ConnectedServer));
+  serverStatus @3 (id :Text) -> (status :ServerStatus);
+}
+```
+
+Gateway ये जोड़ सकता है:
+- **stdio**: सामान्य MCP सर्वर प्रोसेस
+- **http**: HTTP-आधारित MCP एंडपॉइंट
+- **websocket**: WebSocket कनेक्शन
+- **zap**: मूल ZAP प्रोटोकॉल
+- **unix**: Unix डोमेन सॉकेट
+
+## आर्किटेक्चर
+
+```
++------------------+     +------------------+
+|   AI Agent       |     |   AI Agent       |
+|   (ZAP Client)   |     |   (ZAP Client)   |
++--------+---------+     +--------+---------+
+         |                        |
+         v                        v
++------------------------------------------+
+|              ZAP Gateway                  |
+|  +--------+  +--------+  +--------+      |
+|  | MCP    |  | MCP    |  | ZAP    |      |
+|  | Server |  | Server |  | Server |      |
+|  +--------+  +--------+  +--------+      |
++------------------------------------------+
+         |                        |
+         v                        v
++------------------+     +------------------+
+|   Coordinator    |     |   DID Registry   |
+|   (Discovery)    |     |   (Identity)     |
++------------------+     +------------------+
+```
+
+## मुख्य सुविधाएँ
+
+### उपकरण
+
+उपकरण वे फ़ंक्शन हैं जिन्हें एजेंट कॉल कर सकते हैं:
+
+```c
+struct Tool {
+  name @0 :Text;
+  description @1 :Text;
+  schema @2 :Data;  # JSON Schema as bytes
+  annotations @3 :Metadata;
+}
+```
+
+### संसाधन
+
+संसाधन डेटा स्रोत हैं, वैकल्पिक स्ट्रीमिंग के साथ:
+
+```c
+struct Resource {
+  uri @0 :Text;
+  name @1 :Text;
+  description @2 :Text;
+  mimeType @3 :Text;
+  annotations @4 :Metadata;
+}
+
+interface ResourceStream {
+  next @0 () -> (content :ResourceContent, done :Bool);
+  cancel @1 () -> ();
+}
+```
+
+### प्रॉम्प्ट
+
+प्रॉम्प्ट दोबारा इस्तेमाल होने वाले संदेश टेम्पलेट हैं:
+
+```c
+struct Prompt {
+  name @0 :Text;
+  description @1 :Text;
+  arguments @2 :List(Argument);
+}
+```
+
+## सुरक्षा मॉडल
+
+ZAP कई परतों वाली सुरक्षा लागू करता है:
+
+1. **ट्रांसपोर्ट सुरक्षा**: पोस्ट-क्वांटम हाइब्रिड हैंडशेक (X25519 + ML-KEM-768)
+2. **संदेश प्रमाणीकरण**: ML-DSA-65 हस्ताक्षर
+3. **पहचान**: W3C DID पर आधारित नोड पहचान
+4. **सहमति**: कई पक्षों के काम के लिए Corona थ्रेशहोल्ड हस्ताक्षर
+
+## Next Steps
+
+- [शुरुआत](/docs/guides) - अपना पहला ZAP एजेंट इंस्टॉल करके चलाएँ
+- [स्कीमा भाषा](/docs/zap/schema) - Cap'n Proto स्कीमा प्रारूप सीखें
+- [प्रोटोकॉल विनिर्देश](/docs/zap/protocol) - वायर प्रारूप समझें

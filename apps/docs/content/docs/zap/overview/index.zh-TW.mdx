@@ -1,0 +1,151 @@
+---
+title: 概覽
+description: 理解 ZAP 的架構與核心概念
+index: true
+---
+
+# ZAP 概覽
+
+ZAP（Zero-Copy App Proto）是專為 AI 代理生態設計的下一代通訊協定。它基於 Cap'n Proto，提供生產環境部署代理所需的效能與安全。
+
+## 核心概念
+
+### 零拷貝序列化
+
+與 MCP 使用的 JSON-RPC 不同，ZAP 依靠 Cap'n Proto 的零拷貝序列化：
+
+- **沒有解析開銷**：資料直接從線路格式讀取
+- **共享記憶體**：訊息在行程之間傳遞時不必拷貝
+- **緊湊編碼**：二進位格式比 JSON 小 2–10 倍
+
+```c
+struct ToolCall {
+  id @0 :Text;
+  name @1 :Text;
+  args @2 :Data;  # JSON arguments as bytes
+  metadata @3 :Metadata;
+}
+```
+
+### 基於介面的 RPC
+
+ZAP 使用 Cap'n Proto 基於能力的 RPC 系統：
+
+```c
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+  subscribe @5 (uri :Text) -> (stream :ResourceStream);
+  listPrompts @6 () -> (prompts :PromptList);
+  getPrompt @7 (name :Text, args :Metadata) -> (messages :List(PromptMessage));
+  log @8 (level :LogLevel, message :Text, data :Data);
+}
+```
+
+### MCP 相容性
+
+ZAP 透過 Gateway 介面與 MCP 保持完全向後相容：
+
+```c
+interface Gateway extends(Zap) {
+  addServer @0 (name :Text, url :Text, config :ServerConfig) -> (id :Text);
+  removeServer @1 (id :Text) -> ();
+  listServers @2 () -> (servers :List(ConnectedServer));
+  serverStatus @3 (id :Text) -> (status :ServerStatus);
+}
+```
+
+Gateway 可以橋接：
+- **stdio**：一般 MCP 伺服器行程
+- **http**：基於 HTTP 的 MCP 端點
+- **websocket**：WebSocket 連線
+- **zap**：原生 ZAP 協定
+- **unix**：Unix 網域套接字
+
+## 架構
+
+```
++------------------+     +------------------+
+|   AI Agent       |     |   AI Agent       |
+|   (ZAP Client)   |     |   (ZAP Client)   |
++--------+---------+     +--------+---------+
+         |                        |
+         v                        v
++------------------------------------------+
+|              ZAP Gateway                  |
+|  +--------+  +--------+  +--------+      |
+|  | MCP    |  | MCP    |  | ZAP    |      |
+|  | Server |  | Server |  | Server |      |
+|  +--------+  +--------+  +--------+      |
++------------------------------------------+
+         |                        |
+         v                        v
++------------------+     +------------------+
+|   Coordinator    |     |   DID Registry   |
+|   (Discovery)    |     |   (Identity)     |
++------------------+     +------------------+
+```
+
+## 主要功能
+
+### 工具
+
+工具是代理可以呼叫的函式：
+
+```c
+struct Tool {
+  name @0 :Text;
+  description @1 :Text;
+  schema @2 :Data;  # JSON Schema as bytes
+  annotations @3 :Metadata;
+}
+```
+
+### 資源
+
+資源是資料來源，可以選擇串流讀取：
+
+```c
+struct Resource {
+  uri @0 :Text;
+  name @1 :Text;
+  description @2 :Text;
+  mimeType @3 :Text;
+  annotations @4 :Metadata;
+}
+
+interface ResourceStream {
+  next @0 () -> (content :ResourceContent, done :Bool);
+  cancel @1 () -> ();
+}
+```
+
+### 提示詞
+
+提示詞是可重複使用的訊息範本：
+
+```c
+struct Prompt {
+  name @0 :Text;
+  description @1 :Text;
+  arguments @2 :List(Argument);
+}
+```
+
+## 安全模型
+
+ZAP 採用縱深防禦：
+
+1. **傳輸安全**：後量子混合交握（X25519 + ML-KEM-768）
+2. **訊息鑑別**：ML-DSA-65 簽章
+3. **身分**：基於 W3C DID 的節點身分
+4. **共識**：多方操作用的 Corona 門檻簽章
+
+## Next Steps
+
+- [入門](/docs/guides) - 安裝並執行你的第一個 ZAP 代理
+- [綱要語言](/docs/zap/schema) - 了解 Cap'n Proto 綱要格式
+- [協定規範](/docs/zap/protocol) - 理解線路格式

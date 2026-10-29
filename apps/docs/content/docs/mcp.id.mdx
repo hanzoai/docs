@@ -1,0 +1,173 @@
+---
+icon: Plug
+title: MCP
+description: MCP terpadu Hanzo — satu server yang memberi Claude Code, Cursor, dan klien MCP mana pun satu permukaan alat plus layanan cloud yang terhubung.
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# MCP
+
+Satu server Protokol Konteks Model, satu permukaan alat. Tambahkan **`hanzo-mcp`** ke Claude Code (atau Cursor, Claude Desktop, atau klien MCP mana pun) dan setiap kapabilitas Hanzo muncul lewat satu koneksi — tanpa mengawat alat satu per satu.
+
+> Mencari server MCP terhosting? **[MCP cloud](/docs/mcp-tools)** adalah URL tanpa apa pun untuk dipasang, dan setiap alatnya terdaftar di [katalog alat](/docs/mcp-tools/all-tools). Halaman ini adalah server yang berjalan di samping editor Anda.
+
+```bash title="Add the Hanzo MCP to Claude Code"
+claude mcp add hanzo -- npx -y @hanzo/mcp serve
+```
+
+Satu perintah itu membuka seluruh permukaan:
+
+- **13 alat terpadu** — `fs`, `exec`, `code`, `git`, `fetch`, `workspace`, `ui`, plus opsional `think`, `memory`, `hanzo`, `plan`, `tasks`, `mode`. Satu alat terutekan tindakan per kapabilitas (HIP-0300), jadi klien melihat himpunan kecil yang stabil, bukan ratusan nama yang tumpang-tindih.
+- **Layanan cloud** — alat `hanzo` merutekan ke platform Anda secara asli: IAM (identitas), Commerce, Storage, dan API AI di `api.hanzo.ai/v1`, diautentikasi dengan token Anda.
+- **Konektor Anda** — GitHub, Slack, Google, Discord, X, dan lainnya, muncul lewat koneksi yang sama setelah ditautkan di konsol.
+
+Permukaan yang sama dikirim tiga cara — TypeScript (`@hanzo/mcp`), Python (`hanzo-mcp` di PyPI), dan Rust (`hanzo-mcp::brain`) — dicerminkan satu lawan satu, lewat transport MCP **stdio** dan **streamable-http**.
+
+## Penyiapan klien
+
+```json title="Claude Desktop / Cursor — mcp config"
+{
+  "mcpServers": {
+    "hanzo": {
+      "command": "npx",
+      "args": ["-y", "@hanzo/mcp", "serve"]
+    }
+  }
+}
+```
+
+Masuk sekali (`hanzo auth login`) dan alat cloud `hanzo` plus konektor Anda terautentikasi sendiri; alat lokal (`fs`, `exec`, `git`, …) bekerja tanpa akun.
+
+## Indeks alat
+
+Setiap alat yang dapat diekspos platform diindeks di `GET api.hanzo.ai/v1/tools` (terautentikasi). Hari ini ada **1,468 alat** dari lima sumber — server terpadu menyajikannya lewat permukaan ringkas terutekan tindakan di atas:
+
+| Sumber | Apa itu |
+|--------|-----------|
+| `builtin` | Alat lokal inti (fs, exec, git, code, …) |
+| `skill` | Keterampilan terpaket |
+| `connector` | Integrasi cloud tertaut (GitHub, Slack, Google, Discord, X, …) |
+| `agent` | Titik masuk agen |
+| `function` | Fungsi yang ditentukan pengguna |
+
+---
+
+## Konektor
+
+Segala yang dapat dihubungkan Hanzo, menurut cara Anda menghubungkannya — konektor asli yang Anda tautkan sekali di konsol (aplikasi GitHub, OAuth2), dan ekosistem MCP terbuka yang diindeks langsung dari [registri resmi](https://registry.modelcontextprotocol.io). Cari di keduanya.
+
+<ConnectorsCatalog />
+
+---
+
+## MCP sebagai layanan
+
+Di luar server terpadu, Hanzo juga dapat **menghosting** server MCP apa pun untuk Anda — sebarkan dari paket npx, uvx, atau kustom mana pun, dengan penskalaan seketika dan nol infrastruktur yang dikelola.
+
+```bash title="Launch an MCP server"
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+```
+
+## Kapabilitas utama
+
+- **Server MCP apa pun** — sistem berkas, Git, SQL, KV, Slack, GitHub, Notion, dan lainnya
+- **Sebar satu klik** — luncurkan server MCP apa pun dengan satu perintah
+- **Skala otomatis** — dari 0 hingga ribuan instans secara otomatis
+- **Biaya diam $0** — bayar hanya yang Anda pakai, tanpa biaya diam
+- **Kotak pasir aman** — kontainer terisolasi dengan izin berbutir halus
+- **Lebih dari 15 wilayah** — penyebaran tepi untuk latensi terendah di dunia
+
+## Metode peluncuran
+
+### Paket NPX
+
+```bash
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+hanzo mcp launch npx @modelcontextprotocol/server-github
+hanzo mcp launch npx @modelcontextprotocol/server-slack
+```
+
+### UVX / Python
+
+```bash
+hanzo mcp launch uvx mcp-server-sqlite
+hanzo mcp launch uvx mcp-server-postgres
+```
+
+### Server kustom
+
+```bash
+hanzo mcp launch git://github.com/you/mcp-server
+hanzo mcp launch docker://your-org/mcp-custom:latest
+```
+
+## Konfigurasi
+
+Sebarkan beberapa server dengan satu berkas konfigurasi:
+
+```yaml title="mcp-config.yaml"
+version: "1"
+servers:
+  filesystem:
+    package: "@modelcontextprotocol/server-filesystem"
+    runtime: npx
+    args: ["/workspace"]
+
+  database:
+    package: "mcp-server-postgres"
+    runtime: uvx
+    env:
+      DATABASE_URL: "${secrets.DATABASE_URL}"
+
+  github:
+    package: "@modelcontextprotocol/server-github"
+    runtime: npx
+    env:
+      GITHUB_TOKEN: "${secrets.GITHUB_TOKEN}"
+
+  custom:
+    image: "your-org/mcp-custom:latest"
+    runtime: docker
+    replicas: 3
+```
+
+```bash
+hanzo mcp deploy
+```
+
+## Fitur perusahaan
+
+<Cards>
+  <Card title="Hosting terkelola" description="Sebarkan ke Hanzo Cloud dengan skala otomatis dan pemantauan" />
+  <Card title="Kotak pasir aman" description="Kontainer terisolasi dengan izin berbutir halus" />
+  <Card title="Penyebaran tepi" description="Lebih dari 15 wilayah global untuk latensi terendah" />
+  <Card title="Kendali versi" description="Sematkan versi, gulung balik seketika, jejak audit" />
+  <Card title="Federasi alat" description="Gabungkan beberapa server MCP menjadi titik akhir terpadu" />
+  <Card title="Pengelolaan konfigurasi" description="Rahasia terpusat dan pengelolaan variabel lingkungan" />
+</Cards>
+
+## Alat yang tersedia
+
+| Kategori | Alat |
+|----------|-------|
+| **Penyimpanan** | Sistem berkas, S3, Google Drive, Notion |
+| **Basis data** | SQL, MySQL, SQLite, KV, DocumentDB |
+| **Alat pengembangan** | Git, GitHub, GitLab, Linear, Jira |
+| **Komunikasi** | Slack, Discord, surel, Twilio |
+| **Cloud** | AWS, GCP, Azure, Kubernetes |
+| **AI/ML** | Hugging Face, Weights & Biases, MLflow |
+| **Web** | Otomasi peramban, Puppeteer, tangkapan layar |
+| **Kustom** | Kontainer Docker atau paket npm/pip apa pun |
+
+## Evolusi berikutnya: ZAP
+
+MCP membuat integrasi alat mudah. **ZAP membuatnya cepat.** Protokol agen salin-nol adalah evolusi berikutnya: serialisasi tanpa salin, overhead 40–50 kali lebih rendah, dibuat untuk kawanan agen pada skala.
+
+ZAP menyertakan **mode gerbang MCP** untuk migrasi yang mulus.
+
+<Cards>
+  <Card title="Protokol ZAP" description="10–100 kali lebih cepat, aman pascakuantum" href="/docs/zap" />
+  <Card title="Layanan gerbang" description="Satu API untuk setiap model" href="/docs/services/gateway" />
+</Cards>

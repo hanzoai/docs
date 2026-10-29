@@ -1,0 +1,173 @@
+---
+icon: Plug
+title: MCP
+description: MCP الموحّد من Hanzo — خادم واحد يمنح Claude Code وCursor وأي عميل MCP سطح أدوات واحدًا إضافة إلى خدماتك السحابية المتصلة.
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# MCP
+
+خادم واحد لبروتوكول سياق النموذج، وسطح أدوات واحد. أضف **`hanzo-mcp`** إلى Claude Code (أو Cursor أو Claude Desktop أو أي عميل MCP) فتظهر كل قدرة من Hanzo عبر اتصال واحد — بلا توصيل أداة بأداة.
+
+> تبحث عن خادم MCP المستضاف بدلًا من ذلك؟ **[MCP السحابي](/docs/mcp-tools)** عنوان URL بلا شيء تثبّته، وكل أداة فيه معدودة في [فهرس الأدوات](/docs/mcp-tools/all-tools). هذه الصفحة هي الخادم الذي يعمل بجانب محررك.
+
+```bash title="Add the Hanzo MCP to Claude Code"
+claude mcp add hanzo -- npx -y @hanzo/mcp serve
+```
+
+هذا الأمر الواحد يكشف السطح كله:
+
+- **13 أداة موحّدة** — `fs` و`exec` و`code` و`git` و`fetch` و`workspace` و`ui`، إضافة إلى الاختيارية `think` و`memory` و`hanzo` و`plan` و`tasks` و`mode`. أداة واحدة موجَّهة بالفعل لكل قدرة (HIP-0300)، فيرى العميل مجموعة صغيرة ثابتة بدل مئات الأسماء المتداخلة.
+- **خدمات سحابية** — أداة `hanzo` توجّه إلى منصتك بشكل أصيل: IAM (الهوية) وCommerce وStorage وواجهة API للذكاء الاصطناعي عند `api.hanzo.ai/v1`، مصادَقة برمزك.
+- **موصّلاتك** — GitHub وSlack وGoogle وDiscord وX وغيرها، تظهر عبر الاتصال نفسه بعد ربطها في وحدة التحكم.
+
+السطح نفسه يُشحن بثلاث طرق — TypeScript (`@hanzo/mcp`) وPython (`hanzo-mcp` على PyPI) وRust (`hanzo-mcp::brain`) — مرآة واحدًا لواحد، عبر نقلي MCP **stdio** و**streamable-http**.
+
+## إعداد العميل
+
+```json title="Claude Desktop / Cursor — mcp config"
+{
+  "mcpServers": {
+    "hanzo": {
+      "command": "npx",
+      "args": ["-y", "@hanzo/mcp", "serve"]
+    }
+  }
+}
+```
+
+سجّل الدخول مرة (`hanzo auth login`) فتصادَق أداة السحابة `hanzo` وموصّلاتك تلقائيًا؛ الأدوات المحلية (`fs` و`exec` و`git` و…) تعمل بلا حساب.
+
+## فهرس الأدوات
+
+كل أداة تستطيع المنصة كشفها مفهرسة عند `GET api.hanzo.ai/v1/tools` (بمصادقة). اليوم هي **1,468 أداة** من خمسة مصادر — والخادم الموحّد يقدّمها عبر السطح المدمج الموجَّه بالفعل أعلاه:
+
+| المصدر | ما هو |
+|--------|-----------|
+| `builtin` | أدوات محلية أساسية (fs وexec وgit وcode و…) |
+| `skill` | مهارات معبأة |
+| `connector` | تكاملات سحابية مربوطة (GitHub وSlack وGoogle وDiscord وX و…) |
+| `agent` | نقاط دخول الوكلاء |
+| `function` | دوال يعرّفها المستخدم |
+
+---
+
+## الموصّلات
+
+كل ما يستطيع Hanzo الاتصال به، بحسب طريقة اتصالك — موصّلات أصيلة تربطها مرة في وحدة التحكم (تطبيق GitHub وOAuth2)، ونظام MCP المفتوح المفهرس مباشرة من [السجل الرسمي](https://registry.modelcontextprotocol.io). ابحث في الاثنين.
+
+<ConnectorsCatalog />
+
+---
+
+## MCP كخدمة
+
+إلى جانب الخادم الموحّد، يستطيع Hanzo أيضًا أن **يستضيف** أي خادم MCP لك — انشر من أي حزمة npx أو uvx أو مخصصة، بتوسعة فورية وصفر بنية تديرها.
+
+```bash title="Launch an MCP server"
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+```
+
+## القدرات الرئيسة
+
+- **أي خادم MCP** — نظام ملفات وGit وSQL وKV وSlack وGitHub وNotion وغيرها
+- **نشر بنقرة** — أطلق أي خادم MCP بأمر واحد
+- **توسعة تلقائية** — من 0 إلى آلاف النسخ تلقائيًا
+- **تكلفة خمول $0** — تدفع ما تستخدمه فقط، بلا رسوم خمول
+- **عزل آمن** — حاويات معزولة بأذونات دقيقة
+- **أكثر من 15 منطقة** — نشر على الحافة لأدنى كمون في العالم
+
+## طرق الإطلاق
+
+### حزم NPX
+
+```bash
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+hanzo mcp launch npx @modelcontextprotocol/server-github
+hanzo mcp launch npx @modelcontextprotocol/server-slack
+```
+
+### UVX / Python
+
+```bash
+hanzo mcp launch uvx mcp-server-sqlite
+hanzo mcp launch uvx mcp-server-postgres
+```
+
+### خوادم مخصصة
+
+```bash
+hanzo mcp launch git://github.com/you/mcp-server
+hanzo mcp launch docker://your-org/mcp-custom:latest
+```
+
+## الضبط
+
+انشر خوادم عدة بملف ضبط واحد:
+
+```yaml title="mcp-config.yaml"
+version: "1"
+servers:
+  filesystem:
+    package: "@modelcontextprotocol/server-filesystem"
+    runtime: npx
+    args: ["/workspace"]
+
+  database:
+    package: "mcp-server-postgres"
+    runtime: uvx
+    env:
+      DATABASE_URL: "${secrets.DATABASE_URL}"
+
+  github:
+    package: "@modelcontextprotocol/server-github"
+    runtime: npx
+    env:
+      GITHUB_TOKEN: "${secrets.GITHUB_TOKEN}"
+
+  custom:
+    image: "your-org/mcp-custom:latest"
+    runtime: docker
+    replicas: 3
+```
+
+```bash
+hanzo mcp deploy
+```
+
+## ميزات المؤسسات
+
+<Cards>
+  <Card title="استضافة مُدارة" description="انشر على Hanzo Cloud بتوسعة تلقائية ومراقبة" />
+  <Card title="عزل آمن" description="حاويات معزولة بأذونات دقيقة" />
+  <Card title="نشر على الحافة" description="أكثر من 15 منطقة عالمية لأدنى كمون" />
+  <Card title="ضبط الإصدارات" description="ثبّت الإصدارات، وارجع فورًا، ومسارات تدقيق" />
+  <Card title="اتحاد الأدوات" description="اجمع خوادم MCP عدة في نقاط وصول موحّدة" />
+  <Card title="إدارة الضبط" description="أسرار مركزية وإدارة متغيرات البيئة" />
+</Cards>
+
+## الأدوات المتاحة
+
+| الفئة | الأدوات |
+|----------|-------|
+| **التخزين** | نظام الملفات وS3 وGoogle Drive وNotion |
+| **قواعد البيانات** | SQL وMySQL وSQLite وKV وDocumentDB |
+| **أدوات التطوير** | Git وGitHub وGitLab وLinear وJira |
+| **التواصل** | Slack وDiscord والبريد وTwilio |
+| **السحابة** | AWS وGCP وAzure وKubernetes |
+| **الذكاء الاصطناعي/التعلم** | Hugging Face وWeights & Biases وMLflow |
+| **الويب** | أتمتة المتصفح وPuppeteer ولقطات الشاشة |
+| **مخصص** | أي حاوية Docker أو حزمة npm/pip |
+
+## التطور التالي: ZAP
+
+جعل MCP دمج الأدوات سهلًا. **ZAP يجعله سريعًا.** بروتوكول الوكيل بنسخ صفري هو التطور التالي: تسلسل بلا نسخ، وعبء أقل بمقدار 40 إلى 50 مرة، مبني لأسراب الوكلاء على نطاق واسع.
+
+يتضمن ZAP **وضع بوابة MCP** لانتقال بلا انقطاع.
+
+<Cards>
+  <Card title="بروتوكول ZAP" description="أسرع بمقدار 10 إلى 100 مرة، آمن ما بعد الكم" href="/docs/zap" />
+  <Card title="خدمة البوابة" description="واجهة API واحدة لكل نموذج" href="/docs/services/gateway" />
+</Cards>

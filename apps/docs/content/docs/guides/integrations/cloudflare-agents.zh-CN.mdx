@@ -1,0 +1,64 @@
+---
+title: Cloudflare Agents
+description: "没有自己的基础 URL 参数——在 Agent 里实例化 openai 客户端，并在上面设置 baseURL。"
+---
+
+Cloudflare Agents 没有自己的基础 URL 参数。文档给出的做法是普通的 `openai` 客户端，建在 Agent 里面，并在上面设置 **`baseURL`**。
+
+```bash
+npm i agents openai
+```
+
+```ts
+import { Agent } from "agents";
+import { OpenAI } from "openai";
+
+export class Researcher extends Agent {
+  async onRequest(request: Request): Promise<Response> {
+    const client = new OpenAI({
+      apiKey: this.env.HANZO_API_KEY,
+      baseURL: "https://api.hanzo.ai/v1",
+    });
+
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
+
+    this.ctx.waitUntil(
+      (async () => {
+        const stream = await client.chat.completions.create({
+          model: "zen5",
+          messages: [{ role: "user", content: await request.text() }],
+          stream: true,
+        });
+        for await (const part of stream) {
+          writer.write(encoder.encode(part.choices[0]?.delta?.content || ""));
+        }
+        writer.close();
+      })(),
+    );
+
+    return new Response(readable);
+  }
+}
+```
+
+落到 `POST /v1/chat/completions`。
+
+把密钥放进 Worker 机密——`wrangler secret put HANZO_API_KEY`——它会出现在 `this.env` 上。流式输出跑在 `ctx.waitUntil` 里，这样响应还在写的时候 Worker 不会被拆掉。
+
+另一条有文档的路是 AI SDK，`AIChatAgent` 和起步模板已经在用。[Vercel AI SDK 页面](/docs/guides/integrations/vercel-ai-sdk)上的一切，在 Cloudflare Agent 里面原样适用。
+
+## MCP
+
+MCP 是 Agent 上的一个方法，不是客户端库。`addMcpServer` 返回一个 id 和一个 `authUrl`；非空的 `authUrl` 表示那个服务器要走一趟 OAuth，我们的不要。
+
+```ts
+export class Researcher extends Agent {
+  async onStart() {
+    await this.addMcpServer("hanzo", "https://api.hanzo.ai/v1/mcp");
+  }
+}
+```
+
+已连接的服务器和它们的工具可以从 Agent 的 MCP 状态读到。
