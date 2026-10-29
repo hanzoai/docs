@@ -1,0 +1,45 @@
+---
+title: Architecture
+description: Comment Hanzo Cloud est construit aujourd'hui, et la direction de plateforme de plugins vers laquelle il évolue.
+index: true
+---
+
+# Architecture
+
+Cette section explique comment Hanzo Cloud est assemblé — ce qui tourne aujourd'hui, et où la plateforme se dirige. Nous gardons les deux bien séparés : les pages produit ailleurs dans cette documentation décrivent le comportement livré, tandis que la direction de plateforme ici est un travail de conception ratifié par les [propositions d'amélioration Hanzo (HIP)](https://hips.hanzo.ai). Les principes qui portent le tout sont dans [Philosophie d'ingénierie](/docs/architecture/philosophy).
+
+## Aujourd'hui
+
+Hanzo Cloud est **un seul binaire Go**. Une seule clé API sur `api.hanzo.ai` atteint chaque capacité — inférence d'IA, identité, secrets, stockage, commerce, et plus — parce que ces capacités sont des **sous-systèmes natifs compilés dans ce seul binaire** (`cloud`, `CGO_ENABLED=0`, statique), chacun servi sous `/v1/<capability>` et décrit par l'unique document que le binaire émet, le `openapi.yaml` de [hanzoai/cloud](https://github.com/hanzoai/cloud). L'entrée et le routage sont eux aussi des sous-systèmes natifs, donc le binaire est son propre point d'entrée au lieu de se placer derrière une passerelle ou un étage d'entrée séparé. Cette consolidation en un seul binaire est le binaire cloud unifié (HIP-0106), déjà livré pour l'essentiel — et c'est le même binaire qui fait tourner [le réseau que vous pouvez exécuter vous-même](/docs/network).
+
+Chaque capacité appartient exactement à l'un de **neuf domaines**. [La référence](/docs/openapi) les compte et les énumère toutes :
+
+<Cards>
+  <Card title="Identité et confiance" href="/docs/openapi/iam" description="Qui vous êtes, ce que vous pouvez toucher, où vivent les secrets." />
+  <Card title="Intelligence" href="/docs/openapi/ai" description="Modèles, agents, évaluation — l'esprit du cloud." />
+  <Card title="Données" href="/docs/openapi/base" description="Les magasins dans lesquels chaque capacité écrit et depuis lesquels elle lit." />
+  <Card title="Flux" href="/docs/openapi/pubsub" description="Messagerie, tâches durables, orchestration asynchrone." />
+  <Card title="Observabilité" href="/docs/openapi/o11y" description="Tout voir — télémétrie, analytique, usage." />
+  <Card title="Commerce" href="/docs/openapi/commerce" description="L'économie — mesurer, tarifer, facturer, récompenser." />
+  <Card title="Plateforme" href="/docs/openapi/platform" description="Le tissu du cloud — déployer, provisionner, router, héberger." />
+  <Card title="Applications" href="/docs/openapi/git" description="Les surfaces face à l'utilisateur, construites sur tout ce qui précède." />
+  <Card title="Chaîne" href="/docs/openapi/web3" description="Les réseaux auxquels le cloud parle — énumérer, appeler, lire les soldes." />
+</Cards>
+
+Quelques produits tournent encore comme applications autonomes sur leurs propres domaines — par exemple [Sign](/docs/openapi) (`esign.hanzo.ai`), [Dataroom](/docs/openapi) (`dataroom.hanzo.ai`) et [Cap Table](/docs/openapi) (`captable.hanzo.ai`) — et s'authentifient via Hanzo IAM. Ce sont les applications autonomes restantes, en cours d'absorption dans le runtime unique, et non l'état final visé.
+
+## Direction
+
+La plateforme converge vers un seul modèle pour faire tourner ces services : une **plateforme de plugins adossée au consensus**, où chaque service est un *plugin* enregistré dans un seul runtime cloud, et un petit plan de contrôle de consensus décide où vivent les rédacteurs de chaque plugin. C'est une direction de conception — spécifiée comme proposition brouillon, pas encore un runtime livré.
+
+<Cards>
+  <Card title="Philosophie d'ingénierie" href="/docs/architecture/philosophy" description="Les principes derrière V8 : une chose et une seule façon, décomplecter, la couture du langage est le fil et non FFI." />
+  <Card title="Le réseau" href="/docs/network" description="Le cloud d'IA que vous pouvez exécuter vous-même — un binaire, votre propre GPU, le réseau est le cloud." />
+  <Card title="Plateforme de plugins adossée au consensus" href="/docs/architecture/plugin-platform" description="La direction HIP-0125 : les plugins comme unité, le consensus sur le placement, une écriture native ZAP." />
+  <Card title="Protocole ZAP" href="/docs/zap" description="Zero-Copy App Proto — le transport haute performance que les plugins utilisent par défaut." />
+  <Card title="Propositions d'amélioration Hanzo" href="https://hips.hanzo.ai" description="Là où l'architecture de la plateforme est spécifiée et ratifiée." />
+</Cards>
+
+<Callout type="info">
+La plateforme de plugins est décrite dans **HIP-0125 (brouillon)**. Elle s'appuie sur un ensemble de propositions liées — le runtime d'extensions dans le processus (HIP-0105), le binaire cloud unifié (HIP-0106), la réplication en flux (HIP-0107) et le transport ZAP (HIP-0114). Les propositions brouillon peuvent changer ; rien sur la [page de la plateforme de plugins](/docs/architecture/plugin-platform) n'est une fonction utilisateur livrée.
+</Callout>

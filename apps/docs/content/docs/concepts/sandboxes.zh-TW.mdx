@@ -1,0 +1,100 @@
+---
+title: 沙盒
+description: 唯一的計算原語 — 一份租約，租一台執行別人程式碼的 Pod。四個類別，兩種結束方式，沒有池。
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**讀完這一頁，你可以執行不受信任的程式碼，並確切知道它何時停止
+花你的錢。**
+
+## 一個原語
+
+沙盒是執行時期邊界之下的一個 Pod，裡面已經有工具鏈，
+有自己的檔案系統，還有一份把它結束掉的 **租約**。物件只有一個，壽命也只有
+一個 — 一次用完即棄的 Python 執行和一場數小時的編碼工作階段是同一件事，
+只是邊界不同。
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/sandbox/lease \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"class":"exec"}'
+```
+
+```bash
+hanzo sandboxes list
+```
+
+其餘每項操作都作用在那次呼叫傳回的沙盒上。
+
+## 四個類別
+
+一個封閉集合。空著就表示 `exec`。
+
+| 類別 | 它是什麼 | 工作目錄 | 存活 |
+|---|---|---|---|
+| `exec` | 用完即棄；什麼都不留 | `/mnt/data` | 幾秒到幾分鐘 |
+| `dev` | 編碼，掛著專案磁碟 | `/work` | 數小時 |
+| `desktop` | `dev` 再加一塊螢幕 | `/work` | 數小時 |
+| `android` | `desktop` 再加那塊螢幕上的一支電話 | `/work` | 數小時 |
+
+除 `exec` 外的每個類別都 **要求**一個專案，而一個專案 **同一時間只有一個活著的
+沙盒** — 對已經有一個的專案再租一次，會按名稱拒絕，
+而不是悄悄再給你一台機器。
+
+你可以 *請求*一種執行時期（`gvisor` 或 `kata-fc`）；擁有者決定，
+回答會告訴你實際拿到的是什麼。
+
+## 結束用兩個動詞，差別有意義
+
+<Callout>
+**`stop` 結束工作。`end` 結束資源。** 出了錯的一次執行在
+`stop` 之後仍然可讀，這就是它們是兩個動詞的全部理由。
+</Callout>
+
+除此之外，`ttlSec` 限定租約，收割器每分鐘跑一次：它結束
+過期的租約，並讓閒置超過一小時的沙盒休眠。**沒有
+池** — 沙盒為一次租約而建立，在結束時刪除，名稱
+永不複用，所以過期的 id 永遠到不了別人的機器。
+
+## Pod 能做什麼
+
+不是你能做什麼。你的憑證永遠到不了 Pod。一份租約被交給一個
+短命權杖，藉由對你的身分做權杖交換得到，以
+`hanzo-sandbox` 用戶端的身分行事，隨租約到期，沒有重新整理權杖。
+Pod 自己不攜帶叢集憑證。
+
+隔離是實體的：沙盒儲存是每個組織一個檔案。
+
+## exec：一次工作階段 *就是* 一個沙盒
+
+[exec](/docs/openapi/exec) 在一次呼叫裡執行整個程式，共十三種
+語言 — `py`、`js`、`ts`、`bash`、`r`、`php`、`go`、`rs`、`c`、`cpp`、
+`java`、`d`、`f90`。
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/exec \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"language":"py","code":"print(6*7)"}'
+```
+
+它沒有自己的儲存，也沒有自己的壽命 — 它傳回的工作階段 id *就是*
+沙盒 id。非零結束是 **帶 stderr 的 `200`**，不是錯誤狀態：
+呼叫成功了，程式失敗了，這是兩件不同的事實。再次傳入
+同一個 `session_id`，就能在各次執行之間保留檔案系統。
+
+## 它在哪裡遇見智慧體
+
+`POST /v1/sandbox/run` 向一個具名工作階段敘述，它的輸出附加到
+該工作階段的即時日誌 — [智慧體](/docs/concepts/agents) 工作階段串流
+已經在看的那份日誌。這就是兩者的接縫：沙盒幹活，
+工作階段是這件事的紀錄。
+
+## 下一步
+
+- **[沙盒參考](/docs/openapi/sandbox)** — 租約、exec、fs、終端機、
+  螢幕。
+- **[exec](/docs/openapi/exec)** — 程式碼解譯器。
+- **[智慧體](/docs/concepts/agents)** — 通常握著租約的那個。

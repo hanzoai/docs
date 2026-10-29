@@ -1,0 +1,100 @@
+---
+title: Bacs à sable
+description: Le seul primitif de calcul — un bail sur un pod qui exécute le code de quelqu’un d’autre. Quatre classes, deux façons d’en finir un, et aucune réserve.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Après cette page vous pouvez exécuter du code non fiable et savoir exactement quand il cesse
+de vous coûter de l’argent.**
+
+## Un primitif
+
+Un bac à sable est un pod sous une frontière d’exécution, avec une chaîne d’outils déjà dedans,
+son propre système de fichiers, et un **bail** qui y met fin. Il y a un objet et une
+durée de vie — une exécution Python jetable et une session de code de plusieurs heures sont la même
+chose avec des bornes différentes.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/sandbox/lease \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"class":"exec"}'
+```
+
+```bash
+hanzo sandboxes list
+```
+
+Toute autre opération agit sur le bac à sable que cet appel renvoie.
+
+## Quatre classes
+
+Un ensemble fermé. Vide signifie `exec`.
+
+| Classe | Ce que c’est | Répertoire de travail | Vit |
+|---|---|---|---|
+| `exec` | jetable ; ne garde rien | `/mnt/data` | de secondes à minutes |
+| `dev` | du code, avec le disque du projet attaché | `/work` | des heures |
+| `desktop` | `dev` plus un écran | `/work` | des heures |
+| `android` | `desktop` plus un téléphone sur cet écran | `/work` | des heures |
+
+Toute classe sauf `exec` **exige** un projet, et un projet a **un bac à sable vivant
+à la fois** — un second bail sur un projet qui en a déjà un est
+refusé par son nom, au lieu de vous donner en silence une seconde machine.
+
+Vous pouvez *demander* un moteur d’exécution (`gvisor` ou `kata-fc`) ; le propriétaire décide, et la
+réponse vous dit ce que vous avez vraiment obtenu.
+
+## Deux verbes pour finir, et la différence compte
+
+<Callout>
+**`stop` met fin au travail. `end` met fin à la ressource.** Une exécution qui a mal tourné reste
+lisible après `stop`, et c’est toute la raison pour laquelle ce sont deux verbes.
+</Callout>
+
+Au-delà, `ttlSec` borne le bail, et un moissonneur tourne chaque minute : il met fin
+aux baux expirés et endort les bacs à sable inactifs depuis plus d’une heure. Il n’y a **aucune
+réserve** — un bac à sable est créé pour un bail et supprimé à sa fin, et les noms
+ne sont jamais réutilisés, donc un id périmé ne peut jamais atteindre la machine de quelqu’un d’autre.
+
+## Ce que le pod peut faire
+
+Pas ce que vous pouvez. Votre identifiant n’atteint jamais le pod. Un bail reçoit un
+jeton de courte durée, obtenu par échange de jeton contre votre identité, agissant comme
+le client `hanzo-sandbox`, expirant avec le bail, sans jeton de rafraîchissement. Le
+pod ne porte aucun identifiant de cluster qui lui soit propre.
+
+L’isolement est physique : un magasin de bacs à sable est un fichier par organisation.
+
+## exec : une session *est* un bac à sable
+
+[exec](/docs/openapi/exec) exécute un programme entier en un appel, en treize
+langages — `py`, `js`, `ts`, `bash`, `r`, `php`, `go`, `rs`, `c`, `cpp`,
+`java`, `d`, `f90`.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/exec \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"language":"py","code":"print(6*7)"}'
+```
+
+Il ne possède ni magasin ni durée de vie propres — l’id de session qu’il renvoie *est* un
+id de bac à sable. Une sortie non nulle est un **`200` avec stderr**, pas un statut d’erreur :
+l’appel a réussi, le programme a échoué, et ce sont des faits différents. Repassez le
+même `session_id` pour garder le système de fichiers entre les exécutions.
+
+## Où il rencontre les agents
+
+`POST /v1/sandbox/run` raconte dans une session nommée, et sa sortie s’ajoute
+au journal vivant de cette session — celui qu’un flux de session d’[agent](/docs/concepts/agents)
+regarde déjà. C’est la couture entre les deux : un bac à sable fait le
+travail, une session en est l’enregistrement.
+
+## Suite
+
+- **[Référence des bacs à sable](/docs/openapi/sandbox)** — bail, exec, fs, terminal,
+  écran.
+- **[exec](/docs/openapi/exec)** — l’interpréteur de code.
+- **[Agents](/docs/concepts/agents)** — ce qui détient d’ordinaire le bail.

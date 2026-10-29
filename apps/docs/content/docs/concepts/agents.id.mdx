@@ -1,0 +1,104 @@
+---
+title: Agen
+description: Agen adalah sebuah definisi; sesi adalah sebuah jalankan yang dapat Anda arahkan dan putar ulang. Satu alur adalah satu pohon, dan sebuah perintah adalah niat, bukan perubahan keadaan.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Setelah halaman ini Anda dapat mendefinisikan sebuah agen, melihatnya bekerja, dan mengarahkannya saat
+ia berjalan.**
+
+## Dua kata benda
+
+**Agen** adalah sebuah definisi: sebuah model, sebuah prompt sistem, dan sekumpulan nama alat.
+**Sesi** adalah jalankan yang hidup — baris tempat setiap permukaan menggantung aktivitasnya,
+baik permukaan itu CLI, konsol, obrolan, atau sebuah bot.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"triage","model":"zen-1","instructions":"Triage inbound issues.","tools":["search"]}'
+```
+
+```bash
+hanzo agents list
+```
+
+Nama unik di organisasi Anda dan cocok dengan
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`. Model yang Anda sebut diperiksa terhadap
+katalog yang disajikan gerbang **saat pendefinisian** — salah ketik ditolak sekarang,
+bukan jam 3 pagi pada jalankan pertama. Agen yang berjalan terus-menerus harus membawa
+jadwal cron lima bidang, dan dihitung terhadap batas per organisasi.
+
+## Satu alur adalah satu pohon
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents/sessions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"agent":"triage"}'
+```
+
+Sesi yang membawa `parentSessionId` menjadi **subagen** dari sesi itu
+dan mewarisi akarnya. Jadi kipas sepuluh subagen bukan sepuluh jalankan yang tidak berhubungan —
+itu satu pohon, dan `/v1/agents/sessions/{id}/tree` mengembalikan seluruh graf dalam
+satu pembacaan, setiap simpul membawa hitungan peristiwanya sendiri.
+
+Daftar mengembalikan **hanya sesi akar** kecuali Anda meminta turun. Status adalah salah satu
+dari `running`, `paused`, `done`, `error`.
+
+## Mengarahkan sesi yang sedang berjalan
+
+Empat perintah, semuanya di bawah `/v1/agents/sessions/{id}`: `message`, `pause`,
+`resume`, `stop`.
+
+<Callout>
+**Sebuah perintah adalah niat, bukan perubahan keadaan.** Tidak ada dalam panggilan itu yang menulis
+status sesi. `200` berarti perintah tercatat secara tahan lama dan terkirim —
+agen yang memutuskan kapan menindakinya.
+</Callout>
+
+Itulah yang membuat pengarahan bekerja lintas mesin. Sesi `hanzo code` yang dimulai
+di laptop Anda mengonsumsi perintah yang dipasang dasbor, dengan menjajaki
+`/v1/agents/sessions/{id}/control` — perintah yang lebih baru dari sebuah kursor, yang tertua lebih dulu,
+tidak pernah dikirim ulang setelah diterapkan.
+
+Dua penolakan yang perlu diketahui: sesi yang **selesai** menolak setiap perintah dengan
+`409`, dan id milik penyewa lain adalah `404` — tidak ada organisasi yang mengarahkan
+agen milik organisasi lain, dan 404 tidak menegaskan bahwa id itu ada.
+
+`stop` adalah pengecualian yang benar-benar membatalkan, bukan hanya memberi isyarat.
+
+## Mengamati
+
+```
+GET /v1/agents/sessions/stream
+```
+
+Peristiwa yang dikirim server: bingkai `session` dan bingkai `event`, dipersempit dengan `?root=`.
+Ia berlingkup organisasi dan gagal tertutup — bus menyaring menurut penyewa sebelum penyebaran. Pelanggan
+yang tertinggal lebih dari 256 bingkai dijatuhkan alih-alih dibiarkan menahan
+aliran, dan sebuah `: ping` tiba setiap 25 detik agar koneksi mati
+terlihat.
+
+Giliran dicatat di `/v1/agents/sessions/{id}/events` — pesan, panggilan alat,
+pemijahan, log, status, kendali — masing-masing menjawab dengan `seq` monoton. Tidak ada yang
+hilang, jadi sebuah jalankan dapat diputar ulang setelah selesai.
+
+## Apa yang dijangkau agen
+
+- **Alat** — [alat](/docs/openapi/tools) adalah bidang alat per penyewa yang dilalui
+  panggilan agen.
+- **Komputasi** — sewa [kotak pasir](/docs/concepts/sandboxes).
+- **Pengetahuan** — [memori](/docs/concepts/memory).
+- **Model** — [ai](/docs/openapi/ai), bidang inferensi.
+
+## Berikutnya
+
+- **[Referensi agen](/docs/openapi/agents)** — setiap operasi, dihasilkan.
+- **[Anggaran](/docs/concepts/budgets)** — apa yang boleh ia belanjakan, dan apa yang terjadi
+  bila ia akan membelanjakan lebih.
+- **[Kotak pasir](/docs/concepts/sandboxes)** — tempat kerja berjalan.
+- **[Memori](/docs/concepts/memory)** — apa yang ia ketahui.
+- **[Alur kerja](/docs/concepts/workflows)** — menjalankan satu tanpa diminta.

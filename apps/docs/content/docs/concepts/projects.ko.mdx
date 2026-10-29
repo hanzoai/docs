@@ -1,0 +1,94 @@
+---
+title: 프로젝트
+description: 프로젝트라고 불리는 것은 두 가지다 — 배포하는 사이트와, 조직 안의 범위. 어느 쪽을 가졌는지가 원하는 API를 정한다.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**이 페이지 다음에는 잘못된 쪽을 부르지 않는다.**
+
+<Callout type="warn">
+**“프로젝트”는 두 가지를 가리킨다.** *사이트 프로젝트*는 배포하는 것이다. *IAM 프로젝트*는
+조직 안의 범위다. 주소도, 수명도, 소유자도 다르다. 명세는 둘을 갈라 둔다. 너도 갈라야 한다.
+</Callout>
+
+## 사이트 프로젝트 — 사이트가 사는 곳
+
+빌드가 배포되고 제공되는 핸들.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/projects \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"acme-marketing"}'
+```
+
+```bash
+hanzo projects list
+```
+
+**slug**는 하중을 받는 부분이다. 객체 저장소의 키 구간이 되고,
+공개 호스트 `<slug>.hanzo.app`가 되고, 이후의 모든 호출이 가리키는 핸들이 된다.
+`^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$`와 맞고, 예약된 라벨은 거절되며,
+**조직마다** 고유하다 — 다른 사람 조직의 같은 slug는 너와 상관없다.
+공개 호스트 이름은 반대로 전 세계에서 고유하고, 선착순이다.
+
+하나를 만들면 데이터 공간과 정규 git 저장소도 마련된다. 둘 다 최선을 다할 뿐이다.
+`draft`로 `201`을 답한다.
+
+수명은 환경이 아니라 **릴리스**다:
+
+```
+POST /v1/projects/{slug}/deploy
+GET  /v1/projects/{slug}/releases
+POST /v1/projects/{slug}/releases/{release}/activate
+```
+
+모든 배포는 릴리스이고, 어떤 릴리스도 다시 라이브로 만들 수 있다. 그래서 되돌리기는
+앞으로 진행하는 것과 같은 연산이다. 사용자 지정 호스트 이름은
+`/v1/projects/{slug}/domains/{host}/verify`에서 검증된다.
+
+공개로 게시하는 것은 무료다. `visibility: private`가 유료 기능이다.
+
+## IAM 프로젝트 — 조직 안의 범위
+
+일이 팀이 아니라 제품이나 고객으로 나뉠 때 사람들이 고르는 범위다.
+만들고 지우는 곳은 **오직** `/v1/iam/projects`이고,
+검증된 `X-Project-Id`로 요청에 실린다.
+
+```
+GET /v1/iam/projects
+```
+
+다른 곳에서는 만들지 않는다. `/v1/platform/projects`는 *투영*이다 —
+프로젝트에 컨테이너 평면이 그 아래에 둔 것을 더한 것 — 이고, 그렇다고 분명히 말한다.
+애플리케이션은 그 아래에 산다:
+
+```
+/v1/platform/projects/{project}/apps/{app}
+/v1/platform/projects/{project}/apps/{app}/env
+/v1/platform/projects/{project}/apps/{app}/preview
+```
+
+API 키는 IAM 프로젝트 하나로 범위를 좁힐 수 있다. 사전 운영 키가
+운영 데이터를 건드리지 않게 하는 보통의 방법이다.
+
+## 구분하기
+
+| | 사이트 프로젝트 | IAM 프로젝트 |
+|---|---|---|
+| **무엇인가** | 배포된 사이트 | 조직 안의 범위 |
+| **만들어지는 곳** | `/v1/projects` | `/v1/iam/projects` |
+| **식별** | 조직마다 고유한 slug | `X-Project-Id`로 실리는 id |
+| **버전** | 릴리스 | 없음 — 경계다 |
+| **능력** | [프로젝트](/docs/openapi/projects) | [iam](/docs/openapi/iam) |
+
+경험칙: **바이트를 배포하고 있다면 사이트 프로젝트다. 권한을 한정하고 있다면 IAM 프로젝트다.**
+
+## 다음
+
+- **[프로젝트 레퍼런스](/docs/openapi/projects)** — 사이트에 대한 모든 연산.
+- **[플랫폼](/docs/openapi/platform)** — 컨테이너 평면, 그리고 IAM 프로젝트
+  아래에 사는 것.
+- **[환경](/docs/environments)** — 환경 리소스가 없는 이유.
+- **[멀티테넌시](/docs/concepts/multitenancy)** — 둘 다 그 안에 앉는 조직.

@@ -1,0 +1,60 @@
+---
+title: Instalasi
+description: Pasang Hanzo Dev dari npm atau Homebrew, atau bangun dari sumber.
+---
+
+## Persyaratan sistem
+
+| Persyaratan | Detail |
+| --- | --- |
+| Sistem operasi | macOS 12+, Ubuntu 20.04+/Debian 10+, atau Windows 11 **melalui WSL2** |
+| Git (opsional, disarankan) | 2.23+ untuk pembantu PR bawaan |
+| RAM | minimum 4 GB (disarankan 8 GB) |
+
+## Pasang lewat npm
+
+```bash
+npm install -g @hanzo/dev
+```
+
+## Pasang lewat npx
+
+```bash
+npx @hanzo/dev
+```
+
+## DotSlash
+
+Rilis GitHub juga berisi berkas [DotSlash](https://dotslash-cli.com/) untuk Hanzo Dev bernama `dev`. Berkas DotSlash memungkinkan commit ringan ke kontrol sumber agar semua kontributor memakai versi executable yang sama, apa pun platformnya.
+
+## Bangun dari sumber
+
+```bash
+# Clone the repository
+git clone https://github.com/hanzoai/dev.git
+cd dev
+
+# Install the Rust toolchain if necessary
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source "$HOME/.cargo/env"
+
+# Build (~20 min cold, ~2 min incremental)
+./build-fast.sh
+
+# Launch the TUI
+./hanzo-dev/target/dev-fast/dev
+```
+
+## Pelacakan dan log terperinci
+
+Hanzo Dev ditulis dalam Rust dan menghormati variabel lingkungan `RUST_LOG`.
+
+TUI secara bawaan memakai `RUST_LOG=hanzo_core=info,hanzo_tui=info` dan menulis log ke `~/.hanzo/log/codex-tui.log`. Ganti direktori log dengan `-c log_dir=...` untuk satu kali jalankan.
+
+```bash
+tail -F ~/.hanzo/log/codex-tui.log
+```
+
+Mode non-interaktif (`dev exec`) secara bawaan memakai `RUST_LOG=error` dengan keluaran sebaris.
+
+Lihat [dokumentasi `RUST_LOG`](https://docs.rs/env_logger/latest/env_logger/#enabling-logging) Rust untuk semua opsi konfigurasi.

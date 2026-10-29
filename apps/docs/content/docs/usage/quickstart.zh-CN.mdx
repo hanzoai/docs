@@ -1,0 +1,61 @@
+---
+title: 快速开始
+description: 安装 @hanzo/usage，用大约 15 行 TypeScript 读取统一的 AI 用量。
+---
+
+# 快速开始
+
+`@hanzo/usage` 是 Hanzo Usage 背后的无界面核心。它运行在 Node、
+Next.js 和 Tauri 中，并自带 Hanzo、Codex 和 Claude 的提供方
+（注册表可以扩展）。
+
+## 安装
+
+```bash title="Install"
+npm install @hanzo/usage
+```
+
+## 读取用量
+
+创建一个 `UsageStore`，为你的环境提供一个宿主，然后启动轮询循环。
+存储是可观察的 — 订阅它来渲染，或使用 React 钩子。
+
+```ts title="usage.ts"
+import { UsageStore, allProviders } from '@hanzo/usage'
+import { nodeHost } from '@hanzo/usage/node' // or createTauriHost from '@hanzo/usage/tauri'
+
+const store = new UsageStore({
+  host: nodeHost,
+  providers: allProviders, // hanzo, codex, claude — registry-extensible
+  historyDir: `${process.env.HOME}/.config/hanzo/usage/history`,
+})
+
+store.start() // 5-minute poll, CodexBar-compatible history files
+store.subscribe(() => console.log(store.getState()))
+```
+
+## 在 Tauri 中（Hanzo Desktop，hanzo.app）
+
+传入 Tauri 插件模块 — 核心对 Web 和
+Node 打包保持无依赖：
+
+```ts title="tauri-host.ts"
+import * as fs from '@tauri-apps/plugin-fs'
+import { fetch } from '@tauri-apps/plugin-http'
+import { homeDir } from '@tauri-apps/api/path'
+import { createTauriHost } from '@hanzo/usage/tauri'
+
+const host = await createTauriHost({ fs, fetch, homeDir })
+```
+
+## 在 React 中
+
+```ts title="Component.tsx"
+import { useUsage } from '@hanzo/usage/react'
+
+const state = useUsage(store) // re-renders on every refresh
+```
+
+每个提供方按顺序运行一条获取策略流水线（`oauth` → `web` →
+`cli` → `apiToken` → `localProbe`），复用你已经有的登录，因此
+从不索取或保存密码。

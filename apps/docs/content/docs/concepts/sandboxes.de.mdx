@@ -1,0 +1,100 @@
+---
+title: Sandkästen
+description: Das eine Rechenprimitiv — eine Pacht auf einen Pod, der den Code von jemand anderem ausführt. Vier Klassen, zwei Arten, einen zu beenden, und kein Vorrat.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Nach dieser Seite kannst du nicht vertrauenswürdigen Code ausführen und genau wissen, wann er aufhört,
+dich Geld zu kosten.**
+
+## Ein Primitiv
+
+Ein Sandkasten ist ein Pod unter einer Laufzeitgrenze, mit einer Werkzeugkette schon darin,
+einem eigenen Dateisystem und einer **Pacht**, die ihn beendet. Es gibt ein Objekt und eine
+Lebensdauer — ein Wegwerf-Python-Lauf und eine mehrstündige Programmiersitzung sind dasselbe
+Ding mit anderen Grenzen.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/sandbox/lease \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"class":"exec"}'
+```
+
+```bash
+hanzo sandboxes list
+```
+
+Jede weitere Operation wirkt auf den Sandkasten, den dieser Aufruf zurückgibt.
+
+## Vier Klassen
+
+Eine geschlossene Menge. Leer bedeutet `exec`.
+
+| Klasse | Was es ist | Arbeitsverzeichnis | Lebt |
+|---|---|---|---|
+| `exec` | Wegwerf; behält nichts | `/mnt/data` | Sekunden bis Minuten |
+| `dev` | Programmieren, mit der Projektplatte angehängt | `/work` | Stunden |
+| `desktop` | `dev` plus ein Bildschirm | `/work` | Stunden |
+| `android` | `desktop` plus ein Telefon auf diesem Bildschirm | `/work` | Stunden |
+
+Jede Klasse außer `exec` **verlangt** ein Projekt, und ein Projekt hat **einen lebenden
+Sandkasten zur Zeit** — eine zweite Pacht über ein Projekt, das schon eine hat, wird
+beim Namen abgelehnt, statt dir still eine zweite Maschine zu geben.
+
+Du darfst eine Laufzeit *anfragen* (`gvisor` oder `kata-fc`); der Eigentümer entscheidet, und die
+Antwort sagt dir, was du wirklich bekommen hast.
+
+## Zwei Verben zum Beenden, und der Unterschied zählt
+
+<Callout>
+**`stop` beendet die Arbeit. `end` beendet die Ressource.** Ein Lauf, der schiefging, bleibt
+nach `stop` lesbar, und genau deshalb sind es zwei Verben.
+</Callout>
+
+Darüber hinaus begrenzt `ttlSec` die Pacht, und ein Aufräumer läuft jede Minute: er beendet
+abgelaufene Pachten und schläfert Sandkästen, die länger als eine Stunde untätig sind. Es gibt **keinen
+Vorrat** — ein Sandkasten wird für eine Pacht angelegt und an ihrem Ende gelöscht, und Namen
+werden nie wiederverwendet, also kann eine veraltete id nie die Maschine von jemand anderem erreichen.
+
+## Was der Pod kann
+
+Nicht, was du kannst. Deine Anmeldedaten erreichen den Pod nie. Eine Pacht bekommt ein
+kurzlebiges Token, geholt durch Token-Tausch gegen deine Identität, handelnd als
+der Client `hanzo-sandbox`, ablaufend mit der Pacht, ohne Aktualisierungstoken. Der
+Pod trägt keine eigene Cluster-Anmeldedaten.
+
+Die Isolation ist physisch: ein Sandkasten-Speicher ist eine Datei pro Organisation.
+
+## exec: eine Sitzung *ist* ein Sandkasten
+
+[exec](/docs/openapi/exec) führt ein ganzes Programm in einem Aufruf aus, in dreizehn
+Sprachen — `py`, `js`, `ts`, `bash`, `r`, `php`, `go`, `rs`, `c`, `cpp`,
+`java`, `d`, `f90`.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/exec \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"language":"py","code":"print(6*7)"}'
+```
+
+Es besitzt keinen eigenen Speicher und keine eigene Lebensdauer — die Sitzungs-id, die es zurückgibt, *ist* eine
+Sandkasten-id. Ein von null verschiedener Exit ist ein **`200` mit stderr**, kein Fehlerstatus:
+der Aufruf ist gelungen, das Programm ist gescheitert, und das sind verschiedene Tatsachen. Gib dieselbe
+`session_id` noch einmal mit, um das Dateisystem zwischen den Läufen zu behalten.
+
+## Wo es die Agenten trifft
+
+`POST /v1/sandbox/run` erzählt in eine benannte Sitzung, und seine Ausgabe hängt sich
+an das lebende Protokoll dieser Sitzung — das, das ein Sitzungsstrom eines [Agenten](/docs/concepts/agents)
+schon beobachtet. Das ist die Naht zwischen den beiden: ein Sandkasten tut die
+Arbeit, eine Sitzung ist die Aufzeichnung davon.
+
+## Weiter
+
+- **[Sandkastenreferenz](/docs/openapi/sandbox)** — Pacht, exec, fs, Terminal,
+  Bildschirm.
+- **[exec](/docs/openapi/exec)** — der Code-Interpreter.
+- **[Agenten](/docs/concepts/agents)** — was die Pacht gewöhnlich hält.

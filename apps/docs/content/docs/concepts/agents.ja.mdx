@@ -1,0 +1,101 @@
+---
+title: エージェント
+description: エージェントは定義であり、セッションは操れて再生できる実行だ。一つの流れは一つの木であり、コマンドは状態変更ではなく意図だ。
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**このページのあと、エージェントを定義し、働くのを見て、走っているあいだ操れる。**
+
+## 二つの名詞
+
+**エージェント**は定義だ。モデル、システムプロンプト、ツール名の集合。
+**セッション**は生きている実行だ — どの表面も活動をぶら下げる行で、
+その表面が CLI でもコンソールでもチャットでもボットでも同じだ。
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"triage","model":"zen-1","instructions":"Triage inbound issues.","tools":["search"]}'
+```
+
+```bash
+hanzo agents list
+```
+
+名前は組織内で一意で、
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` に一致する。名指ししたモデルは、ゲートウェイが配っている
+目録と **定義の時点**で照合される — 打ち間違いは今拒否される。
+最初の実行の午前3時ではない。連続して走るエージェントは五欄の
+cron 予定を持たねばならず、組織ごとの上限に数えられる。
+
+## 一つの流れは一つの木
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents/sessions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"agent":"triage"}'
+```
+
+`parentSessionId` を持つセッションは、そのセッションの **サブエージェント**になり、
+その根を継ぐ。だから十のサブエージェントへの扇状展開は、無関係な十の実行ではない —
+一つの木だ。`/v1/agents/sessions/{id}/tree` はグラフ全体を一回の
+読みで返し、各ノードは自分のイベント数を持つ。
+
+一覧は、降りるように頼まない限り **根のセッションだけ**を返す。状態は
+`running`、`paused`、`done`、`error` のいずれかだ。
+
+## 走っているセッションを操る
+
+四つのコマンド、すべて `/v1/agents/sessions/{id}` の下: `message`、`pause`、
+`resume`、`stop`。
+
+<Callout>
+**コマンドは意図であり、状態変更ではない。** その呼び出しはセッションの
+状態を何も書かない。`200` は、コマンドが永続的に記録され届けられたという意味だ —
+いつそれに従うかはエージェントが決める。
+</Callout>
+
+だから操作は機械をまたいで効く。ノートで始めた `hanzo code` のセッションは、
+ダッシュボードが投稿したコマンドを、
+`/v1/agents/sessions/{id}/control` をポーリングして消費する — カーソルより新しいコマンドを、古い順に、
+適用したら二度と再配送しない。
+
+知っておく拒否が二つある。**終わった**セッションはあらゆるコマンドを
+`409` で拒む。別テナントに属する id は `404` だ — どの組織も他の組織の
+エージェントは操らない。そして 404 は、その id が存在することを確認しない。
+
+`stop` は、合図するのではなく本当に取り消す例外だ。
+
+## 見る
+
+```
+GET /v1/agents/sessions/stream
+```
+
+サーバー送信イベント: `session` フレームと `event` フレーム、`?root=` で狭める。
+組織に範囲が限られ、閉じたまま失敗する — バスは扇状展開の前にテナントで濾す。
+256 フレームより遅れた購読者は、ストリームを止めさせる代わりに落とされる。
+死んだ接続が見えるよう、25 秒ごとに `: ping` が届く。
+
+ターンは `/v1/agents/sessions/{id}/events` に記録される — メッセージ、ツール呼び出し、
+生成、ログ、状態、制御 — それぞれ単調な `seq` で答える。何も
+失われないので、実行は終わったあと再生できる。
+
+## エージェントが届くもの
+
+- **ツール** — [ツール](/docs/openapi/tools) は、エージェントが呼び出すテナントごとのツール面だ。
+- **計算** — [サンドボックス](/docs/concepts/sandboxes) のリース。
+- **知識** — [メモリ](/docs/concepts/memory)。
+- **モデル** — [ai](/docs/openapi/ai)、推論面。
+
+## 次
+
+- **[エージェントリファレンス](/docs/openapi/agents)** — すべての操作、生成済み。
+- **[予算](/docs/concepts/budgets)** — 使ってよい額と、それ以上使いそうなときに
+  起きること。
+- **[サンドボックス](/docs/concepts/sandboxes)** — 仕事が走る場所。
+- **[メモリ](/docs/concepts/memory)** — 知っていること。
+- **[ワークフロー](/docs/concepts/workflows)** — 頼まれずに一つ走らせる。

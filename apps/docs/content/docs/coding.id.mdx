@@ -1,0 +1,59 @@
+---
+title: Agen pemrograman
+description: "Jalankan agen pemrograman di repositori Anda — milik kami, Claude Code, atau Codex — dengan satu perintah."
+icon: Terminal
+---
+
+`hanzo code` menjalankan agen pemrograman terhadap repositori tempat Anda berdiri.
+Tiga agen didukung, dan menyebut salah satu memberi agen itu atau kegagalan yang jelas —
+mereka produk terpisah, bukan alias satu sama lain.
+
+```bash
+hanzo code                      # Hanzo Dev, the default
+hanzo code claude               # Claude Code
+hanzo code codex                # Codex
+```
+
+Berikan tugas sebagai **satu** argumen, dalam tanda kutip:
+
+```bash
+hanzo code "fix the failing test in api/users"
+hanzo code claude "port this module to the new store"
+```
+
+## Menamai agen
+
+Setiap ejaan di bawah diselesaikan di satu tempat, jadi tidak bisa saling menjauh:
+
+| | Posisional | Bendera | Eksplisit |
+| --- | --- | --- | --- |
+| Hanzo Dev | `hanzo code dev` | `hanzo code --dev` | `hanzo code --backend dev` |
+| Claude Code | `hanzo code claude` | `hanzo code --claude` | `hanzo code --backend claude` |
+| Codex | `hanzo code codex` | `hanzo code --codex` | `hanzo code --backend codex` |
+
+`hanzo dev` adalah jalan pintas tingkat atas untuk `hanzo code dev`. `claude-code` dan
+`cc` adalah ejaan yang diterima untuk `claude`.
+
+Menamainya dua kali ditolak, bukan diselesaikan — `hanzo code claude --codex`
+meminta Anda menamainya sekali.
+
+## Persetujuan
+
+Agen menyetujui langkahnya sendiri secara bawaan. Dua jalan keluar, menurut urutan
+seberapa banyak yang dilepaskan:
+
+```bash
+hanzo code --ask            # the backend asks before each step
+hanzo code --no-sandbox     # bypass approvals AND drop the sandbox
+```
+
+`--safe` adalah sinonim `--ask`, dan keduanya mengalahkan `autoApprove` di
+`~/.hanzo/settings.json`.
+
+## `hanzo code` yang lain
+
+`hanzo code context`, `hanzo code file`, dan `hanzo code index` adalah hal lain yang berbagi kata itu: [API kecerdasan kode](/docs/openapi/code) — pencarian dan simbol di repositori terindeks Anda,
+untuk Anda dan untuk agen. Mereka tidak menerima backend dan tidak menjalankan agen.
+
+Aturannya adalah argumen pertama: kata yang menamai backend memilih satu, dan
+apa pun selain itu adalah tugas atau subperintah.

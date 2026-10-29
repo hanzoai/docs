@@ -1,0 +1,97 @@
+---
+title: Projeler
+description: Proje denilen iki ayrı şey vardır — dağıttığınız bir site ve bir kuruluşun içindeki bir kapsam. Hangisine sahip olduğunuz, hangi API’yi istediğinizi belirler.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Bu sayfadan sonra yanlış olanı bir daha çağırmazsınız.**
+
+<Callout type="warn">
+**“Proje” iki şeyi adlandırır.** Bir *site projesi*, dağıttığınız bir şeydir. Bir
+*IAM projesi*, bir kuruluşun içindeki bir kapsamdır. Adresleri, yaşam döngüleri
+ve sahipleri farklıdır. Belirtimler onları ayrı tutar; siz de tutmalısınız.
+</Callout>
+
+## Site projesi — bir sitenin yaşadığı yer
+
+Bir derlemenin altında dağıtıldığı ve sunulduğu tutamaç.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/projects \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"acme-marketing"}'
+```
+
+```bash
+hanzo projects list
+```
+
+**slug**, yükü taşıyan parçadır. Nesne deposunun anahtar dilimine,
+genel ana bilgisayar `<slug>.hanzo.app` adresine ve sonraki her çağrının adreslediği tutamaca dönüşür.
+`^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$` ile eşleşir, ayrılmış etiketler reddedilir
+ve **kuruluş başına** benzersizdir — başka birinin kuruluşundaki aynı slug sizi ilgilendirmez.
+Genel bir ana bilgisayar adı ise küresel olarak benzersizdir ve
+ilk gelene gider.
+
+Bir tane oluşturmak, bir veri alanı ve kurallı bir git deposu da hazırlar; ikisi de
+elinden gelenin en iyisiyledir. `draft` durumunda `201` yanıtı verir.
+
+Yaşam döngüsü ortamlar değil, **yayınlardır**:
+
+```
+POST /v1/projects/{slug}/deploy
+GET  /v1/projects/{slug}/releases
+POST /v1/projects/{slug}/releases/{release}/activate
+```
+
+Her dağıtım bir yayındır ve herhangi bir yayın yeniden canlı yapılabilir, bu yüzden geri almak
+ileri almakla aynı işlemdir. Özel ana bilgisayar adları
+`/v1/projects/{slug}/domains/{host}/verify` adresinde doğrulanır.
+
+Herkese açık yayımlamak ücretsizdir; `visibility: private` ücretli özelliktir.
+
+## IAM projesi — bir kuruluşun içindeki kapsam
+
+İş, ekibe göre değil ürüne veya müşteriye göre ayrıldığında insanların seçtiği kapsam.
+**Yalnızca** `/v1/iam/projects` üzerinde oluşturulur ve silinir
+ve bir istekte doğrulanmış `X-Project-Id` olarak gider.
+
+```
+GET /v1/iam/projects
+```
+
+Başka hiçbir yerde oluşturmazsınız. `/v1/platform/projects` bir *izdüşümdür* —
+proje artı kapsayıcı düzleminin altına koyduğu şey — ve bunu
+açıkça söyler. Uygulamalar onun altında yaşar:
+
+```
+/v1/platform/projects/{project}/apps/{app}
+/v1/platform/projects/{project}/apps/{app}/env
+/v1/platform/projects/{project}/apps/{app}/preview
+```
+
+Bir API anahtarı tek bir IAM projesine kapsamlanabilir. Ön üretim anahtarının
+üretim verisine dokunmamasının alışılmış yolu budur.
+
+## Ayırt etmek
+
+| | Site projesi | IAM projesi |
+|---|---|---|
+| **Ne olduğu** | dağıtılmış bir site | bir kuruluşun içindeki bir kapsam |
+| **Oluşturulduğu yer** | `/v1/projects` | `/v1/iam/projects` |
+| **Tanındığı şey** | kuruluş başına benzersiz bir slug | `X-Project-Id` olarak taşınan bir id |
+| **Sürümlendiği şey** | yayınlar | hiçbir şey — bir sınırdır |
+| **Yetenek** | [projeler](/docs/openapi/projects) | [iam](/docs/openapi/iam) |
+
+Pratik kural: **bayt dağıtıyorsanız bu bir site projesidir. İzinleri
+kapsamlıyorsanız bu bir IAM projesidir.**
+
+## Sonraki
+
+- **[Proje başvurusu](/docs/openapi/projects)** — bir site üzerindeki her işlem.
+- **[Platform](/docs/openapi/platform)** — kapsayıcı düzlemi ve bir IAM projesinin
+  altında yaşayanlar.
+- **[Ortamlar](/docs/environments)** — neden bir ortam kaynağı yoktur.
+- **[Çoklu kiracılık](/docs/concepts/multitenancy)** — ikisinin de içinde durduğu kuruluş.

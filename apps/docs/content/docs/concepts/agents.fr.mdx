@@ -1,0 +1,104 @@
+---
+title: Agents
+description: Un agent est une définition ; une session est une exécution que vous pouvez piloter et rejouer. Un flux est un arbre, et une commande est une intention plutôt qu’un changement d’état.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Après cette page vous pouvez définir un agent, le regarder travailler et le piloter pendant
+qu’il s’exécute.**
+
+## Deux noms
+
+Un **agent** est une définition : un modèle, une invite système et un ensemble de noms d’outils.
+Une **session** est une exécution en direct — la ligne à laquelle chaque surface accroche son activité,
+que cette surface soit la CLI, la console, le chat ou un bot.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"triage","model":"zen-1","instructions":"Triage inbound issues.","tools":["search"]}'
+```
+
+```bash
+hanzo agents list
+```
+
+Le nom est unique dans votre organisation et correspond à
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`. Un modèle que vous nommez est vérifié contre le
+catalogue servi par la passerelle **au moment de la définition** — une faute de frappe est refusée maintenant
+plutôt qu’à 3 h du matin au premier lancement. Un agent qui tourne en continu doit porter un
+horaire cron à cinq champs, et compte dans un plafond par organisation.
+
+## Un flux est un arbre
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents/sessions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"agent":"triage"}'
+```
+
+Une session qui porte un `parentSessionId` devient un **sous-agent** de cette session
+et hérite de sa racine. Ainsi, un éventail de dix sous-agents n’est pas dix exécutions sans lien —
+c’est un arbre, et `/v1/agents/sessions/{id}/tree` renvoie tout le graphe en une
+seule lecture, chaque nœud portant son propre nombre d’événements.
+
+Le listage ne renvoie **que les sessions racines**, sauf si vous demandez à descendre. L’état est l’un
+de `running`, `paused`, `done`, `error`.
+
+## Piloter une session en cours
+
+Quatre commandes, toutes sous `/v1/agents/sessions/{id}` : `message`, `pause`,
+`resume`, `stop`.
+
+<Callout>
+**Une commande est une intention, pas un changement d’état.** Rien dans cet appel n’écrit le
+statut de la session. Un `200` signifie que la commande a été enregistrée durablement et remise —
+l’agent décide quand agir dessus.
+</Callout>
+
+C’est ce qui fait que le pilotage fonctionne d’une machine à l’autre. Une session `hanzo code` démarrée
+sur votre portable consomme les commandes que le tableau de bord a publiées, en interrogeant
+`/v1/agents/sessions/{id}/control` — les commandes plus récentes qu’un curseur, la plus ancienne d’abord,
+jamais redélivrées une fois appliquées.
+
+Deux refus à connaître : une session **terminée** refuse toute commande avec
+`409`, et un id appartenant à un autre locataire est `404` — aucune organisation ne pilote les
+agents d’une autre, et le 404 ne confirme pas que l’id existe.
+
+`stop` est l’exception qui annule vraiment au lieu de signaler.
+
+## Observer
+
+```
+GET /v1/agents/sessions/stream
+```
+
+Événements envoyés par le serveur : trames `session` et trames `event`, resserrées avec `?root=`.
+C’est limité à l’organisation et l’échec est fermé — le bus filtre sur le locataire avant la diffusion. Un
+abonné à plus de 256 trames de retard est abandonné plutôt que laissé bloquer
+le flux, et un `: ping` arrive toutes les 25 secondes pour qu’une connexion morte soit
+visible.
+
+Les tours sont enregistrés à `/v1/agents/sessions/{id}/events` — message, appel d’outil,
+engendrage, journal, statut, contrôle — chacun répondant avec un `seq` monotone. Rien n’est
+perdu, donc une exécution peut être rejouée après qu’elle a fini.
+
+## Ce qu’atteint un agent
+
+- **Outils** — [outils](/docs/openapi/tools) est le plan d’outils par locataire à travers lequel
+  un agent appelle.
+- **Calcul** — un bail de [bac à sable](/docs/concepts/sandboxes).
+- **Savoir** — [mémoire](/docs/concepts/memory).
+- **Modèles** — [ai](/docs/openapi/ai), le plan d’inférence.
+
+## Suite
+
+- **[Référence des agents](/docs/openapi/agents)** — chaque opération, générée.
+- **[Budgets](/docs/concepts/budgets)** — ce qu’il peut dépenser, et ce qui arrive
+  quand il dépenserait davantage.
+- **[Bacs à sable](/docs/concepts/sandboxes)** — où le travail s’exécute.
+- **[Mémoire](/docs/concepts/memory)** — ce qu’il sait.
+- **[Flux de travail](/docs/concepts/workflows)** — en lancer un sans qu’on vous le demande.

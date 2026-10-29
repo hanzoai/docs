@@ -1,0 +1,45 @@
+---
+title: 아키텍처
+description: Hanzo Cloud가 오늘 어떻게 구성되어 있는지, 그리고 나아가는 플러그인 플랫폼의 방향.
+index: true
+---
+
+# 아키텍처
+
+이 절은 Hanzo Cloud가 어떻게 맞물려 있는지 — 오늘 무엇이 돌고, 플랫폼이 어디로 가는지 — 설명합니다. 둘은 분명히 갈라 둡니다. 이 문서의 다른 제품 페이지는 출시된 동작을 적고, 여기의 플랫폼 방향은 [Hanzo 개선 제안(HIP)](https://hips.hanzo.ai)을 통해 비준되는 설계 작업입니다. 그 뒤의 원칙은 [엔지니어링 철학](/docs/architecture/philosophy)에 있습니다.
+
+## 오늘
+
+Hanzo Cloud는 **하나의 Go 바이너리**입니다. `api.hanzo.ai`의 API 키 하나가 모든 능력에 닿습니다. AI 추론, 신원, 비밀, 저장소, 상거래, 그 밖입니다. 그 능력들은 **그 하나의 바이너리에 컴파일된 네이티브 하위 시스템**(`cloud`, `CGO_ENABLED=0`, 정적)이기 때문입니다. 각각은 `/v1/<capability>` 아래에서 제공되고, 바이너리가 내는 하나의 문서, [hanzoai/cloud](https://github.com/hanzoai/cloud)의 `openapi.yaml`로 기술됩니다. 진입과 라우팅도 네이티브 하위 시스템이라, 바이너리는 별도의 게이트웨이나 진입 계층 뒤에 앉지 않고 스스로 진입점입니다. 이 단일 바이너리로의 통합이 통합 클라우드 바이너리(HIP-0106)이며, 이미 상당 부분 출시되었습니다. [직접 돌릴 수 있는 네트워크](/docs/network)를 움직이는 것도 같은 바이너리입니다.
+
+모든 능력은 정확히 **아홉 도메인** 중 하나에 속합니다. [레퍼런스](/docs/openapi)가 세고, 모두 나열합니다.
+
+<Cards>
+  <Card title="신원과 신뢰" href="/docs/openapi/iam" description="당신이 누구인지, 무엇을 만질 수 있는지, 비밀이 어디에 있는지." />
+  <Card title="지능" href="/docs/openapi/ai" description="모델, 에이전트, 평가 — 클라우드의 마음." />
+  <Card title="데이터" href="/docs/openapi/base" description="모든 능력이 쓰고 읽는 저장소." />
+  <Card title="스트림" href="/docs/openapi/pubsub" description="메시지, durable 작업, 비동기 오케스트레이션." />
+  <Card title="관측 가능성" href="/docs/openapi/o11y" description="모든 것을 보기 — 텔레메트리, 분석, 사용량." />
+  <Card title="상거래" href="/docs/openapi/commerce" description="경제 — 측정하고, 가격을 매기고, 청구하고, 보상합니다." />
+  <Card title="플랫폼" href="/docs/openapi/platform" description="클라우드의 직물 — 배포, 프로비저닝, 라우팅, 호스팅." />
+  <Card title="애플리케이션" href="/docs/openapi/git" description="위의 모든 것 위에 얹힌, 사용자를 향한 표면." />
+  <Card title="체인" href="/docs/openapi/web3" description="클라우드가 말하는 네트워크 — 열거하고, 호출하고, 잔액을 읽습니다." />
+</Cards>
+
+몇몇 제품은 아직 자기 도메인에서 독립 애플리케이션으로 돕니다. 예를 들어 [Sign](/docs/openapi)(`esign.hanzo.ai`), [Dataroom](/docs/openapi)(`dataroom.hanzo.ai`), [Cap Table](/docs/openapi)(`captable.hanzo.ai`)이며, Hanzo IAM으로 인증합니다. 이들은 남은 독립 앱으로, 하나의 런타임으로 흡수되는 중이며 의도한 최종 상태가 아닙니다.
+
+## 방향
+
+플랫폼은 이 서비스들을 돌리는 하나의 모델로 모입니다. **합의에 바탕을 둔 플러그인 플랫폼**입니다. 각 서비스는 하나의 클라우드 런타임에 등록되는 *플러그인*이고, 작은 합의 제어 평면이 각 플러그인의 기록자가 어디에 살지 정합니다. 이것은 설계 방향입니다. 초안 제안으로 적혀 있으며, 아직 출시된 런타임이 아닙니다.
+
+<Cards>
+  <Card title="엔지니어링 철학" href="/docs/architecture/philosophy" description="V8 뒤의 원칙. 하나와 한 가지 방법, 얽힘을 풀기, 언어의 이음매는 FFI가 아니라 선." />
+  <Card title="네트워크" href="/docs/network" description="직접 돌릴 수 있는 AI 클라우드. 하나의 바이너리, 자신의 GPU, 네트워크가 클라우드입니다." />
+  <Card title="합의에 바탕을 둔 플러그인 플랫폼" href="/docs/architecture/plugin-platform" description="HIP-0125의 방향. 단위는 플러그인, 배치는 합의, 작성은 ZAP 네이티브." />
+  <Card title="ZAP 프로토콜" href="/docs/zap" description="Zero-Copy App Proto — 플러그인이 기본으로 쓰는 고성능 전송." />
+  <Card title="Hanzo 개선 제안" href="https://hips.hanzo.ai" description="플랫폼 아키텍처가 명세되고 비준되는 곳." />
+</Cards>
+
+<Callout type="info">
+플러그인 플랫폼은 **HIP-0125(초안)**에 적혀 있습니다. 관련된 제안들 위에 섭니다. 프로세스 안 확장 런타임(HIP-0105), 통합 클라우드 바이너리(HIP-0106), 스트리밍 복제(HIP-0107), ZAP 전송(HIP-0114)입니다. 초안은 바뀔 수 있습니다. [플러그인 플랫폼 페이지](/docs/architecture/plugin-platform)의 어떤 것도 출시된 사용자 기능이 아닙니다.
+</Callout>

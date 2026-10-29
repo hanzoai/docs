@@ -1,0 +1,59 @@
+---
+title: Агенты для кода
+description: "Запустите агента для кода в своём репозитории — нашего, Claude Code или Codex — одной командой."
+icon: Terminal
+---
+
+`hanzo code` запускает агента для кода в том репозитории, где вы стоите.
+Поддерживаются три агента, и назвав одного, вы получаете именно его или явную
+ошибку — это отдельные продукты, а не псевдонимы друг друга.
+
+```bash
+hanzo code                      # Hanzo Dev, the default
+hanzo code claude               # Claude Code
+hanzo code codex                # Codex
+```
+
+Передайте задачу как **один** аргумент в кавычках:
+
+```bash
+hanzo code "fix the failing test in api/users"
+hanzo code claude "port this module to the new store"
+```
+
+## Как назвать агента
+
+Все написания ниже разрешаются в одном месте, поэтому они не могут разъехаться:
+
+| | Позиционный | Флаг | Явный |
+| --- | --- | --- | --- |
+| Hanzo Dev | `hanzo code dev` | `hanzo code --dev` | `hanzo code --backend dev` |
+| Claude Code | `hanzo code claude` | `hanzo code --claude` | `hanzo code --backend claude` |
+| Codex | `hanzo code codex` | `hanzo code --codex` | `hanzo code --backend codex` |
+
+`hanzo dev` — сокращение верхнего уровня для `hanzo code dev`. `claude-code` и
+`cc` — допустимые написания `claude`.
+
+Назвать дважды значит получить отказ, а не разрешение: `hanzo code claude --codex`
+просит назвать один раз.
+
+## Подтверждения
+
+Агент по умолчанию сам подтверждает свои шаги. Два выхода, по возрастанию того,
+от чего они отказываются:
+
+```bash
+hanzo code --ask            # the backend asks before each step
+hanzo code --no-sandbox     # bypass approvals AND drop the sandbox
+```
+
+`--safe` — синоним `--ask`, и любой из них побеждает `autoApprove` в
+`~/.hanzo/settings.json`.
+
+## Другой `hanzo code`
+
+`hanzo code context`, `hanzo code file` и `hanzo code index` — другое, что делит это слово: [API интеллекта кода](/docs/openapi/code) — поиск и символы по проиндексированным репозиториям,
+для вас и для агентов. Они не принимают бэкенд и не запускают агента.
+
+Правило — первый аргумент: слово, называющее бэкенд, выбирает его, а
+всё остальное — задача или подкоманда.

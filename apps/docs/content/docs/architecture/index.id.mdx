@@ -1,0 +1,45 @@
+---
+title: Arsitektur
+description: Bagaimana Hanzo Cloud dibangun hari ini, dan arah platform plugin yang sedang dituju.
+index: true
+---
+
+# Arsitektur
+
+Bagian ini menjelaskan bagaimana Hanzo Cloud disusun — apa yang berjalan hari ini, dan ke mana platform menuju. Kami memisahkan keduanya dengan jelas: halaman produk di tempat lain dalam dokumentasi ini menggambarkan perilaku yang sudah dirilis, sementara arah platform di sini adalah kerja rancangan yang disahkan lewat [Usulan Perbaikan Hanzo (HIP)](https://hips.hanzo.ai). Prinsip di baliknya ada di [Filsafat rekayasa](/docs/architecture/philosophy).
+
+## Hari ini
+
+Hanzo Cloud adalah **satu biner Go**. Satu kunci API di `api.hanzo.ai` menjangkau setiap kemampuan — inferensi AI, identitas, rahasia, penyimpanan, perdagangan, dan lainnya — karena kemampuan itu adalah **subsistem asli yang dikompilasi ke dalam satu biner itu** (`cloud`, `CGO_ENABLED=0`, statis). Masing-masing dilayani di bawah `/v1/<capability>` dan diuraikan oleh satu dokumen yang dikeluarkan biner, `openapi.yaml` milik [hanzoai/cloud](https://github.com/hanzoai/cloud). Ingress dan perutean juga subsistem asli, jadi biner itu adalah titik masuknya sendiri, bukan duduk di belakang gateway atau lapisan ingress terpisah. Penggabungan menjadi satu biner ini adalah biner awan terpadu (HIP-0106), sudah sebagian besar dirilis — dan biner yang sama yang menjalankan [jaringan yang bisa Anda jalankan sendiri](/docs/network).
+
+Setiap kemampuan masuk tepat ke salah satu dari **sembilan domain**. [Referensi](/docs/openapi) menghitung dan mencantumkan semuanya:
+
+<Cards>
+  <Card title="Identitas dan kepercayaan" href="/docs/openapi/iam" description="Siapa Anda, apa yang boleh disentuh, di mana rahasia tinggal." />
+  <Card title="Kecerdasan" href="/docs/openapi/ai" description="Model, agen, evaluasi — pikiran awan." />
+  <Card title="Data" href="/docs/openapi/base" description="Penyimpanan yang ditulis dan dibaca setiap kemampuan." />
+  <Card title="Aliran" href="/docs/openapi/pubsub" description="Pesan, tugas tahan lama, orkestrasi asinkron." />
+  <Card title="Keteramatan" href="/docs/openapi/o11y" description="Melihat semuanya — telemetri, analitik, penggunaan." />
+  <Card title="Perdagangan" href="/docs/openapi/commerce" description="Ekonomi — mengukur, memberi harga, menagih, memberi imbalan." />
+  <Card title="Platform" href="/docs/openapi/platform" description="Jaringan awan — men-deploy, menyediakan, merutekan, meng-host." />
+  <Card title="Aplikasi" href="/docs/openapi/git" description="Permukaan yang menghadap pengguna, dibangun di atas semua yang di atas." />
+  <Card title="Rantai" href="/docs/openapi/web3" description="Jaringan yang diajak bicara awan — mengenumerasi, memanggil, membaca saldo." />
+</Cards>
+
+Beberapa produk masih berjalan sebagai aplikasi mandiri di domainnya sendiri — misalnya [Sign](/docs/openapi) (`esign.hanzo.ai`), [Dataroom](/docs/openapi) (`dataroom.hanzo.ai`), dan [Cap Table](/docs/openapi) (`captable.hanzo.ai`) — dan mengautentikasi lewat Hanzo IAM. Ini aplikasi mandiri yang tersisa, sedang diserap ke dalam satu runtime, bukan keadaan akhir yang dimaksud.
+
+## Arah
+
+Platform menyatu pada satu model untuk menjalankan layanan ini: **platform plugin yang ditopang konsensus**, di mana setiap layanan adalah *plugin* yang didaftarkan ke satu runtime awan, dan bidang kendali konsensus yang kecil memutuskan di mana penulis setiap plugin tinggal. Ini arah rancangan — ditetapkan sebagai usulan draf, belum runtime yang dirilis.
+
+<Cards>
+  <Card title="Filsafat rekayasa" href="/docs/architecture/philosophy" description="Prinsip di balik V8: satu hal dan satu cara, mengurai jalinan, jahitan bahasa adalah kawat bukan FFI." />
+  <Card title="Jaringan" href="/docs/network" description="Awan AI yang bisa Anda jalankan sendiri — satu biner, GPU Anda sendiri, jaringan adalah awan." />
+  <Card title="Platform plugin yang ditopang konsensus" href="/docs/architecture/plugin-platform" description="Arah HIP-0125: plugin sebagai satuan, konsensus atas penempatan, penulisan asli ZAP." />
+  <Card title="Protokol ZAP" href="/docs/zap" description="Zero-Copy App Proto — transport berkinerja tinggi yang dipakai plugin secara bawaan." />
+  <Card title="Usulan Perbaikan Hanzo" href="https://hips.hanzo.ai" description="Tempat arsitektur platform ditetapkan dan disahkan." />
+</Cards>
+
+<Callout type="info">
+Platform plugin diuraikan dalam **HIP-0125 (Draf)**. Ia bertumpu pada serangkaian usulan terkait — runtime ekstensi di dalam proses (HIP-0105), biner awan terpadu (HIP-0106), replikasi streaming (HIP-0107), dan transport ZAP (HIP-0114). Usulan draf dapat berubah; tidak ada di [halaman platform plugin](/docs/architecture/plugin-platform) yang merupakan fitur pengguna yang sudah dirilis.
+</Callout>

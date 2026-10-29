@@ -1,0 +1,101 @@
+---
+title: 智能体
+description: 智能体是一份定义；会话是一次你可以驾驭并重放的运行。一条流是一棵树，命令是意图，不是状态变更。
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**读完这一页，你可以定义一个智能体，看着它工作，并在它运行时驾驭它。**
+
+## 两个名词
+
+**智能体**是一份定义：一个模型、一条系统提示，以及一组工具名。
+**会话**是一次活着的运行 — 每个表面都把活动挂在这一行上，
+无论那个表面是 CLI、控制台、聊天还是一个机器人。
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"triage","model":"zen-1","instructions":"Triage inbound issues.","tools":["search"]}'
+```
+
+```bash
+hanzo agents list
+```
+
+名称在你的组织内唯一，并匹配
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`。你点名的模型会对照网关正在提供的
+目录 **在定义时**检查 — 笔误现在就被拒绝，
+而不是第一次运行的凌晨 3 点。持续运行的智能体必须带一份
+五字段的 cron 日程，并计入每个组织的上限。
+
+## 一条流是一棵树
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents/sessions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"agent":"triage"}'
+```
+
+带有 `parentSessionId` 的会话成为该会话的 **子智能体**，
+并继承它的根。所以十个子智能体的扇出不是十次互不相关的运行 —
+它是一棵树，`/v1/agents/sessions/{id}/tree` 一次读取就返回整张图，
+每个节点带着自己的事件计数。
+
+列出时 **只返回根会话**，除非你要求向下走。状态是
+`running`、`paused`、`done`、`error` 之一。
+
+## 驾驭正在运行的会话
+
+四个命令，都在 `/v1/agents/sessions/{id}` 之下：`message`、`pause`、
+`resume`、`stop`。
+
+<Callout>
+**命令是意图，不是状态变更。** 那次调用里没有任何东西写入
+会话的状态。`200` 表示命令已被持久记录并送达 —
+智能体自己决定何时照它行动。
+</Callout>
+
+这就是驾驭能跨机器生效的原因。在你笔记本上开始的 `hanzo code` 会话
+会消费仪表盘发出的命令，办法是轮询
+`/v1/agents/sessions/{id}/control` — 比游标更新的命令，最旧的先来，
+一旦应用就不再投递。
+
+两个值得知道的拒绝：**已结束**的会话用
+`409` 拒绝每一条命令，属于另一个租户的 id 是 `404` — 没有组织驾驭别人的
+智能体，而且 404 并不确认这个 id 存在。
+
+`stop` 是真正取消、而不只是发信号的那个例外。
+
+## 观看
+
+```
+GET /v1/agents/sessions/stream
+```
+
+服务器发送事件：`session` 帧和 `event` 帧，用 `?root=` 收窄。
+它按组织限定范围，并且失败时关闭 — 总线在扇出之前按租户过滤。
+落后超过 256 帧的订阅者会被丢掉，而不是允许它拖住
+流，每 25 秒到来一次 `: ping`，好让死连接看得见。
+
+回合记在 `/v1/agents/sessions/{id}/events` — 消息、工具调用、
+派生、日志、状态、控制 — 每一条都用单调的 `seq` 回答。什么都不会
+丢失，所以一次运行结束后可以重放。
+
+## 智能体能触及什么
+
+- **工具** — [工具](/docs/openapi/tools) 是智能体借以调用的、按租户划分的工具平面。
+- **计算** — 一份 [沙箱](/docs/concepts/sandboxes) 租约。
+- **知识** — [记忆](/docs/concepts/memory)。
+- **模型** — [ai](/docs/openapi/ai)，推理平面。
+
+## 下一步
+
+- **[智能体参考](/docs/openapi/agents)** — 每一项操作，已生成。
+- **[预算](/docs/concepts/budgets)** — 它可以花多少，以及它将要花得更多时
+  会发生什么。
+- **[沙箱](/docs/concepts/sandboxes)** — 工作在哪里运行。
+- **[记忆](/docs/concepts/memory)** — 它知道什么。
+- **[工作流](/docs/concepts/workflows)** — 没人要求也跑一个。

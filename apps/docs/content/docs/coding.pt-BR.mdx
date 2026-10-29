@@ -1,0 +1,59 @@
+---
+title: Agentes de programação
+description: "Rode um agente de programação no seu repositório — o nosso, o Claude Code ou o Codex — com um comando."
+icon: Terminal
+---
+
+`hanzo code` roda um agente de programação contra o repositório em que você está.
+Três agentes são aceitos, e nomear um entrega esse agente ou uma falha clara:
+são produtos separados, nunca apelidos uns dos outros.
+
+```bash
+hanzo code                      # Hanzo Dev, the default
+hanzo code claude               # Claude Code
+hanzo code codex                # Codex
+```
+
+Passe a tarefa como **um** argumento, entre aspas:
+
+```bash
+hanzo code "fix the failing test in api/users"
+hanzo code claude "port this module to the new store"
+```
+
+## Nomear o agente
+
+Toda grafia abaixo se resolve num só lugar, então elas não podem divergir:
+
+| | Posicional | Flag | Explícito |
+| --- | --- | --- | --- |
+| Hanzo Dev | `hanzo code dev` | `hanzo code --dev` | `hanzo code --backend dev` |
+| Claude Code | `hanzo code claude` | `hanzo code --claude` | `hanzo code --backend claude` |
+| Codex | `hanzo code codex` | `hanzo code --codex` | `hanzo code --backend codex` |
+
+`hanzo dev` é um atalho de primeiro nível para `hanzo code dev`. `claude-code` e
+`cc` são grafias aceitas de `claude`.
+
+Nomear duas vezes é recusado em vez de resolvido — `hanzo code claude --codex`
+pede para você nomear uma vez só.
+
+## Aprovações
+
+O agente aprova os próprios passos por padrão. Duas saídas, em ordem crescente
+do quanto abrem mão:
+
+```bash
+hanzo code --ask            # the backend asks before each step
+hanzo code --no-sandbox     # bypass approvals AND drop the sandbox
+```
+
+`--safe` é sinônimo de `--ask`, e qualquer um dos dois vence `autoApprove` em
+`~/.hanzo/settings.json`.
+
+## O outro `hanzo code`
+
+`hanzo code context`, `hanzo code file` e `hanzo code index` são outra coisa que divide a palavra: a [API de inteligência de código](/docs/openapi/code) — busca e símbolos nos seus repositórios indexados,
+para você e para os agentes. Não recebem backend e não rodam agente nenhum.
+
+A regra é o primeiro argumento: uma palavra que nomeia um backend seleciona um, e
+qualquer outra coisa é uma tarefa ou um subcomando.

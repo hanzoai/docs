@@ -1,0 +1,60 @@
+---
+title: 安裝
+description: 用 npm 或 Homebrew 安裝 Hanzo Dev，或從原始碼建置。
+---
+
+## 系統需求
+
+| 需求 | 詳情 |
+| --- | --- |
+| 作業系統 | macOS 12+、Ubuntu 20.04+/Debian 10+，或 Windows 11（**透過 WSL2**） |
+| Git（選用，建議安裝） | 2.23 以上，供內建的 PR 輔助功能使用 |
+| 記憶體 | 最少 4 GB（建議 8 GB） |
+
+## 透過 npm 安裝
+
+```bash
+npm install -g @hanzo/dev
+```
+
+## 透過 npx 安裝
+
+```bash
+npx @hanzo/dev
+```
+
+## DotSlash
+
+GitHub 發行內容也包含名為 `dev` 的 Hanzo Dev [DotSlash](https://dotslash-cli.com/) 檔案。使用 DotSlash 檔案時，只要在原始碼管理中放進一次輕量的 commit，就能讓所有貢獻者使用同一個版本的執行檔，與平台無關。
+
+## 從原始碼建置
+
+```bash
+# Clone the repository
+git clone https://github.com/hanzoai/dev.git
+cd dev
+
+# Install the Rust toolchain if necessary
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source "$HOME/.cargo/env"
+
+# Build (~20 min cold, ~2 min incremental)
+./build-fast.sh
+
+# Launch the TUI
+./hanzo-dev/target/dev-fast/dev
+```
+
+## 追蹤與詳細記錄
+
+Hanzo Dev 以 Rust 撰寫，並遵循環境變數 `RUST_LOG`。
+
+TUI 預設使用 `RUST_LOG=hanzo_core=info,hanzo_tui=info`，並把記錄寫到 `~/.hanzo/log/codex-tui.log`。單次執行可以用 `-c log_dir=...` 覆寫記錄目錄。
+
+```bash
+tail -F ~/.hanzo/log/codex-tui.log
+```
+
+非互動模式（`dev exec`）預設使用 `RUST_LOG=error`，輸出直接顯示在行內。
+
+所有設定選項請見 Rust 的 [`RUST_LOG` 文件](https://docs.rs/env_logger/latest/env_logger/#enabling-logging)。

@@ -1,0 +1,95 @@
+---
+title: プロジェクト
+description: プロジェクトと呼ばれるものは二つある — デプロイするサイトと、組織の中のスコープだ。どちらを持っているかで、欲しい API が決まる。
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**このページのあと、間違ったほうを呼ぶことはなくなる。**
+
+<Callout type="warn">
+**「プロジェクト」は二つのものを指す。** *サイトプロジェクト* はデプロイするものだ。
+*IAM プロジェクト* は組織の中のスコープだ。住所も、寿命も、所有者も違う。
+仕様は両者を分けている。あなたも分けるべきだ。
+</Callout>
+
+## サイトプロジェクト — サイトが住む場所
+
+ビルドがデプロイされ、配信されるハンドル。
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/projects \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"acme-marketing"}'
+```
+
+```bash
+hanzo projects list
+```
+
+**slug** は荷重を担う部分だ。オブジェクトストアのキー区間になり、
+公開ホスト `<slug>.hanzo.app` になり、その後のすべての呼び出しが宛先にするハンドルになる。
+`^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$` に一致し、予約ラベルは拒否され、
+**組織ごと**に一意だ — 他人の組織にある同じ slug はあなたに関係ない。
+公開ホスト名は逆に、世界で一意で、先着だ。
+
+作ると、データ空間と正規の git リポジトリも用意される。どちらもベストエフォートだ。
+`draft` で `201` を返す。
+
+ライフサイクルは環境ではなく **リリース** だ:
+
+```
+POST /v1/projects/{slug}/deploy
+GET  /v1/projects/{slug}/releases
+POST /v1/projects/{slug}/releases/{release}/activate
+```
+
+すべてのデプロイはリリースで、どのリリースも再びライブにできる。だから巻き戻しは
+前へ進めるのと同じ操作だ。独自ホスト名は
+`/v1/projects/{slug}/domains/{host}/verify` で検証される。
+
+公開は無料だ。`visibility: private` が有料機能だ。
+
+## IAM プロジェクト — 組織の中のスコープ
+
+仕事がチームではなく製品や顧客で分かれているときに選ぶスコープだ。
+作成と削除は **`/v1/iam/projects` だけで**行い、
+検証済みの `X-Project-Id` としてリクエストに乗る。
+
+```
+GET /v1/iam/projects
+```
+
+ほかの場所では作らない。`/v1/platform/projects` は *射影* だ —
+プロジェクトに、コンテナプレーンがその下に置いたものを足したもの — で、そう書いてある。
+アプリケーションはその下に住む:
+
+```
+/v1/platform/projects/{project}/apps/{app}
+/v1/platform/projects/{project}/apps/{app}/env
+/v1/platform/projects/{project}/apps/{app}/preview
+```
+
+API キーは一つの IAM プロジェクトに範囲を絞れる。本番前のキーが
+本番データに触れないようにする、いつものやり方だ。
+
+## 見分ける
+
+| | サイトプロジェクト | IAM プロジェクト |
+|---|---|---|
+| **何か** | デプロイされたサイト | 組織の中のスコープ |
+| **作る場所** | `/v1/projects` | `/v1/iam/projects` |
+| **識別** | 組織ごとに一意な slug | `X-Project-Id` として運ばれる id |
+| **版の付け方** | リリース | なし — 境界だ |
+| **能力** | [プロジェクト](/docs/openapi/projects) | [iam](/docs/openapi/iam) |
+
+経験則: **バイトをデプロイしているならサイトプロジェクト。権限を絞っているなら IAM プロジェクト。**
+
+## 次
+
+- **[プロジェクトリファレンス](/docs/openapi/projects)** — サイトに対するすべての操作。
+- **[プラットフォーム](/docs/openapi/platform)** — コンテナプレーンと、IAM プロジェクトの
+  下に住むもの。
+- **[環境](/docs/environments)** — 環境リソースがない理由。
+- **[マルチテナンシー](/docs/concepts/multitenancy)** — 両方が中に座る組織。

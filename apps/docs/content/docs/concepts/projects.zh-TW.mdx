@@ -1,0 +1,91 @@
+---
+title: 專案
+description: 兩件不同的事都叫專案 — 你部署的站點，以及組織內部的一個範圍。你手上是哪一個，決定你要哪套 API。
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**讀完這一頁，你不會再叫錯那個。**
+
+<Callout type="warn">
+**「專案」指兩件事。** *站點專案*是你部署的東西。*IAM 專案*是組織內部的一個範圍。
+它們的位址不同、生命週期不同、擁有者也不同。規格把它們分開；你也應該分開。
+</Callout>
+
+## 站點專案 — 站點所在之處
+
+組建在其下部署並對外提供的控制代碼。
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/projects \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"acme-marketing"}'
+```
+
+```bash
+hanzo projects list
+```
+
+**slug** 是承重的部分。它會變成物件儲存的鍵片段、
+公開主機 `<slug>.hanzo.app`，以及之後每次呼叫所指向的控制代碼。
+它符合 `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$`，保留標籤會被拒絕，
+並且 **每個組織內**唯一 — 別人組織裡的同一個 slug 與你無關。
+公開主機名稱則是全域唯一，先到先得。
+
+建立一個還會盡力佈建資料空間和標準的 git 儲存庫。它以 `draft` 狀態回答 `201`。
+
+它的生命週期是 **發行**，不是環境：
+
+```
+POST /v1/projects/{slug}/deploy
+GET  /v1/projects/{slug}/releases
+POST /v1/projects/{slug}/releases/{release}/activate
+```
+
+每次部署都是一次發行，任何發行都可以再次上線，所以回滾與向前推進是同一種操作。
+自訂主機名稱在 `/v1/projects/{slug}/domains/{host}/verify` 驗證。
+
+公開發布免費；`visibility: private` 是付費功能。
+
+## IAM 專案 — 組織內部的範圍
+
+當工作依產品或客戶而不是依團隊分開時，人們選擇的那個範圍。
+它 **只能**在 `/v1/iam/projects` 建立和刪除，
+並作為已驗證的 `X-Project-Id` 附在請求上。
+
+```
+GET /v1/iam/projects
+```
+
+你不會在別的地方建立它。`/v1/platform/projects` 是一個 *投影* —
+專案加上容器平面放在它下面的東西 — 而且它明說了這一點。
+應用程式住在它下面：
+
+```
+/v1/platform/projects/{project}/apps/{app}
+/v1/platform/projects/{project}/apps/{app}/env
+/v1/platform/projects/{project}/apps/{app}/preview
+```
+
+API 金鑰可以限定到一個 IAM 專案，這是讓預發金鑰碰不到正式環境資料的通常做法。
+
+## 把它們分開
+
+| | 站點專案 | IAM 專案 |
+|---|---|---|
+| **它是什麼** | 已部署的站點 | 組織內部的一個範圍 |
+| **建立於** | `/v1/projects` | `/v1/iam/projects` |
+| **識別方式** | 一個 slug，每個組織內唯一 | 一個 id，以 `X-Project-Id` 攜帶 |
+| **版本方式** | 發行 | 沒有 — 它是一條邊界 |
+| **能力** | [專案](/docs/openapi/projects) | [iam](/docs/openapi/iam) |
+
+經驗法則：**如果你在部署位元組，那是站點專案。如果你在限定權限，那是 IAM 專案。**
+
+## 下一步
+
+- **[專案參考](/docs/openapi/projects)** — 對一個站點的每一項操作。
+- **[平台](/docs/openapi/platform)** — 容器平面，以及住在 IAM 專案
+  下面的東西。
+- **[環境](/docs/environments)** — 為什麼沒有環境資源。
+- **[多租戶](/docs/concepts/multitenancy)** — 兩者都坐在其中的組織。

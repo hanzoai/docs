@@ -1,0 +1,59 @@
+---
+title: Agents de programmation
+description: "Lancez un agent de programmation dans votre dépôt — le nôtre, Claude Code ou Codex — avec une seule commande."
+icon: Terminal
+---
+
+`hanzo code` lance un agent de programmation sur le dépôt dans lequel vous vous trouvez.
+Trois agents sont pris en charge, et en nommer un vous donne cet agent ou un échec net :
+ce sont des produits distincts, jamais des alias les uns des autres.
+
+```bash
+hanzo code                      # Hanzo Dev, the default
+hanzo code claude               # Claude Code
+hanzo code codex                # Codex
+```
+
+Donnez-lui une tâche en **un** argument, entre guillemets :
+
+```bash
+hanzo code "fix the failing test in api/users"
+hanzo code claude "port this module to the new store"
+```
+
+## Nommer l'agent
+
+Toutes les graphies ci-dessous se résolvent au même endroit, elles ne peuvent donc pas diverger :
+
+| | Positionnel | Option | Explicite |
+| --- | --- | --- | --- |
+| Hanzo Dev | `hanzo code dev` | `hanzo code --dev` | `hanzo code --backend dev` |
+| Claude Code | `hanzo code claude` | `hanzo code --claude` | `hanzo code --backend claude` |
+| Codex | `hanzo code codex` | `hanzo code --codex` | `hanzo code --backend codex` |
+
+`hanzo dev` est un raccourci de premier niveau pour `hanzo code dev`. `claude-code` et
+`cc` sont des graphies acceptées de `claude`.
+
+Le nommer deux fois est refusé plutôt que résolu : `hanzo code claude --codex`
+vous demande de ne le nommer qu'une fois.
+
+## Approbations
+
+L'agent approuve ses propres étapes par défaut. Deux sorties, par ordre croissant
+de ce qu'elles abandonnent :
+
+```bash
+hanzo code --ask            # the backend asks before each step
+hanzo code --no-sandbox     # bypass approvals AND drop the sandbox
+```
+
+`--safe` est un synonyme de `--ask`, et l'un ou l'autre l'emporte sur `autoApprove` dans
+`~/.hanzo/settings.json`.
+
+## L'autre `hanzo code`
+
+`hanzo code context`, `hanzo code file` et `hanzo code index` sont autre chose qui partage le mot : c'est l'[API d'intelligence du code](/docs/openapi/code), recherche et symboles dans vos dépôts indexés,
+pour vous et pour les agents. Ils ne prennent pas de backend et n'exécutent aucun agent.
+
+La règle est le premier argument : un mot qui nomme un backend en sélectionne un, et
+tout le reste est une tâche ou une sous-commande.

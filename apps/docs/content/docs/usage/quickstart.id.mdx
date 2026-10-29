@@ -1,0 +1,61 @@
+---
+title: Mulai cepat
+description: Pasang @hanzo/usage dan baca penggunaan AI terpadu dalam sekitar 15 baris TypeScript.
+---
+
+# Mulai cepat
+
+`@hanzo/usage` adalah inti tanpa antarmuka di balik Hanzo Usage. Ia berjalan di Node,
+Next.js, dan Tauri, serta membawa penyedia bawaan untuk Hanzo, Codex, dan Claude
+(registrinya dapat diperluas).
+
+## Pasang
+
+```bash title="Install"
+npm install @hanzo/usage
+```
+
+## Baca penggunaan
+
+Buat `UsageStore`, beri host untuk lingkungan Anda, dan mulai lingkaran penjajakan.
+Penyimpanannya teramati — berlangganan untuk merender, atau gunakan hook React.
+
+```ts title="usage.ts"
+import { UsageStore, allProviders } from '@hanzo/usage'
+import { nodeHost } from '@hanzo/usage/node' // or createTauriHost from '@hanzo/usage/tauri'
+
+const store = new UsageStore({
+  host: nodeHost,
+  providers: allProviders, // hanzo, codex, claude — registry-extensible
+  historyDir: `${process.env.HOME}/.config/hanzo/usage/history`,
+})
+
+store.start() // 5-minute poll, CodexBar-compatible history files
+store.subscribe(() => console.log(store.getState()))
+```
+
+## Di Tauri (Hanzo Desktop, hanzo.app)
+
+Oper modul plugin Tauri — inti tetap bebas ketergantungan untuk bundel web dan
+Node:
+
+```ts title="tauri-host.ts"
+import * as fs from '@tauri-apps/plugin-fs'
+import { fetch } from '@tauri-apps/plugin-http'
+import { homeDir } from '@tauri-apps/api/path'
+import { createTauriHost } from '@hanzo/usage/tauri'
+
+const host = await createTauriHost({ fs, fetch, homeDir })
+```
+
+## Di React
+
+```ts title="Component.tsx"
+import { useUsage } from '@hanzo/usage/react'
+
+const state = useUsage(store) // re-renders on every refresh
+```
+
+Setiap penyedia menjalankan alur terurut strategi pengambilan (`oauth` → `web` →
+`cli` → `apiToken` → `localProbe`) yang memakai ulang masuk yang sudah Anda punya, jadi
+kata sandi tidak pernah diminta atau disimpan.

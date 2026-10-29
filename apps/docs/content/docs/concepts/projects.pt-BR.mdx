@@ -1,0 +1,97 @@
+---
+title: Projetos
+description: Duas coisas diferentes se chamam projeto — um site que você implanta e um escopo dentro de uma organização. Qual você tem decide qual API você quer.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Depois desta página você não vai mais chamar o errado.**
+
+<Callout type="warn">
+**“Projeto” nomeia duas coisas.** Um *projeto de site* é algo que você implanta. Um
+*projeto de IAM* é um escopo dentro de uma organização. Eles têm endereços diferentes,
+ciclos de vida diferentes e donos diferentes. As especificações os mantêm separados; você também deveria.
+</Callout>
+
+## O projeto de site — onde um site vive
+
+Um identificador sob o qual um build é implantado e servido.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/projects \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"acme-marketing"}'
+```
+
+```bash
+hanzo projects list
+```
+
+O **slug** é a peça que sustenta o resto. Ele vira o segmento de chave do armazenamento de objetos,
+o host público `<slug>.hanzo.app` e o identificador que toda chamada posterior endereça.
+Ele corresponde a `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$`, rótulos reservados são recusados,
+e ele é único **por organização** — o mesmo slug na organização de outra pessoa não diz respeito a você.
+Um nome de host público, por outro lado, é único no mundo todo e
+fica com quem chegar primeiro.
+
+Criar um também provisiona um espaço de dados e um repositório git canônico, ambos
+por melhor esforço. Ele responde `201` em `draft`.
+
+O ciclo de vida dele são **publicações**, não ambientes:
+
+```
+POST /v1/projects/{slug}/deploy
+GET  /v1/projects/{slug}/releases
+POST /v1/projects/{slug}/releases/{release}/activate
+```
+
+Cada implantação é uma publicação, e qualquer publicação pode voltar a ficar no ar, então reverter
+é a mesma operação que avançar. Nomes de host personalizados são verificados em
+`/v1/projects/{slug}/domains/{host}/verify`.
+
+Publicar publicamente é grátis; `visibility: private` é o recurso pago.
+
+## O projeto de IAM — um escopo dentro de uma organização
+
+O escopo que as pessoas escolhem quando o trabalho é separado por produto ou por cliente
+em vez de por equipe. Ele é criado e excluído **somente** em `/v1/iam/projects`
+e viaja numa requisição como o `X-Project-Id` validado.
+
+```
+GET /v1/iam/projects
+```
+
+Você nunca cria um em outro lugar. `/v1/platform/projects` é uma *projeção* —
+o projeto mais o que o plano de contêineres colocou embaixo dele — e diz isso
+explicitamente. As aplicações vivem embaixo:
+
+```
+/v1/platform/projects/{project}/apps/{app}
+/v1/platform/projects/{project}/apps/{app}/env
+/v1/platform/projects/{project}/apps/{app}/preview
+```
+
+Uma chave de API pode ser limitada a um projeto de IAM, o jeito usual de impedir
+que uma chave de homologação toque dados de produção.
+
+## Como distinguir
+
+| | Projeto de site | Projeto de IAM |
+|---|---|---|
+| **O que é** | um site implantado | um escopo dentro de uma organização |
+| **Criado em** | `/v1/projects` | `/v1/iam/projects` |
+| **Identificado por** | um slug, único por organização | um id, carregado como `X-Project-Id` |
+| **Versionado por** | publicações | nada — é um limite |
+| **Capacidade** | [projetos](/docs/openapi/projects) | [iam](/docs/openapi/iam) |
+
+Regra prática: **se você está implantando bytes, é um projeto de site. Se você está
+delimitando permissões, é um projeto de IAM.**
+
+## A seguir
+
+- **[Referência de projetos](/docs/openapi/projects)** — cada operação sobre um site.
+- **[Plataforma](/docs/openapi/platform)** — o plano de contêineres e o que vive
+  sob um projeto de IAM.
+- **[Ambientes](/docs/environments)** — por que não existe um recurso de ambiente.
+- **[Multilocação](/docs/concepts/multitenancy)** — a organização em que os dois ficam.

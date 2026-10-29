@@ -1,0 +1,60 @@
+---
+title: Installation
+description: Installez Hanzo Dev avec npm, Homebrew, ou compilez-le depuis les sources.
+---
+
+## Prérequis système
+
+| Prérequis | Détails |
+| --- | --- |
+| Systèmes d'exploitation | macOS 12+, Ubuntu 20.04+/Debian 10+, ou Windows 11 **via WSL2** |
+| Git (facultatif, recommandé) | 2.23+ pour les aides aux PR intégrées |
+| Mémoire vive | 4 Go minimum (8 Go recommandés) |
+
+## Installer avec npm
+
+```bash
+npm install -g @hanzo/dev
+```
+
+## Installer avec npx
+
+```bash
+npx @hanzo/dev
+```
+
+## DotSlash
+
+La publication GitHub contient aussi un fichier [DotSlash](https://dotslash-cli.com/) pour Hanzo Dev, nommé `dev`. Un fichier DotSlash permet de faire un commit léger dans le contrôle de source afin que tous les contributeurs utilisent la même version de l'exécutable, quelle que soit la plateforme.
+
+## Compiler depuis les sources
+
+```bash
+# Clone the repository
+git clone https://github.com/hanzoai/dev.git
+cd dev
+
+# Install the Rust toolchain if necessary
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source "$HOME/.cargo/env"
+
+# Build (~20 min cold, ~2 min incremental)
+./build-fast.sh
+
+# Launch the TUI
+./hanzo-dev/target/dev-fast/dev
+```
+
+## Traces et journalisation détaillée
+
+Hanzo Dev est écrit en Rust et honore la variable d'environnement `RUST_LOG`.
+
+Le TUI utilise par défaut `RUST_LOG=hanzo_core=info,hanzo_tui=info` et écrit les journaux dans `~/.hanzo/log/codex-tui.log`. Remplacez le répertoire de journaux avec `-c log_dir=...` pour une seule exécution.
+
+```bash
+tail -F ~/.hanzo/log/codex-tui.log
+```
+
+Le mode non interactif (`dev exec`) utilise par défaut `RUST_LOG=error`, avec une sortie en ligne.
+
+Consultez la [documentation `RUST_LOG`](https://docs.rs/env_logger/latest/env_logger/#enabling-logging) de Rust pour toutes les options de configuration.

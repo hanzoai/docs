@@ -1,0 +1,97 @@
+---
+title: Projekte
+description: Zwei verschiedene Dinge heißen Projekt — eine Website, die du ausrollst, und ein Geltungsbereich innerhalb einer Organisation. Welches du hast, entscheidet, welche API du willst.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Nach dieser Seite rufst du nie wieder das falsche auf.**
+
+<Callout type="warn">
+**„Projekt“ benennt zwei Dinge.** Ein *Website-Projekt* ist etwas, das du ausrollst. Ein
+*IAM-Projekt* ist ein Geltungsbereich innerhalb einer Organisation. Sie haben unterschiedliche Adressen,
+unterschiedliche Lebenszyklen und unterschiedliche Eigentümer. Die Spezifikationen halten sie auseinander; das solltest du auch.
+</Callout>
+
+## Das Website-Projekt — wo eine Website lebt
+
+Ein Handle, unter dem ein Build ausgerollt und ausgeliefert wird.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/projects \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"acme-marketing"}'
+```
+
+```bash
+hanzo projects list
+```
+
+Der **Slug** ist das tragende Teil. Er wird zum Schlüsselabschnitt des Objektspeichers,
+zum öffentlichen Host `<slug>.hanzo.app` und zum Handle, das jeder spätere Aufruf adressiert.
+Er entspricht `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$`, reservierte Bezeichnungen werden abgelehnt,
+und er ist **pro Organisation** eindeutig — derselbe Slug in der Organisation von jemand anderem geht dich nichts an.
+Ein öffentlicher Hostname dagegen ist global eindeutig und
+geht an den, der zuerst kommt.
+
+Beim Anlegen werden auch ein Datenraum und ein kanonisches Git-Repository bereitgestellt, beides
+nach bestem Bemühen. Es antwortet mit `201` im Zustand `draft`.
+
+Sein Lebenszyklus sind **Veröffentlichungen**, nicht Umgebungen:
+
+```
+POST /v1/projects/{slug}/deploy
+GET  /v1/projects/{slug}/releases
+POST /v1/projects/{slug}/releases/{release}/activate
+```
+
+Jedes Deployment ist eine Veröffentlichung, und jede Veröffentlichung kann wieder live geschaltet werden, deshalb ist das Zurückrollen
+dieselbe Operation wie das Vorwärtsrollen. Eigene Hostnamen werden geprüft unter
+`/v1/projects/{slug}/domains/{host}/verify`.
+
+Öffentlich veröffentlichen ist kostenlos; `visibility: private` ist die kostenpflichtige Funktion.
+
+## Das IAM-Projekt — ein Geltungsbereich innerhalb einer Organisation
+
+Der Geltungsbereich, den Leute wählen, wenn ihre Arbeit nach Produkt oder Kunde getrennt ist
+und nicht nach Team. Es wird **nur** unter `/v1/iam/projects` angelegt und gelöscht
+und reist auf einer Anfrage als das validierte `X-Project-Id`.
+
+```
+GET /v1/iam/projects
+```
+
+Du legst es nie woanders an. `/v1/platform/projects` ist eine *Projektion* —
+das Projekt plus das, was die Container-Ebene darunter gelegt hat — und das sagt sie
+offen. Anwendungen leben darunter:
+
+```
+/v1/platform/projects/{project}/apps/{app}
+/v1/platform/projects/{project}/apps/{app}/env
+/v1/platform/projects/{project}/apps/{app}/preview
+```
+
+Ein API-Schlüssel kann auf ein IAM-Projekt eingegrenzt werden. Das ist die übliche Art, einen
+Schlüssel der Vorproduktion davon abzuhalten, Produktionsdaten anzufassen.
+
+## Sie auseinanderhalten
+
+| | Website-Projekt | IAM-Projekt |
+|---|---|---|
+| **Was es ist** | eine ausgerollte Website | ein Geltungsbereich innerhalb einer Organisation |
+| **Angelegt unter** | `/v1/projects` | `/v1/iam/projects` |
+| **Erkannt an** | einem Slug, eindeutig pro Organisation | einer id, mitgeführt als `X-Project-Id` |
+| **Versioniert über** | Veröffentlichungen | nichts — es ist eine Grenze |
+| **Fähigkeit** | [Projekte](/docs/openapi/projects) | [iam](/docs/openapi/iam) |
+
+Faustregel: **wenn du Bytes ausrollst, ist es ein Website-Projekt. Wenn du
+Berechtigungen eingrenzt, ist es ein IAM-Projekt.**
+
+## Weiter
+
+- **[Projektreferenz](/docs/openapi/projects)** — jede Operation an einer Website.
+- **[Plattform](/docs/openapi/platform)** — die Container-Ebene und das, was
+  unter einem IAM-Projekt lebt.
+- **[Umgebungen](/docs/environments)** — warum es keine Umgebungsressource gibt.
+- **[Mehrmandantenfähigkeit](/docs/concepts/multitenancy)** — die Organisation, in der beide sitzen.

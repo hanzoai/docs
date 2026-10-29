@@ -1,0 +1,45 @@
+---
+title: アーキテクチャ
+description: Hanzo Cloud が今日どう組まれているか、そして向かっているプラグイン基盤の方向。
+index: true
+---
+
+# アーキテクチャ
+
+この節では、Hanzo Cloud がどう組み上がっているか — 今日動いているものと、基盤が向かう先 — を説明します。二つははっきり分けています。ドキュメントのほかの製品ページは出荷済みの振る舞いを書き、ここでの基盤の方向は [Hanzo 改善提案（HIP）](https://hips.hanzo.ai) を通じて批准される設計作業です。その背後の原則は [エンジニアリング哲学](/docs/architecture/philosophy) にあります。
+
+## 今日
+
+Hanzo Cloud は **一つの Go バイナリ**です。`api.hanzo.ai` の一つの API キーがあらゆる能力に届きます。AI 推論、アイデンティティ、秘密情報、ストレージ、商取引、その他です。それらの能力は **その一つのバイナリにコンパイルされたネイティブなサブシステム**（`cloud`、`CGO_ENABLED=0`、静的）だからです。それぞれは `/v1/<capability>` の下で提供され、バイナリが出す一つの文書、[hanzoai/cloud](https://github.com/hanzoai/cloud) の `openapi.yaml` に記述されます。入口と経路制御もネイティブなサブシステムなので、バイナリは別のゲートウェイや入口層の後ろに座るのではなく、自分自身が入口です。この単一バイナリへの統合が統一クラウドバイナリ（HIP-0106）で、すでにかなり出荷されています。そして [自分で動かせるネットワーク](/docs/network) を動かしているのも同じバイナリです。
+
+すべての能力は、ちょうど **九つの領域**の一つに入ります。[リファレンス](/docs/openapi) が数を数え、すべてを列挙します。
+
+<Cards>
+  <Card title="アイデンティティと信頼" href="/docs/openapi/iam" description="誰であるか、何に触れてよいか、秘密がどこにあるか。" />
+  <Card title="知能" href="/docs/openapi/ai" description="モデル、エージェント、評価 — クラウドの思考です。" />
+  <Card title="データ" href="/docs/openapi/base" description="すべての能力が書き、読むストアです。" />
+  <Card title="ストリーム" href="/docs/openapi/pubsub" description="メッセージ、永続タスク、非同期のオーケストレーション。" />
+  <Card title="可観測性" href="/docs/openapi/o11y" description="すべてを見る — テレメトリ、分析、利用量。" />
+  <Card title="商取引" href="/docs/openapi/commerce" description="経済 — 測り、値付けし、請求し、報いる。" />
+  <Card title="プラットフォーム" href="/docs/openapi/platform" description="クラウドの布 — デプロイ、プロビジョン、経路、ホスト。" />
+  <Card title="アプリケーション" href="/docs/openapi/git" description="上のすべてに載る、利用者向けの面です。" />
+  <Card title="チェーン" href="/docs/openapi/web3" description="クラウドが話すネットワーク — 列挙し、呼び、残高を読む。" />
+</Cards>
+
+いくつかの製品は、まだ自分のドメインで独立したアプリケーションとして動いています。たとえば [Sign](/docs/openapi)（`esign.hanzo.ai`）、[Dataroom](/docs/openapi)（`dataroom.hanzo.ai`）、[Cap Table](/docs/openapi)（`captable.hanzo.ai`）で、Hanzo IAM を通じて認証します。これらは残っている独立アプリで、一つのランタイムへ吸収されている途中であり、目指す最終形ではありません。
+
+## 方向
+
+基盤は、これらのサービスを動かす一つのモデルへ収束しています。**コンセンサスに裏打ちされたプラグイン基盤**です。各サービスは単一のクラウンドランタイムに登録される *プラグイン* で、小さなコンセンサス制御プレーンが、各プラグインの書き手の居場所を決めます。これは設計の方向です。草案の提案として書かれており、まだ出荷されたランタイムではありません。
+
+<Cards>
+  <Card title="エンジニアリング哲学" href="/docs/architecture/philosophy" description="V8 の背後にある原則。一つと一つのやり方、もつれをほどく、言語の継ぎ目は FFI ではなく線。" />
+  <Card title="ネットワーク" href="/docs/network" description="自分で動かせる AI クラウド。一つのバイナリ、自分の GPU、ネットワークがクラウドです。" />
+  <Card title="コンセンサスに裏打ちされたプラグイン基盤" href="/docs/architecture/plugin-platform" description="HIP-0125 の方向。単位はプラグイン、配置はコンセンサス、執筆は ZAP ネイティブ。" />
+  <Card title="ZAP プロトコル" href="/docs/zap" description="Zero-Copy App Proto — プラグインが既定で使う高性能トランスポート。" />
+  <Card title="Hanzo 改善提案" href="https://hips.hanzo.ai" description="基盤アーキテクチャが仕様化され、批准される場所。" />
+</Cards>
+
+<Callout type="info">
+プラグイン基盤は **HIP-0125（草案）** に書かれています。関連する一連の提案の上に立ちます。プロセス内の拡張ランタイム（HIP-0105）、統一クラウドバイナリ（HIP-0106）、ストリーミング複製（HIP-0107）、ZAP トランスポート（HIP-0114）です。草案は変わり得ます。[プラグイン基盤のページ](/docs/architecture/plugin-platform) にあるものは、出荷済みの利用者向け機能ではありません。
+</Callout>

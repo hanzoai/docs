@@ -1,0 +1,100 @@
+---
+title: 沙箱
+description: 唯一的计算原语 — 一份租约，租一台运行别人代码的 Pod。四个类别，两种结束方式，没有池。
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**读完这一页，你可以运行不受信任的代码，并确切知道它何时停止
+花你的钱。**
+
+## 一个原语
+
+沙箱是运行时边界之下的一个 Pod，里面已经有工具链，
+有自己的文件系统，还有一份把它结束掉的 **租约**。对象只有一个，寿命也只有
+一个 — 一次用完即弃的 Python 运行和一场数小时的编码会话是同一件事，
+只是边界不同。
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/sandbox/lease \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"class":"exec"}'
+```
+
+```bash
+hanzo sandboxes list
+```
+
+其余每项操作都作用在那次调用返回的沙箱上。
+
+## 四个类别
+
+一个封闭集合。空着就表示 `exec`。
+
+| 类别 | 它是什么 | 工作目录 | 存活 |
+|---|---|---|---|
+| `exec` | 用完即弃；什么都不留 | `/mnt/data` | 几秒到几分钟 |
+| `dev` | 编码，挂着项目磁盘 | `/work` | 数小时 |
+| `desktop` | `dev` 再加一块屏幕 | `/work` | 数小时 |
+| `android` | `desktop` 再加那块屏幕上的一部电话 | `/work` | 数小时 |
+
+除 `exec` 外的每个类别都 **要求**一个项目，而一个项目 **同一时间只有一个活着的
+沙箱** — 对已经有一个的项目再租一次，会按名字拒绝，
+而不是悄悄再给你一台机器。
+
+你可以 *请求*一种运行时（`gvisor` 或 `kata-fc`）；所有者决定，
+回答会告诉你实际拿到的是什么。
+
+## 结束用两个动词，差别有意义
+
+<Callout>
+**`stop` 结束工作。`end` 结束资源。** 出了错的一次运行在
+`stop` 之后仍然可读，这就是它们是两个动词的全部理由。
+</Callout>
+
+除此之外，`ttlSec` 限定租约，收割器每分钟跑一次：它结束
+过期的租约，并让空闲超过一小时的沙箱休眠。**没有
+池** — 沙箱为一次租约而创建，在结束时删除，名字
+永不复用，所以过期的 id 永远到不了别人的机器。
+
+## Pod 能做什么
+
+不是你能做什么。你的凭证永远到不了 Pod。一份租约被交给一个
+短命令牌，通过对你的身份做令牌交换得到，以
+`hanzo-sandbox` 客户端的身份行事，随租约到期，没有刷新令牌。
+Pod 自己不携带集群凭证。
+
+隔离是物理的：沙箱存储是每个组织一个文件。
+
+## exec：一次会话 *就是* 一个沙箱
+
+[exec](/docs/openapi/exec) 在一次调用里运行整个程序，共十三种
+语言 — `py`、`js`、`ts`、`bash`、`r`、`php`、`go`、`rs`、`c`、`cpp`、
+`java`、`d`、`f90`。
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/exec \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"language":"py","code":"print(6*7)"}'
+```
+
+它没有自己的存储，也没有自己的寿命 — 它返回的会话 id *就是*
+沙箱 id。非零退出是 **带 stderr 的 `200`**，不是错误状态：
+调用成功了，程序失败了，这是两件不同的事实。再次传入
+同一个 `session_id`，就能在各次运行之间保留文件系统。
+
+## 它在哪里遇见智能体
+
+`POST /v1/sandbox/run` 向一个具名会话叙述，它的输出追加到
+该会话的实时日志 — [智能体](/docs/concepts/agents) 会话流
+已经在看的那份日志。这就是两者的接缝：沙箱干活，
+会话是这件事的记录。
+
+## 下一步
+
+- **[沙箱参考](/docs/openapi/sandbox)** — 租约、exec、fs、终端、
+  屏幕。
+- **[exec](/docs/openapi/exec)** — 代码解释器。
+- **[智能体](/docs/concepts/agents)** — 通常握着租约的那个。

@@ -1,0 +1,100 @@
+---
+title: Hộp cát
+description: Nguyên thủy tính toán duy nhất — một hợp đồng thuê trên một pod chạy mã của người khác. Bốn lớp, hai cách kết thúc một cái, và không có hồ.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Sau trang này bạn có thể chạy mã không đáng tin và biết chính xác khi nào nó ngừng
+tốn tiền của bạn.**
+
+## Một nguyên thủy
+
+Hộp cát là một pod dưới một ranh giới thời gian chạy, với chuỗi công cụ đã ở trong,
+hệ thống tệp riêng, và một **hợp đồng thuê** kết thúc nó. Có một đối tượng và một
+đời — một lần chạy Python dùng rồi bỏ và một phiên lập trình nhiều giờ là cùng
+một thứ với các giới hạn khác nhau.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/sandbox/lease \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"class":"exec"}'
+```
+
+```bash
+hanzo sandboxes list
+```
+
+Mọi thao tác khác tác động lên hộp cát mà lời gọi đó trả về.
+
+## Bốn lớp
+
+Một tập đóng. Rỗng nghĩa là `exec`.
+
+| Lớp | Nó là gì | Thư mục làm việc | Sống |
+|---|---|---|---|
+| `exec` | dùng rồi bỏ; không giữ gì | `/mnt/data` | giây đến phút |
+| `dev` | lập trình, đĩa dự án được gắn | `/work` | giờ |
+| `desktop` | `dev` cộng một màn hình | `/work` | giờ |
+| `android` | `desktop` cộng một điện thoại trên màn hình đó | `/work` | giờ |
+
+Mọi lớp trừ `exec` đều **đòi** một dự án, và một dự án có **một hộp cát sống
+tại một thời điểm** — hợp đồng thuê thứ hai trên dự án đã có một cái bị
+từ chối theo tên, thay vì lặng lẽ cho bạn máy thứ hai.
+
+Bạn có thể *yêu cầu* một thời gian chạy (`gvisor` hoặc `kata-fc`); chủ sở hữu quyết định, và
+câu trả lời cho bạn biết bạn thực sự nhận được gì.
+
+## Hai động từ để kết thúc, và khác biệt thì quan trọng
+
+<Callout>
+**`stop` kết thúc công việc. `end` kết thúc tài nguyên.** Một lần chạy sai vẫn
+đọc được sau `stop`, và đó là toàn bộ lý do chúng là hai động từ.
+</Callout>
+
+Ngoài ra, `ttlSec` giới hạn hợp đồng thuê, và một máy gặt chạy mỗi phút: nó kết thúc
+các hợp đồng thuê hết hạn và cho ngủ các hộp cát nhàn rỗi hơn một giờ. **Không có
+hồ** — hộp cát được tạo cho một hợp đồng thuê và bị xóa khi hết, và tên
+không bao giờ được dùng lại, nên một id cũ không bao giờ với tới máy của người khác.
+
+## Pod làm được gì
+
+Không phải điều bạn làm được. Thông tin xác thực của bạn không bao giờ tới pod. Một hợp đồng thuê được trao một
+mã thông báo ngắn hạn, lấy bằng đổi mã thông báo đối với danh tính của bạn, hành động như
+máy khách `hanzo-sandbox`, hết hạn cùng hợp đồng thuê, không có mã thông báo làm mới. Pod
+không mang thông tin xác thực cụm của riêng nó.
+
+Cách ly là vật lý: kho hộp cát là một tệp mỗi tổ chức.
+
+## exec: một phiên *là* một hộp cát
+
+[exec](/docs/openapi/exec) chạy cả một chương trình trong một lời gọi, bằng mười ba
+ngôn ngữ — `py`, `js`, `ts`, `bash`, `r`, `php`, `go`, `rs`, `c`, `cpp`,
+`java`, `d`, `f90`.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/exec \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"language":"py","code":"print(6*7)"}'
+```
+
+Nó không sở hữu kho cũng không sở hữu đời riêng — id phiên nó trả về *là*
+id hộp cát. Thoát khác không là **`200` kèm stderr**, không phải trạng thái lỗi:
+lời gọi thành công, chương trình thất bại, và đó là hai sự thật khác nhau. Truyền lại
+cùng `session_id` để giữ hệ thống tệp giữa các lần chạy.
+
+## Nơi nó gặp tác nhân
+
+`POST /v1/sandbox/run` kể vào một phiên có tên, và đầu ra của nó được nối
+vào nhật ký sống của phiên đó — nhật ký mà luồng phiên [tác nhân](/docs/concepts/agents)
+đã đang xem. Đó là đường nối giữa hai thứ: hộp cát làm
+việc, phiên là bản ghi của việc đó.
+
+## Tiếp theo
+
+- **[Tham chiếu hộp cát](/docs/openapi/sandbox)** — hợp đồng thuê, exec, fs, thiết bị đầu cuối,
+  màn hình.
+- **[exec](/docs/openapi/exec)** — trình thông dịch mã.
+- **[Tác nhân](/docs/concepts/agents)** — thứ thường giữ hợp đồng thuê.

@@ -1,0 +1,58 @@
+---
+title: 코딩 에이전트
+description: "저장소에서 코딩 에이전트를 실행합니다. 우리 것, Claude Code, Codex를 명령 하나로."
+icon: Terminal
+---
+
+`hanzo code`는 지금 서 있는 저장소에 대해 코딩 에이전트를 실행합니다.
+세 에이전트를 지원하며, 하나를 이름 붙이면 그 에이전트이거나 분명한 실패입니다.
+서로 별개의 제품이며, 서로의 별칭이 아닙니다.
+
+```bash
+hanzo code                      # Hanzo Dev, the default
+hanzo code claude               # Claude Code
+hanzo code codex                # Codex
+```
+
+작업은 따옴표로 묶은 **하나의** 인자로 줍니다.
+
+```bash
+hanzo code "fix the failing test in api/users"
+hanzo code claude "port this module to the new store"
+```
+
+## 에이전트 이름 붙이기
+
+아래의 모든 표기는 한곳에서 풀리므로 서로 어긋나지 않습니다.
+
+| | 위치 인자 | 플래그 | 명시 |
+| --- | --- | --- | --- |
+| Hanzo Dev | `hanzo code dev` | `hanzo code --dev` | `hanzo code --backend dev` |
+| Claude Code | `hanzo code claude` | `hanzo code --claude` | `hanzo code --backend claude` |
+| Codex | `hanzo code codex` | `hanzo code --codex` | `hanzo code --backend codex` |
+
+`hanzo dev`는 `hanzo code dev`의 최상위 줄임입니다. `claude-code`와
+`cc`는 `claude`로 받아들이는 표기입니다.
+
+두 번 이름 붙이면 풀리지 않고 거부됩니다. `hanzo code claude --codex`는
+한 번만 이름 붙이라고 알립니다.
+
+## 승인
+
+에이전트는 자기 단계를 기본적으로 스스로 승인합니다. 포기하는 것이 커지는 순서로 출구가 둘입니다.
+
+```bash
+hanzo code --ask            # the backend asks before each step
+hanzo code --no-sandbox     # bypass approvals AND drop the sandbox
+```
+
+`--safe`는 `--ask`의 동의어이고, 둘 다 `~/.hanzo/settings.json`의
+`autoApprove`보다 우선합니다.
+
+## 다른 `hanzo code`
+
+`hanzo code context`, `hanzo code file`, `hanzo code index`는 같은 단어를 나누는 다른 것입니다. [코드 인텔리전스 API](/docs/openapi/code)로, 색인된 저장소에서 검색과 심볼을 다룹니다.
+당신과 에이전트를 위한 것입니다. 백엔드를 받지 않고 에이전트도 실행하지 않습니다.
+
+규칙은 첫 인자입니다. 백엔드를 이름 붙이는 단어는 그것을 고르고,
+그 외는 작업이거나 하위 명령입니다.

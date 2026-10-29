@@ -1,0 +1,60 @@
+---
+title: Cài đặt
+description: Cài Hanzo Dev từ npm, Homebrew, hoặc biên dịch từ mã nguồn.
+---
+
+## Yêu cầu hệ thống
+
+| Yêu cầu | Chi tiết |
+| --- | --- |
+| Hệ điều hành | macOS 12+, Ubuntu 20.04+/Debian 10+, hoặc Windows 11 **qua WSL2** |
+| Git (tùy chọn, nên có) | 2.23+ cho trình hỗ trợ PR tích hợp sẵn |
+| RAM | tối thiểu 4 GB (khuyến nghị 8 GB) |
+
+## Cài qua npm
+
+```bash
+npm install -g @hanzo/dev
+```
+
+## Cài qua npx
+
+```bash
+npx @hanzo/dev
+```
+
+## DotSlash
+
+Bản phát hành trên GitHub cũng chứa một tệp [DotSlash](https://dotslash-cli.com/) của Hanzo Dev tên là `dev`. Tệp DotSlash cho phép một commit nhẹ vào hệ thống quản lý mã nguồn để mọi người đóng góp dùng cùng một phiên bản tệp thực thi, bất kể nền tảng.
+
+## Biên dịch từ mã nguồn
+
+```bash
+# Clone the repository
+git clone https://github.com/hanzoai/dev.git
+cd dev
+
+# Install the Rust toolchain if necessary
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source "$HOME/.cargo/env"
+
+# Build (~20 min cold, ~2 min incremental)
+./build-fast.sh
+
+# Launch the TUI
+./hanzo-dev/target/dev-fast/dev
+```
+
+## Theo dõi và ghi nhật ký chi tiết
+
+Hanzo Dev được viết bằng Rust và tôn trọng biến môi trường `RUST_LOG`.
+
+TUI mặc định dùng `RUST_LOG=hanzo_core=info,hanzo_tui=info` và ghi nhật ký vào `~/.hanzo/log/codex-tui.log`. Đổi thư mục nhật ký bằng `-c log_dir=...` cho một lần chạy.
+
+```bash
+tail -F ~/.hanzo/log/codex-tui.log
+```
+
+Chế độ không tương tác (`dev exec`) mặc định dùng `RUST_LOG=error` và in kết quả ngay trong luồng.
+
+Xem [tài liệu `RUST_LOG`](https://docs.rs/env_logger/latest/env_logger/#enabling-logging) của Rust để biết mọi tùy chọn cấu hình.

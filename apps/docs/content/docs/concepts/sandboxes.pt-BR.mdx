@@ -1,0 +1,100 @@
+---
+title: Caixas de areia
+description: O único primitivo de computação — uma concessão de um pod que executa o código de outra pessoa. Quatro classes, duas formas de encerrar uma, e nenhuma reserva.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Depois desta página você pode executar código não confiável e saber exatamente quando ele para
+de custar dinheiro.**
+
+## Um primitivo
+
+Uma caixa de areia é um pod sob um limite de tempo de execução, com uma cadeia de ferramentas já dentro,
+seu próprio sistema de arquivos e uma **concessão** que a encerra. Há um objeto e uma
+vida — uma execução Python descartável e uma sessão de programação de várias horas são a mesma
+coisa com limites diferentes.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/sandbox/lease \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"class":"exec"}'
+```
+
+```bash
+hanzo sandboxes list
+```
+
+Toda outra operação age sobre a caixa de areia que essa chamada devolve.
+
+## Quatro classes
+
+Um conjunto fechado. Vazio significa `exec`.
+
+| Classe | O que é | Diretório de trabalho | Vive por |
+|---|---|---|---|
+| `exec` | descartável; não guarda nada | `/mnt/data` | segundos a minutos |
+| `dev` | programação, com o disco do projeto anexado | `/work` | horas |
+| `desktop` | `dev` mais uma tela | `/work` | horas |
+| `android` | `desktop` mais um telefone nessa tela | `/work` | horas |
+
+Toda classe menos `exec` **exige** um projeto, e um projeto tem **uma caixa de areia viva
+por vez** — uma segunda concessão sobre um projeto que já tem uma é
+recusada pelo nome, em vez de te dar em silêncio uma segunda máquina.
+
+Você pode *pedir* um tempo de execução (`gvisor` ou `kata-fc`); o dono decide, e a
+resposta diz o que você de fato recebeu.
+
+## Dois verbos para encerrar, e a diferença importa
+
+<Callout>
+**`stop` encerra o trabalho. `end` encerra o recurso.** Uma execução que deu errado continua
+legível depois de `stop`, e essa é toda a razão de serem dois verbos.
+</Callout>
+
+Além disso, `ttlSec` limita a concessão, e um ceifador roda a cada minuto: encerra
+concessões vencidas e adormece caixas de areia ociosas por mais de uma hora. **Não há
+reserva** — uma caixa de areia é criada para uma concessão e apagada no fim, e os nomes
+nunca são reutilizados, então um id velho nunca alcança a máquina de outra pessoa.
+
+## O que o pod pode fazer
+
+Não o que você pode. Sua credencial nunca chega ao pod. Uma concessão recebe um
+token de vida curta, obtido por troca de token contra a sua identidade, agindo como
+o cliente `hanzo-sandbox`, que expira com a concessão, sem token de atualização. O
+pod não carrega nenhuma credencial de cluster própria.
+
+O isolamento é físico: um armazenamento de caixas de areia é um arquivo por organização.
+
+## exec: uma sessão *é* uma caixa de areia
+
+[exec](/docs/openapi/exec) executa um programa inteiro numa chamada, em treze
+linguagens — `py`, `js`, `ts`, `bash`, `r`, `php`, `go`, `rs`, `c`, `cpp`,
+`java`, `d`, `f90`.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/exec \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"language":"py","code":"print(6*7)"}'
+```
+
+Ele não possui armazenamento nem vida próprios — o id de sessão que devolve *é* um
+id de caixa de areia. Uma saída diferente de zero é um **`200` com stderr**, não um status de erro:
+a chamada teve sucesso, o programa falhou, e são fatos diferentes. Passe o
+mesmo `session_id` de novo para manter o sistema de arquivos entre execuções.
+
+## Onde encontra os agentes
+
+`POST /v1/sandbox/run` narra para uma sessão nomeada, e a saída se acrescenta
+ao registro vivo dessa sessão — aquele que o fluxo de uma sessão de [agente](/docs/concepts/agents)
+já está olhando. Essa é a costura entre os dois: uma caixa de areia faz o
+trabalho, uma sessão é o registro dele.
+
+## A seguir
+
+- **[Referência de caixas de areia](/docs/openapi/sandbox)** — concessão, exec, fs, terminal,
+  tela.
+- **[exec](/docs/openapi/exec)** — o interpretador de código.
+- **[Agentes](/docs/concepts/agents)** — o que costuma segurar a concessão.
