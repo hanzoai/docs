@@ -161,7 +161,7 @@ export default function Page() {
           style={{ display: 'inline-grid', gridAutoFlow: 'column', alignItems: 'center', columnGap: 8 }}
         >
           <span className="rounded-full bg-white" style={{ width: 6, height: 6 }} />
-          Meet Enso — a small model that also routes, at a fixed price per token
+          Meet Enso — a small language model that also routes, at a fixed price per token
           <ArrowRight className="size-3.5" />
         </Link>
 
@@ -174,12 +174,10 @@ export default function Page() {
           <span className="text-[#e5e5e5]">Build anything<br className="hidden sm:block" /> with Hanzo.</span>
         </h1>
         <p className="relative mt-5 max-w-xl text-neutral-300 text-lg md:text-xl leading-relaxed">
-          One key, and behind it more than 500 models plus the rest of the
-          platform — storage, identity, agents, billing. Start in the browser if
-          you would rather describe a thing, or from a terminal if you would
-          rather type it. When you want it on your own hardware, you take the
-          same software we run. It is not a smaller cousin of the cloud. It is
-          the cloud.
+          One key, and behind it 500+ models plus the rest of the platform —
+          storage, identity, agents, billing. Start in the browser, or from a
+          terminal. When you want it on your own hardware, you run the same
+          binary that serves api.hanzo.ai.
         </p>
 
         {/* -- Install command -- the main CTA ------------------------------ */}

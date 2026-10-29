@@ -5,7 +5,7 @@ description: An agent is quoted before it spends and refused when it would breac
 
 import { Callout } from '@hanzo/docs-base-ui/components/callout'
 
-An agent with a credit card and no ceiling will find the ceiling for you, usually on a Friday. A budget is the ceiling you set first. This page is how to cap what an agent may spend, how to read what it already spent, and how to tell "we refused this because of money" from "the model failed." Those two look similar in a log and they are not similar at all. Retrying the second can help. Retrying the first spends nothing and changes nothing, which is its own kind of confusing.
+A budget is the ceiling on what an agent may spend. This page is how to set that ceiling, how to read what has already been spent, and how to tell a budget refusal from a model failure. They look similar in a log. A model failure can be retried. A budget refusal will refuse again, because the next call is still over the ceiling.
 
 ## What a budget is
 
@@ -121,10 +121,10 @@ gate compares the ceiling of the next call, not its likely cost.
 
 ## A session's own budget
 
-A session may carry a ceiling of its own, under the agent's:
+A session may carry a ceiling of its own, under the agent's. The live API documents that write as `POST /v1/agent/sessions/{id}/budget`:
 
 ```bash
-curl -X POST https://api.hanzo.ai/v1/agent/sessions/$ID/budget \
+curl -X POST https://api.hanzo.ai/v1/agent/sessions/{id}/budget \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"budget_micro_usd": 2000000}'
@@ -143,7 +143,7 @@ Each of those refuses with `409` rather than quietly doing something else.
 ## An agent defined before budgets existed
 
 It carries a cap of zero and is **not capped** — its spend is still tallied and
-readable at `/spend`, and an update gives it a cap. Refusing every agent defined
+readable at `GET /v1/agent/{ref}/spend`, and an update gives it a cap. Refusing every agent defined
 before the feature shipped would be an outage, not a policy.
 
 ## Next

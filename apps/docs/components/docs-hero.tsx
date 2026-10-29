@@ -212,7 +212,7 @@ export function DocsHero({
           Enso
         </span>
         <span className="text-sm font-medium text-fd-foreground">
-          A small model that also routes, at a fixed price per token
+          A small language model that also routes, at a fixed price per token
         </span>
         <span className="text-sm text-fd-muted-foreground">
           Zen stays open weights.{' '}

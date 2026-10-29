@@ -235,7 +235,7 @@ const project = (p: Pricing, meta: Pricing['meta']): Pricing => ({
 
 // ------------------------------------------------------------------ render
 
-/** The three Enso tiers, cheapest first — the order you should try them in. */
+/** Enso tiers, cheaper rates first. */
 function ensoTiers(models: Model[]): Model[] {
   return models
     .filter((m) => isEnso(m.name) && !UNLISTED.has(m.name))
@@ -275,15 +275,22 @@ function render(p: Pricing): string {
     '',
     '# Pricing',
     '',
-    'You should leave this page able to work out what a request will cost before',
-    'you send it, and able to pick the tier that makes that number worth paying.',
-    'The arithmetic is not the hard part. Knowing which number is the real one is.',
+    'Read this before you send a large request. The table is the per-token price.',
+    'The fee on top of that price is the next section.',
     '',
     'You are billed for what you use — tokens for a chat model, calls for a tool,',
     'images for an image model. There is no seat licence and no minimum: an',
-    'account that sends nothing is charged nothing. Routing does not add a',
-    'percentage. A routed call costs the fixed per-token price of the model',
-    'that served it.',
+    'account that sends nothing is charged nothing.',
+    '',
+    '## What you pay on top',
+    '',
+    "Hanzo's own models, including Enso, carry only a payment processing fee:",
+    '3.5% by credit card, or 3% in crypto. There is no routing fee on them.',
+    'Third-party models follow [OpenRouter](https://openrouter.ai/pricing).',
+    'On the standard plan that is 5.5% by credit card, or 5% in crypto. The',
+    'Business plan is 8% on credit purchases. Enterprise fees are not published;',
+    'contact sales. Bring-your-own-key includes $25,000 of list-price inference',
+    'a month with no fee, then 5%.',
     '',
     'Every rate below is per **million tokens** unless the table says otherwise,',
     'in US dollars.',
@@ -297,8 +304,9 @@ function render(p: Pricing): string {
       '',
       'Enso is Hanzo\'s small language model, and it also routes. Each tier is a',
       'fixed price per token — same endpoint, same request shape, and moving',
-      'between them is a one-string change to `model`. There is no routing fee',
-      'on top of the rate in the table.',
+      'between them is a one-string change to `model`. Enso is a Hanzo model, so',
+      'the fee on it is the first-party line under What you pay on top: 3.5% by',
+      'credit card, or 3% in crypto, and no routing fee.',
       '',
       '| Model | GPQA-Diamond | Context | Input | Output |',
       '|---|---|---|---|---|',
@@ -322,7 +330,7 @@ function render(p: Pricing): string {
     if (cheapest) {
       w(
         `<Callout title="Start at \`${cheapest.name}\`.">`,
-        `It is the cheapest tier and the one most work never needs to leave. Move`,
+        `It is a cheaper tier. Move`,
         `up when a smaller model has actually disappointed you — not before,`,
         `because moving up costs you one word of a diff.`,
         '</Callout>',
