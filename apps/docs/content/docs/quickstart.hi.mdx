@@ -1,0 +1,214 @@
+---
+icon: Rocket
+title: त्वरित शुरुआत
+description: CLI स्थापित करें, प्रवेश करें, और पहली कॉल करें — फिर वही कॉल SDK विधि, कच्चा HTTP और MCP उपकरण के रूप में देखें.
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs'
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**इस पृष्ठ के बाद आपके पास एक काम करने वाला प्रमाण-पत्र और एक कॉल है जिसने उत्तर दिया.**
+
+Hanzo एक कुंजी के पीछे एक क्लाउड है. हर क्षमता — अनुमान, पहचान,
+भंडारण, पैसा, एजेंट — `https://api.hanzo.ai` पर उत्तर देती है, और CLI,
+SDK और MCP उपकरण उसी विवरण से बनते हैं. प्रति सेवा कुछ जोड़ना नहीं:
+एक बार कुंजी लें और सब पहुँच में है.
+
+## 1. स्थापित करें
+
+<Tabs items={['npm', 'Script', 'Homebrew', 'स्रोत से']}>
+<Tab value="npm">
+```bash
+npm i -g hanzo
+```
+
+`hanzo` एक स्थापना में CLI और क्लाइंट दोनों है.
+</Tab>
+<Tab value="Script">
+```bash
+curl -fsSL https://hanzo.sh | sh
+```
+
+`~/.local/bin` में स्थापित होता है. `https://hanzo.sh/cli` केवल CLI स्थापित करता है.
+</Tab>
+<Tab value="Homebrew">
+```bash
+brew install hanzoai/tap/hanzo
+```
+</Tab>
+<Tab value="स्रोत से">
+```bash
+git clone https://github.com/hanzoai/cli && cd cli && cargo install --path .
+```
+</Tab>
+</Tabs>
+
+```bash
+hanzo version
+```
+
+## 2. प्रवेश करें
+
+```bash
+hanzo auth login
+```
+
+यह [hanzo.id](https://hanzo.id) पर ब्राउज़र खोलता है, Hanzo का पहचान
+प्रदाता, और प्रमाण-पत्र स्थानीय रूप से रखता है. `hanzo auth show` छापता है
+आप कौन हैं; `hanzo auth list` इस मशीन की हर पहचान दिखाता है और
+`hanzo auth use` उनके बीच बदलता है.
+
+सर्वर पर व्यक्ति का प्रवेश न कराएँ, कुंजी बनाएँ: **console.hanzo.ai →
+API कुंजियाँ**. गुप्त कुंजी *आप* हैं, इसलिए वह सर्वर पर रहती है, कभी
+ब्राउज़र में नहीं — [प्रमाणीकरण](/docs/api-keys) पूरा नियम है.
+
+```bash
+export HANZO_API_KEY=sk-...
+```
+
+## 3. मॉडल सूचीबद्ध करें
+
+उन मॉडलों की सूची जिन्हें गेटवे अभी देता है. यह पढ़ना है, केवल
+कुंजी चाहिए, और चारों सतहों पर वही कार्रवाई है.
+
+<Tabs items={['CLI', 'SDK', 'HTTP', 'MCP']}>
+<Tab value="CLI">
+```bash
+hanzo models list
+```
+</Tab>
+<Tab value="SDK">
+<Tabs items={['.ts', '.py', '.go', '.rs', '.swift', '.kt']}>
+<Tab value=".ts">
+```bash
+npm i hanzo
+```
+
+```ts
+import { Hanzo } from 'hanzo'
+
+const hanzo = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+const models = await hanzo.models.list()
+```
+</Tab>
+<Tab value=".py">
+```bash
+pip install hanzo
+```
+
+```python
+from hanzo import Hanzo
+
+hanzo = Hanzo(api_key=os.environ["HANZO_API_KEY"])
+models = hanzo.models.list()
+```
+</Tab>
+<Tab value=".go">
+```bash
+go get github.com/hanzoai/go-sdk
+```
+
+```go
+client := hanzo.NewClient(hanzo.WithAPIKey(os.Getenv("HANZO_API_KEY")))
+models, err := client.Models.List(ctx)
+```
+</Tab>
+<Tab value=".rs">
+```bash
+cargo add hanzo
+```
+
+```rust
+let hanzo = hanzo::Client::from_env()?;
+let models = hanzo.models().list().await?;
+```
+</Tab>
+<Tab value=".swift">
+```swift
+// Package.swift: .package(url: "https://github.com/hanzoai/swift-sdk", from: "1.0.0")
+let hanzo = Hanzo(apiKey: ProcessInfo.processInfo.environment["HANZO_API_KEY"]!)
+let models = try await hanzo.models.list()
+```
+</Tab>
+<Tab value=".kt">
+```kotlin
+// build.gradle.kts: implementation("ai.hanzo:sdk:latest.release")
+val hanzo = Hanzo(apiKey = System.getenv("HANZO_API_KEY"))
+val models = hanzo.models.list()
+```
+</Tab>
+</Tabs>
+
+ये सब API के उसी विवरण से बने हैं, इसलिए विधि नाम
+भाषाओं में मेल खाते हैं. [C++](/docs/sdks/cpp) वही है जो अभी
+आ रहा है.
+</Tab>
+<Tab value="HTTP">
+```bash
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+</Tab>
+<Tab value="MCP">
+```bash
+curl -X POST https://api.hanzo.ai/v1/mcp \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+एक एंडपॉइंट, प्रति क्षमता एक उपकरण. `tools/call` क्षमता और
+कार्रवाई का नाम लेता है; `describe` किसी भी कार्रवाई का इनपुट समझाता है.
+</Tab>
+</Tabs>
+
+ये एक API हैं, चार जगहों से देखी हुई, और ऊपर के टैब पूरा
+अंतर हैं. चुनें कि आप किसमें लिखेंगे:
+
+- **[CLI](/docs/cli)** — हर क्षमता एक कमांड समूह, हर एक का अपना पृष्ठ.
+- **[SDK](/docs/sdks)** — Python, TypeScript, Go, Rust, C++, Swift और Kotlin,
+  CLI और उपकरणों के उसी विवरण से बने.
+- **[MCP](/docs/mcp)** — एक एंडपॉइंट जिससे एजेंट जुड़ता है; [उपकरण](/docs/mcp-tools)
+  प्रति क्षमता एक सूचीबद्ध हैं.
+
+HTTP को पृष्ठ नहीं चाहिए: यह `https://api.hanzo.ai` है और वह कुंजी जिसे आपने अभी निर्यात किया.
+
+## 4. एक पूर्णता भेजें
+
+यह पहला कदम है जो क्रेडिट घटाता है; ऊपर सब मुफ़्त चल सकता है.
+
+```bash
+hanzo chat completions --model zen-1 --messages '[{"role":"user","content":"hello"}]'
+```
+
+फिर पढ़ें कि उसने कितना घटाया:
+
+```bash
+hanzo billing balance
+hanzo usage summary
+```
+
+[क्रेडिट और बिलिंग](/docs/credits) बताता है क्रेडिट क्या है और शून्य पर क्या होता है;
+[मूल्य](/docs/pricing) हर मॉडल और उपकरण की दर है.
+
+## 5. क्लाउड स्थानीय चलाएँ
+
+वही बाइनरी जो `api.hanzo.ai` देता है आपकी मशीन पर चलती है:
+
+```bash
+hanzo up cloud
+```
+
+केवल `hanzo up` वही चीज़ है — `cloud` डिफ़ॉल्ट है. एक सेवा का नाम लें ताकि
+वह अकेले चले: `hanzo up iam`, `hanzo up kms`, `hanzo up gateway`, `hanzo up
+storage`, `hanzo up pubsub`. इसका अर्थ और ज़रूरत [अपना चलाएँ](/docs/network) में है.
+
+## आगे कहाँ
+
+- **[छह प्रवाह, चार सतहें](/docs/guides)** — नमस्ते, चैट, पैसा, भंडार, एजेंट,
+  उपकरण. पूरा उत्पाद लघु रूप में, हर यात्रा चार तरीकों से.
+- **[अवधारणाएँ](/docs/concepts)** — संगठन, प्रोजेक्ट, सैंडबॉक्स, एजेंट, स्मृति और
+  कार्यप्रवाह. एक बार पढ़ें और बाकी API खुद समझाएगा.
+- **[क्षमताएँ](/docs/openapi)** — सब, समूहों में. हर पृष्ठ बताता है क्षमता क्या
+  है, चार सतहों से कैसे पहुँचें, और अपनी
+  विशिष्टता से जोड़ता है.

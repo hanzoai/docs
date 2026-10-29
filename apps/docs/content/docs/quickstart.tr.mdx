@@ -1,0 +1,214 @@
+---
+icon: Rocket
+title: Hızlı başlangıç
+description: CLI’yi kurun, oturum açın ve ilk çağrınızı yapın — sonra aynı çağrıyı bir SDK yöntemi, ham HTTP ve bir MCP aracı olarak görün.
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs'
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Bu sayfadan sonra çalışan bir kimliğiniz ve yanıt vermiş bir çağrınız olur.**
+
+Hanzo, tek anahtarın ardındaki tek buluttur. Her yetenek — çıkarım, kimlik,
+depolama, para, aracılar — `https://api.hanzo.ai` adresinde yanıt verir; CLI,
+SDK’lar ve MCP araçları aynı açıklamadan üretilir. Hizmet başına bağlayacak
+bir şey yoktur: anahtarı bir kez alın, her şeye erişin.
+
+## 1. Kurun
+
+<Tabs items={['npm', 'Script', 'Homebrew', 'Kaynaktan']}>
+<Tab value="npm">
+```bash
+npm i -g hanzo
+```
+
+`hanzo` tek kurulumda hem CLI hem istemcidir.
+</Tab>
+<Tab value="Script">
+```bash
+curl -fsSL https://hanzo.sh | sh
+```
+
+`~/.local/bin` içine kurulur. `https://hanzo.sh/cli` yalnız CLI’yi kurar.
+</Tab>
+<Tab value="Homebrew">
+```bash
+brew install hanzoai/tap/hanzo
+```
+</Tab>
+<Tab value="Kaynaktan">
+```bash
+git clone https://github.com/hanzoai/cli && cd cli && cargo install --path .
+```
+</Tab>
+</Tabs>
+
+```bash
+hanzo version
+```
+
+## 2. Oturum açın
+
+```bash
+hanzo auth login
+```
+
+Bu, Hanzo’nun kimlik sağlayıcısı [hanzo.id](https://hanzo.id) üzerinde bir tarayıcı
+açar ve kimliği yerelde saklar. `hanzo auth show` kim olduğunuzu yazar;
+`hanzo auth list` bu makinedeki her kimliği gösterir ve
+`hanzo auth use` aralarında geçiş yapar.
+
+Bir sunucuda kişi oturumu açmak yerine anahtar üretin: **console.hanzo.ai →
+API anahtarları**. Gizli anahtar *sizsiniz*, bu yüzden sunucuda durur, asla
+bir tarayıcıda değil — [Kimlik doğrulama](/docs/api-keys) kuralın tamamıdır.
+
+```bash
+export HANZO_API_KEY=sk-...
+```
+
+## 3. Modelleri listeleyin
+
+Ağ geçidinin şu an sunduğu modellerin kataloğu. Bir okumadır, yalnızca
+anahtar ister ve dört yüzeyde de aynı işlemdir.
+
+<Tabs items={['CLI', 'SDK', 'HTTP', 'MCP']}>
+<Tab value="CLI">
+```bash
+hanzo models list
+```
+</Tab>
+<Tab value="SDK">
+<Tabs items={['.ts', '.py', '.go', '.rs', '.swift', '.kt']}>
+<Tab value=".ts">
+```bash
+npm i hanzo
+```
+
+```ts
+import { Hanzo } from 'hanzo'
+
+const hanzo = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+const models = await hanzo.models.list()
+```
+</Tab>
+<Tab value=".py">
+```bash
+pip install hanzo
+```
+
+```python
+from hanzo import Hanzo
+
+hanzo = Hanzo(api_key=os.environ["HANZO_API_KEY"])
+models = hanzo.models.list()
+```
+</Tab>
+<Tab value=".go">
+```bash
+go get github.com/hanzoai/go-sdk
+```
+
+```go
+client := hanzo.NewClient(hanzo.WithAPIKey(os.Getenv("HANZO_API_KEY")))
+models, err := client.Models.List(ctx)
+```
+</Tab>
+<Tab value=".rs">
+```bash
+cargo add hanzo
+```
+
+```rust
+let hanzo = hanzo::Client::from_env()?;
+let models = hanzo.models().list().await?;
+```
+</Tab>
+<Tab value=".swift">
+```swift
+// Package.swift: .package(url: "https://github.com/hanzoai/swift-sdk", from: "1.0.0")
+let hanzo = Hanzo(apiKey: ProcessInfo.processInfo.environment["HANZO_API_KEY"]!)
+let models = try await hanzo.models.list()
+```
+</Tab>
+<Tab value=".kt">
+```kotlin
+// build.gradle.kts: implementation("ai.hanzo:sdk:latest.release")
+val hanzo = Hanzo(apiKey = System.getenv("HANZO_API_KEY"))
+val models = hanzo.models.list()
+```
+</Tab>
+</Tabs>
+
+Hepsi API’nin aynı açıklamasından üretildiği için yöntem adları
+diller arasında hizalanır. [C++](/docs/sdks/cpp) hâlâ yerine
+oturanıdır.
+</Tab>
+<Tab value="HTTP">
+```bash
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+</Tab>
+<Tab value="MCP">
+```bash
+curl -X POST https://api.hanzo.ai/v1/mcp \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+Bir uç nokta, yetenek başına bir araç. `tools/call` yeteneği ve
+işlemi adlandırır; `describe` herhangi bir işlemin girdisini açıklar.
+</Tab>
+</Tabs>
+
+Bunlar dört yerden görülen tek API’dir ve yukarıdaki sekmeler bütün
+farktır. Yazacağınızı seçin:
+
+- **[CLI](/docs/cli)** — her yetenek bir komut grubu, her biri için bir sayfa.
+- **[SDK’lar](/docs/sdks)** — Python, TypeScript, Go, Rust, C++, Swift ve Kotlin,
+  CLI ve araçlarla aynı açıklamadan üretilir.
+- **[MCP](/docs/mcp)** — bir aracının bağlandığı tek uç nokta; [araçlar](/docs/mcp-tools)
+  yetenek başına bir tane listelenir.
+
+HTTP’nin sayfaya ihtiyacı yok: `https://api.hanzo.ai` ve az önce dışa aktardığınız anahtar.
+
+## 4. Bir tamamlama gönderin
+
+Kredi düşüren ilk adım budur; yukarıdaki her şey ücretsiz çalışır.
+
+```bash
+hanzo chat completions --model zen-1 --messages '[{"role":"user","content":"hello"}]'
+```
+
+Sonra ne kadar düştüğünü okuyun:
+
+```bash
+hanzo billing balance
+hanzo usage summary
+```
+
+[Krediler ve faturalama](/docs/credits) kredinin ne olduğunu ve sıfırda ne olduğunu anlatır;
+[Fiyatlar](/docs/pricing) her model ve aracın tarifesidir.
+
+## 5. Bulutu yerelde çalıştırın
+
+`api.hanzo.ai`’yi sunan aynı ikili sizin makinenizde çalışır:
+
+```bash
+hanzo up cloud
+```
+
+Yalın `hanzo up` aynı şeydir — `cloud` varsayılandır. Tek başına çalıştırmak için bir hizmet adlandırın:
+`hanzo up iam`, `hanzo up kms`, `hanzo up gateway`, `hanzo up
+storage`, `hanzo up pubsub`. Bunun ne anlama geldiği ve ne gerektirdiği için [Kendiniz çalıştırın](/docs/network) sayfasına bakın.
+
+## Bundan sonra nereye
+
+- **[Altı akış, dört yüzey](/docs/guides)** — merhaba, sohbet, para, depo, aracı,
+  araçlar. Ürünün tamamı minyatür, her yol dört biçimde.
+- **[Kavramlar](/docs/concepts)** — kuruluşlar, projeler, sanal alanlar, aracılar, bellek ve
+  iş akışları. Bir kez okuyun, API’nin geri kalanı kendini anlatır.
+- **[Yetenekler](/docs/openapi)** — hepsi, gruplanmış. Her sayfa yeteneğin ne
+  olduğunu, dört yüzeyden nasıl ulaşıldığını söyler ve belirtimine
+  bağlanır.

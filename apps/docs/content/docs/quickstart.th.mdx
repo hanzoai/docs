@@ -1,0 +1,215 @@
+---
+icon: Rocket
+title: เริ่มอย่างรวดเร็ว
+description: ติดตั้ง CLI เข้าสู่ระบบ แล้วโทรครั้งแรก — จากนั้นดูสายเดียวกันนั้นเป็นเมธอด SDK, HTTP ดิบ และเครื่องมือ MCP
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs'
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**หลังหน้านี้คุณมีข้อมูลรับรองที่ใช้งานได้ และหนึ่งสายที่ตอบกลับมา**
+
+Hanzo คือคลาวด์หนึ่งหลังกุญแจหนึ่ง ความสามารถทุกอย่าง — การอนุมาน ตัวตน
+ที่เก็บ เงิน เอเจนต์ — ตอบที่ `https://api.hanzo.ai` และ CLI
+SDK กับเครื่องมือ MCP ถูกสร้างจากคำอธิบายเดียวกัน ไม่มีอะไรต้อง
+ต่อแยกตามบริการ: เอากุญแจครั้งเดียว แล้วทุกอย่างอยู่ในมือ
+
+## 1. ติดตั้ง
+
+<Tabs items={['npm', 'Script', 'Homebrew', 'จากซอร์ส']}>
+<Tab value="npm">
+```bash
+npm i -g hanzo
+```
+
+`hanzo` คือ CLI และไคลเอนต์ในการติดตั้งครั้งเดียว
+</Tab>
+<Tab value="Script">
+```bash
+curl -fsSL https://hanzo.sh | sh
+```
+
+ติดตั้งที่ `~/.local/bin` `https://hanzo.sh/cli` ติดตั้งเฉพาะ CLI
+</Tab>
+<Tab value="Homebrew">
+```bash
+brew install hanzoai/tap/hanzo
+```
+</Tab>
+<Tab value="จากซอร์ส">
+```bash
+git clone https://github.com/hanzoai/cli && cd cli && cargo install --path .
+```
+</Tab>
+</Tabs>
+
+```bash
+hanzo version
+```
+
+## 2. เข้าสู่ระบบ
+
+```bash
+hanzo auth login
+```
+
+นั่นเปิดเบราว์เซอร์ไปที่ [hanzo.id](https://hanzo.id) ผู้ให้บริการตัวตน
+ของ Hanzo และเก็บข้อมูลรับรองไว้ในเครื่อง `hanzo auth show` พิมพ์
+ว่าคุณเป็นใคร `hanzo auth list` แสดงทุกตัวตนบนเครื่องนี้ และ
+`hanzo auth use` สลับระหว่างพวกมัน
+
+บนเซิร์ฟเวอร์ ออกกุญแจแทนการให้คนเข้าสู่ระบบ: **console.hanzo.ai →
+กุญแจ API** กุญแจลับคือ *คุณ* จึงอยู่บนเซิร์ฟเวอร์ ไม่เคย
+อยู่ในเบราว์เซอร์ — [การยืนยันตัวตน](/docs/api-keys) คือกฎทั้งหมด
+
+```bash
+export HANZO_API_KEY=sk-...
+```
+
+## 3. แสดงรายการโมเดล
+
+แคตตาล็อกโมเดลที่เกตเวย์ให้บริการอยู่ตอนนี้ เป็นการอ่าน ต้องการแค่
+กุญแจ และเป็นการทำงานเดียวกันบนทั้งสี่พื้นผิว
+
+<Tabs items={['CLI', 'SDK', 'HTTP', 'MCP']}>
+<Tab value="CLI">
+```bash
+hanzo models list
+```
+</Tab>
+<Tab value="SDK">
+<Tabs items={['.ts', '.py', '.go', '.rs', '.swift', '.kt']}>
+<Tab value=".ts">
+```bash
+npm i hanzo
+```
+
+```ts
+import { Hanzo } from 'hanzo'
+
+const hanzo = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+const models = await hanzo.models.list()
+```
+</Tab>
+<Tab value=".py">
+```bash
+pip install hanzo
+```
+
+```python
+from hanzo import Hanzo
+
+hanzo = Hanzo(api_key=os.environ["HANZO_API_KEY"])
+models = hanzo.models.list()
+```
+</Tab>
+<Tab value=".go">
+```bash
+go get github.com/hanzoai/go-sdk
+```
+
+```go
+client := hanzo.NewClient(hanzo.WithAPIKey(os.Getenv("HANZO_API_KEY")))
+models, err := client.Models.List(ctx)
+```
+</Tab>
+<Tab value=".rs">
+```bash
+cargo add hanzo
+```
+
+```rust
+let hanzo = hanzo::Client::from_env()?;
+let models = hanzo.models().list().await?;
+```
+</Tab>
+<Tab value=".swift">
+```swift
+// Package.swift: .package(url: "https://github.com/hanzoai/swift-sdk", from: "1.0.0")
+let hanzo = Hanzo(apiKey: ProcessInfo.processInfo.environment["HANZO_API_KEY"]!)
+let models = try await hanzo.models.list()
+```
+</Tab>
+<Tab value=".kt">
+```kotlin
+// build.gradle.kts: implementation("ai.hanzo:sdk:latest.release")
+val hanzo = Hanzo(apiKey = System.getenv("HANZO_API_KEY"))
+val models = hanzo.models.list()
+```
+</Tab>
+</Tabs>
+
+ทั้งหมดถูกสร้างจากคำอธิบาย API เดียวกัน ดังนั้นชื่อเมธอด
+ตรงกันข้ามภาษา [C++](/docs/sdks/cpp) คือตัวที่ยัง
+กำลังมาถึง
+</Tab>
+<Tab value="HTTP">
+```bash
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+</Tab>
+<Tab value="MCP">
+```bash
+curl -X POST https://api.hanzo.ai/v1/mcp \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+จุดปลายเดียว เครื่องมือหนึ่งต่อความสามารถ `tools/call` ตั้งชื่อความสามารถและ
+การทำงาน `describe` อธิบายอินพุตของการทำงานใดก็ได้
+</Tab>
+</Tabs>
+
+นั่นคือ API เดียวที่มองจากสี่ที่ และแท็บข้างบนคือความต่าง
+ทั้งหมด เลือกอันที่คุณจะเขียน
+
+- **[CLI](/docs/cli)** — แต่ละความสามารถเป็นกลุ่มคำสั่ง หน้าละหนึ่ง
+- **[SDK](/docs/sdks)** — Python, TypeScript, Go, Rust, C++, Swift และ Kotlin
+  สร้างจากคำอธิบายเดียวกับ CLI และเครื่องมือ
+- **[MCP](/docs/mcp)** — จุดปลายหนึ่งที่เอเจนต์เชื่อมต่อ [เครื่องมือ](/docs/mcp-tools)
+  ถูกระบุหนึ่งรายการต่อความสามารถ
+
+HTTP ไม่ต้องมีหน้า: คือ `https://api.hanzo.ai` และกุญแจที่คุณเพิ่งส่งออก
+
+## 4. ส่งการเติมข้อความ
+
+นี่คือก้าวแรกที่ใช้เครดิต ทุกอย่างข้างบนรันได้ฟรี
+
+```bash
+hanzo chat completions --model zen-1 --messages '[{"role":"user","content":"hello"}]'
+```
+
+แล้วอ่านว่ามันใช้ไปเท่าไร:
+
+```bash
+hanzo billing balance
+hanzo usage summary
+```
+
+[เครดิตและการเรียกเก็บ](/docs/credits) อธิบายว่าเครดิตคืออะไรและเกิดอะไรที่
+ศูนย์ [ราคา](/docs/pricing) คืออัตราของแต่ละรุ่นและเครื่องมือ
+
+## 5. รันคลาวด์ในเครื่อง
+
+ไบนารีเดียวกับที่ให้บริการ `api.hanzo.ai` รันบนเครื่องคุณ:
+
+```bash
+hanzo up cloud
+```
+
+`hanzo up` เปล่า ๆ คือสิ่งเดียวกัน — `cloud` เป็นค่าเริ่มต้น ตั้งชื่อบริการหนึ่งเพื่อ
+รันมันลำพัง: `hanzo up iam`, `hanzo up kms`, `hanzo up gateway`, `hanzo up
+storage`, `hanzo up pubsub` ดู[รันของคุณเอง](/docs/network) ว่าหมายถึงอะไร
+และต้องการอะไร
+
+## ไปต่อที่ไหน
+
+- **[หกกระแส สี่พื้นผิว](/docs/guides)** — ทักทาย แชท เงิน ที่เก็บ เอเจนต์
+  เครื่องมือ ผลิตภัณฑ์ทั้งก้อนย่อ ส่วน ทุกเส้นทางแสดงสี่แบบ
+- **[แนวคิด](/docs/concepts)** — องค์กร โปรเจกต์ แซนด์บ็อกซ์ เอเจนต์ ความจำ และ
+  เวิร์กโฟลว์ อ่านครั้งเดียว ที่เหลือของ API อธิบายตัวเอง
+- **[ความสามารถ](/docs/openapi)** — ทั้งหมด เป็นกลุ่ม แต่ละหน้าบอกว่าความสามารถ
+  คืออะไร จะถึงจากสี่พื้นผิวอย่างไร และลิงก์
+  ข้อกำหนดของมัน
