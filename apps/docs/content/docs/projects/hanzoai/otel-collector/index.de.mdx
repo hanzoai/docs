@@ -1,0 +1,38 @@
+---
+title: "Otel-Sammler"
+description: "Hanzo O11y Otel-Sammler — Hanzo-Verteilung des OpenTelemetry Collector: Aufnahme von ZAP-native und OTLP nach hanzoai/datastore"
+---
+
+<p align="center"><img src=".github/hero.svg" alt="otel-collector" width="880"></p>
+
+# Hanzo O11y Otel-Sammler
+
+Die Hanzo-Verteilung des OpenTelemetry Collector. Sie nimmt Ablaufspuren, Metriken und Protokolle über **ZAP-native** (`zap-proto/http`, `:4319`) sowie OTLP (`:4317`/`:4318`) auf und schreibt in das eine hanzoai/datastore (Datastore). Sie fügt `receiver/zapreceiver` und `exporter/zapexporter` über dem Ursprung hinzu.
+
+## CI/CD — das maßgebliche Muster (genau ein Weg)
+
+Bau, Prüfung und Bereitstellung steuert ein einziges **`hanzo.yml`** im Wurzelverzeichnis und ein etwa siebenzeiliges **`.github/workflows/cicd.yml`**, das den wiederverwendbaren Ablauf [`hanzoai/ci`](https://github.com/hanzoai/ci) einbindet:
+
+```yaml
+# .github/workflows/cicd.yml
+jobs:
+  cicd:
+    uses: hanzoai/ci/.github/workflows/build.yml@main
+    secrets: inherit
+```
+
+Die gesamte Bau-, Prüf- und Bereitstellungslogik lebt einmal in `hanzoai/ci`. Sie liest `hanzo.yml` (`images:` / `test:` / `deploy:` / `kms:`), baut und schiebt jedes Abbild, führt die Prüfungen aus und rollt die Bereitstellung aus. **Der Bau läuft auf unserem selbst betriebenen arc-Pool (`hanzo-build-linux-amd64`) — null bei GitHub gehostete Minuten**; GitHub leitet nur, unsere Infrastruktur arbeitet. Der Schub nach GHCR nutzt das automatische Ablaufzeichen; KMS (`kms.hanzo.ai`) liefert nur das `KUBECONFIG` der Bereitstellung.
+
+Dieses Repository baut zwei Abbilder aus mehrstufigen Dockerfiles, die sich selbst bauen, sodass kein CI-Vorab-Schritt nötig ist:
+
+| Abbild | Dockerdatei | Marken |
+|---|---|---|
+| `ghcr.io/hanzoai/otel-collector` | `cmd/o11yotelcollector/Dockerfile.selfbuild` | `:zap-native-latest`, `:sha-<short>-amd64-zap-native` |
+| `ghcr.io/hanzoai/o11y-schema-migrator` | `cmd/o11yschemamigrator/Dockerfile.selfbuild` | `:latest`, `:sha-<short>-amd64` |
+
+**Das ist von nun an das Muster für alle Repositories des nativen PaaS.** Um ein neues Repository aufzunehmen: ein `hanzo.yml` in die Wurzel und das `cicd.yml` oben — sonst nichts. Füge keine eigene Baulogik, keine bei GitHub gehosteten Läufer und nicht die alten Wiederverwendbaren `hanzoai/.github`, `docker-build.yml` und `o11y/primus.workflows` hinzu (hier beide entfernt).
+
+## Verweise
+
+- [Quelle](https://github.com/hanzoai/otel-collector)
+- Lizenz: AGPL-3.0

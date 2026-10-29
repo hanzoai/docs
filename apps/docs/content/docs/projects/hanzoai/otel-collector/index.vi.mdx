@@ -1,0 +1,38 @@
+---
+title: "Bộ thu Otel"
+description: "Bộ thu Hanzo O11y Otel — bản phân phối Hanzo của OpenTelemetry Collector: nhận ZAP-native và OTLP vào hanzoai/datastore"
+---
+
+<p align="center"><img src=".github/hero.svg" alt="otel-collector" width="880"></p>
+
+# Bộ thu Hanzo O11y Otel
+
+Bản phân phối Hanzo của OpenTelemetry Collector. Nhận dấu vết, số đo và nhật ký qua **ZAP-native** (`zap-proto/http`, `:4319`) cùng OTLP (`:4317`/`:4318`) và ghi vào đúng một hanzoai/datastore (Datastore). Thêm `receiver/zapreceiver` và `exporter/zapexporter` lên trên thượng nguồn.
+
+## CI/CD — mẫu chuẩn (chỉ một cách)
+
+Dựng, thử và triển khai được một **`hanzo.yml`** ở gốc và một **`.github/workflows/cicd.yml`** khoảng bảy dòng điều khiển; tệp đó nhập luồng dùng lại [`hanzoai/ci`](https://github.com/hanzoai/ci):
+
+```yaml
+# .github/workflows/cicd.yml
+jobs:
+  cicd:
+    uses: hanzoai/ci/.github/workflows/build.yml@main
+    secrets: inherit
+```
+
+Toàn bộ lô-gic dựng, thử và triển khai chỉ sống một lần trong `hanzoai/ci`. Nó đọc `hanzo.yml` (`images:` / `test:` / `deploy:` / `kms:`), dựng và đẩy từng ảnh, chạy thử, rồi cuốn bản triển khai. **Việc dựng chạy trên nhóm arc do chúng tôi tự lưu trữ (`hanzo-build-linux-amd64`) — không phút nào do GitHub lưu trữ**; GitHub chỉ điều phối, hạ tầng của chúng tôi làm việc. Đẩy lên GHCR dùng thẻ tự động của luồng; KMS (`kms.hanzo.ai`) chỉ cấp `KUBECONFIG` triển khai.
+
+Kho này dựng hai ảnh từ Dockerfile nhiều tầng tự dựng, nên không cần bước CI trước đó:
+
+| ảnh | tệp docker | thẻ |
+|---|---|---|
+| `ghcr.io/hanzoai/otel-collector` | `cmd/o11yotelcollector/Dockerfile.selfbuild` | `:zap-native-latest`, `:sha-<short>-amd64-zap-native` |
+| `ghcr.io/hanzoai/o11y-schema-migrator` | `cmd/o11yschemamigrator/Dockerfile.selfbuild` | `:latest`, `:sha-<short>-amd64` |
+
+**Đây là mẫu từ nay về sau cho mọi kho PaaS gốc.** Để nhận một kho mới: thêm `hanzo.yml` ở gốc và `cicd.yml` ở trên — không gì khác. Đừng thêm lô-gic dựng theo từng kho, trình chạy do GitHub lưu trữ, hay các phần dùng lại cũ `hanzoai/.github`, `docker-build.yml` và `o11y/primus.workflows` (cả hai đã bỏ ở đây).
+
+## Liên kết
+
+- [Mã nguồn](https://github.com/hanzoai/otel-collector)
+- Giấy phép: AGPL-3.0

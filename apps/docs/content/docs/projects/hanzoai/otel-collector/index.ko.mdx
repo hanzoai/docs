@@ -1,0 +1,38 @@
+---
+title: "Otel 수집기"
+description: "Hanzo O11y Otel 수집기 — OpenTelemetry Collector의 Hanzo 배포. ZAP-native와 OTLP를 hanzoai/datastore로 받아들인다"
+---
+
+<p align="center"><img src=".github/hero.svg" alt="otel-collector" width="880"></p>
+
+# Hanzo O11y Otel 수집기
+
+OpenTelemetry Collector의 Hanzo 배포. **ZAP-native**(`zap-proto/http`, `:4319`)와 OTLP(`:4317`/`:4318`)로 추적, 측정값, 로그를 받아 단 하나의 hanzoai/datastore(Datastore)에 쓴다. 상류 위에 `receiver/zapreceiver`와 `exporter/zapexporter`를 더한다.
+
+## CI/CD — 기준 형태 (오직 한 가지 방법)
+
+만들기, 시험, 배포는 뿌리의 **`hanzo.yml`** 하나와 약 일곱 줄의 **`.github/workflows/cicd.yml`**이 이끈다. 후자는 다시 쓸 수 있는 [`hanzoai/ci`](https://github.com/hanzoai/ci) 흐름을 가져온다:
+
+```yaml
+# .github/workflows/cicd.yml
+jobs:
+  cicd:
+    uses: hanzoai/ci/.github/workflows/build.yml@main
+    secrets: inherit
+```
+
+만들기, 시험, 배포의 논리는 모두 `hanzoai/ci`에 한 번만 있다. `hanzo.yml`(`images:` / `test:` / `deploy:` / `kms:`)을 읽고, 각 이미지를 만들어 밀어 넣고, 시험을 돌린 다음 배포를 굴린다. **만들기는 우리가 직접 호스트하는 arc 풀(`hanzo-build-linux-amd64`)에서 돈다 — GitHub가 호스트하는 분은 영**. GitHub는 조율만 하고, 일은 우리 기반이 한다. GHCR로 미는 일은 흐름의 자동 토큰을 쓴다. KMS(`kms.hanzo.ai`)는 배포용 `KUBECONFIG`만 준다.
+
+이 저장소는 스스로 만드는 다단계 Dockerfile에서 이미지 둘을 만든다. 그래서 CI의 선행 단계는 필요 없다:
+
+| 이미지 | docker 파일 | 태그 |
+|---|---|---|
+| `ghcr.io/hanzoai/otel-collector` | `cmd/o11yotelcollector/Dockerfile.selfbuild` | `:zap-native-latest`, `:sha-<short>-amd64-zap-native` |
+| `ghcr.io/hanzoai/o11y-schema-migrator` | `cmd/o11yschemamigrator/Dockerfile.selfbuild` | `:latest`, `:sha-<short>-amd64` |
+
+**이것이 앞으로 모든 고유 PaaS 저장소의 형태다.** 새 저장소를 들이려면 뿌리에 `hanzo.yml`과 위의 `cicd.yml`을 더한다 — 그뿐. 저장소마다의 만들기 논리, GitHub가 호스트하는 주자, 옛 재사용 `hanzoai/.github`, `docker-build.yml`, `o11y/primus.workflows`는 더하지 않는다 (둘 다 여기서 뺐다).
+
+## 링크
+
+- [소스](https://github.com/hanzoai/otel-collector)
+- 라이선스: AGPL-3.0

@@ -1,0 +1,82 @@
+---
+title: "Goexif"
+description: "Go 向けの EXIF 復号器 — goexif の Hanzo 分岐（BSD-2-Clause）。モジュール: github.com/hanzoai/goexif"
+---
+
+<p align="center"><img src=".github/hero.svg" alt="goexif" width="880"></p>
+
+goexif
+======
+
+[![GoDoc](https://godoc.org/github.com/hanzoai/goexif?status.svg)](https://godoc.org/github.com/hanzoai/goexif)
+
+基本的な exif と tiff の符号化データを復号する。まだアルファで、保証はない。提案と取り込み依頼を歓迎する。機能は二つのパッケージ、「exif」と「tiff」に分かれる。exif パッケージは tiff パッケージに依存する。
+
+goexif が気に入ったなら、Bitcoin Cash のチップを歓迎します: 1DrU5V37nTXuv4vnRLVpahJEjhdATNgoBh
+
+入れるには、端末で次を打つ:
+
+```
+go get github.com/hanzoai/goexif/exif
+```
+
+あるいは tiff パッケージだけ欲しいなら:
+
+```
+go get github.com/hanzoai/goexif/tiff
+```
+
+使用例:
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/hanzoai/goexif/exif"
+	"github.com/hanzoai/goexif/mknote"
+)
+
+func ExampleDecode() {
+	fname := "sample1.jpg"
+
+	f, err := os.Open(fname)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Optionally register camera makenote data parsing - currently Nikon and
+	// Canon are supported.
+	exif.RegisterParsers(mknote.All...)
+
+	x, err := exif.Decode(f)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	camModel, _ := x.Get(exif.Model) // normally, don't ignore errors!
+	fmt.Println(camModel.StringVal())
+
+	focal, _ := x.Get(exif.FocalLength)
+	numer, denom, _ := focal.Rat2(0) // retrieve first (only) rat. value
+	fmt.Printf("%v/%v", numer, denom)
+
+	// Two convenience functions exist for date/time taken and GPS coords:
+	tm, _ := x.DateTime()
+	fmt.Println("Taken: ", tm)
+
+	lat, long, _ := x.LatLong()
+	fmt.Println("lat, long: ", lat, ", ", long)
+}
+```
+
+<!--golang-->
+[![githalytics.com alpha](https://cruel-carlota.pagodabox.com/5e166f74cdb82b999ccd84e3c4dc4348 "githalytics.com")](http://githalytics.com/rwcarlsen/goexif)
+
+## リンク
+
+- [ソース](https://github.com/hanzoai/goexif)
+- ライセンス: BSD-2-Clause

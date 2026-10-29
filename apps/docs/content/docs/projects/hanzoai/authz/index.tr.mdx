@@ -1,0 +1,38 @@
+---
+title: "Authz"
+description: "Hanzo Authz — Go için erişim denetimi kitaplığı: ACL, RBAC ve ABAC ilke uygulaması"
+---
+
+Her Hanzo Go hizmetinin bir jetonu okuyup çağıranın bir şeyi yapıp yapamayacağına karar vermek için kullandığı erişim denetimi kitaplığı: JWT doğrulaması, beyanlar ve kuruluşlar, uygulamalar ile yollar üzerindeki yetki hesabı.
+
+## Kurulum
+
+```bash
+go get github.com/hanzoai/authz
+```
+
+## Kullanım
+
+Bir jetonu doğrulayın — IAM'in imzaladığı kitaplık budur, bu yüzden burada okuyan taraf imzalayanla imzalanan konuda ayrışamaz:
+
+```go
+claims, err := authz.Verify(token, keys, []string{"https://hanzo.id"})
+```
+
+`keys`, bir `func(kid string) []crypto.PublicKey` değeridir. Anahtar malzemesi bir **girdidir**: bir JWKS almak ve önbelleğe koymak G/Ç'dir ve bu paket bunların hiçbirini yapmaz — uç, almayı üstlenir ve sonucu içeri verir. nil bir `Keys`, ya da hiçbir şey çözmeyen biri, hiçbir şeyi doğrulamaz.
+
+Oradan itibaren `Claims`, çağıranın kimliğini, kuruluş üyeliklerini ve uygulama yetkilerini taşır; `ParsePath` ve `VerbOf` bir isteği, yetki hesabının karar verdiği çifte çevirir. `IsAPIKey`, bir `hk-` anahtarını JWT'den ayırır.
+
+Yalnızca IAM imzalayanının ürettiği algoritmalar kabul edilir — RSA ve EC, artı kuantum sonrası bir sertifika için ML-DSA-65. `none` ve HMAC reddedilir.
+
+## Belgeler
+
+Düzen için [`LLM.md`](LLM.md). `edge/` ve `serve/` paketleri G/Ç gereken parçaları tutar — anahtar getirme ve HTTP yüzeyi — ve bilerek yaprak paketin dışında kalır.
+
+## Lisans
+
+Bakınız [LICENSE](LICENSE).
+
+## Bağlantılar
+
+- [Kaynak](https://github.com/hanzoai/authz)

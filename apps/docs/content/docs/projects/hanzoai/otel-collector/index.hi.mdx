@@ -1,0 +1,38 @@
+---
+title: "Otel संग्राहक"
+description: "Hanzo O11y Otel संग्राहक — OpenTelemetry Collector का Hanzo वितरण: hanzoai/datastore में ZAP-native और OTLP प्रवेश"
+---
+
+<p align="center"><img src=".github/hero.svg" alt="otel-collector" width="880"></p>
+
+# Hanzo O11y Otel संग्राहक
+
+OpenTelemetry Collector का Hanzo वितरण। **ZAP-native** (`zap-proto/http`, `:4319`) तथा OTLP (`:4317`/`:4318`) पर अनुरेखण, माप और अभिलेख लेता है और एकमात्र hanzoai/datastore (Datastore) में लिखता है। मूल धारा के ऊपर `receiver/zapreceiver` और `exporter/zapexporter` जोड़ता है।
+
+## CI/CD — विहित प्रतिमान (एक ही तरीका)
+
+निर्माण, परीक्षा और परिनियोजन को जड़ का एक **`hanzo.yml`** और लगभग सात पंक्तियों का **`.github/workflows/cicd.yml`** चलाता है, जो पुन:प्रयोज्य प्रवाह [`hanzoai/ci`](https://github.com/hanzoai/ci) को लाता है:
+
+```yaml
+# .github/workflows/cicd.yml
+jobs:
+  cicd:
+    uses: hanzoai/ci/.github/workflows/build.yml@main
+    secrets: inherit
+```
+
+निर्माण, परीक्षा और परिनियोजन का सारा तर्क एक बार `hanzoai/ci` में रहता है। वह `hanzo.yml` (`images:` / `test:` / `deploy:` / `kms:`) पढ़ता है, प्रत्येक छवि बनाकर धकेलता है, परीक्षाएँ चलाता है और परिनियोजन को आगे बढ़ाता है। **निर्माण हमारे स्वयं होस्ट किए arc समूह (`hanzo-build-linux-amd64`) पर चलता है — GitHub पर होस्ट किए शून्य मिनट**; GitHub केवल संचालित करता है, काम हमारी अवसंरचना करती है। GHCR की ओर धक्का प्रवाह का स्वचालित टोकन उपयोग करता है; KMS (`kms.hanzo.ai`) केवल परिनियोजन का `KUBECONFIG` देता है।
+
+यह रिपॉजिटरी बहु-चरण Dockerfile से दो छवियाँ बनाती है जो स्वयं बनती हैं, इसलिए CI का पूर्व चरण आवश्यक नहीं:
+
+| छवि | docker फ़ाइल | चिह्न |
+|---|---|---|
+| `ghcr.io/hanzoai/otel-collector` | `cmd/o11yotelcollector/Dockerfile.selfbuild` | `:zap-native-latest`, `:sha-<short>-amd64-zap-native` |
+| `ghcr.io/hanzoai/o11y-schema-migrator` | `cmd/o11yschemamigrator/Dockerfile.selfbuild` | `:latest`, `:sha-<short>-amd64` |
+
+**मूल PaaS की सभी रिपॉजिटरी के लिए आगे यही प्रतिमान है।** नई रिपॉजिटरी जोड़ने के लिए: जड़ में एक `hanzo.yml` और ऊपर वाला `cicd.yml` रखें — और कुछ नहीं। प्रति रिपॉजिटरी निर्माण तर्क, GitHub पर होस्ट किए धावक, या विरासती पुन:प्रयोज्य `hanzoai/.github`, `docker-build.yml` और `o11y/primus.workflows` न जोड़ें (दोनों यहाँ हटा दिए गए)।
+
+## कड़ियाँ
+
+- [स्रोत](https://github.com/hanzoai/otel-collector)
+- लाइसेंस: AGPL-3.0

@@ -1,0 +1,38 @@
+---
+title: "Authz"
+description: "Hanzo Authz — 面向 Go 的存取控制程式庫：執行 ACL、RBAC 與 ABAC 原則"
+---
+
+Hanzo 的每個 Go 服務都用這套存取控制程式庫讀取權杖，並決定呼叫端能否做一件事：JWT 核驗、宣告，以及對組織、應用程式與路徑的授與計算。
+
+## 安裝
+
+```bash
+go get github.com/hanzoai/authz
+```
+
+## 使用方式
+
+核驗權杖——IAM 簽署用的就是同一套程式庫，因此這裡的讀取端無法在「簽了什麼」上與簽發端不一致：
+
+```go
+claims, err := authz.Verify(token, keys, []string{"https://hanzo.id"})
+```
+
+`keys` 是 `func(kid string) []crypto.PublicKey`。金鑰材料是**輸入**：取得並快取 JWKS 屬於輸入／輸出，這個套件一律不做——邊緣負責取得並把結果交進來。nil 的 `Keys`，或解析不到任何內容的，什麼都不核驗。
+
+由此，`Claims` 帶著呼叫端的身分、組織成員資格與應用程式授與；`ParsePath` 與 `VerbOf` 把請求變成授與計算所判定的那一對。`IsAPIKey` 把 `hk-` 金鑰與 JWT 分開。
+
+只接受 IAM 簽署端產出的演算法——RSA 與 EC，以及用於後量子憑證的 ML-DSA-65。`none` 與 HMAC 會被拒絕。
+
+## 文件
+
+佈局見 [`LLM.md`](LLM.md)。`edge/` 與 `serve/` 套件放著確實需要輸入／輸出的部分——取金鑰與 HTTP 表面——並刻意留在葉套件之外。
+
+## 授權
+
+請見 [LICENSE](LICENSE)。
+
+## 連結
+
+- [原始碼](https://github.com/hanzoai/authz)

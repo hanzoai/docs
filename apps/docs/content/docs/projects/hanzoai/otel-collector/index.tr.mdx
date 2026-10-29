@@ -1,0 +1,38 @@
+---
+title: "Otel toplayıcı"
+description: "Hanzo O11y Otel toplayıcı — OpenTelemetry Collector'ın Hanzo dağıtımı: hanzoai/datastore içine ZAP-native ve OTLP alımı"
+---
+
+<p align="center"><img src=".github/hero.svg" alt="otel-collector" width="880"></p>
+
+# Hanzo O11y Otel toplayıcı
+
+OpenTelemetry Collector'ın Hanzo dağıtımı. İzleri, metrikleri ve günlükleri **ZAP-native** (`zap-proto/http`, `:4319`) artı OTLP (`:4317`/`:4318`) üzerinden alır ve tek hanzoai/datastore (Datastore) içine yazar. Yukarı akışın üzerine `receiver/zapreceiver` ve `exporter/zapexporter` ekler.
+
+## CI/CD — ölçün örüntü (tek ve yalnız bir yol)
+
+Kurma, sınama ve dağıtımı kökteki tek bir **`hanzo.yml`** ile yaklaşık yedi satırlık **`.github/workflows/cicd.yml`** yönetir; bu dosya yeniden kullanılabilir [`hanzoai/ci`](https://github.com/hanzoai/ci) akışını içeri alır:
+
+```yaml
+# .github/workflows/cicd.yml
+jobs:
+  cicd:
+    uses: hanzoai/ci/.github/workflows/build.yml@main
+    secrets: inherit
+```
+
+Kurma, sınama ve dağıtım mantığının tümü bir kez `hanzoai/ci` içinde durur. `hanzo.yml` dosyasını (`images:` / `test:` / `deploy:` / `kms:`) okur, her imajı kurup iter, sınamaları çalıştırır ve dağıtımı yuvarlar. **Kurma, kendi barındırdığımız arc havuzunda (`hanzo-build-linux-amd64`) çalışır — GitHub'da barındırılan sıfır dakika**; GitHub yalnızca yönetir, işi altyapımız yapar. GHCR'ye itme, akışın otomatik jetonunu kullanır; KMS (`kms.hanzo.ai`) yalnızca dağıtım `KUBECONFIG` değerini verir.
+
+Bu depo, kendini kuran çok aşamalı Dockerfile dosyalarından iki imaj kurar; bu yüzden önceden bir CI adımı gerekmez:
+
+| imaj | docker dosyası | etiketler |
+|---|---|---|
+| `ghcr.io/hanzoai/otel-collector` | `cmd/o11yotelcollector/Dockerfile.selfbuild` | `:zap-native-latest`, `:sha-<short>-amd64-zap-native` |
+| `ghcr.io/hanzoai/o11y-schema-migrator` | `cmd/o11yschemamigrator/Dockerfile.selfbuild` | `:latest`, `:sha-<short>-amd64` |
+
+**Bu, tüm yerel PaaS depoları için bundan sonraki örüntüdür.** Yeni bir depoyu katmak için: köke bir `hanzo.yml` ve yukarıdaki `cicd.yml` ekleyin — başka bir şey yok. Depo başına kurma mantığı, GitHub'da barındırılan koşucular ya da eski yeniden kullanılabilirler `hanzoai/.github`, `docker-build.yml` ve `o11y/primus.workflows` eklemeyin (ikisi de burada kaldırıldı).
+
+## Bağlantılar
+
+- [Kaynak](https://github.com/hanzoai/otel-collector)
+- Lisans: AGPL-3.0

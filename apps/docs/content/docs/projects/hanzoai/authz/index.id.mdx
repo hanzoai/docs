@@ -1,0 +1,38 @@
+---
+title: "Authz"
+description: "Hanzo Authz — pustaka kendali akses untuk Go: penegakan kebijakan ACL, RBAC, dan ABAC"
+---
+
+Pustaka kendali akses yang dipakai setiap layanan Go Hanzo untuk membaca token dan memutuskan apakah pemanggil boleh melakukan sesuatu: verifikasi JWT, klaim, dan perhitungan pemberian atas organisasi, aplikasi, dan jalur.
+
+## Pemasangan
+
+```bash
+go get github.com/hanzoai/authz
+```
+
+## Cara memakai
+
+Verifikasi sebuah token — ini pustaka yang sama dengan yang dipakai IAM untuk menandatangani, jadi pembaca di sini tidak dapat berselisih dengan penerbit tentang apa yang ditandatangani:
+
+```go
+claims, err := authz.Verify(token, keys, []string{"https://hanzo.id"})
+```
+
+`keys` adalah `func(kid string) []crypto.PublicKey`. Bahan kunci adalah **masukan**: mengambil JWKS dan menyimpannya di tembolok adalah masukan/keluaran, dan paket ini tidak melakukan itu — tepi yang memiliki pengambilan dan menyerahkan hasilnya. `Keys` yang nil, atau yang tidak menyelesaikan apa pun, tidak memverifikasi apa pun.
+
+Dari situ, `Claims` membawa identitas pemanggil, keanggotaan organisasi, dan pemberian aplikasi; `ParsePath` dan `VerbOf` mengubah permintaan menjadi pasangan yang diputuskan oleh perhitungan pemberian. `IsAPIKey` membedakan kunci `hk-` dari JWT.
+
+Hanya algoritma yang dihasilkan penandatangan IAM yang diterima — RSA dan EC, plus ML-DSA-65 untuk sertifikat pascakuantum. `none` dan HMAC ditolak.
+
+## Dokumentasi
+
+[`LLM.md`](LLM.md) untuk tata letak. Paket `edge/` dan `serve/` memegang bagian yang memang perlu masukan/keluaran — pengambilan kunci dan permukaan HTTP — dan sengaja dijauhkan dari paket daun.
+
+## Lisensi
+
+Lihat [LICENSE](LICENSE).
+
+## Tautan
+
+- [Sumber](https://github.com/hanzoai/authz)

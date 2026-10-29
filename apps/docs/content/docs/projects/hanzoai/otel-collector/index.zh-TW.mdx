@@ -1,0 +1,38 @@
+---
+title: "Otel 蒐集器"
+description: "Hanzo O11y Otel 蒐集器 — Hanzo 的 OpenTelemetry Collector 發行版本：把 ZAP-native 與 OTLP 收進 hanzoai/datastore"
+---
+
+<p align="center"><img src=".github/hero.svg" alt="otel-collector" width="880"></p>
+
+# Hanzo O11y Otel 蒐集器
+
+Hanzo 的 OpenTelemetry Collector 發行版本。經 **ZAP-native**（`zap-proto/http`，`:4319`）以及 OTLP（`:4317`/`:4318`）接收追蹤、度量與日誌，並寫入唯一的 hanzoai/datastore（Datastore）。在上游之上加入 `receiver/zapreceiver` 與 `exporter/zapexporter`。
+
+## CI/CD — 基準樣式（只有這一種做法）
+
+建置、測試與部署由根目錄唯一的 **`hanzo.yml`** 以及約七行的 **`.github/workflows/cicd.yml`** 帶動，後者匯入可再用的 [`hanzoai/ci`](https://github.com/hanzoai/ci) 工作流程：
+
+```yaml
+# .github/workflows/cicd.yml
+jobs:
+  cicd:
+    uses: hanzoai/ci/.github/workflows/build.yml@main
+    secrets: inherit
+```
+
+全部建置、測試與部署邏輯只在 `hanzoai/ci` 放一份。它讀取 `hanzo.yml`（`images:` / `test:` / `deploy:` / `kms:`），建置並推送每個映像，執行測試，然後滾動部署。**建置跑在我們自架的 arc 池（`hanzo-build-linux-amd64`）上——GitHub 代管分鐘數為零**；GitHub 只負責編排，工作由我們的基礎設施來做。推送到 GHCR 使用工作流程的自動權杖；KMS（`kms.hanzo.ai`）只提供部署用的 `KUBECONFIG`。
+
+本儲存庫用以自行建置的多階段 Dockerfile 建出兩個映像，因此不需要 CI 的預先建置步驟：
+
+| 映像 | docker 檔案 | 標籤 |
+|---|---|---|
+| `ghcr.io/hanzoai/otel-collector` | `cmd/o11yotelcollector/Dockerfile.selfbuild` | `:zap-native-latest`, `:sha-<short>-amd64-zap-native` |
+| `ghcr.io/hanzoai/o11y-schema-migrator` | `cmd/o11yschemamigrator/Dockerfile.selfbuild` | `:latest`, `:sha-<short>-amd64` |
+
+**這是往後所有原生 PaaS 儲存庫的做法。** 接入新儲存庫：在根目錄加一份 `hanzo.yml` 和上面的 `cicd.yml`——除此之外不要加。不要加按儲存庫分開的建置邏輯、GitHub 代管的執行器，也不要加已淘汰的可再用流程 `hanzoai/.github`、`docker-build.yml` 與 `o11y/primus.workflows`（兩者已在此移除）。
+
+## 連結
+
+- [原始碼](https://github.com/hanzoai/otel-collector)
+- 授權: AGPL-3.0

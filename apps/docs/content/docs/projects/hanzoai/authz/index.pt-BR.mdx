@@ -1,0 +1,38 @@
+---
+title: "Authz"
+description: "Hanzo Authz — biblioteca de controle de acesso para Go: aplicação de políticas ACL, RBAC e ABAC"
+---
+
+A biblioteca de controle de acesso que todo serviço Go da Hanzo usa para ler um token e decidir se quem chama pode fazer algo: verificação de JWT, declarações e o cálculo das concessões sobre organizações, aplicativos e caminhos.
+
+## Instalação
+
+```bash
+go get github.com/hanzoai/authz
+```
+
+## Como usar
+
+Verifique um token — é a mesma biblioteca com que o IAM assina, então quem lê aqui não pode discordar do emissor sobre o que foi assinado:
+
+```go
+claims, err := authz.Verify(token, keys, []string{"https://hanzo.id"})
+```
+
+`keys` é um `func(kid string) []crypto.PublicKey`. O material de chaves é uma **entrada**: buscar um JWKS e guardá-lo em cache é E/S, e este pacote não faz nada disso — a borda é dona da busca e entrega o resultado. Um `Keys` nil, ou um que não resolve nada, não verifica nada.
+
+Dali, `Claims` carrega a identidade de quem chama, as filiações a organizações e as concessões de aplicativos; `ParsePath` e `VerbOf` transformam uma requisição no par sobre o qual o cálculo das concessões decide. `IsAPIKey` distingue uma chave `hk-` de um JWT.
+
+Só são aceitos os algoritmos que o signatário do IAM produz — RSA e EC, mais ML-DSA-65 para um certificado pós-quântico. `none` e HMAC são recusados.
+
+## Documentação
+
+[`LLM.md`](LLM.md) para o arranjo. Os pacotes `edge/` e `serve/` guardam as peças que precisam de E/S — a busca das chaves e a superfície HTTP — e ficam de propósito fora do pacote folha.
+
+## Licença
+
+Veja [LICENSE](LICENSE).
+
+## Ligações
+
+- [Fonte](https://github.com/hanzoai/authz)

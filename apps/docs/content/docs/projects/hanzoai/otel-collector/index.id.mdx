@@ -1,0 +1,38 @@
+---
+title: "Pengumpul Otel"
+description: "Pengumpul Hanzo O11y Otel — distribusi Hanzo dari OpenTelemetry Collector: masukan ZAP-native dan OTLP ke hanzoai/datastore"
+---
+
+<p align="center"><img src=".github/hero.svg" alt="otel-collector" width="880"></p>
+
+# Pengumpul Hanzo O11y Otel
+
+Distribusi Hanzo dari OpenTelemetry Collector. Menerima jejak, metrik, dan log lewat **ZAP-native** (`zap-proto/http`, `:4319`) serta OTLP (`:4317`/`:4318`) dan menulis ke satu-satunya hanzoai/datastore (Datastore). Menambah `receiver/zapreceiver` serta `exporter/zapexporter` di atas hulu.
+
+## CI/CD — pola kanonik (satu-satunya cara)
+
+Pembangunan, uji, dan penyebaran diarahkan oleh satu **`hanzo.yml`** di akar dan **`.github/workflows/cicd.yml`** sekitar tujuh baris, yang mengimpor alur yang dapat dipakai ulang [`hanzoai/ci`](https://github.com/hanzoai/ci):
+
+```yaml
+# .github/workflows/cicd.yml
+jobs:
+  cicd:
+    uses: hanzoai/ci/.github/workflows/build.yml@main
+    secrets: inherit
+```
+
+Seluruh logika pembangunan, uji, dan penyebaran hidup sekali di `hanzoai/ci`. Ia membaca `hanzo.yml` (`images:` / `test:` / `deploy:` / `kms:`), membangun dan mendorong setiap citra, menjalankan uji, dan menggulirkan penyebaran. **Pembangunan berjalan di kolam arc yang kami hos sendiri (`hanzo-build-linux-amd64`) — nol menit yang dihos GitHub**; GitHub hanya mengatur, infrastruktur kami yang bekerja. Dorongan ke GHCR memakai token otomatis alur; KMS (`kms.hanzo.ai`) hanya memasok `KUBECONFIG` penyebaran.
+
+Repositori ini membangun dua citra dari Dockerfile banyak tahap yang membangun dirinya sendiri, jadi tidak perlu langkah CI sebelumnya:
+
+| citra | berkas docker | tanda |
+|---|---|---|
+| `ghcr.io/hanzoai/otel-collector` | `cmd/o11yotelcollector/Dockerfile.selfbuild` | `:zap-native-latest`, `:sha-<short>-amd64-zap-native` |
+| `ghcr.io/hanzoai/o11y-schema-migrator` | `cmd/o11yschemamigrator/Dockerfile.selfbuild` | `:latest`, `:sha-<short>-amd64` |
+
+**Inilah pola ke depan untuk semua repositori PaaS asli.** Untuk menerima repositori baru: tambahkan `hanzo.yml` di akar dan `cicd.yml` di atas — tidak ada yang lain. Jangan tambahkan logika bangun per repositori, pelari yang dihos GitHub, atau yang dapat dipakai ulang warisan `hanzoai/.github`, `docker-build.yml`, dan `o11y/primus.workflows` (keduanya dihapus di sini).
+
+## Tautan
+
+- [Sumber](https://github.com/hanzoai/otel-collector)
+- Lisensi: AGPL-3.0
