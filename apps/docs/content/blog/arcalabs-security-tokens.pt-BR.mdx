@@ -1,0 +1,56 @@
+---
+title: "arcalabs: engenharia de valores mobiliários no nível do assembly"
+description: "st-contracts entrou em fevereiro de 2019. Tokens de valores ERC-1400, padrões de proxy atualizáveis, e o que significa construir infraestrutura financeira no nível de assembly da EVM."
+author: Zach Kelling
+date: 2019-02-21
+---
+
+# arcalabs: engenharia de valores mobiliários no nível do assembly
+
+O repositório st-contracts subiu sob arcalabs em 21 de fevereiro de 2019. Contratos de tokens de valores que implementam ERC-1400, com padrões de proxy atualizáveis feitos para conformidade regulatória. Este texto é sobre o que esse trabalho de fato envolveu e por que exigiu descer ao nível do assembly.
+
+## O que são tokens de valores
+
+Um token ERC-20 é sem permissão por desenho. Qualquer um pode deter um, transferir um, queimar um. Esse é o ponto — resistência à censura é uma função, não um defeito.
+
+Um token de valor é diferente. Ele representa uma fatia de propriedade num ativo real — participação societária, dívida, imóvel, cotas de fundo. A lei de valores impõe restrições de transferência: exigências de investidor qualificado, limites de jurisdição, períodos de bloqueio, obrigações de divulgação. O contrato do token tem de impor essas restrições de forma programática, ou é só um ERC-20 com outro nome.
+
+O ERC-1400 foi o padrão que surgiu para isso. Ele introduziu restrições de transferência por uma checagem `canTransfer` — antes de qualquer transferência executar, o contrato valida que o destinatário pode deter o token. Acrescentou transferências forçadas para atos de conformidade (um tribunal pode compelir a transferência do ativo; o contrato precisa saber lidar com isso). Acrescentou gestão de partições — fatias diferentes do mesmo valor, com características diferentes.
+
+Isso é infraestrutura financeira na camada do contrato inteligente. A aposta é outra que a de um protocolo DeFi — se o contrato do token tem um defeito, valores reais estão em risco. A barra de correção é mais alta.
+
+## Por que proxies atualizáveis
+
+Valores são instrumentos de vida longa. Um token de valor emitido em 2019 pode precisar impor regras de restrição de transferência de 2024. A EVM não deixa mudar o código de um contrato já implantado. Se a lógica fica congelada na implantação, ou você reimplanta (o que significa migrar todos os detentores, todos os saldos, todo o estado) ou fica preso no comportamento que entregou.
+
+O padrão de proxy resolve isso: implantar um contrato proxy cujo endereço nunca muda, e um contrato de lógica que guarda a implementação de fato. Os detentores interagem com o proxy. O proxy delega chamadas ao contrato de lógica. Quando é preciso atualizar a lógica, você implanta uma implementação nova e atualiza o ponteiro do proxy.
+
+O porém: padrões de proxy são sutis. Chamadas delegadas rodam o código do contrato de lógica no contexto de armazenamento do proxy. O leiaute de armazenamento no contrato de lógica tem de ser compatível com o do proxy, ou você corrompe o estado. O próprio mecanismo de atualização tem de ser protegido — uma atualização não autorizada é catastrófica.
+
+Acertar isso exigiu passar pelo código no nível de Solidity e depois no nível do bytecode da EVM. Não dá para confiar no compilador para tomar as decisões que aqui são necessárias. Inserções de assembly deixam verificar exatamente o que acontece com os slots de armazenamento, com os dados da chamada e com os valores de retorno.
+
+## Trabalho de EVM no nível do assembly
+
+A EVM é uma máquina de pilha. O compilador Solidity gera bytecode da EVM. Na maior parte do tempo a saída do compilador está boa e não precisa ser inspecionada. Em padrões de proxy e em caminhos críticos de gas, precisa.
+
+Assembly embutido em Solidity (blocos `assembly { }` com Yul) dá acesso direto às operações da EVM: `sload` e `sstore` para armazenamento, `calldataload` para ler os dados da chamada, `delegatecall` para o encaminhamento do proxy, `returndatacopy` para tratar valores de retorno. A função de encaminhamento do proxy, escrita em assembly, tem cerca de 30 linhas que tratam qualquer chamada corretamente, com sobrecarga mínima de gas.
+
+O enquadramento de HPC (computação de alto desempenho) que a arcalabs usou foi deliberado. Computação na Ethereum é cara. Cada instrução custa gas. Caminhos quentes otimizados em assembly — validação de transferência, encaminhamento do proxy, emissão de eventos — são sensivelmente mais baratos que os equivalentes em Solidity. Em qualquer volume real de transações, a economia de gas importa.
+
+## A ligação com a DEVxDAO
+
+A DEVxDAO era uma DAO na cadeia que financiava trabalho de infraestrutura de blockchain. A arcalabs recebeu uma bolsa pelo trabalho de tokens de valores — o reconhecimento formal de que a infraestrutura ERC-1400 era um bem público digno de financiamento, não só trabalho comercial.
+
+O modelo de DAO era imperfeito (toda DAO inicial é imperfeita), mas a tese estava certa: algum trabalho de infraestrutura não tem um modelo comercial óbvio e precisa de financiamento por bolsa. Contratos de tokens de valores em código aberto, que qualquer projeto pode usar, são esse tipo de trabalho. A ligação com a DEVxDAO foi a forma institucional da intuição cypherpunk — infraestrutura financeira deveria ser pública.
+
+## O que construir neste nível ensina
+
+Escrever assembly da EVM ensina que o computador não sabe o que você quer dizer. Ele executa o que você escreveu, com precisão, sem interpretação. Se você escreveu a coisa errada, ele executa a coisa errada, e o contrato do token de valor tem um defeito que pode só aparecer sob condições específicas, anos depois da implantação.
+
+Isso esclarece. A disciplina de escrever assembly — em que cada instrução é explícita, em que nada é implícito, em que se pode seguir exatamente o que acontece com cada bit — é a disciplina que se quer para toda infraestrutura financeira, mesmo quando se escreve num nível mais alto de abstração. A pergunta não é «isso parece certo?». É «o que exatamente isto executa, e é isso que eu quero?».
+
+Essa disciplina é o que torna o trabalho da arcalabs distinto do desenvolvimento típico de contratos inteligentes. Estávamos construindo para correção sob condições adversárias, para longevidade, para adaptação regulatória. O nível do assembly é onde se prova a correção, não onde se afirma.
+
+---
+
+*zeekay — tokens de valores precisam de engenharia de segurança. arcalabs.*

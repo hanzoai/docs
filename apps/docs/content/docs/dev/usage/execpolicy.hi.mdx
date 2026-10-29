@@ -1,0 +1,39 @@
+---
+title: निष्पादन नीति
+description: निष्पादन नीति के नियमों से नियंत्रित करें कि Hanzo Dev कमांड कैसे चलाता है.
+---
+
+## निष्पादन नीति
+
+Hanzo Dev निष्पादन नीतियों से तय करता है कि एजेंट कौन-से कमांड चला सकता है और कब अनुमोदन चाहिए।
+
+### सैंडबॉक्स मोड
+
+| मोड | विवरण |
+| --- | --- |
+| `off` | कोई सैंडबॉक्स नहीं (कमांड सीधे चलते हैं) |
+| `workspace-read` | कार्यस्थान पर केवल-पढ़ने की पहुँच |
+| `workspace-write` | कार्यस्थान पर पढ़ने और लिखने की पहुँच (full-auto का डिफ़ॉल्ट) |
+| `network-off` | नेटवर्क पहुँच बंद करता है |
+
+### अनुमोदन नीतियाँ
+
+| नीति | विवरण |
+| --- | --- |
+| `always` | निष्पादन से पहले हमेशा अनुमोदन माँगता है |
+| `on-failure` | केवल तब माँगता है जब कोई कमांड विफल हो (full-auto का डिफ़ॉल्ट) |
+| `on-request` | तब माँगता है जब मॉडल स्पष्ट रूप से अनुमोदन माँगे |
+| `never` | कभी अनुमोदन नहीं माँगता |
+
+### उपयोग
+
+```bash
+# Set sandbox mode
+dev --sandbox workspace-write "your prompt"
+
+# Set approval policy
+dev --ask-for-approval on-failure "your prompt"
+
+# Full auto (sandboxed + auto-approve)
+dev --full-auto "your prompt"
+```

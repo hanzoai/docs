@@ -1,0 +1,57 @@
+---
+title: 자주 묻는 질문
+description: Hanzo Dev에 대해 자주 묻는 질문.
+---
+
+## 어떤 모델을 지원하나?
+
+GPT-5.2를 감싼 내장 프리셋을 권한다(예: `code-gpt-5.2-codex`). 기본 추론 수준은 medium이다. 복잡한 작업은 `/model`로 high로 올린다.
+
+API 인증과 `--model` 플래그로 다른 모델도 쓸 수 있다.
+
+## 파일이 수정되지 않게 하려면?
+
+기본값에서 Hanzo Dev는 작업 디렉터리의 파일을 고칠 수 있다(Auto 모드). 수정을 막으려면 읽기 전용으로 실행한다.
+
+```bash
+dev --sandbox read-only
+```
+
+대화 도중에는 `/approvals`로 승인 수준을 바꾼다.
+
+## Windows에서 동작하나?
+
+Windows에서 직접 실행은 될 수 있으나 공식 지원은 아니다. [Windows Subsystem for Linux (WSL2)](https://learn.microsoft.com/en-us/windows/wsl/install)를 권한다.
+
+## Windows에서 에이전트를 못 찾는 이유
+
+Windows의 에이전트 탐색은 PATH와 파일 확장자의 영향을 받는다. 해결:
+
+### 절대 경로를 쓴다(권장)
+
+```toml
+[[agents]]
+name = "claude"
+command = "C:\\Users\\YourUser\\AppData\\Roaming\\npm\\claude.cmd"
+enabled = true
+```
+
+### npm 전역 설치 위치를 찾는다
+
+```cmd
+npm config get prefix
+```
+
+### PATH에 npm 디렉터리가 있는지 확인한다
+
+```powershell
+$env:PATH -split ';' | Select-String "npm"
+```
+
+### 파일 확장자를 확인한다
+
+Windows에서 Hanzo Dev는 `.exe`, `.cmd`, `.bat`, `.com` 확장자의 실행 파일을 찾는다. 절대 경로에는 올바른 확장자를 붙인다.
+
+## OpenAI Codex와의 관계
+
+Hanzo Dev는 Rust로 쓴 에이전트형 개발 CLI다. 다중 에이전트 오케스트레이션, MCP 클라이언트와 서버, 샌드박스 실행 정책, Hanzo AI 인프라와의 직접 연동을 갖춘다. 이름은 2023년 3월에 중단된 OpenAI의 2021 Codex 모델과 무관하다.

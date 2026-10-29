@@ -1,0 +1,51 @@
+---
+title: Mastra
+description: "Нет фабрики провайдера. Базовый URL — это поле url объекта model агента, рядом с id маршрутизации."
+---
+
+У Mastra нет фабрики провайдера для этого. Адрес — поле объекта `model` агента: **`id`** и **`url`**.
+
+```bash
+npm i @mastra/core
+```
+
+```ts
+import { Agent } from "@mastra/core/agent";
+
+export const agent = new Agent({
+  id: "researcher",
+  name: "Researcher",
+  instructions: "Answer precisely.",
+  model: {
+    id: "hanzo/zen5",
+    url: "https://api.hanzo.ai/v1",
+    apiKey: process.env.HANZO_API_KEY,
+  },
+});
+```
+
+Попадает на `POST /v1/chat/completions`.
+
+Две вещи, о которых документация говорит прямо. `url` должен быть базовым URL OpenAI-совместимой конечной точки, а не отдельной конечной точкой чата. А `id` — форма маршрутизации: `provider/model`, когда удалённая сторона ждёт голое имя модели, `gateway/provider/model`, когда собственное пространство имён моделей удалённой стороны уже несёт провайдера. Поддерживаются `headers` на модель, с документированным приоритетом над заголовками клиента.
+
+## MCP
+
+`MCPClient` приходит из `@mastra/mcp`. URL — это ключ `url`, хранящий объект `URL`, для каждого именованного сервера.
+
+```ts
+import { MCPClient } from '@mastra/mcp';
+
+export const mcp = new MCPClient({
+  id: 'hanzo-mcp',
+  servers: {
+    hanzo: {
+      url: new URL('https://api.hanzo.ai/v1/mcp'),
+      requestInit: { headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` } },
+    },
+  },
+});
+
+const tools = await mcp.listTools();
+```
+
+`listToolsets()` — вариант на запрос, когда инструменты нельзя разделять между одновременными пользователями.

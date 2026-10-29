@@ -1,0 +1,63 @@
+---
+title: "Hanzo Console: Birleşik LLM gözlemlenebilirliği"
+description: "Hanzo Console yayında — LLM uygulamalarını tüm sağlayıcılarda gözlemlemek, hata ayıklamak ve iyileştirmek için birleşik bir geliştirme ortamı."
+author: Zach Kelling
+date: 2025-03-10
+---
+
+# Hanzo Console: Birleşik LLM gözlemlenebilirliği
+
+LLM uygulamalarını ölçekte kurmak, gözü kapalı uçmaktır. Modellere istek gönderir, yanıt alırsınız ve işlerin yolunda gitmesini umarsınız. Gitmediğinde — çıktılar yanlış, gecikme sıçrar, maliyet patlar — nedenini göremezsiniz.
+
+Bugün Hanzo Console'u yayınlıyoruz: LLM uygulamaları için birleşik bir gözlemlenebilirlik platformu.
+
+## Console ne yapar
+
+Console, tüm sağlayıcılardaki LLM kullanımınızın tam resmini verir:
+
+**İzleme**: Her LLM çağrısı, tam istek ve yanıt, gecikme, token sayısı ve maliyetle kaydedilir. Birebir promptları, birebir tamamlamaları ve token düzeyindeki zamanlamayı görün.
+
+**Maliyet takibi**: Modele, projeye, kullanıcıya ve API anahtarına göre gerçek zamanlı maliyet. Bütçenin nereye gittiğini görün ve buna göre iyileştirin.
+
+**Kalite izleme**: Çıktı kalitesini zaman içinde izleyin. Gerilemeleri kullanıcılara ulaşmadan yakalayın. Promptları istatistiksel anlamlılıkla A/B testinden geçirin.
+
+**Çoklu sağlayıcı**: OpenAI, Anthropic, Together AI ve kullandığınız her diğer sağlayıcı için tek pano. Beş ayrı faturalama portalından raporları birleştirmeyi bırakın.
+
+## Entegrasyon vergisi
+
+Her LLM sağlayıcısı bir tür kullanım panosu sunar. Birden fazla sağlayıcı kullanıyorsanız — çoğu üretim uygulaması kullanır — beş farklı şemaya sahip beş sistemin raporlarını uzlaştırıyorsunuz.
+
+Console sağlayıcıdan bağımsızdır. Bir kez enstrümante edin, her şeyi görün.
+
+```python
+from hanzo import Console
+
+console = Console(api_key="your-key")
+
+# Automatic tracing with context manager
+with console.trace("user_query"):
+    response = openai.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": user_input}]
+    )
+```
+
+## Prompt yönetimi
+
+Console bir prompt kaydı içerir. Promptlarınızı sürümlendirin, hangi sürümlerin yayında olduğunu izleyin, sürümler arasında performansı karşılaştırın.
+
+Koddaki promptların sorunu: eskiler, çatallanır ve üretimde hangi sürümün çalıştığını kimse bilmez. Console, promptları birinci sınıf yönetilen eserler haline getirir.
+
+## Veri kümesi derleme
+
+Üretim izlerini değerlendirme veri kümelerine çevirin. İyi çıktıları işaretleyin, kötüleri bayraklayın ve gerçek kullanımdan doğrudan bir referans veri kümesi kurun.
+
+İnce ayar yapmaya veya sağlayıcı değiştirmeye hazır olduğunuzda, elinizde sentetik örnekler değil, gerçek üretim trafiğini yansıtan bir veri kümesi olur.
+
+## Şimdi kullanılabilir
+
+Console [console.hanzo.ai](https://console.hanzo.ai) adresinde. Ücretsiz katman ayda 50.000 iz içerir. Kurumsal için kendi ortamınızda barındırma desteklenir.
+
+---
+
+*Zach Kelling, Hanzo AI'nin kurucusudur (Techstars '17).*

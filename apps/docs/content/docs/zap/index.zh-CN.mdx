@@ -1,0 +1,100 @@
+---
+title: ZAP 协议
+description: Zero-Copy App Proto — 面向 AI 智能体通信的高性能 Cap'n Proto RPC。比 MCP 快 10–100 倍，并带后量子安全。
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# ZAP 协议
+
+**ZAP**（Zero-Copy App Proto）是基于 Cap'n Proto 的高性能 AI 智能体通信协议。它完全兼容 MCP，性能提升 10–100 倍，具备后量子安全，并原生支持 11 种编程语言。
+
+```bash title="Install"
+curl -fsSL https://hanzo.sh | sh && hanzo mcp launch zap
+```
+
+## 为什么选择 ZAP
+
+- **零拷贝性能** — Cap'n Proto 的零拷贝序列化去掉了解析开销
+- **兼容 MCP** — 与 Model Context Protocol 服务器完全向后兼容
+- **后量子安全** — 面向未来的 ML-KEM 与 ML-DSA 密码学
+- **多语言** — 为 Rust、Go、Python、JavaScript、C++ 以及另外 6 种语言提供原生绑定
+- **智能体共识** — 内置投票，用于汇总多个智能体的响应
+- **W3C DID** — 原生支持去中心化身份
+
+<Cards>
+  <Card
+    title="概览"
+    description="架构与核心概念"
+    href="/docs/zap/overview"
+  />
+  <Card
+    title="入门"
+    description="安装 ZAP 并构建第一个智能体"
+    href="/docs/zap/getting-started"
+  />
+  <Card
+    title="模式语言"
+    description="Cap'n Proto 模式参考"
+    href="/docs/zap/schema"
+  />
+  <Card
+    title="协议规范"
+    description="线路格式与 RPC 细节"
+    href="/docs/zap/protocol"
+  />
+  <Card
+    title="语言绑定"
+    description="11 种语言的 SDK 文档"
+    href="/docs/zap/bindings"
+  />
+  <Card
+    title="进阶主题"
+    description="后量子密码、共识、区块链"
+    href="/docs/zap/advanced"
+  />
+</Cards>
+
+## 快速示例
+
+```c title="zap.capnp"
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+}
+```
+
+```rust title="Rust Example"
+use zap_protocol::{Zap, ClientInfo};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = Zap::connect("zap://localhost:9000").await?;
+    let info = client.init(ClientInfo::new("my-agent", "1.0.0")).await?;
+
+    let tools = client.list_tools().await?;
+    for tool in tools {
+        println!("Tool: {} - {}", tool.name, tool.description);
+    }
+
+    Ok(())
+}
+```
+
+## ZAP 与 MCP
+
+| 特性 | MCP | ZAP |
+|---------|-----|-----|
+| 序列化 | JSON-RPC | Cap'n Proto |
+| 性能 | 基线 | 快 10–100 倍 |
+| 内存 | 高（解析） | 零拷贝 |
+| 后量子 | 否 | ML-KEM, ML-DSA |
+| 门限签名 | 否 | Corona |
+| DID 支持 | 否 | W3C DIDs |
+| 智能体共识 | 否 | 内置投票 |
+
+ZAP 包含 **MCP Gateway 模式**，便于从现有 MCP 服务器平滑迁移。

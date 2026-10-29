@@ -1,44 +1,22 @@
-import '@hanzo/docs/ui/style.css';
-import { RootProvider } from '@hanzo/docs/ui/provider/next';
+import '@hanzo/docs-base-ui/style.css';
+import { RootProvider } from '@hanzo/docs-base-ui/provider/next';
 import { Zen } from '@hanzo/font';
-import { defineI18nUI } from '@hanzo/docs/ui/i18n';
-import { i18n } from '@/lib/i18n';
-
-const { provider } = defineI18nUI(i18n, {
-  translations: {
-    en: {
-      displayName: 'English',
-    },
-    cn: {
-      displayName: 'Chinese',
-      toc: '目錄',
-      search: '搜尋文檔',
-      lastUpdate: '最後更新於',
-      searchNoResult: '沒有結果',
-      previousPage: '上一頁',
-      nextPage: '下一頁',
-      chooseLanguage: '選擇語言',
-    },
-    vi: {
-      displayName: 'Vietnamese',
-      toc: 'Trên trang này',
-      search: 'Tìm kiếm',
-      lastUpdate: 'Cập nhật lần cuối vào',
-      searchNoResult: 'Không tìm thấy kết quả',
-      previousPage: 'Trang trước',
-      nextPage: 'Trang tiếp',
-      chooseLanguage: 'Chọn ngôn ngữ',
-      chooseTheme: 'Giao diện',
-      editOnGithub: 'Chỉnh sửa trên GitHub',
-      tocNoHeadings: 'Không có tiêu đề',
-    },
-  },
-});
+import { notFound } from 'next/navigation';
+import { directionOf, htmlLang } from '@hanzo/docs-core/i18n';
+import { i18nProvider } from '@hanzo/docs-base-ui/i18n';
+import { i18n, translations } from '@/lib/i18n';
 
 export default async function Layout({ params, children }: LayoutProps<'/[lang]'>) {
   const { lang } = await params;
+  if (!i18n.languages.includes(lang)) notFound();
+
   return (
-    <html lang={lang} className={Zen.className} suppressHydrationWarning>
+    <html
+      lang={htmlLang(lang)}
+      dir={directionOf(lang)}
+      className={Zen.className}
+      suppressHydrationWarning
+    >
       <body
         style={{
           display: 'flex',

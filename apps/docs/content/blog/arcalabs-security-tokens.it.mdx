@@ -1,0 +1,56 @@
+---
+title: "arcalabs: ingegneria dei titoli a livello di assembler"
+description: "st-contracts committato nel febbraio 2019. Token di titoli ERC-1400, schemi di proxy aggiornabili, e cosa significa costruire infrastruttura finanziaria al livello di assembler dell'EVM."
+author: Zach Kelling
+date: 2019-02-21
+---
+
+# arcalabs: ingegneria dei titoli a livello di assembler
+
+Il repository st-contracts è stato pubblicato sotto arcalabs il 21 febbraio 2019. Contratti di token di titoli che implementano ERC-1400, con schemi di proxy aggiornabili costruiti per la conformità normativa. Questo testo riguarda ciò che quel lavoro ha davvero comportato e perché ha richiesto di scendere al livello dell'assembler.
+
+## Cosa sono i token di titoli
+
+Un token ERC-20 è senza permessi per progetto. Chiunque può detenerne uno, trasferirlo, bruciarlo. È il punto: la resistenza alla censura è una funzione, non un difetto.
+
+Un token di titolo è diverso. Rappresenta una quota di proprietà in un attivo reale — capitale, debito, immobili, quote di fondi. La legge sui titoli impone restrizioni al trasferimento: requisiti di investitore qualificato, limiti di giurisdizione, periodi di blocco, obblighi di informativa. Il contratto del token deve applicare queste restrizioni in modo programmatico, altrimenti è solo un ERC-20 con un altro nome.
+
+ERC-1400 è stato lo standard emerso per questo. Ha introdotto restrizioni al trasferimento tramite un controllo `canTransfer`: prima che un trasferimento venga eseguito, il contratto verifica che il destinatario possa detenere il token. Ha aggiunto trasferimenti forzati per gli atti di conformità (un tribunale può costringere il trasferimento dell'attivo; il contratto deve saperlo fare). Ha aggiunto la gestione delle partizioni — tranche diverse dello stesso titolo, con caratteristiche diverse.
+
+Questa è infrastruttura finanziaria allo strato del contratto intelligente. La posta in gioco è diversa da un protocollo DeFi: se il contratto del token ha un difetto, sono a rischio titoli reali. L'asticella della correttezza è più alta.
+
+## Perché proxy aggiornabili
+
+I titoli sono strumenti di lunga durata. Un token di titolo emesso nel 2019 può dover applicare regole di restrizione al trasferimento del 2024. L'EVM non consente di cambiare il codice di un contratto già distribuito. Se la logica è congelata al momento della distribuzione, o si ridistribuisce (il che significa migrare tutti i detentori, tutti i saldi, tutto lo stato) o si resta bloccati col comportamento consegnato.
+
+Lo schema del proxy risolve questo: si distribuisce un contratto proxy il cui indirizzo non cambia mai, e un contratto di logica che tiene l'implementazione reale. I detentori interagiscono col proxy. Il proxy delega le chiamate al contratto di logica. Quando serve aggiornare la logica, si distribuisce una nuova implementazione e si aggiorna il puntatore del proxy.
+
+L'insidia: gli schemi di proxy sono sottili. Le chiamate delegate eseguono il codice del contratto di logica nel contesto di storage del proxy. La disposizione dello storage nel contratto di logica deve essere compatibile con quella del proxy, altrimenti si corrompe lo stato. Il meccanismo di aggiornamento stesso deve essere protetto — un aggiornamento non autorizzato è catastrofico.
+
+Farlo bene ha richiesto di attraversare il codice al livello di Solidity e poi al livello del bytecode dell'EVM. Non ci si può fidare del compilatore per le decisioni che servono qui. Gli inserti di assembler permettono di verificare esattamente cosa accade agli slot di storage, ai dati di chiamata e ai valori di ritorno.
+
+## Lavoro EVM a livello di assembler
+
+L'EVM è una macchina a pila. Il compilatore Solidity genera bytecode EVM. Il più delle volte l'output del compilatore va bene e non serve ispezionarlo. Per gli schemi di proxy e per i percorsi critici sul gas, sì.
+
+L'assembler inline in Solidity (blocchi `assembly { }` con Yul) dà accesso diretto alle operazioni dell'EVM: `sload` e `sstore` per lo storage, `calldataload` per leggere i dati di chiamata, `delegatecall` per l'inoltro del proxy, `returndatacopy` per gestire i valori di ritorno. La funzione di inoltro del proxy, scritta in assembler, è di circa 30 righe che gestiscono qualsiasi chiamata in modo corretto, con un sovraccarico minimo di gas.
+
+L'inquadramento HPC (calcolo ad alte prestazioni) usato da arcalabs era deliberato. Il calcolo su Ethereum è costoso. Ogni istruzione costa gas. I percorsi caldi ottimizzati in assembler — validazione dei trasferimenti, inoltro del proxy, emissione di eventi — sono sensibilmente più economici dei loro equivalenti Solidity. A qualsiasi volume reale di transazioni, il risparmio di gas conta.
+
+## Il legame con DEVxDAO
+
+DEVxDAO era una DAO sulla catena che finanziava lavoro di infrastruttura blockchain. arcalabs ha ricevuto un contributo per il lavoro sui token di titoli — il riconoscimento formale che l'infrastruttura ERC-1400 era un bene pubblico degno di finanziamento, non solo lavoro commerciale.
+
+Il modello DAO era imperfetto (ogni DAO delle origini lo è), ma la tesi era giusta: certo lavoro di infrastruttura non ha un modello commerciale ovvio e ha bisogno di finanziamento a contributo. Contratti di token di titoli a sorgente aperta, utilizzabili da qualsiasi progetto, sono quel tipo di lavoro. Il legame con DEVxDAO era la forma istituzionale dell'intuizione cypherpunk — l'infrastruttura finanziaria dovrebbe essere pubblica.
+
+## Cosa insegna costruire a questo livello
+
+Scrivere assembler EVM insegna che il computer non sa cosa intendi. Esegue ciò che hai scritto, con precisione, senza interpretazione. Se hai scritto la cosa sbagliata, esegue la cosa sbagliata, e il contratto del token di titolo ha un difetto che può manifestarsi solo in condizioni specifiche, anni dopo la distribuzione.
+
+Questo chiarisce. La disciplina di scrivere assembler — dove ogni istruzione è esplicita, dove nulla è implicito, dove si può seguire esattamente cosa accade a ogni bit — è la disciplina che si vuole per tutta l'infrastruttura finanziaria, anche quando si scrive a un livello di astrazione più alto. La domanda non è «sembra giusto?». È «che cosa esegue esattamente questo, ed è ciò che voglio?».
+
+Quella disciplina è ciò che distingue il lavoro di arcalabs dallo sviluppo abituale di contratti intelligenti. Costruivamo per la correttezza in condizioni avversarie, per la longevità, per l'adattamento normativo. Il livello dell'assembler è dove si dimostra la correttezza, non dove la si afferma.
+
+---
+
+*zeekay — i token di titoli hanno bisogno di ingegneria della sicurezza. arcalabs.*

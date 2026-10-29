@@ -1,0 +1,157 @@
+---
+title: Hanzo Chat
+description: Hanzo Cloud의 채팅 앱 — enso와 Zen 모델, MCP 도구, 에이전트, 파일 업로드와 RAG. chat.hanzo.ai에서 호스팅하거나 직접 호스팅합니다.
+index: true
+---
+
+import { Cards, Card } from '@hanzo/docs-base-ui/components/card'
+import { LayoutGrid } from 'lucide-react'
+
+# Hanzo Chat
+
+Hanzo Chat은 [LibreChat](https://librechat.ai) 위에 만든 Hanzo Cloud의 채팅 앱입니다. 우리 모델 — 프런티어 계열 **enso**와 오픈 웨이트 계열 **Zen** — 을 MCP 도구, 구성 가능한 에이전트, RAG가 있는 파일 업로드, 시각, 대화 기록, 프리셋, 플러그인과 함께 실행합니다. 외부 연구실의 모델도 실리며, 같은 모델 메뉴에 나타납니다.
+
+호스팅 서비스로 [chat.hanzo.ai](https://chat.hanzo.ai)에서, 또는 Docker로 직접 호스팅할 수 있습니다.
+
+## 빠른 시작
+
+### 호스팅(권장)
+
+1. [chat.hanzo.ai](https://chat.hanzo.ai)로 이동합니다
+2. Hanzo 계정으로 로그인합니다
+3. **$5 무료 크레딧**이 자동으로 적용됩니다
+4. 모델을 고르고 대화를 시작합니다
+
+### 직접 호스팅
+
+```bash
+git clone https://github.com/hanzoai/chat
+cd chat
+cp .env.example .env
+# Edit .env with your HANZO_API_KEY
+docker compose up -d
+# Open http://localhost:3081
+```
+
+### API
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen5",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+## SDK 사용
+
+### Python
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="sk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen5",
+    messages=[{"role": "user", "content": "Hello, Zen."}]
+)
+print(response.choices[0].message.content)
+```
+
+### TypeScript
+
+```typescript
+import Hanzo from '@hanzo/ai'
+
+const client = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+
+const completion = await client.chat.completions.create({
+  model: 'zen5',
+  messages: [{ role: 'user', content: 'Hello, Zen.' }],
+})
+console.log(completion.choices[0].message.content)
+```
+
+### 기존 HTTP 클라이언트
+
+`/v1/chat/completions`는 chat-completions JSON 형태를 받고 돌려줍니다. 그래서
+그 형태에 맞춰 이미 작성된 클라이언트는 기본 URL이
+`https://api.hanzo.ai/v1`을 가리키고 Hanzo 키를 보내면 여기서 동작합니다. 모델 id는 공급자 사이에
+옮길 수 없습니다 — `zen5`와 `enso`는 여기에만 있습니다.
+
+## 아키텍처
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        HANZO CHAT                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │ React Client │  │ Node.js API  │  │    DocumentDB    │  │
+│  │              │  │              │  │                  │  │
+│  │ - Chat UI    │  │ - REST API   │  │ - Messages       │  │
+│  │ - Model Sel  │  │ - WebSocket  │  │ - Conversations  │  │
+│  │ - File Upload│  │ - MCP Broker │  │ - Users          │  │
+│  │ - Agents     │  │ - Auth       │  │ - Presets        │  │
+│  └──────────────┘  └──────────────┘  └──────────────────┘  │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │              Provider Layer (AI API)            │    │
+│  │  Zen · OpenAI · Anthropic · Google · Meta · …       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Search       │  KV     │  S3     │  RAG API       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 엔드포인트
+
+| 환경 | URL |
+|-------------|-----|
+| 프로덕션 | `https://chat.hanzo.ai` |
+| API | `https://api.hanzo.ai/v1` |
+| 로컬 | `http://localhost:3081` |
+
+## 요금
+
+- 새 계정마다 **$5 무료 크레딧**(30일 후 만료)
+- **선불 청구** — [console.hanzo.ai](https://console.hanzo.ai)에서 크레딧을 추가합니다
+- 입력 **$0.34/MTok**부터 (`zen5-flash`)
+- **뜻밖의 청구서 없음** — 크레딧이 떨어지면 서비스가 멈춥니다
+
+<Cards>
+  <Card title="기능" href="/docs/chat/features">
+    프리셋, 파일 업로드, RAG, 검색, 시각, 대화 관리
+  </Card>
+  <Card title="구성" href="/docs/chat/configuration">
+    chat.yaml 참조, 엔드포인트, MCP 도구, 모델 구성
+  </Card>
+  <Card title="모델" href="/docs/chat/models">
+    메뉴의 모든 모델, 컨텍스트 창과 요율
+  </Card>
+  <Card title="에이전트" href="/docs/chat/agents">
+    시스템 프롬프트와 도구 접근이 있는 맞춤 AI 에이전트
+  </Card>
+  <Card title="직접 호스팅" href="/docs/chat/self-hosting">
+    Docker, Kubernetes, 클라우드 배포 안내
+  </Card>
+  <Card title="인증" href="/docs/chat/authentication">
+    Hanzo IAM, OAuth2, 소셜 로그인, SSO
+  </Card>
+</Cards>
+
+{/* domain-index */}
+
+## 이 절에서
+
+<Cards>
+  <Card icon={<LayoutGrid />} title="Hanzo Dev" href="/docs/dev" description="터미널용 AI 코딩 도우미. Hanzo Dev를 설치하고, 구성하고, 운영합니다." />
+  <Card icon={<LayoutGrid />} title="연동" href="/docs/guides/integrations" description="블롭 저장소, Slack, Mixpanel, Insights를 프로젝트에 연결합니다." />
+  <Card icon={<LayoutGrid />} title="연동과 확장" href="/docs/apps" description="브라우저, 편집기, 데스크톱, 문서, 디자인 도구, 업무 앱에 Hanzo를 설치하고 연결합니다 — 하나…" />
+</Cards>

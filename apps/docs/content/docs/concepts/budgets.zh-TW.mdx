@@ -1,0 +1,157 @@
+---
+title: 預算
+description: 智慧體在花費之前先被報價，將要突破時會被拒絕。四個上限，整數微美元，以及一份它仍在執行時就能讀到的拒絕。
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**讀完這一頁，你可以封頂智慧體的花費，讀出它已經花了多少，並把
+預算拒絕和模型失敗區分開。**
+
+## 預算是什麼
+
+智慧體發出的每一次模型呼叫和每一次有價工具呼叫，都在 **發出之前先報價** —
+這次呼叫可能花費的上限 — 這份報價按下面的順序，對照四件事檢查：
+
+1. **你的組織餘額** — 到底能不能付
+2. **智慧體的週期上限** — `cap_micro_usd`，減去本週期已花的
+3. **任務上限** — `max_task_micro_usd`，減去這次執行已花的
+4. **工作階段的預算** — `budget_micro_usd`，減去本次工作階段已花的
+
+其中任何一個都會拒絕這次呼叫。沒有旗標，也沒有旁路：一次執行只有穿過這道門
+才能到達模型。
+
+## 錢是整數微美元
+
+每一筆金額都是整數個微美元，欄位以後綴
+`_micro_usd` 結尾。**1,000,000 是一美元**，所以 `11902000` 是 11.902 美元，`250` 是
+一美分的四十分之一。一次呼叫只花費幾分之一美分；用美分保存的上限
+看不見這一筆。
+
+## 宣告預算
+
+定義智慧體時，這三個欄位都是必需的。
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "triage",
+    "model": "zen-1",
+    "instructions": "Triage inbound issues.",
+    "cap_micro_usd": 20000000,
+    "max_task_micro_usd": 500000,
+    "period": "month"
+  }'
+```
+
+這個智慧體每月可以花 **20 美元**，它的任何一次執行都不能花超過
+**0.50 美元**。
+
+- `cap_micro_usd` 必須為正。上限為零意味著沒有限制也沒有
+  紀錄，而這正是預算存在所要去掉的狀態。
+- `max_task_micro_usd` 必須為正，並且不能超過上限。
+- `period` 是 `day`、`week` 或 `month`。
+
+週期 **按 UTC 與日曆對齊**：`month` 指的是這個月，不是從第一次呼叫起的三十
+天，`week` 從星期一開始。視窗在翻轉後的
+第一次呼叫時滾動，`consumed_micro_usd` 回到零。
+
+## 讀出它花了多少
+
+```
+GET /v1/agent/{ref}/spend
+```
+
+```json
+{
+  "cap_micro_usd": 20000000,
+  "max_task_micro_usd": 500000,
+  "period": "month",
+  "consumed_micro_usd": 11902000,
+  "remaining_micro_usd": 8098000,
+  "by_component": { "model": 11431000, "computer": 402000, "tool": 69000 }
+}
+```
+
+`by_component` 把花費分成三路：**model** 是智慧體買下的每一次補全，
+**computer** 是它駐留過的執行時期，**tool** 是一次有價的
+工具呼叫。沒有花費的元件是 **缺席，不是零**。
+
+## 拒絕長什麼樣
+
+一次突破以 `402` 回答，代碼是 `budget_exceeded`：
+
+```json
+{
+  "error": {
+    "code": "budget_exceeded",
+    "message": "task budget exceeded: this call would cost up to 620000 micro-USD and 118000 remain",
+    "event": "budget.exceeded",
+    "scope": "task",
+    "component": "model",
+    "quote_micro_usd": 620000,
+    "remaining_micro_usd": 118000
+  }
+}
+```
+
+`scope` 指出是哪一個上限拒絕的 — `agent`、`task` 或 `session` — 好讓你知道
+該提高的是這個月、這一次執行，還是這一個工作階段。
+
+<Callout>
+**智慧體在帶內被告知。** 在一個工作階段之下，同一份承載會作為來自 `budget` 的狀態事件
+附加到工作階段的事件串流，於是智慧體在仍在執行時就能讀到
+自己的拒絕，並可以收尾 — 寫下它已有的，
+說明它為什麼停 — 而不是在一次失敗的呼叫上崩潰。
+</Callout>
+
+`budget_exceeded` 不是模型失敗。模型失敗的呼叫會重試；預算拒絕的
+呼叫不會，因為重試會再次被拒絕。
+
+## 報價是上限，結算是實際
+
+報價故意偏大：將要傳送的提示，加上請求允許的最大
+補全 — `max_tokens`，或者請求沒有指定時的 4,096 —
+按平台的推論費率計算。
+
+呼叫發生之後，閘道 **實際報告** 的數量會對照報價檢查過的
+每一筆累計結算，差額回到上限。失敗的呼叫從不結算，所以從不計費，
+它的餘量會回來。
+
+所以智慧體可能在餘量看起來足夠時被拒絕：這道門
+比較的是下一次呼叫的上限，不是它可能的花費。
+
+## 工作階段自己的預算
+
+工作階段可以在智慧體之下攜帶自己的上限：
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent/sessions/$ID/budget \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"budget_micro_usd": 2000000}'
+```
+
+達到自己預算的工作階段是 **暫停，不是失敗** — 你提高上限或去掉它的那一刻，工作就繼續。三條規則：
+
+- 替換值必須 **嚴格大於** 工作階段已經消耗的
+- **去掉是單向的**：`{"budget_micro_usd": null}` 把上限永久拿掉，
+  那個工作階段不能再被給回一個
+- **建立時沒有**預算的工作階段，以後也不能再給
+
+每一條都以 `409` 拒絕，而不是悄悄做別的事。
+
+## 在預算存在之前定義的智慧體
+
+它帶著零上限，並且 **不受限** — 它的花費仍然被累計，
+可以在 `/spend` 讀到，一次更新會給它一個上限。拒絕每一個在功能發行前
+定義的智慧體，那是一次中斷，不是一條策略。
+
+## 下一步
+
+- **[智慧體](/docs/concepts/agents)** — 預算掛在其上的那份定義。
+- **[智慧體參考](/docs/openapi/agents)** — 每一項操作，已產生。
+- **[價格](https://hanzo.ai/pricing)** — 平台收什麼，以及一次模型
+  呼叫的費用是什麼。

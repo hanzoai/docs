@@ -1,0 +1,173 @@
+---
+icon: Plug
+title: MCP
+description: Birleşik Hanzo MCP — Claude Code, Cursor ve herhangi bir MCP istemcisine tek bir araç yüzeyi artı bağlı bulut hizmetlerinizi veren bir sunucu.
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# MCP
+
+Bir Model Bağlam Protokolü sunucusu, bir araç yüzeyi. **`hanzo-mcp`** öğesini Claude Code'a (ya da Cursor, Claude Desktop veya herhangi bir MCP istemcisine) ekleyin; her Hanzo yeteneği tek bir bağlantıdan görünür — araç araç kablo çekmeden.
+
+> Bunun yerine barındırılan MCP sunucusunu mu arıyorsunuz? **[Bulut MCP](/docs/mcp-tools)** kurulacak bir şey olmayan bir URL'dir ve her aracı [araç kataloğunda](/docs/mcp-tools/all-tools) sayılır. Bu sayfa, düzenleyicinizin yanında çalışan sunucudur.
+
+```bash title="Add the Hanzo MCP to Claude Code"
+claude mcp add hanzo -- npx -y @hanzo/mcp serve
+```
+
+Bu tek komut tüm yüzeyi açar:
+
+- **13 birleşik araç** — `fs`, `exec`, `code`, `git`, `fetch`, `workspace`, `ui`, artı isteğe bağlı `think`, `memory`, `hanzo`, `plan`, `tasks`, `mode`. Yetenek başına eyleme göre yönlendirilen bir araç (HIP-0300), böylece istemci yüzlerce örtüşen ad yerine küçük ve kararlı bir küme görür.
+- **Bulut hizmetleri** — `hanzo` aracı platformunuza yerli olarak yönlenir: IAM (kimlik), Commerce, Storage ve `api.hanzo.ai/v1` adresindeki yapay zekâ API'si, belirtecinizle doğrulanır.
+- **Bağlayıcılarınız** — GitHub, Slack, Google, Discord, X ve daha fazlası, konsolda bağlandıktan sonra aynı bağlantı üzerinden sunulur.
+
+Aynı yüzey üç yolla gelir — TypeScript (`@hanzo/mcp`), Python (PyPI'de `hanzo-mcp`) ve Rust (`hanzo-mcp::brain`) — bire bir yansıtılmış, MCP **stdio** ve **streamable-http** taşımaları üzerinde.
+
+## İstemci kurulumu
+
+```json title="Claude Desktop / Cursor — mcp config"
+{
+  "mcpServers": {
+    "hanzo": {
+      "command": "npx",
+      "args": ["-y", "@hanzo/mcp", "serve"]
+    }
+  }
+}
+```
+
+Bir kez oturum açın (`hanzo auth login`); `hanzo` bulut aracı ve bağlayıcılarınız kendiliğinden doğrulanır; yerel araçlar (`fs`, `exec`, `git`, …) hesap olmadan çalışır.
+
+## Araç dizini
+
+Platformun açabileceği her araç `GET api.hanzo.ai/v1/tools` adresinde dizinlenir (doğrulamalı). Bugün beş kaynaktan **1,468 araç** vardır — birleşik sunucu onları yukarıdaki sıkı, eyleme göre yönlenen yüzey üzerinden sunar:
+
+| Kaynak | Nedir |
+|--------|-----------|
+| `builtin` | Çekirdek yerel araçlar (fs, exec, git, code, …) |
+| `skill` | Paketlenmiş beceriler |
+| `connector` | Bağlı bulut tümleştirmeleri (GitHub, Slack, Google, Discord, X, …) |
+| `agent` | Ajan giriş noktaları |
+| `function` | Kullanıcının tanımladığı işlevler |
+
+---
+
+## Bağlayıcılar
+
+Hanzo'nun bağlanabildiği her şey, nasıl bağlandığınıza göre — konsolda bir kez bağladığınız yerli bağlayıcılar (GitHub uygulaması, OAuth2) ve [resmi kayıttan](https://registry.modelcontextprotocol.io) canlı dizinlenen açık MCP ekosistemi. İkisinde de arayın.
+
+<ConnectorsCatalog />
+
+---
+
+## Hizmet olarak MCP
+
+Birleşik sunucunun ötesinde Hanzo herhangi bir MCP sunucusunu sizin için **barındırabilir** — herhangi bir npx, uvx veya özel paketten dağıtın, anında ölçek ve yönetilecek sıfır altyapı ile.
+
+```bash title="Launch an MCP server"
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+```
+
+## Temel yetenekler
+
+- **Herhangi bir MCP sunucusu** — dosya sistemi, Git, SQL, KV, Slack, GitHub, Notion ve daha fazlası
+- **Tek tıkla dağıtım** — herhangi bir MCP sunucusunu tek komutla başlatın
+- **Otomatik ölçek** — 0'dan binlerce örneğe otomatik ölçeklenir
+- **$0 boşta maliyet** — yalnız kullandığınızı ödersiniz, boşta ücret yoktur
+- **Güvenli kum havuzu** — ince taneli izinli yalıtılmış kapsayıcılar
+- **15'ten fazla bölge** — dünyada en düşük gecikme için kenar dağıtımı
+
+## Başlatma yöntemleri
+
+### NPX paketleri
+
+```bash
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+hanzo mcp launch npx @modelcontextprotocol/server-github
+hanzo mcp launch npx @modelcontextprotocol/server-slack
+```
+
+### UVX / Python
+
+```bash
+hanzo mcp launch uvx mcp-server-sqlite
+hanzo mcp launch uvx mcp-server-postgres
+```
+
+### Özel sunucular
+
+```bash
+hanzo mcp launch git://github.com/you/mcp-server
+hanzo mcp launch docker://your-org/mcp-custom:latest
+```
+
+## Yapılandırma
+
+Birden çok sunucuyu tek bir yapılandırma dosyasıyla dağıtın:
+
+```yaml title="mcp-config.yaml"
+version: "1"
+servers:
+  filesystem:
+    package: "@modelcontextprotocol/server-filesystem"
+    runtime: npx
+    args: ["/workspace"]
+
+  database:
+    package: "mcp-server-postgres"
+    runtime: uvx
+    env:
+      DATABASE_URL: "${secrets.DATABASE_URL}"
+
+  github:
+    package: "@modelcontextprotocol/server-github"
+    runtime: npx
+    env:
+      GITHUB_TOKEN: "${secrets.GITHUB_TOKEN}"
+
+  custom:
+    image: "your-org/mcp-custom:latest"
+    runtime: docker
+    replicas: 3
+```
+
+```bash
+hanzo mcp deploy
+```
+
+## Kurumsal özellikler
+
+<Cards>
+  <Card title="Yönetilen barındırma" description="Otomatik ölçek ve izlemeyle Hanzo Cloud'a dağıtın" />
+  <Card title="Güvenli kum havuzu" description="İnce taneli izinli yalıtılmış kapsayıcılar" />
+  <Card title="Kenar dağıtımı" description="En düşük gecikme için 15'ten fazla küresel bölge" />
+  <Card title="Sürüm denetimi" description="Sürümleri sabitleyin, anında geri alın, denetim izleri" />
+  <Card title="Araç federasyonu" description="Birden çok MCP sunucusunu birleşik uç noktalarda toplayın" />
+  <Card title="Yapılandırma yönetimi" description="Merkezi gizler ve ortam değişkeni yönetimi" />
+</Cards>
+
+## Kullanılabilir araçlar
+
+| Kategori | Araçlar |
+|----------|-------|
+| **Depolama** | Dosya sistemi, S3, Google Drive, Notion |
+| **Veritabanları** | SQL, MySQL, SQLite, KV, DocumentDB |
+| **Geliştirme araçları** | Git, GitHub, GitLab, Linear, Jira |
+| **İletişim** | Slack, Discord, e-posta, Twilio |
+| **Bulut** | AWS, GCP, Azure, Kubernetes |
+| **Yapay zekâ/öğrenme** | Hugging Face, Weights & Biases, MLflow |
+| **Web** | Tarayıcı otomasyonu, Puppeteer, ekran görüntüleri |
+| **Özel** | Herhangi bir Docker kapsayıcısı veya npm/pip paketi |
+
+## Sonraki evrim: ZAP
+
+MCP, araç tümleştirmesini kolaylaştırdı. **ZAP onu hızlı yapar.** Sıfır kopyalı ajan protokolü sonraki evrimdir: sıfır kopyalı serileştirme, 40-50 kat daha düşük ek yük, ölçekte ajan sürüleri için yapılmıştır.
+
+ZAP, kesintisiz geçiş için **MCP ağ geçidi kipini** içerir.
+
+<Cards>
+  <Card title="ZAP protokolü" description="10-100 kat daha hızlı, kuantum sonrası güvenli" href="/docs/zap" />
+  <Card title="Ağ geçidi hizmeti" description="Her model için bir API" href="/docs/services/gateway" />
+</Cards>

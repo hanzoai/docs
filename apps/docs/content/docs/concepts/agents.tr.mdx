@@ -1,0 +1,102 @@
+---
+title: Aracılar
+description: Bir aracı bir tanımdır; bir oturum yönlendirebileceğiniz ve yeniden oynatabileceğiniz bir çalıştırmadır. Bir akış bir ağaçtır ve bir komut durum değişikliği değil bir niyettir.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Bu sayfadan sonra bir aracı tanımlayabilir, çalışmasını izleyebilir ve çalışırken
+yönlendirebilirsiniz.**
+
+## İki ad
+
+Bir **aracı** bir tanımdır: bir model, bir sistem istemi ve bir araç adı kümesi.
+Bir **oturum** canlı bir çalıştırmadır — her yüzeyin etkinliğini astığı satır,
+o yüzey CLI, konsol, sohbet ya da bir bot olsun.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"triage","model":"zen-1","instructions":"Triage inbound issues.","tools":["search"]}'
+```
+
+```bash
+hanzo agents list
+```
+
+Ad, kuruluşunuzda benzersizdir ve
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` ile eşleşir. Adını verdiğiniz bir model, ağ geçidinin sunduğu
+kataloga **tanımlama anında** bakılır — bir yazım yanlışı şimdi reddedilir,
+ilk çalıştırmada gece 3’te değil. Sürekli çalışan bir aracı beş alanlı bir
+cron zamanlaması taşımalıdır ve kuruluş başına bir tavana sayılır.
+
+## Bir akış bir ağaçtır
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents/sessions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"agent":"triage"}'
+```
+
+`parentSessionId` taşıyan bir oturum, o oturumun **alt aracısı** olur
+ve kökünü devralır. Böylece on alt aracının yelpazesi on ilgisiz çalıştırma değildir —
+bir ağaçtır ve `/v1/agents/sessions/{id}/tree` tüm çizgeyi tek
+okumada döndürür; her düğüm kendi olay sayısını taşır.
+
+Liste, inmenizi istemedikçe **yalnızca kök oturumları** döndürür. Durum şunlardan biridir:
+`running`, `paused`, `done`, `error`.
+
+## Çalışan bir oturumu yönlendirmek
+
+Dört komut, hepsi `/v1/agents/sessions/{id}` altında: `message`, `pause`,
+`resume`, `stop`.
+
+<Callout>
+**Bir komut bir niyettir, durum değişikliği değildir.** O çağrıda hiçbir şey oturumun
+durumunu yazmaz. `200`, komutun kalıcı olarak kaydedilip teslim edildiği anlamına gelir —
+aracı ona ne zaman uyacağını kendisi karar verir.
+</Callout>
+
+Yönlendirmenin makineler arasında çalışmasını sağlayan budur. Dizüstü bilgisayarınızda başlatılan bir `hanzo code` oturumu,
+panonun yayımladığı komutları
+`/v1/agents/sessions/{id}/control` adresini yoklayarak tüketir — bir imleçten daha yeni komutlar, en eskisi önce,
+uygulandıktan sonra bir daha teslim edilmez.
+
+Bilmeye değer iki ret: **bitmiş** bir oturum her komutu
+`409` ile reddeder ve başka bir kiracıya ait bir id `404` olur — hiçbir kuruluş bir başkasının
+aracılarını yönlendirmez ve 404, id’nin var olduğunu doğrulamaz.
+
+`stop`, sinyal vermek yerine gerçekten iptal eden istisnadır.
+
+## İzlemek
+
+```
+GET /v1/agents/sessions/stream
+```
+
+Sunucunun gönderdiği olaylar: `session` çerçeveleri ve `event` çerçeveleri, `?root=` ile daraltılır.
+Kuruluşa kapsamlıdır ve kapalı başarısız olur — veri yolu, yayılmadan önce kiracıya göre süzer.
+256 çerçeveden fazla geride kalan bir abone, akışı tıkamasına izin verilmek yerine düşürülür
+ve ölü bir bağlantının görünmesi için her 25 saniyede bir `: ping` gelir.
+
+Turlar `/v1/agents/sessions/{id}/events` altında kaydedilir — ileti, araç çağrısı,
+doğurma, günlük, durum, denetim — her biri tekdüze bir `seq` ile yanıtlar. Hiçbir şey
+kaybolmaz, bu yüzden bir çalıştırma bittikten sonra yeniden oynatılabilir.
+
+## Bir aracının eriştiği yer
+
+- **Araçlar** — [araçlar](/docs/openapi/tools), bir aracının içinden çağırdığı kiracı başına araç düzlemidir.
+- **Hesaplama** — bir [kum havuzu](/docs/concepts/sandboxes) kirası.
+- **Bilgi** — [bellek](/docs/concepts/memory).
+- **Modeller** — [ai](/docs/openapi/ai), çıkarım düzlemi.
+
+## Sonraki
+
+- **[Aracı başvurusu](/docs/openapi/agents)** — her işlem, üretilmiş.
+- **[Bütçeler](/docs/concepts/budgets)** — ne harcayabileceği ve daha fazlasını
+  harcayacak olursa ne olduğu.
+- **[Kum havuzları](/docs/concepts/sandboxes)** — işin çalıştığı yer.
+- **[Bellek](/docs/concepts/memory)** — ne bildiği.
+- **[İş akışları](/docs/concepts/workflows)** — sizden istenmeden birini çalıştırmak.

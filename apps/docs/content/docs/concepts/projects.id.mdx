@@ -1,0 +1,97 @@
+---
+title: Proyek
+description: Dua hal berbeda disebut proyek — situs yang Anda terapkan dan sebuah lingkup di dalam organisasi. Yang mana yang Anda miliki menentukan API mana yang Anda inginkan.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Setelah halaman ini Anda tidak akan lagi memanggil yang salah.**
+
+<Callout type="warn">
+**“Proyek” menamai dua hal.** *Proyek situs* adalah sesuatu yang Anda terapkan. *Proyek IAM*
+adalah lingkup di dalam organisasi. Alamatnya berbeda, siklus hidupnya berbeda,
+dan pemiliknya berbeda. Spesifikasi memisahkan keduanya; Anda pun seharusnya begitu.
+</Callout>
+
+## Proyek situs — tempat sebuah situs tinggal
+
+Sebuah pegangan yang di bawahnya sebuah build diterapkan dan dilayani.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/projects \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"acme-marketing"}'
+```
+
+```bash
+hanzo projects list
+```
+
+**slug** adalah bagian yang menanggung beban. Ia menjadi segmen kunci penyimpanan objek,
+host publik `<slug>.hanzo.app`, dan pegangan yang dituju setiap panggilan berikutnya.
+Ia cocok dengan `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$`, label yang dicadangkan ditolak,
+dan unik **per organisasi** — slug yang sama di organisasi orang lain tidak ada urusannya dengan Anda.
+Nama host publik, sebaliknya, unik secara global dan
+menjadi milik yang datang lebih dulu.
+
+Membuat satu juga menyediakan ruang data dan repositori git kanonis, keduanya
+sebaik mungkin. Ia menjawab `201` dalam `draft`.
+
+Siklus hidupnya adalah **rilis**, bukan lingkungan:
+
+```
+POST /v1/projects/{slug}/deploy
+GET  /v1/projects/{slug}/releases
+POST /v1/projects/{slug}/releases/{release}/activate
+```
+
+Setiap penerapan adalah sebuah rilis, dan rilis mana pun dapat dibuat hidup lagi, jadi mundur
+adalah operasi yang sama dengan maju. Nama host khusus diverifikasi di
+`/v1/projects/{slug}/domains/{host}/verify`.
+
+Menerbitkan secara publik gratis; `visibility: private` adalah fitur berbayar.
+
+## Proyek IAM — sebuah lingkup di dalam organisasi
+
+Lingkup yang dipilih orang ketika pekerjaan dipisah menurut produk atau klien,
+bukan menurut tim. Ia dibuat dan dihapus **hanya** di `/v1/iam/projects`,
+dan ikut pada permintaan sebagai `X-Project-Id` yang sudah divalidasi.
+
+```
+GET /v1/iam/projects
+```
+
+Anda tidak pernah membuatnya di tempat lain. `/v1/platform/projects` adalah sebuah *proyeksi* —
+proyek ditambah apa yang diletakkan bidang kontainer di bawahnya — dan ia
+mengatakannya terus terang. Aplikasi tinggal di bawahnya:
+
+```
+/v1/platform/projects/{project}/apps/{app}
+/v1/platform/projects/{project}/apps/{app}/env
+/v1/platform/projects/{project}/apps/{app}/preview
+```
+
+Sebuah kunci API dapat dibatasi ke satu proyek IAM, cara biasa agar kunci pra-produksi
+tidak menyentuh data produksi.
+
+## Membedakan keduanya
+
+| | Proyek situs | Proyek IAM |
+|---|---|---|
+| **Apa itu** | situs yang diterapkan | lingkup di dalam organisasi |
+| **Dibuat di** | `/v1/projects` | `/v1/iam/projects` |
+| **Dikenali dari** | sebuah slug, unik per organisasi | sebuah id, dibawa sebagai `X-Project-Id` |
+| **Diversi oleh** | rilis | tidak ada — ia sebuah batas |
+| **Kemampuan** | [proyek](/docs/openapi/projects) | [iam](/docs/openapi/iam) |
+
+Aturan praktis: **jika Anda menerapkan byte, itu proyek situs. Jika Anda
+membatasi izin, itu proyek IAM.**
+
+## Berikutnya
+
+- **[Referensi proyek](/docs/openapi/projects)** — setiap operasi pada sebuah situs.
+- **[Platform](/docs/openapi/platform)** — bidang kontainer, dan apa yang hidup
+  di bawah proyek IAM.
+- **[Lingkungan](/docs/environments)** — mengapa tidak ada sumber daya lingkungan.
+- **[Multitenansi](/docs/concepts/multitenancy)** — organisasi tempat keduanya berada.

@@ -1,0 +1,51 @@
+---
+title: Mastra
+description: "Nessuna factory di provider. L'URL di base è il campo url dell'oggetto model dell'agente, accanto a un id di instradamento."
+---
+
+Mastra non ha una factory di provider per questo. L'indirizzo è un campo dell'oggetto `model` dell'agente: **`id`** e **`url`**.
+
+```bash
+npm i @mastra/core
+```
+
+```ts
+import { Agent } from "@mastra/core/agent";
+
+export const agent = new Agent({
+  id: "researcher",
+  name: "Researcher",
+  instructions: "Answer precisely.",
+  model: {
+    id: "hanzo/zen5",
+    url: "https://api.hanzo.ai/v1",
+    apiKey: process.env.HANZO_API_KEY,
+  },
+});
+```
+
+Arriva su `POST /v1/chat/completions`.
+
+Due cose su cui la documentazione è esplicita. `url` deve essere l'URL di base dell'endpoint compatibile con OpenAI, mai un endpoint di chat singolo. E `id` è una forma di instradamento: `provider/model` quando il remoto si aspetta un nome di modello nudo, `gateway/provider/model` quando lo spazio dei nomi dei modelli del remoto porta già il provider. Gli `headers` per modello sono supportati, con una precedenza documentata rispetto a quelli del client.
+
+## MCP
+
+`MCPClient` arriva da `@mastra/mcp`. L'URL è una chiave `url` che contiene un oggetto `URL`, per ogni server nominato.
+
+```ts
+import { MCPClient } from '@mastra/mcp';
+
+export const mcp = new MCPClient({
+  id: 'hanzo-mcp',
+  servers: {
+    hanzo: {
+      url: new URL('https://api.hanzo.ai/v1/mcp'),
+      requestInit: { headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` } },
+    },
+  },
+});
+
+const tools = await mcp.listTools();
+```
+
+`listToolsets()` è la variante per richiesta, per quando gli strumenti non devono essere condivisi tra utenti concorrenti.

@@ -1,0 +1,39 @@
+---
+title: Ausführungsrichtlinie
+description: Steuern Sie, wie Hanzo Dev Befehle ausführt, mit Regeln der Ausführungsrichtlinie.
+---
+
+## Ausführungsrichtlinie
+
+Hanzo Dev nutzt Ausführungsrichtlinien, um zu steuern, welche Befehle der Agent ausführen darf und wann eine Freigabe nötig ist.
+
+### Sandbox-Modi
+
+| Modus | Beschreibung |
+| --- | --- |
+| `off` | Keine Sandbox (Befehle laufen direkt) |
+| `workspace-read` | Nur-Lese-Zugriff auf den Arbeitsbereich |
+| `workspace-write` | Lese- und Schreibzugriff auf den Arbeitsbereich (Standard für full-auto) |
+| `network-off` | Netzwerkzugriff abschalten |
+
+### Freigaberichtlinien
+
+| Richtlinie | Beschreibung |
+| --- | --- |
+| `always` | Vor dem Ausführen immer um Freigabe fragen |
+| `on-failure` | Nur fragen, wenn ein Befehl fehlschlägt (Standard für full-auto) |
+| `on-request` | Fragen, wenn das Modell ausdrücklich eine Freigabe verlangt |
+| `never` | Nie um Freigabe fragen |
+
+### Verwendung
+
+```bash
+# Set sandbox mode
+dev --sandbox workspace-write "your prompt"
+
+# Set approval policy
+dev --ask-for-approval on-failure "your prompt"
+
+# Full auto (sandboxed + auto-approve)
+dev --full-auto "your prompt"
+```

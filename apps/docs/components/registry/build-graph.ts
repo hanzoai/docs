@@ -1,8 +1,8 @@
-import { source } from '@/lib/source';
+import { englishPages } from '@/lib/source';
 import type { Graph } from '@/components/graph-view';
 
 export function buildGraph(): Graph {
-  const pages = source.getPages();
+  const pages = englishPages();
   const graph: Graph = { links: [], nodes: [] };
 
   for (const page of pages) {

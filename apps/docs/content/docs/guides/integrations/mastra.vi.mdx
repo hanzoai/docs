@@ -1,0 +1,51 @@
+---
+title: Mastra
+description: "Không có factory nhà cung cấp. URL cơ sở là trường url của đối tượng model của agent, cạnh một id định tuyến."
+---
+
+Mastra không có factory nhà cung cấp cho việc này. Địa chỉ là một trường của đối tượng `model` của agent: **`id`** và **`url`**.
+
+```bash
+npm i @mastra/core
+```
+
+```ts
+import { Agent } from "@mastra/core/agent";
+
+export const agent = new Agent({
+  id: "researcher",
+  name: "Researcher",
+  instructions: "Answer precisely.",
+  model: {
+    id: "hanzo/zen5",
+    url: "https://api.hanzo.ai/v1",
+    apiKey: process.env.HANZO_API_KEY,
+  },
+});
+```
+
+Đổ về `POST /v1/chat/completions`.
+
+Hai điều tài liệu nói rõ. `url` phải là URL cơ sở của endpoint tương thích OpenAI, không bao giờ là một endpoint chat riêng lẻ. Và `id` là dạng định tuyến: `provider/model` khi phía xa chờ một tên mô hình trần, `gateway/provider/model` khi không gian tên mô hình của chính phía xa đã mang nhà cung cấp. `headers` theo từng mô hình được hỗ trợ, với thứ tự ưu tiên đã ghi trong tài liệu so với header của client.
+
+## MCP
+
+`MCPClient` đến từ `@mastra/mcp`. URL là khóa `url` giữ một đối tượng `URL`, theo từng máy chủ có tên.
+
+```ts
+import { MCPClient } from '@mastra/mcp';
+
+export const mcp = new MCPClient({
+  id: 'hanzo-mcp',
+  servers: {
+    hanzo: {
+      url: new URL('https://api.hanzo.ai/v1/mcp'),
+      requestInit: { headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` } },
+    },
+  },
+});
+
+const tools = await mcp.listTools();
+```
+
+`listToolsets()` là biến thể theo từng yêu cầu, dùng khi công cụ không được chia sẻ giữa những người dùng đồng thời.

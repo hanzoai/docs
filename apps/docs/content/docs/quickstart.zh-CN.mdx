@@ -1,0 +1,212 @@
+---
+icon: Rocket
+title: 快速开始
+description: 安装 CLI，登录，发出第一次调用 — 再把同一次调用看成 SDK 方法、原始 HTTP 和 MCP 工具。
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs'
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**看完这一页，你就有一份能用的凭证，和一次得到了回答的调用。**
+
+Hanzo 是一把钥匙后面的一朵云。每项能力 — 推理、身份、
+存储、资金、代理 — 都在 `https://api.hanzo.ai` 回答，CLI、
+SDK 和 MCP 工具都从同一份描述生成。不用按服务接线：
+拿一次钥匙，一切都够得着。
+
+## 1. 安装
+
+<Tabs items={['npm', 'Script', 'Homebrew', '从源码']}>
+<Tab value="npm">
+```bash
+npm i -g hanzo
+```
+
+`hanzo` 一次安装里既是 CLI 也是客户端。
+</Tab>
+<Tab value="Script">
+```bash
+curl -fsSL https://hanzo.sh | sh
+```
+
+装到 `~/.local/bin`。`https://hanzo.sh/cli` 只装 CLI。
+</Tab>
+<Tab value="Homebrew">
+```bash
+brew install hanzoai/tap/hanzo
+```
+</Tab>
+<Tab value="从源码">
+```bash
+git clone https://github.com/hanzoai/cli && cd cli && cargo install --path .
+```
+</Tab>
+</Tabs>
+
+```bash
+hanzo version
+```
+
+## 2. 登录
+
+```bash
+hanzo auth login
+```
+
+这会打开浏览器访问 [hanzo.id](https://hanzo.id)，Hanzo 的身份
+提供方，并把得到的凭证存在本地。`hanzo auth show` 打印
+你是谁；`hanzo auth list` 列出这台机器上的每个身份，
+`hanzo auth use` 在它们之间切换。
+
+在服务器上，不要让人登录，而是签发一把钥匙：**console.hanzo.ai →
+API 密钥**。秘密密钥就是*你*，所以它属于服务器，绝不
+属于浏览器 — [认证](/docs/api-keys) 是全部规则。
+
+```bash
+export HANZO_API_KEY=sk-...
+```
+
+## 3. 列出模型
+
+网关当前提供的模型目录。这是一次读取，只需要
+钥匙，而且在四个表面上是同一个操作。
+
+<Tabs items={['CLI', 'SDK', 'HTTP', 'MCP']}>
+<Tab value="CLI">
+```bash
+hanzo models list
+```
+</Tab>
+<Tab value="SDK">
+<Tabs items={['.ts', '.py', '.go', '.rs', '.swift', '.kt']}>
+<Tab value=".ts">
+```bash
+npm i hanzo
+```
+
+```ts
+import { Hanzo } from 'hanzo'
+
+const hanzo = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+const models = await hanzo.models.list()
+```
+</Tab>
+<Tab value=".py">
+```bash
+pip install hanzo
+```
+
+```python
+from hanzo import Hanzo
+
+hanzo = Hanzo(api_key=os.environ["HANZO_API_KEY"])
+models = hanzo.models.list()
+```
+</Tab>
+<Tab value=".go">
+```bash
+go get github.com/hanzoai/go-sdk
+```
+
+```go
+client := hanzo.NewClient(hanzo.WithAPIKey(os.Getenv("HANZO_API_KEY")))
+models, err := client.Models.List(ctx)
+```
+</Tab>
+<Tab value=".rs">
+```bash
+cargo add hanzo
+```
+
+```rust
+let hanzo = hanzo::Client::from_env()?;
+let models = hanzo.models().list().await?;
+```
+</Tab>
+<Tab value=".swift">
+```swift
+// Package.swift: .package(url: "https://github.com/hanzoai/swift-sdk", from: "1.0.0")
+let hanzo = Hanzo(apiKey: ProcessInfo.processInfo.environment["HANZO_API_KEY"]!)
+let models = try await hanzo.models.list()
+```
+</Tab>
+<Tab value=".kt">
+```kotlin
+// build.gradle.kts: implementation("ai.hanzo:sdk:latest.release")
+val hanzo = Hanzo(apiKey = System.getenv("HANZO_API_KEY"))
+val models = hanzo.models.list()
+```
+</Tab>
+</Tabs>
+
+它们都从同一份 API 描述生成，所以方法名在
+语言之间对齐。[C++](/docs/sdks/cpp) 是还在落地的那一个。
+</Tab>
+<Tab value="HTTP">
+```bash
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+</Tab>
+<Tab value="MCP">
+```bash
+curl -X POST https://api.hanzo.ai/v1/mcp \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+一个端点，一项能力一个工具。`tools/call` 点名能力和
+操作；`describe` 解释任何操作的输入。
+</Tab>
+</Tabs>
+
+这是同一个 API 从四个地方看见，上面的标签就是全部
+差别。选你要写的那一个：
+
+- **[CLI](/docs/cli)** — 每项能力一组命令，各有一页。
+- **[SDK](/docs/sdks)** — Python、TypeScript、Go、Rust、C++、Swift 和 Kotlin，
+  与 CLI 和工具从同一份描述生成。
+- **[MCP](/docs/mcp)** — 代理连接的一个端点；[工具](/docs/mcp-tools)
+  按能力逐个列出。
+
+HTTP 不需要页面：它就是 `https://api.hanzo.ai` 和你刚导出的钥匙。
+
+## 4. 发送一次补全
+
+这是第一次消耗额度的步骤；上面的一切都可以免费运行。
+
+```bash
+hanzo chat completions --model zen-1 --messages '[{"role":"user","content":"hello"}]'
+```
+
+然后看看它扣了多少：
+
+```bash
+hanzo billing balance
+hanzo usage summary
+```
+
+[额度与账单](/docs/credits)解释额度是什么、到零会怎样；
+[价格](/docs/pricing)是每个模型和工具的费率。
+
+## 5. 在本地跑这朵云
+
+提供 `api.hanzo.ai` 的同一个二进制可以在你的机器上跑：
+
+```bash
+hanzo up cloud
+```
+
+单独的 `hanzo up` 是同一件事 — `cloud` 是默认值。点名一个服务就可以
+只跑它：`hanzo up iam`、`hanzo up kms`、`hanzo up gateway`、`hanzo up
+storage`、`hanzo up pubsub`。这意味着什么、需要什么，见[自己运行](/docs/network)。
+
+## 接下来去哪
+
+- **[六条流程，四个表面](/docs/guides)** — 打招呼、聊天、资金、存储、代理、
+  工具。整个产品的缩影，每条路径用四种方式展示。
+- **[概念](/docs/concepts)** — 组织、项目、沙箱、代理、记忆和
+  工作流。读一遍，其余 API 就会自己解释。
+- **[能力](/docs/openapi)** — 全部，分组列出。每一页说明能力是什么、
+  如何从四个表面到达，并链接它的规范。

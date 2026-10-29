@@ -1,0 +1,100 @@
+---
+title: Ambienti isolati
+description: L’unico primitivo di calcolo — una locazione su un pod che esegue il codice di qualcun altro. Quattro classi, due modi per chiuderne uno, e nessun gruppo.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Dopo questa pagina puoi eseguire codice non affidabile e sapere esattamente quando smette
+di costarti denaro.**
+
+## Un primitivo
+
+Un ambiente isolato è un pod sotto un confine di runtime, con una catena di strumenti già dentro,
+un proprio filesystem e una **locazione** che lo chiude. C’è un oggetto e una
+vita — un’esecuzione Python usa e getta e una sessione di programmazione di più ore sono la stessa
+cosa con limiti diversi.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/sandbox/lease \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"class":"exec"}'
+```
+
+```bash
+hanzo sandboxes list
+```
+
+Ogni altra operazione agisce sull’ambiente isolato che quella chiamata restituisce.
+
+## Quattro classi
+
+Un insieme chiuso. Vuoto significa `exec`.
+
+| Classe | Che cos’è | Directory di lavoro | Vive |
+|---|---|---|---|
+| `exec` | usa e getta; non conserva nulla | `/mnt/data` | da secondi a minuti |
+| `dev` | programmazione, con il disco del progetto attaccato | `/work` | ore |
+| `desktop` | `dev` più uno schermo | `/work` | ore |
+| `android` | `desktop` più un telefono su quello schermo | `/work` | ore |
+
+Ogni classe tranne `exec` **richiede** un progetto, e un progetto ha **un ambiente isolato vivo
+alla volta** — una seconda locazione su un progetto che ne ha già uno viene
+rifiutata per nome, invece di darti in silenzio una seconda macchina.
+
+Puoi *chiedere* un runtime (`gvisor` o `kata-fc`); il proprietario decide, e la
+risposta ti dice che cosa hai davvero ottenuto.
+
+## Due verbi per chiudere, e la differenza conta
+
+<Callout>
+**`stop` chiude il lavoro. `end` chiude la risorsa.** Un’esecuzione andata storta resta
+leggibile dopo `stop`, ed è tutta la ragione per cui sono due verbi.
+</Callout>
+
+Oltre a ciò, `ttlSec` limita la locazione, e un mietitore gira ogni minuto: chiude
+le locazioni scadute e mette a dormire gli ambienti isolati inattivi da più di un’ora. **Non c’è
+alcun gruppo** — un ambiente isolato si crea per una locazione e si cancella alla fine, e i nomi
+non si riusano mai, così un id stantio non può mai raggiungere la macchina di qualcun altro.
+
+## Che cosa può fare il pod
+
+Non ciò che puoi tu. La tua credenziale non raggiunge mai il pod. A una locazione viene dato un
+token di breve durata, ottenuto con scambio di token contro la tua identità, che agisce come
+il client `hanzo-sandbox`, che scade con la locazione, senza token di rinnovo. Il
+pod non porta alcuna credenziale di cluster propria.
+
+L’isolamento è fisico: un archivio di ambienti isolati è un file per organizzazione.
+
+## exec: una sessione *è* un ambiente isolato
+
+[exec](/docs/openapi/exec) esegue un intero programma in una chiamata, in tredici
+linguaggi — `py`, `js`, `ts`, `bash`, `r`, `php`, `go`, `rs`, `c`, `cpp`,
+`java`, `d`, `f90`.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/exec \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"language":"py","code":"print(6*7)"}'
+```
+
+Non possiede né archivio né vita propri — l’id di sessione che restituisce *è* un
+id di ambiente isolato. Un’uscita diversa da zero è un **`200` con stderr**, non uno stato di errore:
+la chiamata è riuscita, il programma è fallito, e sono fatti diversi. Passa di nuovo lo
+stesso `session_id` per tenere il filesystem fra le esecuzioni.
+
+## Dove incontra gli agenti
+
+`POST /v1/sandbox/run` narra in una sessione nominata, e il suo output si appende
+al registro vivo di quella sessione — quello che un flusso di sessione di un [agente](/docs/concepts/agents)
+sta già guardando. È la cucitura fra i due: un ambiente isolato fa il
+lavoro, una sessione ne è il registro.
+
+## Avanti
+
+- **[Riferimento degli ambienti isolati](/docs/openapi/sandbox)** — locazione, exec, fs, terminale,
+  schermo.
+- **[exec](/docs/openapi/exec)** — l’interprete di codice.
+- **[Agenti](/docs/concepts/agents)** — chi di solito tiene la locazione.

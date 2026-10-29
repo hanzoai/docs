@@ -1,8 +1,15 @@
 import { source } from '@/lib/source';
-import { DocsBody, DocsDescription, DocsPage, DocsTitle } from '@hanzo/docs-base-ui/layouts/docs/page';
+import {
+  DocsBody,
+  DocsDescription,
+  DocsPage,
+  DocsTitle,
+} from '@hanzo/docs-base-ui/layouts/docs/page';
 import { notFound } from 'next/navigation';
 import { getMDXComponents } from '@/components/mdx';
 import type { Metadata } from 'next';
+import { localeAlternates } from '@hanzo/docs-core/i18n';
+import { i18n } from '@/lib/i18n';
 
 export default async function Page(props: PageProps<'/[lang]/docs/[[...slug]]'>) {
   const params = await props.params;
@@ -33,8 +40,17 @@ export async function generateMetadata(
   const page = source.getPage(params.slug, params.lang);
   if (!page) notFound();
 
+  const pathname = `/docs${page.slugs.length ? `/${page.slugs.join('/')}` : ''}`;
   return {
     title: page.data.title,
     description: page.data.description,
+    alternates: {
+      languages: localeAlternates({
+        locales: i18n.languages,
+        defaultLocale: i18n.defaultLanguage,
+        pathname,
+        hideLocale: i18n.hideLocale,
+      }),
+    },
   };
 }

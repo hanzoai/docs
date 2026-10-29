@@ -1,0 +1,161 @@
+---
+title: SDK
+description: 모든 언어를 위한 공식 Hanzo SDK — Python, TypeScript, Go, Rust, C++, Swift, Kotlin. 언어마다 두 갈래 — 전체 Cloud SDK와 AI/에이전트 라이브러리.
+icon: Code
+---
+
+import { Cards, Card } from '@hanzo/docs-base-ui/components/card'
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+# Hanzo SDK
+
+**Hanzo AI — 모든 모델에 하나의 API, 모든 언어에 하나의 SDK.** 이미 쓰는 언어에서
+Open AI Cloud와 이야기합니다. 각 SDK는 같은 OpenAPI 3.1 명세에서 생성되고 하나의 자격 증명을 공유합니다.
+
+## 언어마다 두 라이브러리
+
+각 언어에는 두 개의 일급 갈래가 있습니다 — 일에 맞는 쪽을 설치하거나,
+둘 다 설치합니다.
+
+<Cards>
+  <Card title="Cloud SDK">
+    **전체** Open AI Cloud(`/v1/*`)를 위한 생성 클라이언트: AI,
+    에이전트, 계산, 데이터, 네트워크, 보안, 플랫폼, 관측, web3, 앱.
+    그 생태계에 맞게 관용적이고 타입이 있습니다. 실제 코드는 `hanzo-<lang>/sdk`에 있습니다.
+  </Card>
+  <Card title="AI / 에이전트 라이브러리">
+    손으로 만든, AI를 앞에 둔 라이브러리 — 모델, 에이전트, 도구, 메모리, MCP,
+    추론. 기함은 Python(`pip install hanzo`)이고, Node는
+    `@hanzo/ai`를 냅니다.
+  </Card>
+</Cards>
+
+## 언어
+
+<Cards>
+  <Card title="Python — 기함" href="/docs/sdks/python">
+    `pip install hanzo`(AI) · `pip install hanzoai`(Cloud). 동기와 비동기.
+  </Card>
+  <Card title="TypeScript" href="/docs/sdks/typescript">
+    `npm i @hanzo/ai`(AI) · `npm i @hanzo/sdk`(Cloud). Node, Deno, Bun, 브라우저.
+  </Card>
+  <Card title="Go" href="/docs/sdks/go">
+    `go get github.com/hanzoai/go-sdk`. 함수형 옵션, 최소 의존성.
+  </Card>
+  <Card title="Rust" href="/docs/sdks/rust">
+    `cargo add hanzo` — 비동기 Tokio 클라이언트. crates.io에 있습니다.
+  </Card>
+  <Card title="C++" href="/docs/sdks/cpp">
+    `find_package(hanzo)` — CMake를 통한 네이티브 클라이언트. 곧 제공.
+  </Card>
+  <Card title="Swift" href="/docs/sdks/swift">
+    SwiftPM — iOS/macOS 클라이언트, 저장소에서 바로 해석됩니다.
+  </Card>
+  <Card title="Kotlin" href="/docs/sdks/kotlin">
+    Gradle — JVM/Android 클라이언트. 곧 제공.
+  </Card>
+  <Card title="IAM SDK" href="/docs/sdks/iam">
+    `@hanzo/iam` — React 바인딩이 있는 TypeScript IAM 클라이언트.
+  </Card>
+</Cards>
+
+## 설치 표
+
+정식 제공 패키지만 실행 가능한 설치로 보입니다. 나머지는
+개발 중입니다 — 각각 소스가 이미 있는 언어별 조직으로 이어집니다.
+
+| 언어 | 라이브러리 | 설치 | 상태 |
+|----------|---------|---------|--------|
+| **Python** | AI / 에이전트(기함) | `pip install hanzo` | 정식 제공 |
+| **Python** | Cloud SDK | `pip install hanzoai` | 정식 제공 |
+| **TypeScript** | AI 라이브러리 | `npm i @hanzo/ai` | 정식 제공 |
+| **TypeScript** | Cloud SDK | `npm i @hanzo/sdk` | 정식 제공 |
+| **Go** | Cloud SDK | `go get github.com/hanzoai/go-sdk` | 정식 제공 |
+| **Rust** | Cloud SDK | `cargo add hanzo` | 정식 제공 |
+| **C++** | Cloud SDK | `find_package(hanzo)` | 곧 제공 |
+| **Swift** | Cloud SDK | `.package(url: "https://github.com/hanzo-swift/sdk")` | 정식 제공 |
+| **Kotlin** | Cloud SDK | Gradle / Maven | 곧 제공 |
+
+<Callout title="오늘부터 회선 호환">
+모든 언어가 OpenAI 또는
+Anthropic 호환 클라이언트로 이미 Open AI Cloud에 닿습니다 — 기본 URL을
+`https://api.hanzo.ai/v1`로 맞추고 Hanzo 키를 쓰면 됩니다. 위의 네이티브 SDK는
+타입이 있는 모델, 재시도, 스트리밍 도우미, 에이전트/MCP 표면을 더합니다.
+</Callout>
+
+## 빠른 시작
+
+```bash tab="Python (AI)"
+pip install hanzo
+```
+
+```bash tab="Python (Cloud)"
+pip install hanzoai
+```
+
+```bash tab="TypeScript (AI)"
+npm i @hanzo/ai
+```
+
+```bash tab="TypeScript (Cloud)"
+npm i @hanzo/sdk
+```
+
+```bash tab="Go"
+go get github.com/hanzoai/go-sdk
+```
+
+모든 클라이언트는 같은 형태를 따릅니다 — 키로 만들고, `/v1` 자원을 호출합니다.
+
+```python tab="Python"
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="sk-your-key")
+response = client.chat.completions.create(
+    model="zen5",
+    messages=[{"role": "user", "content": "Hello"}],
+)
+print(response.choices[0].message.content)
+```
+
+```typescript tab="TypeScript"
+import Hanzo from '@hanzo/sdk';
+
+const client = new Hanzo({ apiKey: 'sk-your-key' });
+const response = await client.chat.completions.create({
+  model: 'zen5',
+  messages: [{ role: 'user', content: 'Hello' }],
+});
+```
+
+```go tab="Go"
+client := hanzoai.NewClient(option.WithAPIKey("sk-your-key"))
+response, _ := client.Chat.Completions.New(ctx, hanzoai.ChatCompletionNewParams{
+    Model:    hanzoai.F("zen5"),
+    Messages: hanzoai.F([]hanzoai.ChatCompletionMessageParamUnion{
+        hanzoai.UserMessage("Hello"),
+    }),
+})
+```
+
+## 키 하나, 기본 URL 하나
+
+```bash
+export HANZO_API_KEY="sk-..."   # from console.hanzo.ai
+# Base URL for every service: https://api.hanzo.ai/v1
+```
+
+키는 [console.hanzo.ai](https://console.hanzo.ai)에서 받습니다.
+
+## 코드가 있는 곳
+
+- **우산** — [`hanzoai/sdk`](https://github.com/hanzoai/sdk): 한 번의 설치, 모든 서비스, 모든 언어.
+- **언어별 조직** — 실제 코드, 생태계마다 관용적입니다.
+  [hanzo-py](https://github.com/hanzo-py) ·
+  [hanzo-js](https://github.com/hanzo-js) ·
+  [hanzo-go](https://github.com/hanzo-go) ·
+  [hanzo-rs](https://github.com/hanzo-rs) ·
+  [hanzo-cpp](https://github.com/hanzo-cpp) ·
+  [hanzo-swift](https://github.com/hanzo-swift) ·
+  [hanzo-kt](https://github.com/hanzo-kt)
+- **전체 API 참조** — [모든 `/v1` 엔드포인트 →](/reference)

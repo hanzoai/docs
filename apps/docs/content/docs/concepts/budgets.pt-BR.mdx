@@ -1,0 +1,160 @@
+---
+title: Orçamentos
+description: Um agente recebe uma cotação antes de gastar e é recusado quando ultrapassaria. Quatro tetos, microdólares inteiros, e uma recusa que o agente pode ler enquanto ainda está rodando.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Depois desta página você pode limitar o que um agente gasta, ler o que ele gastou e
+distinguir uma recusa de orçamento de uma falha do modelo.**
+
+## O que é um orçamento
+
+Cada chamada de modelo e cada chamada de ferramenta com preço que um agente faz é **cotada antes de
+ser feita** — um limite superior do que a chamada poderia custar — e essa cotação é
+conferida, nesta ordem, contra quatro coisas:
+
+1. **o saldo da sua organização** — se pode ser pago de todo
+2. **o teto do período do agente** — `cap_micro_usd`, menos o que este período gastou
+3. **o teto da tarefa** — `max_task_micro_usd`, menos o que esta execução gastou
+4. **o orçamento da sessão** — `budget_micro_usd`, menos o que esta sessão gastou
+
+Qualquer um deles recusa a chamada. Não há bandeira nem desvio: uma execução só chega
+a um modelo pela porta.
+
+## O dinheiro é microdólar inteiro
+
+Cada valor é um número inteiro de microdólares, num campo com o sufixo
+`_micro_usd`. **1.000.000 é um dólar**, então `11902000` é US$ 11,902 e `250` é
+um quarenta avos de centavo. Uma chamada custa frações de centavo; um teto guardado em centavos
+não conseguiria ver um.
+
+## Declarar um orçamento
+
+Os três campos são obrigatórios quando você define um agente.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "triage",
+    "model": "zen-1",
+    "instructions": "Triage inbound issues.",
+    "cap_micro_usd": 20000000,
+    "max_task_micro_usd": 500000,
+    "period": "month"
+  }'
+```
+
+Esse agente pode gastar **US$ 20 por mês**, e nenhuma execução dele pode gastar mais
+que **US$ 0,50**.
+
+- `cap_micro_usd` tem de ser positivo. Um teto de zero significaria nenhum limite e nenhum
+  registro, que é o estado que um orçamento existe para remover.
+- `max_task_micro_usd` tem de ser positivo e não pode passar do teto.
+- `period` é `day`, `week` ou `month`.
+
+Os períodos são **alinhados ao calendário em UTC**: `month` significa o mês, não trinta
+dias a partir da primeira chamada, e `week` começa na segunda-feira. A janela rola na
+primeira chamada depois que ela vira, e `consumed_micro_usd` volta a zero.
+
+## Ler o que ele gastou
+
+```
+GET /v1/agent/{ref}/spend
+```
+
+```json
+{
+  "cap_micro_usd": 20000000,
+  "max_task_micro_usd": 500000,
+  "period": "month",
+  "consumed_micro_usd": 11902000,
+  "remaining_micro_usd": 8098000,
+  "by_component": { "model": 11431000, "computer": 402000, "tool": 69000 }
+}
+```
+
+`by_component` reparte o gasto em três: **model** é cada completação que
+o agente comprou, **computer** é o tempo de execução em que ele ficou residente, **tool** é uma
+chamada de ferramenta com preço. Um componente sem gasto está **ausente, não zero**.
+
+## Como uma recusa se parece
+
+Uma ultrapassagem responde `402` com o código `budget_exceeded`:
+
+```json
+{
+  "error": {
+    "code": "budget_exceeded",
+    "message": "task budget exceeded: this call would cost up to 620000 micro-USD and 118000 remain",
+    "event": "budget.exceeded",
+    "scope": "task",
+    "component": "model",
+    "quote_micro_usd": 620000,
+    "remaining_micro_usd": 118000
+  }
+}
+```
+
+`scope` nomeia qual teto recusou — `agent`, `task` ou `session` — para você saber
+se eleva o mês, a execução ou esta única sessão.
+
+<Callout>
+**O agente é avisado na banda.** Sob uma sessão a mesma carga é acrescentada ao
+fluxo de eventos da sessão como um evento de estado vindo de `budget`, assim o agente lê
+a própria recusa enquanto ainda está rodando e pode encerrar — escrever o que tem,
+dizer por que parou — em vez de cair numa chamada que falhou.
+</Callout>
+
+`budget_exceeded` não é uma falha do modelo. Uma chamada que o modelo falhou é tentada de novo; uma
+chamada que o orçamento recusou não é, porque tentar de novo a recusaria outra vez.
+
+## As cotações são limites superiores, a liquidação é o real
+
+A cotação erra para cima de propósito: o prompt como será enviado, mais a maior
+completação que a requisição permite — `max_tokens`, ou 4.096 quando a requisição não nomeia
+nenhum — na tarifa de inferência da plataforma.
+
+Quando a chamada aconteceu, o que o gateway **de fato informou** é liquidado
+contra cada soma com a qual a cotação foi conferida, e a diferença volta
+ao teto. Uma chamada que falhou nunca liquida, então nunca é cobrada e a sua
+folga volta.
+
+Por isso um agente pode ser recusado com uma folga que parece suficiente: a
+porta compara o teto da próxima chamada, não o custo provável dela.
+
+## O orçamento próprio de uma sessão
+
+Uma sessão pode carregar um teto próprio, abaixo do do agente:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent/sessions/$ID/budget \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"budget_micro_usd": 2000000}'
+```
+
+Uma sessão que alcança o próprio orçamento fica **pausada, não falha** — o trabalho retoma
+no momento em que você eleva o teto ou o remove. Três regras:
+
+- uma substituição tem de ser **estritamente maior** do que a sessão consumiu
+- **a remoção é de mão única**: `{"budget_micro_usd": null}` tira o teto para
+  sempre, e essa sessão não pode receber outro
+- uma sessão **criada sem** orçamento não pode receber um depois
+
+Cada uma dessas recusa com `409` em vez de fazer outra coisa em silêncio.
+
+## Um agente definido antes de existirem orçamentos
+
+Ele carrega um teto de zero e **não está limitado** — o gasto dele ainda é somado e
+legível em `/spend`, e uma atualização lhe dá um teto. Recusar todo agente definido
+antes de a função sair seria uma queda, não uma política.
+
+## A seguir
+
+- **[Agentes](/docs/concepts/agents)** — a definição da qual um orçamento pende.
+- **[Referência de agentes](/docs/openapi/agents)** — cada operação, gerada.
+- **[Preços](https://hanzo.ai/pricing)** — o que a plataforma cobra, e qual
+  é a taxa de uma chamada de modelo.

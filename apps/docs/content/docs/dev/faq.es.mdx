@@ -1,0 +1,57 @@
+---
+title: Preguntas frecuentes
+description: Preguntas frecuentes sobre Hanzo Dev.
+---
+
+## ¿Qué modelos se admiten?
+
+Recomendamos los preajustes integrados que envuelven GPT-5.2 (p. ej., `code-gpt-5.2-codex`). El nivel de razonamiento por defecto es medium — súbelo a high para tareas complejas con `/model`.
+
+También puedes usar otros modelos con autenticación por API y la bandera `--model`.
+
+## ¿Cómo impido que Hanzo Dev edite mis archivos?
+
+Por defecto, Hanzo Dev puede modificar archivos en el directorio de trabajo (modo Auto). Para impedir ediciones, ejecútalo en solo lectura:
+
+```bash
+dev --sandbox read-only
+```
+
+O cambia el nivel de aprobación a mitad de la conversación con `/approvals`.
+
+## ¿Funciona en Windows?
+
+Ejecutarlo directamente en Windows puede funcionar, pero no tiene soporte oficial. Recomendamos [Windows Subsystem for Linux (WSL2)](https://learn.microsoft.com/en-us/windows/wsl/install).
+
+## ¿Por qué Hanzo Dev no encuentra mis agentes en Windows?
+
+El descubrimiento de agentes en Windows puede verse afectado por PATH y por las extensiones de archivo. Soluciones:
+
+### Usa rutas absolutas (recomendado)
+
+```toml
+[[agents]]
+name = "claude"
+command = "C:\\Users\\YourUser\\AppData\\Roaming\\npm\\claude.cmd"
+enabled = true
+```
+
+### Localiza la instalación global de npm
+
+```cmd
+npm config get prefix
+```
+
+### Comprueba que PATH incluye el directorio de npm
+
+```powershell
+$env:PATH -split ';' | Select-String "npm"
+```
+
+### Revisa las extensiones de archivo
+
+En Windows, Hanzo Dev busca ejecutables con las extensiones `.exe`, `.cmd`, `.bat` y `.com`. Incluye la extensión correcta cuando uses rutas absolutas.
+
+## ¿Qué relación tiene con OpenAI Codex?
+
+Hanzo Dev es una CLI de desarrollo agéntico nativa en Rust: orquestación multiagente, cliente y servidor MCP, una política de ejecución en sandbox e integración directa con la infraestructura de Hanzo AI. El nombre no tiene relación con el modelo Codex de OpenAI de 2021, retirado en marzo de 2023.

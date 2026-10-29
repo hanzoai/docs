@@ -1,0 +1,48 @@
+---
+title: LlamaIndex
+description: "OpenAILike menerima api_base — bukan base_url — dan perlu is_chat_model disetel, karena bawaannya adalah endpoint completions."
+---
+
+`OpenAILike` menerima **`api_base`**. Perhatikan ejaannya — ini bukan `base_url`. Kelas ini datang dalam paketnya sendiri dan merupakan pembungkus tipis di atas model OpenAI, dibuat kompatibel dengan endpoint pihak ketiga.
+
+```bash
+pip install llama-index-llms-openai-like
+```
+
+```python
+from llama_index.llms.openai_like import OpenAILike
+
+llm = OpenAILike(
+    model="zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    context_window=1000000,
+    is_chat_model=True,
+    is_function_calling_model=True,
+)
+
+print(llm.complete("Hello"))
+```
+
+Mendarat di `POST /v1/chat/completions`.
+
+Tiga bawaan harus ditimpa, kalau tidak pembungkus salah tentang modelnya. **`is_chat_model` bawaannya `False`**, yang mengirim `complete()` ke endpoint completions, bukan chat. `is_function_calling_model` bawaannya `False`, jadi agen yang dibangun di atas model akan menghasilkan prosa di tempat Anda mengharapkan panggilan alat. Dan `context_window` bawaannya milik OpenAI, bukan milik model — ambil yang asli dari catatan model itu di `GET /v1/models`.
+
+`llama-index-embeddings-openai-like` adalah paket pasangannya di sisi pengambilan, dan mencapai `POST /v1/embeddings`.
+
+## MCP
+
+`BasicMCPClient` menerima URL server sebagai argumen posisional pertama dan menyimpulkan transport darinya.
+
+```bash
+pip install llama-index-tools-mcp
+```
+
+```python
+from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
+
+client = BasicMCPClient("https://api.hanzo.ai/v1/mcp")
+tools = await McpToolSpec(client=client).to_tool_list_async()
+```
+
+URL yang berakhir `/mcp` adalah HTTP streamable, yang berakhir `/sse` adalah SSE, dan argumen pertama yang berupa perintah dengan `args` adalah proses lokal.

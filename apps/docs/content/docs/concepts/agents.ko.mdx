@@ -1,0 +1,101 @@
+---
+title: 에이전트
+description: 에이전트는 정의다. 세션은 조종하고 재생할 수 있는 실행이다. 하나의 흐름은 하나의 나무이고, 명령은 상태 변경이 아니라 의도이다.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**이 페이지 다음에는 에이전트를 정의하고, 일하는 것을 보고, 도는 동안 조종할 수 있다.**
+
+## 두 명사
+
+**에이전트**는 정의다. 모델, 시스템 프롬프트, 도구 이름의 집합.
+**세션**은 살아있는 실행이다 — 모든 표면이 활동을 거는 줄이며,
+그 표면이 CLI든 콘솔이든 채팅이든 봇이든 같다.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"triage","model":"zen-1","instructions":"Triage inbound issues.","tools":["search"]}'
+```
+
+```bash
+hanzo agents list
+```
+
+이름은 조직 안에서 고유하고
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`와 맞는다. 이름을 붙인 모델은 게이트웨이가 내놓는
+목록과 **정의하는 시점**에 맞춰 본다 — 오타는 지금 거절된다.
+첫 실행의 새벽 3시가 아니다. 계속 도는 에이전트는 다섯 칸의
+cron 일정을 가져야 하고, 조직당 상한에 센다.
+
+## 하나의 흐름은 하나의 나무
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents/sessions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"agent":"triage"}'
+```
+
+`parentSessionId`를 가진 세션은 그 세션의 **하위 에이전트**가 되고
+그 뿌리를 물려받는다. 그래서 하위 에이전트 열 개로 퍼지는 것은 무관한 실행 열이 아니다 —
+하나의 나무다. `/v1/agents/sessions/{id}/tree`는 그래프 전체를 한 번의
+읽기로 돌려주고, 각 노드는 자기 사건 수를 가진다.
+
+목록은 내려가라고 하지 않으면 **뿌리 세션만** 돌려준다. 상태는
+`running`, `paused`, `done`, `error` 중 하나다.
+
+## 도는 세션을 조종하기
+
+명령은 네 개, 모두 `/v1/agents/sessions/{id}` 아래다: `message`, `pause`,
+`resume`, `stop`.
+
+<Callout>
+**명령은 의도이지 상태 변경이 아니다.** 그 호출은 세션의
+상태를 아무것도 쓰지 않는다. `200`은 명령이 오래 가게 기록되고 전달됐다는 뜻이다 —
+언제 따를지는 에이전트가 정한다.
+</Callout>
+
+그래서 조종은 기계 사이에서도 된다. 노트북에서 시작한 `hanzo code` 세션은
+대시보드가 올린 명령을
+`/v1/agents/sessions/{id}/control`을 물어 소비한다 — 커서보다 새로운 명령, 오래된 것부터,
+적용되면 다시 전달되지 않는다.
+
+알아 둘 거절이 둘이다. **끝난** 세션은 모든 명령을
+`409`로 거절한다. 다른 테넌트의 id는 `404`다 — 어떤 조직도 다른 조직의
+에이전트를 조종하지 않는다. 그리고 404는 그 id가 있다고 확인하지 않는다.
+
+`stop`은 신호만 보내는 것이 아니라 정말로 취소하는 예외다.
+
+## 보기
+
+```
+GET /v1/agents/sessions/stream
+```
+
+서버가 보내는 사건: `session` 프레임과 `event` 프레임, `?root=`로 좁힌다.
+조직 범위이고 닫힌 채로 실패한다 — 버스는 퍼뜨리기 전에 테넌트로 거른다.
+256프레임보다 뒤진 구독자는 스트림을 멈추게 두지 않고 떨어진다.
+죽은 연결이 보이게 25초마다 `: ping`이 온다.
+
+턴은 `/v1/agents/sessions/{id}/events`에 기록된다 — 메시지, 도구 호출,
+낳기, 로그, 상태, 제어 — 각각 단조로운 `seq`로 답한다. 아무것도
+잃지 않으므로, 실행은 끝난 뒤 재생할 수 있다.
+
+## 에이전트가 닿는 곳
+
+- **도구** — [도구](/docs/openapi/tools)는 에이전트가 호출하는 테넌트별 도구 평면이다.
+- **계산** — [샌드박스](/docs/concepts/sandboxes) 임대.
+- **지식** — [기억](/docs/concepts/memory).
+- **모델** — [ai](/docs/openapi/ai), 추론 평면.
+
+## 다음
+
+- **[에이전트 레퍼런스](/docs/openapi/agents)** — 모든 연산, 생성됨.
+- **[예산](/docs/concepts/budgets)** — 써도 되는 액수, 그리고 더 쓰려 할 때
+  일어나는 일.
+- **[샌드박스](/docs/concepts/sandboxes)** — 일이 도는 곳.
+- **[기억](/docs/concepts/memory)** — 아는 것.
+- **[워크플로](/docs/concepts/workflows)** — 요청받지 않고 하나를 돌리기.

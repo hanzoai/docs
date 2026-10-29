@@ -1,0 +1,69 @@
+---
+title: "Özgün kafes kriptografisi: sıfırdan bizim FHE"
+description: "Go'da özgün kafes tabanlı FHE — Zama'nın tfhe-rs'i değil, Microsoft'un SEAL'i değil. NTT SIMD iyileştirmesi, ZapDB ile şifreli veritabanı saklama, C FFI ve Rust bağlamaları."
+author: Zach Kelling
+date: 2019-08-01
+---
+
+# Özgün kafes kriptografisi: sıfırdan bizim FHE
+
+Microsoft'un SEAL'i var. Zama'nın tfhe-rs'i var. IBM'in HElib'i var. Hiçbirini kullanmadık. Kafes primitiflerinden, Go'da, kendi tam homomorfik şifreleme kütüphanemizi kurduk; C FFI bağlamaları ve bir Rust arayüzüyle.
+
+Bu NIH sendromu gibi duruyor. Değildi.
+
+## Neden kendi FHE'nizi yazarsınız
+
+Tam homomorfik şifreleme, şifreli veri üzerinde şifreyi çözmeden hesap yapmanızı sağlar. Sunucu düz metni hiç görmez. İşlemler şifreli metinler üzerinde yürür ve sonuçlar, çözüldüğünde, doğrudur. Bu, şifreli hesabın kutsal kâsesidir.
+
+Mevcut kütüphaneler bu sorunu belirli biçimlerde, belirli kullanım için, belirli performans ödünleriyle çözer. SEAL, Microsoft'un bulut hesap modeline göre iyileştirilmiştir. tfhe-rs, boole devre değerlendirmesine göre iyileştirilmiştir. HElib toplu aritmetiği hedefler.
+
+Hiçbiri bizim ihtiyacımız için tasarlanmamıştı: bir blokzincir üzerinde şifreli veritabanı işlemleri. Zincir üstü saklamanın, gas maliyetinin ve bir blokzincir durum veritabanının belirli sorgu örüntülerinin kısıtları içinde çalışan homomorfik işlemlere ihtiyacımız vardı.
+
+## Uygulama
+
+Temel, polinom halkaları üzerinde RLWE'dir (halkada hatalarla öğrenme). Halka yapısı homomorfik işlemler için gereken cebirsel özellikleri verir, hata terimleri de güvenlik güvencesini.
+
+**Polinom aritmetiği**: Hızlı polinom çarpımı için NTT (sayılar kuramı dönüşümü). Bu, sonlu cisimler için FFT'nin karşılığıdır. Derecesi N olan iki polinomu naif çarpmak O(N^2)'dir. NTT bunu O(N log N)'e indirir. Parametrelerimizde (N = 4096 veya 8192) bu, kullanılabilir ile kullanılamaz arasındaki farktır.
+
+**SIMD iyileştirmesi**: Polinom katsayıları SIMD şeritlerine oturur. Tek bir şifreli metin, paralel yuvalarda binlerce düz metin değerini kodlayabilir. Şifreli metin üzerindeki homomorfik işlemler tüm yuvalara aynı anda uygulanır. Bu GPU paralelliği değildir — şemanın cebirsel yapısına gömülü veri paralelliğidir.
+
+**Bootstrapping**: FHE'nin temel zorluğu. Her homomorfik işlem şifreli metne gürültü ekler. Yeterince işlemden sonra gürültü sinyali bastırır ve çözme başarısız olur. Bootstrapping, çözme işlevini homomorfik olarak değerlendirerek şifreli metni tazeler — çözmeyi şifrelemek. Bootstrapping uygulamamız, genel amaçlı hesap için değil, veritabanı işlemleri için gereken en küçük devre derinliğini hedefler.
+
+## ZapDB: şifreli veritabanı saklama
+
+ZapDB, FHE kütüphanesinin üstündeki uygulama katmanıdır. Şifreli bir anahtar-değer deposudur; burada:
+
+- Değerler FHE şifreli metinleri olarak saklanır
+- Sorgular şifreli veri üzerinde çalışır
+- Veritabanı sunucusu düz metin değerlerini hiç görmez
+- Sonuçlar, yalnızca anahtar sahibinin çözebildiği şifreli metinler olarak döner
+
+Bir blokzincir veritabanı için bu, düğüm işletenlerin gerçek durum değerlerini hiç görmeden durumu saklayıp sorgulayabilmesi demektir. Gizlilik bir politika değildir — matematiksel bir güvencedir.
+
+Sorgu modeli, genel amaçlı bir veritabanına göre sınırlıdır. Eşitlik denetimi, aralık sorgusu ve aritmetik toplulaştırma yapılabilir. Keyfi SQL yapılamaz. Bu, eksik bir özellik değil, FHE şemasının desteklediği işlemlerin temel sınırıdır.
+
+## C FFI ve Rust bağlamaları
+
+Çekirdek kütüphane Go'dur. Performans açısından kritik iç döngüler — NTT, polinom indirgeme, gürültü örnekleme — C uygulamalarına sahiptir ve Go bunları CGO ile çağırır. SIMD içselleri C kodunda yaşar.
+
+Rust bağlamaları, C arayüzünü güvenli Rust türleriyle sarar. Bu bize Lux düğüm entegrasyonu için Go kütüphanesini, ham performans için C kütüphanesini ve yığınımızda Rust ile yazılmış her şey için Rust bağlamalarını verir.
+
+```go
+// Go interface
+ct := fhe.Encrypt(pk, plaintext)
+result := fhe.Add(ct1, ct2)
+decrypted := fhe.Decrypt(sk, result)
+// decrypted == plaintext1 + plaintext2
+```
+
+## Kendin kurmanın nedeni
+
+Başkasının FHE kütüphanesini kullandığınızda parametre seçimine, gürültü bütçesi yönetimine, RNG'sine, yan kanal önlemlerine güvenirsiniz. Şifreli verinin her düğüm işletenine görünen bir açık blokzincir üzerindeki finansal durum olduğu bir uygulamada saldırı yüzeyi kuramsal değildir.
+
+Sıfırdan kurmak, her parametre seçimini anlamak demektir. N'nin neden 2048 değil 4096 olduğunu biliriz (güvenlik payı). Katsayı modülünün neden bir asallar zinciri olarak kurulduğunu biliriz (verimli modüler aritmetik için RNS gösterimi). Gürültü bütçesinin nereye gittiğini ve bootstrapping öncesinde kaç işlem zincirleyebileceğimizi biliriz.
+
+Bu anlayış bir kütüphanenin belgelerinde yoktur. Cisim aritmetiğini uygulamak, bootstrapping devresini ayıklamak ve gürültü büyümesini deneyle ölçmekten gelir. Kod, anlayışın kendisidir.
+
+---
+
+*zeekay — kendi kafes kriptografimiz, kendi FHE'miz, kendi şifreli veritabanımız. her bit anlaşıldı.*

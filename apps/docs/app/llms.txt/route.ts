@@ -1,4 +1,4 @@
-import { source } from '@/lib/source';
+import { englishPages, source } from '@/lib/source';
 
 // THE INDEX: every page, not every page a human navigates to.
 //
@@ -38,7 +38,7 @@ const TITLES: Record<string, string> = {
 };
 
 export function GET() {
-  const pages = source.getPages();
+  const pages = englishPages();
 
   // The section's own title, from the tree the sidebar renders — so a section
   // is named the same way in both places and adding one needs no edit here.

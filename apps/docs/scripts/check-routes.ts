@@ -34,6 +34,14 @@ import { fileURLToPath } from 'node:url';
 // check-keys make, for the same reason -- they are not ours to hold to our
 // shape.
 
+const LOCALE_SUFFIX =
+  /\.(?:es|fr|de|it|pt-BR|ru|tr|ar|hi|id|vi|th|ja|ko|zh-CN|zh-TW)$/;
+
+/** `quickstart.es.mdx` is a translation of `quickstart`, not a new page. */
+function pageId(filename: string): string {
+  return filename.slice(0, -4).replace(LOCALE_SUFFIX, '');
+}
+
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const CONTENT = path.resolve(SCRIPT_DIR, '../content/docs');
 
@@ -108,9 +116,14 @@ function routes(dir: string): boolean {
 function onDisk(dir: string): { names: string[]; dirs: string[] } {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   return {
-    names: entries
-      .filter((e) => e.isFile() && e.name.endsWith('.mdx') && e.name !== 'index.mdx')
-      .map((e) => e.name.slice(0, -4)),
+    names: [
+      ...new Set(
+        entries
+          .filter((e) => e.isFile() && e.name.endsWith('.mdx'))
+          .map((e) => pageId(e.name))
+          .filter((name) => name !== 'index'),
+      ),
+    ],
     dirs: entries
       .filter((e) => e.isDirectory() && routes(path.join(dir, e.name)))
       .map((e) => e.name),

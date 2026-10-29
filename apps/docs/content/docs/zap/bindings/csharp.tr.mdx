@@ -1,0 +1,57 @@
+---
+title: C#
+description: ZAP C# SDK — async destekli .NET bağlama
+---
+
+# C# bağlama
+
+C# bağlama, async/await desteğiyle .NET entegrasyonu sağlar.
+
+## Kurulum
+
+```bash
+dotnet add package Zap.Protocol
+```
+
+## Hızlı başlangıç
+
+```csharp
+using Zap;
+
+var client = await Zap.ConnectAsync("zap://localhost:9000");
+
+var server = await client.InitAsync(new ClientInfo
+{
+    Name = "my-agent",
+    Version = "1.0.0"
+});
+Console.WriteLine($"Connected to: {server.Name} v{server.Version}");
+
+var tools = await client.ListToolsAsync();
+foreach (var tool in tools)
+{
+    Console.WriteLine($"  {tool.Name} - {tool.Description}");
+}
+
+var result = await client.CallToolAsync(new ToolCall
+{
+    Id = Guid.NewGuid().ToString(),
+    Name = "read_file",
+    Args = "{\"path\": \"/etc/hosts\"}"
+});
+
+if (result.Error != null)
+{
+    Console.Error.WriteLine($"Error: {result.Error}");
+}
+else
+{
+    Console.WriteLine($"Result: {result.Content}");
+}
+
+await client.CloseAsync();
+```
+
+## Belgeler
+
+Tam belgeler: [zap-proto/cs](https://github.com/zap-proto/cs).

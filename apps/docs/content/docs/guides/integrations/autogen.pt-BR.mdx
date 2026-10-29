@@ -1,0 +1,55 @@
+---
+title: AutoGen
+description: "OpenAIChatCompletionClient recebe base_url, e model_info ao lado sempre que o nome do modelo não for um que a OpenAI sirva."
+---
+
+`OpenAIChatCompletionClient` recebe **`base_url`**, documentado como obrigatório quando o modelo não está hospedado na OpenAI. A parte que pega as pessoas: qualquer nome de modelo que o SDK não reconheça também precisa de **`model_info`**, e sem ele o cliente lança em vez de chamar.
+
+```bash
+pip install "autogen-ext[openai]"
+```
+
+```python
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelFamily
+
+client = OpenAIChatCompletionClient(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    model_info={
+        "vision": False,
+        "function_calling": True,
+        "json_output": True,
+        "family": ModelFamily.UNKNOWN,
+        "structured_output": True,
+    },
+)
+
+# ... use the client, then release it
+await client.close()
+```
+
+Chega em `POST /v1/chat/completions`.
+
+Onde o registro de um modelo em `GET /v1/models` declara `supports_vision` ou `supports_tools`, esses correspondem a `vision` e `function_calling`. A maioria dos registros não declara nenhum, e a referência do AutoGen diz com clareza que este cliente não é testado contra modelos que não sejam da OpenAI — então afirme só o que você exercitou.
+
+## MCP
+
+A URL é o campo `url` de `StreamableHttpServerParams`.
+
+```python
+from autogen_ext.tools.mcp import StreamableHttpMcpToolAdapter, StreamableHttpServerParams
+
+params = StreamableHttpServerParams(
+    url="https://api.hanzo.ai/v1/mcp",
+    headers={"Authorization": "Bearer sk-..."},
+    timeout=30.0,
+    sse_read_timeout=300.0,
+    terminate_on_close=True,
+)
+
+adapter = await StreamableHttpMcpToolAdapter.from_server_params(params, "describe")
+```
+
+`StdioServerParams` e `SseServerParams` são os irmãos; `mcp_server_tools()` constrói cada ferramenta de um servidor numa só chamada, em vez de um adaptador por vez.

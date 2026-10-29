@@ -1,0 +1,173 @@
+---
+icon: Plug
+title: MCP
+description: MCP thống nhất của Hanzo — một máy chủ cho Claude Code, Cursor và mọi máy khách MCP một bề mặt công cụ, cùng các dịch vụ đám mây đã nối.
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# MCP
+
+Một máy chủ Giao thức Ngữ cảnh Mô hình, một bề mặt công cụ. Thêm **`hanzo-mcp`** vào Claude Code (hoặc Cursor, Claude Desktop, hoặc máy khách MCP bất kỳ) và mọi năng lực Hanzo hiện qua một kết nối — không phải đấu dây từng công cụ.
+
+> Đang tìm máy chủ MCP được lưu trữ? **[MCP đám mây](/docs/mcp-tools)** là một URL không có gì để cài, và mọi công cụ của nó được liệt kê trong [danh mục công cụ](/docs/mcp-tools/all-tools). Trang này là máy chủ chạy cạnh trình soạn thảo của bạn.
+
+```bash title="Add the Hanzo MCP to Claude Code"
+claude mcp add hanzo -- npx -y @hanzo/mcp serve
+```
+
+Một lệnh đó phơi toàn bộ bề mặt:
+
+- **13 công cụ thống nhất** — `fs`, `exec`, `code`, `git`, `fetch`, `workspace`, `ui`, cộng tùy chọn `think`, `memory`, `hanzo`, `plan`, `tasks`, `mode`. Một công cụ định tuyến theo hành động cho mỗi năng lực (HIP-0300), nên máy khách thấy một tập nhỏ ổn định thay vì hàng trăm tên chồng lên nhau.
+- **Dịch vụ đám mây** — công cụ `hanzo` định tuyến tới nền tảng của bạn theo cách gốc: IAM (danh tính), Commerce, Storage, và API AI tại `api.hanzo.ai/v1`, xác thực bằng token của bạn.
+- **Đầu nối của bạn** — GitHub, Slack, Google, Discord, X và hơn nữa, hiện qua cùng kết nối sau khi liên kết trong bảng điều khiển.
+
+Cùng bề mặt được phát ba cách — TypeScript (`@hanzo/mcp`), Python (`hanzo-mcp` trên PyPI) và Rust (`hanzo-mcp::brain`) — phản chiếu một đối một, trên các vận chuyển MCP **stdio** và **streamable-http**.
+
+## Thiết lập máy khách
+
+```json title="Claude Desktop / Cursor — mcp config"
+{
+  "mcpServers": {
+    "hanzo": {
+      "command": "npx",
+      "args": ["-y", "@hanzo/mcp", "serve"]
+    }
+  }
+}
+```
+
+Đăng nhập một lần (`hanzo auth login`) thì công cụ đám mây `hanzo` và các đầu nối tự xác thực; công cụ cục bộ (`fs`, `exec`, `git`, …) chạy không cần tài khoản.
+
+## Chỉ mục công cụ
+
+Mọi công cụ nền tảng có thể phơi được lập chỉ mục tại `GET api.hanzo.ai/v1/tools` (có xác thực). Hôm nay là **1,468 công cụ** từ năm nguồn — máy chủ thống nhất trình bày chúng qua bề mặt gọn định tuyến theo hành động ở trên:
+
+| Nguồn | Đó là gì |
+|--------|-----------|
+| `builtin` | Công cụ cục bộ lõi (fs, exec, git, code, …) |
+| `skill` | Kỹ năng đóng gói |
+| `connector` | Tích hợp đám mây đã liên kết (GitHub, Slack, Google, Discord, X, …) |
+| `agent` | Điểm vào của tác tử |
+| `function` | Hàm do người dùng định nghĩa |
+
+---
+
+## Đầu nối
+
+Mọi thứ Hanzo có thể nối, theo cách bạn nối — đầu nối gốc bạn liên kết một lần trong bảng điều khiển (ứng dụng GitHub, OAuth2), và hệ sinh thái MCP mở được lập chỉ mục trực tiếp từ [sổ đăng ký chính thức](https://registry.modelcontextprotocol.io). Tìm trên cả hai.
+
+<ConnectorsCatalog />
+
+---
+
+## MCP như một dịch vụ
+
+Ngoài máy chủ thống nhất, Hanzo còn có thể **lưu trữ** bất kỳ máy chủ MCP nào cho bạn — triển khai từ gói npx, uvx hoặc tùy chỉnh bất kỳ, với co giãn tức thì và không hạ tầng phải quản.
+
+```bash title="Launch an MCP server"
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+```
+
+## Năng lực chính
+
+- **Mọi máy chủ MCP** — hệ thống tệp, Git, SQL, KV, Slack, GitHub, Notion và hơn nữa
+- **Triển khai một nhấp** — khởi chạy máy chủ MCP bất kỳ bằng một lệnh
+- **Tự co giãn** — từ 0 tới hàng nghìn thực thể một cách tự động
+- **Chi phí nhàn rỗi $0** — chỉ trả những gì dùng, không phí nhàn rỗi
+- **Hộp cát an toàn** — vùng chứa cô lập với quyền hạt mịn
+- **Hơn 15 vùng** — triển khai biên cho độ trễ thấp nhất toàn cầu
+
+## Cách khởi chạy
+
+### Gói NPX
+
+```bash
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+hanzo mcp launch npx @modelcontextprotocol/server-github
+hanzo mcp launch npx @modelcontextprotocol/server-slack
+```
+
+### UVX / Python
+
+```bash
+hanzo mcp launch uvx mcp-server-sqlite
+hanzo mcp launch uvx mcp-server-postgres
+```
+
+### Máy chủ tùy chỉnh
+
+```bash
+hanzo mcp launch git://github.com/you/mcp-server
+hanzo mcp launch docker://your-org/mcp-custom:latest
+```
+
+## Cấu hình
+
+Triển khai nhiều máy chủ bằng một tệp cấu hình:
+
+```yaml title="mcp-config.yaml"
+version: "1"
+servers:
+  filesystem:
+    package: "@modelcontextprotocol/server-filesystem"
+    runtime: npx
+    args: ["/workspace"]
+
+  database:
+    package: "mcp-server-postgres"
+    runtime: uvx
+    env:
+      DATABASE_URL: "${secrets.DATABASE_URL}"
+
+  github:
+    package: "@modelcontextprotocol/server-github"
+    runtime: npx
+    env:
+      GITHUB_TOKEN: "${secrets.GITHUB_TOKEN}"
+
+  custom:
+    image: "your-org/mcp-custom:latest"
+    runtime: docker
+    replicas: 3
+```
+
+```bash
+hanzo mcp deploy
+```
+
+## Tính năng doanh nghiệp
+
+<Cards>
+  <Card title="Lưu trữ được quản" description="Triển khai lên Hanzo Cloud với tự co giãn và giám sát" />
+  <Card title="Hộp cát an toàn" description="Vùng chứa cô lập với quyền hạt mịn" />
+  <Card title="Triển khai biên" description="Hơn 15 vùng toàn cầu cho độ trễ thấp nhất" />
+  <Card title="Kiểm soát phiên bản" description="Ghim phiên bản, lùi tức thì, vết kiểm toán" />
+  <Card title="Liên bang công cụ" description="Gộp nhiều máy chủ MCP thành các điểm cuối thống nhất" />
+  <Card title="Quản lý cấu hình" description="Bí mật tập trung và quản lý biến môi trường" />
+</Cards>
+
+## Công cụ sẵn có
+
+| Hạng mục | Công cụ |
+|----------|-------|
+| **Lưu trữ** | Hệ thống tệp, S3, Google Drive, Notion |
+| **Cơ sở dữ liệu** | SQL, MySQL, SQLite, KV, DocumentDB |
+| **Công cụ phát triển** | Git, GitHub, GitLab, Linear, Jira |
+| **Giao tiếp** | Slack, Discord, thư, Twilio |
+| **Đám mây** | AWS, GCP, Azure, Kubernetes |
+| **AI/ML** | Hugging Face, Weights & Biases, MLflow |
+| **Web** | Tự động hóa trình duyệt, Puppeteer, ảnh chụp |
+| **Tùy chỉnh** | Mọi vùng chứa Docker hoặc gói npm/pip |
+
+## Bước tiến tiếp: ZAP
+
+MCP làm việc tích hợp công cụ trở nên dễ. **ZAP làm nó nhanh.** Giao thức tác tử sao chép không là bước tiến tiếp: tuần tự hóa không sao chép, chi phí phụ thấp hơn 40–50 lần, xây cho bầy tác tử ở quy mô.
+
+ZAP gồm **chế độ cổng MCP** để chuyển mà không đứt.
+
+<Cards>
+  <Card title="Giao thức ZAP" description="Nhanh hơn 10–100 lần, an toàn hậu lượng tử" href="/docs/zap" />
+  <Card title="Dịch vụ cổng" description="Một API cho mọi mô hình" href="/docs/services/gateway" />
+</Cards>

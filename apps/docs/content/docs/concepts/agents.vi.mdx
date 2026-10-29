@@ -1,0 +1,104 @@
+---
+title: Tác nhân
+description: Tác nhân là một định nghĩa; phiên là một lần chạy mà bạn có thể điều khiển và phát lại. Một luồng là một cây, và một lệnh là một ý định chứ không phải một thay đổi trạng thái.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Sau trang này bạn có thể định nghĩa một tác nhân, xem nó làm việc, và điều khiển nó trong khi
+nó chạy.**
+
+## Hai danh từ
+
+Một **tác nhân** là một định nghĩa: một mô hình, một lời nhắc hệ thống, và một tập tên công cụ.
+Một **phiên** là một lần chạy đang sống — hàng mà mọi bề mặt treo hoạt động của mình vào,
+dù bề mặt đó là CLI, bảng điều khiển, trò chuyện hay một bot.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"triage","model":"zen-1","instructions":"Triage inbound issues.","tools":["search"]}'
+```
+
+```bash
+hanzo agents list
+```
+
+Tên là duy nhất trong tổ chức của bạn và khớp
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`. Mô hình bạn nêu được kiểm với
+danh mục mà cổng đang phục vụ **lúc định nghĩa** — lỗi gõ bị từ chối ngay,
+chứ không phải lúc 3 giờ sáng ở lần chạy đầu. Tác nhân chạy liên tục phải mang
+một lịch cron năm trường, và tính vào trần theo tổ chức.
+
+## Một luồng là một cây
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents/sessions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"agent":"triage"}'
+```
+
+Phiên mang `parentSessionId` trở thành **tác nhân con** của phiên đó
+và kế thừa gốc của nó. Vậy một quạt mười tác nhân con không phải mười lần chạy không liên quan —
+đó là một cây, và `/v1/agents/sessions/{id}/tree` trả về toàn bộ đồ thị trong
+một lần đọc, mỗi nút mang số sự kiện của chính nó.
+
+Danh sách chỉ trả **các phiên gốc** trừ khi bạn yêu cầu đi xuống. Trạng thái là một
+trong `running`, `paused`, `done`, `error`.
+
+## Điều khiển một phiên đang chạy
+
+Bốn lệnh, tất cả dưới `/v1/agents/sessions/{id}`: `message`, `pause`,
+`resume`, `stop`.
+
+<Callout>
+**Một lệnh là một ý định, không phải một thay đổi trạng thái.** Không gì trong lời gọi đó ghi
+trạng thái của phiên. `200` nghĩa là lệnh đã được ghi bền và giao —
+tác nhân quyết định khi nào hành động theo nó.
+</Callout>
+
+Đó là điều khiến việc điều khiển chạy được giữa các máy. Một phiên `hanzo code` bắt đầu
+trên máy xách tay của bạn tiêu thụ các lệnh mà bảng điều khiển đã đăng, bằng cách thăm dò
+`/v1/agents/sessions/{id}/control` — lệnh mới hơn một con trỏ, cũ nhất trước,
+không giao lại sau khi đã áp dụng.
+
+Hai lần từ chối đáng biết: phiên **đã xong** từ chối mọi lệnh bằng
+`409`, và một id thuộc người thuê khác là `404` — không tổ chức nào điều khiển
+tác nhân của tổ chức khác, và 404 không xác nhận id tồn tại.
+
+`stop` là ngoại lệ thực sự hủy chứ không chỉ ra hiệu.
+
+## Theo dõi
+
+```
+GET /v1/agents/sessions/stream
+```
+
+Sự kiện do máy chủ gửi: khung `session` và khung `event`, thu hẹp bằng `?root=`.
+Nó theo phạm vi tổ chức và thất bại đóng — bus lọc theo người thuê trước khi tỏa ra. Người đăng ký
+chậm hơn 256 khung bị bỏ chứ không được phép làm nghẽn
+luồng, và một `: ping` đến mỗi 25 giây để kết nối chết
+hiện ra.
+
+Lượt được ghi tại `/v1/agents/sessions/{id}/events` — thông điệp, gọi công cụ,
+sinh, nhật ký, trạng thái, điều khiển — mỗi cái trả lời bằng một `seq` đơn điệu. Không gì
+mất, nên một lần chạy có thể phát lại sau khi kết thúc.
+
+## Tác nhân với tới đâu
+
+- **Công cụ** — [công cụ](/docs/openapi/tools) là mặt phẳng công cụ theo người thuê mà
+  tác nhân gọi qua.
+- **Tính toán** — một hợp đồng thuê [hộp cát](/docs/concepts/sandboxes).
+- **Tri thức** — [bộ nhớ](/docs/concepts/memory).
+- **Mô hình** — [ai](/docs/openapi/ai), mặt phẳng suy luận.
+
+## Tiếp theo
+
+- **[Tham chiếu tác nhân](/docs/openapi/agents)** — mọi thao tác, được sinh.
+- **[Ngân sách](/docs/concepts/budgets)** — nó được chi bao nhiêu, và chuyện gì xảy ra
+  khi nó sẽ chi nhiều hơn.
+- **[Hộp cát](/docs/concepts/sandboxes)** — nơi công việc chạy.
+- **[Bộ nhớ](/docs/concepts/memory)** — nó biết gì.
+- **[Luồng công việc](/docs/concepts/workflows)** — chạy một cái mà không được yêu cầu.

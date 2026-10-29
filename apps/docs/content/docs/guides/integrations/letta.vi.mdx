@@ -1,0 +1,38 @@
+---
+title: Letta
+description: "Một luồng cấu hình, không phải hàm khởi tạo. Thêm nhà cung cấp tương thích OpenAI qua /connect, rồi chọn mô hình."
+---
+
+Letta không lộ tham số URL cơ sở ở mức mã. Địa chỉ được nhập qua một luồng cấu hình.
+
+Mở **`/connect`** trong ứng dụng Letta, hoặc chạy `letta connect` ở CLI, lệnh này mở cùng luồng đó. Thêm một nhà cung cấp tùy chỉnh kiểu **API tương thích OpenAI**, và đưa cho nó URL cơ sở cùng khóa:
+
+```
+base URL:  https://api.hanzo.ai/v1
+API key:   sk-...
+```
+
+Sau đó `/model` chọn mô hình. Đổ về `POST /v1/chat/completions`.
+
+Hai ràng buộc Letta nêu, và Hanzo thỏa cả hai. Endpoint phải hỗ trợ chat completions và gọi công cụ — hãy chọn mô hình mà bản ghi `GET /v1/models` nói `supports_tools`. Và một agent đặt trên đám mây cần endpoint tới được từ internet công cộng, không chỉ qua localhost.
+
+Letta gửi một `reasoning_effort` tường minh tới các nhà cung cấp tương thích OpenAI, một trong `none`, `minimal`, `low`, `medium`, `high`, `xhigh` hoặc `max`, và chờ endpoint chấp nhận, ánh xạ lại hoặc từ chối.
+
+`LETTA_BASE_URL` là chuyện khác và không làm việc này. Đó là địa chỉ của một máy chủ Letta tự lưu trữ, chẳng hạn `http://localhost:8283` — địa chỉ của chính máy chủ, không liên quan tới nơi suy luận đi tới.
+
+## MCP
+
+Máy chủ nằm trong `mcpServers` của SDK agent Letta, khóa theo tên, với `url` cho máy chủ từ xa.
+
+```json
+{
+  "mcpServers": {
+    "hanzo": {
+      "url": "https://api.hanzo.ai/v1/mcp",
+      "headers": { "Authorization": "Bearer sk-..." }
+    }
+  }
+}
+```
+
+Khóa trở thành không gian tên: công cụ tới dưới dạng `mcp__hanzo__<tool>`. Các kết nối bắt đầu đồng thời khi phiên khởi tạo, và một máy chủ không tới được không giữ các máy chủ khác lại.

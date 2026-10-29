@@ -4,6 +4,7 @@ import { DocsNavbar } from '@/components/docs-navbar';
 import { Brand } from '@/components/brand';
 import { HanzoDocsIcon } from '@/app/layout.client';
 import { baseOptions } from '@/components/layouts/shared';
+import { i18n } from '@/lib/i18n';
 import { source } from '@/lib/source';
 import { getSection } from '@/lib/source/navigation';
 import { SidebarSearch } from '@/components/sidebar-search';
@@ -26,9 +27,11 @@ import { SidebarAccount } from '@/components/sidebar-account';
 export function Docs({
   children,
   sidebar,
+  locale = i18n.defaultLanguage,
   ...props
 }: Omit<DocsLayoutProps, 'tree' | 'slots' | 'nav' | 'sidebar' | 'children'> & {
   children: ReactNode;
+  locale?: string;
   sidebar?: Pick<NonNullable<DocsLayoutProps['sidebar']>, 'defaultCollapsed'>;
 }) {
   const base = baseOptions();
@@ -43,7 +46,7 @@ export function Docs({
       // The theme control lives in the bottom-right dock (components/appearance-dock),
       // the same corner hanzo.ai keeps it in — so the rail carries none.
       slots={{ header: DocsNavbar, themeSwitch: false }}
-      tree={source.getPageTree()}
+      tree={source.getPageTree(locale)}
       nav={{
         ...base.nav,
         // The mark and the wordmark are alternatives, not a pair — see Brand.

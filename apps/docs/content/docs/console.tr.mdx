@@ -1,0 +1,40 @@
+---
+icon: LayoutDashboard
+title: Konsol
+description: Hanzo Cloud için birleşik bulut konsolu -- her ürünü, anahtarı ve kuruluşu console.hanzo.ai üzerindeki tek bir uygulamadan yönetin.
+---
+
+# Konsol
+
+Hanzo Konsolu, Hanzo Cloud'un birleşik denetim yüzeyidir -- baktığınız uygulama budur. Her bulut ürününü tek bir yerde toplar: kimlik, anahtarlar, sırlar, modeller, faturalama, dağıtımlar ve panolar, hepsi kuruluşunuzun kapsamındadır.
+
+## Her ürün için tek uygulama
+
+Konsol tek bir ürün kataloğundan çizilir, bu yüzden her Hanzo Cloud hizmetine aynı gezinti, genel bakış ve komut paletinden ulaşılır. Her ürün yerel bir modüldür -- dışarı bağlantı değil -- gerçek `/v1` API'sine dayanır:
+
+- **Yapay zeka** -- modeller, deneme alanı, sağlayıcılar, embeddings
+- **Güvenlik** -- [IAM](/docs/openapi/iam), [KMS](/docs/openapi/kms), [Authz](/docs/openapi/authz), [MPC](/docs/openapi), [Zero Trust](/docs/openapi/network)
+- **Gözlem** -- [panolar](/docs/openapi/o11y), maliyet, [faturalama](/docs/openapi/billing), durum
+- **Dağıtım** -- projeler, ortamlar, işlevler, kümeler
+
+## Oturum açma ve kapsam
+
+Konsol, [hanzo.id](https://hanzo.id) üzerindeki Hanzo IAM üzerinden `hanzo-cloud` uygulaması olarak oturum açar. Oturumunuz bir **kuruluşa** kapsamlanır ve genel bir yönetici kapsamı herhangi bir kuruluşa geçirebilir; marka kimliği sabit kalırken veriler yerinde yeniden kapsamlanır. Bkz. [IAM](/docs/openapi/iam) ve [Kuruluşlar](/docs/openapi/iam).
+
+## Nasıl sunulur
+
+Konsol, Hanzo Cloud ikili dosyasına doğrudan gömülü (`go:embed`) tek sayfalık bir uygulamadır ve `console.hanzo.ai` adresinde sunulur. Birleşik `/v1` arka ucu üzerinde saf bir istemcidir -- kendi veritabanı yoktur; her görünüm bir hizmet API'sinden gelen gerçek veridir.
+
+```bash
+# The console calls the same API you can call directly, with the same key
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer sk-..."
+```
+
+## İlgili
+
+- [IAM](/docs/openapi/iam) -- her konsol görünümünün arkasındaki kimlik ve kuruluş kapsamı
+- [API anahtarları](/docs/api-keys) -- API için konsoldan anahtar oluşturun
+- [Panolar](/docs/openapi/o11y) -- analiz ve gözlemlenebilirlik yüzeyleri
+- [Faturalama](/docs/openapi/billing) -- bakiye, kullanım ve faturalar
+- [API](/docs/openapi) -- konsolun çizdiği aynı `/v1` yüzeyi

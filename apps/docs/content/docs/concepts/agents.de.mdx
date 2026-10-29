@@ -1,0 +1,104 @@
+---
+title: Agenten
+description: Ein Agent ist eine Definition; eine Sitzung ist ein Lauf, den du lenken und wiedergeben kannst. Ein Ablauf ist ein Baum, und ein Befehl ist eine Absicht und keine Zustandsänderung.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Nach dieser Seite kannst du einen Agenten definieren, ihm bei der Arbeit zusehen und ihn lenken, während
+er läuft.**
+
+## Zwei Substantive
+
+Ein **Agent** ist eine Definition: ein Modell, ein System-Prompt und eine Menge von Werkzeugnamen.
+Eine **Sitzung** ist ein laufender Durchgang — die Zeile, an der jede Oberfläche ihre Aktivität aufhängt,
+ob diese Oberfläche die CLI, die Konsole, der Chat oder ein Bot ist.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"triage","model":"zen-1","instructions":"Triage inbound issues.","tools":["search"]}'
+```
+
+```bash
+hanzo agents list
+```
+
+Der Name ist in deiner Organisation eindeutig und entspricht
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`. Ein Modell, das du nennst, wird gegen den
+vom Gateway ausgelieferten Katalog **zum Definitionszeitpunkt** geprüft — ein Tippfehler wird jetzt abgelehnt
+und nicht um 3 Uhr nachts beim ersten Lauf. Ein Agent, der dauerhaft läuft, muss einen
+Cron-Plan mit fünf Feldern tragen und zählt gegen eine Obergrenze pro Organisation.
+
+## Ein Ablauf ist ein Baum
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents/sessions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"agent":"triage"}'
+```
+
+Eine Sitzung mit einer `parentSessionId` wird ein **Unteragent** dieser Sitzung
+und erbt ihre Wurzel. Eine Auffächerung von zehn Unteragenten sind also nicht zehn zusammenhanglose Läufe —
+es ist ein Baum, und `/v1/agents/sessions/{id}/tree` liefert den ganzen Graphen in einem
+einzigen Lesen, jeder Knoten mit seiner eigenen Ereigniszahl.
+
+Die Auflistung liefert **nur Wurzelsitzungen**, außer du verlangst den Abstieg. Der Status ist einer
+von `running`, `paused`, `done`, `error`.
+
+## Eine laufende Sitzung lenken
+
+Vier Befehle, alle unter `/v1/agents/sessions/{id}`: `message`, `pause`,
+`resume`, `stop`.
+
+<Callout>
+**Ein Befehl ist eine Absicht, keine Zustandsänderung.** Nichts in diesem Aufruf schreibt den
+Status der Sitzung. Eine `200` heißt, der Befehl wurde dauerhaft festgehalten und zugestellt —
+der Agent entscheidet, wann er danach handelt.
+</Callout>
+
+Darum funktioniert das Lenken über Maschinen hinweg. Eine auf deinem Laptop gestartete `hanzo code`-Sitzung
+verbraucht die Befehle, die das Dashboard veröffentlicht hat, indem sie
+`/v1/agents/sessions/{id}/control` abfragt — Befehle neuer als ein Cursor, der älteste zuerst,
+nach dem Anwenden nie erneut zugestellt.
+
+Zwei Ablehnungen, die du kennen solltest: eine **beendete** Sitzung lehnt jeden Befehl mit
+`409` ab, und eine id, die einem anderen Mandanten gehört, ist `404` — keine Organisation lenkt die
+Agenten einer anderen, und die 404 bestätigt nicht, dass die id existiert.
+
+`stop` ist die Ausnahme, die wirklich abbricht, statt nur zu signalisieren.
+
+## Zuschauen
+
+```
+GET /v1/agents/sessions/stream
+```
+
+Vom Server gesendete Ereignisse: `session`-Rahmen und `event`-Rahmen, eingegrenzt mit `?root=`.
+Es ist auf die Organisation begrenzt und scheitert geschlossen — der Bus filtert nach Mandant vor der Auffächerung. Ein
+Abonnent, der mehr als 256 Rahmen zurückliegt, wird verworfen, statt den
+Strom aufhalten zu dürfen, und alle 25 Sekunden kommt ein `: ping`, damit eine tote Verbindung
+sichtbar ist.
+
+Züge werden unter `/v1/agents/sessions/{id}/events` festgehalten — Nachricht, Werkzeugaufruf,
+Erzeugung, Protokoll, Status, Steuerung — jeder antwortet mit einem monotonen `seq`. Nichts geht
+verloren, also lässt sich ein Lauf nach dem Ende wiedergeben.
+
+## Was ein Agent erreicht
+
+- **Werkzeuge** — [Werkzeuge](/docs/openapi/tools) ist die Werkzeugebene pro Mandant, über die
+  ein Agent aufruft.
+- **Rechnen** — eine [Sandkasten](/docs/concepts/sandboxes)-Pacht.
+- **Wissen** — [Gedächtnis](/docs/concepts/memory).
+- **Modelle** — [ai](/docs/openapi/ai), die Inferenzebene.
+
+## Weiter
+
+- **[Agentenreferenz](/docs/openapi/agents)** — jede Operation, erzeugt.
+- **[Budgets](/docs/concepts/budgets)** — was er ausgeben darf, und was passiert,
+  wenn er mehr ausgeben würde.
+- **[Sandkästen](/docs/concepts/sandboxes)** — wo die Arbeit läuft.
+- **[Gedächtnis](/docs/concepts/memory)** — was er weiß.
+- **[Arbeitsabläufe](/docs/concepts/workflows)** — einen laufen lassen, ohne dass jemand fragt.

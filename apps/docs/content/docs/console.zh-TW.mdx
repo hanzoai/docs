@@ -1,0 +1,40 @@
+---
+icon: LayoutDashboard
+title: 主控台
+description: Hanzo Cloud 的統一雲端主控台 -- 在 console.hanzo.ai 的一個應用程式裡管理每一項產品、金鑰與組織。
+---
+
+# 主控台
+
+Hanzo 主控台是 Hanzo Cloud 的統一控制面 -- 就是你正在看的這個應用程式。它把每一項雲端產品放到同一處：身分、金鑰、祕密、模型、帳單、部署與儀表板，全部限定在你的組織範圍內。
+
+## 一個應用程式涵蓋每項產品
+
+主控台從單一產品目錄繪製，因此每一項 Hanzo Cloud 服務都能從同一套導覽、總覽與命令面板抵達。每項產品都是原生模組 -- 不是跳到外部的連結 -- 並由真實的 `/v1` API 支撐：
+
+- **AI** -- 模型、演練場、供應商、embeddings
+- **安全性** -- [IAM](/docs/openapi/iam)、[KMS](/docs/openapi/kms)、[Authz](/docs/openapi/authz)、[MPC](/docs/openapi)、[Zero Trust](/docs/openapi/network)
+- **觀測** -- [儀表板](/docs/openapi/o11y)、成本、[帳單](/docs/openapi/billing)、狀態
+- **部署** -- 專案、環境、函式、叢集
+
+## 登入與範圍
+
+主控台透過 [hanzo.id](https://hanzo.id) 上的 Hanzo IAM，以 `hanzo-cloud` 應用程式的身分登入。你的工作階段限定在一個**組織**內，全域管理員可以把範圍切換到任意組織；品牌識別保持不變，資料就地重新限定範圍。參見 [IAM](/docs/openapi/iam) 與[組織](/docs/openapi/iam)。
+
+## 它如何交付
+
+主控台是直接嵌入（`go:embed`）Hanzo Cloud 二進位檔的單頁應用程式，並在 `console.hanzo.ai` 上提供。它是統一 `/v1` 後端之上的純用戶端 -- 自己不持有資料庫；每個檢視都是服務 API 的真實資料。
+
+```bash
+# The console calls the same API you can call directly, with the same key
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer sk-..."
+```
+
+## 相關
+
+- [IAM](/docs/openapi/iam) -- 每個主控台檢視背後的身分與組織範圍
+- [API 金鑰](/docs/api-keys) -- 從主控台為 API 建立金鑰
+- [儀表板](/docs/openapi/o11y) -- 分析與可觀測性介面
+- [帳單](/docs/openapi/billing) -- 餘額、用量與發票
+- [API](/docs/openapi) -- 主控台所繪製的同一套 `/v1` 表面

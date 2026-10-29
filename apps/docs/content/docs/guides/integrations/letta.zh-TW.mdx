@@ -1,0 +1,38 @@
+---
+title: Letta
+description: "這是設定流程，不是建構函式。透過 /connect 加入一個 OpenAI 相容提供者，再挑選模型。"
+---
+
+Letta 不露出程式層面的基底 URL 參數。位址經由設定流程填入。
+
+在 Letta 應用裡打開 **`/connect`**，或在 CLI 裡執行 `letta connect`，打開的是同一條流程。新增類型為 **OpenAI 相容 API** 的自訂提供者，並給出基底 URL 與金鑰：
+
+```
+base URL:  https://api.hanzo.ai/v1
+API key:   sk-...
+```
+
+然後 `/model` 挑選模型。會打到 `POST /v1/chat/completions`。
+
+Letta 說出兩條限制，Hanzo 兩條都滿足。端點必須支援聊天補全與工具呼叫——所以挑一個 `GET /v1/models` 紀錄寫著 `supports_tools` 的模型。雲端託管的代理需要一個公開網路到得了的端點，不能只走 localhost。
+
+Letta 會向 OpenAI 相容提供者送出明確的 `reasoning_effort`，取 `none`、`minimal`、`low`、`medium`、`high`、`xhigh` 或 `max` 之一，並期望端點接受、改寫或拒絕它。
+
+`LETTA_BASE_URL` 是另一回事，做不到這件事。它是自行託管 Letta 伺服器的位址，例如 `http://localhost:8283`——伺服器自己的位址，與推論發往何處無關。
+
+## MCP
+
+伺服器放進 Letta Agent SDK 的 `mcpServers`，以名稱作鍵，遠端的用 `url`。
+
+```json
+{
+  "mcpServers": {
+    "hanzo": {
+      "url": "https://api.hanzo.ai/v1/mcp",
+      "headers": { "Authorization": "Bearer sk-..." }
+    }
+  }
+}
+```
+
+鍵變成命名空間：工具以 `mcp__hanzo__<tool>` 的形式到來。工作階段初始化時連線同時開始，一台到不了的伺服器不會拖住其餘的。

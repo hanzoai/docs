@@ -14,6 +14,9 @@ import {
   type SharedProps,
 } from '@hanzo/docs-base-ui/components/dialog/search';
 import { useDocsSearch } from '@hanzo/docs/core/search/client';
+import { useI18n } from '@hanzo/docs-base-ui/contexts/i18n';
+import { chrome } from '@/lib/chrome';
+import { i18n } from '@/lib/i18n';
 import { useMemo, useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@hanzo/docs-base-ui/components/ui/popover';
 import { ArrowRight, Check, ChevronDown, Sparkle } from 'lucide-react';
@@ -55,10 +58,13 @@ const items = [
 export default function CustomSearchDialog(props: SharedProps) {
   const [open, setOpen] = useState(false);
   const [tag, setTag] = useState<string | undefined>();
+  const { locale = i18n.defaultLanguage } = useI18n();
+  const text = chrome(locale);
   const { search, setSearch, query } = useDocsSearch({
     type: 'flexsearch-static',
     from: '/api/search',
     tag,
+    locale,
   });
   const { full } = useTreeContext();
   const router = useRouter();
@@ -100,10 +106,11 @@ export default function CustomSearchDialog(props: SharedProps) {
           {asked ? <Check className="size-4" /> : <Sparkle className="size-4" />}
           <p>
             {asked ? (
-              'Copied — paste it into your agent'
+              text.copiedAgent
             ) : (
               <>
-                Ask an agent<span className="font-medium text-fd-foreground"> “{q}”</span>
+                {text.askAgent}
+                <span className="font-medium text-fd-foreground"> “{q}”</span>
               </>
             )}
           </p>
@@ -119,7 +126,7 @@ export default function CustomSearchDialog(props: SharedProps) {
           .then(() => setAsked(true));
       },
     };
-  }, [asked, search]);
+  }, [asked, search, text]);
 
   const pageTreeAction = useMemo<SearchItemType | undefined>(() => {
     if (search.length === 0) return;
@@ -135,14 +142,14 @@ export default function CustomSearchDialog(props: SharedProps) {
           <div className="inline-flex items-center gap-2 text-fd-muted-foreground">
             <ArrowRight className="size-4" />
             <p>
-              Jump to <span className="font-medium text-fd-foreground">{page.name}</span>
+              {text.jumpTo} <span className="font-medium text-fd-foreground">{page.name}</span>
             </p>
           </div>
         ),
         onSelect: () => router.push(page.url),
       };
     }
-  }, [router, search, searchMap]);
+  }, [router, search, searchMap, text]);
 
   return (
     <SearchDialog search={search} onSearchChange={setSearch} isLoading={query.isLoading} {...props}>
@@ -175,8 +182,8 @@ export default function CustomSearchDialog(props: SharedProps) {
                 className: '-m-1.5 me-auto',
               })}
             >
-              <span className="text-fd-muted-foreground/80 me-2">Filter</span>
-              {items.find((item) => item.value === tag)?.name}
+              <span className="text-fd-muted-foreground/80 me-2">{text.filter}</span>
+              {tag === undefined ? text.all : items.find((item) => item.value === tag)?.name}
               <ChevronDown className="size-3.5 text-fd-muted-foreground" />
             </PopoverTrigger>
             <PopoverContent className="flex flex-col p-1 gap-1" align="start">
@@ -197,7 +204,9 @@ export default function CustomSearchDialog(props: SharedProps) {
                         : 'hover:text-fd-accent-foreground hover:bg-fd-accent',
                     )}
                   >
-                    <p className="font-medium mb-0.5">{item.name}</p>
+                    <p className="font-medium mb-0.5">
+                      {item.value === undefined ? text.all : item.name}
+                    </p>
                     <p className="text-xs opacity-70">{item.description}</p>
                   </button>
                 );

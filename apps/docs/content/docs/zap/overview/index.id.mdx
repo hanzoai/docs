@@ -1,0 +1,151 @@
+---
+title: Ikhtisar
+description: Arsitektur ZAP dan konsep intinya
+index: true
+---
+
+# Ikhtisar ZAP
+
+ZAP (Zero-Copy App Proto) adalah protokol komunikasi generasi berikutnya yang dirancang untuk ekosistem agen AI. Dibangun di atas Cap'n Proto, ia memberi kinerja dan keamanan yang dibutuhkan penerapan agen di produksi.
+
+## Konsep inti
+
+### Serialisasi tanpa salin
+
+Berbeda dari JSON-RPC yang dipakai MCP, ZAP bertumpu pada serialisasi tanpa salin dari Cap'n Proto:
+
+- **Tanpa biaya penguraian**: data dibaca langsung dari format kabel
+- **Memori bersama**: pesan berpindah antarproses tanpa disalin
+- **Pengodean padat**: format biner 2–10 kali lebih kecil daripada JSON
+
+```c
+struct ToolCall {
+  id @0 :Text;
+  name @1 :Text;
+  args @2 :Data;  # JSON arguments as bytes
+  metadata @3 :Metadata;
+}
+```
+
+### RPC berbasis antarmuka
+
+ZAP memakai sistem RPC berbasis kapabilitas dari Cap'n Proto:
+
+```c
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+  subscribe @5 (uri :Text) -> (stream :ResourceStream);
+  listPrompts @6 () -> (prompts :PromptList);
+  getPrompt @7 (name :Text, args :Metadata) -> (messages :List(PromptMessage));
+  log @8 (level :LogLevel, message :Text, data :Data);
+}
+```
+
+### Kompatibilitas MCP
+
+ZAP menjaga kompatibilitas mundur penuh dengan MCP lewat antarmuka Gateway:
+
+```c
+interface Gateway extends(Zap) {
+  addServer @0 (name :Text, url :Text, config :ServerConfig) -> (id :Text);
+  removeServer @1 (id :Text) -> ();
+  listServers @2 () -> (servers :List(ConnectedServer));
+  serverStatus @3 (id :Text) -> (status :ServerStatus);
+}
+```
+
+Gateway dapat menjembatani:
+- **stdio**: proses server MCP yang biasa
+- **http**: titik akhir MCP berbasis HTTP
+- **websocket**: koneksi WebSocket
+- **zap**: protokol ZAP asli
+- **unix**: soket domain Unix
+
+## Arsitektur
+
+```
++------------------+     +------------------+
+|   AI Agent       |     |   AI Agent       |
+|   (ZAP Client)   |     |   (ZAP Client)   |
++--------+---------+     +--------+---------+
+         |                        |
+         v                        v
++------------------------------------------+
+|              ZAP Gateway                  |
+|  +--------+  +--------+  +--------+      |
+|  | MCP    |  | MCP    |  | ZAP    |      |
+|  | Server |  | Server |  | Server |      |
+|  +--------+  +--------+  +--------+      |
++------------------------------------------+
+         |                        |
+         v                        v
++------------------+     +------------------+
+|   Coordinator    |     |   DID Registry   |
+|   (Discovery)    |     |   (Identity)     |
++------------------+     +------------------+
+```
+
+## Fitur utama
+
+### Alat
+
+Alat adalah fungsi yang dapat dipanggil agen:
+
+```c
+struct Tool {
+  name @0 :Text;
+  description @1 :Text;
+  schema @2 :Data;  # JSON Schema as bytes
+  annotations @3 :Metadata;
+}
+```
+
+### Sumber daya
+
+Sumber daya adalah sumber data, dengan streaming opsional:
+
+```c
+struct Resource {
+  uri @0 :Text;
+  name @1 :Text;
+  description @2 :Text;
+  mimeType @3 :Text;
+  annotations @4 :Metadata;
+}
+
+interface ResourceStream {
+  next @0 () -> (content :ResourceContent, done :Bool);
+  cancel @1 () -> ();
+}
+```
+
+### Prompt
+
+Prompt adalah templat pesan yang dapat dipakai ulang:
+
+```c
+struct Prompt {
+  name @0 :Text;
+  description @1 :Text;
+  arguments @2 :List(Argument);
+}
+```
+
+## Model keamanan
+
+ZAP menerapkan keamanan berlapis:
+
+1. **Keamanan transport**: jabat tangan hibrida pascakuantum (X25519 + ML-KEM-768)
+2. **Autentikasi pesan**: tanda tangan ML-DSA-65
+3. **Identitas**: identitas simpul berbasis W3C DID
+4. **Konsensus**: tanda tangan ambang Corona untuk operasi banyak pihak
+
+## Next Steps
+
+- [Memulai](/docs/guides) - Pasang dan jalankan agen ZAP pertama Anda
+- [Bahasa skema](/docs/zap/schema) - Pelajari format skema Cap'n Proto
+- [Spesifikasi protokol](/docs/zap/protocol) - Pahami format kabel

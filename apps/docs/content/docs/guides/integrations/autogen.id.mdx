@@ -1,0 +1,55 @@
+---
+title: AutoGen
+description: "OpenAIChatCompletionClient menerima base_url, dan model_info di sampingnya setiap kali nama model bukan salah satu yang dilayani OpenAI."
+---
+
+`OpenAIChatCompletionClient` menerima **`base_url`**, didokumentasikan sebagai wajib saat model tidak di-host di OpenAI. Bagian yang menjebak orang: nama model apa pun yang tidak dikenali SDK juga butuh **`model_info`**, dan tanpa itu klien melempar alih-alih memanggil.
+
+```bash
+pip install "autogen-ext[openai]"
+```
+
+```python
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelFamily
+
+client = OpenAIChatCompletionClient(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    model_info={
+        "vision": False,
+        "function_calling": True,
+        "json_output": True,
+        "family": ModelFamily.UNKNOWN,
+        "structured_output": True,
+    },
+)
+
+# ... use the client, then release it
+await client.close()
+```
+
+Mendarat di `POST /v1/chat/completions`.
+
+Di mana catatan model di `GET /v1/models` menyatakan `supports_vision` atau `supports_tools`, itu dipetakan ke `vision` dan `function_calling`. Kebanyakan catatan tidak menyatakan keduanya, dan referensi AutoGen menyatakan dengan jelas bahwa klien ini tidak diuji terhadap model non-OpenAI — jadi klaim hanya apa yang sudah Anda jalankan.
+
+## MCP
+
+URL adalah bidang `url` dari `StreamableHttpServerParams`.
+
+```python
+from autogen_ext.tools.mcp import StreamableHttpMcpToolAdapter, StreamableHttpServerParams
+
+params = StreamableHttpServerParams(
+    url="https://api.hanzo.ai/v1/mcp",
+    headers={"Authorization": "Bearer sk-..."},
+    timeout=30.0,
+    sse_read_timeout=300.0,
+    terminate_on_close=True,
+)
+
+adapter = await StreamableHttpMcpToolAdapter.from_server_params(params, "describe")
+```
+
+`StdioServerParams` dan `SseServerParams` adalah saudara; `mcp_server_tools()` membangun setiap alat pada sebuah server dalam satu panggilan, bukan satu adaptor setiap kali.

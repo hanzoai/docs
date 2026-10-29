@@ -1,0 +1,63 @@
+---
+title: "Apresentando o Hanzo Console: observabilidade unificada de LLM"
+description: "O Hanzo Console chega — um ambiente de desenvolvimento unificado para observar, depurar e otimizar aplicações de LLM em todos os provedores."
+author: Zach Kelling
+date: 2025-03-10
+---
+
+# Apresentando o Hanzo Console: observabilidade unificada de LLM
+
+Construir aplicações de LLM em escala é operar às cegas. Você envia requisições aos modelos, recebe respostas e espera que tudo funcione. Quando não funciona — saídas erradas, picos de latência, custos que explodem — não há visibilidade do porquê.
+
+Hoje lançamos o Hanzo Console: uma plataforma unificada de observabilidade para aplicações de LLM.
+
+## O que o Console faz
+
+O Console dá um quadro completo do seu uso de LLM em todos os provedores:
+
+**Rastreamento**: Cada chamada de LLM fica registrada com requisição e resposta completas, latência, contagem de tokens e custo. Veja os prompts exatos, as completações exatas e o tempo no nível do token.
+
+**Acompanhamento de custo**: Custo em tempo real por modelo, projeto, usuário e chave de API. Veja para onde vai o orçamento e otimize a partir disso.
+
+**Monitoramento de qualidade**: Acompanhe a qualidade das saídas ao longo do tempo. Pegue regressões antes que cheguem aos usuários. Faça testes A/B de prompts com significância estatística.
+
+**Vários provedores**: Um único painel para OpenAI, Anthropic, Together AI e qualquer outro provedor que você use. Pare de juntar relatórios de cinco portais de cobrança diferentes.
+
+## O imposto da integração
+
+Cada provedor de LLM oferece alguma forma de painel de uso. Mas, se você usa vários — e a maioria das aplicações em produção usa — está conciliando relatórios de cinco sistemas com cinco esquemas diferentes.
+
+O Console é independente de provedor. Instrumente uma vez e veja tudo.
+
+```python
+from hanzo import Console
+
+console = Console(api_key="your-key")
+
+# Automatic tracing with context manager
+with console.trace("user_query"):
+    response = openai.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": user_input}]
+    )
+```
+
+## Gestão de prompts
+
+O Console inclui um registro de prompts. Versione os prompts, acompanhe quais versões estão implantadas e compare o desempenho entre versões.
+
+O problema dos prompts no código: eles envelhecem, são ramificados e ninguém sabe qual versão está rodando em produção. O Console torna os prompts artefatos gerenciados de primeira classe.
+
+## Curadoria de conjuntos de dados
+
+Transforme rastros de produção em conjuntos de dados de avaliação. Marque as saídas boas, sinalize as ruins e monte um conjunto de verdade de referência direto do uso real.
+
+Quando você estiver pronto para o ajuste fino ou para trocar de provedor, terá um conjunto de dados que reflete o tráfego real de produção — não exemplos sintéticos.
+
+## Disponível agora
+
+O Console está disponível em [console.hanzo.ai](https://console.hanzo.ai). O plano gratuito inclui 50 mil rastros por mês. A implantação auto-hospedada é suportada para empresas.
+
+---
+
+*Zach Kelling é o fundador da Hanzo AI (Techstars '17).*

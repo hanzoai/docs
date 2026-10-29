@@ -1,0 +1,57 @@
+---
+title: C#
+description: ZAP C# SDK — 支援 async 的 .NET 繫結
+---
+
+# C# 繫結
+
+C# 繫結提供支援 async/await 的 .NET 整合。
+
+## 安裝
+
+```bash
+dotnet add package Zap.Protocol
+```
+
+## 快速開始
+
+```csharp
+using Zap;
+
+var client = await Zap.ConnectAsync("zap://localhost:9000");
+
+var server = await client.InitAsync(new ClientInfo
+{
+    Name = "my-agent",
+    Version = "1.0.0"
+});
+Console.WriteLine($"Connected to: {server.Name} v{server.Version}");
+
+var tools = await client.ListToolsAsync();
+foreach (var tool in tools)
+{
+    Console.WriteLine($"  {tool.Name} - {tool.Description}");
+}
+
+var result = await client.CallToolAsync(new ToolCall
+{
+    Id = Guid.NewGuid().ToString(),
+    Name = "read_file",
+    Args = "{\"path\": \"/etc/hosts\"}"
+});
+
+if (result.Error != null)
+{
+    Console.Error.WriteLine($"Error: {result.Error}");
+}
+else
+{
+    Console.WriteLine($"Result: {result.Content}");
+}
+
+await client.CloseAsync();
+```
+
+## 文件
+
+完整文件見 [zap-proto/cs](https://github.com/zap-proto/cs).

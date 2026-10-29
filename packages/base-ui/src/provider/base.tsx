@@ -4,6 +4,7 @@ import { lazy, type ReactNode } from 'react';
 import { DirectionProvider } from '@base-ui/react/direction-provider';
 import type { DefaultSearchDialogProps } from '@/components/dialog/search-default';
 import { ThemeProvider, type ThemeProviderProps } from 'next-themes';
+import { directionOf } from '@hanzo/docs-core/i18n';
 import { I18nProvider, type I18nProviderProps } from '@/contexts/i18n';
 import { SearchProvider, type SearchProviderProps } from '@/contexts/search';
 
@@ -50,13 +51,8 @@ export interface RootProviderProps {
 
 const DefaultSearchDialog = lazy(() => import('@/components/dialog/search-default'));
 
-export function RootProvider({
-  children,
-  dir = 'ltr',
-  theme = {},
-  search,
-  i18n,
-}: RootProviderProps) {
+export function RootProvider({ children, dir, theme = {}, search, i18n }: RootProviderProps) {
+  const resolvedDir = dir ?? directionOf(i18n?.locale);
   let body = children;
 
   if (search?.enabled !== false)
@@ -83,7 +79,7 @@ export function RootProvider({
     body = <I18nProvider {...i18n}>{body}</I18nProvider>;
   }
 
-  return <DirectionProvider direction={dir}>{body}</DirectionProvider>;
+  return <DirectionProvider direction={resolvedDir}>{body}</DirectionProvider>;
 }
 
 export {

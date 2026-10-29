@@ -1,0 +1,82 @@
+---
+title: "Goexif"
+description: "面向 Go 的 EXIF 解碼器 — goexif 的 Hanzo 分叉（BSD-2-Clause）。模組：github.com/hanzoai/goexif"
+---
+
+<p align="center"><img src=".github/hero.svg" alt="goexif" width="880"></p>
+
+goexif
+======
+
+[![GoDoc](https://godoc.org/github.com/hanzoai/goexif?status.svg)](https://godoc.org/github.com/hanzoai/goexif)
+
+解碼基本的 exif 與 tiff 編碼資料。仍處早期階段，不作保證。歡迎建議與合併請求。功能分成兩個套件，「exif」與「tiff」。exif 套件依賴 tiff 套件。
+
+喜歡 goexif？歡迎以 Bitcoin Cash 打賞：1DrU5V37nTXuv4vnRLVpahJEjhdATNgoBh
+
+安裝時，在終端機輸入：
+
+```
+go get github.com/hanzoai/goexif/exif
+```
+
+或者只要 tiff 套件：
+
+```
+go get github.com/hanzoai/goexif/tiff
+```
+
+使用範例：
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/hanzoai/goexif/exif"
+	"github.com/hanzoai/goexif/mknote"
+)
+
+func ExampleDecode() {
+	fname := "sample1.jpg"
+
+	f, err := os.Open(fname)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Optionally register camera makenote data parsing - currently Nikon and
+	// Canon are supported.
+	exif.RegisterParsers(mknote.All...)
+
+	x, err := exif.Decode(f)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	camModel, _ := x.Get(exif.Model) // normally, don't ignore errors!
+	fmt.Println(camModel.StringVal())
+
+	focal, _ := x.Get(exif.FocalLength)
+	numer, denom, _ := focal.Rat2(0) // retrieve first (only) rat. value
+	fmt.Printf("%v/%v", numer, denom)
+
+	// Two convenience functions exist for date/time taken and GPS coords:
+	tm, _ := x.DateTime()
+	fmt.Println("Taken: ", tm)
+
+	lat, long, _ := x.LatLong()
+	fmt.Println("lat, long: ", lat, ", ", long)
+}
+```
+
+<!--golang-->
+[![githalytics.com alpha](https://cruel-carlota.pagodabox.com/5e166f74cdb82b999ccd84e3c4dc4348 "githalytics.com")](http://githalytics.com/rwcarlsen/goexif)
+
+## 連結
+
+- [原始碼](https://github.com/hanzoai/goexif)
+- 授權: BSD-2-Clause

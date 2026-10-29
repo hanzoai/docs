@@ -1,0 +1,39 @@
+---
+title: 执行策略
+description: 用执行策略规则控制 Hanzo Dev 如何执行命令。
+---
+
+## 执行策略
+
+Hanzo Dev 用执行策略控制智能体可以运行哪些命令，以及何时需要批准。
+
+### 沙箱模式
+
+| 模式 | 说明 |
+| --- | --- |
+| `off` | 无沙箱（命令直接运行） |
+| `workspace-read` | 对工作区只读 |
+| `workspace-write` | 对工作区可读写（full-auto 的默认值） |
+| `network-off` | 关闭网络访问 |
+
+### 批准策略
+
+| 策略 | 说明 |
+| --- | --- |
+| `always` | 执行前始终请求批准 |
+| `on-failure` | 仅在命令失败时请求（full-auto 的默认值） |
+| `on-request` | 在模型明确请求批准时请求 |
+| `never` | 从不请求批准 |
+
+### 用法
+
+```bash
+# Set sandbox mode
+dev --sandbox workspace-write "your prompt"
+
+# Set approval policy
+dev --ask-for-approval on-failure "your prompt"
+
+# Full auto (sandboxed + auto-approve)
+dev --full-auto "your prompt"
+```

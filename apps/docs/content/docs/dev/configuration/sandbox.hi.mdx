@@ -1,0 +1,47 @@
+---
+title: सैंडबॉक्सिंग
+description: Hanzo Dev सुरक्षा के लिए कमांड निष्पादन को कैसे अलग रखता है.
+---
+
+## सैंडबॉक्स और अनुमोदन
+
+Hanzo Dev सैंडबॉक्स लागू करता है ताकि एजेंट के कमांड चलाने पर अनचाहे दुष्प्रभाव न हों।
+
+### सैंडबॉक्स मोड
+
+| मोड | विवरण |
+| --- | --- |
+| `off` | कोई सैंडबॉक्स नहीं (कमांड सीधे चलते हैं) |
+| `workspace-read` | कार्यस्थान पर केवल-पढ़ने की पहुँच |
+| `workspace-write` | कार्यस्थान पर पढ़ने और लिखने की पहुँच (full-auto का डिफ़ॉल्ट) |
+| `network-off` | नेटवर्क पहुँच बंद करता है |
+| `danger-full-access` | पूरी पहुँच (सावधानी से उपयोग करें) |
+
+### अनुमोदन नीतियाँ
+
+| नीति | विवरण |
+| --- | --- |
+| `always` | हमेशा अनुमोदन माँगता है |
+| `on-failure` | केवल कमांड विफल होने पर माँगता है |
+| `on-request` | जब मॉडल अनुमोदन माँगे तब माँगता है |
+| `never` | कभी अनुमोदन नहीं माँगता |
+
+### उपयोग
+
+```bash
+# Read-only mode (safest)
+dev --sandbox workspace-read "analyze this codebase"
+
+# Write mode with approval on failure
+dev --sandbox workspace-write --ask-for-approval on-failure "refactor"
+
+# Full auto (sandboxed writes, auto-approve)
+dev --full-auto "fix all linting errors"
+
+# Bypass all safety (DANGEROUS)
+dev --dangerously-bypass-approvals-and-sandbox "your prompt"
+```
+
+### सत्र के बीच में बदलाव
+
+बातचीत के दौरान अनुमोदन स्तर TUI में `/approvals` से बदलें।

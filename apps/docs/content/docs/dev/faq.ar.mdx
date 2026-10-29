@@ -1,0 +1,57 @@
+---
+title: الأسئلة الشائعة
+description: أسئلة شائعة عن Hanzo Dev.
+---
+
+## أي النماذج مدعومة؟
+
+نوصي بالإعدادات المدمجة التي تلفّ GPT-5.2 (مثل `code-gpt-5.2-codex`). مستوى الاستدلال الافتراضي هو medium — ارفعه إلى high للمهام المعقدة عبر `/model`.
+
+يمكنك أيضًا استخدام نماذج أخرى بمصادقة عبر واجهة البرمجة مع العلم `--model`.
+
+## كيف أمنع Hanzo Dev من تعديل ملفاتي؟
+
+افتراضيًا يستطيع Hanzo Dev تعديل الملفات في مجلد العمل (وضع Auto). لمنع التعديل، شغّله للقراءة فقط:
+
+```bash
+dev --sandbox read-only
+```
+
+أو غيّر مستوى الموافقة أثناء المحادثة بالأمر `/approvals`.
+
+## هل يعمل على Windows؟
+
+قد يعمل التشغيل المباشر على Windows، لكنه غير مدعوم رسميًا. نوصي بـ [Windows Subsystem for Linux (WSL2)](https://learn.microsoft.com/en-us/windows/wsl/install).
+
+## لماذا لا يجد Hanzo Dev وكلائي على Windows؟
+
+اكتشاف الوكلاء على Windows قد يتأثر بـ PATH وامتدادات الملفات. الحلول:
+
+### استخدم مسارات مطلقة (موصى به)
+
+```toml
+[[agents]]
+name = "claude"
+command = "C:\\Users\\YourUser\\AppData\\Roaming\\npm\\claude.cmd"
+enabled = true
+```
+
+### اعثر على موضع تثبيت npm العام
+
+```cmd
+npm config get prefix
+```
+
+### تحقق أن PATH يتضمن مجلد npm
+
+```powershell
+$env:PATH -split ';' | Select-String "npm"
+```
+
+### افحص امتدادات الملفات
+
+على Windows يبحث Hanzo Dev عن تنفيذيات بالامتدادات `.exe` و`.cmd` و`.bat` و`.com`. أدرج الامتداد الصحيح عند استخدام المسارات المطلقة.
+
+## ما علاقته بـ OpenAI Codex؟
+
+Hanzo Dev واجهة سطر أوامر للتطوير الوكيلي مكتوبة بـ Rust: تنسيق عدة وكلاء، عميل وخادم MCP، سياسة تنفيذ معزولة، وتكامل مباشر مع بنية Hanzo AI. الاسم لا علاقة له بنموذج Codex من OpenAI لعام 2021، الذي أُوقف في مارس 2023.

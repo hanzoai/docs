@@ -1,0 +1,82 @@
+---
+title: "Goexif"
+description: "ตัวถอดรหัส EXIF สำหรับ Go — สาขา Hanzo ของ goexif (BSD-2-Clause) มอดูล: github.com/hanzoai/goexif"
+---
+
+<p align="center"><img src=".github/hero.svg" alt="goexif" width="880"></p>
+
+goexif
+======
+
+[![GoDoc](https://godoc.org/github.com/hanzoai/goexif?status.svg)](https://godoc.org/github.com/hanzoai/goexif)
+
+ถอดรหัสข้อมูลพื้นฐานที่เข้ารหัสแบบ exif และ tiff ยังอยู่ในช่วงแอลฟา — ไม่มีการรับประกัน ยินดีรับคำแนะนำและคำขอรวม การทำงานแยกเป็นสองแพ็กเกจ คือ «exif» และ «tiff» แพ็กเกจ exif ขึ้นกับแพ็กเกจ tiff
+
+ชอบ goexif หรือไม่ รับทิปเป็น Bitcoin Cash: 1DrU5V37nTXuv4vnRLVpahJEjhdATNgoBh
+
+เมื่อจะติดตั้ง ให้พิมพ์ในเทอร์มินัล:
+
+```
+go get github.com/hanzoai/goexif/exif
+```
+
+หรือถ้าต้องการเพียงแพ็กเกจ tiff:
+
+```
+go get github.com/hanzoai/goexif/tiff
+```
+
+ตัวอย่างการใช้งาน:
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/hanzoai/goexif/exif"
+	"github.com/hanzoai/goexif/mknote"
+)
+
+func ExampleDecode() {
+	fname := "sample1.jpg"
+
+	f, err := os.Open(fname)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Optionally register camera makenote data parsing - currently Nikon and
+	// Canon are supported.
+	exif.RegisterParsers(mknote.All...)
+
+	x, err := exif.Decode(f)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	camModel, _ := x.Get(exif.Model) // normally, don't ignore errors!
+	fmt.Println(camModel.StringVal())
+
+	focal, _ := x.Get(exif.FocalLength)
+	numer, denom, _ := focal.Rat2(0) // retrieve first (only) rat. value
+	fmt.Printf("%v/%v", numer, denom)
+
+	// Two convenience functions exist for date/time taken and GPS coords:
+	tm, _ := x.DateTime()
+	fmt.Println("Taken: ", tm)
+
+	lat, long, _ := x.LatLong()
+	fmt.Println("lat, long: ", lat, ", ", long)
+}
+```
+
+<!--golang-->
+[![githalytics.com alpha](https://cruel-carlota.pagodabox.com/5e166f74cdb82b999ccd84e3c4dc4348 "githalytics.com")](http://githalytics.com/rwcarlsen/goexif)
+
+## ลิงก์
+
+- [ต้นทาง](https://github.com/hanzoai/goexif)
+- สัญญาอนุญาต: BSD-2-Clause

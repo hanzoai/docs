@@ -1,0 +1,38 @@
+---
+title: Letta
+description: "Un flux de configuration, pas un constructeur. Ajoutez un fournisseur compatible OpenAI via /connect, puis choisissez le modèle."
+---
+
+Letta n'expose aucun paramètre d'URL de base au niveau du code. L'adresse s'entre par un flux de configuration.
+
+Ouvrez **`/connect`** dans l'application Letta, ou lancez `letta connect` dans la CLI, ce qui ouvre le même flux. Ajoutez un fournisseur personnalisé de type **API compatible OpenAI**, et donnez-lui l'URL de base et la clé :
+
+```
+base URL:  https://api.hanzo.ai/v1
+API key:   sk-...
+```
+
+Puis `/model` choisit le modèle. Atterrit sur `POST /v1/chat/completions`.
+
+Deux contraintes que Letta énonce, et Hanzo les satisfait toutes les deux. Le point de terminaison doit prendre en charge les chat completions et l'appel d'outils — choisissez donc un modèle dont l'enregistrement `GET /v1/models` dit `supports_tools`. Et un agent hébergé dans le cloud a besoin d'un point de terminaison joignable depuis l'internet public, pas seulement par localhost.
+
+Letta envoie un `reasoning_effort` explicite aux fournisseurs compatibles OpenAI, l'une des valeurs `none`, `minimal`, `low`, `medium`, `high`, `xhigh` ou `max`, et attend que le point de terminaison l'accepte, le remappe ou le rejette.
+
+`LETTA_BASE_URL` est autre chose et ne fera pas cela. C'est l'adresse d'un serveur Letta auto-hébergé, tel que `http://localhost:8283` — l'adresse du serveur lui-même, sans rapport avec la destination de l'inférence.
+
+## MCP
+
+Les serveurs vont dans `mcpServers` du SDK d'agents Letta, indexés par nom, avec `url` pour un serveur distant.
+
+```json
+{
+  "mcpServers": {
+    "hanzo": {
+      "url": "https://api.hanzo.ai/v1/mcp",
+      "headers": { "Authorization": "Bearer sk-..." }
+    }
+  }
+}
+```
+
+La clé devient l'espace de noms : les outils arrivent sous la forme `mcp__hanzo__<tool>`. Les connexions démarrent en parallèle à l'initialisation de la session, et un serveur injoignable ne retient pas les autres.

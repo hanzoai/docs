@@ -5,6 +5,8 @@ import { Callout } from '@hanzo/docs-base-ui/components/callout';
 import { TypeTable } from '@hanzo/docs-base-ui/components/type-table';
 import * as Preview from '@/components/preview';
 import { createMetadata } from '@/lib/metadata';
+import { i18n } from '@/lib/i18n';
+import { alternatesForDocs } from '@/lib/locale-seo';
 import { source } from '@/lib/source';
 import { Wrapper } from '@/components/preview/wrapper';
 import { Mermaid } from '@/components/mdx/mermaid';
@@ -39,14 +41,20 @@ function PreviewRenderer({ preview }: { preview: string }): ReactNode {
 
 export const revalidate = false;
 
-export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
-  const params = await props.params;
-  const page = source.getPage(params.slug);
+export async function DocsArticle({
+  slug = [],
+  locale = i18n.defaultLanguage,
+}: {
+  slug?: string[];
+  locale?: string;
+}) {
+  const page = source.getPage(slug, locale);
 
   if (!page)
     return (
       <NotFound
-        getSuggestions={async () => (params.slug ? getSuggestions(params.slug.join(' ')) : [])}
+        locale={locale}
+        getSuggestions={async () => (slug.length ? getSuggestions(slug.join(' ')) : [])}
       />
     );
 
@@ -115,14 +123,14 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
               Wrapper,
               blockquote: Callout as unknown as FC<ComponentProps<'blockquote'>>,
               DocsCategory: ({ url }) => {
-                return <DocsCategory url={url ?? page.url} />;
+                return <DocsCategory url={url ?? page.url} locale={locale} />;
               },
               Installation,
               Customization,
             })}
           />
         </MdxErrorBoundary>
-        {page.data.index ? <DocsCategory url={page.url} /> : null}
+        {page.data.index ? <DocsCategory url={page.url} locale={locale} /> : null}
       </div>
       <PageFeedback />
       {lastModified && <PageLastUpdate date={lastModified} />}
@@ -130,10 +138,10 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   );
 }
 
-function DocsCategory({ url }: { url: string }) {
+function DocsCategory({ url, locale }: { url: string; locale: string }) {
   return (
     <Cards>
-      {findSiblings(source.getPageTree(), url).map((item) => {
+      {findSiblings(source.getPageTree(locale), url).map((item) => {
         if (item.type === 'separator') return;
         if (item.type === 'folder') {
           if (!item.index) return;
@@ -150,9 +158,14 @@ function DocsCategory({ url }: { url: string }) {
   );
 }
 
+export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
+  const params = await props.params;
+  return <DocsArticle slug={params.slug} locale={i18n.defaultLanguage} />;
+}
+
 export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): Promise<Metadata> {
   const { slug = [] } = await props.params;
-  const page = source.getPage(slug);
+  const page = source.getPage(slug, i18n.defaultLanguage);
   if (!page)
     return createMetadata({
       title: 'Not Found',
@@ -163,6 +176,7 @@ export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): P
   return createMetadata({
     title: page.data.title,
     description,
+    alternates: { languages: alternatesForDocs(slug) },
     openGraph: {
       url: `/docs/${page.slugs.join('/')}`,
     },
@@ -170,5 +184,7 @@ export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): P
 }
 
 export function generateStaticParams() {
-  return source.generateParams();
+  return source.getPages(i18n.defaultLanguage).map((page) => ({
+    slug: page.slugs,
+  }));
 }

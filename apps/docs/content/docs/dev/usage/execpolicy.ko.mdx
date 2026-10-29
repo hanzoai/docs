@@ -1,0 +1,39 @@
+---
+title: 실행 정책
+description: 실행 정책 규칙으로 Hanzo Dev가 명령을 실행하는 방식을 제어합니다.
+---
+
+## 실행 정책
+
+Hanzo Dev는 실행 정책으로 에이전트가 어떤 명령을 실행할 수 있는지, 언제 승인이 필요한지 제어합니다.
+
+### 샌드박스 모드
+
+| 모드 | 설명 |
+| --- | --- |
+| `off` | 샌드박스 없음(명령이 직접 실행됨) |
+| `workspace-read` | 작업 공간에 읽기 전용 접근 |
+| `workspace-write` | 작업 공간에 읽기 및 쓰기 접근(full-auto의 기본값) |
+| `network-off` | 네트워크 접근을 끕니다 |
+
+### 승인 정책
+
+| 정책 | 설명 |
+| --- | --- |
+| `always` | 실행 전에 항상 승인을 요청합니다 |
+| `on-failure` | 명령이 실패할 때만 요청합니다(full-auto의 기본값) |
+| `on-request` | 모델이 명시적으로 승인을 요청할 때 요청합니다 |
+| `never` | 승인을 요청하지 않습니다 |
+
+### 사용법
+
+```bash
+# Set sandbox mode
+dev --sandbox workspace-write "your prompt"
+
+# Set approval policy
+dev --ask-for-approval on-failure "your prompt"
+
+# Full auto (sandboxed + auto-approve)
+dev --full-auto "your prompt"
+```

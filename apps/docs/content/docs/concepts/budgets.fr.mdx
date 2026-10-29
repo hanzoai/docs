@@ -1,0 +1,160 @@
+---
+title: Budgets
+description: Un agent est devisé avant de dépenser et refusé quand il dépasserait. Quatre plafonds, des micro-dollars entiers, et un refus que l’agent peut lire pendant qu’il tourne encore.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Après cette page vous pouvez plafonner ce qu’un agent dépense, lire ce qu’il a dépensé, et
+distinguer un refus de budget d’un échec du modèle.**
+
+## Ce qu’est un budget
+
+Chaque appel de modèle et chaque appel d’outil tarifé qu’un agent fait est **devisé avant d’être
+fait** — une borne supérieure de ce que l’appel pourrait coûter — et ce devis est
+vérifié, dans cet ordre, contre quatre choses :
+
+1. **le solde de votre organisation** — s’il peut être payé tout court
+2. **le plafond de période de l’agent** — `cap_micro_usd`, moins ce que cette période a dépensé
+3. **le plafond de la tâche** — `max_task_micro_usd`, moins ce que cette exécution a dépensé
+4. **le budget de la session** — `budget_micro_usd`, moins ce que cette session a dépensé
+
+N’importe lequel refuse l’appel. Il n’y a ni drapeau ni contournement : une exécution n’atteint
+un modèle qu’en passant par la porte.
+
+## L’argent est un entier de micro-dollars
+
+Chaque montant est un nombre entier de micro-dollars, dans un champ suffixé
+`_micro_usd`. **1 000 000 est un dollar**, donc `11902000` fait 11,902 $ et `250` est
+un quarantième de centime. Un appel coûte des fractions de centime ; un plafond tenu en centimes
+ne pourrait pas en voir un.
+
+## Énoncer un budget
+
+Les trois champs sont requis quand vous définissez un agent.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "triage",
+    "model": "zen-1",
+    "instructions": "Triage inbound issues.",
+    "cap_micro_usd": 20000000,
+    "max_task_micro_usd": 500000,
+    "period": "month"
+  }'
+```
+
+Cet agent peut dépenser **20 $ par mois**, et aucune exécution de lui ne peut dépenser plus
+de **0,50 $**.
+
+- `cap_micro_usd` doit être positif. Un plafond de zéro voudrait dire aucune limite et aucun
+  enregistrement, qui est l’état qu’un budget existe pour retirer.
+- `max_task_micro_usd` doit être positif et ne peut pas dépasser le plafond.
+- `period` est `day`, `week` ou `month`.
+
+Les périodes sont **alignées sur le calendrier en UTC** : `month` veut dire le mois, pas trente
+jours depuis le premier appel, et `week` commence le lundi. La fenêtre roule au
+premier appel après qu’elle a tourné, et `consumed_micro_usd` revient à zéro.
+
+## Lire ce qu’il a dépensé
+
+```
+GET /v1/agent/{ref}/spend
+```
+
+```json
+{
+  "cap_micro_usd": 20000000,
+  "max_task_micro_usd": 500000,
+  "period": "month",
+  "consumed_micro_usd": 11902000,
+  "remaining_micro_usd": 8098000,
+  "by_component": { "model": 11431000, "computer": 402000, "tool": 69000 }
+}
+```
+
+`by_component` partage la dépense en trois : **model** est chaque complétion que
+l’agent a achetée, **computer** est le moteur d’exécution où il a résidé, **tool** est un
+appel d’outil tarifé. Un composant sans dépense est **absent, pas à zéro**.
+
+## À quoi ressemble un refus
+
+Un dépassement répond `402` avec le code `budget_exceeded` :
+
+```json
+{
+  "error": {
+    "code": "budget_exceeded",
+    "message": "task budget exceeded: this call would cost up to 620000 micro-USD and 118000 remain",
+    "event": "budget.exceeded",
+    "scope": "task",
+    "component": "model",
+    "quote_micro_usd": 620000,
+    "remaining_micro_usd": 118000
+  }
+}
+```
+
+`scope` nomme quel plafond a refusé — `agent`, `task` ou `session` — pour que vous sachiez
+s’il faut relever le mois, l’exécution ou cette seule session.
+
+<Callout>
+**L’agent est informé dans la bande.** Sous une session la même charge est ajoutée au
+flux d’événements de la session comme un événement de statut venant de `budget`, ainsi l’agent lit
+son propre refus pendant qu’il tourne encore et peut conclure — écrire ce qu’il a,
+dire pourquoi il s’est arrêté — au lieu de s’écraser sur un appel raté.
+</Callout>
+
+`budget_exceeded` n’est pas un échec du modèle. Un appel que le modèle a raté est retenté ; un
+appel que le budget a refusé ne l’est pas, parce que le retenter le refuserait encore.
+
+## Les devis sont des bornes supérieures, le règlement est le réel
+
+Le devis se trompe grand exprès : l’invite telle qu’elle sera envoyée, plus la plus grande
+complétion que la requête permet — `max_tokens`, ou 4 096 quand la requête n’en nomme
+aucune — au tarif d’inférence de la plateforme.
+
+Quand l’appel a eu lieu, ce que la passerelle a **réellement rapporté** est réglé
+contre chaque total auquel le devis a été vérifié, et la différence revient
+au plafond. Un appel qui a échoué ne se règle jamais, donc il n’est jamais facturé et sa
+marge revient.
+
+C’est pourquoi un agent peut être refusé avec une marge qui paraît suffisante : la
+porte compare le plafond du prochain appel, pas son coût probable.
+
+## Le budget propre d’une session
+
+Une session peut porter un plafond à elle, sous celui de l’agent :
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent/sessions/$ID/budget \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"budget_micro_usd": 2000000}'
+```
+
+Une session qui atteint son propre budget est **mise en pause, pas en échec** — le travail reprend
+dès que vous relevez le plafond ou que vous le retirez. Trois règles :
+
+- un remplacement doit être **strictement supérieur** à ce que la session a consommé
+- **le retrait est à sens unique** : `{"budget_micro_usd": null}` enlève le plafond pour
+  de bon, et cette session ne peut plus en recevoir un
+- une session **créée sans** budget ne peut pas en recevoir un plus tard
+
+Chacun de ces cas refuse avec `409` plutôt que de faire autre chose en silence.
+
+## Un agent défini avant que les budgets existent
+
+Il porte un plafond de zéro et **n’est pas plafonné** — sa dépense est tout de même totalisée et
+lisible à `/spend`, et une mise à jour lui donne un plafond. Refuser chaque agent défini
+avant la livraison de la fonction serait une panne, pas une politique.
+
+## Suite
+
+- **[Agents](/docs/concepts/agents)** — la définition à laquelle un budget s’accroche.
+- **[Référence des agents](/docs/openapi/agents)** — chaque opération, générée.
+- **[Tarifs](https://hanzo.ai/pricing)** — ce que la plateforme facture, et quel
+  est le frais d’un appel de modèle.

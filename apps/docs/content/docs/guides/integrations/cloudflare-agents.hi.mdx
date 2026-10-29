@@ -1,0 +1,64 @@
+---
+title: Cloudflare Agents
+description: "अपना बेस-URL पैरामीटर नहीं — openai क्लाइंट को Agent के अंदर इंस्टैंशिएट करें और उस पर baseURL सेट करें।"
+---
+
+Cloudflare Agents का अपना बेस-URL पैरामीटर नहीं है। प्रलेखित निर्माण सादा `openai` क्लाइंट है, Agent के अंदर बनाया जाता है, और उस पर **`baseURL`** सेट होता है।
+
+```bash
+npm i agents openai
+```
+
+```ts
+import { Agent } from "agents";
+import { OpenAI } from "openai";
+
+export class Researcher extends Agent {
+  async onRequest(request: Request): Promise<Response> {
+    const client = new OpenAI({
+      apiKey: this.env.HANZO_API_KEY,
+      baseURL: "https://api.hanzo.ai/v1",
+    });
+
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
+
+    this.ctx.waitUntil(
+      (async () => {
+        const stream = await client.chat.completions.create({
+          model: "zen5",
+          messages: [{ role: "user", content: await request.text() }],
+          stream: true,
+        });
+        for await (const part of stream) {
+          writer.write(encoder.encode(part.choices[0]?.delta?.content || ""));
+        }
+        writer.close();
+      })(),
+    );
+
+    return new Response(readable);
+  }
+}
+```
+
+`POST /v1/chat/completions` पर पहुँचता है।
+
+कुंजी को Worker सीक्रेट में रखें — `wrangler secret put HANZO_API_KEY` — और वह `this.env` पर आती है। स्ट्रीमिंग `ctx.waitUntil` के अंदर चलती है ताकि उत्तर अभी लिखे जा रहे हों तब Worker गिराया न जाए।
+
+दूसरा प्रलेखित मार्ग AI SDK है, जिसे `AIChatAgent` और स्टार्टर टेम्पलेट पहले से इस्तेमाल करते हैं। [Vercel AI SDK पृष्ठ](/docs/guides/integrations/vercel-ai-sdk) की हर बात Cloudflare Agent के अंदर बिना बदलाव लागू होती है।
+
+## MCP
+
+MCP क्लाइंट लाइब्रेरी नहीं, Agent पर एक विधि है। `addMcpServer` एक id और एक `authUrl` लौटाता है; गैर-नल `authUrl` का मतलब है कि वह सर्वर OAuth चक्कर चाहता है, हमारा नहीं चाहता।
+
+```ts
+export class Researcher extends Agent {
+  async onStart() {
+    await this.addMcpServer("hanzo", "https://api.hanzo.ai/v1/mcp");
+  }
+}
+```
+
+जुड़े सर्वर और उनके टूल Agent की MCP स्थिति से पढ़े जा सकते हैं।

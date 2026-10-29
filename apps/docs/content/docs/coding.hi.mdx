@@ -1,0 +1,58 @@
+---
+title: कोडिंग एजेंट
+description: "अपने रिपॉज़िटरी में एक कोडिंग एजेंट चलाएँ — हमारा, Claude Code या Codex — एक कमांड से।"
+icon: Terminal
+---
+
+`hanzo code` उस रिपॉज़िटरी पर कोडिंग एजेंट चलाता है जिसमें आप खड़े हैं।
+तीन एजेंट समर्थित हैं, और एक का नाम लेने पर वही एजेंट मिलता है या साफ़
+असफलता — ये अलग उत्पाद हैं, एक-दूसरे के उपनाम नहीं।
+
+```bash
+hanzo code                      # Hanzo Dev, the default
+hanzo code claude               # Claude Code
+hanzo code codex                # Codex
+```
+
+कार्य **एक** तर्क के रूप में दें, उद्धरण चिह्नों में:
+
+```bash
+hanzo code "fix the failing test in api/users"
+hanzo code claude "port this module to the new store"
+```
+
+## एजेंट का नाम
+
+नीचे की हर वर्तनी एक ही जगह हल होती है, इसलिए वे अलग नहीं हो सकतीं:
+
+| | स्थितीय | फ़्लैग | स्पष्ट |
+| --- | --- | --- | --- |
+| Hanzo Dev | `hanzo code dev` | `hanzo code --dev` | `hanzo code --backend dev` |
+| Claude Code | `hanzo code claude` | `hanzo code --claude` | `hanzo code --backend claude` |
+| Codex | `hanzo code codex` | `hanzo code --codex` | `hanzo code --backend codex` |
+
+`hanzo dev`, `hanzo code dev` का शीर्ष-स्तर शॉर्टहैंड है। `claude-code` और
+`cc`, `claude` की स्वीकृत वर्तनी हैं।
+
+दो बार नाम देने पर हल नहीं होता, मना कर दिया जाता है — `hanzo code claude --codex`
+कहता है कि एक बार नाम दें।
+
+## अनुमोदन
+
+एजेंट अपने कदम अपने आप अनुमोदित करता है। दो निकास, इस क्रम में कि वे कितना छोड़ते हैं:
+
+```bash
+hanzo code --ask            # the backend asks before each step
+hanzo code --no-sandbox     # bypass approvals AND drop the sandbox
+```
+
+`--safe`, `--ask` का पर्याय है, और दोनों `~/.hanzo/settings.json` में
+`autoApprove` पर भारी पड़ते हैं।
+
+## दूसरा `hanzo code`
+
+`hanzo code context`, `hanzo code file` और `hanzo code index` वही शब्द साझा करने वाली दूसरी चीज़ हैं: [कोड इंटेलिजेंस API](/docs/openapi/code) — आपकी अनुक्रमित रिपॉज़िटरी में खोज और प्रतीक,
+आपके लिए और एजेंटों के लिए। वे बैकएंड नहीं लेते और कोई एजेंट नहीं चलाते।
+
+नियम पहला तर्क है: जो शब्द बैकएंड का नाम लेता है वह उसे चुनता है, और
+बाकी कुछ कार्य या उपकमांड है।

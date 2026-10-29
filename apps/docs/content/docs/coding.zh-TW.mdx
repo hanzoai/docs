@@ -1,0 +1,58 @@
+---
+title: 程式設計代理
+description: "在你的存放庫裡執行程式設計代理 — 我們的、Claude Code 或 Codex — 一條指令即可。"
+icon: Terminal
+---
+
+`hanzo code` 針對你正站著的存放庫執行一個程式設計代理。
+支援三個代理，點名其中一個就得到它，或者得到一次明確的失敗 —
+它們是各自的產品，從不是彼此的別名。
+
+```bash
+hanzo code                      # Hanzo Dev, the default
+hanzo code claude               # Claude Code
+hanzo code codex                # Codex
+```
+
+把工作作為 **一個** 參數傳進去，加上引號：
+
+```bash
+hanzo code "fix the failing test in api/users"
+hanzo code claude "port this module to the new store"
+```
+
+## 點名代理
+
+下面每一種寫法都在同一處解析，所以不會各走各的：
+
+| | 位置參數 | 旗標 | 明確 |
+| --- | --- | --- | --- |
+| Hanzo Dev | `hanzo code dev` | `hanzo code --dev` | `hanzo code --backend dev` |
+| Claude Code | `hanzo code claude` | `hanzo code --claude` | `hanzo code --backend claude` |
+| Codex | `hanzo code codex` | `hanzo code --codex` | `hanzo code --backend codex` |
+
+`hanzo dev` 是 `hanzo code dev` 的頂層簡寫。`claude-code` 和
+`cc` 是 `claude` 接受的寫法。
+
+點名兩次會被拒絕，而不是被解消 — `hanzo code claude --codex`
+會告訴你只點一次名。
+
+## 核准
+
+代理預設自動核准自己的步驟。兩條出路，按放棄的程度遞增：
+
+```bash
+hanzo code --ask            # the backend asks before each step
+hanzo code --no-sandbox     # bypass approvals AND drop the sandbox
+```
+
+`--safe` 是 `--ask` 的同義詞，二者都會蓋過 `~/.hanzo/settings.json` 裡的
+`autoApprove`。
+
+## 另一個 `hanzo code`
+
+`hanzo code context`、`hanzo code file` 和 `hanzo code index` 是共用這個詞的另一件事：它們是 [程式碼智慧 API](/docs/openapi/code) — 在已索引的存放庫裡搜尋和查看符號，
+給你用，也給代理用。它們不接收後端，也不執行代理。
+
+規則是第一個參數：一個點出後端名字的詞就選定它，
+其他任何內容都是工作或子指令。

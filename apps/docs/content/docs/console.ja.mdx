@@ -1,0 +1,40 @@
+---
+icon: LayoutDashboard
+title: コンソール
+description: Hanzo Cloud の統合クラウドコンソール -- console.hanzo.ai の一つのアプリから、すべての製品、キー、組織を管理します。
+---
+
+# コンソール
+
+Hanzo コンソールは Hanzo Cloud の統合された制御面です。今見ているアプリそのものです。あらゆるクラウド製品を一か所に集めます。アイデンティティ、キー、シークレット、モデル、請求、デプロイ、ダッシュボードが、すべて組織の範囲に収まります。
+
+## すべての製品のための一つのアプリ
+
+コンソールは単一の製品カタログから描画されるため、すべての Hanzo Cloud サービスに同じナビゲーション、概要、コマンドパレットから届きます。各製品は外へのリンクではなくネイティブなモジュールで、本物の `/v1` API に支えられています。
+
+- **AI** -- モデル、プレイグラウンド、プロバイダー、embeddings
+- **セキュリティ** -- [IAM](/docs/openapi/iam)、[KMS](/docs/openapi/kms)、[Authz](/docs/openapi/authz)、[MPC](/docs/openapi)、[Zero Trust](/docs/openapi/network)
+- **観測** -- [ダッシュボード](/docs/openapi/o11y)、コスト、[請求](/docs/openapi/billing)、ステータス
+- **デプロイ** -- プロジェクト、環境、関数、クラスター
+
+## サインインと範囲
+
+コンソールは [hanzo.id](https://hanzo.id) の Hanzo IAM を通じ、`hanzo-cloud` アプリケーションとしてサインインします。セッションは**組織**に範囲が限定され、グローバル管理者は任意の組織へ範囲を切り替えられます。ブランドの識別は固定されたまま、データはその場で範囲を付け替えます。[IAM](/docs/openapi/iam) と[組織](/docs/openapi/iam)を参照してください。
+
+## 届けられ方
+
+コンソールは Hanzo Cloud のバイナリに直接埋め込まれた（`go:embed`）単一ページアプリで、`console.hanzo.ai` から提供されます。統合された `/v1` バックエンドの上の純粋なクライアントです。独自のデータベースは持たず、各画面はサービス API からの実データです。
+
+```bash
+# The console calls the same API you can call directly, with the same key
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer sk-..."
+```
+
+## 関連
+
+- [IAM](/docs/openapi/iam) -- コンソールの各画面の背後にあるアイデンティティと組織の範囲
+- [API キー](/docs/api-keys) -- API 用のキーをコンソールから作成する
+- [ダッシュボード](/docs/openapi/o11y) -- 分析と可観測性の画面
+- [請求](/docs/openapi/billing) -- 残高、利用、請求書
+- [API](/docs/openapi) -- コンソールが描画するのと同じ `/v1` 面

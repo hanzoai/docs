@@ -1,0 +1,55 @@
+---
+title: AutoGen
+description: "OpenAIChatCompletionClient nimmt base_url, und model_info daneben, wann immer der Modellname keiner ist, den OpenAI bedient."
+---
+
+`OpenAIChatCompletionClient` nimmt **`base_url`**, dokumentiert als erforderlich, wenn das Modell nicht bei OpenAI gehostet ist. Der Teil, der Leute erwischt: jeder Modellname, den das SDK nicht erkennt, braucht außerdem **`model_info`**, und ohne ihn wirft der Client, statt zu rufen.
+
+```bash
+pip install "autogen-ext[openai]"
+```
+
+```python
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelFamily
+
+client = OpenAIChatCompletionClient(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    model_info={
+        "vision": False,
+        "function_calling": True,
+        "json_output": True,
+        "family": ModelFamily.UNKNOWN,
+        "structured_output": True,
+    },
+)
+
+# ... use the client, then release it
+await client.close()
+```
+
+Landet auf `POST /v1/chat/completions`.
+
+Wo der Datensatz eines Modells in `GET /v1/models` `supports_vision` oder `supports_tools` erklärt, entsprechen die `vision` und `function_calling`. Die meisten Datensätze erklären keins von beiden, und die Referenz von AutoGen sagt klar, dass dieser Client nicht gegen Nicht-OpenAI-Modelle getestet ist — behaupten Sie also nur, was Sie ausprobiert haben.
+
+## MCP
+
+Die URL ist das Feld `url` von `StreamableHttpServerParams`.
+
+```python
+from autogen_ext.tools.mcp import StreamableHttpMcpToolAdapter, StreamableHttpServerParams
+
+params = StreamableHttpServerParams(
+    url="https://api.hanzo.ai/v1/mcp",
+    headers={"Authorization": "Bearer sk-..."},
+    timeout=30.0,
+    sse_read_timeout=300.0,
+    terminate_on_close=True,
+)
+
+adapter = await StreamableHttpMcpToolAdapter.from_server_params(params, "describe")
+```
+
+`StdioServerParams` und `SseServerParams` sind die Geschwister; `mcp_server_tools()` baut jedes Werkzeug eines Servers in einem Aufruf, statt einen Adapter nach dem anderen.

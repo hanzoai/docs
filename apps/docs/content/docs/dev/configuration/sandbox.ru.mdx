@@ -1,0 +1,47 @@
+---
+title: Песочница
+description: Как Hanzo Dev изолирует выполнение команд ради безопасности.
+---
+
+## Песочница и подтверждения
+
+Hanzo Dev принуждает к песочнице, чтобы агент не вызывал нежелательных побочных эффектов при выполнении команд.
+
+### Режимы песочницы
+
+| Режим | Описание |
+| --- | --- |
+| `off` | Без песочницы (команды выполняются напрямую) |
+| `workspace-read` | Доступ к рабочему пространству только на чтение |
+| `workspace-write` | Чтение и запись в рабочем пространстве (по умолчанию для full-auto) |
+| `network-off` | Отключить доступ к сети |
+| `danger-full-access` | Полный доступ (используйте осторожно) |
+
+### Политики подтверждения
+
+| Политика | Описание |
+| --- | --- |
+| `always` | Всегда спрашивать подтверждение |
+| `on-failure` | Спрашивать только при сбое команды |
+| `on-request` | Спрашивать, когда модель просит подтверждение |
+| `never` | Никогда не спрашивать подтверждение |
+
+### Использование
+
+```bash
+# Read-only mode (safest)
+dev --sandbox workspace-read "analyze this codebase"
+
+# Write mode with approval on failure
+dev --sandbox workspace-write --ask-for-approval on-failure "refactor"
+
+# Full auto (sandboxed writes, auto-approve)
+dev --full-auto "fix all linting errors"
+
+# Bypass all safety (DANGEROUS)
+dev --dangerously-bypass-approvals-and-sandbox "your prompt"
+```
+
+### Изменения посреди сессии
+
+Уровень подтверждения во время разговора меняется командой `/approvals` в TUI.

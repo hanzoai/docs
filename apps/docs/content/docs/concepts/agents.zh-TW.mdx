@@ -1,0 +1,101 @@
+---
+title: 智慧體
+description: 智慧體是一份定義；工作階段是一次你可以駕馭並重播的執行。一條流是一棵樹，命令是意圖，不是狀態變更。
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**讀完這一頁，你可以定義一個智慧體，看著它工作，並在它執行時駕馭它。**
+
+## 兩個名詞
+
+**智慧體**是一份定義：一個模型、一條系統提示，以及一組工具名稱。
+**工作階段**是一次活著的執行 — 每個表面都把活動掛在這一列上，
+無論那個表面是 CLI、主控台、聊天還是一個機器人。
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"triage","model":"zen-1","instructions":"Triage inbound issues.","tools":["search"]}'
+```
+
+```bash
+hanzo agents list
+```
+
+名稱在你的組織內唯一，並符合
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`。你點名的模型會對照閘道正在提供的
+目錄 **在定義時**檢查 — 打字錯誤現在就被拒絕，
+而不是第一次執行的凌晨 3 點。持續執行的智慧體必須帶一份
+五欄位的 cron 時程，並計入每個組織的上限。
+
+## 一條流是一棵樹
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents/sessions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"agent":"triage"}'
+```
+
+帶有 `parentSessionId` 的工作階段成為該工作階段的 **子智慧體**，
+並繼承它的根。所以十個子智慧體的扇出不是十次互不相關的執行 —
+它是一棵樹，`/v1/agents/sessions/{id}/tree` 一次讀取就傳回整張圖，
+每個節點帶著自己的事件計數。
+
+列出時 **只傳回根工作階段**，除非你要求往下走。狀態是
+`running`、`paused`、`done`、`error` 之一。
+
+## 駕馭正在執行的工作階段
+
+四個命令，都在 `/v1/agents/sessions/{id}` 之下：`message`、`pause`、
+`resume`、`stop`。
+
+<Callout>
+**命令是意圖，不是狀態變更。** 那次呼叫裡沒有任何東西寫入
+工作階段的狀態。`200` 表示命令已被持久記錄並送達 —
+智慧體自己決定何時照它行動。
+</Callout>
+
+這就是駕馭能跨機器生效的原因。在你筆記型電腦上開始的 `hanzo code` 工作階段
+會消耗儀表板發出的命令，辦法是輪詢
+`/v1/agents/sessions/{id}/control` — 比游標更新的命令，最舊的先來，
+一旦套用就不再投遞。
+
+兩個值得知道的拒絕：**已結束**的工作階段用
+`409` 拒絕每一條命令，屬於另一個租戶的 id 是 `404` — 沒有組織駕馭別人的
+智慧體，而且 404 並不確認這個 id 存在。
+
+`stop` 是真正取消、而不只是發訊號的那個例外。
+
+## 觀看
+
+```
+GET /v1/agents/sessions/stream
+```
+
+伺服器傳送事件：`session` 訊框和 `event` 訊框，用 `?root=` 收窄。
+它按組織限定範圍，並且失敗時關閉 — 匯流排在扇出之前按租戶過濾。
+落後超過 256 訊框的訂閱者會被丟掉，而不是允許它拖住
+串流，每 25 秒到來一次 `: ping`，好讓死連線看得見。
+
+回合記在 `/v1/agents/sessions/{id}/events` — 訊息、工具呼叫、
+衍生、日誌、狀態、控制 — 每一條都用單調的 `seq` 回答。什麼都不會
+遺失，所以一次執行結束後可以重播。
+
+## 智慧體能觸及什麼
+
+- **工具** — [工具](/docs/openapi/tools) 是智慧體借以呼叫的、按租戶劃分的工具平面。
+- **計算** — 一份 [沙盒](/docs/concepts/sandboxes) 租約。
+- **知識** — [記憶](/docs/concepts/memory)。
+- **模型** — [ai](/docs/openapi/ai)，推論平面。
+
+## 下一步
+
+- **[智慧體參考](/docs/openapi/agents)** — 每一項操作，已產生。
+- **[預算](/docs/concepts/budgets)** — 它可以花多少，以及它將要花得更多時
+  會發生什麼。
+- **[沙盒](/docs/concepts/sandboxes)** — 工作在哪裡執行。
+- **[記憶](/docs/concepts/memory)** — 它知道什麼。
+- **[工作流程](/docs/concepts/workflows)** — 沒人要求也跑一個。

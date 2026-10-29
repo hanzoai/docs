@@ -1,0 +1,50 @@
+---
+title: Vercel AI SDK
+description: "createOpenAICompatible รับ baseURL ผู้ให้บริการอีกสองตัวบนพารามิเตอร์เดียวกันไปถึงรูปแบบ responses และ messages"
+---
+
+`createOpenAICompatible` รับ **`baseURL`** `name` จำเป็นต้องอยู่ข้าง ๆ `apiKey` ถูกเปลี่ยนเป็นส่วนหัว `Authorization: Bearer` ก่อนส่วนหัวใด ๆ ที่คุณส่งเอง
+
+```bash
+npm i ai @ai-sdk/openai-compatible
+```
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText } from 'ai';
+
+const hanzo = createOpenAICompatible({
+  name: 'hanzo',
+  apiKey: process.env.HANZO_API_KEY,
+  baseURL: 'https://api.hanzo.ai/v1',
+});
+
+const { text } = await generateText({
+  model: hanzo('zen5'),
+  prompt: 'Name the three laws of thermodynamics.',
+});
+```
+
+ลงที่ `POST /v1/chat/completions`
+
+ผู้ให้บริการพี่น้องสองตัวรับ `baseURL` เดียวกันและไปถึงรูปแบบอื่น: `createOpenAI` จาก `@ai-sdk/openai` ซึ่งค่าเริ่มต้นเป็น Responses ตั้งแต่ AI SDK 5 ลงที่ `POST /v1/responses` `createAnthropic` จาก `@ai-sdk/anthropic` ลงที่ `POST /v1/messages`
+
+## MCP
+
+`createMCPClient` มาจาก `@ai-sdk/mcp` และถูก await URL อยู่บนทรานสปอร์ต ซึ่ง SDK แนะนำให้เป็น HTTP ในโปรดักชัน
+
+```ts
+import { createMCPClient } from '@ai-sdk/mcp';
+
+const mcp = await createMCPClient({
+  transport: {
+    type: 'http',
+    url: 'https://api.hanzo.ai/v1/mcp',
+    headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` },
+  },
+});
+
+const tools = await mcp.tools();
+```
+
+ส่ง `tools` ให้ `generateText` หรือ `streamText` เป็นอาร์กิวเมนต์ `tools`

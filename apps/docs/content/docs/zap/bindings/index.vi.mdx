@@ -1,0 +1,130 @@
+---
+title: Liên kết ngôn ngữ
+description: Tài liệu SDK ZAP cho mọi ngôn ngữ được hỗ trợ
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# Liên kết ngôn ngữ
+
+ZAP cung cấp liên kết gốc cho 11 ngôn ngữ lập trình. Mỗi liên kết được xây trên bản triển khai Cap'n Proto tham chiếu của ngôn ngữ đó.
+
+## Ngôn ngữ được hỗ trợ
+
+<Cards>
+  <Card title="Rust" description="Bản triển khai tham chiếu với hỗ trợ async đầy đủ" href="/docs/zap/bindings/rust" />
+  <Card title="Go" description="Go đúng phong cách với máy khách an toàn cho goroutine" href="/docs/zap/bindings/go" />
+  <Card title="Python" description="API async/await với pycapnp" href="/docs/zap/bindings/python" />
+  <Card title="JavaScript" description="Hỗ trợ Node.js và trình duyệt" href="/docs/zap/bindings/javascript" />
+  <Card title="C++" description="Liên kết gốc hiệu năng cao" href="/docs/zap/bindings/cpp" />
+  <Card title="C" description="API C tối giản cho hệ thống nhúng" href="/docs/zap/bindings/c" />
+  <Card title="Java" description="Liên kết JVM với vận chuyển Netty" href="/docs/zap/bindings/java" />
+  <Card title="C#" description="Liên kết .NET với hỗ trợ async" href="/docs/zap/bindings/csharp" />
+  <Card title="Erlang" description="Liên kết tương thích OTP" href="/docs/zap/bindings/erlang" />
+  <Card title="OCaml" description="Liên kết hàm với Lwt" href="/docs/zap/bindings/ocaml" />
+  <Card title="Haskell" description="Liên kết hàm thuần" href="/docs/zap/bindings/haskell" />
+</Cards>
+
+## Trạng thái triển khai
+
+| Ngôn ngữ | Máy khách | Máy chủ | Gateway | PQ-TLS | Đồng thuận |
+|---|---|---|---|---|---|
+| Rust | Có | Có | Có | Có | Có |
+| Go | Có | Có | Có | Có | Có |
+| Python | Có | Có | Có | Một phần | Đã lên kế hoạch |
+| JavaScript | Có | Một phần | Có | Không | Đã lên kế hoạch |
+| C++ | Có | Có | Có | Có | Một phần |
+| C | Có | Một phần | Không | Không | Không |
+| Java | Có | Có | Một phần | Một phần | Đã lên kế hoạch |
+| C# | Có | Một phần | Không | Không | Không |
+| Erlang | Có | Có | Một phần | Không | Đã lên kế hoạch |
+| OCaml | Có | Một phần | Không | Không | Không |
+| Haskell | Có | Một phần | Không | Không | Không |
+
+## Mẫu chung
+
+### Tạo máy khách
+
+Mọi liên kết đều theo một mẫu tương tự:
+
+```rust
+// Rust
+let client = Zap::connect("zap://localhost:9000").await?;
+```
+
+```go
+// Go
+client, err := zap.Connect(ctx, "zap://localhost:9000")
+```
+
+```python
+# Python
+client = await Zap.connect("zap://localhost:9000")
+```
+
+```typescript
+// JavaScript
+const client = await Zap.connect('zap://localhost:9000');
+```
+
+### Xử lý lỗi
+
+Mỗi liên kết dùng cách xử lý lỗi tự nhiên của ngôn ngữ đó:
+
+- **Rust**: `Result<T, Error>` với toán tử `?`
+- **Go**: Nhiều giá trị trả về `(result, error)`
+- **Python**: Ngoại lệ với ngữ cảnh async
+- **JavaScript**: Promise với try/catch hoặc `.catch()`
+
+### Async/Await
+
+Hầu hết liên kết hỗ trợ thao tác async:
+
+```rust
+// Rust (tokio)
+let tools = client.list_tools().await?;
+```
+
+```go
+// Go (goroutines)
+tools, err := client.ListTools(ctx)
+```
+
+```python
+# Python (asyncio)
+tools = await client.list_tools()
+```
+
+```typescript
+// JavaScript (Promises)
+const tools = await client.listTools();
+```
+
+## Sinh mã từ lược đồ
+
+Sinh liên kết từ lược đồ ZAP:
+
+```bash
+# Clone the schema
+git clone https://github.com/zap-proto/zap
+cd zap/schema
+
+# Generate for your language
+capnp compile -o rust zap.capnp
+capnp compile -o go zap.capnp
+capnp compile -o c++ zap.capnp
+```
+
+Xem trang của từng ngôn ngữ để biết hướng dẫn sinh mã chi tiết.
+
+## Đóng góp
+
+Liên kết ngôn ngữ được duy trì trong các kho riêng:
+
+- [zap-proto/rust](https://github.com/zap-proto/rust) - Rust
+- [zap-proto/go](https://github.com/zap-proto/go) - Go
+- [zap-proto/py](https://github.com/zap-proto/py) - Python
+- [zap-proto/js](https://github.com/zap-proto/js) - JavaScript
+
+Hoan nghênh đóng góp! Xem CONTRIBUTING.md của từng kho để biết hướng dẫn.

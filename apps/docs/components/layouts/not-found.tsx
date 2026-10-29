@@ -2,6 +2,7 @@ import Link from '@hanzo/docs/core/link';
 import { type ReactNode, Suspense } from 'react';
 import { cn } from '@/lib/cn';
 import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
+import { chrome } from '@/lib/chrome';
 
 export interface Suggestion {
   id: string;
@@ -11,32 +12,33 @@ export interface Suggestion {
 
 export interface NotFoundProps {
   getSuggestions: () => Promise<Suggestion[]>;
+  locale?: string;
 }
 
-export function NotFound(props: NotFoundProps) {
+export function NotFound({ locale, ...props }: NotFoundProps) {
+  const text = chrome(locale);
   return (
     <div className="flex flex-col items-center justify-center text-center gap-4 p-8 [grid-area:main]">
-      <h1 className="text-4xl font-bold font-mono">Not Found</h1>
+      <h1 className="text-4xl font-bold font-mono">{text.notFound}</h1>
       <div className="w-full border border-fd-foreground/50 border-dashed p-4 max-w-[600px]">
-        <Suspense
-          fallback={<p className="text-sm text-fd-muted-foreground">Finding Alternatives...</p>}
-        >
-          <Alternative {...props} />
+        <Suspense fallback={<p className="text-sm text-fd-muted-foreground">{text.finding}</p>}>
+          <Alternative locale={locale} {...props} />
         </Suspense>
       </div>
     </div>
   );
 }
 
-async function Alternative({ getSuggestions }: NotFoundProps) {
+async function Alternative({ getSuggestions, locale }: NotFoundProps) {
   const suggestions = await getSuggestions();
+  const text = chrome(locale);
 
   if (suggestions.length === 0) {
     return (
       <div>
-        <p className="text-sm text-fd-muted-foreground mb-2">No Alternative Found</p>
+        <p className="text-sm text-fd-muted-foreground mb-2">{text.noAlternative}</p>
         <Link href="/" className={cn(buttonVariants({ variant: 'secondary' }))}>
-          Return to Home
+          {text.returnHome}
         </Link>
       </div>
     );
@@ -44,7 +46,7 @@ async function Alternative({ getSuggestions }: NotFoundProps) {
 
   return (
     <div>
-      <h2 className="text-sm text-fd-muted-foreground mb-2">Maybe you are looking for</h2>
+      <h2 className="text-sm text-fd-muted-foreground mb-2">{text.maybeLooking}</h2>
 
       <div className="flex flex-col rounded-lg border bg-fd-card text-fd-card-foreground shadow-md overflow-hidden divide-y divide-fd-border">
         {suggestions.map((doc) => (

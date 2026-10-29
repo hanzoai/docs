@@ -1,0 +1,161 @@
+---
+title: SDK
+description: 面向每種語言的官方 Hanzo SDK — Python、TypeScript、Go、Rust、C++、Swift、Kotlin。每種語言兩條線 — 完整的 Cloud SDK，以及人工智慧與代理程式庫。
+icon: Code
+---
+
+import { Cards, Card } from '@hanzo/docs-base-ui/components/card'
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+# Hanzo SDK
+
+**Hanzo AI — 每個模型一個 API，每種語言一個 SDK。** 用你已經在用的語言與
+Open AI Cloud 對話。每個 SDK 都從同一份 OpenAPI 3.1 規範產生，並共用一份憑證。
+
+## 每種語言兩個程式庫
+
+每種語言有兩條一等產品線 — 安裝適合這份工作的，或
+兩個都裝：
+
+<Cards>
+  <Card title="Cloud SDK">
+    面向**整個** Open AI Cloud（`/v1/*`）的完整產生用戶端：人工智慧、
+    代理、計算、資料、網路、安全、平台、觀測、web3、應用程式。
+    對其生態來說符合習慣且帶型別。真正的程式碼在 `hanzo-<lang>/sdk`。
+  </Card>
+  <Card title="人工智慧 / 代理程式庫">
+    手工打造、以人工智慧為先的程式庫 — 模型、代理、工具、記憶、MCP 與
+    推論。旗艦是 Python（`pip install hanzo`）；Node 發布
+    `@hanzo/ai`。
+  </Card>
+</Cards>
+
+## 語言
+
+<Cards>
+  <Card title="Python — 旗艦" href="/docs/sdks/python">
+    `pip install hanzo`（人工智慧）· `pip install hanzoai`（Cloud）。同步與非同步。
+  </Card>
+  <Card title="TypeScript" href="/docs/sdks/typescript">
+    `npm i @hanzo/ai`（人工智慧）· `npm i @hanzo/sdk`（Cloud）。Node、Deno、Bun、瀏覽器。
+  </Card>
+  <Card title="Go" href="/docs/sdks/go">
+    `go get github.com/hanzoai/go-sdk`。函式式選項，依賴極少。
+  </Card>
+  <Card title="Rust" href="/docs/sdks/rust">
+    `cargo add hanzo` — 非同步 Tokio 用戶端。在 crates.io 上。
+  </Card>
+  <Card title="C++" href="/docs/sdks/cpp">
+    `find_package(hanzo)` — 經由 CMake 的原生用戶端。即將推出。
+  </Card>
+  <Card title="Swift" href="/docs/sdks/swift">
+    SwiftPM — iOS/macOS 用戶端，直接從儲存庫解析。
+  </Card>
+  <Card title="Kotlin" href="/docs/sdks/kotlin">
+    Gradle — JVM/Android 用戶端。即將推出。
+  </Card>
+  <Card title="IAM SDK" href="/docs/sdks/iam">
+    `@hanzo/iam` — 帶 React 繫結的 TypeScript IAM 用戶端。
+  </Card>
+</Cards>
+
+## 安裝矩陣
+
+只有正式發行的套件才顯示為可執行的安裝。其餘
+正在積極開發 — 每一項都連到其語言組織，原始碼已經在那裡。
+
+| 語言 | 程式庫 | 安裝 | 狀態 |
+|----------|---------|---------|--------|
+| **Python** | 人工智慧 / 代理（旗艦） | `pip install hanzo` | 正式發行 |
+| **Python** | Cloud SDK | `pip install hanzoai` | 正式發行 |
+| **TypeScript** | 人工智慧程式庫 | `npm i @hanzo/ai` | 正式發行 |
+| **TypeScript** | Cloud SDK | `npm i @hanzo/sdk` | 正式發行 |
+| **Go** | Cloud SDK | `go get github.com/hanzoai/go-sdk` | 正式發行 |
+| **Rust** | Cloud SDK | `cargo add hanzo` | 正式發行 |
+| **C++** | Cloud SDK | `find_package(hanzo)` | 即將推出 |
+| **Swift** | Cloud SDK | `.package(url: "https://github.com/hanzo-swift/sdk")` | 正式發行 |
+| **Kotlin** | Cloud SDK | Gradle / Maven | 即將推出 |
+
+<Callout title="今天就在線路上相容">
+每種語言都已經能透過任何相容 OpenAI 或
+Anthropic 的用戶端到達 Open AI Cloud — 把基底網址指向
+`https://api.hanzo.ai/v1` 並使用你的 Hanzo 金鑰。上面的原生 SDK 額外提供
+帶型別的模型、重試、串流輔助，以及代理/MCP 表面。
+</Callout>
+
+## 快速開始
+
+```bash tab="Python (AI)"
+pip install hanzo
+```
+
+```bash tab="Python (Cloud)"
+pip install hanzoai
+```
+
+```bash tab="TypeScript (AI)"
+npm i @hanzo/ai
+```
+
+```bash tab="TypeScript (Cloud)"
+npm i @hanzo/sdk
+```
+
+```bash tab="Go"
+go get github.com/hanzoai/go-sdk
+```
+
+每個用戶端都是同一形狀 — 用你的金鑰建構，呼叫一個 `/v1` 資源：
+
+```python tab="Python"
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="sk-your-key")
+response = client.chat.completions.create(
+    model="zen5",
+    messages=[{"role": "user", "content": "Hello"}],
+)
+print(response.choices[0].message.content)
+```
+
+```typescript tab="TypeScript"
+import Hanzo from '@hanzo/sdk';
+
+const client = new Hanzo({ apiKey: 'sk-your-key' });
+const response = await client.chat.completions.create({
+  model: 'zen5',
+  messages: [{ role: 'user', content: 'Hello' }],
+});
+```
+
+```go tab="Go"
+client := hanzoai.NewClient(option.WithAPIKey("sk-your-key"))
+response, _ := client.Chat.Completions.New(ctx, hanzoai.ChatCompletionNewParams{
+    Model:    hanzoai.F("zen5"),
+    Messages: hanzoai.F([]hanzoai.ChatCompletionMessageParamUnion{
+        hanzoai.UserMessage("Hello"),
+    }),
+})
+```
+
+## 一把金鑰，一個基底網址
+
+```bash
+export HANZO_API_KEY="sk-..."   # from console.hanzo.ai
+# Base URL for every service: https://api.hanzo.ai/v1
+```
+
+在 [console.hanzo.ai](https://console.hanzo.ai) 取得金鑰。
+
+## 程式碼在哪裡
+
+- **總倉** — [`hanzoai/sdk`](https://github.com/hanzoai/sdk)：一次安裝，每項服務，每種語言。
+- **按語言的組織** — 真程式碼，對每個生態都符合習慣：
+  [hanzo-py](https://github.com/hanzo-py) ·
+  [hanzo-js](https://github.com/hanzo-js) ·
+  [hanzo-go](https://github.com/hanzo-go) ·
+  [hanzo-rs](https://github.com/hanzo-rs) ·
+  [hanzo-cpp](https://github.com/hanzo-cpp) ·
+  [hanzo-swift](https://github.com/hanzo-swift) ·
+  [hanzo-kt](https://github.com/hanzo-kt)
+- **完整 API 參考** — [每一個 `/v1` 端點 →](/reference)

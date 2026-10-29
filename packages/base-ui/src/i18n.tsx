@@ -12,6 +12,8 @@ export type Translations = {
   searchNoResult: string;
   searchOpen: string;
   searchClose: string;
+  /** Sidebar field that opens search and the ask-an-agent action together. */
+  searchOrAsk: string;
 
   toc: string;
   tocNoHeadings: string;
@@ -66,6 +68,7 @@ export const defaultTranslations: Translations = {
   displayName: 'English',
   search: 'Search',
   searchNoResult: 'No results found',
+  searchOrAsk: 'Search or ask AI',
   toc: 'On this page',
   tocNoHeadings: 'No Headings',
   lastUpdate: 'Last updated on',
@@ -142,6 +145,8 @@ export function i18nProvider<
       locale,
       name: translations.get(locale).ui.displayName ?? locale,
     })),
+    hideLocale: translations.config.hideLocale,
+    defaultLocale: defaultLanguage,
   };
 }
 

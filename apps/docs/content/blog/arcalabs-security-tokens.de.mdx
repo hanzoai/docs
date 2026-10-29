@@ -1,0 +1,56 @@
+---
+title: "arcalabs: Wertpapiertechnik auf Assembler-Ebene"
+description: "st-contracts wurde im Februar 2019 festgeschrieben. ERC-1400-Wertpapier-Token, aktualisierbare Proxy-Muster, und was es heißt, Finanzinfrastruktur auf der Assembler-Ebene der EVM zu bauen."
+author: Zach Kelling
+date: 2019-02-21
+---
+
+# arcalabs: Wertpapiertechnik auf Assembler-Ebene
+
+Das Repository st-contracts ging am 21. Februar 2019 unter arcalabs online. Wertpapier-Token-Verträge, die ERC-1400 umsetzen, mit aktualisierbaren Proxy-Mustern für regulatorische Compliance. Dieser Text handelt davon, was diese Arbeit tatsächlich verlangt hat und warum sie bis auf die Assembler-Ebene hinunter musste.
+
+## Was Wertpapier-Token sind
+
+Ein ERC-20-Token ist von Entwurf her erlaubnisfrei. Jeder kann einen halten, übertragen, verbrennen. Das ist der Punkt — Zensurresistenz ist eine Funktion, kein Fehler.
+
+Ein Wertpapier-Token ist anders. Er steht für einen Eigentumsanteil an einem realen Vermögenswert — Eigenkapital, Schulden, Immobilien, Fondsanteile. Das Wertpapierrecht erlegt Übertragungsschranken auf: Anforderungen an qualifizierte Anleger, Jurisdiktionsgrenzen, Sperrfristen, Offenlegungspflichten. Der Token-Vertrag muss diese Schranken programmatisch durchsetzen, sonst ist es nur ein ERC-20 unter anderem Namen.
+
+ERC-1400 war der Standard, der dafür entstand. Er führte Übertragungsschranken über eine Prüfung `canTransfer` ein — bevor eine Übertragung läuft, prüft der Vertrag, ob der Empfänger den Token halten darf. Er fügte erzwungene Übertragungen für Compliance-Handlungen hinzu (ein Gericht kann die Übertragung des Vermögenswerts erzwingen; der Vertrag muss das können). Er fügte Partitionsverwaltung hinzu — verschiedene Tranchen desselben Wertpapiers mit verschiedenen Eigenschaften.
+
+Das ist Finanzinfrastruktur auf der Smart-Contract-Schicht. Der Einsatz ist ein anderer als bei einem DeFi-Protokoll — hat der Token-Vertrag einen Fehler, sind echte Wertpapiere in Gefahr. Die Latte für Korrektheit liegt höher.
+
+## Warum aktualisierbare Proxys
+
+Wertpapiere sind langlebige Instrumente. Ein 2019 ausgegebener Wertpapier-Token muss vielleicht Übertragungsregeln von 2024 durchsetzen. Die EVM lässt ausgelieferten Vertragscode nicht ändern. Ist die Logik beim Deployment eingefroren, bleibt entweder ein Redeployment (das heißt: alle Halter, alle Salden, den ganzen Zustand migrieren) oder man steckt in dem Verhalten fest, das man ausgeliefert hat.
+
+Das Proxy-Muster löst das: ein Proxy-Vertrag, dessen Adresse sich nie ändert, und ein Logik-Vertrag, der die eigentliche Implementierung hält. Halter sprechen mit dem Proxy. Der Proxy delegiert Aufrufe an den Logik-Vertrag. Muss die Logik aktualisiert werden, wird eine neue Implementierung ausgeliefert und der Zeiger des Proxys umgesetzt.
+
+Der Haken: Proxy-Muster sind heikel. Delegierte Aufrufe führen den Code des Logik-Vertrags im Speicherkontext des Proxys aus. Das Speicherlayout im Logik-Vertrag muss zu dem des Proxys passen, sonst wird der Zustand beschädigt. Der Aktualisierungsmechanismus selbst muss geschützt sein — eine unbefugte Aktualisierung ist katastrophal.
+
+Das richtig hinzubekommen verlangte, den Code auf Solidity-Ebene und dann auf der Bytecode-Ebene der EVM durchzugehen. Dem Compiler kann man die Entscheidungen, die hier nötig sind, nicht überlassen. Assembler-Einfügungen lassen genau prüfen, was mit Speicherplätzen, mit Aufrufdaten und mit Rückgabewerten geschieht.
+
+## EVM-Arbeit auf Assembler-Ebene
+
+Die EVM ist eine Stapelmaschine. Der Solidity-Compiler erzeugt EVM-Bytecode. Meist ist die Ausgabe des Compilers in Ordnung und muss nicht geprüft werden. Bei Proxy-Mustern und bei gas-kritischen Pfaden schon.
+
+Inline-Assembler in Solidity (Blöcke `assembly { }` mit Yul) gibt direkten Zugriff auf die Operationen der EVM: `sload` und `sstore` für den Speicher, `calldataload` zum Lesen der Aufrufdaten, `delegatecall` für die Weiterleitung des Proxys, `returndatacopy` für Rückgabewerte. Die Weiterleitungsfunktion des Proxys, in Assembler geschrieben, sind etwa 30 Zeilen, die jeden Aufruf korrekt und mit minimalem Gas-Aufwand behandeln.
+
+Die HPC-Rahmung (Hochleistungsrechnen), die arcalabs verwendete, war absichtlich. Ethereum-Berechnung ist teuer. Jede Anweisung kostet Gas. In Assembler optimierte heiße Pfade — Übertragungsprüfung, Proxy-Weiterleitung, Ereignisausgabe — sind spürbar billiger als ihre Solidity-Entsprechungen. Bei jedem realen Transaktionsvolumen zählt die Gas-Ersparnis.
+
+## Die Verbindung zu DEVxDAO
+
+DEVxDAO war eine DAO auf der Kette, die Arbeit an Blockchain-Infrastruktur finanzierte. arcalabs erhielt einen Zuschuss für die Wertpapier-Token-Arbeit — die formale Anerkennung, dass ERC-1400-Infrastruktur ein förderungswürdiges öffentliches Gut war, nicht nur kommerzielle Arbeit.
+
+Das DAO-Modell war unvollkommen (jede frühe DAO ist es), aber die These stimmte: Manche Infrastrukturarbeit hat kein offensichtliches Geschäftsmodell und braucht Zuschussfinanzierung. Quelloffene Wertpapier-Token-Verträge, die jedes Projekt nutzen kann, sind solche Arbeit. Die Verbindung zu DEVxDAO war die institutionelle Form der Cypherpunk-Intuition — Finanzinfrastruktur sollte öffentlich sein.
+
+## Was Bauen auf dieser Ebene lehrt
+
+EVM-Assembler zu schreiben lehrt, dass der Rechner nicht weiß, was man meint. Er führt aus, was man geschrieben hat, genau, ohne Deutung. Hat man das Falsche geschrieben, führt er das Falsche aus, und der Wertpapier-Token-Vertrag hat einen Fehler, der sich vielleicht erst unter bestimmten Bedingungen Jahre nach dem Deployment zeigt.
+
+Das klärt. Die Disziplin, Assembler zu schreiben — wo jede Anweisung explizit ist, wo nichts implizit ist, wo man genau verfolgen kann, was mit jedem Bit geschieht — ist die Disziplin, die man für alle Finanzinfrastruktur will, auch wenn man auf einer höheren Abstraktionsebene schreibt. Die Frage ist nicht „sieht das richtig aus?“. Sie ist „was führt das genau aus, und ist das, was ich will?“.
+
+Diese Disziplin unterscheidet die Arbeit von arcalabs von üblicher Smart-Contract-Entwicklung. Wir bauten auf Korrektheit unter gegnerischen Bedingungen, auf Langlebigkeit, auf regulatorische Anpassung. Auf der Assembler-Ebene beweist man Korrektheit, man behauptet sie nicht.
+
+---
+
+*zeekay — Wertpapier-Token brauchen Sicherheitstechnik. arcalabs.*

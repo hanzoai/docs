@@ -1,0 +1,130 @@
+---
+title: 語言繫結
+description: 面向所有支援語言的 ZAP SDK 文件
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# 語言繫結
+
+ZAP 為 11 種程式語言提供原生繫結。每種繫結都建立在該語言的 Cap'n Proto 參考實作之上。
+
+## 支援的語言
+
+<Cards>
+  <Card title="Rust" description="完整支援 async 的參考實作" href="/docs/zap/bindings/rust" />
+  <Card title="Go" description="慣用 Go，用戶端可在多個 goroutine 中安全使用" href="/docs/zap/bindings/go" />
+  <Card title="Python" description="基於 pycapnp 的 async/await API" href="/docs/zap/bindings/python" />
+  <Card title="JavaScript" description="支援 Node.js 與瀏覽器" href="/docs/zap/bindings/javascript" />
+  <Card title="C++" description="高效能原生繫結" href="/docs/zap/bindings/cpp" />
+  <Card title="C" description="面向嵌入式的精簡 C API" href="/docs/zap/bindings/c" />
+  <Card title="Java" description="基於 Netty 傳輸的 JVM 繫結" href="/docs/zap/bindings/java" />
+  <Card title="C#" description="支援 async 的 .NET 繫結" href="/docs/zap/bindings/csharp" />
+  <Card title="Erlang" description="相容 OTP 的繫結" href="/docs/zap/bindings/erlang" />
+  <Card title="OCaml" description="基於 Lwt 的函式式繫結" href="/docs/zap/bindings/ocaml" />
+  <Card title="Haskell" description="純函式式繫結" href="/docs/zap/bindings/haskell" />
+</Cards>
+
+## 實作狀態
+
+| 語言 | 用戶端 | 伺服器 | Gateway | PQ-TLS | 共識 |
+|---|---|---|---|---|---|
+| Rust | 是 | 是 | 是 | 是 | 是 |
+| Go | 是 | 是 | 是 | 是 | 是 |
+| Python | 是 | 是 | 是 | 部分 | 計畫中 |
+| JavaScript | 是 | 部分 | 是 | 否 | 計畫中 |
+| C++ | 是 | 是 | 是 | 是 | 部分 |
+| C | 是 | 部分 | 否 | 否 | 否 |
+| Java | 是 | 是 | 部分 | 部分 | 計畫中 |
+| C# | 是 | 部分 | 否 | 否 | 否 |
+| Erlang | 是 | 是 | 部分 | 否 | 計畫中 |
+| OCaml | 是 | 部分 | 否 | 否 | 否 |
+| Haskell | 是 | 部分 | 否 | 否 | 否 |
+
+## 共通模式
+
+### 建立用戶端
+
+所有繫結都遵循相似的模式：
+
+```rust
+// Rust
+let client = Zap::connect("zap://localhost:9000").await?;
+```
+
+```go
+// Go
+client, err := zap.Connect(ctx, "zap://localhost:9000")
+```
+
+```python
+# Python
+client = await Zap.connect("zap://localhost:9000")
+```
+
+```typescript
+// JavaScript
+const client = await Zap.connect('zap://localhost:9000');
+```
+
+### 錯誤處理
+
+每種繫結都使用該語言慣用的錯誤處理：
+
+- **Rust**: `Result<T, Error>` 搭配 `?` 運算子
+- **Go**: 多個回傳值 `(result, error)`
+- **Python**: 搭配 async 情境的例外
+- **JavaScript**: 使用 try/catch 或 `.catch()` 的 Promise
+
+### Async/Await
+
+大多數繫結支援 async 操作：
+
+```rust
+// Rust (tokio)
+let tools = client.list_tools().await?;
+```
+
+```go
+// Go (goroutines)
+tools, err := client.ListTools(ctx)
+```
+
+```python
+# Python (asyncio)
+tools = await client.list_tools()
+```
+
+```typescript
+// JavaScript (Promises)
+const tools = await client.listTools();
+```
+
+## 從綱要產生程式碼
+
+從 ZAP 綱要產生繫結：
+
+```bash
+# Clone the schema
+git clone https://github.com/zap-proto/zap
+cd zap/schema
+
+# Generate for your language
+capnp compile -o rust zap.capnp
+capnp compile -o go zap.capnp
+capnp compile -o c++ zap.capnp
+```
+
+程式碼產生的詳細步驟見各語言頁面。
+
+## 參與貢獻
+
+語言繫結分別在獨立儲存庫中維護：
+
+- [zap-proto/rust](https://github.com/zap-proto/rust) - Rust
+- [zap-proto/go](https://github.com/zap-proto/go) - Go
+- [zap-proto/py](https://github.com/zap-proto/py) - Python
+- [zap-proto/js](https://github.com/zap-proto/js) - JavaScript
+
+歡迎貢獻！規範見各儲存庫的 CONTRIBUTING.md。

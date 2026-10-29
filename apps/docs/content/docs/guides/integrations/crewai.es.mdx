@@ -1,0 +1,62 @@
+---
+title: CrewAI
+description: "LLM toma base_url. custom_openai=True es lo que permite nombrar un id de modelo que CrewAI no reconoce."
+---
+
+`LLM` toma **`base_url`**. Antepone `openai/` al modelo para que LiteLLM lo enrute por la ruta compatible con OpenAI.
+
+```bash
+pip install crewai
+```
+
+```python
+from crewai import LLM, Agent
+
+llm = LLM(
+    model="openai/zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = Agent(
+    role="Researcher",
+    goal="Answer precisely",
+    backstory="You check before you answer.",
+    llm=llm,
+)
+```
+
+Llega a `POST /v1/chat/completions`.
+
+Para un id de modelo que CrewAI no reconoce como nombre de OpenAI, añade **`custom_openai=True`** — esa bandera es lo que deja pasar un id de modelo de pasarela sin reescribirlo:
+
+```python
+llm = LLM(
+    model="anthropic/claude-sonnet-4-6",
+    custom_openai=True,
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+```
+
+Los equivalentes de entorno son `OPENAI_API_KEY` y `OPENAI_BASE_URL`.
+
+## MCP
+
+Los servidores MCP son de primera clase en el Agent, en una lista `mcps`. La URL es el parámetro `url`.
+
+```python
+from crewai import Agent
+from crewai.mcp import MCPServerHTTP
+
+server = MCPServerHTTP(
+    url="https://api.hanzo.ai/v1/mcp",
+    headers={"Authorization": "Bearer sk-..."},
+    streamable=True,
+    cache_tools_list=True,
+)
+
+agent = Agent(role="Researcher", goal="Answer precisely", backstory="", llm=llm, mcps=[server])
+```
+
+Para el control manual del ciclo de vida está `MCPServerAdapter` de `crewai_tools`, instalado con `pip install 'crewai-tools[mcp]'`, que toma un dict de `url` y `transport`.

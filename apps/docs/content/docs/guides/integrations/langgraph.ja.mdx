@@ -1,0 +1,51 @@
+---
+title: LangGraph
+description: "ベース URL はエージェントではなくモデルに置きます。ChatOpenAI は base_url を取り、そのインスタンスを create_agent に渡します。"
+---
+
+ベース URL はモデルオブジェクトに置き、エージェントには置きません。`ChatOpenAI` は **`base_url`**（別名 `openai_api_base`）を取り、`create_agent` は初期化済みのモデルインスタンスを受けます。カスタムのベース URL を運べるのはこの経路で、文字列形式 `"provider:model"` では運べません。
+
+```bash
+pip install langchain-openai langgraph
+```
+
+```python
+from langchain_openai import ChatOpenAI
+from langchain.agents import create_agent
+
+model = ChatOpenAI(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = create_agent(model=model, tools=[])
+result = agent.invoke({"messages": [{"role": "user", "content": "Hello"}]})
+```
+
+`POST /v1/chat/completions` に着地します。
+
+アドレスの解決順は、最初に当たったものが勝ちます。明示的な引数 `base_url` または `openai_api_base`、次に LangChain が初期化時に読む `OPENAI_API_BASE`、次に下の `openai` クライアントが読む `OPENAI_BASE_URL` です。引数を設定すると残り二つは無関係になるので、スニペットはそれを設定しています。
+
+## MCP
+
+`langchain-mcp-adapters` がクライアントを持ちます。URL はサーバーごとの項目の `url` キーです。
+
+```bash
+pip install langchain-mcp-adapters
+```
+
+```python
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
+client = MultiServerMCPClient({
+    "hanzo": {
+        "transport": "http",
+        "url": "https://api.hanzo.ai/v1/mcp",
+        "headers": {"Authorization": "Bearer sk-..."},
+    }
+})
+
+tools = await client.get_tools()
+agent = create_agent(model=model, tools=tools)
+```

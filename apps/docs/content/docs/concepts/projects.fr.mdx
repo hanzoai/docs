@@ -1,0 +1,97 @@
+---
+title: Projets
+description: Deux choses différentes s’appellent un projet — un site que vous déployez et un périmètre à l’intérieur d’une organisation. Celui que vous avez décide quelle API vous voulez.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Après cette page, vous n’appellerez plus le mauvais.**
+
+<Callout type="warn">
+**« Projet » nomme deux choses.** Un *projet de site* est quelque chose que vous déployez. Un
+*projet IAM* est un périmètre à l’intérieur d’une organisation. Ils ont des adresses différentes,
+des cycles de vie différents et des propriétaires différents. Les spécifications les tiennent séparés ; vous devriez en faire autant.
+</Callout>
+
+## Le projet de site — là où vit un site
+
+Un identifiant sous lequel une construction est déployée et servie.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/projects \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"acme-marketing"}'
+```
+
+```bash
+hanzo projects list
+```
+
+Le **slug** est la pièce porteuse. Il devient le segment de clé du magasin d’objets,
+l’hôte public `<slug>.hanzo.app` et l’identifiant que chaque appel ultérieur adresse.
+Il correspond à `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$`, les libellés réservés sont refusés,
+et il est unique **par organisation** — le même slug dans l’organisation de quelqu’un d’autre ne vous concerne pas.
+Un nom d’hôte public, en revanche, est unique au niveau mondial et
+attribué au premier arrivé.
+
+En créer un provisionne aussi un espace de données et un dépôt git canonique, tous deux
+au mieux. Il répond `201` en `draft`.
+
+Son cycle de vie, ce sont les **publications**, pas les environnements :
+
+```
+POST /v1/projects/{slug}/deploy
+GET  /v1/projects/{slug}/releases
+POST /v1/projects/{slug}/releases/{release}/activate
+```
+
+Chaque déploiement est une publication et n’importe quelle publication peut être remise en ligne, donc revenir en arrière
+est la même opération qu’avancer. Les noms d’hôte personnalisés sont vérifiés à
+`/v1/projects/{slug}/domains/{host}/verify`.
+
+Publier publiquement est gratuit ; `visibility: private` est la fonction payante.
+
+## Le projet IAM — un périmètre à l’intérieur d’une organisation
+
+Le périmètre que l’on choisit quand le travail est séparé par produit ou par client
+plutôt que par équipe. Il se crée et se supprime **uniquement** à `/v1/iam/projects`,
+et il voyage sur une requête comme le `X-Project-Id` validé.
+
+```
+GET /v1/iam/projects
+```
+
+Vous n’en créez jamais un ailleurs. `/v1/platform/projects` est une *projection* —
+le projet plus ce que le plan des conteneurs a placé dessous — et il le dit
+explicitement. Les applications vivent dessous :
+
+```
+/v1/platform/projects/{project}/apps/{app}
+/v1/platform/projects/{project}/apps/{app}/env
+/v1/platform/projects/{project}/apps/{app}/preview
+```
+
+Une clé d’API peut être limitée à un projet IAM, ce qui est la façon habituelle d’empêcher
+une clé de préproduction de toucher les données de production.
+
+## Les distinguer
+
+| | Projet de site | Projet IAM |
+|---|---|---|
+| **Ce que c’est** | un site déployé | un périmètre à l’intérieur d’une organisation |
+| **Créé à** | `/v1/projects` | `/v1/iam/projects` |
+| **Identifié par** | un slug, unique par organisation | un id, porté comme `X-Project-Id` |
+| **Versionné par** | des publications | rien — c’est une frontière |
+| **Capacité** | [projets](/docs/openapi/projects) | [iam](/docs/openapi/iam) |
+
+Règle pratique : **si vous déployez des octets, c’est un projet de site. Si vous
+délimitez des permissions, c’est un projet IAM.**
+
+## Suite
+
+- **[Référence des projets](/docs/openapi/projects)** — chaque opération sur un site.
+- **[Plateforme](/docs/openapi/platform)** — le plan des conteneurs, et ce qui vit
+  sous un projet IAM.
+- **[Environnements](/docs/environments)** — pourquoi il n’existe pas de ressource d’environnement.
+- **[Multitenance](/docs/concepts/multitenancy)** — l’organisation dans laquelle les deux se trouvent.

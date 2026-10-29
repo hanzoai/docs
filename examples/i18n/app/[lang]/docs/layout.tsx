@@ -1,5 +1,5 @@
 import { source } from '@/lib/source';
-import { DocsLayout } from '@hanzo/docs/ui/layouts/docs';
+import { DocsLayout } from '@hanzo/docs-base-ui/layouts/docs';
 import { baseOptions } from '@/lib/layout.shared';
 
 export default async function Layout({ params, children }: LayoutProps<'/[lang]/docs'>) {

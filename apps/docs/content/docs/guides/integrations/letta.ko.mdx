@@ -1,0 +1,38 @@
+---
+title: Letta
+description: "생성자가 아니라 설정 흐름입니다. /connect로 OpenAI 호환 공급자를 더한 뒤 모델을 고릅니다."
+---
+
+Letta는 코드 수준의 기본 URL 매개변수를 드러내지 않습니다. 주소는 설정 흐름으로 넣습니다.
+
+Letta 앱에서 **`/connect`**를 열거나 CLI에서 `letta connect`를 실행하세요. 같은 흐름이 열립니다. 종류가 **OpenAI 호환 API**인 사용자 지정 공급자를 더하고, 기본 URL과 키를 주세요.
+
+```
+base URL:  https://api.hanzo.ai/v1
+API key:   sk-...
+```
+
+그다음 `/model`이 모델을 고릅니다. `POST /v1/chat/completions`에 도달합니다.
+
+Letta가 밝히는 제약 둘을 Hanzo는 모두 충족합니다. 엔드포인트는 채팅 완성과 도구 호출을 지원해야 합니다. `GET /v1/models` 기록에 `supports_tools`가 있는 모델을 고르세요. 그리고 클라우드에 둔 에이전트는 localhost만이 아니라 공개 인터넷에서 닿는 엔드포인트가 필요합니다.
+
+Letta는 OpenAI 호환 공급자에 명시적인 `reasoning_effort`를 보냅니다. `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` 중 하나이며, 엔드포인트가 그것을 받아들이거나, 다시 매핑하거나, 거절하기를 기대합니다.
+
+`LETTA_BASE_URL`은 다른 것이며 이 일을 하지 않습니다. 직접 호스트한 Letta 서버의 주소, 예를 들어 `http://localhost:8283`입니다. 서버 자신의 주소이고, 추론이 가는 곳과는 무관합니다.
+
+## MCP
+
+서버는 Letta Agent SDK의 `mcpServers`에 이름으로 키를 달아 들어가고, 원격이면 `url`을 둡니다.
+
+```json
+{
+  "mcpServers": {
+    "hanzo": {
+      "url": "https://api.hanzo.ai/v1/mcp",
+      "headers": { "Authorization": "Bearer sk-..." }
+    }
+  }
+}
+```
+
+키가 네임스페이스가 됩니다. 도구는 `mcp__hanzo__<tool>`로 도착합니다. 연결은 세션이 초기화될 때 동시에 시작되고, 닿지 않는 서버 하나가 나머지를 붙잡지 않습니다.

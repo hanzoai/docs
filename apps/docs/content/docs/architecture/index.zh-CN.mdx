@@ -1,0 +1,45 @@
+---
+title: 架构
+description: Hanzo Cloud 今天如何建成，以及它正在走向的插件平台方向。
+index: true
+---
+
+# 架构
+
+这一节说明 Hanzo Cloud 是怎样拼在一起的 — 今天在跑什么，平台要去哪里。我们把两件事分开：文档别处的产品页描述已经交付的行为，而这里的平台方向是经由 [Hanzo 改进提案（HIP）](https://hips.hanzo.ai) 批准的设计工作。背后的原则见 [工程哲学](/docs/architecture/philosophy)。
+
+## 今天
+
+Hanzo Cloud 是 **一个 Go 二进制文件**。`api.hanzo.ai` 上的一把 API 密钥就能到达每一项能力 — AI 推理、身份、机密、存储、商业，以及更多 — 因为这些能力是 **编译进这一个二进制文件的原生子系统**（`cloud`、`CGO_ENABLED=0`、静态链接）。每一项都在 `/v1/<capability>` 下提供，并由二进制文件发出的那一份文档描述，也就是 [hanzoai/cloud](https://github.com/hanzoai/cloud) 的 `openapi.yaml`。入口和路由同样是原生子系统，所以这个二进制文件自己就是入口，而不是坐在单独的网关或入口层后面。收成一个二进制文件，就是统一云二进制（HIP-0106），已经大体交付 — 推动 [你可以自己运行的网络](/docs/network) 的，也是同一个二进制文件。
+
+每一项能力恰好归入 **九个域** 中的一个。[参考](/docs/openapi) 统计并列出全部：
+
+<Cards>
+  <Card title="身份与信任" href="/docs/openapi/iam" description="你是谁，可以碰什么，机密住在哪里。" />
+  <Card title="智能" href="/docs/openapi/ai" description="模型、智能体、评测 — 云的心智。" />
+  <Card title="数据" href="/docs/openapi/base" description="每项能力写入并读取的存储。" />
+  <Card title="流" href="/docs/openapi/pubsub" description="消息、持久任务、异步编排。" />
+  <Card title="可观测性" href="/docs/openapi/o11y" description="看见一切 — 遥测、分析、用量。" />
+  <Card title="商业" href="/docs/openapi/commerce" description="经济 — 计量、定价、计费、奖励。" />
+  <Card title="平台" href="/docs/openapi/platform" description="云的织物 — 部署、供给、路由、托管。" />
+  <Card title="应用" href="/docs/openapi/git" description="面向使用者的表面，建在上面这一切之上。" />
+  <Card title="链" href="/docs/openapi/web3" description="云与之对话的网络 — 枚举、调用、读取余额。" />
+</Cards>
+
+少数产品仍作为独立应用跑在自己的域上 — 例如 [Sign](/docs/openapi)（`esign.hanzo.ai`）、[Dataroom](/docs/openapi)（`dataroom.hanzo.ai`）和 [Cap Table](/docs/openapi)（`captable.hanzo.ai`）— 并通过 Hanzo IAM 认证。它们是尚存的独立应用，正在被吸收进同一个运行时，并不是预定的终态。
+
+## 方向
+
+平台正在收敛到一种运行这些服务的模型：**由共识支撑的插件平台**。每项服务是注册进单一云运行时的一个 *插件*，一小块共识控制面决定每个插件的写入者住在哪里。这是设计方向 — 写成草案提案，还不是已交付的运行时。
+
+<Cards>
+  <Card title="工程哲学" href="/docs/architecture/philosophy" description="V8 背后的原则：一件事、一种做法，解开缠绕，语言的接缝是线而不是 FFI。" />
+  <Card title="网络" href="/docs/network" description="你可以自己运行的 AI 云 — 一个二进制文件，自带 GPU，网络就是云。" />
+  <Card title="由共识支撑的插件平台" href="/docs/architecture/plugin-platform" description="HIP-0125 的方向：插件为单元，放置由共识决定，以 ZAP 原生方式编写。" />
+  <Card title="ZAP 协议" href="/docs/zap" description="Zero-Copy App Proto — 插件默认使用的高性能传输。" />
+  <Card title="Hanzo 改进提案" href="https://hips.hanzo.ai" description="平台架构在这里被写明并批准。" />
+</Cards>
+
+<Callout type="info">
+插件平台写在 **HIP-0125（草案）** 里。它建立在一组相关提案之上 — 进程内扩展运行时（HIP-0105）、统一云二进制（HIP-0106）、流式复制（HIP-0107）以及 ZAP 传输（HIP-0114）。草案可能改变；[插件平台页面](/docs/architecture/plugin-platform) 上的内容都不是已交付的用户功能。
+</Callout>

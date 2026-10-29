@@ -1,0 +1,56 @@
+---
+title: "arcalabs: rekayasa efek pada tingkat rakitan"
+description: "st-contracts masuk pada Februari 2019. Token efek ERC-1400, pola proksi yang dapat ditingkatkan, dan apa artinya membangun infrastruktur keuangan pada tingkat rakitan EVM."
+author: Zach Kelling
+date: 2019-02-21
+---
+
+# arcalabs: rekayasa efek pada tingkat rakitan
+
+Repositori st-contracts naik di bawah arcalabs pada 21 Februari 2019. Kontrak token efek yang menerapkan ERC-1400, dengan pola proksi yang dapat ditingkatkan, dibangun untuk kepatuhan regulasi. Tulisan ini tentang apa yang benar-benar terlibat dalam pekerjaan itu dan mengapa ia menuntut turun ke tingkat rakitan.
+
+## Apa itu token efek
+
+Token ERC-20 tanpa izin menurut rancangannya. Siapa pun dapat memegang satu, mengalihkan satu, membakar satu. Itulah maksudnya — ketahanan terhadap sensor adalah fungsi, bukan cacat.
+
+Token efek berbeda. Ia mewakili bagian kepemilikan pada aset nyata — ekuitas, utang, properti, saham dana. Hukum efek membebankan batasan pengalihan: syarat investor terakreditasi, batas yurisdiksi, masa penguncian, kewajiban pengungkapan. Kontrak token harus menegakkan batasan ini secara terprogram, atau ia hanya ERC-20 dengan nama lain.
+
+ERC-1400 adalah standar yang muncul untuk ini. Ia memperkenalkan batasan pengalihan lewat pemeriksaan `canTransfer` — sebelum pengalihan mana pun berjalan, kontrak memvalidasi bahwa penerima boleh memegang token. Ia menambah pengalihan paksa untuk tindakan kepatuhan (pengadilan dapat memaksa pengalihan aset; kontrak harus mampu menanganinya). Ia menambah pengelolaan partisi — potongan berbeda dari efek yang sama dengan ciri berbeda.
+
+Ini infrastruktur keuangan pada lapisan kontrak pintar. Taruhannya berbeda dari protokol DeFi — jika kontrak token punya cacat, efek yang nyata dalam risiko. Batang kebenaran lebih tinggi.
+
+## Mengapa proksi yang dapat ditingkatkan
+
+Efek adalah instrumen berumur panjang. Token efek yang terbit pada 2019 mungkin harus menegakkan aturan batasan pengalihan tahun 2024. EVM tidak membiarkan Anda mengubah kode kontrak yang sudah terpasang. Jika logika membeku saat pemasangan, Anda atau memasang ulang (yang berarti memindahkan semua pemegang, semua saldo, semua keadaan) atau terjebak pada perilaku yang Anda kirim.
+
+Pola proksi menyelesaikan ini: pasang kontrak proksi yang alamatnya tidak pernah berubah, dan kontrak logika yang memegang implementasi yang sebenarnya. Pemegang berinteraksi dengan proksi. Proksi mendelegasikan panggilan ke kontrak logika. Saat logika perlu ditingkatkan, Anda memasang implementasi baru dan memperbarui penunjuk proksi.
+
+Jebakannya: pola proksi itu halus. Panggilan terdelegasi menjalankan kode kontrak logika dalam konteks penyimpanan proksi. Tata letak penyimpanan pada kontrak logika harus cocok dengan tata letak penyimpanan proksi, atau Anda merusak keadaan. Mekanisme peningkatan itu sendiri harus dilindungi — peningkatan tanpa wewenang itu bencana.
+
+Mendapatkan ini dengan benar menuntut menelusuri kode pada tingkat Solidity lalu pada tingkat bytecode EVM. Anda tidak dapat memercayai kompilator untuk mengambil keputusan yang dibutuhkan di sini. Sisipan rakitan memungkinkan Anda memverifikasi persis apa yang terjadi pada slot penyimpanan, pada data panggilan, dan pada nilai kembali.
+
+## Kerja EVM pada tingkat rakitan
+
+EVM adalah mesin tumpukan. Kompilator Solidity menghasilkan bytecode EVM. Sebagian besar waktu keluaran kompilator cukup baik dan tidak perlu diperiksa. Untuk pola proksi dan untuk jalur yang kritis terhadap gas, perlu.
+
+Rakitan sebaris di Solidity (blok `assembly { }` dengan Yul) memberi akses langsung ke operasi EVM: `sload` dan `sstore` untuk penyimpanan, `calldataload` untuk membaca data panggilan, `delegatecall` untuk penerusan proksi, `returndatacopy` untuk menangani nilai kembali. Fungsi penerusan proksi, yang ditulis dalam rakitan, sekitar 30 baris yang menangani panggilan apa pun dengan benar dan dengan overhead gas yang minimal.
+
+Bingkai HPC (komputasi kinerja tinggi) yang dipakai arcalabs itu disengaja. Komputasi Ethereum mahal. Setiap instruksi berbiaya gas. Jalur panas yang dioptimalkan rakitan — validasi pengalihan, penerusan proksi, emisi peristiwa — secara berarti lebih murah daripada padanan Solidity-nya. Pada volume transaksi yang nyata, penghematan gas itu penting.
+
+## Hubungan dengan DEVxDAO
+
+DEVxDAO adalah DAO di rantai yang mendanai kerja infrastruktur blockchain. arcalabs menerima hibah untuk kerja token efek — pengakuan formal bahwa infrastruktur ERC-1400 adalah barang publik yang layak didanai, bukan hanya kerja komersial.
+
+Model DAO itu tidak sempurna (setiap DAO awal tidak sempurna) tetapi tesisnya benar: sebagian kerja infrastruktur tidak punya model komersial yang jelas dan butuh pendanaan hibah. Kontrak token efek sumber terbuka yang dapat dipakai proyek mana pun adalah kerja semacam itu. Hubungan dengan DEVxDAO adalah bentuk kelembagaan dari intuisi cypherpunk — infrastruktur keuangan seharusnya publik.
+
+## Apa yang diajarkan membangun pada tingkat ini
+
+Menulis rakitan EVM mengajarkan bahwa komputer tidak tahu apa yang Anda maksud. Ia mengeksekusi apa yang Anda tulis, persis, tanpa tafsiran. Jika Anda menulis hal yang salah, ia mengeksekusi hal yang salah, dan kontrak token efek punya cacat yang mungkin baru muncul pada kondisi tertentu bertahun-tahun setelah pemasangan.
+
+Ini menjernihkan. Disiplin menulis rakitan — di mana setiap instruksi eksplisit, di mana tidak ada yang implisit, di mana Anda dapat menelusuri persis apa yang terjadi pada setiap bit — adalah disiplin yang Anda inginkan untuk semua infrastruktur keuangan, bahkan saat menulis pada tingkat abstraksi yang lebih tinggi. Pertanyaannya bukan «apakah ini tampak benar?». Pertanyaannya «apa persisnya yang ini eksekusi, dan apakah itu yang saya inginkan?».
+
+Disiplin itulah yang membuat kerja arcalabs berbeda dari pengembangan kontrak pintar yang lazim. Kami membangun untuk kebenaran di bawah kondisi lawan, untuk umur panjang, untuk penyesuaian regulasi. Tingkat rakitan adalah tempat kebenaran dibuktikan, bukan dinyatakan.
+
+---
+
+*zeekay — token efek butuh rekayasa keamanan. arcalabs.*

@@ -1,0 +1,50 @@
+---
+title: Vercel AI SDK
+description: "createOpenAICompatible nhận baseURL. Hai nhà cung cấp khác trên cùng tham số đạt tới dạng responses và messages."
+---
+
+`createOpenAICompatible` nhận **`baseURL`**. `name` là bắt buộc bên cạnh; `apiKey` được biến thành header `Authorization: Bearer` trước bất kỳ header nào bạn tự truyền.
+
+```bash
+npm i ai @ai-sdk/openai-compatible
+```
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText } from 'ai';
+
+const hanzo = createOpenAICompatible({
+  name: 'hanzo',
+  apiKey: process.env.HANZO_API_KEY,
+  baseURL: 'https://api.hanzo.ai/v1',
+});
+
+const { text } = await generateText({
+  model: hanzo('zen5'),
+  prompt: 'Name the three laws of thermodynamics.',
+});
+```
+
+Đổ về `POST /v1/chat/completions`.
+
+Hai nhà cung cấp anh em nhận cùng `baseURL` và đạt tới các dạng còn lại: `createOpenAI` từ `@ai-sdk/openai`, mặc định là Responses từ AI SDK 5, đổ về `POST /v1/responses`; `createAnthropic` từ `@ai-sdk/anthropic` đổ về `POST /v1/messages`.
+
+## MCP
+
+`createMCPClient` đến từ `@ai-sdk/mcp` và được await. URL nằm trên transport, mà SDK khuyên nên là HTTP ở môi trường sản xuất.
+
+```ts
+import { createMCPClient } from '@ai-sdk/mcp';
+
+const mcp = await createMCPClient({
+  transport: {
+    type: 'http',
+    url: 'https://api.hanzo.ai/v1/mcp',
+    headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` },
+  },
+});
+
+const tools = await mcp.tools();
+```
+
+Đưa `tools` cho `generateText` hoặc `streamText` làm đối số `tools`.

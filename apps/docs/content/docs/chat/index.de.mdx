@@ -1,0 +1,157 @@
+---
+title: Hanzo Chat
+description: Die Chat-App auf Hanzo Cloud — Modelle enso und Zen, MCP-Werkzeuge, Agenten, Datei-Uploads und RAG. Gehostet unter chat.hanzo.ai, oder selbst betreiben.
+index: true
+---
+
+import { Cards, Card } from '@hanzo/docs-base-ui/components/card'
+import { LayoutGrid } from 'lucide-react'
+
+# Hanzo Chat
+
+Hanzo Chat ist die Chat-App auf Hanzo Cloud, aufgebaut auf [LibreChat](https://librechat.ai). Sie führt unsere eigenen Modelle aus — die Frontier-Familie **enso** und die Familie mit offenen Gewichten **Zen** — mit MCP-Werkzeugen, konfigurierbaren Agenten, Datei-Uploads mit RAG, Bildverstehen, Gesprächsverlauf, Voreinstellungen und Plugins. Modelle externer Labore werden ebenfalls geführt und erscheinen im selben Modellmenü.
+
+Verfügbar als gehosteter Dienst unter [chat.hanzo.ai](https://chat.hanzo.ai) oder selbst betrieben über Docker.
+
+## Schnellstart
+
+### Gehostet (empfohlen)
+
+1. Öffnen Sie [chat.hanzo.ai](https://chat.hanzo.ai)
+2. Melden Sie sich mit Ihrem Hanzo-Konto an
+3. Ihr **kostenloses Guthaben von $5** wird automatisch angewendet
+4. Wählen Sie ein Modell und beginnen Sie zu chatten
+
+### Selbst betrieben
+
+```bash
+git clone https://github.com/hanzoai/chat
+cd chat
+cp .env.example .env
+# Edit .env with your HANZO_API_KEY
+docker compose up -d
+# Open http://localhost:3081
+```
+
+### API
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen5",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+## SDK-Nutzung
+
+### Python
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="sk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen5",
+    messages=[{"role": "user", "content": "Hello, Zen."}]
+)
+print(response.choices[0].message.content)
+```
+
+### TypeScript
+
+```typescript
+import Hanzo from '@hanzo/ai'
+
+const client = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+
+const completion = await client.chat.completions.create({
+  model: 'zen5',
+  messages: [{ role: 'user', content: 'Hello, Zen.' }],
+})
+console.log(completion.choices[0].message.content)
+```
+
+### Vorhandene HTTP-Clients
+
+`/v1/chat/completions` nimmt die JSON-Form chat-completions entgegen und gibt sie zurück, sodass ein
+Client, der bereits gegen diese Form geschrieben ist, hier funktioniert, sobald seine Basis-URL auf
+`https://api.hanzo.ai/v1` zeigt und er einen Hanzo-Schlüssel sendet. Modellkennungen sind zwischen
+Anbietern nicht übertragbar — `zen5` und `enso` gibt es nur hier.
+
+## Architektur
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        HANZO CHAT                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │ React Client │  │ Node.js API  │  │    DocumentDB    │  │
+│  │              │  │              │  │                  │  │
+│  │ - Chat UI    │  │ - REST API   │  │ - Messages       │  │
+│  │ - Model Sel  │  │ - WebSocket  │  │ - Conversations  │  │
+│  │ - File Upload│  │ - MCP Broker │  │ - Users          │  │
+│  │ - Agents     │  │ - Auth       │  │ - Presets        │  │
+│  └──────────────┘  └──────────────┘  └──────────────────┘  │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │              Provider Layer (AI API)            │    │
+│  │  Zen · OpenAI · Anthropic · Google · Meta · …       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Search       │  KV     │  S3     │  RAG API       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Endpunkte
+
+| Umgebung | URL |
+|-------------|-----|
+| Produktion | `https://chat.hanzo.ai` |
+| API | `https://api.hanzo.ai/v1` |
+| Lokal | `http://localhost:3081` |
+
+## Preise
+
+- **Gratis-Credit von $5** auf jedem neuen Konto (verfällt nach 30 Tagen)
+- **Vorauszahlung** — Credits hinzufügen über [console.hanzo.ai](https://console.hanzo.ai)
+- **Ab $0.34/MTok** Eingabe (`zen5-flash`)
+- **Keine überraschenden Rechnungen** — der Dienst stoppt, wenn die Credits aufgebraucht sind
+
+<Cards>
+  <Card title="Funktionen" href="/docs/chat/features">
+    Voreinstellungen, Datei-Uploads, RAG, Suche, Bildverstehen, Gesprächsverwaltung
+  </Card>
+  <Card title="Konfiguration" href="/docs/chat/configuration">
+    chat.yaml-Referenz, Endpunkte, MCP-Werkzeuge, Modellkonfiguration
+  </Card>
+  <Card title="Modelle" href="/docs/chat/models">
+    Jedes Modell im Menü, mit Kontextfenster und Tarif
+  </Card>
+  <Card title="Agenten" href="/docs/chat/agents">
+    Eigene KI-Agenten mit System-Prompts und Werkzeugzugriff
+  </Card>
+  <Card title="Selbstbetrieb" href="/docs/chat/self-hosting">
+    Leitfäden für Docker, Kubernetes und Cloud-Bereitstellung
+  </Card>
+  <Card title="Authentifizierung" href="/docs/chat/authentication">
+    Hanzo IAM, OAuth2, soziale Anmeldung, SSO
+  </Card>
+</Cards>
+
+{/* domain-index */}
+
+## In diesem Abschnitt
+
+<Cards>
+  <Card icon={<LayoutGrid />} title="Hanzo Dev" href="/docs/dev" description="KI-gestützter Programmierassistent für Ihr Terminal. Hanzo Dev installieren, konfigurieren und betreiben." />
+  <Card icon={<LayoutGrid />} title="Integrationen" href="/docs/guides/integrations" description="Verbinden Sie Objektspeicher, Slack, Mixpanel und Insights mit Ihrem Projekt." />
+  <Card icon={<LayoutGrid />} title="Integrationen und Erweiterungen" href="/docs/apps" description="Installieren und verbinden Sie Hanzo in Browser, Editor, Desktop, Dokumentation, Designwerkzeugen und Geschäftsanwendungen — eine…" />
+</Cards>

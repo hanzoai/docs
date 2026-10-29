@@ -1,0 +1,130 @@
+---
+title: Vinculações de linguagem
+description: Documentação do SDK ZAP para todas as linguagens compatíveis
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# Vinculações de linguagem
+
+O ZAP oferece vinculações nativas para 11 linguagens de programação. Cada vinculação é construída sobre a implementação de referência do Cap'n Proto para essa linguagem.
+
+## Linguagens compatíveis
+
+<Cards>
+  <Card title="Rust" description="Implementação de referência com suporte async completo" href="/docs/zap/bindings/rust" />
+  <Card title="Go" description="Go idiomático com clientes seguros para goroutines" href="/docs/zap/bindings/go" />
+  <Card title="Python" description="API async/await com pycapnp" href="/docs/zap/bindings/python" />
+  <Card title="JavaScript" description="Suporte a Node.js e ao navegador" href="/docs/zap/bindings/javascript" />
+  <Card title="C++" description="Vinculação nativa de alto desempenho" href="/docs/zap/bindings/cpp" />
+  <Card title="C" description="API C mínima para sistemas embarcados" href="/docs/zap/bindings/c" />
+  <Card title="Java" description="Vinculação JVM com transporte Netty" href="/docs/zap/bindings/java" />
+  <Card title="C#" description="Vinculação .NET com suporte a async" href="/docs/zap/bindings/csharp" />
+  <Card title="Erlang" description="Vinculação compatível com OTP" href="/docs/zap/bindings/erlang" />
+  <Card title="OCaml" description="Vinculação funcional com Lwt" href="/docs/zap/bindings/ocaml" />
+  <Card title="Haskell" description="Vinculação puramente funcional" href="/docs/zap/bindings/haskell" />
+</Cards>
+
+## Estado da implementação
+
+| Idioma | Cliente | Servidor | Gateway | PQ-TLS | Consenso |
+|---|---|---|---|---|---|
+| Rust | Sim | Sim | Sim | Sim | Sim |
+| Go | Sim | Sim | Sim | Sim | Sim |
+| Python | Sim | Sim | Sim | Parcial | Planejado |
+| JavaScript | Sim | Parcial | Sim | Não | Planejado |
+| C++ | Sim | Sim | Sim | Sim | Parcial |
+| C | Sim | Parcial | Não | Não | Não |
+| Java | Sim | Sim | Parcial | Parcial | Planejado |
+| C# | Sim | Parcial | Não | Não | Não |
+| Erlang | Sim | Sim | Parcial | Não | Planejado |
+| OCaml | Sim | Parcial | Não | Não | Não |
+| Haskell | Sim | Parcial | Não | Não | Não |
+
+## Padrões comuns
+
+### Criação do cliente
+
+Todas as vinculações seguem um padrão semelhante:
+
+```rust
+// Rust
+let client = Zap::connect("zap://localhost:9000").await?;
+```
+
+```go
+// Go
+client, err := zap.Connect(ctx, "zap://localhost:9000")
+```
+
+```python
+# Python
+client = await Zap.connect("zap://localhost:9000")
+```
+
+```typescript
+// JavaScript
+const client = await Zap.connect('zap://localhost:9000');
+```
+
+### Tratamento de erros
+
+Cada vinculação usa o tratamento de erros idiomático da linguagem:
+
+- **Rust**: `Result<T, Error>` com o operador `?`
+- **Go**: Vários valores de retorno `(result, error)`
+- **Python**: Exceções com contexto async
+- **JavaScript**: Promises com try/catch ou `.catch()`
+
+### Async/Await
+
+A maioria das vinculações oferece operações async:
+
+```rust
+// Rust (tokio)
+let tools = client.list_tools().await?;
+```
+
+```go
+// Go (goroutines)
+tools, err := client.ListTools(ctx)
+```
+
+```python
+# Python (asyncio)
+tools = await client.list_tools()
+```
+
+```typescript
+// JavaScript (Promises)
+const tools = await client.listTools();
+```
+
+## Geração de código a partir do esquema
+
+Gere as vinculações a partir do esquema do ZAP:
+
+```bash
+# Clone the schema
+git clone https://github.com/zap-proto/zap
+cd zap/schema
+
+# Generate for your language
+capnp compile -o rust zap.capnp
+capnp compile -o go zap.capnp
+capnp compile -o c++ zap.capnp
+```
+
+Veja as páginas de cada linguagem para as instruções detalhadas de geração de código.
+
+## Como contribuir
+
+As vinculações de linguagem são mantidas em repositórios separados:
+
+- [zap-proto/rust](https://github.com/zap-proto/rust) - Rust
+- [zap-proto/go](https://github.com/zap-proto/go) - Go
+- [zap-proto/py](https://github.com/zap-proto/py) - Python
+- [zap-proto/js](https://github.com/zap-proto/js) - JavaScript
+
+Contribuições são bem-vindas! Veja o CONTRIBUTING.md de cada repositório para as orientações.

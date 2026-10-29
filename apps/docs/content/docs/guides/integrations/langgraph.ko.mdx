@@ -1,0 +1,51 @@
+---
+title: LangGraph
+description: "기본 URL은 에이전트가 아니라 모델에 둡니다. ChatOpenAI는 base_url을 받고, 인스턴스를 create_agent에 넘깁니다."
+---
+
+기본 URL은 모델 객체에 두고 에이전트에는 두지 않습니다. `ChatOpenAI`는 **`base_url`**(별칭 `openai_api_base`)을 받고, `create_agent`는 초기화된 모델 인스턴스를 받습니다. 사용자 지정 기본 URL을 실어 나르는 길은 이것이고, 문자열 형식 `"provider:model"`은 그럴 수 없습니다.
+
+```bash
+pip install langchain-openai langgraph
+```
+
+```python
+from langchain_openai import ChatOpenAI
+from langchain.agents import create_agent
+
+model = ChatOpenAI(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = create_agent(model=model, tools=[])
+result = agent.invoke({"messages": [{"role": "user", "content": "Hello"}]})
+```
+
+`POST /v1/chat/completions`에 도달합니다.
+
+주소의 해석 순서는 먼저 맞는 것이 이깁니다. 명시적 인자 `base_url` 또는 `openai_api_base`, 그다음 LangChain이 초기화 때 읽는 `OPENAI_API_BASE`, 그다음 아래 `openai` 클라이언트가 읽는 `OPENAI_BASE_URL`입니다. 인자를 설정하면 나머지 둘은 무의미해지므로 조각이 그것을 설정합니다.
+
+## MCP
+
+`langchain-mcp-adapters`가 클라이언트를 갖습니다. URL은 서버별 항목의 `url` 키입니다.
+
+```bash
+pip install langchain-mcp-adapters
+```
+
+```python
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
+client = MultiServerMCPClient({
+    "hanzo": {
+        "transport": "http",
+        "url": "https://api.hanzo.ai/v1/mcp",
+        "headers": {"Authorization": "Bearer sk-..."},
+    }
+})
+
+tools = await client.get_tools()
+agent = create_agent(model=model, tools=tools)
+```

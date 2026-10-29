@@ -1,0 +1,61 @@
+---
+title: 빠른 시작
+description: @hanzo/usage를 설치하고 통합 AI 사용량을 TypeScript 약 15줄로 읽습니다.
+---
+
+# 빠른 시작
+
+`@hanzo/usage`는 Hanzo Usage 뒤의 헤드리스 핵심입니다. Node,
+Next.js, Tauri에서 돌며 Hanzo, Codex, Claude용 내장 공급자를 함께 제공합니다
+(레지스트리는 확장할 수 있습니다).
+
+## 설치
+
+```bash title="Install"
+npm install @hanzo/usage
+```
+
+## 사용량 읽기
+
+`UsageStore`를 만들고, 환경용 호스트를 준 다음 폴링 루프를 시작합니다.
+저장소는 관찰할 수 있습니다. 그리려면 구독하거나 React 훅을 쓰세요.
+
+```ts title="usage.ts"
+import { UsageStore, allProviders } from '@hanzo/usage'
+import { nodeHost } from '@hanzo/usage/node' // or createTauriHost from '@hanzo/usage/tauri'
+
+const store = new UsageStore({
+  host: nodeHost,
+  providers: allProviders, // hanzo, codex, claude — registry-extensible
+  historyDir: `${process.env.HOME}/.config/hanzo/usage/history`,
+})
+
+store.start() // 5-minute poll, CodexBar-compatible history files
+store.subscribe(() => console.log(store.getState()))
+```
+
+## Tauri에서 (Hanzo Desktop, hanzo.app)
+
+Tauri 플러그인 모듈을 넘깁니다. 핵심은 웹과
+Node 번들에서 의존성이 없습니다.
+
+```ts title="tauri-host.ts"
+import * as fs from '@tauri-apps/plugin-fs'
+import { fetch } from '@tauri-apps/plugin-http'
+import { homeDir } from '@tauri-apps/api/path'
+import { createTauriHost } from '@hanzo/usage/tauri'
+
+const host = await createTauriHost({ fs, fetch, homeDir })
+```
+
+## React에서
+
+```ts title="Component.tsx"
+import { useUsage } from '@hanzo/usage/react'
+
+const state = useUsage(store) // re-renders on every refresh
+```
+
+각 공급자는 이미 있는 로그인을 다시 쓰는 가져오기 전략의 순서 있는 파이프라인(`oauth` → `web` →
+`cli` → `apiToken` → `localProbe`)을 실행하므로, 비밀번호는 요청되지도
+저장되지도 않습니다.

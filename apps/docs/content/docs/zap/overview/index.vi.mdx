@@ -1,0 +1,151 @@
+---
+title: Tổng quan
+description: Kiến trúc ZAP và các khái niệm cốt lõi
+index: true
+---
+
+# Tổng quan về ZAP
+
+ZAP (Zero-Copy App Proto) là giao thức truyền thông thế hệ mới, thiết kế riêng cho hệ sinh thái tác nhân AI. Xây trên Cap'n Proto, nó mang lại hiệu năng và bảo mật mà triển khai tác nhân trong môi trường sản xuất đòi hỏi.
+
+## Khái niệm cốt lõi
+
+### Tuần tự hóa không sao chép
+
+Khác với JSON-RPC mà MCP dùng, ZAP dựa trên tuần tự hóa không sao chép của Cap'n Proto:
+
+- **Không tốn phân tích**: dữ liệu được đọc thẳng từ định dạng trên dây
+- **Bộ nhớ dùng chung**: thông điệp chuyển giữa các tiến trình mà không sao chép
+- **Mã hóa gọn**: định dạng nhị phân nhỏ hơn JSON từ 2 đến 10 lần
+
+```c
+struct ToolCall {
+  id @0 :Text;
+  name @1 :Text;
+  args @2 :Data;  # JSON arguments as bytes
+  metadata @3 :Metadata;
+}
+```
+
+### RPC dựa trên giao diện
+
+ZAP dùng hệ thống RPC theo năng lực của Cap'n Proto:
+
+```c
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+  subscribe @5 (uri :Text) -> (stream :ResourceStream);
+  listPrompts @6 () -> (prompts :PromptList);
+  getPrompt @7 (name :Text, args :Metadata) -> (messages :List(PromptMessage));
+  log @8 (level :LogLevel, message :Text, data :Data);
+}
+```
+
+### Tương thích MCP
+
+ZAP giữ tương thích ngược đầy đủ với MCP qua giao diện Gateway:
+
+```c
+interface Gateway extends(Zap) {
+  addServer @0 (name :Text, url :Text, config :ServerConfig) -> (id :Text);
+  removeServer @1 (id :Text) -> ();
+  listServers @2 () -> (servers :List(ConnectedServer));
+  serverStatus @3 (id :Text) -> (status :ServerStatus);
+}
+```
+
+Gateway có thể nối:
+- **stdio**: tiến trình máy chủ MCP thông thường
+- **http**: điểm cuối MCP dựa trên HTTP
+- **websocket**: kết nối WebSocket
+- **zap**: giao thức ZAP gốc
+- **unix**: socket miền Unix
+
+## Kiến trúc
+
+```
++------------------+     +------------------+
+|   AI Agent       |     |   AI Agent       |
+|   (ZAP Client)   |     |   (ZAP Client)   |
++--------+---------+     +--------+---------+
+         |                        |
+         v                        v
++------------------------------------------+
+|              ZAP Gateway                  |
+|  +--------+  +--------+  +--------+      |
+|  | MCP    |  | MCP    |  | ZAP    |      |
+|  | Server |  | Server |  | Server |      |
+|  +--------+  +--------+  +--------+      |
++------------------------------------------+
+         |                        |
+         v                        v
++------------------+     +------------------+
+|   Coordinator    |     |   DID Registry   |
+|   (Discovery)    |     |   (Identity)     |
++------------------+     +------------------+
+```
+
+## Tính năng chính
+
+### Công cụ
+
+Công cụ là hàm mà tác nhân có thể gọi:
+
+```c
+struct Tool {
+  name @0 :Text;
+  description @1 :Text;
+  schema @2 :Data;  # JSON Schema as bytes
+  annotations @3 :Metadata;
+}
+```
+
+### Tài nguyên
+
+Tài nguyên là nguồn dữ liệu, có thể phát theo luồng:
+
+```c
+struct Resource {
+  uri @0 :Text;
+  name @1 :Text;
+  description @2 :Text;
+  mimeType @3 :Text;
+  annotations @4 :Metadata;
+}
+
+interface ResourceStream {
+  next @0 () -> (content :ResourceContent, done :Bool);
+  cancel @1 () -> ();
+}
+```
+
+### Prompt
+
+Prompt là mẫu thông điệp dùng lại được:
+
+```c
+struct Prompt {
+  name @0 :Text;
+  description @1 :Text;
+  arguments @2 :List(Argument);
+}
+```
+
+## Mô hình bảo mật
+
+ZAP áp dụng bảo mật nhiều lớp:
+
+1. **Bảo mật vận chuyển**: bắt tay lai hậu lượng tử (X25519 + ML-KEM-768)
+2. **Xác thực thông điệp**: chữ ký ML-DSA-65
+3. **Danh tính**: danh tính nút dựa trên W3C DID
+4. **Đồng thuận**: ký ngưỡng Corona cho thao tác nhiều bên
+
+## Next Steps
+
+- [Bắt đầu](/docs/guides) - Cài và chạy tác nhân ZAP đầu tiên
+- [Ngôn ngữ lược đồ](/docs/zap/schema) - Tìm hiểu định dạng lược đồ Cap'n Proto
+- [Đặc tả giao thức](/docs/zap/protocol) - Hiểu định dạng trên dây

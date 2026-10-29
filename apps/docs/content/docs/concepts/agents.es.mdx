@@ -1,0 +1,104 @@
+---
+title: Agentes
+description: Un agente es una definición; una sesión es una ejecución que puedes dirigir y reproducir. Un flujo es un árbol, y un comando es una intención, no un cambio de estado.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Después de esta página puedes definir un agente, verlo trabajar y dirigirlo mientras
+se ejecuta.**
+
+## Dos sustantivos
+
+Un **agente** es una definición: un modelo, un prompt de sistema y un conjunto de nombres de herramientas.
+Una **sesión** es una ejecución en vivo — la fila de la que cuelga la actividad de cada superficie,
+sea la CLI, la consola, el chat o un bot.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"triage","model":"zen-1","instructions":"Triage inbound issues.","tools":["search"]}'
+```
+
+```bash
+hanzo agents list
+```
+
+El nombre es único en tu organización y coincide con
+`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`. Un modelo que nombras se comprueba contra el
+catálogo que sirve la puerta de enlace **en el momento de definirlo** — un error tipográfico se rechaza ahora
+y no a las 3 de la madrugada en la primera ejecución. Un agente que se ejecuta de forma continua debe llevar un
+horario cron de cinco campos, y cuenta contra un tope por organización.
+
+## Un flujo es un árbol
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agents/sessions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"agent":"triage"}'
+```
+
+Una sesión que lleva un `parentSessionId` se convierte en un **subagente** de esa sesión
+y hereda su raíz. Así, un abanico de diez subagentes no son diez ejecuciones sin relación —
+es un árbol, y `/v1/agents/sessions/{id}/tree` devuelve todo el grafo en una
+sola lectura, y cada nodo lleva su propio recuento de eventos.
+
+El listado devuelve **solo las sesiones raíz** salvo que pidas descender. El estado es uno
+de `running`, `paused`, `done`, `error`.
+
+## Dirigir una sesión en ejecución
+
+Cuatro comandos, todos bajo `/v1/agents/sessions/{id}`: `message`, `pause`,
+`resume`, `stop`.
+
+<Callout>
+**Un comando es una intención, no un cambio de estado.** Nada en esa llamada escribe el
+estado de la sesión. Un `200` significa que el comando quedó registrado de forma duradera y entregado —
+el agente decide cuándo actuar sobre él.
+</Callout>
+
+Eso es lo que hace que dirigir funcione entre máquinas. Una sesión de `hanzo code` iniciada
+en tu portátil consume los comandos que publicó el panel, sondeando
+`/v1/agents/sessions/{id}/control` — comandos más nuevos que un cursor, el más antiguo primero,
+y no se vuelven a entregar una vez aplicados.
+
+Dos rechazos que conviene conocer: una sesión **terminada** rechaza todos los comandos con
+`409`, y un id que pertenece a otro inquilino es `404` — ninguna organización dirige los
+agentes de otra, y el 404 no confirma que el id exista.
+
+`stop` es la excepción que de verdad cancela en lugar de señalar.
+
+## Observar
+
+```
+GET /v1/agents/sessions/stream
+```
+
+Eventos enviados por el servidor: marcos `session` y marcos `event`, acotados con `?root=`.
+Está acotado a la organización y falla cerrado — el bus filtra por inquilino antes de la dispersión. Un
+suscriptor que se retrasa más de 256 marcos se descarta en lugar de dejar que atasque
+el flujo, y llega un `: ping` cada 25 segundos para que una conexión muerta sea
+visible.
+
+Los turnos se registran en `/v1/agents/sessions/{id}/events` — mensaje, llamada a herramienta,
+generación, registro, estado, control — y cada uno responde con un `seq` monótono. No se pierde
+nada, así que una ejecución se puede reproducir después de terminar.
+
+## A qué llega un agente
+
+- **Herramientas** — [herramientas](/docs/openapi/tools) es el plano de herramientas por inquilino a través del cual
+  llama un agente.
+- **Cómputo** — un arrendamiento de [caja de arena](/docs/concepts/sandboxes).
+- **Conocimiento** — [memoria](/docs/concepts/memory).
+- **Modelos** — [ai](/docs/openapi/ai), el plano de inferencia.
+
+## Siguiente
+
+- **[Referencia de agentes](/docs/openapi/agents)** — cada operación, generada.
+- **[Presupuestos](/docs/concepts/budgets)** — lo que puede gastar, y qué ocurre
+  cuando gastaría más.
+- **[Cajas de arena](/docs/concepts/sandboxes)** — donde se ejecuta el trabajo.
+- **[Memoria](/docs/concepts/memory)** — lo que sabe.
+- **[Flujos de trabajo](/docs/concepts/workflows)** — ejecutar uno sin que te lo pidan.

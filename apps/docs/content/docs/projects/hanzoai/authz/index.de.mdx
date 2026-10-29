@@ -1,0 +1,38 @@
+---
+title: "Authz"
+description: "Hanzo Authz — Zugriffskontrollbibliothek für Go: Durchsetzung von ACL-, RBAC- und ABAC-Richtlinien"
+---
+
+Die Zugriffskontrollbibliothek, mit der jeder Go-Dienst von Hanzo ein Token liest und entscheidet, ob ein Aufrufer etwas tun darf: JWT-Prüfung, Angaben und die Berechnung der Gewährungen über Organisationen, Anwendungen und Pfade.
+
+## Installation
+
+```bash
+go get github.com/hanzoai/authz
+```
+
+## So verwendest du es
+
+Prüfe ein Token — das ist dieselbe Bibliothek, mit der IAM signiert, sodass ein Leser hier dem Aussteller nicht widersprechen kann, was signiert wurde:
+
+```go
+claims, err := authz.Verify(token, keys, []string{"https://hanzo.id"})
+```
+
+`keys` ist ein `func(kid string) []crypto.PublicKey`. Schlüsselmaterial ist eine **Eingabe**: ein JWKS zu holen und zwischenzuspeichern ist E/A, und dieses Paket tut nichts davon — der Rand besitzt den Abruf und reicht das Ergebnis hinein. Ein nil-`Keys`, oder eines, das nichts auflöst, prüft nichts.
+
+Von dort trägt `Claims` die Identität des Aufrufers, die Mitgliedschaften in Organisationen und die Anwendungsgewährungen; `ParsePath` und `VerbOf` machen aus einer Anfrage das Paar, über das die Gewährungsrechnung entscheidet. `IsAPIKey` unterscheidet einen `hk-`-Schlüssel von einem JWT.
+
+Angenommen werden nur die Algorithmen, die der Signierer von IAM erzeugt — RSA und EC, plus ML-DSA-65 für ein Postquanten-Zertifikat. `none` und HMAC werden abgelehnt.
+
+## Dokumentation
+
+[`LLM.md`](LLM.md) für den Aufbau. Die Pakete `edge/` und `serve/` halten die Teile, die E/A brauchen — Schlüsselabruf und die HTTP-Oberfläche — und bleiben absichtlich außerhalb des Blattpakets.
+
+## Lizenz
+
+Siehe [LICENSE](LICENSE).
+
+## Verweise
+
+- [Quelle](https://github.com/hanzoai/authz)

@@ -1,0 +1,51 @@
+---
+title: Mastra
+description: "プロバイダファクトリはありません。ベース URL はエージェントの model オブジェクトの url フィールドで、ルーティング用 id の隣です。"
+---
+
+Mastra にはこのためのプロバイダファクトリがありません。アドレスはエージェントの `model` オブジェクトのフィールドです。**`id`** と **`url`** です。
+
+```bash
+npm i @mastra/core
+```
+
+```ts
+import { Agent } from "@mastra/core/agent";
+
+export const agent = new Agent({
+  id: "researcher",
+  name: "Researcher",
+  instructions: "Answer precisely.",
+  model: {
+    id: "hanzo/zen5",
+    url: "https://api.hanzo.ai/v1",
+    apiKey: process.env.HANZO_API_KEY,
+  },
+});
+```
+
+`POST /v1/chat/completions` に着地します。
+
+ドキュメントが明言している点が二つあります。`url` は OpenAI 互換エンドポイントのベース URL であり、個々のチャットエンドポイントであってはなりません。そして `id` はルーティング形式です。リモートが素のモデル名を期待するときは `provider/model`、リモート自身のモデル名前空間がすでにプロバイダを含むときは `gateway/provider/model` です。モデルごとの `headers` がサポートされ、クライアント側より文書化された優先順位を持ちます。
+
+## MCP
+
+`MCPClient` は `@mastra/mcp` から来ます。URL は名前付きサーバーごとの `url` キーで、`URL` オブジェクトを持ちます。
+
+```ts
+import { MCPClient } from '@mastra/mcp';
+
+export const mcp = new MCPClient({
+  id: 'hanzo-mcp',
+  servers: {
+    hanzo: {
+      url: new URL('https://api.hanzo.ai/v1/mcp'),
+      requestInit: { headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` } },
+    },
+  },
+});
+
+const tools = await mcp.listTools();
+```
+
+`listToolsets()` はリクエスト単位の変種で、ツールを同時ユーザー間で共有してはならないときに使います。

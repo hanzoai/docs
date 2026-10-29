@@ -1,0 +1,50 @@
+---
+title: Vercel AI SDK
+description: "createOpenAICompatible prend baseURL. Deux autres fournisseurs sur le même paramètre atteignent les formes responses et messages."
+---
+
+`createOpenAICompatible` prend **`baseURL`**. `name` est requis à côté ; `apiKey` est transformé en en-tête `Authorization: Bearer` avant tout en-tête que vous passez vous-même.
+
+```bash
+npm i ai @ai-sdk/openai-compatible
+```
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText } from 'ai';
+
+const hanzo = createOpenAICompatible({
+  name: 'hanzo',
+  apiKey: process.env.HANZO_API_KEY,
+  baseURL: 'https://api.hanzo.ai/v1',
+});
+
+const { text } = await generateText({
+  model: hanzo('zen5'),
+  prompt: 'Name the three laws of thermodynamics.',
+});
+```
+
+Atterrit sur `POST /v1/chat/completions`.
+
+Deux fournisseurs frères prennent le même `baseURL` et atteignent les autres formes : `createOpenAI` de `@ai-sdk/openai`, dont la valeur par défaut est Responses depuis AI SDK 5, atterrit sur `POST /v1/responses` ; `createAnthropic` de `@ai-sdk/anthropic` atterrit sur `POST /v1/messages`.
+
+## MCP
+
+`createMCPClient` vient de `@ai-sdk/mcp` et s'attend avec await. L'URL vit sur le transport, que le SDK recommande en HTTP en production.
+
+```ts
+import { createMCPClient } from '@ai-sdk/mcp';
+
+const mcp = await createMCPClient({
+  transport: {
+    type: 'http',
+    url: 'https://api.hanzo.ai/v1/mcp',
+    headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` },
+  },
+});
+
+const tools = await mcp.tools();
+```
+
+Remettez `tools` à `generateText` ou `streamText` comme argument `tools`.

@@ -1,0 +1,51 @@
+---
+title: Mastra
+description: "没有提供方工厂。基础 URL 是代理 model 对象里的 url 字段，旁边是一个路由 id。"
+---
+
+Mastra 没有为此准备的提供方工厂。地址是代理 `model` 对象的字段：**`id`** 和 **`url`**。
+
+```bash
+npm i @mastra/core
+```
+
+```ts
+import { Agent } from "@mastra/core/agent";
+
+export const agent = new Agent({
+  id: "researcher",
+  name: "Researcher",
+  instructions: "Answer precisely.",
+  model: {
+    id: "hanzo/zen5",
+    url: "https://api.hanzo.ai/v1",
+    apiKey: process.env.HANZO_API_KEY,
+  },
+});
+```
+
+落到 `POST /v1/chat/completions`。
+
+文档明确说了两件事。`url` 必须是 OpenAI 兼容端点的基础 URL，绝不能是单独的聊天端点。而 `id` 是一种路由形式：远端期望裸模型名时用 `provider/model`，远端自己的模型命名空间已经带上提供方时用 `gateway/provider/model`。支持按模型设置 `headers`，文档写明其优先级高于客户端的头。
+
+## MCP
+
+`MCPClient` 来自 `@mastra/mcp`。URL 是一个 `url` 键，里面放一个 `URL` 对象，按具名服务器分别设置。
+
+```ts
+import { MCPClient } from '@mastra/mcp';
+
+export const mcp = new MCPClient({
+  id: 'hanzo-mcp',
+  servers: {
+    hanzo: {
+      url: new URL('https://api.hanzo.ai/v1/mcp'),
+      requestInit: { headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` } },
+    },
+  },
+});
+
+const tools = await mcp.listTools();
+```
+
+`listToolsets()` 是按请求的变体，用于工具不得在并发用户之间共享的时候。

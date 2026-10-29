@@ -1,0 +1,173 @@
+---
+icon: Plug
+title: MCP
+description: 统一的 Hanzo MCP — 一台服务器，让 Claude Code、Cursor 和任何 MCP 客户端获得单一工具面，外加你已连接的云服务。
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# MCP
+
+一台模型上下文协议服务器，一个工具面。把 **`hanzo-mcp`** 加到 Claude Code（或 Cursor、Claude Desktop，或任何 MCP 客户端），Hanzo 的每项能力都通过一条连接出现——不必按工具逐个接线。
+
+> 要找的是托管的 MCP 服务器？**[云端 MCP](/docs/mcp-tools)** 是一个无需安装的 URL，它的每件工具都列在[工具目录](/docs/mcp-tools/all-tools)里。本页是跑在编辑器旁边的那台服务器。
+
+```bash title="Add the Hanzo MCP to Claude Code"
+claude mcp add hanzo -- npx -y @hanzo/mcp serve
+```
+
+这一条命令露出整个表面：
+
+- **13 个统一工具** — `fs`、`exec`、`code`、`git`、`fetch`、`workspace`、`ui`，外加可选的 `think`、`memory`、`hanzo`、`plan`、`tasks`、`mode`。每项能力一个按动作路由的工具（HIP-0300），于是客户端看到的是小而稳定的集合，而不是几百个重叠的名字。
+- **云服务** — `hanzo` 工具原生路由到你的平台：IAM（身份）、Commerce、Storage，以及 `api.hanzo.ai/v1` 上的人工智能 API，用你的令牌认证。
+- **你的连接器** — GitHub、Slack、Google、Discord、X 等，在控制台连上之后，经同一条连接呈现。
+
+同一表面以三种方式交付 — TypeScript（`@hanzo/mcp`）、Python（PyPI 上的 `hanzo-mcp`）和 Rust（`hanzo-mcp::brain`）— 一对一镜像，走 MCP 的 **stdio** 与 **streamable-http** 传输。
+
+## 客户端设置
+
+```json title="Claude Desktop / Cursor — mcp config"
+{
+  "mcpServers": {
+    "hanzo": {
+      "command": "npx",
+      "args": ["-y", "@hanzo/mcp", "serve"]
+    }
+  }
+}
+```
+
+登录一次（`hanzo auth login`），`hanzo` 云工具和你的连接器就会自行认证；本地工具（`fs`、`exec`、`git`、…）无需账户即可使用。
+
+## 工具索引
+
+平台能够暴露的每件工具都索引在 `GET api.hanzo.ai/v1/tools`（需认证）。今天是来自五个来源的 **1,468 个工具** — 统一服务器通过上面紧凑的、按动作路由的表面来呈现它们：
+
+| 来源 | 它是什么 |
+|--------|-----------|
+| `builtin` | 核心本地工具（fs、exec、git、code、…） |
+| `skill` | 打包的技能 |
+| `connector` | 已连接的云集成（GitHub、Slack、Google、Discord、X、…） |
+| `agent` | 智能体入口 |
+| `function` | 用户定义的函数 |
+
+---
+
+## 连接器
+
+Hanzo 能连上的一切，按你连接的方式划分 — 在控制台连一次的原生连接器（GitHub 应用、OAuth2），以及从[官方注册表](https://registry.modelcontextprotocol.io)实时索引的开放 MCP 生态。两边都可搜索。
+
+<ConnectorsCatalog />
+
+---
+
+## 作为服务的 MCP
+
+统一服务器之外，Hanzo 还可以为你**托管**任何 MCP 服务器 — 从任意 npx、uvx 或自定义包部署，即时伸缩，没有要管理的基础设施。
+
+```bash title="Launch an MCP server"
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+```
+
+## 关键能力
+
+- **任意 MCP 服务器** — 文件系统、Git、SQL、KV、Slack、GitHub、Notion 等
+- **一键部署** — 一条命令启动任意 MCP 服务器
+- **自动伸缩** — 从 0 自动扩到数千个实例
+- **空闲成本 $0** — 只用多少付多少，没有空闲费用
+- **安全沙箱** — 带细粒度权限的隔离容器
+- **15 个以上区域** — 边缘部署，以求全球最低延迟
+
+## 启动方式
+
+### NPX 包
+
+```bash
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+hanzo mcp launch npx @modelcontextprotocol/server-github
+hanzo mcp launch npx @modelcontextprotocol/server-slack
+```
+
+### UVX / Python
+
+```bash
+hanzo mcp launch uvx mcp-server-sqlite
+hanzo mcp launch uvx mcp-server-postgres
+```
+
+### 自定义服务器
+
+```bash
+hanzo mcp launch git://github.com/you/mcp-server
+hanzo mcp launch docker://your-org/mcp-custom:latest
+```
+
+## 配置
+
+用一个配置文件部署多台服务器：
+
+```yaml title="mcp-config.yaml"
+version: "1"
+servers:
+  filesystem:
+    package: "@modelcontextprotocol/server-filesystem"
+    runtime: npx
+    args: ["/workspace"]
+
+  database:
+    package: "mcp-server-postgres"
+    runtime: uvx
+    env:
+      DATABASE_URL: "${secrets.DATABASE_URL}"
+
+  github:
+    package: "@modelcontextprotocol/server-github"
+    runtime: npx
+    env:
+      GITHUB_TOKEN: "${secrets.GITHUB_TOKEN}"
+
+  custom:
+    image: "your-org/mcp-custom:latest"
+    runtime: docker
+    replicas: 3
+```
+
+```bash
+hanzo mcp deploy
+```
+
+## 企业功能
+
+<Cards>
+  <Card title="托管运维" description="部署到 Hanzo Cloud，带自动伸缩与监控" />
+  <Card title="安全沙箱" description="带细粒度权限的隔离容器" />
+  <Card title="边缘部署" description="15 个以上全球区域，以求最低延迟" />
+  <Card title="版本控制" description="固定版本、即时回滚、审计轨迹" />
+  <Card title="工具联邦" description="把多台 MCP 服务器并成统一端点" />
+  <Card title="配置管理" description="集中的秘密与环境变量管理" />
+</Cards>
+
+## 可用工具
+
+| 类别 | 工具 |
+|----------|-------|
+| **存储** | 文件系统、S3、Google Drive、Notion |
+| **数据库** | SQL、MySQL、SQLite、KV、DocumentDB |
+| **开发工具** | Git、GitHub、GitLab、Linear、Jira |
+| **通信** | Slack、Discord、电子邮件、Twilio |
+| **云** | AWS、GCP、Azure、Kubernetes |
+| **人工智能/机器学习** | Hugging Face、Weights & Biases、MLflow |
+| **网页** | 浏览器自动化、Puppeteer、截图 |
+| **自定义** | 任意 Docker 容器或 npm/pip 包 |
+
+## 下一步演化：ZAP
+
+MCP 让工具集成变容易。**ZAP 让它变快。** 零拷贝智能体协议是下一步：零拷贝序列化，开销低 40 到 50 倍，为规模化的智能体蜂群而建。
+
+ZAP 含有 **MCP 网关模式**，以便无缝迁移。
+
+<Cards>
+  <Card title="ZAP 协议" description="快 10 到 100 倍，后量子安全" href="/docs/zap" />
+  <Card title="网关服务" description="每个模型一个 API" href="/docs/services/gateway" />
+</Cards>

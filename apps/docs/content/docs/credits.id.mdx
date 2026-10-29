@@ -1,0 +1,93 @@
+---
+icon: Wallet
+title: Kredit dan penagihan
+description: Apa itu kredit, bagaimana sebuah panggilan menguranginya, di mana saldo berada, dan apa yang terjadi saat saldo mencapai nol.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Setelah halaman ini Anda tahu apa yang sedang Anda belanjakan, di mana membacanya, dan apa
+yang terjadi ketika habis.**
+
+Tidak ada lisensi per kursi dan tidak ada minimum. Anda memegang saldo, setiap panggilan terukur
+menguranginya dengan tarif yang dipublikasikan, dan akun yang tidak mengirim apa pun tidak
+dikenai biaya apa pun.
+
+## Empat kata benda
+
+Uang adalah empat kapabilitas, dan mereka tidak saling tumpang-tindih.
+
+| | Apa yang dijawabnya | Alamat |
+|---|---|---|
+| **[Harga](/docs/openapi/pricing)** | berapa biaya satu unit, sebelum Anda membelanjakannya | `/v1/pricing` |
+| **[Pemakaian](/docs/openapi/usage)** | apa yang benar-benar Anda konsumsi | `/v1/usage` |
+| **[Penagihan](/docs/openapi/billing)** | saldo, kredit, dan faktur Anda | `/v1/billing` |
+| **[Perdagangan](/docs/openapi/commerce)** | buku besar yang dibaca setiap baris di atas | `/v1/commerce` |
+
+Baca dengan urutan itu dan seluruh ekonomi adalah satu kalimat: **harga** menyebut
+tarif, **pemakaian** menyebut jumlah, **penagihan** menyebut uang, dan
+**perdagangan** adalah buku besar yang tiga lainnya menjadi lensanya.
+
+## Membaca saldo Anda
+
+```bash
+hanzo billing balance
+```
+
+```bash
+curl https://api.hanzo.ai/v1/billing/balance \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+Kredit dibeli — atau diberikan — di `https://api.hanzo.ai/v1/billing/credits`,
+dan setiap pengurangan adalah entri buku besar, jadi saldo bukan angka yang seseorang
+pelihara dengan tangan. Apa yang Anda konsumsi adalah pembacaan terpisah, karena konsumsi
+dan uang adalah pertanyaan yang terpisah:
+
+```bash
+hanzo usage summary
+```
+
+## Dua langit-langit, dan keduanya tidak sama
+
+<Callout>
+**Saldo** adalah apa yang Anda miliki. **Jatah** dan **batas** adalah apa yang boleh
+Anda belanjakan darinya. Mencampuradukkan ketiganya adalah alasan biasa sebuah panggilan
+ditolak sementara saldo masih terlihat sehat.
+</Callout>
+
+- **[Jatah](/docs/openapi/allowance)** — hibah tetap yang dibelanjakan pemanggil
+  terhadapnya, di `/v1/allowance`. Begitulah organisasi menyerahkan anggaran kepada proyek, kunci, atau
+  anggota tanpa menyerahkan seluruh saldo.
+- **Batas bergulir** — langit-langit jendela tertinggal pada belanja AI, diterapkan di
+  gerbang inferensi. Ia diatur ulang terus-menerus, bukan pada sebuah batas: belanja yang lebih tua
+  daripada jendela keluar dari jumlah tertinggal, jadi tidak ada jurang bulanan
+  dan tidak ada pengaturan ulang tengah malam. Ia adalah kait pada gerbang, bukan kapabilitas
+  tersendiri, jadi tidak punya alamat dan tidak punya halaman; batas itu sendiri adalah
+  bendera platform yang diedit operator.
+
+## Apa yang terjadi di nol
+
+Panggilan terukur ditolak. Ia ditolak di gerbang, sebelum pekerjaan terjadi,
+jadi Anda tidak pernah ditagih untuk panggilan yang akan gagal — dan penolakan
+menyebut alasannya alih-alih mengembalikan kesalahan umum, sehingga klien dapat membedakan
+«kredit habis» dari «kunci buruk» tanpa menebak. Pembacaan yang tidak berbiaya tetap
+menjawab: Anda selalu dapat memeriksa saldo yang tidak dapat Anda belanjakan.
+
+## Panggilan mana yang berbiaya
+
+Sebagian besar tidak. Sebuah kapabilitas menyatakan harganya di samping kodenya — gratis, rata, atau
+terukur — dan yang gratis adalah mayoritas: menampilkan proyek Anda, membaca
+pengiriman webhook, mengambil profil Anda sendiri. Yang terukur adalah yang
+mengonsumsi sumber daya nyata — token inferensi, detik sandbox, SMS keluar, 
+halaman yang dirayapi.
+
+Setiap halaman kapabilitas menyatakan jawabannya sendiri, dan [Harga](/docs/pricing)
+membawa tabel tarif untuk setiap model dan alat.
+
+## Berikutnya
+
+- **[Harga](/docs/pricing)** — tarif, per juta token dan per panggilan.
+- **[Pemakaian](/docs/openapi/usage)** — API pelaporan.
+- **[Autentikasi](/docs/api-keys)** — sebuah kunci dapat dibatasi ke satu model, satu
+  proyek, atau satu kapabilitas, dan itulah separuh lain dari mengendalikan belanja.

@@ -9,6 +9,7 @@ const ui = {
   searchNoResult: '找不到結果',
   searchOpen: '開啟搜尋',
   searchClose: '關閉搜尋',
+  searchOrAsk: '搜尋或詢問 AI',
 
   toc: '本頁目錄',
   tocNoHeadings: '沒有標題',

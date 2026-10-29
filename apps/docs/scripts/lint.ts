@@ -1,6 +1,7 @@
 import { type FileObject, printErrors, scanURLs, validateFiles } from 'next-validate-link';
 import { InferPageType } from '@hanzo/docs-core/source';
-import { blog, source } from '@/lib/source';
+import { i18n } from '@/lib/i18n';
+import { blog, englishPages, englishPosts, source } from '@/lib/source';
 
 type AnySource = typeof blog | typeof source;
 
@@ -8,7 +9,7 @@ async function checkLinks() {
   const scanned = await scanURLs({
     populate: {
       '(home)/blog/[slug]': await Promise.all(
-        blog.getPages().map(async (page) => ({
+        englishPosts().map(async (page) => ({
           value: {
             slug: page.slugs[0],
           },
@@ -16,7 +17,7 @@ async function checkLinks() {
         })),
       ),
       'docs/[[...slug]]': await Promise.all(
-        source.getPages().map(async (page) => {
+        englishPages().map(async (page) => {
           return {
             value: {
               slug: page.slugs,
@@ -56,9 +57,9 @@ async function getHeadings({ data }: InferPageType<AnySource>): Promise<string[]
   return headings;
 }
 
-async function getFiles(source: AnySource) {
+async function getFiles(loader: AnySource) {
   const files: FileObject[] = [];
-  for (const page of source.getPages()) {
+  for (const page of loader.getPages(i18n.defaultLanguage)) {
     if (page.type === 'openapi') continue;
 
     files.push({

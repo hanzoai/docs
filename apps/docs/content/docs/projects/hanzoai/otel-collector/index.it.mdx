@@ -1,0 +1,38 @@
+---
+title: "Raccoglitore Otel"
+description: "Raccoglitore Hanzo O11y Otel — distribuzione Hanzo dell'OpenTelemetry Collector: ingresso ZAP-native e OTLP verso hanzoai/datastore"
+---
+
+<p align="center"><img src=".github/hero.svg" alt="otel-collector" width="880"></p>
+
+# Raccoglitore Hanzo O11y Otel
+
+La distribuzione Hanzo dell'OpenTelemetry Collector. Riceve tracce, metriche e registri tramite **ZAP-native** (`zap-proto/http`, `:4319`) più OTLP (`:4317`/`:4318`) e scrive nell'unico hanzoai/datastore (Datastore). Aggiunge `receiver/zapreceiver` e `exporter/zapexporter` sopra la sorgente a monte.
+
+## CI/CD — schema canonico (un solo modo)
+
+Costruzione, prova e distribuzione sono guidate da un solo **`hanzo.yml`** alla radice e da un **`.github/workflows/cicd.yml`** di circa sette righe, che importa il flusso riutilizzabile [`hanzoai/ci`](https://github.com/hanzoai/ci):
+
+```yaml
+# .github/workflows/cicd.yml
+jobs:
+  cicd:
+    uses: hanzoai/ci/.github/workflows/build.yml@main
+    secrets: inherit
+```
+
+Tutta la logica di costruzione, prova e distribuzione vive una sola volta in `hanzoai/ci`. Legge `hanzo.yml` (`images:` / `test:` / `deploy:` / `kms:`), costruisce e spinge ogni immagine, esegue le prove e fa avanzare la distribuzione. **La costruzione gira sul nostro gruppo arc autogestito (`hanzo-build-linux-amd64`) — zero minuti ospitati da GitHub**; GitHub si limita a dirigere, la nostra infrastruttura fa il lavoro. La spinta verso GHCR usa il gettone automatico del flusso; KMS (`kms.hanzo.ai`) fornisce solo il `KUBECONFIG` di distribuzione.
+
+Questo deposito costruisce due immagini da Dockerfile a più stadi che si costruiscono da soli, quindi non serve un passo di CI precedente:
+
+| immagine | file docker | etichette |
+|---|---|---|
+| `ghcr.io/hanzoai/otel-collector` | `cmd/o11yotelcollector/Dockerfile.selfbuild` | `:zap-native-latest`, `:sha-<short>-amd64-zap-native` |
+| `ghcr.io/hanzoai/o11y-schema-migrator` | `cmd/o11yschemamigrator/Dockerfile.selfbuild` | `:latest`, `:sha-<short>-amd64` |
+
+**Questo è d'ora in poi lo schema per tutti i depositi del PaaS nativo.** Per accogliere un deposito nuovo: aggiungi un `hanzo.yml` alla radice e il `cicd.yml` sopra — nient'altro. Non aggiungere logica di costruzione per deposito, esecutori ospitati da GitHub, né i riutilizzabili ereditati `hanzoai/.github`, `docker-build.yml` e `o11y/primus.workflows` (entrambi tolti qui).
+
+## Collegamenti
+
+- [Sorgente](https://github.com/hanzoai/otel-collector)
+- Licenza: AGPL-3.0

@@ -1,0 +1,56 @@
+---
+title: "arcalabs: derleme düzeyinde menkul kıymet mühendisliği"
+description: "st-contracts Şubat 2019'da işlendi. ERC-1400 menkul kıymet token'ları, yükseltilebilir vekil kalıpları ve finansal altyapıyı EVM derleme düzeyinde kurmanın anlamı."
+author: Zach Kelling
+date: 2019-02-21
+---
+
+# arcalabs: derleme düzeyinde menkul kıymet mühendisliği
+
+st-contracts deposu 21 Şubat 2019'da arcalabs altında yayına girdi. ERC-1400 uygulayan menkul kıymet token sözleşmeleri, düzenleyici uyum için kurulmuş yükseltilebilir vekil kalıpları. Bu yazı, o işin gerçekte ne gerektirdiği ve neden derleme düzeyine inmek zorunda kaldığı hakkındadır.
+
+## Menkul kıymet token'ları nedir
+
+Bir ERC-20 token tasarım gereği izinsizdir. Herkes birini tutabilir, devredebilir, yakabilir. Mesele budur — sansür direnci bir özelliktir, bir kusur değil.
+
+Menkul kıymet token'ı farklıdır. Gerçek bir varlıktaki mülkiyet payını temsil eder — öz sermaye, borç, gayrimenkul, fon payları. Menkul kıymet hukuku devir kısıtları koyar: nitelikli yatırımcı şartları, yargı sınırları, kilit süreleri, açıklama yükümlülükleri. Token sözleşmesi bu kısıtları programatik olarak uygulamalıdır, yoksa başka adlı bir ERC-20'dir.
+
+ERC-1400 bunun için ortaya çıkan standarttı. `canTransfer` denetimiyle devir kısıtları getirdi — herhangi bir devir yürütülmeden önce sözleşme, alıcının token'ı tutmasına izinli olduğunu doğrular. Düzenleyici uyum eylemleri için zorla devir ekledi (mahkeme varlık devrini zorunlu kılabilir; sözleşmenizin bunu karşılaması gerekir). Bölüm yönetimi ekledi — aynı kıymetin farklı özellikleri olan farklı dilimleri.
+
+Bu, akıllı sözleşme katmanında finansal altyapıdır. Ortaya konan, bir DeFi protokolünden farklıdır — token sözleşmesinde bir kusur varsa gerçek menkul kıymetler risk altındadır. Doğruluk çıtasının daha yüksek olması gerekir.
+
+## Neden yükseltilebilir vekiller
+
+Menkul kıymetler uzun ömürlü araçlardır. 2019'da çıkarılan bir menkul kıymet token'ı, 2024 devir kısıtı kurallarını uygulamak zorunda kalabilir. EVM, konuşlandırılmış sözleşme kodunu değiştirmenize izin vermez. Mantık konuşturma anında donmuşsa, ya yeniden konuşturursunuz (bu, tüm hamilleri, tüm bakiyeleri, tüm durumu taşımak demektir) ya da gönderdiğiniz davranışa sıkışırsınız.
+
+Vekil kalıbı bunu çözer: adresi hiç değişmeyen bir vekil sözleşme ve asıl uygulamayı tutan bir mantık sözleşmesi konuşturulur. Hamiller vekille etkileşir. Vekil, çağrıları mantık sözleşmesine devreder. Mantığı yükseltmeniz gerektiğinde yeni bir uygulama konuşturur ve vekilin işaretçisini güncellersiniz.
+
+Püf noktası: vekil kalıpları incedir. Devredilen çağrılar, mantık sözleşmesinin kodunu vekilin depolama bağlamında çalıştırır. Mantık sözleşmesindeki depolama yerleşimi vekilin depolama yerleşimiyle uyumlu olmalıdır, yoksa durumu bozarsınız. Yükseltme düzeneğinin kendisi korunmalıdır — yetkisiz bir yükseltme yıkıcıdır.
+
+Bunu doğru yapmak, kodu önce Solidity düzeyinde, sonra EVM bayt kodu düzeyinde gezmeyi gerektirdi. Derleyicinin burada gereken kararları vermesine güvenemezsiniz. Derleme ekleri, depolama yuvalarında, çağrı verisinde ve dönüş değerlerinde tam olarak ne olduğunu doğrulatır.
+
+## Derleme düzeyinde EVM işi
+
+EVM bir yığın makinesidir. Solidity derleyicisi EVM bayt kodu üretir. Çoğu zaman derleyicinin çıktısı yeterlidir ve incelenmesi gerekmez. Vekil kalıpları ve gas açısından kritik yollar için gerekir.
+
+Solidity'de satır içi derleme (Yul ile `assembly { }` blokları) EVM işlemlerine doğrudan erişim verir: depolama için `sload` ve `sstore`, çağrı verisini okumak için `calldataload`, vekil yönlendirmesi için `delegatecall`, dönüş değerlerini işlemek için `returndatacopy`. Derlemeyle yazılmış vekil yönlendirme işlevi, herhangi bir çağrıyı en az gas ek yüküyle doğru ele alan yaklaşık 30 satırdır.
+
+arcalabs'ın kullandığı HPC (yüksek performanslı hesap) çerçevesi bilinçliydi. Ethereum hesabı pahalıdır. Her yönergenin bir gas bedeli vardır. Derleme ile iyileştirilmiş sıcak yollar — devir doğrulaması, vekil yönlendirmesi, olay yayımı — Solidity karşılıklarından anlamlı ölçüde ucuzdur. Gerçek herhangi bir işlem hacminde gas tasarrufu önemlidir.
+
+## DEVxDAO bağlantısı
+
+DEVxDAO, blokzincir altyapı işini finanse eden zincir üstü bir DAO'ydu. arcalabs, menkul kıymet token işi için bir hibe aldı — ERC-1400 altyapısının yalnızca ticari iş değil, finansmanı hak eden bir kamu malı olduğunun resmi tanınması.
+
+DAO modeli kusurluydu (her erken DAO kusurludur) ama tez doğruydu: bazı altyapı işlerinin açık bir ticari modeli yoktur ve hibe finansmanına ihtiyaç duyar. Herhangi bir projenin kullanabileceği açık kaynak menkul kıymet token sözleşmeleri bu tür iştir. DEVxDAO bağlantısı, cypherpunk sezgisinin kurumsal biçimiydi — finansal altyapı kamusal olmalıdır.
+
+## Bu düzeyde kurmak ne öğretir
+
+EVM derlemesi yazmak, bilgisayarın ne demek istediğinizi bilmediğini öğretir. Yazdığınızı, tam olarak, yorumlamadan yürütür. Yanlış şeyi yazdıysanız yanlış şeyi yürütür ve menkul kıymet token sözleşmenizde, konuşturmadan yıllar sonra ancak belirli koşullarda ortaya çıkabilecek bir kusur olur.
+
+Bu netleştirir. Derleme yazma disiplini — her yönergenin açık olduğu, hiçbir şeyin örtük olmadığı, her bite ne olduğunu izleyebildiğiniz disiplin — daha yüksek bir soyutlama düzeyinde yazarken bile tüm finansal altyapı için istediğiniz disiplindir. Soru «bu doğru görünüyor mu?» değildir. «Bu tam olarak ne yürütüyor ve istediğim bu mu?»dur.
+
+Bu disiplin, arcalabs işini tipik akıllı sözleşme geliştirmeden ayıran şeydir. Hasım koşullarda doğruluk, uzun ömür ve düzenleyici uyarlama için kuruyorduk. Derleme düzeyi, doğruluğu ileri sürdüğünüz değil kanıtladığınız yerdir.
+
+---
+
+*zeekay — menkul kıymet token'larının güvenlik mühendisliğine ihtiyacı var. arcalabs.*

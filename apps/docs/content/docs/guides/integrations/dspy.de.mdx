@@ -1,0 +1,42 @@
+---
+title: DSPy
+description: "dspy.LM nimmt api_base über kwargs, weitergereicht an LiteLLM. Benennen Sie das Modell in der Form provider/name."
+---
+
+`dspy.LM` nimmt **`api_base`**. Achten Sie auf die Schreibweise — es ist nicht `base_url`. Der Parameter steht nicht in der expliziten Signatur; er landet in `**kwargs`, die DSPy an LiteLLM weiterreicht, und die API-Referenz nennt ihn als LM-Feld.
+
+```bash
+pip install dspy
+```
+
+```python
+import dspy
+
+lm = dspy.LM(
+    "openai/zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    model_type="chat",
+)
+dspy.configure(lm=lm)
+
+qa = dspy.Predict("question -> answer")
+print(qa(question="What moves the tides?").answer)
+```
+
+Landet auf `POST /v1/chat/completions`.
+
+Das Präfix `openai/` ist LiteLLMs Anbieterform; das Segment danach ist die Modell-id. `model_type` nimmt `chat`, `text` oder `responses`, daher ist `POST /v1/responses` vom selben Konstruktor aus erreichbar.
+
+## MCP
+
+DSPy wandelt MCP-Werkzeuge um, statt einen eigenen Client zu besitzen. `dspy.Tool.from_mcp_tool(client, tool)` macht aus jedem ein `dspy.Tool`, das Sie einem Modul wie `dspy.ReAct` übergeben, daher wird die Server-URL am Client des MCP SDK konfiguriert, nicht an einem DSPy-Parameter.
+
+```python
+import dspy
+
+tools = [dspy.Tool.from_mcp_tool(session, tool) for tool in (await session.list_tools()).tools]
+react = dspy.ReAct("question -> answer", tools=tools)
+```
+
+`session` ist eine `ClientSession` aus dem MCP-Python-SDK, verbunden so, wie dieses SDK verbindet — für `https://api.hanzo.ai/v1/mcp` ist das sein streamable-HTTP-Client, mit dem Bearer-Header dort gesetzt.

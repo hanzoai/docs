@@ -1,7 +1,13 @@
 'use client';
 import { createContext, type ReactNode, use, useMemo, useRef } from 'react';
 import { usePathname, useRouter } from '@hanzo/docs-core/framework';
-import { renderTranslation, TranslationValue, type TranslationObject } from '@hanzo/docs-core/i18n';
+import {
+  renderTranslation,
+  withEnglishFallback,
+  type HideLocale,
+  type TranslationObject,
+  type TranslationValue,
+} from '@hanzo/docs-core/i18n';
 import { defaultTranslations, type Translations } from '@/i18n';
 
 interface LocaleItem {
@@ -63,7 +69,31 @@ export interface I18nProviderProps {
    */
   locales?: LocaleItem[];
 
+  /**
+   * When the default locale is hidden from the URL, switching back to it
+   * removes the prefix instead of navigating to `/${defaultLocale}/...`.
+   */
+  hideLocale?: HideLocale;
+  defaultLocale?: string;
+
   children?: ReactNode;
+}
+
+function mergeCatalog(translations?: Partial<I18nContextType['text']>): I18nContextType['text'] {
+  const flat: Partial<Translations> = {};
+  const nested: Record<string, string | Record<string, string>> = {};
+
+  if (translations) {
+    for (const [key, value] of Object.entries(translations)) {
+      if (typeof value === 'string') flat[key as keyof Translations] = value as never;
+      else if (value && typeof value === 'object') nested[key] = value;
+    }
+  }
+
+  return {
+    ...withEnglishFallback(defaultTranslations, flat),
+    ...nested,
+  };
 }
 
 export function I18nProvider({
@@ -72,6 +102,8 @@ export function I18nProvider({
   onLocaleChange,
   children,
   translations,
+  hideLocale,
+  defaultLocale,
 }: I18nProviderProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -88,7 +120,12 @@ export function I18nProvider({
       segments[0] = value;
     }
 
-    router.push(`/${segments.join('/')}`);
+    const hidePrefix =
+      hideLocale === 'always' || (hideLocale === 'default-locale' && value === defaultLocale);
+    if (hidePrefix && segments[0] === value) segments.shift();
+
+    const next = `/${segments.join('/')}`;
+    router.push(next === '/' ? '/' : next);
   };
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -99,10 +136,7 @@ export function I18nProvider({
         () => ({
           locale,
           locales,
-          text: {
-            ...defaultTranslations,
-            ...translations,
-          },
+          text: mergeCatalog(translations),
           onChange: (v) => onChangeRef.current(v),
         }),
         [locale, locales, translations],

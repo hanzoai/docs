@@ -1,0 +1,160 @@
+---
+title: Budgets
+description: Ein Agent wird angeboten, bevor er ausgibt, und abgelehnt, wenn er durchbrechen würde. Vier Decken, ganzzahlige Mikro-USD, und eine Ablehnung, die der Agent lesen kann, während er noch läuft.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Nach dieser Seite kannst du deckeln, was ein Agent ausgibt, lesen, was er ausgegeben hat, und
+eine Budget-Ablehnung von einem Modellfehler unterscheiden.**
+
+## Was ein Budget ist
+
+Jeder Modellaufruf und jeder bepreiste Werkzeugaufruf, den ein Agent macht, wird **angeboten, bevor er
+gemacht wird** — eine obere Schranke dessen, was der Aufruf kosten könnte — und dieses Angebot wird
+in dieser Reihenfolge gegen vier Dinge geprüft:
+
+1. **den Saldo deiner Organisation** — ob es überhaupt bezahlt werden kann
+2. **die Periodenobergrenze des Agenten** — `cap_micro_usd`, abzüglich dessen, was diese Periode ausgegeben hat
+3. **die Aufgabendecke** — `max_task_micro_usd`, abzüglich dessen, was dieser Lauf ausgegeben hat
+4. **das Budget der Sitzung** — `budget_micro_usd`, abzüglich dessen, was diese Sitzung ausgegeben hat
+
+Jedes einzelne lehnt den Aufruf ab. Es gibt kein Flag und keinen Umweg: ein Lauf erreicht
+ein Modell nur durch das Tor.
+
+## Geld ist ganzzahlige Mikro-USD
+
+Jeder Betrag ist eine ganze Zahl von Mikro-USD, in einem Feld mit dem Suffix
+`_micro_usd`. **1.000.000 ist ein Dollar**, also ist `11902000` 11,902 $ und `250` ist
+ein Vierzigstel Cent. Ein Aufruf kostet Bruchteile eines Cents; eine in Cent geführte Obergrenze
+könnte einen nicht sehen.
+
+## Ein Budget angeben
+
+Alle drei Felder sind nötig, wenn du einen Agenten definierst.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "triage",
+    "model": "zen-1",
+    "instructions": "Triage inbound issues.",
+    "cap_micro_usd": 20000000,
+    "max_task_micro_usd": 500000,
+    "period": "month"
+  }'
+```
+
+Dieser Agent darf **20 $ im Monat** ausgeben, und kein einzelner Lauf von ihm darf mehr ausgeben
+als **0,50 $**.
+
+- `cap_micro_usd` muss positiv sein. Eine Obergrenze von null hieße keine Grenze und keine
+  Aufzeichnung, und genau diesen Zustand soll ein Budget beseitigen.
+- `max_task_micro_usd` muss positiv sein und darf die Obergrenze nicht übersteigen.
+- `period` ist `day`, `week` oder `month`.
+
+Perioden sind **kalendergleich in UTC**: `month` meint den Monat, nicht dreißig
+Tage ab dem ersten Aufruf, und `week` beginnt am Montag. Das Fenster rollt beim
+ersten Aufruf nach dem Umschlag, und `consumed_micro_usd` geht zurück auf null.
+
+## Lesen, was er ausgegeben hat
+
+```
+GET /v1/agent/{ref}/spend
+```
+
+```json
+{
+  "cap_micro_usd": 20000000,
+  "max_task_micro_usd": 500000,
+  "period": "month",
+  "consumed_micro_usd": 11902000,
+  "remaining_micro_usd": 8098000,
+  "by_component": { "model": 11431000, "computer": 402000, "tool": 69000 }
+}
+```
+
+`by_component` teilt die Ausgabe dreifach: **model** ist jede Vervollständigung, die
+der Agent gekauft hat, **computer** ist die Laufzeit, in der er resident war, **tool** ist ein
+bepreister Werkzeugaufruf. Eine Komponente ohne Ausgabe ist **abwesend, nicht null**.
+
+## Wie eine Ablehnung aussieht
+
+Ein Durchbruch antwortet mit `402` und dem Code `budget_exceeded`:
+
+```json
+{
+  "error": {
+    "code": "budget_exceeded",
+    "message": "task budget exceeded: this call would cost up to 620000 micro-USD and 118000 remain",
+    "event": "budget.exceeded",
+    "scope": "task",
+    "component": "model",
+    "quote_micro_usd": 620000,
+    "remaining_micro_usd": 118000
+  }
+}
+```
+
+`scope` nennt, welche Decke abgelehnt hat — `agent`, `task` oder `session` — damit du weißt,
+ob du den Monat, den Lauf oder diese eine Sitzung anheben musst.
+
+<Callout>
+**Dem Agenten wird es im Band gesagt.** Unter einer Sitzung wird dieselbe Nutzlast an den
+Ereignisstrom der Sitzung angehängt, als Statusereignis von `budget`, damit ein Agent
+seine eigene Ablehnung liest, während er noch läuft, und abschließen kann — aufschreiben, was er hat,
+sagen, warum er anhielt — statt an einem fehlgeschlagenen Aufruf abzustürzen.
+</Callout>
+
+`budget_exceeded` ist kein Modellfehler. Ein Aufruf, den das Modell verfehlte, wird erneut versucht; ein
+Aufruf, den das Budget ablehnte, nicht, weil ein erneuter Versuch ihn wieder ablehnen würde.
+
+## Angebote sind obere Schranken, die Abrechnung ist das Tatsächliche
+
+Das Angebot irrt absichtlich nach oben: der Prompt, wie er gesendet wird, plus die größte
+Vervollständigung, die die Anfrage erlaubt — `max_tokens`, oder 4.096, wenn die Anfrage keine
+nennt — zum Inferenzsatz der Plattform.
+
+Wenn der Aufruf geschehen ist, wird das, was das Gateway **tatsächlich gemeldet** hat, gegen
+jede Summe abgerechnet, gegen die das Angebot geprüft wurde, und die Differenz kommt
+zur Obergrenze zurück. Ein Aufruf, der scheiterte, wird nie abgerechnet, also nie berechnet, und sein
+Spielraum kehrt zurück.
+
+Darum kann ein Agent abgelehnt werden, obwohl der Spielraum ausreichend aussieht: das
+Tor vergleicht die Decke des nächsten Aufrufs, nicht seine wahrscheinlichen Kosten.
+
+## Das eigene Budget einer Sitzung
+
+Eine Sitzung darf eine eigene Decke tragen, unter der des Agenten:
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/agent/sessions/$ID/budget \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"budget_micro_usd": 2000000}'
+```
+
+Eine Sitzung, die ihr eigenes Budget erreicht, wird **pausiert, nicht als fehlgeschlagen markiert** — die Arbeit geht weiter,
+sobald du die Obergrenze anhebst oder entfernst. Drei Regeln:
+
+- ein Ersatz muss **streng größer** sein als das, was die Sitzung verbraucht hat
+- **das Entfernen ist einseitig**: `{"budget_micro_usd": null}` nimmt die Obergrenze für
+  immer weg, und diese Sitzung kann keine neue bekommen
+- eine Sitzung, die **ohne** Budget erzeugt wurde, kann später keins bekommen
+
+Jedes davon lehnt mit `409` ab, statt still etwas anderes zu tun.
+
+## Ein Agent, der definiert wurde, bevor es Budgets gab
+
+Er trägt eine Obergrenze von null und ist **nicht gedeckelt** — seine Ausgabe wird trotzdem gezählt und
+ist unter `/spend` lesbar, und eine Aktualisierung gibt ihm eine Obergrenze. Jeden Agenten abzulehnen, der
+vor dem Versand der Funktion definiert wurde, wäre ein Ausfall, keine Richtlinie.
+
+## Weiter
+
+- **[Agenten](/docs/concepts/agents)** — die Definition, an der ein Budget hängt.
+- **[Agentenreferenz](/docs/openapi/agents)** — jede Operation, erzeugt.
+- **[Preise](https://hanzo.ai/pricing)** — was die Plattform berechnet, und was
+  die Gebühr eines Modellaufrufs ist.

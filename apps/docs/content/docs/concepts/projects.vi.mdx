@@ -1,0 +1,97 @@
+---
+title: Dự án
+description: Hai thứ khác nhau đều được gọi là dự án — một site bạn triển khai và một phạm vi bên trong tổ chức. Bạn đang có cái nào quyết định API nào bạn muốn.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Sau trang này bạn sẽ không bao giờ gọi nhầm cái kia.**
+
+<Callout type="warn">
+**“Dự án” gọi tên hai thứ.** *Dự án site* là thứ bạn triển khai. *Dự án IAM*
+là một phạm vi bên trong tổ chức. Chúng có địa chỉ khác nhau, vòng đời khác nhau
+và chủ sở hữu khác nhau. Đặc tả giữ chúng tách riêng; bạn cũng nên vậy.
+</Callout>
+
+## Dự án site — nơi một site sống
+
+Một tay cầm mà một bản dựng được triển khai và phục vụ bên dưới.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/projects \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"slug":"acme-marketing"}'
+```
+
+```bash
+hanzo projects list
+```
+
+**slug** là phần chịu lực. Nó trở thành đoạn khóa của kho đối tượng,
+máy chủ công khai `<slug>.hanzo.app`, và tay cầm mà mọi lệnh gọi sau này nhắm tới.
+Nó khớp `^[a-z0-9]([a-z0-9-]{0,38}[a-z0-9])?$`, nhãn dành riêng bị từ chối,
+và duy nhất **theo tổ chức** — cùng một slug trong tổ chức của người khác không liên quan đến bạn.
+Tên máy chủ công khai, ngược lại, duy nhất toàn cục và
+ai đến trước được trước.
+
+Tạo một cái cũng cấp một không gian dữ liệu và một kho git chuẩn, cả hai
+theo khả năng tốt nhất. Nó trả `201` ở trạng thái `draft`.
+
+Vòng đời của nó là **bản phát hành**, không phải môi trường:
+
+```
+POST /v1/projects/{slug}/deploy
+GET  /v1/projects/{slug}/releases
+POST /v1/projects/{slug}/releases/{release}/activate
+```
+
+Mỗi lần triển khai là một bản phát hành, và bản phát hành nào cũng có thể được đưa sống lại, nên lùi
+là cùng một thao tác với tiến. Tên máy chủ tùy chỉnh được xác minh tại
+`/v1/projects/{slug}/domains/{host}/verify`.
+
+Xuất bản công khai là miễn phí; `visibility: private` là tính năng trả phí.
+
+## Dự án IAM — một phạm vi bên trong tổ chức
+
+Phạm vi người ta chọn khi công việc tách theo sản phẩm hoặc khách hàng
+chứ không theo nhóm. Nó được tạo và xóa **chỉ** tại `/v1/iam/projects`,
+và đi trên một yêu cầu dưới dạng `X-Project-Id` đã được kiểm tra.
+
+```
+GET /v1/iam/projects
+```
+
+Bạn không bao giờ tạo nó ở nơi khác. `/v1/platform/projects` là một *phép chiếu* —
+dự án cộng với những gì mặt phẳng vùng chứa đã đặt bên dưới — và nó
+nói thẳng điều đó. Ứng dụng sống bên dưới:
+
+```
+/v1/platform/projects/{project}/apps/{app}
+/v1/platform/projects/{project}/apps/{app}/env
+/v1/platform/projects/{project}/apps/{app}/preview
+```
+
+Một khóa API có thể được giới hạn vào một dự án IAM, cách thường dùng để giữ
+khóa tiền sản xuất không chạm dữ liệu sản xuất.
+
+## Phân biệt chúng
+
+| | Dự án site | Dự án IAM |
+|---|---|---|
+| **Nó là gì** | một site đã triển khai | một phạm vi bên trong tổ chức |
+| **Được tạo tại** | `/v1/projects` | `/v1/iam/projects` |
+| **Nhận ra bằng** | một slug, duy nhất theo tổ chức | một id, mang theo dạng `X-Project-Id` |
+| **Được phiên bản bằng** | bản phát hành | không gì cả — nó là một ranh giới |
+| **Năng lực** | [dự án](/docs/openapi/projects) | [iam](/docs/openapi/iam) |
+
+Quy tắc thực hành: **nếu bạn đang triển khai byte, đó là dự án site. Nếu bạn đang
+giới hạn quyền, đó là dự án IAM.**
+
+## Tiếp theo
+
+- **[Tham chiếu dự án](/docs/openapi/projects)** — mọi thao tác trên một site.
+- **[Nền tảng](/docs/openapi/platform)** — mặt phẳng vùng chứa, và những gì sống
+  dưới một dự án IAM.
+- **[Môi trường](/docs/environments)** — vì sao không có tài nguyên môi trường.
+- **[Đa thuê bao](/docs/concepts/multitenancy)** — tổ chức mà cả hai nằm trong đó.

@@ -1,0 +1,151 @@
+---
+title: ภาพรวม
+description: สถาปัตยกรรมของ ZAP และแนวคิดหลัก
+index: true
+---
+
+# ภาพรวมของ ZAP
+
+ZAP (Zero-Copy App Proto) คือโพรโทคอลสื่อสารรุ่นใหม่ที่ออกแบบมาสำหรับระบบนิเวศเอเจนต์ AI สร้างบน Cap'n Proto จึงให้ประสิทธิภาพและความปลอดภัยที่การนำเอเจนต์ขึ้นโปรดักชันต้องการ
+
+## แนวคิดหลัก
+
+### การซีเรียลไลซ์แบบไม่คัดลอก
+
+ต่างจาก JSON-RPC ที่ MCP ใช้ ZAP อาศัยการซีเรียลไลซ์แบบไม่คัดลอกของ Cap'n Proto:
+
+- **ไม่มีค่าแยกวิเคราะห์**: อ่านข้อมูลตรงจากรูปแบบบนสาย
+- **หน่วยความจำใช้ร่วม**: ส่งข้อความระหว่างโปรเซสโดยไม่คัดลอก
+- **การเข้ารหัสแน่น**: รูปแบบไบนารีเล็กกว่า JSON 2–10 เท่า
+
+```c
+struct ToolCall {
+  id @0 :Text;
+  name @1 :Text;
+  args @2 :Data;  # JSON arguments as bytes
+  metadata @3 :Metadata;
+}
+```
+
+### RPC ตามอินเทอร์เฟซ
+
+ZAP ใช้ระบบ RPC ตามความสามารถของ Cap'n Proto:
+
+```c
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+  subscribe @5 (uri :Text) -> (stream :ResourceStream);
+  listPrompts @6 () -> (prompts :PromptList);
+  getPrompt @7 (name :Text, args :Metadata) -> (messages :List(PromptMessage));
+  log @8 (level :LogLevel, message :Text, data :Data);
+}
+```
+
+### ความเข้ากันได้กับ MCP
+
+ZAP คงความเข้ากันได้ย้อนหลังอย่างเต็มกับ MCP ผ่านอินเทอร์เฟซ Gateway:
+
+```c
+interface Gateway extends(Zap) {
+  addServer @0 (name :Text, url :Text, config :ServerConfig) -> (id :Text);
+  removeServer @1 (id :Text) -> ();
+  listServers @2 () -> (servers :List(ConnectedServer));
+  serverStatus @3 (id :Text) -> (status :ServerStatus);
+}
+```
+
+Gateway เชื่อมได้กับ:
+- **stdio**: โปรเซสเซิร์ฟเวอร์ MCP ปกติ
+- **http**: จุดปลาย MCP ที่ใช้ HTTP
+- **websocket**: การเชื่อมต่อ WebSocket
+- **zap**: โพรโทคอล ZAP แบบเนทีฟ
+- **unix**: ซ็อกเก็ตโดเมน Unix
+
+## สถาปัตยกรรม
+
+```
++------------------+     +------------------+
+|   AI Agent       |     |   AI Agent       |
+|   (ZAP Client)   |     |   (ZAP Client)   |
++--------+---------+     +--------+---------+
+         |                        |
+         v                        v
++------------------------------------------+
+|              ZAP Gateway                  |
+|  +--------+  +--------+  +--------+      |
+|  | MCP    |  | MCP    |  | ZAP    |      |
+|  | Server |  | Server |  | Server |      |
+|  +--------+  +--------+  +--------+      |
++------------------------------------------+
+         |                        |
+         v                        v
++------------------+     +------------------+
+|   Coordinator    |     |   DID Registry   |
+|   (Discovery)    |     |   (Identity)     |
++------------------+     +------------------+
+```
+
+## คุณสมบัติหลัก
+
+### เครื่องมือ
+
+เครื่องมือคือฟังก์ชันที่เอเจนต์เรียกได้:
+
+```c
+struct Tool {
+  name @0 :Text;
+  description @1 :Text;
+  schema @2 :Data;  # JSON Schema as bytes
+  annotations @3 :Metadata;
+}
+```
+
+### ทรัพยากร
+
+ทรัพยากรคือแหล่งข้อมูล พร้อมสตรีมตามต้องการ:
+
+```c
+struct Resource {
+  uri @0 :Text;
+  name @1 :Text;
+  description @2 :Text;
+  mimeType @3 :Text;
+  annotations @4 :Metadata;
+}
+
+interface ResourceStream {
+  next @0 () -> (content :ResourceContent, done :Bool);
+  cancel @1 () -> ();
+}
+```
+
+### พรอมต์
+
+พรอมต์คือแม่แบบข้อความที่ใช้ซ้ำได้:
+
+```c
+struct Prompt {
+  name @0 :Text;
+  description @1 :Text;
+  arguments @2 :List(Argument);
+}
+```
+
+## แบบจำลองความปลอดภัย
+
+ZAP ใช้ความปลอดภัยหลายชั้น:
+
+1. **ความปลอดภัยของทรานสปอร์ต**: จับมือแบบผสมหลังควอนตัม (X25519 + ML-KEM-768)
+2. **การยืนยันข้อความ**: ลายเซ็น ML-DSA-65
+3. **อัตลักษณ์**: อัตลักษณ์โหนดบน W3C DID
+4. **ฉันทามติ**: ลายเซ็นแบบขีดเริ่ม Corona สำหรับงานหลายฝ่าย
+
+## Next Steps
+
+- [เริ่มต้น](/docs/guides) - ติดตั้งแล้วเรียกใช้เอเจนต์ ZAP ตัวแรก
+- [ภาษาสคีมา](/docs/zap/schema) - เรียนรู้รูปแบบสคีมาของ Cap'n Proto
+- [ข้อกำหนดโพรโทคอล](/docs/zap/protocol) - เข้าใจรูปแบบบนสาย

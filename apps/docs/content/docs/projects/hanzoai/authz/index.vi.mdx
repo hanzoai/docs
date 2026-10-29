@@ -1,0 +1,38 @@
+---
+title: "Authz"
+description: "Hanzo Authz — thư viện kiểm soát truy cập cho Go: thực thi chính sách ACL, RBAC và ABAC"
+---
+
+Thư viện kiểm soát truy cập mà mọi dịch vụ Go của Hanzo dùng để đọc một token và quyết định người gọi có được làm một việc hay không: kiểm tra JWT, tuyên bố, và phép tính cấp quyền trên tổ chức, ứng dụng và đường dẫn.
+
+## Cài đặt
+
+```bash
+go get github.com/hanzoai/authz
+```
+
+## Cách dùng
+
+Kiểm tra một token — đây chính là thư viện mà IAM dùng để ký, nên phía đọc ở đây không thể bất đồng với bên phát hành về điều đã được ký:
+
+```go
+claims, err := authz.Verify(token, keys, []string{"https://hanzo.id"})
+```
+
+`keys` là một `func(kid string) []crypto.PublicKey`. Vật liệu khóa là một **đầu vào**: lấy JWKS và lưu vào bộ nhớ đệm là vào/ra, và gói này không làm việc đó — biên giữ việc lấy và đưa kết quả vào. `Keys` nil, hoặc một cái không phân giải được gì, không kiểm tra gì cả.
+
+Từ đó, `Claims` mang danh tính người gọi, tư cách thành viên tổ chức và quyền ứng dụng; `ParsePath` và `VerbOf` biến một yêu cầu thành cặp mà phép tính cấp quyền quyết định. `IsAPIKey` phân biệt khóa `hk-` với JWT.
+
+Chỉ các thuật toán do bên ký của IAM tạo ra mới được chấp nhận — RSA và EC, cùng ML-DSA-65 cho chứng thư hậu lượng tử. `none` và HMAC bị từ chối.
+
+## Tài liệu
+
+[`LLM.md`](LLM.md) cho bố cục. Các gói `edge/` và `serve/` giữ những phần cần vào/ra — lấy khóa và bề mặt HTTP — và cố ý để ngoài gói lá.
+
+## Giấy phép
+
+Xem [LICENSE](LICENSE).
+
+## Liên kết
+
+- [Mã nguồn](https://github.com/hanzoai/authz)

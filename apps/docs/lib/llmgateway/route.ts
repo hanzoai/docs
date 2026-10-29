@@ -1,7 +1,7 @@
 import { createLLMGateway } from '@llmgateway/ai-sdk-provider';
 import { convertToModelMessages, stepCountIs, streamText, tool } from 'ai';
 import { z } from 'zod';
-import { source } from '@/lib/source';
+import { englishPages } from '@/lib/source';
 import { Document, type DocumentData } from 'flexsearch';
 import { $routeHandler } from 'fuma-cli/macros/route-handler';
 import type { ChatUIMessage, SearchTool } from '@/components/ai-sdk/search';
@@ -25,7 +25,7 @@ async function createSearchServer() {
   });
 
   const docs = await chunkedAll(
-    source.getPages().map(async (page) => {
+    englishPages().map(async (page) => {
       if (!('getText' in page.data)) return null;
 
       return {

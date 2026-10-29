@@ -1,0 +1,51 @@
+---
+title: Mastra
+description: "لا مصنع مزوّد. عنوان URL الأساسي هو حقل url في كائن model للوكيل، إلى جانب معرّف توجيه."
+---
+
+ليس لدى Mastra مصنع مزوّد لهذا. العنوان حقل في كائن `model` للوكيل: **`id`** و**`url`**.
+
+```bash
+npm i @mastra/core
+```
+
+```ts
+import { Agent } from "@mastra/core/agent";
+
+export const agent = new Agent({
+  id: "researcher",
+  name: "Researcher",
+  instructions: "Answer precisely.",
+  model: {
+    id: "hanzo/zen5",
+    url: "https://api.hanzo.ai/v1",
+    apiKey: process.env.HANZO_API_KEY,
+  },
+});
+```
+
+يصل إلى `POST /v1/chat/completions`.
+
+أمران تصرّح بهما الوثائق. يجب أن يكون `url` عنوان URL الأساسي لنقطة النهاية المتوافقة مع OpenAI، وليس نقطة نهاية محادثة مفردة أبدًا. و`id` صيغة توجيه: `provider/model` حين يتوقع البعيد اسم نموذج مجردًا، و`gateway/provider/model` حين يحمل فضاء أسماء النماذج لدى البعيد المزوّد أصلًا. تُدعم `headers` لكل نموذج، بأسبقية موثّقة على ترويسات العميل.
+
+## MCP
+
+يأتي `MCPClient` من `@mastra/mcp`. عنوان URL هو مفتاح `url` يحمل كائن `URL`، لكل خادم مسمّى.
+
+```ts
+import { MCPClient } from '@mastra/mcp';
+
+export const mcp = new MCPClient({
+  id: 'hanzo-mcp',
+  servers: {
+    hanzo: {
+      url: new URL('https://api.hanzo.ai/v1/mcp'),
+      requestInit: { headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` } },
+    },
+  },
+});
+
+const tools = await mcp.listTools();
+```
+
+`listToolsets()` هي الصيغة لكل طلب، حين يجب ألا تُشارك الأدوات بين مستخدمين متزامنين.

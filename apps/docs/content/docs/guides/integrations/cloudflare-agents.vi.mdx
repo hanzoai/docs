@@ -1,0 +1,64 @@
+---
+title: Cloudflare Agents
+description: "Không có tham số URL cơ sở riêng — hãy tạo thực thể client openai bên trong Agent và đặt baseURL trên đó."
+---
+
+Cloudflare Agents không có tham số URL cơ sở riêng. Cách dựng được ghi trong tài liệu là client `openai` thuần, dựng bên trong Agent, với **`baseURL`** đặt trên nó.
+
+```bash
+npm i agents openai
+```
+
+```ts
+import { Agent } from "agents";
+import { OpenAI } from "openai";
+
+export class Researcher extends Agent {
+  async onRequest(request: Request): Promise<Response> {
+    const client = new OpenAI({
+      apiKey: this.env.HANZO_API_KEY,
+      baseURL: "https://api.hanzo.ai/v1",
+    });
+
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
+
+    this.ctx.waitUntil(
+      (async () => {
+        const stream = await client.chat.completions.create({
+          model: "zen5",
+          messages: [{ role: "user", content: await request.text() }],
+          stream: true,
+        });
+        for await (const part of stream) {
+          writer.write(encoder.encode(part.choices[0]?.delta?.content || ""));
+        }
+        writer.close();
+      })(),
+    );
+
+    return new Response(readable);
+  }
+}
+```
+
+Đổ về `POST /v1/chat/completions`.
+
+Đặt khóa vào một bí mật Worker — `wrangler secret put HANZO_API_KEY` — và nó tới trên `this.env`. Luồng chạy bên trong `ctx.waitUntil` để Worker không bị dỡ trong khi phản hồi vẫn đang được ghi.
+
+Đường được ghi khác là AI SDK, mà `AIChatAgent` và mẫu khởi đầu đã dùng. Mọi thứ trên [trang Vercel AI SDK](/docs/guides/integrations/vercel-ai-sdk) áp dụng không đổi bên trong một Cloudflare Agent.
+
+## MCP
+
+MCP là một phương thức trên Agent chứ không phải thư viện client. `addMcpServer` trả về một id và một `authUrl`; `authUrl` khác null nghĩa là máy chủ đó muốn một vòng OAuth, còn của chúng ta thì không.
+
+```ts
+export class Researcher extends Agent {
+  async onStart() {
+    await this.addMcpServer("hanzo", "https://api.hanzo.ai/v1/mcp");
+  }
+}
+```
+
+Các máy chủ đã kết nối và công cụ của chúng đọc được từ trạng thái MCP của Agent.

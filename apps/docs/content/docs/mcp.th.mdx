@@ -1,0 +1,173 @@
+---
+icon: Plug
+title: MCP
+description: MCP รวมของ Hanzo — เซิร์ฟเวอร์เดียวที่ให้ Claude Code, Cursor และไคลเอนต์ MCP ใดๆ พื้นผิวเครื่องมือเดียว พร้อมบริการคลาวด์ที่เชื่อมไว้
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# MCP
+
+เซิร์ฟเวอร์โปรโตคอลบริบทโมเดลหนึ่งตัว พื้นผิวเครื่องมือหนึ่งชุด เพิ่ม **`hanzo-mcp`** ให้ Claude Code (หรือ Cursor, Claude Desktop หรือไคลเอนต์ MCP ใดๆ) แล้วทุกความสามารถของ Hanzo ปรากฏผ่านการเชื่อมต่อเดียว — ไม่ต้องเดินสายทีละเครื่องมือ
+
+> กำลังมองหาเซิร์ฟเวอร์ MCP ที่โฮสต์อยู่หรือ? **[MCP คลาวด์](/docs/mcp-tools)** คือ URL ที่ไม่มีอะไรต้องติดตั้ง และทุกเครื่องมือถูกแจกแจงใน [บัญชีเครื่องมือ](/docs/mcp-tools/all-tools) หน้านี้คือเซิร์ฟเวอร์ที่รันข้างตัวแก้ไขของคุณ
+
+```bash title="Add the Hanzo MCP to Claude Code"
+claude mcp add hanzo -- npx -y @hanzo/mcp serve
+```
+
+คำสั่งเดียวนี้เปิดพื้นผิวทั้งหมด:
+
+- **เครื่องมือรวม 13 ตัว** — `fs`, `exec`, `code`, `git`, `fetch`, `workspace`, `ui` บวกตัวเลือก `think`, `memory`, `hanzo`, `plan`, `tasks`, `mode` เครื่องมือหนึ่งตัวที่จัดเส้นทางตามการกระทำต่อความสามารถ (HIP-0300) เพื่อให้ไคลเอนต์เห็นชุดเล็กและเสถียร แทนชื่อที่ทับกันหลายร้อย
+- **บริการคลาวด์** — เครื่องมือ `hanzo` จัดเส้นทางไปยังแพลตฟอร์มของคุณแบบพื้นเมือง: IAM (ตัวตน), Commerce, Storage และ API ปัญญาประดิษฐ์ที่ `api.hanzo.ai/v1` ยืนยันด้วยโทเคนของคุณ
+- **ตัวเชื่อมของคุณ** — GitHub, Slack, Google, Discord, X และอื่น ๆ โผล่ผ่านการเชื่อมต่อเดียวกันเมื่อเชื่อมในคอนโซลแล้ว
+
+พื้นผิวเดียวกันส่งสามทาง — TypeScript (`@hanzo/mcp`), Python (`hanzo-mcp` บน PyPI) และ Rust (`hanzo-mcp::brain`) — สะท้อนหนึ่งต่อหนึ่ง บนการขนส่ง MCP **stdio** และ **streamable-http**
+
+## การตั้งค่าไคลเอนต์
+
+```json title="Claude Desktop / Cursor — mcp config"
+{
+  "mcpServers": {
+    "hanzo": {
+      "command": "npx",
+      "args": ["-y", "@hanzo/mcp", "serve"]
+    }
+  }
+}
+```
+
+ลงชื่อเข้าใช้ครั้งเดียว (`hanzo auth login`) แล้วเครื่องมือคลาวด์ `hanzo` กับตัวเชื่อมยืนยันตัวเอง เครื่องมือในเครื่อง (`fs`, `exec`, `git`, …) ทำงานโดยไม่ต้องมีบัญชี
+
+## ดัชนีเครื่องมือ
+
+ทุกเครื่องมือที่แพลตฟอร์มเปิดได้ถูกดัชนีที่ `GET api.hanzo.ai/v1/tools` (มีการยืนยัน) วันนี้คือ **1,468 เครื่องมือ** จากห้าแหล่ง — เซิร์ฟเวอร์รวมนำเสนอผ่านพื้นผิวกระชับที่จัดเส้นทางตามการกระทำด้านบน:
+
+| แหล่ง | คืออะไร |
+|--------|-----------|
+| `builtin` | เครื่องมือในเครื่องแกน (fs, exec, git, code, …) |
+| `skill` | ทักษะที่บรรจุ |
+| `connector` | การเชื่อมคลาวด์ที่ผูกแล้ว (GitHub, Slack, Google, Discord, X, …) |
+| `agent` | จุดเข้าของเอเจนต์ |
+| `function` | ฟังก์ชันที่ผู้ใช้กำหนด |
+
+---
+
+## ตัวเชื่อม
+
+ทุกสิ่งที่ Hanzo เชื่อมได้ ตามวิธีที่คุณเชื่อม — ตัวเชื่อมพื้นเมืองที่คุณผูกครั้งเดียวในคอนโซล (แอป GitHub, OAuth2) และระบบนิเวศ MCP เปิดที่ดัชนีสดจาก [ทะเบียนทางการ](https://registry.modelcontextprotocol.io) ค้นทั้งสอง
+
+<ConnectorsCatalog />
+
+---
+
+## MCP ในฐานะบริการ
+
+นอกเซิร์ฟเวอร์รวม Hanzo ยัง **โฮสต์** เซิร์ฟเวอร์ MCP ใดๆ ให้คุณ — ปรับใช้จากแพ็กเกจ npx, uvx หรือกำหนดเองใดๆ ด้วยการขยายทันทีและโครงสร้างที่ต้องจัดการเป็นศูนย์
+
+```bash title="Launch an MCP server"
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+```
+
+## ความสามารถหลัก
+
+- **เซิร์ฟเวอร์ MCP ใดๆ** — ระบบไฟล์, Git, SQL, KV, Slack, GitHub, Notion และอื่น ๆ
+- **ปรับใช้คลิกเดียว** — เปิดเซิร์ฟเวอร์ MCP ใดๆ ด้วยคำสั่งเดียว
+- **ขยายอัตโนมัติ** — จาก 0 ถึงหลายพันอินสแตนซ์โดยอัตโนมัติ
+- **ต้นทุนว่าง $0** — จ่ายเฉพาะที่ใช้ ไม่มีค่าว่าง
+- **กระบะทรายปลอดภัย** — คอนเทนเนอร์แยกด้วยสิทธิ์ละเอียด
+- **กว่า 15 ภูมิภาค** — ปรับใช้ที่ขอบเพื่อความหน่วงต่ำสุดทั่วโลก
+
+## วิธีเปิด
+
+### แพ็กเกจ NPX
+
+```bash
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+hanzo mcp launch npx @modelcontextprotocol/server-github
+hanzo mcp launch npx @modelcontextprotocol/server-slack
+```
+
+### UVX / Python
+
+```bash
+hanzo mcp launch uvx mcp-server-sqlite
+hanzo mcp launch uvx mcp-server-postgres
+```
+
+### เซิร์ฟเวอร์กำหนดเอง
+
+```bash
+hanzo mcp launch git://github.com/you/mcp-server
+hanzo mcp launch docker://your-org/mcp-custom:latest
+```
+
+## การกำหนดค่า
+
+ปรับใช้หลายเซิร์ฟเวอร์ด้วยไฟล์กำหนดค่าเดียว:
+
+```yaml title="mcp-config.yaml"
+version: "1"
+servers:
+  filesystem:
+    package: "@modelcontextprotocol/server-filesystem"
+    runtime: npx
+    args: ["/workspace"]
+
+  database:
+    package: "mcp-server-postgres"
+    runtime: uvx
+    env:
+      DATABASE_URL: "${secrets.DATABASE_URL}"
+
+  github:
+    package: "@modelcontextprotocol/server-github"
+    runtime: npx
+    env:
+      GITHUB_TOKEN: "${secrets.GITHUB_TOKEN}"
+
+  custom:
+    image: "your-org/mcp-custom:latest"
+    runtime: docker
+    replicas: 3
+```
+
+```bash
+hanzo mcp deploy
+```
+
+## คุณสมบัติองค์กร
+
+<Cards>
+  <Card title="โฮสต์ที่มีการจัดการ" description="ปรับใช้บน Hanzo Cloud พร้อมขยายอัตโนมัติและการเฝ้าดู" />
+  <Card title="กระบะทรายปลอดภัย" description="คอนเทนเนอร์แยกด้วยสิทธิ์ละเอียด" />
+  <Card title="ปรับใช้ที่ขอบ" description="กว่า 15 ภูมิภาคทั่วโลกเพื่อความหน่วงต่ำสุด" />
+  <Card title="การควบคุมรุ่น" description="ปักรุ่น ย้อนกลับทันที ร่องรอยตรวจสอบ" />
+  <Card title="สหพันธ์เครื่องมือ" description="รวมเซิร์ฟเวอร์ MCP หลายตัวเป็นจุดปลายทางเดียว" />
+  <Card title="การจัดการการกำหนดค่า" description="ความลับรวมศูนย์และการจัดการตัวแปรสภาพแวดล้อม" />
+</Cards>
+
+## เครื่องมือที่มี
+
+| หมวด | เครื่องมือ |
+|----------|-------|
+| **ที่เก็บ** | ระบบไฟล์, S3, Google Drive, Notion |
+| **ฐานข้อมูล** | SQL, MySQL, SQLite, KV, DocumentDB |
+| **เครื่องมือพัฒนา** | Git, GitHub, GitLab, Linear, Jira |
+| **การสื่อสาร** | Slack, Discord, อีเมล, Twilio |
+| **คลาวด์** | AWS, GCP, Azure, Kubernetes |
+| **ปัญญาประดิษฐ์/การเรียนรู้** | Hugging Face, Weights & Biases, MLflow |
+| **เว็บ** | ระบบอัตโนมัติเบราว์เซอร์, Puppeteer, ภาพหน้าจอ |
+| **กำหนดเอง** | คอนเทนเนอร์ Docker หรือแพ็กเกจ npm/pip ใดๆ |
+
+## วิวัฒนาการถัดไป: ZAP
+
+MCP ทำให้การรวมเครื่องมือง่าย **ZAP ทำให้มันเร็ว** โปรโตคอลเอเจนต์แบบคัดลอกศูนย์คือขั้นถัดไป: การทำให้เป็นอนุกรมแบบไม่คัดลอก ค่าใช้จ่ายต่ำกว่า 40–50 เท่า สร้างสำหรับฝูงเอเจนต์ในระดับใหญ่
+
+ZAP มี **โหมดเกตเวย์ MCP** เพื่อย้ายโดยไม่สะดุด
+
+<Cards>
+  <Card title="โปรโตคอล ZAP" description="เร็วขึ้น 10–100 เท่า ปลอดภัยหลังควอนตัม" href="/docs/zap" />
+  <Card title="บริการเกตเวย์" description="API เดียวสำหรับทุกโมเดล" href="/docs/services/gateway" />
+</Cards>

@@ -1,0 +1,38 @@
+---
+title: "Сборщик Otel"
+description: "Сборщик Hanzo O11y Otel — дистрибутив Hanzo для OpenTelemetry Collector: приём ZAP-native и OTLP в hanzoai/datastore"
+---
+
+<p align="center"><img src=".github/hero.svg" alt="otel-collector" width="880"></p>
+
+# Сборщик Hanzo O11y Otel
+
+Дистрибутив Hanzo для OpenTelemetry Collector. Принимает трассы, метрики и журналы по **ZAP-native** (`zap-proto/http`, `:4319`) плюс OTLP (`:4317`/`:4318`) и пишет в единственный hanzoai/datastore (Datastore). Добавляет `receiver/zapreceiver` и `exporter/zapexporter` поверх вышестоящего кода.
+
+## CI/CD — канонический образец (один-единственный способ)
+
+Сборку, проверку и развёртывание ведёт один корневой **`hanzo.yml`** и **`.github/workflows/cicd.yml`** примерно в семь строк, который подключает повторно используемый поток [`hanzoai/ci`](https://github.com/hanzoai/ci):
+
+```yaml
+# .github/workflows/cicd.yml
+jobs:
+  cicd:
+    uses: hanzoai/ci/.github/workflows/build.yml@main
+    secrets: inherit
+```
+
+Вся логика сборки, проверки и развёртывания живёт один раз в `hanzoai/ci`. Она читает `hanzo.yml` (`images:` / `test:` / `deploy:` / `kms:`), собирает и отправляет каждый образ, запускает проверки и выкатывает развёртывание. **Сборка идёт на нашем собственном пуле arc (`hanzo-build-linux-amd64`) — ноль минут на мощностях GitHub**; GitHub только дирижирует, работу делает наша инфраструктура. Отправка в GHCR использует автоматический жетон потока; KMS (`kms.hanzo.ai`) даёт только `KUBECONFIG` развёртывания.
+
+Этот репозиторий собирает два образа из многоступенчатых Dockerfile, которые собирают себя сами, поэтому предварительный шаг CI не нужен:
+
+| образ | файл docker | метки |
+|---|---|---|
+| `ghcr.io/hanzoai/otel-collector` | `cmd/o11yotelcollector/Dockerfile.selfbuild` | `:zap-native-latest`, `:sha-<short>-amd64-zap-native` |
+| `ghcr.io/hanzoai/o11y-schema-migrator` | `cmd/o11yschemamigrator/Dockerfile.selfbuild` | `:latest`, `:sha-<short>-amd64` |
+
+**Это образец на будущее для всех репозиториев нативного PaaS.** Чтобы принять новый репозиторий: добавьте корневой `hanzo.yml` и `cicd.yml` выше — и ничего больше. Не добавляйте логику сборки на каждый репозиторий, исполнителей на мощностях GitHub и унаследованные повторно используемые `hanzoai/.github`, `docker-build.yml` и `o11y/primus.workflows` (оба здесь убраны).
+
+## Ссылки
+
+- [Исходный код](https://github.com/hanzoai/otel-collector)
+- Лицензия: AGPL-3.0

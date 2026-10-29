@@ -1,0 +1,39 @@
+---
+title: Política de execução
+description: Controle como o Hanzo Dev executa comandos com regras de política de execução.
+---
+
+## Política de execução
+
+O Hanzo Dev usa políticas de execução para controlar quais comandos o agente pode rodar e quando a aprovação é necessária.
+
+### Modos de sandbox
+
+| Modo | Descrição |
+| --- | --- |
+| `off` | Sem sandbox (os comandos rodam direto) |
+| `workspace-read` | Acesso somente leitura ao espaço de trabalho |
+| `workspace-write` | Acesso de leitura e escrita ao espaço de trabalho (padrão do full-auto) |
+| `network-off` | Desativa o acesso à rede |
+
+### Políticas de aprovação
+
+| Política | Descrição |
+| --- | --- |
+| `always` | Sempre pede aprovação antes de executar |
+| `on-failure` | Pede só quando um comando falha (padrão do full-auto) |
+| `on-request` | Pede quando o modelo solicita aprovação de forma explícita |
+| `never` | Nunca pede aprovação |
+
+### Uso
+
+```bash
+# Set sandbox mode
+dev --sandbox workspace-write "your prompt"
+
+# Set approval policy
+dev --ask-for-approval on-failure "your prompt"
+
+# Full auto (sandboxed + auto-approve)
+dev --full-auto "your prompt"
+```

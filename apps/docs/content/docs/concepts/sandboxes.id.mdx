@@ -1,0 +1,100 @@
+---
+title: Kotak pasir
+description: Satu-satunya primitif komputasi — sewa sebuah pod yang menjalankan kode orang lain. Empat kelas, dua cara mengakhiri satu, dan tidak ada kolam.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Setelah halaman ini Anda dapat menjalankan kode yang tidak dipercaya dan tahu persis kapan ia berhenti
+membebani uang Anda.**
+
+## Satu primitif
+
+Kotak pasir adalah sebuah pod di bawah batas waktu jalan, dengan rantai alat sudah di dalamnya,
+sistem berkas sendiri, dan sebuah **sewa** yang mengakhirinya. Ada satu objek dan satu
+umur — jalankan Python sekali pakai dan sesi pengodean berjam-jam adalah hal
+yang sama dengan batas berbeda.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/sandbox/lease \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"class":"exec"}'
+```
+
+```bash
+hanzo sandboxes list
+```
+
+Setiap operasi lain bekerja pada kotak pasir yang dikembalikan panggilan itu.
+
+## Empat kelas
+
+Himpunan tertutup. Kosong berarti `exec`.
+
+| Kelas | Apa itu | Direktori kerja | Hidup |
+|---|---|---|---|
+| `exec` | sekali pakai; tidak menyimpan apa pun | `/mnt/data` | detik sampai menit |
+| `dev` | pengodean, dengan disk proyek terpasang | `/work` | jam |
+| `desktop` | `dev` plus sebuah layar | `/work` | jam |
+| `android` | `desktop` plus sebuah ponsel di layar itu | `/work` | jam |
+
+Setiap kelas selain `exec` **mengharuskan** sebuah proyek, dan sebuah proyek punya **satu kotak pasir hidup
+pada satu waktu** — sewa kedua atas proyek yang sudah punya satu
+ditolak dengan nama, alih-alih diam-diam memberi Anda mesin kedua.
+
+Anda boleh *meminta* waktu jalan (`gvisor` atau `kata-fc`); pemilik yang memutuskan, dan
+jawaban memberitahu apa yang benar-benar Anda dapat.
+
+## Dua kata kerja untuk mengakhiri, dan perbedaannya penting
+
+<Callout>
+**`stop` mengakhiri pekerjaan. `end` mengakhiri sumber daya.** Jalankan yang salah tetap
+terbaca setelah `stop`, dan itulah seluruh alasan keduanya dua kata kerja.
+</Callout>
+
+Di luar itu, `ttlSec` membatasi sewa, dan seorang penuai berjalan setiap menit: ia mengakhiri
+sewa yang kedaluwarsa dan menidurkan kotak pasir yang menganggur lebih dari satu jam. **Tidak ada
+kolam** — kotak pasir dibuat untuk sebuah sewa dan dihapus pada akhirnya, dan nama
+tidak pernah dipakai ulang, jadi id basi tidak pernah dapat mencapai mesin orang lain.
+
+## Apa yang dapat dilakukan pod
+
+Bukan apa yang dapat Anda lakukan. Kredensial Anda tidak pernah mencapai pod. Sebuah sewa diberi satu
+token berumur pendek, diperoleh dengan pertukaran token terhadap identitas Anda, bertindak sebagai
+klien `hanzo-sandbox`, kedaluwarsa bersama sewa, tanpa token penyegar. Pod
+tidak membawa kredensial klaster milik sendiri.
+
+Isolasi bersifat fisik: penyimpanan kotak pasir adalah satu berkas per organisasi.
+
+## exec: sebuah sesi *adalah* sebuah kotak pasir
+
+[exec](/docs/openapi/exec) menjalankan seluruh program dalam satu panggilan, dalam tiga belas
+bahasa — `py`, `js`, `ts`, `bash`, `r`, `php`, `go`, `rs`, `c`, `cpp`,
+`java`, `d`, `f90`.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/exec \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"language":"py","code":"print(6*7)"}'
+```
+
+Ia tidak memiliki penyimpanan maupun umur sendiri — id sesi yang ia kembalikan *adalah*
+id kotak pasir. Keluar bukan nol adalah **`200` dengan stderr**, bukan status galat:
+panggilan berhasil, program gagal, dan itu fakta yang berbeda. Lewatkan
+`session_id` yang sama lagi untuk menjaga sistem berkas antar jalankan.
+
+## Tempat ia bertemu agen
+
+`POST /v1/sandbox/run` menarasikan ke sesi bernama, dan keluarannya ditambahkan
+ke log hidup sesi itu — yang sudah ditonton aliran sesi [agen](/docs/concepts/agents).
+Itulah jahitan di antara keduanya: kotak pasir mengerjakan
+pekerjaan, sesi adalah catatannya.
+
+## Berikutnya
+
+- **[Referensi kotak pasir](/docs/openapi/sandbox)** — sewa, exec, fs, terminal,
+  layar.
+- **[exec](/docs/openapi/exec)** — penafsir kode.
+- **[Agen](/docs/concepts/agents)** — yang biasanya memegang sewa.

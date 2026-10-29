@@ -1,0 +1,45 @@
+---
+title: 架構
+description: Hanzo Cloud 今天如何建成，以及它正走向的外掛平台方向。
+index: true
+---
+
+# 架構
+
+這一節說明 Hanzo Cloud 是怎麼拼在一起的 — 今天在跑什麼，平台要去哪裡。我們把兩件事分開：文件別處的產品頁描述已經交付的行為，而這裡的平台方向是經由 [Hanzo 改進提案（HIP）](https://hips.hanzo.ai) 批准的設計工作。背後的原則見 [工程哲學](/docs/architecture/philosophy)。
+
+## 今天
+
+Hanzo Cloud 是 **一個 Go 二進位檔**。`api.hanzo.ai` 上的一把 API 金鑰就能到達每一項能力 — AI 推論、身分、機密、儲存、商務，以及更多 — 因為這些能力是 **編譯進這一個二進位檔的原生子系統**（`cloud`、`CGO_ENABLED=0`、靜態連結）。每一項都在 `/v1/<capability>` 下提供，並由二進位檔發出的那一份文件描述，也就是 [hanzoai/cloud](https://github.com/hanzoai/cloud) 的 `openapi.yaml`。入口與路由同樣是原生子系統，所以這個二進位檔自己就是入口，而不是坐在單獨的閘道或入口層後面。收成一個二進位檔，就是統一雲端二進位（HIP-0106），已經大致交付 — 推動 [你可以自己執行的網路](/docs/network) 的，也是同一個二進位檔。
+
+每一項能力恰好歸入 **九個領域** 中的一個。[參考](/docs/openapi) 統計並列出全部：
+
+<Cards>
+  <Card title="身分與信任" href="/docs/openapi/iam" description="你是誰，可以碰什麼，機密住在哪裡。" />
+  <Card title="智慧" href="/docs/openapi/ai" description="模型、代理、評測 — 雲的心智。" />
+  <Card title="資料" href="/docs/openapi/base" description="每項能力寫入並讀取的儲存。" />
+  <Card title="串流" href="/docs/openapi/pubsub" description="訊息、持久工作、非同步協調。" />
+  <Card title="可觀測性" href="/docs/openapi/o11y" description="看見一切 — 遙測、分析、用量。" />
+  <Card title="商務" href="/docs/openapi/commerce" description="經濟 — 計量、定價、計費、獎勵。" />
+  <Card title="平台" href="/docs/openapi/platform" description="雲的織物 — 部署、供給、路由、代管。" />
+  <Card title="應用程式" href="/docs/openapi/git" description="面向使用者的表面，建在上面這一切之上。" />
+  <Card title="鏈" href="/docs/openapi/web3" description="雲與之對話的網路 — 列舉、呼叫、讀取餘額。" />
+</Cards>
+
+少數產品仍作為獨立應用程式跑在自己的網域上 — 例如 [Sign](/docs/openapi)（`esign.hanzo.ai`）、[Dataroom](/docs/openapi)（`dataroom.hanzo.ai`）和 [Cap Table](/docs/openapi)（`captable.hanzo.ai`）— 並透過 Hanzo IAM 驗證。它們是尚存的獨立應用程式，正在被吸收進同一個執行環境，並不是預定的終態。
+
+## 方向
+
+平台正在收斂到一種執行這些服務的模型：**由共識支撐的外掛平台**。每項服務是註冊進單一雲端執行環境的一個 *外掛*，一小塊共識控制面決定每個外掛的寫入者住在哪裡。這是設計方向 — 寫成草案提案，還不是已交付的執行環境。
+
+<Cards>
+  <Card title="工程哲學" href="/docs/architecture/philosophy" description="V8 背後的原則：一件事、一種做法，解開纏繞，語言的接縫是線而不是 FFI。" />
+  <Card title="網路" href="/docs/network" description="你可以自己執行的 AI 雲 — 一個二進位檔，自備 GPU，網路就是雲。" />
+  <Card title="由共識支撐的外掛平台" href="/docs/architecture/plugin-platform" description="HIP-0125 的方向：外掛為單元，放置由共識決定，以 ZAP 原生方式撰寫。" />
+  <Card title="ZAP 協定" href="/docs/zap" description="Zero-Copy App Proto — 外掛預設使用的高效能傳輸。" />
+  <Card title="Hanzo 改進提案" href="https://hips.hanzo.ai" description="平台架構在這裡被寫明並批准。" />
+</Cards>
+
+<Callout type="info">
+外掛平台寫在 **HIP-0125（草案）** 裡。它建立在一組相關提案之上 — 行程內擴充執行環境（HIP-0105）、統一雲端二進位（HIP-0106）、串流複製（HIP-0107）以及 ZAP 傳輸（HIP-0114）。草案可能改變；[外掛平台頁面](/docs/architecture/plugin-platform) 上的內容都不是已交付的使用者功能。
+</Callout>

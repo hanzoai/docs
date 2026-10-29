@@ -1,0 +1,173 @@
+---
+icon: Plug
+title: MCP
+description: Das vereinheitlichte Hanzo-MCP — ein Server, der Claude Code, Cursor und jedem MCP-Client eine einzige Werkzeugoberfläche plus Ihre verbundenen Cloud-Dienste gibt.
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# MCP
+
+Ein Server des Modellkontextprotokolls, eine Werkzeugoberfläche. Fügen Sie **`hanzo-mcp`** zu Claude Code hinzu (oder zu Cursor, Claude Desktop oder jedem MCP-Client), und jede Hanzo-Fähigkeit erscheint über eine einzige Verbindung — ohne Verdrahtung je Werkzeug.
+
+> Sie suchen stattdessen den gehosteten MCP-Server? **[Cloud-MCP](/docs/mcp-tools)** ist eine URL ohne Installation, und jedes seiner Werkzeuge ist im [Werkzeugkatalog](/docs/mcp-tools/all-tools) aufgezählt. Diese Seite ist der Server, der neben Ihrem Editor läuft.
+
+```bash title="Add the Hanzo MCP to Claude Code"
+claude mcp add hanzo -- npx -y @hanzo/mcp serve
+```
+
+Dieser eine Befehl legt die ganze Oberfläche frei:
+
+- **13 vereinheitlichte Werkzeuge** — `fs`, `exec`, `code`, `git`, `fetch`, `workspace`, `ui`, plus die optionalen `think`, `memory`, `hanzo`, `plan`, `tasks`, `mode`. Ein nach Aktion geroutetes Werkzeug je Fähigkeit (HIP-0300), sodass der Client eine kleine, stabile Menge sieht statt Hunderter sich überlappender Namen.
+- **Cloud-Dienste** — das Werkzeug `hanzo` leitet nativ zu Ihrer Plattform: IAM (Identität), Commerce, Storage und die KI-API unter `api.hanzo.ai/v1`, authentifiziert mit Ihrem Token.
+- **Ihre Konnektoren** — GitHub, Slack, Google, Discord, X und mehr, über dieselbe Verbindung sichtbar, sobald sie in der Konsole verknüpft sind.
+
+Dieselbe Oberfläche wird auf drei Wegen ausgeliefert — TypeScript (`@hanzo/mcp`), Python (`hanzo-mcp` auf PyPI) und Rust (`hanzo-mcp::brain`) — eins zu eins gespiegelt, über die MCP-Transporte **stdio** und **streamable-http**.
+
+## Client-Einrichtung
+
+```json title="Claude Desktop / Cursor — mcp config"
+{
+  "mcpServers": {
+    "hanzo": {
+      "command": "npx",
+      "args": ["-y", "@hanzo/mcp", "serve"]
+    }
+  }
+}
+```
+
+Melden Sie sich einmal an (`hanzo auth login`), und das Cloud-Werkzeug `hanzo` plus Ihre Konnektoren authentifizieren sich von selbst; die lokalen Werkzeuge (`fs`, `exec`, `git`, …) funktionieren ohne Konto.
+
+## Der Werkzeugindex
+
+Jedes Werkzeug, das die Plattform offenlegen kann, ist unter `GET api.hanzo.ai/v1/tools` indexiert (authentifiziert). Heute sind das **1,468 Werkzeuge** aus fünf Quellen — der vereinheitlichte Server stellt sie über die kompakte, nach Aktion geroutete Oberfläche oben dar:
+
+| Quelle | Was es ist |
+|--------|-----------|
+| `builtin` | Lokale Kernwerkzeuge (fs, exec, git, code, …) |
+| `skill` | Gepackte Fertigkeiten |
+| `connector` | Verknüpfte Cloud-Integrationen (GitHub, Slack, Google, Discord, X, …) |
+| `agent` | Einstiegspunkte von Agenten |
+| `function` | Vom Benutzer definierte Funktionen |
+
+---
+
+## Konnektoren
+
+Alles, womit Hanzo sich verbinden kann, nach der Art der Verbindung — native Konnektoren, die Sie einmal in der Konsole verknüpfen (GitHub-App, OAuth2), und das offene MCP-Ökosystem, live indexiert aus der [offiziellen Registrierung](https://registry.modelcontextprotocol.io). Suchen Sie in beiden.
+
+<ConnectorsCatalog />
+
+---
+
+## MCP als Dienst
+
+Über den vereinheitlichten Server hinaus kann Hanzo auch jeden MCP-Server für Sie **hosten** — bereitstellen aus jedem npx-, uvx- oder eigenen Paket, mit sofortiger Skalierung und null zu verwaltender Infrastruktur.
+
+```bash title="Launch an MCP server"
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+```
+
+## Zentrale Fähigkeiten
+
+- **Jeder MCP-Server** — Dateisystem, Git, SQL, KV, Slack, GitHub, Notion und mehr
+- **Bereitstellung mit einem Klick** — starten Sie jeden MCP-Server mit einem Befehl
+- **Automatische Skalierung** — skalieren Sie automatisch von 0 auf Tausende von Instanzen
+- **Leerlaufkosten von $0** — Sie zahlen nur, was Sie nutzen, keine Leerlaufgebühren
+- **Sichere Sandbox** — isolierte Container mit feinkörnigen Berechtigungen
+- **Mehr als 15 Regionen** — Randbereitstellung für die geringste Latenz weltweit
+
+## Startmethoden
+
+### NPX-Pakete
+
+```bash
+hanzo mcp launch npx @modelcontextprotocol/server-filesystem
+hanzo mcp launch npx @modelcontextprotocol/server-github
+hanzo mcp launch npx @modelcontextprotocol/server-slack
+```
+
+### UVX / Python
+
+```bash
+hanzo mcp launch uvx mcp-server-sqlite
+hanzo mcp launch uvx mcp-server-postgres
+```
+
+### Eigene Server
+
+```bash
+hanzo mcp launch git://github.com/you/mcp-server
+hanzo mcp launch docker://your-org/mcp-custom:latest
+```
+
+## Konfiguration
+
+Stellen Sie mehrere Server mit einer einzigen Konfigurationsdatei bereit:
+
+```yaml title="mcp-config.yaml"
+version: "1"
+servers:
+  filesystem:
+    package: "@modelcontextprotocol/server-filesystem"
+    runtime: npx
+    args: ["/workspace"]
+
+  database:
+    package: "mcp-server-postgres"
+    runtime: uvx
+    env:
+      DATABASE_URL: "${secrets.DATABASE_URL}"
+
+  github:
+    package: "@modelcontextprotocol/server-github"
+    runtime: npx
+    env:
+      GITHUB_TOKEN: "${secrets.GITHUB_TOKEN}"
+
+  custom:
+    image: "your-org/mcp-custom:latest"
+    runtime: docker
+    replicas: 3
+```
+
+```bash
+hanzo mcp deploy
+```
+
+## Unternehmensfunktionen
+
+<Cards>
+  <Card title="Verwaltetes Hosting" description="Bereitstellung auf Hanzo Cloud mit automatischer Skalierung und Überwachung" />
+  <Card title="Sichere Sandbox" description="Isolierte Container mit feinkörnigen Berechtigungen" />
+  <Card title="Randbereitstellung" description="Mehr als 15 weltweite Regionen für die geringste Latenz" />
+  <Card title="Versionskontrolle" description="Versionen festnageln, sofort zurückrollen, Prüfspuren" />
+  <Card title="Werkzeugföderation" description="Mehrere MCP-Server zu vereinheitlichten Endpunkten verbinden" />
+  <Card title="Konfigurationsverwaltung" description="Zentralisierte Geheimnisse und Verwaltung von Umgebungsvariablen" />
+</Cards>
+
+## Verfügbare Werkzeuge
+
+| Kategorie | Werkzeuge |
+|----------|-------|
+| **Speicher** | Dateisystem, S3, Google Drive, Notion |
+| **Datenbanken** | SQL, MySQL, SQLite, KV, DocumentDB |
+| **Entwicklungswerkzeuge** | Git, GitHub, GitLab, Linear, Jira |
+| **Kommunikation** | Slack, Discord, E-Mail, Twilio |
+| **Cloud** | AWS, GCP, Azure, Kubernetes |
+| **KI/ML** | Hugging Face, Weights & Biases, MLflow |
+| **Web** | Browser-Automatisierung, Puppeteer, Bildschirmfotos |
+| **Eigenes** | Jeder Docker-Container oder jedes npm-/pip-Paket |
+
+## Nächste Entwicklung: ZAP
+
+MCP hat die Werkzeugintegration leicht gemacht. **ZAP macht sie schnell.** Das Zero-Copy-Agentenprotokoll ist die nächste Entwicklung: Serialisierung ohne Kopie, 40- bis 50-fach geringerer Aufwand, gebaut für Agentenschwärme in der Fläche.
+
+ZAP enthält den **MCP-Gateway-Modus** für eine nahtlose Migration.
+
+<Cards>
+  <Card title="ZAP-Protokoll" description="10- bis 100-fach schneller, postquanten-sicher" href="/docs/zap" />
+  <Card title="Gateway-Dienst" description="Eine API für jedes Modell" href="/docs/services/gateway" />
+</Cards>

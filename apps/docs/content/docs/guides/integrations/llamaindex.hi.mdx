@@ -1,0 +1,48 @@
+---
+title: LlamaIndex
+description: "OpenAILike api_base लेता है — base_url नहीं — और is_chat_model सेट होना चाहिए, क्योंकि डिफ़ॉल्ट completions एंडपॉइंट है।"
+---
+
+`OpenAILike` **`api_base`** लेता है। वर्तनी ध्यान दें — यह `base_url` नहीं है। वर्ग अपने पैकेज में आता है और OpenAI मॉडल पर एक पतला आवरण है, जिसे तृतीय-पक्ष एंडपॉइंट के अनुकूल बनाया गया है।
+
+```bash
+pip install llama-index-llms-openai-like
+```
+
+```python
+from llama_index.llms.openai_like import OpenAILike
+
+llm = OpenAILike(
+    model="zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    context_window=1000000,
+    is_chat_model=True,
+    is_function_calling_model=True,
+)
+
+print(llm.complete("Hello"))
+```
+
+`POST /v1/chat/completions` पर पहुँचता है।
+
+तीन डिफ़ॉल्ट बदलने होंगे, नहीं तो आवरण मॉडल के बारे में गलत होगा। **`is_chat_model` का डिफ़ॉल्ट `False` है**, जो `complete()` को चैट के बजाय completions एंडपॉइंट पर भेजता है। `is_function_calling_model` का डिफ़ॉल्ट `False` है, इसलिए मॉडल पर बना एजेंट वहाँ गद्य देगा जहाँ आप टूल कॉल की अपेक्षा करते थे। और `context_window` का डिफ़ॉल्ट मॉडल का नहीं, OpenAI का है — असली मान उस मॉडल के `GET /v1/models` रिकॉर्ड से लें।
+
+`llama-index-embeddings-openai-like` पुनर्प्राप्ति पक्ष का मेल खाता पैकेज है, और `POST /v1/embeddings` तक पहुँचता है।
+
+## MCP
+
+`BasicMCPClient` सर्वर URL को अपने पहले स्थितीय तर्क के रूप में लेता है और उससे ट्रांसपोर्ट निकालता है।
+
+```bash
+pip install llama-index-tools-mcp
+```
+
+```python
+from llama_index.tools.mcp import BasicMCPClient, McpToolSpec
+
+client = BasicMCPClient("https://api.hanzo.ai/v1/mcp")
+tools = await McpToolSpec(client=client).to_tool_list_async()
+```
+
+`/mcp` पर समाप्त होने वाला URL streamable HTTP है, `/sse` पर समाप्त होने वाला SSE है, और पहला तर्क जो `args` वाला कमांड है, एक स्थानीय प्रक्रिया है।

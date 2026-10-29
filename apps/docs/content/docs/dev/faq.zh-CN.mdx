@@ -1,0 +1,57 @@
+---
+title: 常见问题
+description: 关于 Hanzo Dev 的常见问题。
+---
+
+## 支持哪些模型？
+
+建议使用包裹 GPT-5.2 的内置预设（例如 `code-gpt-5.2-codex`）。默认推理级别是 medium — 复杂任务用 `/model` 升到 high。
+
+也可以通过 API 认证和 `--model` 标志使用其他模型。
+
+## 怎样阻止 Hanzo Dev 修改我的文件？
+
+默认情况下，Hanzo Dev 可以修改当前工作目录中的文件（Auto 模式）。若要禁止修改，以只读模式运行：
+
+```bash
+dev --sandbox read-only
+```
+
+或在对话中用 `/approvals` 改变批准级别。
+
+## 能在 Windows 上运行吗？
+
+直接在 Windows 上运行也许可以，但没有官方支持。建议使用 [Windows Subsystem for Linux (WSL2)](https://learn.microsoft.com/en-us/windows/wsl/install)。
+
+## 为什么在 Windows 上找不到我的代理？
+
+Windows 上的代理发现会受 PATH 和文件扩展名影响。办法：
+
+### 使用绝对路径（建议）
+
+```toml
+[[agents]]
+name = "claude"
+command = "C:\\Users\\YourUser\\AppData\\Roaming\\npm\\claude.cmd"
+enabled = true
+```
+
+### 找到 npm 全局安装位置
+
+```cmd
+npm config get prefix
+```
+
+### 确认 PATH 包含 npm 目录
+
+```powershell
+$env:PATH -split ';' | Select-String "npm"
+```
+
+### 检查文件扩展名
+
+在 Windows 上，Hanzo Dev 查找扩展名为 `.exe`、`.cmd`、`.bat`、`.com` 的可执行文件。使用绝对路径时带上正确扩展名。
+
+## 和 OpenAI Codex 是什么关系？
+
+Hanzo Dev 是用 Rust 编写的代理式开发 CLI：多代理编排、MCP 客户端与服务器、沙箱执行策略，以及与 Hanzo AI 基础设施的直接集成。这个名字与 OpenAI 2021 年的 Codex 模型无关，该模型已于 2023 年 3 月停用。

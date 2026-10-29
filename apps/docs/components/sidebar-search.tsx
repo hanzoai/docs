@@ -2,6 +2,7 @@
 
 import { Search } from 'lucide-react';
 import { useSearchContext } from '@hanzo/docs-base-ui/contexts/search';
+import { useTranslations } from '@hanzo/docs-base-ui/contexts/i18n';
 
 /**
  * The one way to search, at the top of the sidebar.
@@ -23,6 +24,7 @@ import { useSearchContext } from '@hanzo/docs-base-ui/contexts/search';
  */
 export function SidebarSearch() {
   const { setOpenSearch } = useSearchContext();
+  const t = useTranslations();
 
   return (
     <button
@@ -40,7 +42,7 @@ export function SidebarSearch() {
       }}
     >
       <Search className="size-4 text-fd-muted-foreground" />
-      <span className="text-sm text-fd-muted-foreground">Search or ask AI</span>
+      <span className="text-sm text-fd-muted-foreground">{t.searchOrAsk}</span>
       <kbd className="rounded border px-1.5 py-0.5 text-[10px] text-fd-muted-foreground">⌘K</kbd>
     </button>
   );

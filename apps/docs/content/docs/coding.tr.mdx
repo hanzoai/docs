@@ -1,0 +1,59 @@
+---
+title: Kodlama ajanları
+description: "Deponuzda bir kodlama ajanı çalıştırın — bizimki, Claude Code veya Codex — tek komutla."
+icon: Terminal
+---
+
+`hanzo code`, durduğunuz depoya karşı bir kodlama ajanı çalıştırır.
+Üç ajan desteklenir ve birini adlandırmak o ajanı ya da açık bir
+başarısızlığı getirir — bunlar ayrı ürünlerdir, birbirinin takma adı değildir.
+
+```bash
+hanzo code                      # Hanzo Dev, the default
+hanzo code claude               # Claude Code
+hanzo code codex                # Codex
+```
+
+Görevi **tek** argüman olarak, tırnak içinde verin:
+
+```bash
+hanzo code "fix the failing test in api/users"
+hanzo code claude "port this module to the new store"
+```
+
+## Ajanı adlandırmak
+
+Aşağıdaki her yazım tek yerde çözülür, bu yüzden birbirinden ayrılamaz:
+
+| | Konumsal | Bayrak | Açık |
+| --- | --- | --- | --- |
+| Hanzo Dev | `hanzo code dev` | `hanzo code --dev` | `hanzo code --backend dev` |
+| Claude Code | `hanzo code claude` | `hanzo code --claude` | `hanzo code --backend claude` |
+| Codex | `hanzo code codex` | `hanzo code --codex` | `hanzo code --backend codex` |
+
+`hanzo dev`, `hanzo code dev` için üst düzey bir kısayoldur. `claude-code` ve
+`cc`, `claude` için kabul edilen yazımlardır.
+
+İki kez adlandırmak çözülmez, reddedilir — `hanzo code claude --codex`
+bir kez adlandırmanızı söyler.
+
+## Onaylar
+
+Ajan kendi adımlarını varsayılan olarak kendisi onaylar. Vazgeçtikleri şey artacak
+biçimde iki çıkış vardır:
+
+```bash
+hanzo code --ask            # the backend asks before each step
+hanzo code --no-sandbox     # bypass approvals AND drop the sandbox
+```
+
+`--safe`, `--ask` ile eş anlamlıdır ve ikisi de `~/.hanzo/settings.json` içindeki
+`autoApprove` değerini yener.
+
+## Öteki `hanzo code`
+
+`hanzo code context`, `hanzo code file` ve `hanzo code index` aynı sözcüğü paylaşan başka bir şeydir: [kod zekâsı API'si](/docs/openapi/code) — dizinlenmiş depolarınızda arama ve simgeler,
+sizin ve ajanlar için. Arka uç almazlar ve ajan çalıştırmazlar.
+
+Kural ilk argümandır: bir arka ucu adlandıran sözcük onu seçer,
+başka her şey bir görev ya da alt komuttur.

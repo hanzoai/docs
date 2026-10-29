@@ -1,0 +1,59 @@
+---
+title: Agenti di programmazione
+description: "Esegui un agente di programmazione nel tuo repository — il nostro, Claude Code o Codex — con un solo comando."
+icon: Terminal
+---
+
+`hanzo code` esegue un agente di programmazione sul repository in cui ti trovi.
+Sono supportati tre agenti, e nominarne uno ti dà quell'agente o un fallimento chiaro:
+sono prodotti separati, mai alias l'uno dell'altro.
+
+```bash
+hanzo code                      # Hanzo Dev, the default
+hanzo code claude               # Claude Code
+hanzo code codex                # Codex
+```
+
+Dagli un compito come **un** argomento, tra virgolette:
+
+```bash
+hanzo code "fix the failing test in api/users"
+hanzo code claude "port this module to the new store"
+```
+
+## Nominare l'agente
+
+Ogni grafia qui sotto si risolve in un solo punto, quindi non possono divergere:
+
+| | Posizionale | Flag | Esplicito |
+| --- | --- | --- | --- |
+| Hanzo Dev | `hanzo code dev` | `hanzo code --dev` | `hanzo code --backend dev` |
+| Claude Code | `hanzo code claude` | `hanzo code --claude` | `hanzo code --backend claude` |
+| Codex | `hanzo code codex` | `hanzo code --codex` | `hanzo code --backend codex` |
+
+`hanzo dev` è un'abbreviazione di primo livello per `hanzo code dev`. `claude-code` e
+`cc` sono grafie accettate di `claude`.
+
+Nominarlo due volte viene rifiutato invece di essere risolto: `hanzo code claude --codex`
+ti dice di nominarlo una sola volta.
+
+## Approvazioni
+
+L'agente approva da solo i propri passi, per impostazione predefinita. Due uscite, in ordine
+crescente di quanto cedono:
+
+```bash
+hanzo code --ask            # the backend asks before each step
+hanzo code --no-sandbox     # bypass approvals AND drop the sandbox
+```
+
+`--safe` è sinonimo di `--ask`, e uno dei due prevale su `autoApprove` in
+`~/.hanzo/settings.json`.
+
+## L'altro `hanzo code`
+
+`hanzo code context`, `hanzo code file` e `hanzo code index` sono un'altra cosa che condivide la parola: sono l'[API di intelligenza del codice](/docs/openapi/code), ricerca e simboli nei repository indicizzati,
+per te e per gli agenti. Non prendono un backend e non eseguono alcun agente.
+
+La regola è il primo argomento: una parola che nomina un backend ne seleziona uno, e
+qualsiasi altra cosa è un compito o un sottocomando.

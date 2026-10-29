@@ -1,0 +1,38 @@
+---
+title: "مجمّع Otel"
+description: "مجمّع Hanzo O11y Otel — توزيع Hanzo من OpenTelemetry Collector: إدخال ZAP-native وOTLP إلى hanzoai/datastore"
+---
+
+<p align="center"><img src=".github/hero.svg" alt="otel-collector" width="880"></p>
+
+# مجمّع Hanzo O11y Otel
+
+توزيع Hanzo من OpenTelemetry Collector. يستقبل التتبعات والمقاييس والسجلات عبر **ZAP-native** (`zap-proto/http`، `:4319`) إضافة إلى OTLP (`:4317`/`:4318`) ويكتب في hanzoai/datastore الوحيد (Datastore). يضيف `receiver/zapreceiver` و`exporter/zapexporter` فوق المنبع.
+
+## CI/CD — النمط المعياري (طريقة واحدة لا غير)
+
+البناء والاختبار والنشر يقودها **`hanzo.yml`** واحد في الجذر و**`.github/workflows/cicd.yml`** من نحو سبع أسطر يستورد التدفق القابل لإعادة الاستخدام [`hanzoai/ci`](https://github.com/hanzoai/ci):
+
+```yaml
+# .github/workflows/cicd.yml
+jobs:
+  cicd:
+    uses: hanzoai/ci/.github/workflows/build.yml@main
+    secrets: inherit
+```
+
+كل منطق البناء والاختبار والنشر يعيش مرة واحدة في `hanzoai/ci`. يقرأ `hanzo.yml` (`images:` / `test:` / `deploy:` / `kms:`)، ويبني ويدفع كل صورة، ويشغّل الاختبارات، ويدحرج النشر. **يجري البناء على تجمع arc المستضاف ذاتيًا (`hanzo-build-linux-amd64`) — صفر من الدقائق المستضافة لدى GitHub**؛ GitHub ينسّق فقط، وبنيتنا تقوم بالعمل. الدفع إلى GHCR يستخدم رمز التدفق التلقائي؛ وKMS (`kms.hanzo.ai`) يقدّم فقط `KUBECONFIG` النشر.
+
+يبني هذا المستودع صورتين من ملفات Dockerfile متعددة المراحل تبني نفسها، لذا لا حاجة إلى خطوة CI مسبقة:
+
+| الصورة | ملف docker | الوسوم |
+|---|---|---|
+| `ghcr.io/hanzoai/otel-collector` | `cmd/o11yotelcollector/Dockerfile.selfbuild` | `:zap-native-latest`, `:sha-<short>-amd64-zap-native` |
+| `ghcr.io/hanzoai/o11y-schema-migrator` | `cmd/o11yschemamigrator/Dockerfile.selfbuild` | `:latest`, `:sha-<short>-amd64` |
+
+**هذا هو النمط من الآن فصاعدًا لكل مستودعات PaaS الأصلي.** لإدخال مستودع جديد: أضف `hanzo.yml` في الجذر و`cicd.yml` أعلاه — ولا شيء غير ذلك. لا تضف منطق بناء لكل مستودع، ولا مشغّلات مستضافة لدى GitHub، ولا القابلة لإعادة الاستخدام الموروثة `hanzoai/.github` و`docker-build.yml` و`o11y/primus.workflows` (كلاهما أُزيل هنا).
+
+## روابط
+
+- [المصدر](https://github.com/hanzoai/otel-collector)
+- الرخصة: AGPL-3.0

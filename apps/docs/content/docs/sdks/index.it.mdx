@@ -1,0 +1,163 @@
+---
+title: SDK
+description: SDK ufficiali di Hanzo per ogni linguaggio — Python, TypeScript, Go, Rust, C++, Swift, Kotlin. Due linee per linguaggio — l'SDK Cloud completo e la libreria IA/agenti.
+icon: Code
+---
+
+import { Cards, Card } from '@hanzo/docs-base-ui/components/card'
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+# SDK Hanzo
+
+**Hanzo AI — un'API per ogni modello, un SDK per ogni linguaggio.** Parla con
+Open AI Cloud dal linguaggio in cui lavori già. Ogni SDK è generato dalla
+stessa specifica OpenAPI 3.1 e condivide una credenziale.
+
+## Due librerie per linguaggio
+
+Ogni linguaggio ha due linee di primo piano — installa quella adatta al lavoro, o
+entrambe:
+
+<Cards>
+  <Card title="SDK Cloud">
+    Il client generato e completo per **tutta** Open AI Cloud (`/v1/*`): IA,
+    agenti, calcolo, dati, rete, sicurezza, piattaforma, osservazione, web3, app.
+    Idiomatico e tipizzato per il suo ecosistema. Il codice vero vive in `hanzo-<lang>/sdk`.
+  </Card>
+  <Card title="Libreria IA / agenti">
+    La libreria fatta a mano e incentrata sull'IA — modelli, agenti, strumenti, memoria, MCP e
+    inferenza. L'ammiraglia è Python (`pip install hanzo`); Node pubblica
+    `@hanzo/ai`.
+  </Card>
+</Cards>
+
+## Linguaggi
+
+<Cards>
+  <Card title="Python — ammiraglia" href="/docs/sdks/python">
+    `pip install hanzo` (IA) · `pip install hanzoai` (Cloud). Sincrono e asincrono.
+  </Card>
+  <Card title="TypeScript" href="/docs/sdks/typescript">
+    `npm i @hanzo/ai` (IA) · `npm i @hanzo/sdk` (Cloud). Node, Deno, Bun, browser.
+  </Card>
+  <Card title="Go" href="/docs/sdks/go">
+    `go get github.com/hanzoai/go-sdk`. Opzioni funzionali, dipendenze minime.
+  </Card>
+  <Card title="Rust" href="/docs/sdks/rust">
+    `cargo add hanzo` — client asincrono Tokio. Su crates.io.
+  </Card>
+  <Card title="C++" href="/docs/sdks/cpp">
+    `find_package(hanzo)` — client nativo tramite CMake. In arrivo.
+  </Card>
+  <Card title="Swift" href="/docs/sdks/swift">
+    SwiftPM — client iOS/macOS, risolto direttamente dal repository.
+  </Card>
+  <Card title="Kotlin" href="/docs/sdks/kotlin">
+    Gradle — client JVM/Android. In arrivo.
+  </Card>
+  <Card title="SDK IAM" href="/docs/sdks/iam">
+    `@hanzo/iam` — client IAM TypeScript con binding React.
+  </Card>
+</Cards>
+
+## Matrice di installazione
+
+Solo i pacchetti in disponibilità generale sono mostrati come installazioni eseguibili. Il resto è
+in sviluppo attivo — ognuno rimanda alla propria organizzazione per linguaggio, dove il codice
+vive già.
+
+| Linguaggio | Libreria | Installazione | Stato |
+|----------|---------|---------|--------|
+| **Python** | IA / agenti (ammiraglia) | `pip install hanzo` | Disponibilità generale |
+| **Python** | SDK Cloud | `pip install hanzoai` | Disponibilità generale |
+| **TypeScript** | Libreria IA | `npm i @hanzo/ai` | Disponibilità generale |
+| **TypeScript** | SDK Cloud | `npm i @hanzo/sdk` | Disponibilità generale |
+| **Go** | SDK Cloud | `go get github.com/hanzoai/go-sdk` | Disponibilità generale |
+| **Rust** | SDK Cloud | `cargo add hanzo` | Disponibilità generale |
+| **C++** | SDK Cloud | `find_package(hanzo)` | In arrivo |
+| **Swift** | SDK Cloud | `.package(url: "https://github.com/hanzo-swift/sdk")` | Disponibilità generale |
+| **Kotlin** | SDK Cloud | Gradle / Maven | In arrivo |
+
+<Callout title="Compatibile sul filo oggi">
+Ogni linguaggio può già raggiungere Open AI Cloud tramite qualsiasi client compatibile con OpenAI o
+Anthropic — punta l'URL di base a
+`https://api.hanzo.ai/v1` e usa la tua chiave Hanzo. Gli SDK nativi sopra aggiungono
+modelli tipizzati, nuovi tentativi, aiuti allo streaming e la superficie agenti/MCP.
+</Callout>
+
+## Avvio rapido
+
+```bash tab="Python (AI)"
+pip install hanzo
+```
+
+```bash tab="Python (Cloud)"
+pip install hanzoai
+```
+
+```bash tab="TypeScript (AI)"
+npm i @hanzo/ai
+```
+
+```bash tab="TypeScript (Cloud)"
+npm i @hanzo/sdk
+```
+
+```bash tab="Go"
+go get github.com/hanzoai/go-sdk
+```
+
+Ogni client segue la stessa forma — costruiscilo con la tua chiave, chiama una risorsa `/v1`:
+
+```python tab="Python"
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="sk-your-key")
+response = client.chat.completions.create(
+    model="zen5",
+    messages=[{"role": "user", "content": "Hello"}],
+)
+print(response.choices[0].message.content)
+```
+
+```typescript tab="TypeScript"
+import Hanzo from '@hanzo/sdk';
+
+const client = new Hanzo({ apiKey: 'sk-your-key' });
+const response = await client.chat.completions.create({
+  model: 'zen5',
+  messages: [{ role: 'user', content: 'Hello' }],
+});
+```
+
+```go tab="Go"
+client := hanzoai.NewClient(option.WithAPIKey("sk-your-key"))
+response, _ := client.Chat.Completions.New(ctx, hanzoai.ChatCompletionNewParams{
+    Model:    hanzoai.F("zen5"),
+    Messages: hanzoai.F([]hanzoai.ChatCompletionMessageParamUnion{
+        hanzoai.UserMessage("Hello"),
+    }),
+})
+```
+
+## Una chiave, un URL di base
+
+```bash
+export HANZO_API_KEY="sk-..."   # from console.hanzo.ai
+# Base URL for every service: https://api.hanzo.ai/v1
+```
+
+Ottieni la chiave su [console.hanzo.ai](https://console.hanzo.ai).
+
+## Dove vive il codice
+
+- **Ombrello** — [`hanzoai/sdk`](https://github.com/hanzoai/sdk): un'installazione, ogni servizio, ogni linguaggio.
+- **Organizzazioni per linguaggio** — codice vero, idiomatico per ogni ecosistema:
+  [hanzo-py](https://github.com/hanzo-py) ·
+  [hanzo-js](https://github.com/hanzo-js) ·
+  [hanzo-go](https://github.com/hanzo-go) ·
+  [hanzo-rs](https://github.com/hanzo-rs) ·
+  [hanzo-cpp](https://github.com/hanzo-cpp) ·
+  [hanzo-swift](https://github.com/hanzo-swift) ·
+  [hanzo-kt](https://github.com/hanzo-kt)
+- **Riferimento completo dell'API** — [ogni endpoint `/v1` →](/reference)

@@ -1,0 +1,100 @@
+---
+title: Cajas de arena
+description: El único primitivo de cómputo — un arrendamiento de un pod que ejecuta el código de otra persona. Cuatro clases, dos formas de terminarlo y ningún grupo.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Después de esta página puedes ejecutar código no confiable y saber exactamente cuándo deja
+de costarte dinero.**
+
+## Un primitivo
+
+Una caja de arena es un pod bajo un límite de tiempo de ejecución, con una cadena de herramientas ya dentro,
+su propio sistema de archivos y un **arrendamiento** que la termina. Hay un objeto y una
+vida — una ejecución de Python de usar y tirar y una sesión de programación de varias horas son la misma
+cosa con límites distintos.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/sandbox/lease \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"class":"exec"}'
+```
+
+```bash
+hanzo sandboxes list
+```
+
+Todas las demás operaciones actúan sobre la caja de arena que devuelve esa llamada.
+
+## Cuatro clases
+
+Un conjunto cerrado. Vacío significa `exec`.
+
+| Clase | Qué es | Directorio de trabajo | Vive |
+|---|---|---|---|
+| `exec` | de usar y tirar; no guarda nada | `/mnt/data` | de segundos a minutos |
+| `dev` | programación, con el disco del proyecto acoplado | `/work` | horas |
+| `desktop` | `dev` más una pantalla | `/work` | horas |
+| `android` | `desktop` más un teléfono en esa pantalla | `/work` | horas |
+
+Todas las clases salvo `exec` **exigen** un proyecto, y un proyecto tiene **una caja de arena viva
+a la vez** — un segundo arrendamiento sobre un proyecto que ya tiene una se
+rechaza por nombre, en lugar de darte en silencio una segunda máquina.
+
+Puedes *pedir* un tiempo de ejecución (`gvisor` o `kata-fc`); el dueño decide, y la
+respuesta te dice lo que de verdad obtuviste.
+
+## Dos verbos para terminar, y la diferencia importa
+
+<Callout>
+**`stop` termina el trabajo. `end` termina el recurso.** Una ejecución que salió mal sigue
+siendo legible después de `stop`, y esa es toda la razón de que sean dos verbos.
+</Callout>
+
+Más allá de eso, `ttlSec` acota el arrendamiento, y un segador corre cada minuto: termina
+los arrendamientos vencidos y duerme las cajas de arena inactivas más de una hora. **No hay
+grupo** — una caja de arena se crea para un arrendamiento y se borra al final, y los nombres
+nunca se reutilizan, así que un id viejo nunca puede alcanzar la máquina de otra persona.
+
+## Qué puede hacer el pod
+
+No lo que puedes tú. Tu credencial nunca llega al pod. A un arrendamiento se le entrega un
+token de vida corta, obtenido por intercambio de token contra tu identidad, actuando como
+el cliente `hanzo-sandbox`, que expira con el arrendamiento, sin token de refresco. El
+pod no lleva ninguna credencial de clúster propia.
+
+El aislamiento es físico: el almacén de cajas de arena es un archivo por organización.
+
+## exec: una sesión *es* una caja de arena
+
+[exec](/docs/openapi/exec) ejecuta un programa entero en una llamada, en trece
+lenguajes — `py`, `js`, `ts`, `bash`, `r`, `php`, `go`, `rs`, `c`, `cpp`,
+`java`, `d`, `f90`.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/exec \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"language":"py","code":"print(6*7)"}'
+```
+
+No posee almacén ni vida propios — el id de sesión que devuelve *es* un
+id de caja de arena. Una salida distinta de cero es un **`200` con stderr**, no un estado de error:
+la llamada tuvo éxito, el programa falló, y son hechos distintos. Pasa el
+mismo `session_id` otra vez para conservar el sistema de archivos entre ejecuciones.
+
+## Donde se encuentra con los agentes
+
+`POST /v1/sandbox/run` narra hacia una sesión con nombre, y su salida se añade
+al registro vivo de esa sesión — el que el flujo de una sesión de [agente](/docs/concepts/agents)
+ya está mirando. Esa es la costura entre los dos: una caja de arena hace el
+trabajo, una sesión es el registro de él.
+
+## Siguiente
+
+- **[Referencia de cajas de arena](/docs/openapi/sandbox)** — arrendamiento, exec, fs, terminal,
+  pantalla.
+- **[exec](/docs/openapi/exec)** — el intérprete de código.
+- **[Agentes](/docs/concepts/agents)** — lo que suele tener el arrendamiento.

@@ -1,0 +1,157 @@
+---
+title: Hanzo Chat
+description: แอปแชทบน Hanzo Cloud — โมเดล enso และ Zen, เครื่องมือ MCP, เอเจนต์, การอัปโหลดไฟล์ และ RAG โฮสต์ที่ chat.hanzo.ai หรือโฮสต์เอง
+index: true
+---
+
+import { Cards, Card } from '@hanzo/docs-base-ui/components/card'
+import { LayoutGrid } from 'lucide-react'
+
+# Hanzo Chat
+
+Hanzo Chat คือแอปแชทบน Hanzo Cloud สร้างบน [LibreChat](https://librechat.ai) มันรันโมเดลของเรา — ตระกูลแนวหน้า **enso** และตระกูลน้ำหนักเปิด **Zen** — พร้อมเครื่องมือ MCP, เอเจนต์ที่กำหนดค่าได้, การอัปโหลดไฟล์พร้อม RAG, การมองเห็น, ประวัติการสนทนา, ค่าที่ตั้งไว้ และปลั๊กอิน โมเดลจากห้องทดลองภายนอกก็มีด้วย และปรากฏในเมนูโมเดลเดียวกัน
+
+ใช้ได้ในฐานะบริการที่โฮสต์ที่ [chat.hanzo.ai](https://chat.hanzo.ai) หรือโฮสต์เองผ่าน Docker
+
+## เริ่มต้นอย่างรวดเร็ว
+
+### โฮสต์ (แนะนำ)
+
+1. ไปที่ [chat.hanzo.ai](https://chat.hanzo.ai)
+2. ลงชื่อเข้าใช้ด้วยบัญชี Hanzo ของคุณ
+3. **เครดิตฟรี $5** ถูกใช้ให้อัตโนมัติ
+4. เลือกโมเดลแล้วเริ่มแชท
+
+### โฮสต์เอง
+
+```bash
+git clone https://github.com/hanzoai/chat
+cd chat
+cp .env.example .env
+# Edit .env with your HANZO_API_KEY
+docker compose up -d
+# Open http://localhost:3081
+```
+
+### API
+
+```bash
+curl https://api.hanzo.ai/v1/chat/completions \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "zen5",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+## การใช้ SDK
+
+### Python
+
+```python
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="sk-your-api-key")
+
+response = client.chat.completions.create(
+    model="zen5",
+    messages=[{"role": "user", "content": "Hello, Zen."}]
+)
+print(response.choices[0].message.content)
+```
+
+### TypeScript
+
+```typescript
+import Hanzo from '@hanzo/ai'
+
+const client = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+
+const completion = await client.chat.completions.create({
+  model: 'zen5',
+  messages: [{ role: 'user', content: 'Hello, Zen.' }],
+})
+console.log(completion.choices[0].message.content)
+```
+
+### ไคลเอนต์ HTTP ที่มีอยู่
+
+`/v1/chat/completions` รับและคืนรูป JSON แบบ chat-completions ดังนั้น
+ไคลเอนต์ที่เขียนไว้กับรูปนั้นทำงานที่นี่เมื่อ URL ฐานชี้ไปที่
+`https://api.hanzo.ai/v1` และส่งคีย์ Hanzo รหัสโมเดลไม่พกพาข้าม
+ผู้ให้บริการ — `zen5` และ `enso` มีอยู่ที่นี่เท่านั้น
+
+## สถาปัตยกรรม
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        HANZO CHAT                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │ React Client │  │ Node.js API  │  │    DocumentDB    │  │
+│  │              │  │              │  │                  │  │
+│  │ - Chat UI    │  │ - REST API   │  │ - Messages       │  │
+│  │ - Model Sel  │  │ - WebSocket  │  │ - Conversations  │  │
+│  │ - File Upload│  │ - MCP Broker │  │ - Users          │  │
+│  │ - Agents     │  │ - Auth       │  │ - Presets        │  │
+│  └──────────────┘  └──────────────┘  └──────────────────┘  │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │              Provider Layer (AI API)            │    │
+│  │  Zen · OpenAI · Anthropic · Google · Meta · …       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │  Search       │  KV     │  S3     │  RAG API       │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## จุดปลายทาง
+
+| สภาพแวดล้อม | URL |
+|-------------|-----|
+| การผลิต | `https://chat.hanzo.ai` |
+| API | `https://api.hanzo.ai/v1` |
+| ในเครื่อง | `http://localhost:3081` |
+
+## ราคา
+
+- **เครดิตฟรี $5** ในทุกบัญชีใหม่ (หมดอายุใน 30 วัน)
+- **เรียกเก็บเงินแบบจ่ายล่วงหน้า** — เพิ่มเครดิตผ่าน [console.hanzo.ai](https://console.hanzo.ai)
+- **เริ่มที่ $0.34/MTok** ขาเข้า (`zen5-flash`)
+- **ไม่มีบิลเซอร์ไพรส์** — บริการหยุดเมื่อเครดิตหมด
+
+<Cards>
+  <Card title="คุณสมบัติ" href="/docs/chat/features">
+    ค่าที่ตั้งไว้, อัปโหลดไฟล์, RAG, ค้นหา, การมองเห็น, การจัดการการสนทนา
+  </Card>
+  <Card title="การกำหนดค่า" href="/docs/chat/configuration">
+    เอกสารอ้างอิง chat.yaml, จุดปลายทาง, เครื่องมือ MCP, การกำหนดค่าโมเดล
+  </Card>
+  <Card title="โมเดล" href="/docs/chat/models">
+    ทุกโมเดลในเมนู พร้อมหน้าต่างบริบทและอัตรา
+  </Card>
+  <Card title="เอเจนต์" href="/docs/chat/agents">
+    เอเจนต์ปัญญาประดิษฐ์กำหนดเอง พร้อมพรอมป์ระบบและการเข้าถึงเครื่องมือ
+  </Card>
+  <Card title="การโฮสต์เอง" href="/docs/chat/self-hosting">
+    คู่มือการปรับใช้ Docker, Kubernetes และคลาวด์
+  </Card>
+  <Card title="การยืนยันตัวตน" href="/docs/chat/authentication">
+    Hanzo IAM, OAuth2, การเข้าสู่ระบบโซเชียล, SSO
+  </Card>
+</Cards>
+
+{/* domain-index */}
+
+## ในส่วนนี้
+
+<Cards>
+  <Card icon={<LayoutGrid />} title="Hanzo Dev" href="/docs/dev" description="ผู้ช่วยเขียนโค้ดที่ขับด้วยปัญญาประดิษฐ์สำหรับเทอร์มินัลของคุณ ติดตั้ง กำหนดค่า และใช้งาน Hanzo Dev" />
+  <Card icon={<LayoutGrid />} title="การเชื่อมต่อ" href="/docs/guides/integrations" description="เชื่อมที่เก็บอ็อบเจกต์, Slack, Mixpanel และ Insights เข้ากับโครงการของคุณ" />
+  <Card icon={<LayoutGrid />} title="การเชื่อมต่อและส่วนขยาย" href="/docs/apps" description="ติดตั้งและเชื่อม Hanzo ทั่วเบราว์เซอร์ ตัวแก้ไข เดสก์ท็อป เอกสาร เครื่องมือออกแบบ และแอปธุรกิจ — หนึ่ง…" />
+</Cards>

@@ -1,0 +1,38 @@
+---
+title: Letta
+description: "Alur konfigurasi, bukan konstruktor. Tambahkan penyedia yang kompatibel dengan OpenAI lewat /connect, lalu pilih modelnya."
+---
+
+Letta tidak membuka parameter URL dasar di tingkat kode. Alamat dimasukkan lewat alur konfigurasi.
+
+Buka **`/connect`** di aplikasi Letta, atau jalankan `letta connect` di CLI, yang membuka alur yang sama. Tambahkan penyedia khusus bertipe **API yang kompatibel dengan OpenAI**, dan berikan URL dasar serta kuncinya:
+
+```
+base URL:  https://api.hanzo.ai/v1
+API key:   sk-...
+```
+
+Lalu `/model` memilih model. Mendarat di `POST /v1/chat/completions`.
+
+Dua batasan yang dinyatakan Letta, dan Hanzo memenuhi keduanya. Endpoint harus mendukung chat completions dan pemanggilan alat — jadi pilih model yang catatannya di `GET /v1/models` mengatakan `supports_tools`. Dan agen yang di-host di cloud butuh endpoint yang dapat dijangkau dari internet publik, bukan hanya lewat localhost.
+
+Letta mengirim `reasoning_effort` yang eksplisit ke penyedia yang kompatibel dengan OpenAI, salah satu dari `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, atau `max`, dan mengharapkan endpoint menerimanya, memetakannya ulang, atau menolaknya.
+
+`LETTA_BASE_URL` adalah hal lain dan tidak melakukan ini. Itu alamat server Letta yang di-host sendiri, seperti `http://localhost:8283` — alamat server itu sendiri, tidak terkait ke mana inferensi pergi.
+
+## MCP
+
+Server masuk ke `mcpServers` di SDK agen Letta, dikunci menurut nama, dengan `url` untuk yang jauh.
+
+```json
+{
+  "mcpServers": {
+    "hanzo": {
+      "url": "https://api.hanzo.ai/v1/mcp",
+      "headers": { "Authorization": "Bearer sk-..." }
+    }
+  }
+}
+```
+
+Kunci menjadi ruang nama: alat tiba sebagai `mcp__hanzo__<tool>`. Koneksi dimulai bersamaan saat sesi diinisialisasi, dan satu server yang tidak terjangkau tidak menahan yang lain.

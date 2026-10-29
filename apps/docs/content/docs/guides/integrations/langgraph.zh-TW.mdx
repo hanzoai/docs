@@ -1,0 +1,51 @@
+---
+title: LangGraph
+description: "基底 URL 放在模型上，不放在代理上。ChatOpenAI 接受 base_url；把實例交給 create_agent。"
+---
+
+基底 URL 放在模型物件上，不放在代理上。`ChatOpenAI` 接受 **`base_url`**（別名 `openai_api_base`），`create_agent` 接受一個已經初始化的模型實例——這才是能帶上自訂基底 URL 的路，因為字串形式 `"provider:model"` 做不到。
+
+```bash
+pip install langchain-openai langgraph
+```
+
+```python
+from langchain_openai import ChatOpenAI
+from langchain.agents import create_agent
+
+model = ChatOpenAI(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = create_agent(model=model, tools=[])
+result = agent.invoke({"messages": [{"role": "user", "content": "Hello"}]})
+```
+
+會打到 `POST /v1/chat/completions`。
+
+位址的解析順序，先對上的勝出：明確參數 `base_url` 或 `openai_api_base`，然後是 LangChain 在初始化時讀取的 `OPENAI_API_BASE`，然後是底層 `openai` 用戶端讀取的 `OPENAI_BASE_URL`。把參數設上，後兩項就無關了，所以片段把它設上。
+
+## MCP
+
+`langchain-mcp-adapters` 持有用戶端。URL 是每個伺服器項目的 `url` 鍵。
+
+```bash
+pip install langchain-mcp-adapters
+```
+
+```python
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
+client = MultiServerMCPClient({
+    "hanzo": {
+        "transport": "http",
+        "url": "https://api.hanzo.ai/v1/mcp",
+        "headers": {"Authorization": "Bearer sk-..."},
+    }
+})
+
+tools = await client.get_tools()
+agent = create_agent(model=model, tools=tools)
+```

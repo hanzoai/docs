@@ -1,0 +1,61 @@
+---
+title: त्वरित शुरुआत
+description: @hanzo/usage इंस्टॉल करें और एकीकृत एआई उपयोग लगभग 15 पंक्तियों के TypeScript में पढ़ें.
+---
+
+# त्वरित शुरुआत
+
+`@hanzo/usage`, Hanzo Usage के पीछे का बिना इंटरफ़ेस वाला कोर है। यह Node,
+Next.js और Tauri में चलता है, और Hanzo, Codex तथा Claude के लिए अंतर्निहित प्रदाता लाता है
+(रजिस्ट्री विस्तार योग्य है)।
+
+## इंस्टॉल करें
+
+```bash title="Install"
+npm install @hanzo/usage
+```
+
+## उपयोग पढ़ें
+
+एक `UsageStore` बनाएँ, अपने वातावरण के लिए होस्ट दें, और पोल लूप शुरू करें।
+स्टोर अवलोकनीय है — रेंडर करने के लिए सदस्यता लें, या React हुक का उपयोग करें।
+
+```ts title="usage.ts"
+import { UsageStore, allProviders } from '@hanzo/usage'
+import { nodeHost } from '@hanzo/usage/node' // or createTauriHost from '@hanzo/usage/tauri'
+
+const store = new UsageStore({
+  host: nodeHost,
+  providers: allProviders, // hanzo, codex, claude — registry-extensible
+  historyDir: `${process.env.HOME}/.config/hanzo/usage/history`,
+})
+
+store.start() // 5-minute poll, CodexBar-compatible history files
+store.subscribe(() => console.log(store.getState()))
+```
+
+## Tauri में (Hanzo Desktop, hanzo.app)
+
+Tauri प्लगइन मॉड्यूल पास करें — कोर वेब और
+Node बंडलों के लिए निर्भरता-मुक्त रहता है:
+
+```ts title="tauri-host.ts"
+import * as fs from '@tauri-apps/plugin-fs'
+import { fetch } from '@tauri-apps/plugin-http'
+import { homeDir } from '@tauri-apps/api/path'
+import { createTauriHost } from '@hanzo/usage/tauri'
+
+const host = await createTauriHost({ fs, fetch, homeDir })
+```
+
+## React में
+
+```ts title="Component.tsx"
+import { useUsage } from '@hanzo/usage/react'
+
+const state = useUsage(store) // re-renders on every refresh
+```
+
+हर प्रदाता प्राप्ति रणनीतियों की एक क्रमबद्ध पाइपलाइन चलाता है (`oauth` → `web` →
+`cli` → `apiToken` → `localProbe`) जो आपके पास पहले से लॉगिन का पुन: उपयोग करती है, इसलिए
+पासवर्ड कभी नहीं माँगे जाते और न सहेजे जाते हैं।

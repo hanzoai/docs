@@ -1,0 +1,100 @@
+---
+title: ZAP protokolü
+description: Zero-Copy App Proto — yapay zeka aracıları arasındaki iletişim için yüksek performanslı Cap'n Proto RPC. MCP'den 10-100 kat daha hızlı, kuantum sonrası güvenlikle.
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# ZAP protokolü
+
+**ZAP** (Zero-Copy App Proto), Cap'n Proto üzerine kurulu, yapay zeka aracıları için yüksek performanslı bir iletişim protokolüdür. Tam MCP uyumluluğu, 10-100 kat performans artışı, kuantum sonrası güvenlik ve 11 programlama dili için yerel destek sağlar.
+
+```bash title="Install"
+curl -fsSL https://hanzo.sh | sh && hanzo mcp launch zap
+```
+
+## Neden ZAP
+
+- **Sıfır kopya performansı** — Cap'n Proto'nun sıfır kopya serileştirmesi ayrıştırma yükünü kaldırır
+- **MCP ile uyumlu** — Model Context Protocol sunucularıyla tam geriye dönük uyumluluk
+- **Kuantum sonrası güvenlik** — Geleceğe dayanıklı güvenlik için ML-KEM ve ML-DSA kriptografisi
+- **Çok dil** — Rust, Go, Python, JavaScript, C++ ve 6 dil daha için yerel bağlamalar
+- **Aracı mutabakatı** — Birden çok aracının yanıtlarını toplamak için yerleşik oylama
+- **W3C DID** — Yerel merkeziyetsiz kimlik desteği
+
+<Cards>
+  <Card
+    title="Genel bakış"
+    description="Mimari ve temel kavramlar"
+    href="/docs/zap/overview"
+  />
+  <Card
+    title="Başlarken"
+    description="ZAP'ı kurun ve ilk aracınızı oluşturun"
+    href="/docs/zap/getting-started"
+  />
+  <Card
+    title="Şema dili"
+    description="Cap'n Proto şema başvurusu"
+    href="/docs/zap/schema"
+  />
+  <Card
+    title="Protokol belirtimi"
+    description="Tel biçimi ve RPC ayrıntıları"
+    href="/docs/zap/protocol"
+  />
+  <Card
+    title="Dil bağlamaları"
+    description="11 dil için SDK belgeleri"
+    href="/docs/zap/bindings"
+  />
+  <Card
+    title="İleri konular"
+    description="Kuantum sonrası kripto, mutabakat, blokzincir"
+    href="/docs/zap/advanced"
+  />
+</Cards>
+
+## Kısa örnek
+
+```c title="zap.capnp"
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+}
+```
+
+```rust title="Rust Example"
+use zap_protocol::{Zap, ClientInfo};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = Zap::connect("zap://localhost:9000").await?;
+    let info = client.init(ClientInfo::new("my-agent", "1.0.0")).await?;
+
+    let tools = client.list_tools().await?;
+    for tool in tools {
+        println!("Tool: {} - {}", tool.name, tool.description);
+    }
+
+    Ok(())
+}
+```
+
+## ZAP ve MCP
+
+| Özellik | MCP | ZAP |
+|---------|-----|-----|
+| Serileştirme | JSON-RPC | Cap'n Proto |
+| Performans | Taban | 10-100 kat daha hızlı |
+| Bellek | Yüksek (ayrıştırma) | Sıfır kopya |
+| Kuantum sonrası | Hayır | ML-KEM, ML-DSA |
+| Eşik imzası | Hayır | Corona |
+| DID desteği | Hayır | W3C DIDs |
+| Aracı mutabakatı | Hayır | Yerleşik oylama |
+
+ZAP, var olan MCP sunucularından pürüzsüz geçiş için **MCP Gateway modunu** içerir.

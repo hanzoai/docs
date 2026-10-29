@@ -1,0 +1,82 @@
+---
+title: "Goexif"
+description: "Декодер EXIF для Go — ответвление Hanzo от goexif (BSD-2-Clause). Модуль: github.com/hanzoai/goexif"
+---
+
+<p align="center"><img src=".github/hero.svg" alt="goexif" width="880"></p>
+
+goexif
+======
+
+[![GoDoc](https://godoc.org/github.com/hanzoai/goexif?status.svg)](https://godoc.org/github.com/hanzoai/goexif)
+
+Декодирует простые данные в кодировке exif и tiff. Всё ещё альфа — без гарантий. Предложения и запросы на включение приветствуются. Функция разделена на два пакета, «exif» и «tiff». Пакет exif зависит от пакета tiff.
+
+Нравится goexif? Чаевые в Bitcoin Cash приветствуются: 1DrU5V37nTXuv4vnRLVpahJEjhdATNgoBh
+
+Чтобы установить, введите в терминале:
+
+```
+go get github.com/hanzoai/goexif/exif
+```
+
+Или, если нужен только пакет tiff:
+
+```
+go get github.com/hanzoai/goexif/tiff
+```
+
+Пример использования:
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/hanzoai/goexif/exif"
+	"github.com/hanzoai/goexif/mknote"
+)
+
+func ExampleDecode() {
+	fname := "sample1.jpg"
+
+	f, err := os.Open(fname)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Optionally register camera makenote data parsing - currently Nikon and
+	// Canon are supported.
+	exif.RegisterParsers(mknote.All...)
+
+	x, err := exif.Decode(f)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	camModel, _ := x.Get(exif.Model) // normally, don't ignore errors!
+	fmt.Println(camModel.StringVal())
+
+	focal, _ := x.Get(exif.FocalLength)
+	numer, denom, _ := focal.Rat2(0) // retrieve first (only) rat. value
+	fmt.Printf("%v/%v", numer, denom)
+
+	// Two convenience functions exist for date/time taken and GPS coords:
+	tm, _ := x.DateTime()
+	fmt.Println("Taken: ", tm)
+
+	lat, long, _ := x.LatLong()
+	fmt.Println("lat, long: ", lat, ", ", long)
+}
+```
+
+<!--golang-->
+[![githalytics.com alpha](https://cruel-carlota.pagodabox.com/5e166f74cdb82b999ccd84e3c4dc4348 "githalytics.com")](http://githalytics.com/rwcarlsen/goexif)
+
+## Ссылки
+
+- [Исходный код](https://github.com/hanzoai/goexif)
+- Лицензия: BSD-2-Clause

@@ -1,0 +1,69 @@
+---
+title: "Cryptographie sur réseaux originale : notre FHE depuis zéro"
+description: "Construire un FHE original sur réseaux en Go — pas le tfhe-rs de Zama, pas SEAL de Microsoft. Optimisation NTT SIMD, stockage chiffré en base via ZapDB, C FFI et liaisons Rust."
+author: Zach Kelling
+date: 2019-08-01
+---
+
+# Cryptographie sur réseaux originale : notre FHE depuis zéro
+
+Microsoft a SEAL. Zama a tfhe-rs. IBM a HElib. Nous n'avons utilisé aucun des trois. Nous avons construit notre propre bibliothèque de chiffrement totalement homomorphe à partir de primitives de réseaux en Go, avec des liaisons C FFI et une interface Rust.
+
+Cela ressemble au syndrome NIH. Ce n'en était pas un.
+
+## Pourquoi écrire son propre FHE
+
+Le chiffrement totalement homomorphe permet de calculer sur des données chiffrées sans les déchiffrer. Le serveur ne voit jamais le clair. Les opérations se font sur des chiffrés, et les résultats, une fois déchiffrés, sont corrects. C'est le graal du calcul chiffré.
+
+Les bibliothèques existantes résolvent ce problème de façons précises, pour des usages précis, avec des compromis de performance précis. SEAL est optimisé pour le modèle de calcul dans le cloud de Microsoft. tfhe-rs est optimisé pour l'évaluation de circuits booléens. HElib vise l'arithmétique par lots.
+
+Aucune n'était conçue pour ce dont nous avions besoin : des opérations de base de données chiffrées sur une chaîne de blocs. Il nous fallait des opérations homomorphes qui tiennent dans les contraintes du stockage sur la chaîne, des coûts de gas et des motifs de requête propres à une base d'état de chaîne de blocs.
+
+## L'implémentation
+
+Le fondement est RLWE (apprentissage sur anneau avec erreurs) sur des anneaux de polynômes. La structure d'anneau donne les propriétés algébriques nécessaires aux opérations homomorphes, et les termes d'erreur fournissent la garantie de sécurité.
+
+**Arithmétique polynomiale** : NTT (transformée en théorie des nombres) pour la multiplication rapide de polynômes. C'est l'équivalent de FFT pour les corps finis. Multiplier naïvement deux polynômes de degré N coûte O(N^2). NTT ramène cela à O(N log N). Pour nos paramètres (N = 4096 ou 8192), c'est la différence entre utilisable et inutilisable.
+
+**Optimisation SIMD** : Les coefficients du polynôme correspondent à des voies SIMD. Un seul chiffré peut encoder des milliers de valeurs en clair dans des emplacements parallèles. Les opérations homomorphes sur le chiffré agissent sur tous les emplacements en même temps. Ce n'est pas du parallélisme GPU : c'est du parallélisme de données inscrit dans la structure algébrique du schéma.
+
+**Amorçage** : Le défi fondamental du FHE. Chaque opération homomorphe ajoute du bruit au chiffré. Après assez d'opérations, le bruit noie le signal et le déchiffrement échoue. L'amorçage rafraîchit le chiffré en évaluant de façon homomorphe la fonction de déchiffrement — chiffrer le déchiffrement. Notre implémentation d'amorçage vise la profondeur de circuit minimale nécessaire aux opérations de base de données, pas le calcul généraliste.
+
+## ZapDB : stockage chiffré en base
+
+ZapDB est la couche applicative au-dessus de la bibliothèque FHE. C'est un magasin clé-valeur chiffré dans lequel :
+
+- Les valeurs sont stockées comme des chiffrés FHE
+- Les requêtes s'exécutent sur des données chiffrées
+- Le serveur de base ne voit jamais les valeurs en clair
+- Les résultats reviennent comme des chiffrés que seul le détenteur de la clé peut déchiffrer
+
+Pour une base de chaîne de blocs, cela signifie que les opérateurs de nœuds peuvent stocker et interroger l'état sans jamais voir les valeurs réelles de l'état. La confidentialité n'est pas une politique : c'est une garantie mathématique.
+
+Le modèle de requête est limité par rapport à une base généraliste. On peut faire des tests d'égalité, des requêtes d'intervalle et des agrégations arithmétiques. On ne peut pas faire du SQL arbitraire. C'est une limite fondamentale des opérations prises en charge par le schéma FHE, pas une fonction manquante.
+
+## C FFI et liaisons Rust
+
+La bibliothèque cœur est en Go. Les boucles internes critiques pour la performance — NTT, réduction polynomiale, échantillonnage du bruit — ont des implémentations C que Go appelle via CGO. Le code C est l'endroit où vivent les intrinsèques SIMD.
+
+Les liaisons Rust enveloppent l'interface C avec des types Rust sûrs. Cela nous donne la bibliothèque Go pour l'intégration du nœud Lux, la bibliothèque C pour la performance brute, et les liaisons Rust pour tout le reste de notre pile écrit en Rust.
+
+```go
+// Go interface
+ct := fhe.Encrypt(pk, plaintext)
+result := fhe.Add(ct1, ct2)
+decrypted := fhe.Decrypt(sk, result)
+// decrypted == plaintext1 + plaintext2
+```
+
+## Pourquoi construire soi-même compte
+
+Quand vous utilisez la bibliothèque FHE de quelqu'un d'autre, vous faites confiance à son choix de paramètres, à sa gestion du budget de bruit, à son RNG, à ses atténuations de canaux auxiliaires. Pour une application où les données chiffrées sont un état financier sur une chaîne de blocs publique — visible de chaque opérateur de nœud dans le monde — la surface d'attaque n'est pas théorique.
+
+Construire depuis zéro, c'est comprendre chaque choix de paramètre. Nous savons pourquoi N vaut 4096 et non 2048 (marge de sécurité). Nous savons pourquoi le module des coefficients est structuré comme une chaîne de premiers (représentation RNS pour une arithmétique modulaire efficace). Nous savons où part le budget de bruit et combien d'opérations nous pouvons enchaîner avant l'amorçage.
+
+Cette compréhension n'est pas dans la documentation d'une bibliothèque. Elle vient de l'implémentation de l'arithmétique des corps, du débogage du circuit d'amorçage et de la mesure empirique de la croissance du bruit. Le code est la compréhension.
+
+---
+
+*zeekay — notre propre cryptographie sur réseaux, notre propre FHE, notre propre base chiffrée. chaque bit compris.*

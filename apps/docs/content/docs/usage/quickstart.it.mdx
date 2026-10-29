@@ -1,0 +1,61 @@
+---
+title: Avvio rapido
+description: Installa @hanzo/usage e leggi l'uso unificato dell'IA in circa 15 righe di TypeScript.
+---
+
+# Avvio rapido
+
+`@hanzo/usage` è il nucleo senza interfaccia dietro Hanzo Usage. Gira in Node,
+Next.js e Tauri, e porta provider integrati per Hanzo, Codex e Claude
+(il registro è estendibile).
+
+## Installare
+
+```bash title="Install"
+npm install @hanzo/usage
+```
+
+## Leggere l'uso
+
+Crea un `UsageStore`, dagli un host per il tuo ambiente e avvia il ciclo di sondaggio.
+Lo store è osservabile: iscriviti per renderizzare, oppure usa l'hook React.
+
+```ts title="usage.ts"
+import { UsageStore, allProviders } from '@hanzo/usage'
+import { nodeHost } from '@hanzo/usage/node' // or createTauriHost from '@hanzo/usage/tauri'
+
+const store = new UsageStore({
+  host: nodeHost,
+  providers: allProviders, // hanzo, codex, claude — registry-extensible
+  historyDir: `${process.env.HOME}/.config/hanzo/usage/history`,
+})
+
+store.start() // 5-minute poll, CodexBar-compatible history files
+store.subscribe(() => console.log(store.getState()))
+```
+
+## In Tauri (Hanzo Desktop, hanzo.app)
+
+Passa i moduli del plugin Tauri: il nucleo resta senza dipendenze per i bundle web e
+Node:
+
+```ts title="tauri-host.ts"
+import * as fs from '@tauri-apps/plugin-fs'
+import { fetch } from '@tauri-apps/plugin-http'
+import { homeDir } from '@tauri-apps/api/path'
+import { createTauriHost } from '@hanzo/usage/tauri'
+
+const host = await createTauriHost({ fs, fetch, homeDir })
+```
+
+## In React
+
+```ts title="Component.tsx"
+import { useUsage } from '@hanzo/usage/react'
+
+const state = useUsage(store) // re-renders on every refresh
+```
+
+Ogni provider esegue una pipeline ordinata di strategie di lettura (`oauth` → `web` →
+`cli` → `apiToken` → `localProbe`) che riusano accessi già presenti, così nessuna
+password viene mai richiesta o conservata.

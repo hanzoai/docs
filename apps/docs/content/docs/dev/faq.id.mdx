@@ -1,0 +1,57 @@
+---
+title: Pertanyaan umum
+description: Pertanyaan yang sering diajukan tentang Hanzo Dev.
+---
+
+## Model mana yang didukung?
+
+Kami menyarankan preset bawaan yang membungkus GPT-5.2 (misalnya `code-gpt-5.2-codex`). Tingkat penalaran bawaan adalah medium — naikkan ke high untuk tugas rumit dengan `/model`.
+
+Anda juga dapat memakai model lain lewat autentikasi API dengan bendera `--model`.
+
+## Bagaimana cara menghentikan Hanzo Dev mengubah berkas saya?
+
+Secara bawaan, Hanzo Dev dapat mengubah berkas di direktori kerja (mode Auto). Untuk mencegah suntingan, jalankan dalam mode hanya-baca:
+
+```bash
+dev --sandbox read-only
+```
+
+Atau ubah tingkat persetujuan di tengah percakapan dengan `/approvals`.
+
+## Apakah ini berjalan di Windows?
+
+Menjalankannya langsung di Windows mungkin berhasil, tetapi tidak didukung secara resmi. Kami menyarankan [Windows Subsystem for Linux (WSL2)](https://learn.microsoft.com/en-us/windows/wsl/install).
+
+## Mengapa Hanzo Dev tidak menemukan agen saya di Windows?
+
+Penemuan agen di Windows dapat terpengaruh oleh PATH dan ekstensi berkas. Solusi:
+
+### Gunakan jalur absolut (disarankan)
+
+```toml
+[[agents]]
+name = "claude"
+command = "C:\\Users\\YourUser\\AppData\\Roaming\\npm\\claude.cmd"
+enabled = true
+```
+
+### Temukan lokasi pemasangan global npm
+
+```cmd
+npm config get prefix
+```
+
+### Pastikan PATH memuat direktori npm
+
+```powershell
+$env:PATH -split ';' | Select-String "npm"
+```
+
+### Periksa ekstensi berkas
+
+Di Windows, Hanzo Dev mencari berkas executable dengan ekstensi `.exe`, `.cmd`, `.bat`, dan `.com`. Sertakan ekstensi yang benar saat memakai jalur absolut.
+
+## Apa hubungannya dengan OpenAI Codex?
+
+Hanzo Dev adalah CLI pengembangan agen yang ditulis di Rust: orkestrasi multiagen, klien dan server MCP, kebijakan eksekusi sandbox, dan integrasi langsung dengan infrastruktur Hanzo AI. Namanya tidak terkait dengan model Codex OpenAI tahun 2021, yang dihentikan pada Maret 2023.

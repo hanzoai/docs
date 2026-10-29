@@ -1,0 +1,59 @@
+---
+title: Programmieragenten
+description: "Führen Sie einen Programmieragenten in Ihrem Repository aus — unseren, Claude Code oder Codex — mit einem Befehl."
+icon: Terminal
+---
+
+`hanzo code` führt einen Programmieragenten gegen das Repository aus, in dem Sie stehen.
+Drei Agenten werden unterstützt, und wer einen nennt, bekommt genau den oder einen klaren
+Fehler — es sind getrennte Produkte, niemals Aliase voneinander.
+
+```bash
+hanzo code                      # Hanzo Dev, the default
+hanzo code claude               # Claude Code
+hanzo code codex                # Codex
+```
+
+Geben Sie die Aufgabe als **ein** Argument in Anführungszeichen:
+
+```bash
+hanzo code "fix the failing test in api/users"
+hanzo code claude "port this module to the new store"
+```
+
+## Den Agenten benennen
+
+Jede Schreibweise unten wird an einer Stelle aufgelöst, sie können also nicht auseinanderlaufen:
+
+| | Positionsargument | Flag | Explizit |
+| --- | --- | --- | --- |
+| Hanzo Dev | `hanzo code dev` | `hanzo code --dev` | `hanzo code --backend dev` |
+| Claude Code | `hanzo code claude` | `hanzo code --claude` | `hanzo code --backend claude` |
+| Codex | `hanzo code codex` | `hanzo code --codex` | `hanzo code --backend codex` |
+
+`hanzo dev` ist eine Kurzform auf oberster Ebene für `hanzo code dev`. `claude-code` und
+`cc` sind zulässige Schreibweisen von `claude`.
+
+Zweimal benennen wird abgelehnt statt aufgelöst — `hanzo code claude --codex`
+sagt Ihnen, ihn nur einmal zu nennen.
+
+## Freigaben
+
+Der Agent gibt seine eigenen Schritte standardmäßig frei. Zwei Auswege, in steigender
+Reihenfolge dessen, was sie aufgeben:
+
+```bash
+hanzo code --ask            # the backend asks before each step
+hanzo code --no-sandbox     # bypass approvals AND drop the sandbox
+```
+
+`--safe` ist ein Synonym für `--ask`, und beides gewinnt gegen `autoApprove` in
+`~/.hanzo/settings.json`.
+
+## Das andere `hanzo code`
+
+`hanzo code context`, `hanzo code file` und `hanzo code index` sind etwas anderes, das das Wort teilt: die [Code-Intelligenz-API](/docs/openapi/code) — Suche und Symbole über Ihre indexierten Repositories,
+für Sie und für Agenten. Sie nehmen kein Backend und führen keinen Agenten aus.
+
+Die Regel ist das erste Argument: ein Wort, das ein Backend nennt, wählt eines, und
+alles andere ist eine Aufgabe oder ein Unterbefehl.

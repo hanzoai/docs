@@ -1,0 +1,45 @@
+---
+title: Mimari
+description: Hanzo Cloud'un bugün nasıl kurulduğu ve evrildiği eklenti platformu yönü.
+index: true
+---
+
+# Mimari
+
+Bu bölüm Hanzo Cloud'un nasıl bir araya geldiğini anlatır — bugün neyin çalıştığını ve platformun nereye gittiğini. İkisini açıkça ayırırız: bu belgelerin başka yerlerindeki ürün sayfaları yayınlanmış davranışı anlatır, buradaki platform yönü ise [Hanzo İyileştirme Önerileri (HIP)](https://hips.hanzo.ai) üzerinden onaylanan tasarım çalışmasıdır. Hepsinin ardındaki ilkeler [Mühendislik Felsefesi](/docs/architecture/philosophy) sayfasındadır.
+
+## Bugün
+
+Hanzo Cloud **tek bir Go ikili dosyasıdır**. `api.hanzo.ai` üzerindeki tek bir API anahtarı her yeteneğe ulaşır — yapay zekâ çıkarımı, kimlik, sırlar, depolama, ticaret ve daha fazlası — çünkü bu yetenekler **o tek ikili dosyaya derlenmiş yerel alt sistemlerdir** (`cloud`, `CGO_ENABLED=0`, statik). Her biri `/v1/<capability>` altında sunulur ve ikili dosyanın çıkardığı tek belgeyle, [hanzoai/cloud](https://github.com/hanzoai/cloud) deposunun `openapi.yaml` dosyasıyla tanımlanır. Giriş ve yönlendirme de yerel alt sistemlerdir; ikili dosya ayrı bir ağ geçidinin ya da giriş katmanının arkasında durmak yerine kendi giriş noktasıdır. Bu tek ikili dosyada birleşme, birleşik bulut ikili dosyasıdır (HIP-0106) ve büyük ölçüde yayınlanmıştır — [kendiniz çalıştırabileceğiniz ağı](/docs/network) da aynı dosya çalıştırır.
+
+Her yetenek tam olarak **dokuz alanın** birine girer. [Başvuru](/docs/openapi) onları sayar ve hepsini listeler:
+
+<Cards>
+  <Card title="Kimlik ve güven" href="/docs/openapi/iam" description="Kim olduğunuz, neye dokunabileceğiniz, sırların nerede durduğu." />
+  <Card title="Zekâ" href="/docs/openapi/ai" description="Modeller, ajanlar, değerlendirme — bulutun aklı." />
+  <Card title="Veri" href="/docs/openapi/base" description="Her yeteneğin yazdığı ve okuduğu depolar." />
+  <Card title="Akışlar" href="/docs/openapi/pubsub" description="İletiler, dayanıklı görevler, eşzamansız orkestrasyon." />
+  <Card title="Gözlemlenebilirlik" href="/docs/openapi/o11y" description="Her şeyi görmek — telemetri, analitik, kullanım." />
+  <Card title="Ticaret" href="/docs/openapi/commerce" description="Ekonomi — ölçmek, fiyatlamak, faturalamak, ödüllendirmek." />
+  <Card title="Platform" href="/docs/openapi/platform" description="Bulutun dokusu — dağıtmak, sağlamak, yönlendirmek, barındırmak." />
+  <Card title="Uygulamalar" href="/docs/openapi/git" description="Yukarıdakilerin tümü üzerine kurulu, kullanıcıya bakan yüzeyler." />
+  <Card title="Zincir" href="/docs/openapi/web3" description="Bulutun konuştuğu ağlar — saymak, çağırmak, bakiyeleri okumak." />
+</Cards>
+
+Birkaç ürün hâlâ kendi alanlarında bağımsız uygulama olarak çalışır — örneğin [Sign](/docs/openapi) (`esign.hanzo.ai`), [Dataroom](/docs/openapi) (`dataroom.hanzo.ai`) ve [Cap Table](/docs/openapi) (`captable.hanzo.ai`) — ve Hanzo IAM üzerinden kimlik doğrular. Bunlar kalan bağımsız uygulamalardır; tek çalışma zamanına alınmaktadır ve amaçlanan son durum değildir.
+
+## Yön
+
+Platform, bu hizmetleri çalıştırmak için tek bir modele yaklaşıyor: **uzlaşıya dayalı bir eklenti platformu**. Her hizmet, tek bir bulut çalışma zamanına kaydedilen bir *eklentidir* ve küçük bir uzlaşı denetim düzlemi her eklentinin yazıcılarının nerede yaşayacağına karar verir. Bu bir tasarım yönüdür — taslak öneri olarak belirtilmiştir, henüz yayınlanmış bir çalışma zamanı değildir.
+
+<Cards>
+  <Card title="Mühendislik felsefesi" href="/docs/architecture/philosophy" description="V8'in ardındaki ilkeler: bir şey ve tek yol, iç içeliği çözmek, dil dikişi teldir, FFI değil." />
+  <Card title="Ağ" href="/docs/network" description="Kendiniz çalıştırabileceğiniz yapay zekâ bulutu — tek ikili dosya, kendi GPU'nuz, ağ buluttur." />
+  <Card title="Uzlaşıya dayalı eklenti platformu" href="/docs/architecture/plugin-platform" description="HIP-0125 yönü: birim olarak eklentiler, yerleşim üzerinde uzlaşı, ZAP'a özgü yazım." />
+  <Card title="ZAP protokolü" href="/docs/zap" description="Zero-Copy App Proto — eklentilerin varsayılan olarak kullandığı yüksek performanslı taşıma." />
+  <Card title="Hanzo İyileştirme Önerileri" href="https://hips.hanzo.ai" description="Platform mimarisinin belirtildiği ve onaylandığı yer." />
+</Cards>
+
+<Callout type="info">
+Eklenti platformu **HIP-0125 (Taslak)** içinde anlatılır. İlgili bir dizi önerinin üzerine kurulur — süreç içi uzantı çalışma zamanı (HIP-0105), birleşik bulut ikili dosyası (HIP-0106), akış halinde çoğaltma (HIP-0107) ve ZAP taşıması (HIP-0114). Taslak öneriler değişebilir; [eklenti platformu sayfasındaki](/docs/architecture/plugin-platform) hiçbir şey yayınlanmış bir kullanıcı özelliği değildir.
+</Callout>

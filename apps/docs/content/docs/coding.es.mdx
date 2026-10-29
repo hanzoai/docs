@@ -1,0 +1,59 @@
+---
+title: Agentes de programación
+description: "Ejecuta un agente de programación en tu repositorio — el nuestro, Claude Code o Codex — con un solo comando."
+icon: Terminal
+---
+
+`hanzo code` ejecuta un agente de programación contra el repositorio en el que estás.
+Se admiten tres agentes, y nombrar uno te da ese agente o un fallo claro:
+son productos separados, nunca alias unos de otros.
+
+```bash
+hanzo code                      # Hanzo Dev, the default
+hanzo code claude               # Claude Code
+hanzo code codex                # Codex
+```
+
+Dale una tarea como **un** argumento, entre comillas:
+
+```bash
+hanzo code "fix the failing test in api/users"
+hanzo code claude "port this module to the new store"
+```
+
+## Nombrar el agente
+
+Todas las grafías de abajo se resuelven en un solo sitio, así que no pueden desviarse:
+
+| | Posicional | Indicador | Explícito |
+| --- | --- | --- | --- |
+| Hanzo Dev | `hanzo code dev` | `hanzo code --dev` | `hanzo code --backend dev` |
+| Claude Code | `hanzo code claude` | `hanzo code --claude` | `hanzo code --backend claude` |
+| Codex | `hanzo code codex` | `hanzo code --codex` | `hanzo code --backend codex` |
+
+`hanzo dev` es un atajo de primer nivel para `hanzo code dev`. `claude-code` y
+`cc` son grafías aceptadas de `claude`.
+
+Nombrarlo dos veces se rechaza en lugar de resolverse: `hanzo code claude --codex`
+te pide que lo nombres una sola vez.
+
+## Aprobaciones
+
+El agente aprueba sus propios pasos de forma automática. Hay dos salidas, en orden
+creciente de lo que ceden:
+
+```bash
+hanzo code --ask            # the backend asks before each step
+hanzo code --no-sandbox     # bypass approvals AND drop the sandbox
+```
+
+`--safe` es sinónimo de `--ask`, y cualquiera de los dos gana a `autoApprove` en
+`~/.hanzo/settings.json`.
+
+## El otro `hanzo code`
+
+`hanzo code context`, `hanzo code file` y `hanzo code index` son otra cosa que comparte la palabra: son la [API de inteligencia de código](/docs/openapi/code), búsqueda y símbolos en tus repositorios indexados,
+para ti y para los agentes. No toman un backend y no ejecutan ningún agente.
+
+La regla es el primer argumento: una palabra que nombra un backend selecciona uno, y
+cualquier otra cosa es una tarea o un subcomando.

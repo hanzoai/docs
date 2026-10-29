@@ -1,0 +1,40 @@
+---
+icon: LayoutDashboard
+title: Konsol
+description: Konsol cloud terpadu untuk Hanzo Cloud -- kelola setiap produk, kunci, dan organisasi dari satu aplikasi di console.hanzo.ai.
+---
+
+# Konsol
+
+Konsol Hanzo adalah permukaan kendali terpadu untuk Hanzo Cloud -- aplikasi yang sedang Anda lihat. Ia mengumpulkan setiap produk cloud di satu tempat: identitas, kunci, rahasia, model, penagihan, deployment, dan dasbor, semuanya dalam cakupan organisasi Anda.
+
+## Satu aplikasi untuk setiap produk
+
+Konsol dirender dari satu katalog produk, jadi setiap layanan Hanzo Cloud dapat dijangkau dari navigasi, ringkasan, dan palet perintah yang sama. Setiap produk adalah modul asli -- bukan tautan ke luar -- yang ditopang API `/v1` yang sesungguhnya:
+
+- **AI** -- model, taman bermain, penyedia, embeddings
+- **Keamanan** -- [IAM](/docs/openapi/iam), [KMS](/docs/openapi/kms), [Authz](/docs/openapi/authz), [MPC](/docs/openapi), [Zero Trust](/docs/openapi/network)
+- **Amati** -- [dasbor](/docs/openapi/o11y), biaya, [penagihan](/docs/openapi/billing), status
+- **Deploy** -- proyek, lingkungan, fungsi, kluster
+
+## Masuk dan cakupan
+
+Konsol masuk melalui Hanzo IAM di [hanzo.id](https://hanzo.id) sebagai aplikasi `hanzo-cloud`. Sesi Anda tercakup pada sebuah **organisasi**, dan admin global dapat mengganti cakupan ke organisasi mana pun; data dicakup ulang di tempat sementara identitas merek tetap. Lihat [IAM](/docs/openapi/iam) dan [Organisasi](/docs/openapi/iam).
+
+## Cara ia dikirim
+
+Konsol adalah aplikasi satu halaman yang disematkan (`go:embed`) langsung ke biner Hanzo Cloud dan disajikan di `console.hanzo.ai`. Ia adalah klien murni di atas backend `/v1` terpadu -- tidak menyimpan basis data sendiri; setiap tampilan adalah data nyata dari API layanan.
+
+```bash
+# The console calls the same API you can call directly, with the same key
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer sk-..."
+```
+
+## Terkait
+
+- [IAM](/docs/openapi/iam) -- identitas dan cakupan organisasi di balik setiap tampilan konsol
+- [Kunci API](/docs/api-keys) -- buat kunci dari konsol untuk API
+- [Dasbor](/docs/openapi/o11y) -- permukaan analitik dan observabilitas
+- [Penagihan](/docs/openapi/billing) -- saldo, penggunaan, dan faktur
+- [API](/docs/openapi) -- permukaan `/v1` yang sama yang dirender konsol

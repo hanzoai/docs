@@ -1,0 +1,215 @@
+---
+icon: Rocket
+title: Schnellstart
+description: Installiere die CLI, melde dich an und mach den ersten Aufruf — und sieh denselben Aufruf als SDK-Methode, rohes HTTP und MCP-Werkzeug.
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs'
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Nach dieser Seite hast du eine funktionierende Anmeldung und einen Aufruf, der geantwortet hat.**
+
+Hanzo ist eine Cloud hinter einem Schlüssel. Jede Fähigkeit — Inferenz, Identität,
+Speicher, Geld, Agenten — antwortet unter `https://api.hanzo.ai`, und CLI,
+SDKs und MCP-Werkzeuge entstehen aus derselben Beschreibung. Nichts pro Dienst
+zu verdrahten: einmal einen Schlüssel, und alles ist erreichbar.
+
+## 1. Installieren
+
+<Tabs items={['npm', 'Script', 'Homebrew', 'Aus dem Quellcode']}>
+<Tab value="npm">
+```bash
+npm i -g hanzo
+```
+
+`hanzo` ist CLI und Client in einer Installation.
+</Tab>
+<Tab value="Script">
+```bash
+curl -fsSL https://hanzo.sh | sh
+```
+
+Installiert nach `~/.local/bin`. `https://hanzo.sh/cli` installiert nur die CLI.
+</Tab>
+<Tab value="Homebrew">
+```bash
+brew install hanzoai/tap/hanzo
+```
+</Tab>
+<Tab value="Aus dem Quellcode">
+```bash
+git clone https://github.com/hanzoai/cli && cd cli && cargo install --path .
+```
+</Tab>
+</Tabs>
+
+```bash
+hanzo version
+```
+
+## 2. Anmelden
+
+```bash
+hanzo auth login
+```
+
+Das öffnet einen Browser gegen [hanzo.id](https://hanzo.id), Hanzos
+Identitätsanbieter, und speichert die Anmeldung lokal. `hanzo auth show` zeigt,
+wer du bist; `hanzo auth list` listet jede Identität auf dieser Maschine und
+`hanzo auth use` wechselt zwischen ihnen.
+
+Auf einem Server prägst du einen Schlüssel, statt eine Person anzumelden: **console.hanzo.ai →
+API-Schlüssel**. Ein geheimer Schlüssel bist *du*, also gehört er auf einen Server und nie
+in einen Browser — [Authentifizierung](/docs/api-keys) ist die ganze Regel.
+
+```bash
+export HANZO_API_KEY=sk-...
+```
+
+## 3. Modelle auflisten
+
+Der Katalog der Modelle, die das Gateway gerade ausliefert. Es ist ein Lesen, es braucht
+nur den Schlüssel, und es ist dieselbe Operation auf allen vier Oberflächen.
+
+<Tabs items={['CLI', 'SDK', 'HTTP', 'MCP']}>
+<Tab value="CLI">
+```bash
+hanzo models list
+```
+</Tab>
+<Tab value="SDK">
+<Tabs items={['.ts', '.py', '.go', '.rs', '.swift', '.kt']}>
+<Tab value=".ts">
+```bash
+npm i hanzo
+```
+
+```ts
+import { Hanzo } from 'hanzo'
+
+const hanzo = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+const models = await hanzo.models.list()
+```
+</Tab>
+<Tab value=".py">
+```bash
+pip install hanzo
+```
+
+```python
+from hanzo import Hanzo
+
+hanzo = Hanzo(api_key=os.environ["HANZO_API_KEY"])
+models = hanzo.models.list()
+```
+</Tab>
+<Tab value=".go">
+```bash
+go get github.com/hanzoai/go-sdk
+```
+
+```go
+client := hanzo.NewClient(hanzo.WithAPIKey(os.Getenv("HANZO_API_KEY")))
+models, err := client.Models.List(ctx)
+```
+</Tab>
+<Tab value=".rs">
+```bash
+cargo add hanzo
+```
+
+```rust
+let hanzo = hanzo::Client::from_env()?;
+let models = hanzo.models().list().await?;
+```
+</Tab>
+<Tab value=".swift">
+```swift
+// Package.swift: .package(url: "https://github.com/hanzoai/swift-sdk", from: "1.0.0")
+let hanzo = Hanzo(apiKey: ProcessInfo.processInfo.environment["HANZO_API_KEY"]!)
+let models = try await hanzo.models.list()
+```
+</Tab>
+<Tab value=".kt">
+```kotlin
+// build.gradle.kts: implementation("ai.hanzo:sdk:latest.release")
+val hanzo = Hanzo(apiKey = System.getenv("HANZO_API_KEY"))
+val models = hanzo.models.list()
+```
+</Tab>
+</Tabs>
+
+Alle entstehen aus derselben API-Beschreibung, deshalb stimmen die
+Methodennamen über die Sprachen hinweg. [C++](/docs/sdks/cpp) ist das, das noch
+ankommt.
+</Tab>
+<Tab value="HTTP">
+```bash
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+</Tab>
+<Tab value="MCP">
+```bash
+curl -X POST https://api.hanzo.ai/v1/mcp \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+Ein Endpunkt, ein Werkzeug pro Fähigkeit. `tools/call` nennt Fähigkeit und
+Operation; `describe` erklärt die Eingabe jeder Operation.
+</Tab>
+</Tabs>
+
+Das ist eine API aus vier Blickwinkeln, und die Reiter oben sind der ganze
+Unterschied. Wähle den, in dem du schreiben wirst:
+
+- **[CLI](/docs/cli)** — jede Fähigkeit als Befehlsgruppe, eine Seite je Fähigkeit.
+- **[SDKs](/docs/sdks)** — Python, TypeScript, Go, Rust, C++, Swift und Kotlin,
+  aus derselben Beschreibung wie CLI und Werkzeuge.
+- **[MCP](/docs/mcp)** — ein Endpunkt, an den sich ein Agent hängt; [die Werkzeuge](/docs/mcp-tools)
+  stehen eines je Fähigkeit.
+
+HTTP braucht keine Seite: es ist `https://api.hanzo.ai` und der Schlüssel, den du gerade exportiert hast.
+
+## 4. Eine Vervollständigung senden
+
+Das ist der erste Schritt, der Guthaben verbraucht; alles darüber lässt sich kostenlos ausführen.
+
+```bash
+hanzo chat completions --model zen-1 --messages '[{"role":"user","content":"hello"}]'
+```
+
+Lies danach, was er verbraucht hat:
+
+```bash
+hanzo billing balance
+hanzo usage summary
+```
+
+[Guthaben und Abrechnung](/docs/credits) erklärt, was ein Credit ist und was bei
+null passiert; [Preise](/docs/pricing) ist der Satz für jedes Modell und Werkzeug.
+
+## 5. Die Cloud lokal starten
+
+Dasselbe Binary, das `api.hanzo.ai` bedient, läuft auf deiner Maschine:
+
+```bash
+hanzo up cloud
+```
+
+Nacktes `hanzo up` ist dasselbe — `cloud` ist der Standard. Nenne einen Dienst, um
+ihn allein zu starten: `hanzo up iam`, `hanzo up kms`, `hanzo up gateway`, `hanzo up
+storage`, `hanzo up pubsub`. Siehe [Selbst betreiben](/docs/network), was das
+bedeutet und was es braucht.
+
+## Wohin als Nächstes
+
+- **[Sechs Abläufe, vier Oberflächen](/docs/guides)** — Hallo, Chat, Geld, Speicher, Agent,
+  Werkzeuge. Das ganze Produkt im Kleinen, jeder Weg auf vier Arten.
+- **[Konzepte](/docs/concepts)** — Organisationen, Projekte, Sandboxes, Agenten, Gedächtnis und
+  Workflows. Einmal lesen, und der Rest der API erklärt sich.
+- **[Fähigkeiten](/docs/openapi)** — alle, gruppiert. Jede Seite sagt, was
+  die Fähigkeit ist, wie du sie von allen vier Oberflächen erreichst, und verlinkt ihre
+  Spezifikation.

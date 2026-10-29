@@ -1,0 +1,45 @@
+---
+title: Kiến trúc
+description: Hanzo Cloud được dựng thế nào hôm nay, và hướng nền tảng plugin mà nó đang tiến tới.
+index: true
+---
+
+# Kiến trúc
+
+Phần này giải thích Hanzo Cloud được ghép thế nào — cái gì đang chạy hôm nay, và nền tảng đang đi về đâu. Chúng tôi giữ hai việc tách bạch: các trang sản phẩm ở chỗ khác trong tài liệu này mô tả hành vi đã phát hành, còn hướng nền tảng ở đây là công việc thiết kế được thông qua [Đề xuất cải tiến Hanzo (HIP)](https://hips.hanzo.ai). Các nguyên tắc đứng sau tất cả nằm ở [Triết lý kỹ thuật](/docs/architecture/philosophy).
+
+## Hôm nay
+
+Hanzo Cloud là **một tệp nhị phân Go duy nhất**. Một khóa API tại `api.hanzo.ai` chạm tới mọi năng lực — suy luận AI, danh tính, bí mật, lưu trữ, thương mại, và hơn thế — vì những năng lực đó là **hệ thống con gốc được biên dịch vào đúng tệp đó** (`cloud`, `CGO_ENABLED=0`, tĩnh). Mỗi năng lực được phục vụ dưới `/v1/<capability>` và được mô tả bởi tài liệu duy nhất mà tệp phát ra, `openapi.yaml` của [hanzoai/cloud](https://github.com/hanzoai/cloud). Ingress và định tuyến cũng là hệ thống con gốc, nên tệp chính là điểm vào của nó, thay vì đứng sau một cổng hoặc một tầng ingress riêng. Việc gom vào một tệp này là tệp đám mây thống nhất (HIP-0106), đã phát hành phần lớn — và chính tệp đó chạy [mạng mà bạn có thể tự vận hành](/docs/network).
+
+Mỗi năng lực thuộc đúng một trong **chín miền**. [Tài liệu tham chiếu](/docs/openapi) đếm và liệt kê tất cả:
+
+<Cards>
+  <Card title="Danh tính và tin cậy" href="/docs/openapi/iam" description="Bạn là ai, được chạm vào gì, bí mật sống ở đâu." />
+  <Card title="Trí tuệ" href="/docs/openapi/ai" description="Mô hình, tác nhân, đánh giá — trí tuệ của đám mây." />
+  <Card title="Dữ liệu" href="/docs/openapi/base" description="Các kho mà mọi năng lực ghi vào và đọc ra." />
+  <Card title="Luồng" href="/docs/openapi/pubsub" description="Nhắn tin, tác vụ bền, điều phối bất đồng bộ." />
+  <Card title="Khả năng quan sát" href="/docs/openapi/o11y" description="Thấy mọi thứ — đo từ xa, phân tích, mức dùng." />
+  <Card title="Thương mại" href="/docs/openapi/commerce" description="Nền kinh tế — đo, định giá, lập hóa đơn, thưởng." />
+  <Card title="Nền tảng" href="/docs/openapi/platform" description="Kết cấu đám mây — triển khai, cấp phát, định tuyến, lưu trú." />
+  <Card title="Ứng dụng" href="/docs/openapi/git" description="Các bề mặt hướng tới người dùng, dựng trên tất cả những gì trên đây." />
+  <Card title="Chuỗi" href="/docs/openapi/web3" description="Các mạng mà đám mây nói chuyện — liệt kê, gọi, đọc số dư." />
+</Cards>
+
+Một vài sản phẩm vẫn chạy như ứng dụng độc lập trên miền riêng — ví dụ [Sign](/docs/openapi) (`esign.hanzo.ai`), [Dataroom](/docs/openapi) (`dataroom.hanzo.ai`) và [Cap Table](/docs/openapi) (`captable.hanzo.ai`) — và xác thực qua Hanzo IAM. Đó là các ứng dụng độc lập còn lại, đang được hấp thụ vào một runtime, không phải trạng thái cuối dự kiến.
+
+## Hướng đi
+
+Nền tảng hội tụ về một mô hình để chạy các dịch vụ này: **nền tảng plugin dựa trên đồng thuận**, trong đó mỗi dịch vụ là một *plugin* đăng ký vào một runtime đám mây duy nhất, và một mặt phẳng điều khiển đồng thuận nhỏ quyết định nơi các bên ghi của từng plugin sống. Đây là hướng thiết kế — được nêu như đề xuất nháp, chưa phải runtime đã phát hành.
+
+<Cards>
+  <Card title="Triết lý kỹ thuật" href="/docs/architecture/philosophy" description="Các nguyên tắc sau V8: một việc và một cách, gỡ rối, đường nối ngôn ngữ là dây chứ không phải FFI." />
+  <Card title="Mạng" href="/docs/network" description="Đám mây AI bạn tự chạy — một tệp nhị phân, GPU của bạn, mạng chính là đám mây." />
+  <Card title="Nền tảng plugin dựa trên đồng thuận" href="/docs/architecture/plugin-platform" description="Hướng HIP-0125: plugin là đơn vị, đồng thuận về chỗ đặt, soạn thảo gốc ZAP." />
+  <Card title="Giao thức ZAP" href="/docs/zap" description="Zero-Copy App Proto — vận chuyển hiệu năng cao mà plugin dùng theo mặc định." />
+  <Card title="Đề xuất cải tiến Hanzo" href="https://hips.hanzo.ai" description="Nơi kiến trúc nền tảng được nêu và thông qua." />
+</Cards>
+
+<Callout type="info">
+Nền tảng plugin được mô tả trong **HIP-0125 (Nháp)**. Nó dựng trên một tập đề xuất liên quan — runtime mở rộng trong tiến trình (HIP-0105), tệp đám mây thống nhất (HIP-0106), sao chép theo luồng (HIP-0107) và vận chuyển ZAP (HIP-0114). Đề xuất nháp có thể đổi; không có gì trên [trang nền tảng plugin](/docs/architecture/plugin-platform) là tính năng người dùng đã phát hành.
+</Callout>

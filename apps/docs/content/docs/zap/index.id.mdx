@@ -1,0 +1,100 @@
+---
+title: Protokol ZAP
+description: Zero-Copy App Proto — RPC Cap'n Proto berkinerja tinggi untuk komunikasi agen AI. 10–100 kali lebih cepat dari MCP, dengan keamanan pascakuantum.
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# Protokol ZAP
+
+**ZAP** (Zero-Copy App Proto) adalah protokol komunikasi berkinerja tinggi untuk agen AI yang dibangun di atas Cap'n Proto. Ia memberi kompatibilitas MCP penuh, peningkatan kinerja 10–100 kali, keamanan pascakuantum, dan dukungan asli untuk 11 bahasa pemrograman.
+
+```bash title="Install"
+curl -fsSL https://hanzo.sh | sh && hanzo mcp launch zap
+```
+
+## Mengapa ZAP
+
+- **Kinerja tanpa salin** — Serialisasi tanpa salin dari Cap'n Proto menghilangkan biaya penguraian
+- **Kompatibel dengan MCP** — Kompatibilitas mundur penuh dengan server Model Context Protocol
+- **Keamanan pascakuantum** — Kriptografi ML-KEM dan ML-DSA agar tetap aman di masa depan
+- **Banyak bahasa** — Pengikatan asli untuk Rust, Go, Python, JavaScript, C++, dan 6 lainnya
+- **Konsensus agen** — Pemungutan suara bawaan untuk menggabungkan jawaban banyak agen
+- **W3C DID** — Dukungan asli untuk identitas terdesentralisasi
+
+<Cards>
+  <Card
+    title="Ikhtisar"
+    description="Arsitektur dan konsep inti"
+    href="/docs/zap/overview"
+  />
+  <Card
+    title="Memulai"
+    description="Pasang ZAP dan buat agen pertama Anda"
+    href="/docs/zap/getting-started"
+  />
+  <Card
+    title="Bahasa skema"
+    description="Referensi skema Cap'n Proto"
+    href="/docs/zap/schema"
+  />
+  <Card
+    title="Spesifikasi protokol"
+    description="Format kabel dan rincian RPC"
+    href="/docs/zap/protocol"
+  />
+  <Card
+    title="Pengikatan bahasa"
+    description="Dokumentasi SDK untuk 11 bahasa"
+    href="/docs/zap/bindings"
+  />
+  <Card
+    title="Topik lanjutan"
+    description="Kripto pascakuantum, konsensus, blockchain"
+    href="/docs/zap/advanced"
+  />
+</Cards>
+
+## Contoh singkat
+
+```c title="zap.capnp"
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+}
+```
+
+```rust title="Rust Example"
+use zap_protocol::{Zap, ClientInfo};
+
+#[tokio::main]
+async fn main() -> Result<()> {
+    let client = Zap::connect("zap://localhost:9000").await?;
+    let info = client.init(ClientInfo::new("my-agent", "1.0.0")).await?;
+
+    let tools = client.list_tools().await?;
+    for tool in tools {
+        println!("Tool: {} - {}", tool.name, tool.description);
+    }
+
+    Ok(())
+}
+```
+
+## ZAP dibanding MCP
+
+| Fitur | MCP | ZAP |
+|---------|-----|-----|
+| Serialisasi | JSON-RPC | Cap'n Proto |
+| Kinerja | Garis dasar | 10–100 kali lebih cepat |
+| Memori | Tinggi (penguraian) | Tanpa salin |
+| Pascakuantum | Tidak | ML-KEM, ML-DSA |
+| Tanda tangan ambang | Tidak | Corona |
+| Dukungan DID | Tidak | W3C DIDs |
+| Konsensus agen | Tidak | Pemungutan suara bawaan |
+
+ZAP menyertakan **mode Gateway MCP** agar migrasi dari server MCP yang sudah ada berjalan mulus.

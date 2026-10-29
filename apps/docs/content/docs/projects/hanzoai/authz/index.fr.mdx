@@ -1,0 +1,38 @@
+---
+title: "Authz"
+description: "Hanzo Authz — bibliothèque de contrôle d'accès pour Go : application des politiques ACL, RBAC et ABAC"
+---
+
+La bibliothèque de contrôle d'accès qu'utilise chaque service Go de Hanzo pour lire un jeton et décider si l'appelant peut faire une action : vérification de JWT, déclarations et calcul des autorisations sur les organisations, les applications et les chemins.
+
+## Installation
+
+```bash
+go get github.com/hanzoai/authz
+```
+
+## Utilisation
+
+Vérifiez un jeton — c'est la même bibliothèque avec laquelle IAM signe, donc un lecteur ici ne peut pas être en désaccord avec l'émetteur sur ce qui a été signé :
+
+```go
+claims, err := authz.Verify(token, keys, []string{"https://hanzo.id"})
+```
+
+`keys` est un `func(kid string) []crypto.PublicKey`. Le matériel de clés est une **entrée** : récupérer un JWKS et le mettre en cache est de l'E/S, et ce paquet n'en fait aucune — la périphérie possède la récupération et transmet le résultat. Un `Keys` nil, ou un qui ne résout rien, ne vérifie rien.
+
+Ensuite, `Claims` porte l'identité de l'appelant, les appartenances aux organisations et les autorisations d'applications ; `ParsePath` et `VerbOf` transforment une requête en la paire sur laquelle le calcul des autorisations décide. `IsAPIKey` distingue une clé `hk-` d'un JWT.
+
+Seuls les algorithmes que produit le signataire d'IAM sont acceptés — RSA et EC, plus ML-DSA-65 pour un certificat post-quantique. `none` et HMAC sont rejetés.
+
+## Documentation
+
+[`LLM.md`](LLM.md) pour la disposition. Les paquets `edge/` et `serve/` tiennent les pièces qui ont besoin d'E/S — la récupération des clés et la surface HTTP — et restent hors du paquet feuille exprès.
+
+## Licence
+
+Voir [LICENSE](LICENSE).
+
+## Liens
+
+- [Source](https://github.com/hanzoai/authz)

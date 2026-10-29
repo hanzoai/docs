@@ -1,0 +1,69 @@
+---
+title: "Kriptografi kisi asli: FHE kami dari nol"
+description: "Membangun FHE berbasis kisi yang asli di Go — bukan tfhe-rs milik Zama, bukan SEAL milik Microsoft. Optimisasi NTT SIMD, penyimpanan basis data terenkripsi lewat ZapDB, C FFI dan ikatan Rust."
+author: Zach Kelling
+date: 2019-08-01
+---
+
+# Kriptografi kisi asli: FHE kami dari nol
+
+Microsoft punya SEAL. Zama punya tfhe-rs. IBM punya HElib. Kami tidak memakai satupun. Kami membangun pustaka enkripsi homomorfik penuh sendiri dari primitif kisi di Go, dengan ikatan C FFI dan antarmuka Rust.
+
+Ini terdengar seperti sindrom NIH. Bukan itu.
+
+## Mengapa menulis FHE sendiri
+
+Enkripsi homomorfik penuh memungkinkan perhitungan atas data terenkripsi tanpa mendekripsinya. Peladen tidak pernah melihat teks polos. Operasi berjalan pada teks sandi, dan hasilnya, setelah didekripsi, benar. Inilah graal dari komputasi terenkripsi.
+
+Pustaka yang ada menyelesaikan soal ini dengan cara tertentu, untuk penggunaan tertentu, dengan pertukaran kinerja tertentu. SEAL dioptimalkan untuk model komputasi awan Microsoft. tfhe-rs dioptimalkan untuk evaluasi sirkuit boolean. HElib membidik aritmetika batch.
+
+Tidak satu pun dirancang untuk yang kami butuhkan: operasi basis data terenkripsi di sebuah blockchain. Kami butuh operasi homomorfik yang muat dalam batas penyimpanan di rantai, biaya gas, dan pola kueri khusus dari basis data keadaan blockchain.
+
+## Implementasinya
+
+Landasannya adalah RLWE (pembelajaran pada gelanggang dengan galat) di atas gelanggang polinomial. Struktur gelanggang memberi sifat aljabar yang dibutuhkan operasi homomorfik, dan suku galat memberi jaminan keamanan.
+
+**Aritmetika polinomial**: NTT (transformasi teori bilangan) untuk perkalian polinomial yang cepat. Ini padanan FFT untuk lapangan hingga. Mengalikan dua polinomial berderajat N secara naif adalah O(N^2). NTT menurunkannya ke O(N log N). Pada parameter kami (N = 4096 atau 8192), itulah beda antara layak pakai dan tidak layak.
+
+**Optimisasi SIMD**: Koefisien polinomial jatuh ke lajur SIMD. Satu teks sandi dapat mengkodekan ribuan nilai teks polos di slot paralel. Operasi homomorfik pada teks sandi bekerja pada semua slot sekaligus. Ini bukan paralelisme GPU — ini paralelisme data yang tertanam pada struktur aljabar skema.
+
+**Bootstrapping**: Tantangan dasar FHE. Setiap operasi homomorfik menambah derau pada teks sandi. Setelah cukup banyak operasi, derau menelan sinyal dan dekripsi gagal. Bootstrapping menyegarkan teks sandi dengan mengevaluasi fungsi dekripsi secara homomorfik — mengenkripsi dekripsi itu sendiri. Implementasi bootstrapping kami membidik kedalaman sirkuit minimum yang dibutuhkan operasi basis data, bukan komputasi umum.
+
+## ZapDB: penyimpanan basis data terenkripsi
+
+ZapDB adalah lapisan aplikasi di atas pustaka FHE. Ini penyimpanan kunci-nilai terenkripsi di mana:
+
+- Nilai disimpan sebagai teks sandi FHE
+- Kueri berjalan pada data terenkripsi
+- Peladen basis data tidak pernah melihat nilai teks polos
+- Hasil kembali sebagai teks sandi yang hanya pemegang kunci dapat mendekripsi
+
+Untuk basis data blockchain, operator simpul dapat menyimpan dan menanyakan keadaan tanpa pernah melihat nilai keadaan yang sebenarnya. Privasi bukan kebijakan — ia jaminan matematika.
+
+Model kueri terbatas dibanding basis data umum. Pemeriksaan kesamaan, kueri rentang, dan agregasi aritmetika bisa dilakukan. SQL sembarang tidak bisa. Ini batas mendasar dari operasi yang didukung skema FHE, bukan fitur yang hilang.
+
+## C FFI dan ikatan Rust
+
+Pustaka inti adalah Go. Lingkar dalam yang kritis bagi kinerja — NTT, reduksi polinomial, pengambilan sampel derau — punya implementasi C yang dipanggil Go lewat CGO. Kode C adalah tempat intrinsik SIMD tinggal.
+
+Ikatan Rust membungkus antarmuka C dengan tipe Rust yang aman. Ini memberi kami pustaka Go untuk integrasi simpul Lux, pustaka C untuk kinerja mentah, dan ikatan Rust untuk segala lain di tumpukan kami yang ditulis dalam Rust.
+
+```go
+// Go interface
+ct := fhe.Encrypt(pk, plaintext)
+result := fhe.Add(ct1, ct2)
+decrypted := fhe.Decrypt(sk, result)
+// decrypted == plaintext1 + plaintext2
+```
+
+## Mengapa membangun sendiri penting
+
+Saat memakai pustaka FHE orang lain, Anda memercayai pilihan parameternya, pengelolaan anggaran deraunya, RNG-nya, mitigasi kanal sampingnya. Pada aplikasi yang data terenkripsinya adalah keadaan keuangan di blockchain publik — terlihat oleh setiap operator simpul di dunia — permukaan serangan itu bukan teori.
+
+Membangun dari nol berarti memahami setiap pilihan parameter. Kami tahu mengapa N adalah 4096 dan bukan 2048 (margin keamanan). Kami tahu mengapa modulus koefisien tersusun sebagai rantai bilangan prima (representasi RNS untuk aritmetika modular yang efisien). Kami tahu ke mana anggaran derau pergi dan berapa operasi yang dapat dirantai sebelum bootstrapping.
+
+Pemahaman ini tidak ada di dokumentasi sebuah pustaka. Ia datang dari mengimplementasikan aritmetika lapangan, menelusuri kesalahan sirkuit bootstrapping, dan mengukur pertumbuhan derau secara empiris. Kode itulah pemahamannya.
+
+---
+
+*zeekay — kriptografi kisi kami sendiri, FHE kami sendiri, basis data terenkripsi kami sendiri. setiap bit dipahami.*

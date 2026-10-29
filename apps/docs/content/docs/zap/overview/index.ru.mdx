@@ -1,0 +1,151 @@
+---
+title: Обзор
+description: Архитектура ZAP и основные понятия
+index: true
+---
+
+# Обзор ZAP
+
+ZAP (Zero-Copy App Proto) — протокол связи нового поколения, созданный для экосистем ИИ-агентов. На базе Cap'n Proto он даёт производительность и защиту, нужные для промышленных развёртываний агентов.
+
+## Основные понятия
+
+### Сериализация без копирования
+
+В отличие от JSON-RPC, которым пользуется MCP, ZAP опирается на сериализацию Cap'n Proto без копирования:
+
+- **Без затрат на разбор**: данные читаются прямо из формата на проводе
+- **Общая память**: сообщения передаются между процессами без копирования
+- **Компактное кодирование**: двоичный формат в 2–10 раз меньше JSON
+
+```c
+struct ToolCall {
+  id @0 :Text;
+  name @1 :Text;
+  args @2 :Data;  # JSON arguments as bytes
+  metadata @3 :Metadata;
+}
+```
+
+### RPC на интерфейсах
+
+ZAP использует capability-RPC Cap'n Proto:
+
+```c
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+  subscribe @5 (uri :Text) -> (stream :ResourceStream);
+  listPrompts @6 () -> (prompts :PromptList);
+  getPrompt @7 (name :Text, args :Metadata) -> (messages :List(PromptMessage));
+  log @8 (level :LogLevel, message :Text, data :Data);
+}
+```
+
+### Совместимость с MCP
+
+ZAP сохраняет полную обратную совместимость с MCP через интерфейс Gateway:
+
+```c
+interface Gateway extends(Zap) {
+  addServer @0 (name :Text, url :Text, config :ServerConfig) -> (id :Text);
+  removeServer @1 (id :Text) -> ();
+  listServers @2 () -> (servers :List(ConnectedServer));
+  serverStatus @3 (id :Text) -> (status :ServerStatus);
+}
+```
+
+Gateway может связать:
+- **stdio**: обычные процессы сервера MCP
+- **http**: конечные точки MCP на HTTP
+- **websocket**: соединения WebSocket
+- **zap**: нативный протокол ZAP
+- **unix**: сокеты домена Unix
+
+## Архитектура
+
+```
++------------------+     +------------------+
+|   AI Agent       |     |   AI Agent       |
+|   (ZAP Client)   |     |   (ZAP Client)   |
++--------+---------+     +--------+---------+
+         |                        |
+         v                        v
++------------------------------------------+
+|              ZAP Gateway                  |
+|  +--------+  +--------+  +--------+      |
+|  | MCP    |  | MCP    |  | ZAP    |      |
+|  | Server |  | Server |  | Server |      |
+|  +--------+  +--------+  +--------+      |
++------------------------------------------+
+         |                        |
+         v                        v
++------------------+     +------------------+
+|   Coordinator    |     |   DID Registry   |
+|   (Discovery)    |     |   (Identity)     |
++------------------+     +------------------+
+```
+
+## Ключевые возможности
+
+### Инструменты
+
+Инструменты — это функции, которые агенты могут вызывать:
+
+```c
+struct Tool {
+  name @0 :Text;
+  description @1 :Text;
+  schema @2 :Data;  # JSON Schema as bytes
+  annotations @3 :Metadata;
+}
+```
+
+### Ресурсы
+
+Ресурсы — это источники данных, при желании с потоковой передачей:
+
+```c
+struct Resource {
+  uri @0 :Text;
+  name @1 :Text;
+  description @2 :Text;
+  mimeType @3 :Text;
+  annotations @4 :Metadata;
+}
+
+interface ResourceStream {
+  next @0 () -> (content :ResourceContent, done :Bool);
+  cancel @1 () -> ();
+}
+```
+
+### Промпты
+
+Промпты — это повторно используемые шаблоны сообщений:
+
+```c
+struct Prompt {
+  name @0 :Text;
+  description @1 :Text;
+  arguments @2 :List(Argument);
+}
+```
+
+## Модель безопасности
+
+ZAP реализует эшелонированную защиту:
+
+1. **Защита транспорта**: гибридное постквантовое рукопожатие (X25519 + ML-KEM-768)
+2. **Проверка подлинности сообщений**: подписи ML-DSA-65
+3. **Идентичность**: идентичность узла на основе W3C DID
+4. **Консенсус**: пороговая подпись Corona для операций нескольких сторон
+
+## Next Steps
+
+- [Начало работы](/docs/guides) — Установите и запустите первого агента ZAP
+- [Язык схем](/docs/zap/schema) — Изучите формат схемы Cap'n Proto
+- [Спецификация протокола](/docs/zap/protocol) — Разберитесь в формате на проводе

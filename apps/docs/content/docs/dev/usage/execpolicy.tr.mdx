@@ -1,0 +1,39 @@
+---
+title: Yürütme ilkesi
+description: Hanzo Dev'in komutları yürütme ilkesi kurallarıyla nasıl çalıştırdığını denetleyin.
+---
+
+## Yürütme ilkesi
+
+Hanzo Dev, ajanın hangi komutları çalıştırabileceğini ve onayın ne zaman gerektiğini yürütme ilkeleriyle denetler.
+
+### Kum havuzu kipleri
+
+| Kip | Açıklama |
+| --- | --- |
+| `off` | Kum havuzu yok (komutlar doğrudan çalışır) |
+| `workspace-read` | Çalışma alanına salt okunur erişim |
+| `workspace-write` | Çalışma alanına okuma ve yazma erişimi (full-auto için varsayılan) |
+| `network-off` | Ağ erişimini kapatır |
+
+### Onay ilkeleri
+
+| İlke | Açıklama |
+| --- | --- |
+| `always` | Yürütmeden önce her zaman onay ister |
+| `on-failure` | Yalnızca bir komut başarısız olunca ister (full-auto için varsayılan) |
+| `on-request` | Model açıkça onay istediğinde ister |
+| `never` | Hiç onay istemez |
+
+### Kullanım
+
+```bash
+# Set sandbox mode
+dev --sandbox workspace-write "your prompt"
+
+# Set approval policy
+dev --ask-for-approval on-failure "your prompt"
+
+# Full auto (sandboxed + auto-approve)
+dev --full-auto "your prompt"
+```

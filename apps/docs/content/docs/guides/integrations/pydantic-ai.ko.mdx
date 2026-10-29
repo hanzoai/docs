@@ -1,0 +1,44 @@
+---
+title: Pydantic AI
+description: "OpenAIProvider는 base_url을 받습니다. 어떤 모델 클래스를 고르느냐가 chat completions와 responses 중 어디로 도달할지를 정합니다."
+---
+
+`OpenAIProvider`는 **`base_url`**과 `api_key`를 받아 모델 클래스에 `provider=`로 넘깁니다.
+
+```bash
+pip install pydantic-ai
+```
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
+
+model = OpenAIChatModel(
+    'zen5',
+    provider=OpenAIProvider(base_url='https://api.hanzo.ai/v1', api_key='sk-...'),
+)
+
+agent = Agent(model)
+print(agent.run_sync('Hello').output)
+```
+
+`POST /v1/chat/completions`에 도달합니다.
+
+모델 클래스는 일부러 고르세요. 둘은 다른 주소에 도달합니다. `OpenAIChatModel`, 접두사 `openai-chat:`는 모든 OpenAI 호환 공급자를 받치고 `POST /v1/chat/completions`에 도달합니다. `OpenAIResponsesModel`, 맨 접두사 `openai:`이자 현대적 기본값이며, `POST /v1/responses`에 도달합니다. 둘 다 제공됩니다. 호환 엔드포인트 앞에서는 채팅 클래스가 더 안전한 기본값입니다.
+
+`OPENAI_BASE_URL`과 `OPENAI_API_KEY`가 환경 변수 대응이고, `OpenAIProvider`는 미리 만든 클라이언트도 `openai_client`로 받습니다.
+
+## MCP
+
+`MCPToolset`은 서버 URL을 첫 위치 인자로 받습니다. 평범한 URL은 streamable HTTP로 취급되고, 경로가 `/sse`로 끝날 때만 SSE입니다.
+
+```python
+from pydantic_ai import Agent
+from pydantic_ai.mcp import MCPToolset
+
+toolset = MCPToolset('https://api.hanzo.ai/v1/mcp')
+agent = Agent(model, toolsets=[toolset])
+```
+
+`mcpServers` 객체를 담은 JSON 설정 파일도 읽습니다.

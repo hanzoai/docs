@@ -1,0 +1,52 @@
+---
+title: Google ADK
+description: "ADK 通过 LiteLlm 到达 OpenAI 兼容端点，其参数是 api_base——不是 base_url。"
+---
+
+ADK 没有原生的 OpenAI 连接器。它通过 LiteLLM 封装到达一个：`LiteLlm`，参数是 **`api_base`**。注意拼写——它不是 `base_url`。
+
+```bash
+pip install google-adk "litellm>=1.84"
+```
+
+```python
+from google.adk.agents import LlmAgent
+from google.adk.models.lite_llm import LiteLlm
+
+model = LiteLlm(
+    model="openai/zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = LlmAgent(model=model, name="hanzo_agent", instruction="Answer precisely.")
+```
+
+落到 `POST /v1/chat/completions`。
+
+`openai/` 前缀是 LiteLLM 的提供方形式，正是它选出 OpenAI 兼容路径；后面那段是模型 id。`LiteLlm` 也接收 `extra_headers` 和 `extra_body`。ADK 要求 `litellm>=1.84`，而 LiteLLM 自己的文档对 1.82.7 和 1.82.8 有安全忠告——请钉在它们之上。
+
+## MCP
+
+`McpToolset` 直接进入代理的 `tools` 列表。远程服务器的 URL 是 `StreamableHTTPConnectionParams` 的 `url` 参数。
+
+```python
+from google.adk.agents import LlmAgent
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
+
+toolset = McpToolset(
+    connection_params=StreamableHTTPConnectionParams(
+        url="https://api.hanzo.ai/v1/mcp",
+        headers={
+            "Authorization": "Bearer sk-...",
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        },
+    )
+)
+
+agent = LlmAgent(model=model, name="hanzo_agent", instruction="Answer precisely.", tools=[toolset])
+```
+
+`StdioConnectionParams` 和 `SseConnectionParams` 是兄弟，`tool_filter` 收窄代理能看见的东西。

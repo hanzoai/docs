@@ -1,0 +1,60 @@
+---
+title: Hızlı başlangıç
+description: @hanzo/usage paketini kurun ve birleşik yapay zekâ kullanımını yaklaşık 15 satır TypeScript ile okuyun.
+---
+
+# Hızlı başlangıç
+
+`@hanzo/usage`, Hanzo Usage'ın arkasındaki arayüzsüz çekirdektir. Node,
+Next.js ve Tauri içinde çalışır ve Hanzo, Codex ile Claude için yerleşik sağlayıcılar getirir
+(kayıt defteri genişletilebilir).
+
+## Kurulum
+
+```bash title="Install"
+npm install @hanzo/usage
+```
+
+## Kullanımı okuma
+
+Bir `UsageStore` oluşturun, ortamınız için bir konak verin ve yoklama döngüsünü başlatın.
+Depo gözlemlenebilir — çizmek için abone olun ya da React kancasını kullanın.
+
+```ts title="usage.ts"
+import { UsageStore, allProviders } from '@hanzo/usage'
+import { nodeHost } from '@hanzo/usage/node' // or createTauriHost from '@hanzo/usage/tauri'
+
+const store = new UsageStore({
+  host: nodeHost,
+  providers: allProviders, // hanzo, codex, claude — registry-extensible
+  historyDir: `${process.env.HOME}/.config/hanzo/usage/history`,
+})
+
+store.start() // 5-minute poll, CodexBar-compatible history files
+store.subscribe(() => console.log(store.getState()))
+```
+
+## Tauri içinde (Hanzo Desktop, hanzo.app)
+
+Tauri eklenti modüllerini geçirin — çekirdek, web ve
+Node paketleri için bağımlılıksız kalır:
+
+```ts title="tauri-host.ts"
+import * as fs from '@tauri-apps/plugin-fs'
+import { fetch } from '@tauri-apps/plugin-http'
+import { homeDir } from '@tauri-apps/api/path'
+import { createTauriHost } from '@hanzo/usage/tauri'
+
+const host = await createTauriHost({ fs, fetch, homeDir })
+```
+
+## React içinde
+
+```ts title="Component.tsx"
+import { useUsage } from '@hanzo/usage/react'
+
+const state = useUsage(store) // re-renders on every refresh
+```
+
+Her sağlayıcı, elinizde olan oturumları yeniden kullanan sıralı bir getirme stratejileri hattı çalıştırır (`oauth` → `web` →
+`cli` → `apiToken` → `localProbe`), bu yüzden parola hiç istenmez ve saklanmaz.

@@ -1,4 +1,4 @@
-import { HomeLayout } from '@hanzo/docs/ui/layouts/home';
+import { HomeLayout } from '@hanzo/docs-base-ui/layouts/home';
 import { baseOptions } from '@/lib/layout.shared';
 
 export default async function Layout({ params, children }: LayoutProps<'/[lang]'>) {

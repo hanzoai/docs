@@ -1,0 +1,51 @@
+---
+title: Mastra
+description: "Sağlayıcı fabrikası yok. Taban URL, ajanın model nesnesindeki url alanıdır, bir yönlendirme id'sinin yanında."
+---
+
+Mastra'nın bunun için bir sağlayıcı fabrikası yoktur. Adres, ajanın `model` nesnesinin bir alanıdır: **`id`** ve **`url`**.
+
+```bash
+npm i @mastra/core
+```
+
+```ts
+import { Agent } from "@mastra/core/agent";
+
+export const agent = new Agent({
+  id: "researcher",
+  name: "Researcher",
+  instructions: "Answer precisely.",
+  model: {
+    id: "hanzo/zen5",
+    url: "https://api.hanzo.ai/v1",
+    apiKey: process.env.HANZO_API_KEY,
+  },
+});
+```
+
+`POST /v1/chat/completions` adresine düşer.
+
+Belgelerin açık olduğu iki şey. `url`, OpenAI ile uyumlu uç noktanın taban URL'si olmalıdır, asla tek bir sohbet uç noktası değil. Ve `id` bir yönlendirme biçimidir: uzak taraf çıplak bir model adı bekliyorsa `provider/model`, uzak tarafın kendi model ad alanı sağlayıcıyı zaten taşıyorsa `gateway/provider/model`. Model başına `headers` desteklenir ve istemcininkilere göre belgelenmiş bir önceliği vardır.
+
+## MCP
+
+`MCPClient`, `@mastra/mcp` paketinden gelir. URL, adlandırılmış her sunucu için bir `URL` nesnesi tutan `url` anahtarıdır.
+
+```ts
+import { MCPClient } from '@mastra/mcp';
+
+export const mcp = new MCPClient({
+  id: 'hanzo-mcp',
+  servers: {
+    hanzo: {
+      url: new URL('https://api.hanzo.ai/v1/mcp'),
+      requestInit: { headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` } },
+    },
+  },
+});
+
+const tools = await mcp.listTools();
+```
+
+`listToolsets()`, araçların eşzamanlı kullanıcılar arasında paylaşılmaması gerektiğinde kullanılan istek başına değişkendir.

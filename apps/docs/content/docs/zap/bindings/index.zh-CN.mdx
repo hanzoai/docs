@@ -1,0 +1,130 @@
+---
+title: 语言绑定
+description: 面向所有支持语言的 ZAP SDK 文档
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# 语言绑定
+
+ZAP 为 11 种编程语言提供原生绑定。每种绑定都构建在该语言的 Cap'n Proto 参考实现之上。
+
+## 支持的语言
+
+<Cards>
+  <Card title="Rust" description="完整支持 async 的参考实现" href="/docs/zap/bindings/rust" />
+  <Card title="Go" description="惯用 Go，客户端可在多个 goroutine 中安全使用" href="/docs/zap/bindings/go" />
+  <Card title="Python" description="基于 pycapnp 的 async/await API" href="/docs/zap/bindings/python" />
+  <Card title="JavaScript" description="支持 Node.js 和浏览器" href="/docs/zap/bindings/javascript" />
+  <Card title="C++" description="高性能原生绑定" href="/docs/zap/bindings/cpp" />
+  <Card title="C" description="面向嵌入式的精简 C API" href="/docs/zap/bindings/c" />
+  <Card title="Java" description="基于 Netty 传输的 JVM 绑定" href="/docs/zap/bindings/java" />
+  <Card title="C#" description="支持 async 的 .NET 绑定" href="/docs/zap/bindings/csharp" />
+  <Card title="Erlang" description="兼容 OTP 的绑定" href="/docs/zap/bindings/erlang" />
+  <Card title="OCaml" description="基于 Lwt 的函数式绑定" href="/docs/zap/bindings/ocaml" />
+  <Card title="Haskell" description="纯函数式绑定" href="/docs/zap/bindings/haskell" />
+</Cards>
+
+## 实现状态
+
+| 语言 | 客户端 | 服务器 | Gateway | PQ-TLS | 共识 |
+|---|---|---|---|---|---|
+| Rust | 是 | 是 | 是 | 是 | 是 |
+| Go | 是 | 是 | 是 | 是 | 是 |
+| Python | 是 | 是 | 是 | 部分 | 计划中 |
+| JavaScript | 是 | 部分 | 是 | 否 | 计划中 |
+| C++ | 是 | 是 | 是 | 是 | 部分 |
+| C | 是 | 部分 | 否 | 否 | 否 |
+| Java | 是 | 是 | 部分 | 部分 | 计划中 |
+| C# | 是 | 部分 | 否 | 否 | 否 |
+| Erlang | 是 | 是 | 部分 | 否 | 计划中 |
+| OCaml | 是 | 部分 | 否 | 否 | 否 |
+| Haskell | 是 | 部分 | 否 | 否 | 否 |
+
+## 通用模式
+
+### 创建客户端
+
+所有绑定都遵循相似的模式：
+
+```rust
+// Rust
+let client = Zap::connect("zap://localhost:9000").await?;
+```
+
+```go
+// Go
+client, err := zap.Connect(ctx, "zap://localhost:9000")
+```
+
+```python
+# Python
+client = await Zap.connect("zap://localhost:9000")
+```
+
+```typescript
+// JavaScript
+const client = await Zap.connect('zap://localhost:9000');
+```
+
+### 错误处理
+
+每种绑定都使用该语言惯用的错误处理：
+
+- **Rust**: `Result<T, Error>` 配合 `?` 运算符
+- **Go**: 多个返回值 `(result, error)`
+- **Python**: 带 async 上下文的异常
+- **JavaScript**: 使用 try/catch 或 `.catch()` 的 Promise
+
+### Async/Await
+
+大多数绑定支持 async 操作：
+
+```rust
+// Rust (tokio)
+let tools = client.list_tools().await?;
+```
+
+```go
+// Go (goroutines)
+tools, err := client.ListTools(ctx)
+```
+
+```python
+# Python (asyncio)
+tools = await client.list_tools()
+```
+
+```typescript
+// JavaScript (Promises)
+const tools = await client.listTools();
+```
+
+## 从模式生成代码
+
+从 ZAP 模式生成绑定：
+
+```bash
+# Clone the schema
+git clone https://github.com/zap-proto/zap
+cd zap/schema
+
+# Generate for your language
+capnp compile -o rust zap.capnp
+capnp compile -o go zap.capnp
+capnp compile -o c++ zap.capnp
+```
+
+代码生成的详细步骤见各语言页面。
+
+## 参与贡献
+
+语言绑定分别在独立仓库中维护：
+
+- [zap-proto/rust](https://github.com/zap-proto/rust) - Rust
+- [zap-proto/go](https://github.com/zap-proto/go) - Go
+- [zap-proto/py](https://github.com/zap-proto/py) - Python
+- [zap-proto/js](https://github.com/zap-proto/js) - JavaScript
+
+欢迎贡献！规范见各仓库的 CONTRIBUTING.md。

@@ -1,0 +1,59 @@
+---
+title: Tác nhân lập trình
+description: "Chạy một tác nhân lập trình trong kho của bạn — của chúng tôi, Claude Code hoặc Codex — bằng một lệnh."
+icon: Terminal
+---
+
+`hanzo code` chạy một tác nhân lập trình trên kho mà bạn đang đứng.
+Ba tác nhân được hỗ trợ, và gọi tên một tác nhân thì được đúng tác nhân đó hoặc một thất bại rõ ràng —
+chúng là sản phẩm riêng, không bao giờ là bí danh của nhau.
+
+```bash
+hanzo code                      # Hanzo Dev, the default
+hanzo code claude               # Claude Code
+hanzo code codex                # Codex
+```
+
+Đưa việc như **một** đối số, trong dấu ngoặc kép:
+
+```bash
+hanzo code "fix the failing test in api/users"
+hanzo code claude "port this module to the new store"
+```
+
+## Gọi tên tác nhân
+
+Mọi cách viết dưới đây được giải ở một chỗ, nên không thể lệch nhau:
+
+| | Vị trí | Cờ | Tường minh |
+| --- | --- | --- | --- |
+| Hanzo Dev | `hanzo code dev` | `hanzo code --dev` | `hanzo code --backend dev` |
+| Claude Code | `hanzo code claude` | `hanzo code --claude` | `hanzo code --backend claude` |
+| Codex | `hanzo code codex` | `hanzo code --codex` | `hanzo code --backend codex` |
+
+`hanzo dev` là cách viết tắt cấp cao nhất của `hanzo code dev`. `claude-code` và
+`cc` là cách viết được chấp nhận của `claude`.
+
+Gọi tên hai lần thì bị từ chối thay vì được giải — `hanzo code claude --codex`
+bảo bạn chỉ gọi tên một lần.
+
+## Phê duyệt
+
+Tác nhân tự phê duyệt các bước của mình theo mặc định. Hai lối ra, theo thứ tự
+tăng dần của những gì chúng bỏ:
+
+```bash
+hanzo code --ask            # the backend asks before each step
+hanzo code --no-sandbox     # bypass approvals AND drop the sandbox
+```
+
+`--safe` đồng nghĩa với `--ask`, và cái nào cũng thắng `autoApprove` trong
+`~/.hanzo/settings.json`.
+
+## `hanzo code` kia
+
+`hanzo code context`, `hanzo code file` và `hanzo code index` là một thứ khác dùng chung từ đó: [API trí tuệ mã](/docs/openapi/code) — tìm kiếm và ký hiệu trên các kho đã lập chỉ mục,
+cho bạn và cho các tác nhân. Chúng không nhận backend và không chạy tác nhân.
+
+Quy tắc là đối số đầu tiên: một từ gọi tên backend thì chọn backend đó, và
+mọi thứ khác là một việc hoặc một lệnh con.

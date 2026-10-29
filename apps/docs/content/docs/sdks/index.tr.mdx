@@ -1,0 +1,161 @@
+---
+title: SDK'ler
+description: Her dil için resmi Hanzo SDK'leri — Python, TypeScript, Go, Rust, C++, Swift, Kotlin. Dil başına iki hat — tam Cloud SDK ve yapay zekâ/ajanlar kitaplığı.
+icon: Code
+---
+
+import { Cards, Card } from '@hanzo/docs-base-ui/components/card'
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+# Hanzo SDK'leri
+
+**Hanzo AI — her model için bir API, her dil için bir SDK.** Zaten çalıştığınız dilden
+Open AI Cloud ile konuşun. Her SDK aynı OpenAPI 3.1 belirtiminden üretilir ve bir kimlik bilgisini paylaşır.
+
+## Dil başına iki kitaplık
+
+Her dilin iki birinci sınıf hattı vardır — işe uyanı kurun, ya da
+ikisini birden:
+
+<Cards>
+  <Card title="Cloud SDK">
+    **Tüm** Open AI Cloud (`/v1/*`) için üretilmiş tam istemci: yapay zekâ,
+    ajanlar, hesaplama, veri, ağ, güvenlik, platform, gözlem, web3, uygulamalar.
+    Ekosistemine göre deyimsel ve tipli. Gerçek kod `hanzo-<lang>/sdk` içindedir.
+  </Card>
+  <Card title="Yapay zekâ / ajanlar kitaplığı">
+    Elle yazılmış, yapay zekâ öncelikli kitaplık — modeller, ajanlar, araçlar, bellek, MCP ve
+    çıkarım. Amiral gemisi Python'dur (`pip install hanzo`); Node
+    `@hanzo/ai` yayınlar.
+  </Card>
+</Cards>
+
+## Diller
+
+<Cards>
+  <Card title="Python — amiral gemisi" href="/docs/sdks/python">
+    `pip install hanzo` (yapay zekâ) · `pip install hanzoai` (Cloud). Eşzamanlı ve eşzamansız.
+  </Card>
+  <Card title="TypeScript" href="/docs/sdks/typescript">
+    `npm i @hanzo/ai` (yapay zekâ) · `npm i @hanzo/sdk` (Cloud). Node, Deno, Bun, tarayıcı.
+  </Card>
+  <Card title="Go" href="/docs/sdks/go">
+    `go get github.com/hanzoai/go-sdk`. İşlevsel seçenekler, asgari bağımlılıklar.
+  </Card>
+  <Card title="Rust" href="/docs/sdks/rust">
+    `cargo add hanzo` — eşzamansız Tokio istemcisi. crates.io üzerinde.
+  </Card>
+  <Card title="C++" href="/docs/sdks/cpp">
+    `find_package(hanzo)` — CMake ile yerel istemci. Yakında.
+  </Card>
+  <Card title="Swift" href="/docs/sdks/swift">
+    SwiftPM — iOS/macOS istemcisi, doğrudan depodan çözülür.
+  </Card>
+  <Card title="Kotlin" href="/docs/sdks/kotlin">
+    Gradle — JVM/Android istemcisi. Yakında.
+  </Card>
+  <Card title="IAM SDK" href="/docs/sdks/iam">
+    `@hanzo/iam` — React bağlamaları olan TypeScript IAM istemcisi.
+  </Card>
+</Cards>
+
+## Kurulum matrisi
+
+Yalnızca genel kullanıma açık paketler çalıştırılabilir kurulum olarak gösterilir. Geri kalanı
+etkin geliştirmededir — her biri, kaynağın zaten yaşadığı dil kuruluşuna bağlanır.
+
+| Dil | Kitaplık | Kurulum | Durum |
+|----------|---------|---------|--------|
+| **Python** | Yapay zekâ / ajanlar (amiral gemisi) | `pip install hanzo` | Genel kullanım |
+| **Python** | Cloud SDK | `pip install hanzoai` | Genel kullanım |
+| **TypeScript** | Yapay zekâ kitaplığı | `npm i @hanzo/ai` | Genel kullanım |
+| **TypeScript** | Cloud SDK | `npm i @hanzo/sdk` | Genel kullanım |
+| **Go** | Cloud SDK | `go get github.com/hanzoai/go-sdk` | Genel kullanım |
+| **Rust** | Cloud SDK | `cargo add hanzo` | Genel kullanım |
+| **C++** | Cloud SDK | `find_package(hanzo)` | Yakında |
+| **Swift** | Cloud SDK | `.package(url: "https://github.com/hanzo-swift/sdk")` | Genel kullanım |
+| **Kotlin** | Cloud SDK | Gradle / Maven | Yakında |
+
+<Callout title="Bugün tel üzerinde uyumlu">
+Her dil Open AI Cloud'a OpenAI veya
+Anthropic uyumlu herhangi bir istemciyle şimdiden ulaşır — taban URL'yi
+`https://api.hanzo.ai/v1` adresine yöneltin ve Hanzo anahtarınızı kullanın. Yukarıdaki yerel SDK'ler
+tipli modeller, yeniden denemeler, akış yardımcıları ve ajan/MCP yüzeyini ekler.
+</Callout>
+
+## Hızlı başlangıç
+
+```bash tab="Python (AI)"
+pip install hanzo
+```
+
+```bash tab="Python (Cloud)"
+pip install hanzoai
+```
+
+```bash tab="TypeScript (AI)"
+npm i @hanzo/ai
+```
+
+```bash tab="TypeScript (Cloud)"
+npm i @hanzo/sdk
+```
+
+```bash tab="Go"
+go get github.com/hanzoai/go-sdk
+```
+
+Her istemci aynı biçimi izler — anahtarınızla kurun, bir `/v1` kaynağını çağırın:
+
+```python tab="Python"
+from hanzoai import Hanzo
+
+client = Hanzo(api_key="sk-your-key")
+response = client.chat.completions.create(
+    model="zen5",
+    messages=[{"role": "user", "content": "Hello"}],
+)
+print(response.choices[0].message.content)
+```
+
+```typescript tab="TypeScript"
+import Hanzo from '@hanzo/sdk';
+
+const client = new Hanzo({ apiKey: 'sk-your-key' });
+const response = await client.chat.completions.create({
+  model: 'zen5',
+  messages: [{ role: 'user', content: 'Hello' }],
+});
+```
+
+```go tab="Go"
+client := hanzoai.NewClient(option.WithAPIKey("sk-your-key"))
+response, _ := client.Chat.Completions.New(ctx, hanzoai.ChatCompletionNewParams{
+    Model:    hanzoai.F("zen5"),
+    Messages: hanzoai.F([]hanzoai.ChatCompletionMessageParamUnion{
+        hanzoai.UserMessage("Hello"),
+    }),
+})
+```
+
+## Bir anahtar, bir taban URL
+
+```bash
+export HANZO_API_KEY="sk-..."   # from console.hanzo.ai
+# Base URL for every service: https://api.hanzo.ai/v1
+```
+
+Anahtarınızı [console.hanzo.ai](https://console.hanzo.ai) adresinden alın.
+
+## Kod nerede yaşar
+
+- **Şemsiye** — [`hanzoai/sdk`](https://github.com/hanzoai/sdk): bir kurulum, her hizmet, her dil.
+- **Dil başına kuruluşlar** — gerçek kod, her ekosisteme göre deyimsel:
+  [hanzo-py](https://github.com/hanzo-py) ·
+  [hanzo-js](https://github.com/hanzo-js) ·
+  [hanzo-go](https://github.com/hanzo-go) ·
+  [hanzo-rs](https://github.com/hanzo-rs) ·
+  [hanzo-cpp](https://github.com/hanzo-cpp) ·
+  [hanzo-swift](https://github.com/hanzo-swift) ·
+  [hanzo-kt](https://github.com/hanzo-kt)
+- **Tam API başvurusu** — [her `/v1` uç noktası →](/reference)

@@ -1,0 +1,55 @@
+---
+title: AutoGen
+description: "OpenAIChatCompletionClient prend base_url, et model_info à côté dès que le nom du modèle n'est pas un de ceux qu'OpenAI sert."
+---
+
+`OpenAIChatCompletionClient` prend **`base_url`**, documenté comme requis quand le modèle n'est pas hébergé chez OpenAI. Le point qui piège : tout nom de modèle que le SDK ne reconnaît pas a aussi besoin de **`model_info`**, et sans lui le client lève une erreur au lieu d'appeler.
+
+```bash
+pip install "autogen-ext[openai]"
+```
+
+```python
+from autogen_ext.models.openai import OpenAIChatCompletionClient
+from autogen_core.models import ModelFamily
+
+client = OpenAIChatCompletionClient(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+    model_info={
+        "vision": False,
+        "function_calling": True,
+        "json_output": True,
+        "family": ModelFamily.UNKNOWN,
+        "structured_output": True,
+    },
+)
+
+# ... use the client, then release it
+await client.close()
+```
+
+Atterrit sur `POST /v1/chat/completions`.
+
+Là où l'enregistrement d'un modèle dans `GET /v1/models` déclare `supports_vision` ou `supports_tools`, cela correspond à `vision` et `function_calling`. La plupart des enregistrements n'en déclarent aucun, et la référence d'AutoGen dit clairement que ce client n'est pas testé contre des modèles hors OpenAI — n'affirmez donc que ce que vous avez exercé.
+
+## MCP
+
+L'URL est le champ `url` de `StreamableHttpServerParams`.
+
+```python
+from autogen_ext.tools.mcp import StreamableHttpMcpToolAdapter, StreamableHttpServerParams
+
+params = StreamableHttpServerParams(
+    url="https://api.hanzo.ai/v1/mcp",
+    headers={"Authorization": "Bearer sk-..."},
+    timeout=30.0,
+    sse_read_timeout=300.0,
+    terminate_on_close=True,
+)
+
+adapter = await StreamableHttpMcpToolAdapter.from_server_params(params, "describe")
+```
+
+`StdioServerParams` et `SseServerParams` sont les frères ; `mcp_server_tools()` construit chaque outil d'un serveur en un seul appel plutôt qu'un adaptateur à la fois.

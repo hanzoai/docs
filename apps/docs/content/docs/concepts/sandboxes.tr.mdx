@@ -1,0 +1,100 @@
+---
+title: Kum havuzları
+description: Tek hesaplama ilkel öğesi — başkasının kodunu çalıştıran bir pod üzerindeki kira. Dört sınıf, birini bitirmenin iki yolu ve havuz yok.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Bu sayfadan sonra güvenilmeyen kod çalıştırabilir ve size para kaybettirmeyi tam olarak ne zaman
+bıraktığını bilirsiniz.**
+
+## Bir ilkel öğe
+
+Kum havuzu, içinde araç zinciri hazır olan, bir çalışma zamanı sınırının altındaki bir poddur;
+kendi dosya sistemi ve onu bitiren bir **kira** vardır. Bir nesne ve bir
+ömür vardır — atılabilir bir Python çalıştırması ile çok saatlik bir kodlama oturumu, sınırları farklı
+aynı şeydir.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/sandbox/lease \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"class":"exec"}'
+```
+
+```bash
+hanzo sandboxes list
+```
+
+Diğer her işlem, o çağrının döndürdüğü kum havuzu üzerinde etki eder.
+
+## Dört sınıf
+
+Kapalı bir küme. Boş, `exec` demektir.
+
+| Sınıf | Ne olduğu | Çalışma dizini | Yaşadığı süre |
+|---|---|---|---|
+| `exec` | atılabilir; hiçbir şey tutmaz | `/mnt/data` | saniyelerden dakikalara |
+| `dev` | kodlama, proje diski takılı | `/work` | saatler |
+| `desktop` | `dev` artı bir ekran | `/work` | saatler |
+| `android` | `desktop` artı o ekranda bir telefon | `/work` | saatler |
+
+`exec` dışındaki her sınıf bir proje **ister**, ve bir projenin **aynı anda bir canlı
+kum havuzu** vardır — zaten bir tane olan proje üzerindeki ikinci kira
+adıyla reddedilir, size sessizce ikinci bir makine vermek yerine.
+
+Bir çalışma zamanı *isteyebilirsiniz* (`gvisor` ya da `kata-fc`); sahibi karar verir ve
+yanıt size gerçekte ne aldığınızı söyler.
+
+## Bitirmek için iki eylem, ve fark önemlidir
+
+<Callout>
+**`stop` işi bitirir. `end` kaynağı bitirir.** Ters giden bir çalıştırma
+`stop` sonrasında hâlâ okunabilir; iki eylem olmalarının bütün nedeni budur.
+</Callout>
+
+Bunun ötesinde `ttlSec` kirayı sınırlar ve bir biçici her dakika çalışır: süresi
+dolmuş kiraları bitirir ve bir saatten uzun boşta kalan kum havuzlarını uyutur. **Havuz
+yoktur** — bir kum havuzu bir kira için oluşturulur ve sonunda silinir, adlar
+asla yeniden kullanılmaz, bu yüzden eski bir id asla başkasının makinesine ulaşamaz.
+
+## Podun yapabildiği
+
+Sizin yapabildiğiniz değil. Kimlik bilginiz poda asla ulaşmaz. Bir kiraya bir
+kısa ömürlü belirteç verilir; kimliğinize karşı belirteç değişimiyle alınır,
+`hanzo-sandbox` istemcisi olarak davranır, kirayla birlikte sona erer, yenileme belirteci yoktur.
+Pod kendi küme kimlik bilgisini taşımaz.
+
+Yalıtım fizikseldir: bir kum havuzu deposu kuruluş başına bir dosyadır.
+
+## exec: bir oturum *bir kum havuzudur*
+
+[exec](/docs/openapi/exec) tek çağrıda bütün bir programı on üç
+dilde çalıştırır — `py`, `js`, `ts`, `bash`, `r`, `php`, `go`, `rs`, `c`, `cpp`,
+`java`, `d`, `f90`.
+
+```bash
+curl -X POST https://api.hanzo.ai/v1/exec \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"language":"py","code":"print(6*7)"}'
+```
+
+Kendi deposu ve kendi ömrü yoktur — döndürdüğü oturum kimliği *bir*
+kum havuzu kimliğidir. Sıfır olmayan çıkış bir hata durumu değil, **stderr ile bir `200`** dur:
+çağrı başardı, program başarısız oldu ve bunlar ayrı olgulardır. Çalıştırmalar arasında dosya sistemini
+tutmak için aynı `session_id` değerini yeniden geçirin.
+
+## Aracılarla buluştuğu yer
+
+`POST /v1/sandbox/run` adlı bir oturuma anlatır ve çıktısı
+o oturumun canlı günlüğüne eklenir — bir [aracı](/docs/concepts/agents) oturum akışının
+zaten izlediği günlük. İkisi arasındaki dikiş budur: kum havuzu işi
+yapar, oturum onun kaydıdır.
+
+## Sonraki
+
+- **[Kum havuzu başvurusu](/docs/openapi/sandbox)** — kira, exec, fs, uçbirim,
+  ekran.
+- **[exec](/docs/openapi/exec)** — kod yorumlayıcısı.
+- **[Aracılar](/docs/concepts/agents)** — kirayı genellikle tutan.

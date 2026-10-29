@@ -1,0 +1,61 @@
+---
+title: Khởi động nhanh
+description: Cài @hanzo/usage và đọc mức dùng AI thống nhất trong khoảng 15 dòng TypeScript.
+---
+
+# Khởi động nhanh
+
+`@hanzo/usage` là lõi không giao diện đứng sau Hanzo Usage. Nó chạy trong Node,
+Next.js và Tauri, và mang nhà cung cấp tích hợp cho Hanzo, Codex và Claude
+(sổ đăng ký có thể mở rộng).
+
+## Cài đặt
+
+```bash title="Install"
+npm install @hanzo/usage
+```
+
+## Đọc mức dùng
+
+Tạo một `UsageStore`, đưa cho nó một host cho môi trường của bạn, rồi bắt đầu vòng thăm dò.
+Kho là quan sát được — đăng ký để kết xuất, hoặc dùng hook React.
+
+```ts title="usage.ts"
+import { UsageStore, allProviders } from '@hanzo/usage'
+import { nodeHost } from '@hanzo/usage/node' // or createTauriHost from '@hanzo/usage/tauri'
+
+const store = new UsageStore({
+  host: nodeHost,
+  providers: allProviders, // hanzo, codex, claude — registry-extensible
+  historyDir: `${process.env.HOME}/.config/hanzo/usage/history`,
+})
+
+store.start() // 5-minute poll, CodexBar-compatible history files
+store.subscribe(() => console.log(store.getState()))
+```
+
+## Trong Tauri (Hanzo Desktop, hanzo.app)
+
+Truyền các mô-đun plugin Tauri — lõi vẫn không phụ thuộc cho các gói web và
+Node:
+
+```ts title="tauri-host.ts"
+import * as fs from '@tauri-apps/plugin-fs'
+import { fetch } from '@tauri-apps/plugin-http'
+import { homeDir } from '@tauri-apps/api/path'
+import { createTauriHost } from '@hanzo/usage/tauri'
+
+const host = await createTauriHost({ fs, fetch, homeDir })
+```
+
+## Trong React
+
+```ts title="Component.tsx"
+import { useUsage } from '@hanzo/usage/react'
+
+const state = useUsage(store) // re-renders on every refresh
+```
+
+Mỗi nhà cung cấp chạy một đường ống có thứ tự các chiến lược lấy dữ liệu (`oauth` → `web` →
+`cli` → `apiToken` → `localProbe`) tái sử dụng phiên đăng nhập bạn đã có, nên không
+mật khẩu nào bị yêu cầu hay lưu lại.

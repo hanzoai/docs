@@ -1,0 +1,38 @@
+---
+title: "Authz"
+description: "Hanzo Authz — Go를 위한 접근 제어 라이브러리. ACL, RBAC, ABAC 정책을 시행한다"
+---
+
+Hanzo의 모든 Go 서비스가 토큰을 읽고 호출자가 어떤 일을 해도 되는지를 정할 때 쓰는 접근 제어 라이브러리. JWT 검증, 클레임, 그리고 조직·앱·경로에 대한 부여 계산을 다룬다.
+
+## 설치
+
+```bash
+go get github.com/hanzoai/authz
+```
+
+## 사용
+
+토큰을 검증한다. IAM이 서명에 쓰는 것과 같은 라이브러리이므로, 여기서 읽는 쪽은 무엇을 서명했는지에 대해 발급자와 어긋날 수 없다.
+
+```go
+claims, err := authz.Verify(token, keys, []string{"https://hanzo.id"})
+```
+
+`keys`는 `func(kid string) []crypto.PublicKey`이다. 키 재료는 **입력**이다. JWKS를 가져와 캐시에 두는 일은 입출력이며, 이 패키지는 그것을 하지 않는다. 에지가 가져오기를 맡고 결과를 넘긴다. nil인 `Keys`, 또는 아무것도 풀지 못하는 것은 아무것도 검증하지 않는다.
+
+거기서부터 `Claims`는 호출자의 신원, 조직 소속, 앱 부여를 담는다. `ParsePath`와 `VerbOf`는 요청을 부여 계산이 판정하는 쌍으로 바꾼다. `IsAPIKey`는 `hk-` 키를 JWT와 구분한다.
+
+IAM 서명자가 만드는 알고리즘만 받는다. RSA와 EC, 그리고 포스트퀀텀 인증서를 위한 ML-DSA-65. `none`과 HMAC은 거부한다.
+
+## 문서
+
+배치는 [`LLM.md`](LLM.md). `edge/`와 `serve/` 패키지가 입출력이 필요한 조각 — 키 가져오기와 HTTP 표면 — 을 담고, 리프 패키지 밖에 일부러 둔다.
+
+## 라이선스
+
+[LICENSE](LICENSE)를 보세요.
+
+## 링크
+
+- [소스](https://github.com/hanzoai/authz)

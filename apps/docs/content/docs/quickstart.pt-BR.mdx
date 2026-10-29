@@ -1,0 +1,215 @@
+---
+icon: Rocket
+title: Início rápido
+description: Instale a CLI, entre e faça a primeira chamada — depois veja essa mesma chamada como método de SDK, HTTP puro e ferramenta MCP.
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs'
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Depois desta página você tem uma credencial que funciona e uma chamada que respondeu.**
+
+Hanzo é uma nuvem atrás de uma chave. Cada capacidade — inferência, identidade,
+armazenamento, dinheiro, agentes — responde em `https://api.hanzo.ai`, e a CLI, os
+SDKs e as ferramentas MCP são gerados da mesma descrição. Não há o que ligar
+por serviço: pegue uma chave uma vez e tudo fica ao alcance.
+
+## 1. Instale
+
+<Tabs items={['npm', 'Script', 'Homebrew', 'Do código-fonte']}>
+<Tab value="npm">
+```bash
+npm i -g hanzo
+```
+
+`hanzo` é a CLI e o cliente em uma instalação só.
+</Tab>
+<Tab value="Script">
+```bash
+curl -fsSL https://hanzo.sh | sh
+```
+
+Instala em `~/.local/bin`. `https://hanzo.sh/cli` instala só a CLI.
+</Tab>
+<Tab value="Homebrew">
+```bash
+brew install hanzoai/tap/hanzo
+```
+</Tab>
+<Tab value="Do código-fonte">
+```bash
+git clone https://github.com/hanzoai/cli && cd cli && cargo install --path .
+```
+</Tab>
+</Tabs>
+
+```bash
+hanzo version
+```
+
+## 2. Entre
+
+```bash
+hanzo auth login
+```
+
+Isso abre um navegador em [hanzo.id](https://hanzo.id), o provedor de identidade
+da Hanzo, e guarda a credencial localmente. `hanzo auth show` imprime
+quem você é; `hanzo auth list` mostra cada identidade nesta máquina e
+`hanzo auth use` alterna entre elas.
+
+Em um servidor, emita uma chave em vez de fazer uma pessoa entrar: **console.hanzo.ai →
+chaves de API**. Uma chave secreta é *você*, então fica num servidor e nunca
+num navegador — [Autenticação](/docs/api-keys) é a regra inteira.
+
+```bash
+export HANZO_API_KEY=sk-...
+```
+
+## 3. Liste os modelos
+
+O catálogo de modelos que o gateway serve agora. É uma leitura, precisa
+só da chave, e é a mesma operação nas quatro superfícies.
+
+<Tabs items={['CLI', 'SDK', 'HTTP', 'MCP']}>
+<Tab value="CLI">
+```bash
+hanzo models list
+```
+</Tab>
+<Tab value="SDK">
+<Tabs items={['.ts', '.py', '.go', '.rs', '.swift', '.kt']}>
+<Tab value=".ts">
+```bash
+npm i hanzo
+```
+
+```ts
+import { Hanzo } from 'hanzo'
+
+const hanzo = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+const models = await hanzo.models.list()
+```
+</Tab>
+<Tab value=".py">
+```bash
+pip install hanzo
+```
+
+```python
+from hanzo import Hanzo
+
+hanzo = Hanzo(api_key=os.environ["HANZO_API_KEY"])
+models = hanzo.models.list()
+```
+</Tab>
+<Tab value=".go">
+```bash
+go get github.com/hanzoai/go-sdk
+```
+
+```go
+client := hanzo.NewClient(hanzo.WithAPIKey(os.Getenv("HANZO_API_KEY")))
+models, err := client.Models.List(ctx)
+```
+</Tab>
+<Tab value=".rs">
+```bash
+cargo add hanzo
+```
+
+```rust
+let hanzo = hanzo::Client::from_env()?;
+let models = hanzo.models().list().await?;
+```
+</Tab>
+<Tab value=".swift">
+```swift
+// Package.swift: .package(url: "https://github.com/hanzoai/swift-sdk", from: "1.0.0")
+let hanzo = Hanzo(apiKey: ProcessInfo.processInfo.environment["HANZO_API_KEY"]!)
+let models = try await hanzo.models.list()
+```
+</Tab>
+<Tab value=".kt">
+```kotlin
+// build.gradle.kts: implementation("ai.hanzo:sdk:latest.release")
+val hanzo = Hanzo(apiKey = System.getenv("HANZO_API_KEY"))
+val models = hanzo.models.list()
+```
+</Tab>
+</Tabs>
+
+Todos são gerados da mesma descrição da API, então os nomes de
+método se alinham entre as linguagens. [C++](/docs/sdks/cpp) é o que ainda está
+chegando.
+</Tab>
+<Tab value="HTTP">
+```bash
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+</Tab>
+<Tab value="MCP">
+```bash
+curl -X POST https://api.hanzo.ai/v1/mcp \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+Um endpoint, uma ferramenta por capacidade. `tools/call` nomeia a capacidade e a
+operação; `describe` explica a entrada de qualquer operação.
+</Tab>
+</Tabs>
+
+São uma API vista de quatro lugares, e as abas acima são toda a
+diferença. Escolha aquela em que você vai escrever:
+
+- **[CLI](/docs/cli)** — cada capacidade como um grupo de comandos, uma página cada.
+- **[SDKs](/docs/sdks)** — Python, TypeScript, Go, Rust, C++, Swift e Kotlin,
+  gerados da mesma descrição da CLI e das ferramentas.
+- **[MCP](/docs/mcp)** — um endpoint ao qual um agente se conecta; [as ferramentas](/docs/mcp-tools)
+  estão listadas uma por capacidade.
+
+HTTP não precisa de página: é `https://api.hanzo.ai` e a chave que você acabou de exportar.
+
+## 4. Envie uma conclusão
+
+Este é o primeiro passo que consome crédito; tudo acima pode ser executado de graça.
+
+```bash
+hanzo chat completions --model zen-1 --messages '[{"role":"user","content":"hello"}]'
+```
+
+Depois leia o que foi consumido:
+
+```bash
+hanzo billing balance
+hanzo usage summary
+```
+
+[Créditos e faturamento](/docs/credits) explica o que é um crédito e o que acontece no
+zero; [Preços](/docs/pricing) é a tarifa de cada modelo e ferramenta.
+
+## 5. Rode a nuvem localmente
+
+O mesmo binário que serve `api.hanzo.ai` roda na sua máquina:
+
+```bash
+hanzo up cloud
+```
+
+`hanzo up` sozinho é a mesma coisa — `cloud` é o padrão. Nomeie um serviço para
+rodá-lo sozinho: `hanzo up iam`, `hanzo up kms`, `hanzo up gateway`, `hanzo up
+storage`, `hanzo up pubsub`. Veja [Rode a sua](/docs/network) para o que isso
+significa e o que precisa.
+
+## Para onde ir depois
+
+- **[Seis fluxos, quatro superfícies](/docs/guides)** — olá, chat, dinheiro, armazenamento, agente,
+  ferramentas. O produto inteiro em miniatura, cada jornada de quatro jeitos.
+- **[Conceitos](/docs/concepts)** — organizações, projetos, sandboxes, agentes, memória e
+  fluxos. Leia uma vez e o resto da API se explica.
+- **[Capacidades](/docs/openapi)** — todas, agrupadas. Cada página diz o que
+  a capacidade é, como alcançá-la das quatro superfícies e liga a sua
+  especificação.

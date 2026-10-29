@@ -1,0 +1,51 @@
+---
+title: LangGraph
+description: "عنوان URL الأساسي يوضع على النموذج لا على الوكيل. يأخذ ChatOpenAI المعامل base_url؛ سلّم النسخة إلى create_agent."
+---
+
+يوضع عنوان URL الأساسي على كائن النموذج لا على الوكيل. يأخذ `ChatOpenAI` المعامل **`base_url`** (الاسم البديل `openai_api_base`)، ويقبل `create_agent` نسخة نموذج مهيّأة — وهذا هو المسار الذي يحمل عنوان URL أساسيًا مخصصًا، لأن صيغة السلسلة `"provider:model"` لا تستطيع ذلك.
+
+```bash
+pip install langchain-openai langgraph
+```
+
+```python
+from langchain_openai import ChatOpenAI
+from langchain.agents import create_agent
+
+model = ChatOpenAI(
+    model="zen5",
+    base_url="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = create_agent(model=model, tools=[])
+result = agent.invoke({"messages": [{"role": "user", "content": "Hello"}]})
+```
+
+يصل إلى `POST /v1/chat/completions`.
+
+ترتيب حل العنوان، وأول تطابق يفوز: الوسيط الصريح `base_url` أو `openai_api_base`، ثم `OPENAI_API_BASE` الذي يقرأه LangChain عند التهيئة، ثم `OPENAI_BASE_URL` الذي يقرأه عميل `openai` التحتي. ضبط الوسيط يجعل الاثنين الآخرين بلا أثر، ولهذا يضبطه المقتطف.
+
+## MCP
+
+`langchain-mcp-adapters` يحمل العميل. عنوان URL هو مفتاح `url` في مدخل لكل خادم.
+
+```bash
+pip install langchain-mcp-adapters
+```
+
+```python
+from langchain_mcp_adapters.client import MultiServerMCPClient
+
+client = MultiServerMCPClient({
+    "hanzo": {
+        "transport": "http",
+        "url": "https://api.hanzo.ai/v1/mcp",
+        "headers": {"Authorization": "Bearer sk-..."},
+    }
+})
+
+tools = await client.get_tools()
+agent = create_agent(model=model, tools=tools)
+```

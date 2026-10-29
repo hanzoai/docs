@@ -1,5 +1,5 @@
 import { getLLMText } from '@/lib/get-llm-text';
-import { source } from '@/lib/source';
+import { englishPages } from '@/lib/source';
 
 // The whole corpus in one fetch, next to llms.txt's index.
 //
@@ -11,7 +11,7 @@ import { source } from '@/lib/source';
 export const revalidate = false;
 
 export async function GET() {
-  const pages = await Promise.all(source.getPages().map(getLLMText));
+  const pages = await Promise.all(englishPages().map(getLLMText));
 
   return new Response(pages.filter(Boolean).join('\n\n'), {
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },

@@ -1,0 +1,151 @@
+---
+title: نظرة عامة
+description: بنية ZAP ومفاهيمه الأساسية
+index: true
+---
+
+# نظرة عامة على ZAP
+
+ZAP (Zero-Copy App Proto) بروتوكول اتصال من الجيل التالي، مصمّم خصيصًا لمنظومات وكلاء الذكاء الاصطناعي. بُني على Cap'n Proto، ويقدّم الأداء والأمن اللازمين لنشر الوكلاء في الإنتاج.
+
+## المفاهيم الأساسية
+
+### تسلسل بلا نسخ
+
+بخلاف JSON-RPC الذي يستخدمه MCP، يعتمد ZAP على تسلسل Cap'n Proto بلا نسخ:
+
+- **بلا تكلفة تحليل**: تُقرأ البيانات مباشرة من صيغة السلك
+- **ذاكرة مشتركة**: تمر الرسائل بين العمليات دون نسخ
+- **ترميز مدمج**: الصيغة الثنائية أصغر من JSON بـ 2 إلى 10 مرات
+
+```c
+struct ToolCall {
+  id @0 :Text;
+  name @1 :Text;
+  args @2 :Data;  # JSON arguments as bytes
+  metadata @3 :Metadata;
+}
+```
+
+### RPC قائم على الواجهات
+
+يستخدم ZAP نظام RPC القائم على القدرات في Cap'n Proto:
+
+```c
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+  subscribe @5 (uri :Text) -> (stream :ResourceStream);
+  listPrompts @6 () -> (prompts :PromptList);
+  getPrompt @7 (name :Text, args :Metadata) -> (messages :List(PromptMessage));
+  log @8 (level :LogLevel, message :Text, data :Data);
+}
+```
+
+### التوافق مع MCP
+
+يحافظ ZAP على توافق رجعي كامل مع MCP عبر واجهة Gateway:
+
+```c
+interface Gateway extends(Zap) {
+  addServer @0 (name :Text, url :Text, config :ServerConfig) -> (id :Text);
+  removeServer @1 (id :Text) -> ();
+  listServers @2 () -> (servers :List(ConnectedServer));
+  serverStatus @3 (id :Text) -> (status :ServerStatus);
+}
+```
+
+يستطيع Gateway الربط مع:
+- **stdio**: عمليات خادم MCP المعتادة
+- **http**: نقاط نهاية MCP قائمة على HTTP
+- **websocket**: اتصالات WebSocket
+- **zap**: بروتوكول ZAP الأصلي
+- **unix**: مقابس نطاق Unix
+
+## البنية
+
+```
++------------------+     +------------------+
+|   AI Agent       |     |   AI Agent       |
+|   (ZAP Client)   |     |   (ZAP Client)   |
++--------+---------+     +--------+---------+
+         |                        |
+         v                        v
++------------------------------------------+
+|              ZAP Gateway                  |
+|  +--------+  +--------+  +--------+      |
+|  | MCP    |  | MCP    |  | ZAP    |      |
+|  | Server |  | Server |  | Server |      |
+|  +--------+  +--------+  +--------+      |
++------------------------------------------+
+         |                        |
+         v                        v
++------------------+     +------------------+
+|   Coordinator    |     |   DID Registry   |
+|   (Discovery)    |     |   (Identity)     |
++------------------+     +------------------+
+```
+
+## الوظائف الأساسية
+
+### الأدوات
+
+الأدوات دوال يستطيع الوكلاء استدعاءها:
+
+```c
+struct Tool {
+  name @0 :Text;
+  description @1 :Text;
+  schema @2 :Data;  # JSON Schema as bytes
+  annotations @3 :Metadata;
+}
+```
+
+### الموارد
+
+الموارد مصادر بيانات مع بث اختياري:
+
+```c
+struct Resource {
+  uri @0 :Text;
+  name @1 :Text;
+  description @2 :Text;
+  mimeType @3 :Text;
+  annotations @4 :Metadata;
+}
+
+interface ResourceStream {
+  next @0 () -> (content :ResourceContent, done :Bool);
+  cancel @1 () -> ();
+}
+```
+
+### الموجّهات
+
+الموجّهات قوالب رسائل قابلة لإعادة الاستخدام:
+
+```c
+struct Prompt {
+  name @0 :Text;
+  description @1 :Text;
+  arguments @2 :List(Argument);
+}
+```
+
+## نموذج الأمن
+
+يطبّق ZAP أمنًا متعدد الطبقات:
+
+1. **أمن النقل**: مصافحة هجينة ما بعد الكم (X25519 + ML-KEM-768)
+2. **مصادقة الرسائل**: تواقيع ML-DSA-65
+3. **الهوية**: هوية عقدة قائمة على W3C DID
+4. **الإجماع**: توقيع عتبي Corona للعمليات متعددة الأطراف
+
+## Next Steps
+
+- [البدء](/docs/guides) - ثبّت وشغّل أول وكيل ZAP
+- [لغة المخطط](/docs/zap/schema) - تعرّف على صيغة مخطط Cap'n Proto
+- [مواصفات البروتوكول](/docs/zap/protocol) - افهم صيغة السلك

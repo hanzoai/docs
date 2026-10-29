@@ -1,0 +1,52 @@
+---
+title: Google ADK
+description: "ADK tới một endpoint tương thích OpenAI qua LiteLlm, tham số của nó là api_base — không phải base_url."
+---
+
+ADK không có bộ nối OpenAI gốc. Nó tới một bộ qua lớp bọc LiteLLM: `LiteLlm`, tham số **`api_base`**. Chú ý chính tả — đó không phải `base_url`.
+
+```bash
+pip install google-adk "litellm>=1.84"
+```
+
+```python
+from google.adk.agents import LlmAgent
+from google.adk.models.lite_llm import LiteLlm
+
+model = LiteLlm(
+    model="openai/zen5",
+    api_base="https://api.hanzo.ai/v1",
+    api_key="sk-...",
+)
+
+agent = LlmAgent(model=model, name="hanzo_agent", instruction="Answer precisely.")
+```
+
+Đổ về `POST /v1/chat/completions`.
+
+Tiền tố `openai/` là dạng nhà cung cấp của LiteLLM và chính nó chọn đường tương thích OpenAI; đoạn sau nó là id mô hình. `LiteLlm` cũng nhận `extra_headers` và `extra_body`. ADK đòi `litellm>=1.84`, và chính tài liệu LiteLLM mang một cảnh báo bảo mật đối với phiên bản 1.82.7 và 1.82.8 — hãy ghim cao hơn chúng.
+
+## MCP
+
+`McpToolset` đi thẳng vào danh sách `tools` của agent. Với máy chủ từ xa, URL là tham số `url` của `StreamableHTTPConnectionParams`.
+
+```python
+from google.adk.agents import LlmAgent
+from google.adk.tools.mcp_tool import McpToolset
+from google.adk.tools.mcp_tool.mcp_session_manager import StreamableHTTPConnectionParams
+
+toolset = McpToolset(
+    connection_params=StreamableHTTPConnectionParams(
+        url="https://api.hanzo.ai/v1/mcp",
+        headers={
+            "Authorization": "Bearer sk-...",
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        },
+    )
+)
+
+agent = LlmAgent(model=model, name="hanzo_agent", instruction="Answer precisely.", tools=[toolset])
+```
+
+`StdioConnectionParams` và `SseConnectionParams` là các lớp anh em, và `tool_filter` thu hẹp những gì agent nhìn thấy.

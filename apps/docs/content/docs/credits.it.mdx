@@ -1,0 +1,93 @@
+---
+icon: Wallet
+title: Crediti e fatturazione
+description: Che cos'è un credito, come una chiamata lo scala, dove si trova il saldo e che cosa succede quando arriva a zero.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Dopo questa pagina sai che cosa stai spendendo, dove leggerlo e che cosa
+succede quando finisce.**
+
+Non c'è una licenza per posto né un minimo. Tieni un saldo, ogni chiamata misurata
+lo scala a una tariffa pubblicata, e un account che non invia nulla non viene
+addebitato di nulla.
+
+## I quattro nomi
+
+Il denaro è quattro capacità, e non si sovrappongono.
+
+| | Che cosa risponde | Indirizzo |
+|---|---|---|
+| **[Prezzi](/docs/openapi/pricing)** | quanto costa un'unità, prima di spenderla | `/v1/pricing` |
+| **[Utilizzo](/docs/openapi/usage)** | ciò che hai realmente consumato | `/v1/usage` |
+| **[Fatturazione](/docs/openapi/billing)** | il tuo saldo, i crediti e le fatture | `/v1/billing` |
+| **[Commercio](/docs/openapi/commerce)** | il libro mastro che ognuna delle precedenti legge | `/v1/commerce` |
+
+Leggili in quest'ordine e l'intera economia è una frase: **prezzi** dice
+la tariffa, **utilizzo** dice la quantità, **fatturazione** dice il denaro, e
+**commercio** è il libro mastro su cui gli altri tre sono lenti.
+
+## Leggere il saldo
+
+```bash
+hanzo billing balance
+```
+
+```bash
+curl https://api.hanzo.ai/v1/billing/balance \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+
+I crediti si comprano — o si ricevono in concessione — a `https://api.hanzo.ai/v1/billing/credits`,
+e ogni addebito è una scrittura di libro mastro, quindi il saldo non è mai un numero che qualcuno
+ha tenuto a mano. Ciò che hai consumato è una lettura separata, perché consumo
+e denaro sono domande distinte:
+
+```bash
+hanzo usage summary
+```
+
+## Due soffitti, e non sono la stessa cosa
+
+<Callout>
+Un **saldo** è ciò che hai. Una **dotazione** e un **tetto** sono ciò che ti è
+consentito spendere da esso. Confondere i tre è il motivo abituale per cui una chiamata
+viene rifiutata mentre il saldo sembra ancora sano.
+</Callout>
+
+- **[Dotazione](/docs/openapi/allowance)** — una concessione permanente contro cui
+  chi chiama spende, a `/v1/allowance`. È il modo in cui un'organizzazione consegna a un progetto, a una chiave o a un
+  membro un budget senza consegnare l'intero saldo.
+- **Il tetto mobile** — un soffitto a finestra scorrevole sulla spesa di IA, applicato alla
+  porta di inferenza. Si azzera in modo continuo e non a un confine: la spesa più vecchia
+  della finestra esce dalla somma mobile, quindi non c'è un dirupo mensile
+  né un azzeramento a mezzanotte. È un aggancio sulla porta e non una capacità
+  a sé, quindi non ha indirizzo né pagina; i tetti stessi sono
+  flag della piattaforma che un operatore modifica.
+
+## Che cosa succede a zero
+
+Una chiamata misurata viene rifiutata. Viene rifiutata alla porta, prima che il lavoro avvenga,
+quindi non ti viene mai fatturata una chiamata che stava per fallire — e il rifiuto
+nomina il motivo invece di restituire un errore generico, così un client può distinguere
+«credito esaurito» da «chiave errata» senza indovinare. Le letture che non costano nulla continuano
+a rispondere: puoi sempre controllare un saldo che non puoi spendere.
+
+## Quali chiamate costano qualcosa
+
+La maggior parte no. Una capacità dichiara il proprio prezzo accanto al codice — gratuita, forfettaria o
+misurata — e quelle gratuite sono la maggioranza: elencare i progetti, leggere le
+consegne di un webhook, recuperare il proprio profilo. Ciò che è misurato è ciò che
+consuma una risorsa reale — token di inferenza, secondi di sandbox, un SMS in uscita, una
+pagina esplorata.
+
+Ogni pagina di capacità dichiara la propria risposta, e [Prezzi](/docs/pricing)
+porta la tabella delle tariffe per ogni modello e strumento.
+
+## Avanti
+
+- **[Prezzi](/docs/pricing)** — le tariffe, per milione di token e per chiamata.
+- **[Utilizzo](/docs/openapi/usage)** — l'API di rendicontazione.
+- **[Autenticazione](/docs/api-keys)** — una chiave può essere limitata a un modello, un
+  progetto o una capacità, ed è l'altra metà del controllo della spesa.

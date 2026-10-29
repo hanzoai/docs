@@ -1,0 +1,51 @@
+---
+title: Mastra
+description: "ไม่มีแฟกทอรีผู้ให้บริการ URL ฐานคือฟิลด์ url ของอ็อบเจกต์ model ของเอเจนต์ ข้าง id สำหรับการจัดเส้นทาง"
+---
+
+Mastra ไม่มีแฟกทอรีผู้ให้บริการสำหรับเรื่องนี้ ที่อยู่คือฟิลด์ของอ็อบเจกต์ `model` ของเอเจนต์: **`id`** และ **`url`**
+
+```bash
+npm i @mastra/core
+```
+
+```ts
+import { Agent } from "@mastra/core/agent";
+
+export const agent = new Agent({
+  id: "researcher",
+  name: "Researcher",
+  instructions: "Answer precisely.",
+  model: {
+    id: "hanzo/zen5",
+    url: "https://api.hanzo.ai/v1",
+    apiKey: process.env.HANZO_API_KEY,
+  },
+});
+```
+
+ลงที่ `POST /v1/chat/completions`
+
+เอกสารระบุชัดสองอย่าง `url` ต้องเป็น URL ฐานของเอนด์พอยต์ที่เข้ากันได้กับ OpenAI ไม่ใช่เอนด์พอยต์แชทเดี่ยว และ `id` เป็นรูปแบบการจัดเส้นทาง: `provider/model` เมื่อฝั่งไกลคาดหวังชื่อโมเดลเปล่า `gateway/provider/model` เมื่อเนมสเปซโมเดลของฝั่งไกลมีผู้ให้บริการอยู่แล้ว รองรับ `headers` ต่อโมเดล โดยมีลำดับความสำคัญที่เอกสารระบุเหนือของไคลเอนต์
+
+## MCP
+
+`MCPClient` มาจาก `@mastra/mcp` URL คือคีย์ `url` ที่ถืออ็อบเจกต์ `URL` ต่อเซิร์ฟเวอร์ที่มีชื่อ
+
+```ts
+import { MCPClient } from '@mastra/mcp';
+
+export const mcp = new MCPClient({
+  id: 'hanzo-mcp',
+  servers: {
+    hanzo: {
+      url: new URL('https://api.hanzo.ai/v1/mcp'),
+      requestInit: { headers: { Authorization: `Bearer ${process.env.HANZO_API_KEY}` } },
+    },
+  },
+});
+
+const tools = await mcp.listTools();
+```
+
+`listToolsets()` คือรูปแบบต่อคำขอ สำหรับเมื่อเครื่องมือต้องไม่ถูกแชร์ข้ามผู้ใช้ที่ทำงานพร้อมกัน

@@ -1,0 +1,151 @@
+---
+title: Visión general
+description: La arquitectura de ZAP y sus conceptos básicos
+index: true
+---
+
+# Visión general de ZAP
+
+ZAP (Zero-Copy App Proto) es un protocolo de comunicación de nueva generación, pensado para ecosistemas de agentes de IA. Construido sobre Cap'n Proto, aporta el rendimiento y la seguridad que exigen los despliegues de agentes en producción.
+
+## Conceptos básicos
+
+### Serialización de copia cero
+
+A diferencia del JSON-RPC que usa MCP, ZAP se apoya en la serialización de copia cero de Cap'n Proto:
+
+- **Sin coste de análisis**: los datos se leen directamente del formato en el cable
+- **Memoria compartida**: los mensajes pasan de un proceso a otro sin copiarse
+- **Codificación compacta**: el formato binario es de 2 a 10 veces más pequeño que JSON
+
+```c
+struct ToolCall {
+  id @0 :Text;
+  name @1 :Text;
+  args @2 :Data;  # JSON arguments as bytes
+  metadata @3 :Metadata;
+}
+```
+
+### RPC basado en interfaces
+
+ZAP usa el sistema de RPC por capacidades de Cap'n Proto:
+
+```c
+interface Zap {
+  init @0 (client :ClientInfo) -> (server :ServerInfo);
+  listTools @1 () -> (tools :ToolList);
+  callTool @2 (call :ToolCall) -> (result :ToolResult);
+  listResources @3 () -> (resources :ResourceList);
+  readResource @4 (uri :Text) -> (content :ResourceContent);
+  subscribe @5 (uri :Text) -> (stream :ResourceStream);
+  listPrompts @6 () -> (prompts :PromptList);
+  getPrompt @7 (name :Text, args :Metadata) -> (messages :List(PromptMessage));
+  log @8 (level :LogLevel, message :Text, data :Data);
+}
+```
+
+### Compatibilidad con MCP
+
+ZAP mantiene compatibilidad total hacia atrás con MCP a través de la interfaz Gateway:
+
+```c
+interface Gateway extends(Zap) {
+  addServer @0 (name :Text, url :Text, config :ServerConfig) -> (id :Text);
+  removeServer @1 (id :Text) -> ();
+  listServers @2 () -> (servers :List(ConnectedServer));
+  serverStatus @3 (id :Text) -> (status :ServerStatus);
+}
+```
+
+Gateway puede conectar:
+- **stdio**: procesos habituales de servidor MCP
+- **http**: extremos MCP basados en HTTP
+- **websocket**: conexiones WebSocket
+- **zap**: protocolo ZAP nativo
+- **unix**: sockets de dominio Unix
+
+## Arquitectura
+
+```
++------------------+     +------------------+
+|   AI Agent       |     |   AI Agent       |
+|   (ZAP Client)   |     |   (ZAP Client)   |
++--------+---------+     +--------+---------+
+         |                        |
+         v                        v
++------------------------------------------+
+|              ZAP Gateway                  |
+|  +--------+  +--------+  +--------+      |
+|  | MCP    |  | MCP    |  | ZAP    |      |
+|  | Server |  | Server |  | Server |      |
+|  +--------+  +--------+  +--------+      |
++------------------------------------------+
+         |                        |
+         v                        v
++------------------+     +------------------+
+|   Coordinator    |     |   DID Registry   |
+|   (Discovery)    |     |   (Identity)     |
++------------------+     +------------------+
+```
+
+## Funciones clave
+
+### Herramientas
+
+Las herramientas son funciones que los agentes pueden invocar:
+
+```c
+struct Tool {
+  name @0 :Text;
+  description @1 :Text;
+  schema @2 :Data;  # JSON Schema as bytes
+  annotations @3 :Metadata;
+}
+```
+
+### Recursos
+
+Los recursos son fuentes de datos, con transmisión opcional:
+
+```c
+struct Resource {
+  uri @0 :Text;
+  name @1 :Text;
+  description @2 :Text;
+  mimeType @3 :Text;
+  annotations @4 :Metadata;
+}
+
+interface ResourceStream {
+  next @0 () -> (content :ResourceContent, done :Bool);
+  cancel @1 () -> ();
+}
+```
+
+### Indicaciones
+
+Las indicaciones son plantillas de mensajes reutilizables:
+
+```c
+struct Prompt {
+  name @0 :Text;
+  description @1 :Text;
+  arguments @2 :List(Argument);
+}
+```
+
+## Modelo de seguridad
+
+ZAP aplica una seguridad en capas:
+
+1. **Seguridad del transporte**: apretón de manos híbrido poscuántico (X25519 + ML-KEM-768)
+2. **Autenticación de mensajes**: firmas ML-DSA-65
+3. **Identidad**: identidad de nodo basada en W3C DID
+4. **Consenso**: firma de umbral Corona para operaciones entre varias partes
+
+## Next Steps
+
+- [Primeros pasos](/docs/guides) - Instala y ejecuta tu primer agente ZAP
+- [Lenguaje de esquemas](/docs/zap/schema) - Aprende el formato de esquema de Cap'n Proto
+- [Especificación del protocolo](/docs/zap/protocol) - Comprende el formato en el cable

@@ -1,0 +1,60 @@
+---
+title: Kurulum
+description: Hanzo Dev'i npm veya Homebrew ile kurun ya da kaynaktan derleyin.
+---
+
+## Sistem gereksinimleri
+
+| Gereksinim | Ayrıntılar |
+| --- | --- |
+| İşletim sistemleri | macOS 12+, Ubuntu 20.04+/Debian 10+ veya Windows 11 **WSL2 üzerinden** |
+| Git (isteğe bağlı, önerilir) | Yerleşik PR yardımcıları için 2.23+ |
+| RAM | en az 4 GB (8 GB önerilir) |
+
+## npm ile kurulum
+
+```bash
+npm install -g @hanzo/dev
+```
+
+## npx ile kurulum
+
+```bash
+npx @hanzo/dev
+```
+
+## DotSlash
+
+GitHub sürümü, Hanzo Dev için `dev` adlı bir [DotSlash](https://dotslash-cli.com/) dosyası da içerir. DotSlash dosyası, platformdan bağımsız olarak tüm katkıda bulunanların aynı yürütülebilir sürümü kullanması için kaynak denetimine hafif bir commit koymanızı sağlar.
+
+## Kaynaktan derleme
+
+```bash
+# Clone the repository
+git clone https://github.com/hanzoai/dev.git
+cd dev
+
+# Install the Rust toolchain if necessary
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source "$HOME/.cargo/env"
+
+# Build (~20 min cold, ~2 min incremental)
+./build-fast.sh
+
+# Launch the TUI
+./hanzo-dev/target/dev-fast/dev
+```
+
+## İzleme ve ayrıntılı günlük
+
+Hanzo Dev, Rust ile yazılmıştır ve `RUST_LOG` ortam değişkenine uyar.
+
+TUI varsayılan olarak `RUST_LOG=hanzo_core=info,hanzo_tui=info` kullanır ve günlükleri `~/.hanzo/log/codex-tui.log` dosyasına yazar. Tek bir çalıştırma için günlük dizinini `-c log_dir=...` ile değiştirin.
+
+```bash
+tail -F ~/.hanzo/log/codex-tui.log
+```
+
+Etkileşimsiz mod (`dev exec`) varsayılan olarak `RUST_LOG=error` kullanır ve çıktıyı satır içine yazar.
+
+Tüm yapılandırma seçenekleri için Rust [`RUST_LOG` belgelerine](https://docs.rs/env_logger/latest/env_logger/#enabling-logging) bakın.

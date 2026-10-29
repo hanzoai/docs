@@ -1,0 +1,64 @@
+---
+title: Cloudflare Agents
+description: "Tidak ada parameter URL dasar sendiri — buat instans klien openai di dalam Agent dan setel baseURL padanya."
+---
+
+Cloudflare Agents tidak punya parameter URL dasar sendiri. Konstruksi yang didokumentasikan adalah klien `openai` biasa, dibangun di dalam Agent, dengan **`baseURL`** disetel padanya.
+
+```bash
+npm i agents openai
+```
+
+```ts
+import { Agent } from "agents";
+import { OpenAI } from "openai";
+
+export class Researcher extends Agent {
+  async onRequest(request: Request): Promise<Response> {
+    const client = new OpenAI({
+      apiKey: this.env.HANZO_API_KEY,
+      baseURL: "https://api.hanzo.ai/v1",
+    });
+
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
+
+    this.ctx.waitUntil(
+      (async () => {
+        const stream = await client.chat.completions.create({
+          model: "zen5",
+          messages: [{ role: "user", content: await request.text() }],
+          stream: true,
+        });
+        for await (const part of stream) {
+          writer.write(encoder.encode(part.choices[0]?.delta?.content || ""));
+        }
+        writer.close();
+      })(),
+    );
+
+    return new Response(readable);
+  }
+}
+```
+
+Mendarat di `POST /v1/chat/completions`.
+
+Taruh kunci di rahasia Worker — `wrangler secret put HANZO_API_KEY` — dan ia tiba di `this.env`. Streaming berjalan di dalam `ctx.waitUntil` agar Worker tidak dibongkar selagi respons masih ditulis.
+
+Jalur terdokumentasi yang lain adalah AI SDK, yang sudah dipakai `AIChatAgent` dan templat pemula. Segala sesuatu di [halaman Vercel AI SDK](/docs/guides/integrations/vercel-ai-sdk) berlaku tanpa perubahan di dalam Cloudflare Agent.
+
+## MCP
+
+MCP adalah metode pada Agent, bukan pustaka klien. `addMcpServer` mengembalikan id dan `authUrl`; `authUrl` yang bukan null berarti server itu menginginkan perjalanan pulang-pergi OAuth, dan milik kita tidak.
+
+```ts
+export class Researcher extends Agent {
+  async onStart() {
+    await this.addMcpServer("hanzo", "https://api.hanzo.ai/v1/mcp");
+  }
+}
+```
+
+Server yang terhubung dan alatnya dapat dibaca dari keadaan MCP Agent.

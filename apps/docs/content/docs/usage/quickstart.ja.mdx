@@ -1,0 +1,61 @@
+---
+title: クイックスタート
+description: @hanzo/usage を入れ、統一された AI 利用量を TypeScript およそ 15 行で読みます。
+---
+
+# クイックスタート
+
+`@hanzo/usage` は Hanzo Usage の背後にあるヘッドレスな中核です。Node、
+Next.js、Tauri で動き、Hanzo、Codex、Claude の組み込みプロバイダを同梱します
+（レジストリは拡張できます）。
+
+## インストール
+
+```bash title="Install"
+npm install @hanzo/usage
+```
+
+## 利用量を読む
+
+`UsageStore` を作り、環境用のホストを渡し、ポーリングのループを始めます。
+ストアは監視できます。描画するには購読するか、React のフックを使います。
+
+```ts title="usage.ts"
+import { UsageStore, allProviders } from '@hanzo/usage'
+import { nodeHost } from '@hanzo/usage/node' // or createTauriHost from '@hanzo/usage/tauri'
+
+const store = new UsageStore({
+  host: nodeHost,
+  providers: allProviders, // hanzo, codex, claude — registry-extensible
+  historyDir: `${process.env.HOME}/.config/hanzo/usage/history`,
+})
+
+store.start() // 5-minute poll, CodexBar-compatible history files
+store.subscribe(() => console.log(store.getState()))
+```
+
+## Tauri で（Hanzo Desktop、hanzo.app）
+
+Tauri プラグインのモジュールを渡します。中核はウェブと
+Node のバンドルでは依存を持ちません。
+
+```ts title="tauri-host.ts"
+import * as fs from '@tauri-apps/plugin-fs'
+import { fetch } from '@tauri-apps/plugin-http'
+import { homeDir } from '@tauri-apps/api/path'
+import { createTauriHost } from '@hanzo/usage/tauri'
+
+const host = await createTauriHost({ fs, fetch, homeDir })
+```
+
+## React で
+
+```ts title="Component.tsx"
+import { useUsage } from '@hanzo/usage/react'
+
+const state = useUsage(store) // re-renders on every refresh
+```
+
+各プロバイダは取得戦略の順序付きパイプライン（`oauth` → `web` →
+`cli` → `apiToken` → `localProbe`）を走らせ、すでに持っているログインを再利用します。そのため
+パスワードが求められることも保存されることもありません。

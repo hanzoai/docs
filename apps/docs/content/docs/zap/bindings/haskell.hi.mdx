@@ -1,0 +1,81 @@
+---
+title: Haskell
+description: ZAP का Haskell SDK — शुद्ध फंक्शनल बाइंडिंग
+---
+
+# Haskell बाइंडिंग
+
+Haskell बाइंडिंग मज़बूत टाइपों के साथ शुद्ध फंक्शनल इंटरफ़ेस देती है।
+
+## इंस्टॉलेशन
+
+`package.yaml` में जोड़ें:
+
+```yaml
+dependencies:
+  - zap >= 0.1
+```
+
+या `cabal` से:
+
+```yaml
+build-depends: zap >= 0.1
+```
+
+## त्वरित शुरुआत
+
+```haskell
+{-# LANGUAGE OverloadedStrings #-}
+
+module Main where
+
+import Zap
+import qualified Data.Text.IO as TIO
+
+main :: IO ()
+main = do
+    client <- connect "zap://localhost:9000"
+
+    let info = ClientInfo { name = "my-agent", version = "1.0.0" }
+    server <- initialize client info
+    TIO.putStrLn $ "Connected to: " <> serverName server <> " v" <> serverVersion server
+
+    tools <- listTools client
+    mapM_ printTool tools
+
+    let call = ToolCall
+            { toolCallId = "call-1"
+            , toolCallName = "read_file"
+            , toolCallArgs = "{\"path\": \"/etc/hosts\"}"
+            , toolCallMetadata = []
+            }
+    result <- callTool client call
+
+    case toolResultError result of
+        Just err -> TIO.putStrLn $ "Error: " <> err
+        Nothing  -> TIO.putStrLn $ "Result: " <> toolResultContent result
+
+    close client
+  where
+    printTool tool = TIO.putStrLn $ "  " <> toolName tool <> " - " <> toolDescription tool
+```
+
+## मोनाडिक इंटरफ़ेस
+
+```haskell
+import Zap.Monad
+
+runZap :: ZapM ()
+runZap = do
+    server <- initialize ClientInfo { name = "my-agent", version = "1.0.0" }
+    tools <- listTools
+    results <- mapM callToolWithDefaults tools
+    return ()
+
+main :: IO ()
+main = runZapWith "zap://localhost:9000" runZap
+```
+
+## दस्तावेज़
+
+पूरा दस्तावेज़: [zap-proto/haskell](https://github.com/zap-proto/haskell).

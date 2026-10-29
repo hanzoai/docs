@@ -1,4 +1,4 @@
-import { source } from '@/lib/source';
+import { englishPages, source } from '@/lib/source';
 import type { OramaDocument } from '@hanzo/docs-core/search/orama-cloud';
 import { getBreadcrumbItems } from '@hanzo/docs-core/breadcrumb';
 import { getSection } from '@/lib/source/navigation';
@@ -6,7 +6,7 @@ import { getSection } from '@/lib/source/navigation';
 export const revalidate = false;
 
 export async function GET(): Promise<Response> {
-  const pages = source.getPages();
+  const pages = englishPages();
   const promises = pages.map(async (page) => {
     if (page.type === 'openapi') return;
 

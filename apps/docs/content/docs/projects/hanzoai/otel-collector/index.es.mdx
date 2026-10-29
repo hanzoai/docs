@@ -1,0 +1,38 @@
+---
+title: "Recolector Otel"
+description: "Recolector Hanzo O11y Otel — distribución de Hanzo del OpenTelemetry Collector: ingesta ZAP-native y OTLP hacia hanzoai/datastore"
+---
+
+<p align="center"><img src=".github/hero.svg" alt="otel-collector" width="880"></p>
+
+# Recolector Hanzo O11y Otel
+
+La distribución de Hanzo del OpenTelemetry Collector. Recibe trazas, métricas y registros por **ZAP-native** (`zap-proto/http`, `:4319`) más OTLP (`:4317`/`:4318`) y escribe en el único hanzoai/datastore (Datastore). Añade `receiver/zapreceiver` y `exporter/zapexporter` sobre el origen.
+
+## CI/CD — patrón canónico (una sola manera)
+
+La construcción, la prueba y el despliegue los dirige un único **`hanzo.yml`** en la raíz y un **`.github/workflows/cicd.yml`** de unas siete líneas, que importa el flujo reutilizable [`hanzoai/ci`](https://github.com/hanzoai/ci):
+
+```yaml
+# .github/workflows/cicd.yml
+jobs:
+  cicd:
+    uses: hanzoai/ci/.github/workflows/build.yml@main
+    secrets: inherit
+```
+
+Toda la lógica de construcción, prueba y despliegue vive una sola vez en `hanzoai/ci`. Lee `hanzo.yml` (`images:` / `test:` / `deploy:` / `kms:`), construye y empuja cada imagen, ejecuta las pruebas y hace rodar el despliegue. **La construcción corre en nuestro grupo arc autoalojado (`hanzo-build-linux-amd64`) — cero minutos alojados en GitHub**; GitHub solo orquesta y nuestra infraestructura hace el trabajo. El empuje a GHCR usa el testigo automático del flujo; KMS (`kms.hanzo.ai`) aporta solo el `KUBECONFIG` de despliegue.
+
+Este repositorio construye dos imágenes a partir de Dockerfiles de varias etapas que se construyen solos, así que no hace falta un paso previo de CI:
+
+| imagen | archivo docker | etiquetas |
+|---|---|---|
+| `ghcr.io/hanzoai/otel-collector` | `cmd/o11yotelcollector/Dockerfile.selfbuild` | `:zap-native-latest`, `:sha-<short>-amd64-zap-native` |
+| `ghcr.io/hanzoai/o11y-schema-migrator` | `cmd/o11yschemamigrator/Dockerfile.selfbuild` | `:latest`, `:sha-<short>-amd64` |
+
+**Este es el patrón de aquí en adelante para todos los repositorios de PaaS nativo.** Para incorporar un repositorio nuevo: añade un `hanzo.yml` en la raíz y el `cicd.yml` de arriba — nada más. No añadas lógica de construcción por repositorio, ejecutores alojados en GitHub, ni los reutilizables heredados `hanzoai/.github`, `docker-build.yml` y `o11y/primus.workflows` (ambos retirados aquí).
+
+## Enlaces
+
+- [Fuente](https://github.com/hanzoai/otel-collector)
+- Licencia: AGPL-3.0
