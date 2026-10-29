@@ -1,10 +1,15 @@
 'use client';
 import { defaultTranslations, type Translations } from '@/i18n';
-import { renderTranslation, type TranslationValue } from '@hanzo/docs-core/i18n';
+import {
+  renderTranslation,
+  withEnglishFallback,
+  type TranslationValue,
+} from '@hanzo/docs-core/i18n';
 import { useTranslations as useTranslationsBase } from '@hanzo/docs-ui/contexts/i18n';
 
 export function useTranslations(): Translations {
-  return (useTranslationsBase('openapi') as unknown as Translations | undefined) ?? defaultTranslations;
+  const translated = useTranslationsBase('openapi') as Partial<Translations> | undefined;
+  return withEnglishFallback(defaultTranslations, translated);
 }
 
 /**

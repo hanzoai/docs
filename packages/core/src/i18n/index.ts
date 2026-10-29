@@ -223,3 +223,14 @@ export function renderTranslation(
 
   return label;
 }
+
+export {
+  RTL_LOCALES,
+  directionOf,
+  htmlLang,
+  localeFromPathname,
+  localePath,
+  localeAlternates,
+  withEnglishFallback,
+  type HideLocale,
+} from './locale';

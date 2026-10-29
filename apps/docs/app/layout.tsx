@@ -9,6 +9,8 @@ import { Provider } from './provider';
 import type { ReactNode } from 'react';
 import { Zen, ZenMono } from '@hanzo/font';
 import { TreeContextProvider } from '@hanzo/docs/ui/contexts/tree';
+import { localeBootScript } from '@/lib/i18n';
+import { translatedPathnames } from '@/lib/locale-seo';
 import { source } from '@/lib/source';
 import { NextProvider } from '@hanzo/docs/core/framework/next';
 import { Analytics } from '@hanzo/docs-analytics';
@@ -19,8 +21,7 @@ export const metadata = createMetadata({
     template: '%s | Hanzo Docs',
     default: 'Hanzo — Documentation',
   },
-  description:
-    'Documentation for Hanzo AI Cloud — every model, every tool, one key.',
+  description: 'Documentation for Hanzo AI Cloud — every model, every tool, one key.',
   metadataBase: baseUrl,
 });
 
@@ -34,10 +35,13 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${Zen.variable} ${ZenMono.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: localeBootScript }} />
+      </head>
       <Body>
         <NextProvider>
           <TreeContextProvider tree={source.getPageTree()}>
-            <Provider>{children}</Provider>
+            <Provider paths={translatedPathnames()}>{children}</Provider>
           </TreeContextProvider>
         </NextProvider>
         <Analytics product="docs" />

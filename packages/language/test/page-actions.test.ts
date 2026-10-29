@@ -1,16 +1,14 @@
 import { describe, expect, test } from 'vitest';
 import { defaultTranslations } from '@hanzo/docs-ui/i18n';
-import { zhCN } from '../src/zh-cn';
-import { zhTW } from '../src/zh-tw';
+import { languagePacks } from '../src/presets';
 
 // Every full translation surface must carry the Enso page action: the English
-// defaults and both locale packs. A locale missing the keys would silently fall
+// defaults and every locale pack. A locale missing the keys would silently fall
 // back at runtime only if typed Partial — these packs are complete by contract.
 describe('Enso page action across translation surfaces', () => {
   const surfaces = [
     ['en', defaultTranslations],
-    ['zh-CN', zhCN().value.ui!],
-    ['zh-TW', zhTW().value.ui!],
+    ...Object.entries(languagePacks).map(([code, load]) => [code, load().value.ui!] as const),
   ] as const;
 
   test.each(surfaces)('%s carries title and edit prompt', (_name, ui) => {

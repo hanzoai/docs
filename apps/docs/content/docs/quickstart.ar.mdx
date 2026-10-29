@@ -1,0 +1,215 @@
+---
+icon: Rocket
+title: بداية سريعة
+description: ثبّت واجهة سطر الأوامر، سجّل الدخول، وأجرِ أول استدعاء — ثم انظر الاستدعاء نفسه كأسلوب SDK وHTTP خام وأداة MCP.
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs'
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**بعد هذه الصفحة لديك اعتماد يعمل واستدعاء أجاب.**
+
+Hanzo سحابة واحدة خلف مفتاح واحد. كل قدرة — استدلال وهوية
+وتخزين ومال ووكلاء — تجيب على `https://api.hanzo.ai`، وواجهة سطر الأوامر و
+SDK وأدوات MCP تُولَّد من الوصف نفسه. لا شيء توصله لكل خدمة:
+مفتاح واحد مرة واحدة ويصبح كل شيء في المتناول.
+
+## 1. التثبيت
+
+<Tabs items={['npm', 'Script', 'Homebrew', 'من المصدر']}>
+<Tab value="npm">
+```bash
+npm i -g hanzo
+```
+
+`hanzo` هي واجهة سطر الأوامر والعميل في تثبيت واحد.
+</Tab>
+<Tab value="Script">
+```bash
+curl -fsSL https://hanzo.sh | sh
+```
+
+يُثبَّت في `~/.local/bin`. `https://hanzo.sh/cli` يثبّت الواجهة وحدها.
+</Tab>
+<Tab value="Homebrew">
+```bash
+brew install hanzoai/tap/hanzo
+```
+</Tab>
+<Tab value="من المصدر">
+```bash
+git clone https://github.com/hanzoai/cli && cd cli && cargo install --path .
+```
+</Tab>
+</Tabs>
+
+```bash
+hanzo version
+```
+
+## 2. تسجيل الدخول
+
+```bash
+hanzo auth login
+```
+
+يفتح ذلك متصفحًا على [hanzo.id](https://hanzo.id)، مزوّد هوية
+Hanzo، ويخزن الاعتماد محليًا. `hanzo auth show` يطبع
+من أنت؛ `hanzo auth list` يعرض كل هوية على هذا الجهاز و
+`hanzo auth use` ينتقل بينها.
+
+على خادم، اصنع مفتاحًا بدل تسجيل دخول شخص: **console.hanzo.ai →
+مفاتيح API**. المفتاح السري هو *أنت*، فيبقى على خادم ولا يدخل
+متصفحًا أبدًا — [المصادقة](/docs/api-keys) هي القاعدة كلها.
+
+```bash
+export HANZO_API_KEY=sk-...
+```
+
+## 3. اسرد النماذج
+
+فهرس النماذج التي تخدمها البوابة الآن. إنها قراءة، لا تحتاج
+سوى المفتاح، وهي العملية نفسها على الأسطح الأربعة.
+
+<Tabs items={['CLI', 'SDK', 'HTTP', 'MCP']}>
+<Tab value="CLI">
+```bash
+hanzo models list
+```
+</Tab>
+<Tab value="SDK">
+<Tabs items={['.ts', '.py', '.go', '.rs', '.swift', '.kt']}>
+<Tab value=".ts">
+```bash
+npm i hanzo
+```
+
+```ts
+import { Hanzo } from 'hanzo'
+
+const hanzo = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+const models = await hanzo.models.list()
+```
+</Tab>
+<Tab value=".py">
+```bash
+pip install hanzo
+```
+
+```python
+from hanzo import Hanzo
+
+hanzo = Hanzo(api_key=os.environ["HANZO_API_KEY"])
+models = hanzo.models.list()
+```
+</Tab>
+<Tab value=".go">
+```bash
+go get github.com/hanzoai/go-sdk
+```
+
+```go
+client := hanzo.NewClient(hanzo.WithAPIKey(os.Getenv("HANZO_API_KEY")))
+models, err := client.Models.List(ctx)
+```
+</Tab>
+<Tab value=".rs">
+```bash
+cargo add hanzo
+```
+
+```rust
+let hanzo = hanzo::Client::from_env()?;
+let models = hanzo.models().list().await?;
+```
+</Tab>
+<Tab value=".swift">
+```swift
+// Package.swift: .package(url: "https://github.com/hanzoai/swift-sdk", from: "1.0.0")
+let hanzo = Hanzo(apiKey: ProcessInfo.processInfo.environment["HANZO_API_KEY"]!)
+let models = try await hanzo.models.list()
+```
+</Tab>
+<Tab value=".kt">
+```kotlin
+// build.gradle.kts: implementation("ai.hanzo:sdk:latest.release")
+val hanzo = Hanzo(apiKey = System.getenv("HANZO_API_KEY"))
+val models = hanzo.models.list()
+```
+</Tab>
+</Tabs>
+
+كلها مولَّدة من وصف API نفسه، فتتطابق أسماء
+الأساليب عبر اللغات. [C++](/docs/sdks/cpp) هو الذي ما زال
+في الطريق.
+</Tab>
+<Tab value="HTTP">
+```bash
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+</Tab>
+<Tab value="MCP">
+```bash
+curl -X POST https://api.hanzo.ai/v1/mcp \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+نقطة نهاية واحدة وأداة لكل قدرة. `tools/call` يسمي القدرة و
+العملية؛ `describe` يشرح دخل أي عملية.
+</Tab>
+</Tabs>
+
+هذه API واحدة من أربعة مواضع، والألسنة أعلاه هي
+الفرق كله. اختر ما ستكتب به:
+
+- **[CLI](/docs/cli)** — كل قدرة مجموعة أوامر، وصفحة لكل واحدة.
+- **[SDKs](/docs/sdks)** — Python وTypeScript وGo وRust وC++ وSwift وKotlin،
+  مولَّدة من الوصف نفسه الذي تُبنى منه الواجهة والأدوات.
+- **[MCP](/docs/mcp)** — نقطة نهاية يتصل بها وكيل؛ [الأدوات](/docs/mcp-tools)
+  مدرجة واحدة لكل قدرة.
+
+HTTP لا يحتاج صفحة: هو `https://api.hanzo.ai` والمفتاح الذي صدّرته للتو.
+
+## 4. أرسل إكمالًا
+
+هذه أول خطوة تسحب رصيدًا؛ كل ما فوقها يعمل مجانًا.
+
+```bash
+hanzo chat completions --model zen-1 --messages '[{"role":"user","content":"hello"}]'
+```
+
+ثم اقرأ ما سحبته:
+
+```bash
+hanzo billing balance
+hanzo usage summary
+```
+
+[الأرصدة والفوترة](/docs/credits) تشرح ما هو الرصيد وما يحدث عند
+الصفر؛ [الأسعار](/docs/pricing) هي تعرفة كل نموذج وأداة.
+
+## 5. شغّل السحابة محليًا
+
+الثنائي نفسه الذي يخدم `api.hanzo.ai` يعمل على جهازك:
+
+```bash
+hanzo up cloud
+```
+
+`hanzo up` وحده هو الشيء نفسه — `cloud` هو الافتراضي. سمِّ خدمة لتشغّلها
+وحدها: `hanzo up iam` و`hanzo up kms` و`hanzo up gateway` و`hanzo up
+storage` و`hanzo up pubsub`. انظر [شغّل نسختك](/docs/network) لتعرف ماذا
+يعني ذلك وماذا يحتاج.
+
+## إلى أين بعد ذلك
+
+- **[ستة مسارات، أربعة أسطح](/docs/guides)** — ترحيب ودردشة ومال وتخزين ووكيل
+  وأدوات. المنتج كله مصغّرًا، وكل رحلة بأربع طرق.
+- **[المفاهيم](/docs/concepts)** — مؤسسات ومشاريع وsandboxes ووكلاء وذاكرة و
+  سير عمل. اقرأها مرة فيشرح باقي API نفسه.
+- **[القدرات](/docs/openapi)** — كلها، مجمّعة. كل صفحة تقول ما
+  هي القدرة وكيف تصل إليها من الأسطح الأربعة وتربط
+  مواصفتها.

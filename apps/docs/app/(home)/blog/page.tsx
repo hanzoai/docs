@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { blog } from '@/lib/source';
+import { englishPosts } from '@/lib/source';
 import { PathUtils } from '@hanzo/docs/core/source';
 
 // Blog frontmatter type (matches source.config.ts schema)
@@ -15,7 +15,7 @@ function getName(path: string) {
 }
 
 export default function Page() {
-  const posts = [...blog.getPages()].sort(
+  const posts = [...englishPosts()].sort(
     (a, b) =>
       new Date((b.data as unknown as BlogData).date ?? getName(b.path)).getTime() -
       new Date((a.data as unknown as BlogData).date ?? getName(a.path)).getTime(),

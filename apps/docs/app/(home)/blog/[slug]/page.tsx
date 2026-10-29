@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { TOCItemType } from '@hanzo/docs-core/toc';
 import { InlineTOC } from '@hanzo/docs-base-ui/components/inline-toc';
-import { blog } from '@/lib/source';
+import { blog, englishPosts } from '@/lib/source';
 import { createMetadata } from '@/lib/metadata';
 import { buttonVariants } from '@hanzo/docs-base-ui/components/ui/button';
 import { ShareButton } from '@/app/(home)/blog/[slug]/page.client';
@@ -91,7 +91,7 @@ export async function generateMetadata(props: BlogPageProps): Promise<Metadata> 
 }
 
 export function generateStaticParams(): { slug: string }[] {
-  return blog.getPages().map((page) => ({
+  return englishPosts().map((page) => ({
     slug: page.slugs[0],
   }));
 }

@@ -1,5 +1,5 @@
 import { getLLMText } from '@/lib/get-llm-text';
-import { getPageMarkdownUrl, source } from '@/lib/source';
+import { englishPages, getPageMarkdownUrl, source } from '@/lib/source';
 import { notFound } from 'next/navigation';
 
 // The markdown twin of every docs page: what Copy Markdown puts on the
@@ -29,7 +29,7 @@ export async function GET(
 // `output: 'export'` — this site is served by hanzoai/static, so nothing
 // computes a response at request time.
 export function generateStaticParams() {
-  return source.getPages().map((page) => ({
+  return englishPages().map((page) => ({
     slug: getPageMarkdownUrl(page).segments,
   }));
 }

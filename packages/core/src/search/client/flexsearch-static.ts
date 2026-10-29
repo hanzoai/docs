@@ -33,11 +33,24 @@ export function flexsearchStaticClient(options: FlexsearchStaticOptions = {}): S
     deps: [from, locale, tag],
     async search(query) {
       const loaded = await dbs!;
-      const db = loaded.get(locale);
+      const db = pickFlexsearchIndex(loaded, locale);
       if (!db) return [];
-      return search(db, query, tag);
+      const hits = await search(db, query, tag);
+      if (hits.length > 0 || !locale || locale === 'en') return hits;
+
+      const english = loaded.get('en') ?? loaded.get('');
+      if (!english || english === db) return hits;
+      return search(english, query, tag);
     },
   };
+}
+
+/** Prefer the requested locale, then English, then the unscoped index. */
+export function pickFlexsearchIndex<T>(loaded: Map<string, T>, locale: string): T | undefined {
+  if (locale && loaded.has(locale)) return loaded.get(locale);
+  if (loaded.has('en')) return loaded.get('en');
+  if (loaded.has('')) return loaded.get('');
+  return undefined;
 }
 
 async function init(from: string) {

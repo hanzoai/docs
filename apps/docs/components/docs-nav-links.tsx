@@ -4,6 +4,10 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/cn';
 import { linkItems } from '@/components/layouts/shared';
+import { chrome } from '@/lib/chrome';
+import { i18n, stripLocale } from '@/lib/i18n';
+import { useI18n } from '@hanzo/docs-base-ui/contexts/i18n';
+import { useTranslatedPaths } from '@/components/locale-paths';
 
 // The four developer surfaces, rendered INSIDE the docs top bar.
 //
@@ -16,6 +20,17 @@ import { linkItems } from '@/components/layouts/shared';
 // drift: add a surface once and it appears in both.
 export function DocsNavLinks() {
   const pathname = usePathname();
+  const { locale = i18n.defaultLanguage } = useI18n();
+  const text = chrome(locale);
+  const translated = useTranslatedPaths();
+  const labels = [
+    text.navDocs,
+    text.navGuides,
+    text.navApis,
+    text.navSdks,
+    text.navCli,
+    text.navMcp,
+  ];
 
   // A run of equal-height links, so the tracks come from the content and the
   // spacing is stated once on the container rather than as a margin each link
@@ -31,17 +46,19 @@ export function DocsNavLinks() {
     <nav className="grid grid-flow-col justify-start items-center gap-1 max-md:hidden">
       {linkItems
         .filter((item) => item.type !== 'icon' && 'url' in item)
-        .map((item) => {
-          const url = String((item as { url: string }).url);
+        .map((item, index) => {
+          const bare = String((item as { url: string }).url);
+          const localized = locale === i18n.defaultLanguage ? bare : `/${locale}${bare}`;
+          const url = translated.has(normalizePath(localized)) ? localized : bare;
           // Each item says how it matches, and this honours it rather than
           // assuming. `nested-url` keeps a section lit while the reader is
           // anywhere inside it; `url` is exact, which is what /docs needs — it
           // prefixes every page here and would otherwise never be off.
           const mode = (item as { active?: string }).active ?? 'nested-url';
+          const here = normalizePath(stripLocale(pathname));
+          const target = normalizePath(bare);
           const active =
-            mode === 'url'
-              ? pathname === url
-              : pathname === url || pathname.startsWith(`${url}/`);
+            mode === 'url' ? here === target : here === target || here.startsWith(`${target}/`);
 
           return (
             <Link
@@ -49,15 +66,18 @@ export function DocsNavLinks() {
               href={url}
               className={cn(
                 'rounded-md px-2.5 py-1.5 text-sm transition-colors',
-                active
-                  ? 'text-fd-foreground'
-                  : 'text-fd-muted-foreground hover:text-fd-foreground',
+                active ? 'text-fd-foreground' : 'text-fd-muted-foreground hover:text-fd-foreground',
               )}
             >
-              {String((item as { text: string }).text)}
+              {labels[index] ?? String((item as { text: string }).text)}
             </Link>
           );
         })}
     </nav>
   );
+}
+
+function normalizePath(path: string) {
+  if (path.length > 1 && path.endsWith('/')) return path.slice(0, -1);
+  return path || '/';
 }

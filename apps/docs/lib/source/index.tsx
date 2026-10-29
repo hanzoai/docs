@@ -2,6 +2,7 @@ import { type LoaderPlugin, loader } from '@hanzo/docs-core/source';
 import { blog as blogPosts, docs } from 'collections/server';
 import { createSource } from '@hanzo/docs-mdx/runtime/server';
 import { lucideIconsPlugin } from '@hanzo/docs-core/source/lucide-icons';
+import { i18n } from '@/lib/i18n';
 
 // ONE REFERENCE.
 //
@@ -28,6 +29,7 @@ export const source = loader(
   },
   {
     baseUrl: '/docs',
+    i18n,
     plugins: [
       pageTreeCodeTitles(),
       lucideIconsPlugin(),
@@ -60,7 +62,17 @@ function pageTreeCodeTitles(): LoaderPlugin {
 
 export const blog = loader(createSource(blogPosts, []), {
   baseUrl: '/blog',
+  i18n,
 });
+
+/** English pages only. Localized files are separate pages and must not be mixed into indexes. */
+export function englishPages() {
+  return source.getPages(i18n.defaultLanguage);
+}
+
+export function englishPosts() {
+  return blog.getPages(i18n.defaultLanguage);
+}
 
 export type Page = (typeof source)['$inferPage'];
 export type Meta = (typeof source)['$inferMeta'];

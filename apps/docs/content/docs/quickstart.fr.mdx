@@ -1,0 +1,215 @@
+---
+icon: Rocket
+title: Démarrage rapide
+description: Installez la CLI, connectez-vous et faites votre premier appel — puis voyez ce même appel comme méthode de SDK, HTTP brut et outil MCP.
+---
+
+import { Tab, Tabs } from '@hanzo/docs-base-ui/components/tabs'
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+**Après cette page vous avez un identifiant qui fonctionne et un appel qui a répondu.**
+
+Hanzo est un cloud derrière une clé. Chaque capacité — inférence, identité,
+stockage, argent, agents — répond sur `https://api.hanzo.ai`, et la CLI, les
+SDK et les outils MCP sont générés de la même description. Rien à brancher
+par service : une clé, et tout est joignable.
+
+## 1. Installer
+
+<Tabs items={['npm', 'Script', 'Homebrew', 'Depuis les sources']}>
+<Tab value="npm">
+```bash
+npm i -g hanzo
+```
+
+`hanzo` est la CLI et le client en une seule installation.
+</Tab>
+<Tab value="Script">
+```bash
+curl -fsSL https://hanzo.sh | sh
+```
+
+S’installe dans `~/.local/bin`. `https://hanzo.sh/cli` installe la CLI seule.
+</Tab>
+<Tab value="Homebrew">
+```bash
+brew install hanzoai/tap/hanzo
+```
+</Tab>
+<Tab value="Depuis les sources">
+```bash
+git clone https://github.com/hanzoai/cli && cd cli && cargo install --path .
+```
+</Tab>
+</Tabs>
+
+```bash
+hanzo version
+```
+
+## 2. Se connecter
+
+```bash
+hanzo auth login
+```
+
+Cela ouvre un navigateur vers [hanzo.id](https://hanzo.id), le fournisseur
+d’identité de Hanzo, et stocke l’identifiant localement. `hanzo auth show` affiche
+qui vous êtes ; `hanzo auth list` montre chaque identité de cette machine et
+`hanzo auth use` passe de l’une à l’autre.
+
+Sur un serveur, créez une clé au lieu de connecter une personne : **console.hanzo.ai →
+clés d’API**. Une clé secrète, c’est *vous* : elle vit sur un serveur et jamais
+dans un navigateur — [Authentification](/docs/api-keys) est toute la règle.
+
+```bash
+export HANZO_API_KEY=sk-...
+```
+
+## 3. Lister les modèles
+
+Le catalogue des modèles que la passerelle sert en ce moment. C’est une lecture, il ne
+faut que la clé, et c’est la même opération sur les quatre surfaces.
+
+<Tabs items={['CLI', 'SDK', 'HTTP', 'MCP']}>
+<Tab value="CLI">
+```bash
+hanzo models list
+```
+</Tab>
+<Tab value="SDK">
+<Tabs items={['.ts', '.py', '.go', '.rs', '.swift', '.kt']}>
+<Tab value=".ts">
+```bash
+npm i hanzo
+```
+
+```ts
+import { Hanzo } from 'hanzo'
+
+const hanzo = new Hanzo({ apiKey: process.env.HANZO_API_KEY })
+const models = await hanzo.models.list()
+```
+</Tab>
+<Tab value=".py">
+```bash
+pip install hanzo
+```
+
+```python
+from hanzo import Hanzo
+
+hanzo = Hanzo(api_key=os.environ["HANZO_API_KEY"])
+models = hanzo.models.list()
+```
+</Tab>
+<Tab value=".go">
+```bash
+go get github.com/hanzoai/go-sdk
+```
+
+```go
+client := hanzo.NewClient(hanzo.WithAPIKey(os.Getenv("HANZO_API_KEY")))
+models, err := client.Models.List(ctx)
+```
+</Tab>
+<Tab value=".rs">
+```bash
+cargo add hanzo
+```
+
+```rust
+let hanzo = hanzo::Client::from_env()?;
+let models = hanzo.models().list().await?;
+```
+</Tab>
+<Tab value=".swift">
+```swift
+// Package.swift: .package(url: "https://github.com/hanzoai/swift-sdk", from: "1.0.0")
+let hanzo = Hanzo(apiKey: ProcessInfo.processInfo.environment["HANZO_API_KEY"]!)
+let models = try await hanzo.models.list()
+```
+</Tab>
+<Tab value=".kt">
+```kotlin
+// build.gradle.kts: implementation("ai.hanzo:sdk:latest.release")
+val hanzo = Hanzo(apiKey = System.getenv("HANZO_API_KEY"))
+val models = hanzo.models.list()
+```
+</Tab>
+</Tabs>
+
+Tous sont générés de la même description de l’API, donc les noms de
+méthode s’alignent entre les langages. [C++](/docs/sdks/cpp) est celui qui arrive
+encore.
+</Tab>
+<Tab value="HTTP">
+```bash
+curl https://api.hanzo.ai/v1/models \
+  -H "Authorization: Bearer $HANZO_API_KEY"
+```
+</Tab>
+<Tab value="MCP">
+```bash
+curl -X POST https://api.hanzo.ai/v1/mcp \
+  -H "Authorization: Bearer $HANZO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+```
+
+Un endpoint, un outil par capacité. `tools/call` nomme la capacité et
+l’opération ; `describe` explique l’entrée de n’importe quelle opération.
+</Tab>
+</Tabs>
+
+C’est une API vue de quatre endroits, et les onglets ci-dessus sont toute la
+différence. Choisissez celui dans lequel vous allez écrire :
+
+- **[CLI](/docs/cli)** — chaque capacité comme un groupe de commandes, une page chacune.
+- **[SDKs](/docs/sdks)** — Python, TypeScript, Go, Rust, C++, Swift et Kotlin,
+  générés de la même description que la CLI et les outils.
+- **[MCP](/docs/mcp)** — un endpoint auquel un agent se connecte ; [les outils](/docs/mcp-tools)
+  sont listés un par capacité.
+
+HTTP n’a pas besoin de page : c’est `https://api.hanzo.ai` et la clé que vous venez d’exporter.
+
+## 4. Envoyer une complétion
+
+C’est la première étape qui consomme du crédit ; tout ce qui précède est gratuit.
+
+```bash
+hanzo chat completions --model zen-1 --messages '[{"role":"user","content":"hello"}]'
+```
+
+Puis lisez ce qu’elle a consommé :
+
+```bash
+hanzo billing balance
+hanzo usage summary
+```
+
+[Crédits et facturation](/docs/credits) explique ce qu’est un crédit et ce qui se passe à
+zéro ; [Tarifs](/docs/pricing) est le prix de chaque modèle et outil.
+
+## 5. Lancer le cloud en local
+
+Le même binaire qui sert `api.hanzo.ai` tourne sur votre machine :
+
+```bash
+hanzo up cloud
+```
+
+`hanzo up` seul fait la même chose — `cloud` est la valeur par défaut. Nommez un service pour
+le lancer seul : `hanzo up iam`, `hanzo up kms`, `hanzo up gateway`, `hanzo up
+storage`, `hanzo up pubsub`. Voir [Le vôtre](/docs/network) pour ce que cela
+signifie et ce qu’il faut.
+
+## Et ensuite
+
+- **[Six parcours, quatre surfaces](/docs/guides)** — bonjour, chat, argent, stockage, agent,
+  outils. Tout le produit en miniature, chaque parcours montré de quatre façons.
+- **[Concepts](/docs/concepts)** — organisations, projets, sandboxes, agents, mémoire et
+  workflows. Lisez-les une fois et le reste de l’API s’explique.
+- **[Capacités](/docs/openapi)** — toutes, groupées. Chaque page dit ce
+  qu’est la capacité, comment l’atteindre depuis les quatre surfaces, et lie sa
+  spécification.

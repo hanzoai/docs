@@ -1,5 +1,5 @@
 import { Feed } from 'feed';
-import { blog } from '@/lib/source';
+import { englishPosts } from '@/lib/source';
 import { NextResponse } from 'next/server';
 
 export const revalidate = false;
@@ -26,7 +26,7 @@ export function GET() {
     copyright: 'All rights reserved 2025, Hanzo AI',
   });
 
-  for (const page of blog.getPages().sort((a, b) => {
+  for (const page of englishPosts().sort((a, b) => {
     const aData = a.data as unknown as BlogData;
     const bData = b.data as unknown as BlogData;
     return new Date(bData.date).getTime() - new Date(aData.date).getTime();

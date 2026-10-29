@@ -1,11 +1,11 @@
-import { source } from '@/lib/source';
+import { englishPages, source } from '@/lib/source';
 import type { Graph } from '@/components/graph-view';
 
 export async function buildGraph(): Promise<Graph> {
   const graph: Graph = { links: [], nodes: [] };
 
   await Promise.all(
-    source.getPages().map(async (page) => {
+    englishPages().map(async (page) => {
       if (page.type === 'openapi') return;
 
       graph.nodes.push({

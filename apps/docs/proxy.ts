@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isMarkdownPreferred, rewritePath } from '@hanzo/docs/core/negotiation';
+import { i18n } from '@/lib/i18n';
 
 const { rewrite: rewriteLLM } = rewritePath('/docs/*path', '/llms.mdx/*path');
 
@@ -21,6 +22,14 @@ export default function proxy(request: NextRequest) {
   // Skip internal/static paths
   if (SKIP_PATTERN.test(pathname)) {
     return NextResponse.next();
+  }
+
+  // English is unprefixed. `/en/docs/...` redirects to `/docs/...`.
+  const segments = pathname.split('/').filter((part) => part.length > 0);
+  if (segments[0] === i18n.defaultLanguage) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/${segments.slice(1).join('/')}`;
+    return NextResponse.redirect(url);
   }
 
   // Subdomain-based project routing (e.g. mcp.docs.hanzo.ai -> /docs/projects/hanzoai/mcp/...)
