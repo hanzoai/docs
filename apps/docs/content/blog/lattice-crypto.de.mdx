@@ -1,0 +1,69 @@
+---
+title: "Eigene Gitterkryptografie: unser FHE von Grund auf"
+description: "Eigenes gitterbasiertes FHE in Go — nicht Zamas tfhe-rs, nicht Microsofts SEAL. NTT-SIMD-Optimierung, verschlüsselte Datenbankspeicherung über ZapDB, C FFI und Rust-Bindungen."
+author: Zach Kelling
+date: 2019-08-01
+---
+
+# Eigene Gitterkryptografie: unser FHE von Grund auf
+
+Microsoft hat SEAL. Zama hat tfhe-rs. IBM hat HElib. Wir haben keines davon benutzt. Wir haben unsere eigene Bibliothek für vollständig homomorphe Verschlüsselung aus Gitterprimitiven in Go gebaut, mit C-FFI-Bindungen und einer Rust-Schnittstelle.
+
+Das klingt nach NIH-Syndrom. War es nicht.
+
+## Warum eigenes FHE
+
+Vollständig homomorphe Verschlüsselung lässt auf verschlüsselten Daten rechnen, ohne sie zu entschlüsseln. Der Server sieht niemals Klartext. Die Operationen laufen auf Chiffretexten, und die Ergebnisse sind nach der Entschlüsselung korrekt. Das ist der heilige Gral der verschlüsselten Berechnung.
+
+Die vorhandenen Bibliotheken lösen das Problem auf bestimmte Arten, für bestimmte Anwendungsfälle, mit bestimmten Leistungstauschgeschäften. SEAL ist auf das Cloud-Computing-Modell von Microsoft optimiert. tfhe-rs ist auf die Auswertung boolescher Schaltungen optimiert. HElib zielt auf Stapelarithmetik.
+
+Keine davon war für das gebaut, was wir brauchten: verschlüsselte Datenbankoperationen auf einer Blockchain. Wir brauchten homomorphe Operationen, die in die Grenzen der Speicherung auf der Kette, der Gaskosten und der konkreten Abfragemuster einer Blockchain-Zustandsdatenbank passen.
+
+## Die Implementierung
+
+Das Fundament ist RLWE (Lernen mit Fehlern auf Ringen) über Polynomringen. Die Ringstruktur liefert die algebraischen Eigenschaften für homomorphe Operationen, und die Fehlerterme liefern die Sicherheitsgarantie.
+
+**Polynomarithmetik**: NTT (zahlentheoretische Transformation) für schnelle Polynommultiplikation. Das ist das Gegenstück zu FFT für endliche Körper. Zwei Polynome vom Grad N naiv zu multiplizieren ist O(N^2). NTT bringt es auf O(N log N). Bei unseren Parametern (N = 4096 oder 8192) ist das der Unterschied zwischen brauchbar und unbrauchbar.
+
+**SIMD-Optimierung**: Die Polynomkoeffizienten liegen auf SIMD-Spuren. Ein einzelner Chiffretext kann Tausende Klartextwerte in parallelen Slots kodieren. Homomorphe Operationen auf dem Chiffretext wirken auf alle Slots gleichzeitig. Das ist kein GPU-Parallelismus — es ist Datenparallelismus, der in der algebraischen Struktur des Verfahrens steckt.
+
+**Bootstrapping**: Die Grundschwierigkeit von FHE. Jede homomorphe Operation fügt dem Chiffretext Rauschen hinzu. Nach genug Operationen überdeckt das Rauschen das Signal, und die Entschlüsselung scheitert. Bootstrapping frischt den Chiffretext auf, indem die Entschlüsselungsfunktion homomorph ausgewertet wird — die Entschlüsselung wird verschlüsselt. Unsere Bootstrapping-Implementierung zielt auf die minimale Schaltungstiefe für Datenbankoperationen, nicht auf Allzweckberechnung.
+
+## ZapDB: verschlüsselte Datenbankspeicherung
+
+ZapDB ist die Anwendungsschicht über der FHE-Bibliothek. Es ist ein verschlüsselter Schlüssel-Wert-Speicher, in dem:
+
+- Werte als FHE-Chiffretexte gespeichert werden
+- Abfragen auf verschlüsselten Daten laufen
+- Der Datenbankserver niemals Klartextwerte sieht
+- Ergebnisse als Chiffretexte zurückkommen, die nur der Schlüsselinhaber entschlüsseln kann
+
+Für eine Blockchain-Datenbank heißt das: Knotenbetreiber können Zustand speichern und abfragen, ohne die tatsächlichen Zustandswerte je zu sehen. Privatsphäre ist keine Richtlinie — sie ist eine mathematische Garantie.
+
+Das Abfragemodell ist gegenüber einer Allzweckdatenbank eingeschränkt. Gleichheitsprüfungen, Bereichsabfragen und arithmetische Aggregationen gehen. Beliebiges SQL geht nicht. Das ist eine grundsätzliche Grenze der vom FHE-Verfahren unterstützten Operationen, keine fehlende Funktion.
+
+## C FFI und Rust-Bindungen
+
+Die Kernbibliothek ist Go. Die leistungskritischen inneren Schleifen — NTT, Polynomreduktion, Rauschabtastung — haben C-Implementierungen, die Go über CGO aufruft. Im C-Code liegen die SIMD-Intrinsics.
+
+Die Rust-Bindungen wickeln die C-Schnittstelle in sichere Rust-Typen. Damit haben wir die Go-Bibliothek für die Lux-Knotenintegration, die C-Bibliothek für rohe Leistung und die Rust-Bindungen für alles andere in unserem Stack, das in Rust geschrieben ist.
+
+```go
+// Go interface
+ct := fhe.Encrypt(pk, plaintext)
+result := fhe.Add(ct1, ct2)
+decrypted := fhe.Decrypt(sk, result)
+// decrypted == plaintext1 + plaintext2
+```
+
+## Warum Eigenbau zählt
+
+Wer die FHE-Bibliothek eines anderen benutzt, vertraut deren Parameterwahl, deren Verwaltung des Rauschbudgets, deren RNG, deren Seitenkanal-Abwehr. Bei einer Anwendung, deren verschlüsselte Daten finanzieller Zustand auf einer öffentlichen Blockchain sind — sichtbar für jeden Knotenbetreiber der Welt — ist die Angriffsfläche nicht theoretisch.
+
+Von Grund auf zu bauen heißt, jede Parameterwahl zu verstehen. Wir wissen, warum N 4096 ist und nicht 2048 (Sicherheitsmarge). Wir wissen, warum der Koeffizientenmodulus als Kette von Primzahlen aufgebaut ist (RNS-Darstellung für effiziente modulare Arithmetik). Wir wissen, wohin das Rauschbudget geht und wie viele Operationen wir vor dem Bootstrapping verketten können.
+
+Dieses Verständnis steht nicht in der Dokumentation einer Bibliothek. Es kommt daher, die Körperarithmetik zu implementieren, die Bootstrapping-Schaltung zu debuggen und das Rauschwachstum empirisch zu messen. Der Code ist das Verständnis.
+
+---
+
+*zeekay — unsere eigene Gitterkryptografie, unser eigenes FHE, unsere eigene verschlüsselte Datenbank. jedes Bit verstanden.*

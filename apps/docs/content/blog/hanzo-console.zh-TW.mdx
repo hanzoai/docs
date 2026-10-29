@@ -1,0 +1,63 @@
+---
+title: "Hanzo Console 登場：LLM 觀測收成同一套環境"
+description: "Hanzo Console 正式推出。這是一套統合的開發環境，能跨所有供應商觀察、除錯並調校 LLM 應用。"
+author: Zach Kelling
+date: 2025-03-10
+---
+
+# Hanzo Console 登場：LLM 觀測收成同一套環境
+
+把 LLM 應用拉到量產規模，等於沒有儀表在飛。請求送出去，回應收回來，然後指望它沒事。出事的時候——輸出不對、延遲竄高、費用爆開——你看不見原因。
+
+今天我們推出 Hanzo Console：給 LLM 應用用的統合觀測平台。
+
+## Console 做什麼
+
+Console 把你在各家供應商上的 LLM 用量收成一幅完整的圖：
+
+**追蹤**：每一次 LLM 呼叫都留下完整請求與回應、延遲、token 數與費用。提示原文、補完原文、token 級的耗時，都能打開看。
+
+**費用追蹤**：依模型、專案、使用者與 API 金鑰即時看費用。預算流去哪裡，就從哪裡下手調。
+
+**品質監看**：沿著時間看輸出品質。回歸碰到使用者之前先攔下來。用有統計顯著性的 A/B 比較提示。
+
+**多家供應商**：OpenAI、Anthropic、Together AI，加上你用的每一家，進同一塊儀表板。不必再把五個帳務入口的報表拼起來。
+
+## 整合的代價
+
+每家 LLM 供應商都有某種用量儀表板。可是你一旦用了好幾家——多數正式環境的應用就是這樣——你是在核對五套結構不同的系統報表。
+
+Console 不綁某一家。埋點一次，全部看得到。
+
+```python
+from hanzo import Console
+
+console = Console(api_key="your-key")
+
+# Automatic tracing with context manager
+with console.trace("user_query"):
+    response = openai.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": user_input}]
+    )
+```
+
+## 提示管理
+
+Console 自帶一份提示登錄簿。替提示編號版本，看哪些版本已經上線，並比較各版本的表現。
+
+提示寫在程式裡的毛病是：會過期、會分岔，沒有人知道正式環境跑的是哪一版。Console 把提示做成一等的受管成品。
+
+## 資料集整理
+
+把正式環境的追蹤變成評測資料集。標出好的輸出，記下壞的，直接從真實用量做出一份基準資料集。
+
+等你要微調或換供應商時，手上的資料反映的是真實的正式流量，不是合成樣本。
+
+## 現在就能用
+
+Console 在 [console.hanzo.ai](https://console.hanzo.ai)。免費方案每月五萬筆追蹤。企業可以自行託管部署。
+
+---
+
+*Zach Kelling 是 Hanzo AI（Techstars '17）的創辦人。*

@@ -1,0 +1,63 @@
+---
+title: "Memperkenalkan Hanzo Console: observabilitas LLM yang terpadu"
+description: "Hanzo Console diluncurkan — lingkungan pengembangan terpadu untuk mengamati, menelusuri kesalahan, dan mengoptimalkan aplikasi LLM di semua penyedia."
+author: Zach Kelling
+date: 2025-03-10
+---
+
+# Memperkenalkan Hanzo Console: observabilitas LLM yang terpadu
+
+Membangun aplikasi LLM pada skala besar berarti berjalan tanpa melihat. Anda mengirim permintaan ke model, menerima respons, dan berharap semuanya berjalan. Saat tidak — keluaran salah, latensi melonjak, biaya meledak — Anda tidak melihat penyebabnya.
+
+Hari ini kami meluncurkan Hanzo Console: platform observabilitas terpadu untuk aplikasi LLM.
+
+## Apa yang dilakukan Console
+
+Console memberi gambaran utuh pemakaian LLM Anda di semua penyedia:
+
+**Penelusuran**: Setiap panggilan LLM tercatat dengan permintaan dan respons lengkap, latensi, jumlah token, dan biaya. Lihat prompt yang persis, penyelesaian yang persis, dan waktu pada tingkat token.
+
+**Pelacakan biaya**: Biaya waktu nyata menurut model, proyek, pengguna, dan kunci API. Lihat ke mana anggaran pergi dan optimalkan dari situ.
+
+**Pemantauan kualitas**: Lacak kualitas keluaran dari waktu ke waktu. Tangkap regresi sebelum sampai ke pengguna. Uji A/B prompt dengan signifikansi statistik.
+
+**Banyak penyedia**: Satu dasbor untuk OpenAI, Anthropic, Together AI, dan setiap penyedia lain yang Anda pakai. Berhenti merangkai laporan dari lima portal penagihan yang berbeda.
+
+## Pajak integrasi
+
+Setiap penyedia LLM menawarkan semacam dasbor pemakaian. Tetapi jika Anda memakai beberapa penyedia — dan sebagian besar aplikasi produksi memang begitu — Anda merekonsiliasi laporan dari lima sistem dengan lima skema yang berbeda.
+
+Console tidak terikat pada penyedia. Instrumentasi sekali, lihat semuanya.
+
+```python
+from hanzo import Console
+
+console = Console(api_key="your-key")
+
+# Automatic tracing with context manager
+with console.trace("user_query"):
+    response = openai.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": user_input}]
+    )
+```
+
+## Pengelolaan prompt
+
+Console menyertakan registri prompt. Buat versi prompt Anda, lacak versi mana yang terpasang, dan bandingkan kinerja antarversi.
+
+Masalah prompt di dalam kode: mereka basi, bercabang, dan tidak ada yang tahu versi mana yang berjalan di produksi. Console menjadikan prompt artefak terkelola kelas satu.
+
+## Kurasi himpunan data
+
+Ubah jejak produksi menjadi himpunan data evaluasi. Tandai keluaran yang baik, tandai yang buruk, dan bangun himpunan kebenaran acuan langsung dari pemakaian nyata.
+
+Saat Anda siap menyetel halus atau berganti penyedia, Anda punya himpunan data yang mencerminkan lalu lintas produksi yang sebenarnya — bukan contoh sintetis.
+
+## Tersedia sekarang
+
+Console tersedia di [console.hanzo.ai](https://console.hanzo.ai). Tingkat gratis mencakup 50.000 jejak per bulan. Penerapan yang dihos sendiri didukung untuk perusahaan.
+
+---
+
+*Zach Kelling adalah pendiri Hanzo AI (Techstars '17).*

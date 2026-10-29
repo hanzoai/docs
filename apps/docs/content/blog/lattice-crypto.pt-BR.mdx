@@ -1,0 +1,69 @@
+---
+title: "Criptografia de reticulados original: nosso FHE do zero"
+description: "FHE original baseado em reticulados em Go — nem o tfhe-rs da Zama, nem o SEAL da Microsoft. Otimização NTT SIMD, armazenamento cifrado via ZapDB, C FFI e ligações Rust."
+author: Zach Kelling
+date: 2019-08-01
+---
+
+# Criptografia de reticulados original: nosso FHE do zero
+
+A Microsoft tem o SEAL. A Zama tem o tfhe-rs. A IBM tem o HElib. Não usamos nenhum deles. Construímos a nossa própria biblioteca de cifração totalmente homomórfica a partir de primitivas de reticulados em Go, com ligações C FFI e uma interface Rust.
+
+Isso soa como síndrome NIH. Não era.
+
+## Por que escrever o próprio FHE
+
+A cifração totalmente homomórfica deixa você calcular sobre dados cifrados sem decifrá-los. O servidor nunca vê o texto claro. As operações acontecem sobre textos cifrados e os resultados, quando decifrados, estão corretos. É o santo graal da computação cifrada.
+
+As bibliotecas existentes resolvem esse problema de jeitos específicos, para usos específicos, com trocas de desempenho específicas. O SEAL é otimizado para o modelo de computação em nuvem da Microsoft. O tfhe-rs é otimizado para a avaliação de circuitos booleanos. O HElib mira aritmética em lote.
+
+Nenhuma foi desenhada para o que precisávamos: operações de banco de dados cifradas numa blockchain. Precisávamos de operações homomórficas que coubessem nas restrições de armazenamento na cadeia, nos custos de gas e nos padrões de consulta de um banco de estado de blockchain.
+
+## A implementação
+
+A base é RLWE (aprendizado em anel com erros) sobre anéis de polinômios. A estrutura de anel dá as propriedades algébricas necessárias às operações homomórficas, e os termos de erro dão a garantia de segurança.
+
+**Aritmética de polinômios**: NTT (transformada numérica teórica) para multiplicação rápida de polinômios. É o equivalente da FFT para corpos finitos. Multiplicar dois polinômios de grau N de forma ingênua é O(N^2). A NTT leva isso a O(N log N). Nos nossos parâmetros (N = 4096 ou 8192), essa é a diferença entre usável e inutilizável.
+
+**Otimização SIMD**: Os coeficientes do polinômio caem em faixas SIMD. Um único texto cifrado pode codificar milhares de valores em claro em slots paralelos. Operações homomórficas sobre o texto cifrado agem em todos os slots ao mesmo tempo. Isso não é paralelismo de GPU — é paralelismo de dados gravado na estrutura algébrica do esquema.
+
+**Bootstrapping**: O desafio fundamental do FHE. Cada operação homomórfica acrescenta ruído ao texto cifrado. Depois de operações suficientes, o ruído cobre o sinal e a decifração falha. O bootstrapping renova o texto cifrado avaliando de forma homomórfica a função de decifração — cifrar a decifração. A nossa implementação de bootstrapping mira a profundidade mínima de circuito necessária para operações de banco, não a computação de propósito geral.
+
+## ZapDB: armazenamento cifrado
+
+ZapDB é a camada de aplicação sobre a biblioteca FHE. É um armazenamento chave-valor cifrado em que:
+
+- Os valores ficam guardados como textos cifrados FHE
+- As consultas rodam sobre dados cifrados
+- O servidor do banco nunca vê os valores em claro
+- Os resultados voltam como textos cifrados que só o dono da chave decifra
+
+Para um banco de blockchain, os operadores de nó podem armazenar e consultar o estado sem nunca ver os valores reais do estado. Privacidade não é política — é garantia matemática.
+
+O modelo de consulta é limitado perto de um banco de propósito geral. Dá para fazer testes de igualdade, consultas por intervalo e agregações aritméticas. Não dá para fazer SQL arbitrário. É uma limitação fundamental das operações que o esquema FHE suporta, não um recurso que falta.
+
+## C FFI e ligações Rust
+
+A biblioteca de núcleo é Go. Os laços internos críticos para o desempenho — NTT, redução de polinômios, amostragem de ruído — têm implementações em C que o Go chama via CGO. O código C é onde moram as intrínsecas SIMD.
+
+As ligações Rust embrulham a interface C com tipos Rust seguros. Isso nos dá a biblioteca Go para a integração do nó Lux, a biblioteca C para desempenho bruto e as ligações Rust para o resto da nossa pilha que está escrito em Rust.
+
+```go
+// Go interface
+ct := fhe.Encrypt(pk, plaintext)
+result := fhe.Add(ct1, ct2)
+decrypted := fhe.Decrypt(sk, result)
+// decrypted == plaintext1 + plaintext2
+```
+
+## Por que construir o próprio importa
+
+Quando você usa a biblioteca FHE de outra pessoa, confia na escolha de parâmetros dela, na gestão do orçamento de ruído, no RNG dela, nas mitigações de canal lateral. Numa aplicação em que os dados cifrados são estado financeiro numa blockchain pública — visível para cada operador de nó no mundo — a superfície de ataque não é teórica.
+
+Construir do zero significa entender cada escolha de parâmetro. Sabemos por que N é 4096 e não 2048 (margem de segurança). Sabemos por que o módulo dos coeficientes é estruturado como uma cadeia de primos (representação RNS para aritmética modular eficiente). Sabemos para onde vai o orçamento de ruído e quantas operações dá para encadear antes do bootstrapping.
+
+Essa compreensão não está na documentação de uma biblioteca. Ela vem de implementar a aritmética de corpos, depurar o circuito de bootstrapping e medir empiricamente o crescimento do ruído. O código é a compreensão.
+
+---
+
+*zeekay — a nossa criptografia de reticulados, o nosso FHE, o nosso banco cifrado. cada bit entendido.*

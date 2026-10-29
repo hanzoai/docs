@@ -1,0 +1,63 @@
+---
+title: "Giới thiệu Hanzo Console: quan sát LLM trong một chỗ"
+description: "Hanzo Console ra mắt — môi trường phát triển thống nhất để quan sát, gỡ lỗi và tối ưu ứng dụng LLM trên mọi nhà cung cấp."
+author: Zach Kelling
+date: 2025-03-10
+---
+
+# Giới thiệu Hanzo Console: quan sát LLM trong một chỗ
+
+Xây ứng dụng LLM ở quy mô lớn là làm việc mà không thấy gì. Bạn gửi yêu cầu tới mô hình, nhận câu trả lời, và hy vọng mọi thứ chạy. Khi không chạy — đầu ra sai, độ trễ nhảy vọt, chi phí nổ — bạn không thấy vì sao.
+
+Hôm nay chúng tôi ra mắt Hanzo Console: nền tảng quan sát thống nhất cho ứng dụng LLM.
+
+## Console làm gì
+
+Console cho bạn bức tranh đầy đủ về mức dùng LLM trên mọi nhà cung cấp:
+
+**Truy vết**: Mỗi lệnh gọi LLM được ghi với yêu cầu và phản hồi đầy đủ, độ trễ, số token và chi phí. Xem đúng prompt, đúng phần hoàn thành, và thời gian ở mức token.
+
+**Theo dõi chi phí**: Chi phí theo thời gian thực theo mô hình, dự án, người dùng và khóa API. Thấy ngân sách đi đâu rồi tối ưu theo đó.
+
+**Giám sát chất lượng**: Theo dõi chất lượng đầu ra theo thời gian. Bắt hồi quy trước khi chúng tới người dùng. Kiểm thử A/B prompt với ý nghĩa thống kê.
+
+**Nhiều nhà cung cấp**: Một bảng điều khiển cho OpenAI, Anthropic, Together AI và mọi nhà cung cấp khác bạn dùng. Đừng ghép báo cáo từ năm cổng thanh toán khác nhau nữa.
+
+## Thuế tích hợp
+
+Mỗi nhà cung cấp LLM có một dạng bảng sử dụng. Nhưng nếu bạn dùng nhiều nhà cung cấp — phần lớn ứng dụng sản xuất đều vậy — bạn đang đối chiếu báo cáo từ năm hệ thống với năm lược đồ khác nhau.
+
+Console không phụ thuộc nhà cung cấp. Gắn đo một lần, thấy tất cả.
+
+```python
+from hanzo import Console
+
+console = Console(api_key="your-key")
+
+# Automatic tracing with context manager
+with console.trace("user_query"):
+    response = openai.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": user_input}]
+    )
+```
+
+## Quản lý prompt
+
+Console có một sổ đăng ký prompt. Đánh phiên bản prompt, theo dõi phiên bản nào đang triển khai, so sánh hiệu năng giữa các phiên bản.
+
+Vấn đề của prompt trong mã: chúng cũ đi, bị rẽ nhánh, và không ai biết phiên bản nào đang chạy trên sản xuất. Console biến prompt thành hiện vật được quản lý hạng nhất.
+
+## Tuyển tập tập dữ liệu
+
+Biến dấu vết sản xuất thành tập dữ liệu đánh giá. Đánh dấu đầu ra tốt, gắn cờ đầu ra xấu, và dựng tập sự thật tham chiếu trực tiếp từ mức dùng thật.
+
+Khi bạn sẵn sàng tinh chỉnh hoặc đổi nhà cung cấp, bạn có một tập dữ liệu phản ánh lưu lượng sản xuất thực — không phải ví dụ tổng hợp.
+
+## Có ngay
+
+Console có tại [console.hanzo.ai](https://console.hanzo.ai). Bậc miễn phí gồm 50.000 dấu vết mỗi tháng. Triển khai tự lưu trữ được hỗ trợ cho doanh nghiệp.
+
+---
+
+*Zach Kelling là nhà sáng lập Hanzo AI (Techstars '17).*

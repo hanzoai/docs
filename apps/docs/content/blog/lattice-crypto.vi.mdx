@@ -1,0 +1,69 @@
+---
+title: "Mật mã lưới gốc: FHE của chúng tôi viết từ đầu"
+description: "Xây FHE gốc trên lưới bằng Go — không phải tfhe-rs của Zama, không phải SEAL của Microsoft. Tối ưu NTT SIMD, lưu cơ sở dữ liệu mã hóa qua ZapDB, C FFI và liên kết Rust."
+author: Zach Kelling
+date: 2019-08-01
+---
+
+# Mật mã lưới gốc: FHE của chúng tôi viết từ đầu
+
+Microsoft có SEAL. Zama có tfhe-rs. IBM có HElib. Chúng tôi không dùng cái nào. Chúng tôi xây thư viện mã hóa đồng cấu đầy đủ của riêng mình từ nguyên thủy lưới bằng Go, với liên kết C FFI và một giao diện Rust.
+
+Nghe như hội chứng NIH. Không phải.
+
+## Vì sao tự viết FHE
+
+Mã hóa đồng cấu đầy đủ cho phép tính trên dữ liệu đã mã hóa mà không giải mã. Máy chủ không bao giờ thấy bản rõ. Phép toán chạy trên bản mã, và kết quả, khi giải mã, là đúng. Đây là chén thánh của tính toán mã hóa.
+
+Các thư viện sẵn có giải bài này theo cách cụ thể, cho trường hợp cụ thể, với đánh đổi hiệu năng cụ thể. SEAL được tối ưu cho mô hình điện toán đám mây của Microsoft. tfhe-rs được tối ưu cho đánh giá mạch boolean. HElib nhắm số học theo lô.
+
+Không cái nào được thiết kế cho thứ chúng tôi cần: phép toán cơ sở dữ liệu mã hóa trên một chuỗi khối. Chúng tôi cần phép đồng cấu nằm trong ràng buộc của lưu trữ trên chuỗi, chi phí gas, và mẫu truy vấn riêng của một cơ sở dữ liệu trạng thái chuỗi khối.
+
+## Cách làm
+
+Nền là RLWE (học trên vành với sai số) trên các vành đa thức. Cấu trúc vành cho các tính chất đại số cần cho phép đồng cấu, và các hạng tử sai số cho bảo đảm an toàn.
+
+**Số học đa thức**: NTT (biến đổi lý thuyết số) cho nhân đa thức nhanh. Đây là tương đương của FFT cho trường hữu hạn. Nhân ngây thơ hai đa thức bậc N là O(N^2). NTT đưa về O(N log N). Với tham số của chúng tôi (N = 4096 hoặc 8192), đó là khác biệt giữa dùng được và không dùng được.
+
+**Tối ưu SIMD**: Hệ số đa thức rơi vào các làn SIMD. Một bản mã có thể mã hóa hàng nghìn giá trị bản rõ trong các khe song song. Phép đồng cấu trên bản mã tác động mọi khe cùng lúc. Đây không phải song song GPU — đây là song song dữ liệu gắn vào cấu trúc đại số của lược đồ.
+
+**Bootstrapping**: Thách thức gốc của FHE. Mỗi phép đồng cấu thêm nhiễu vào bản mã. Sau đủ phép toán, nhiễu át tín hiệu và giải mã thất bại. Bootstrapping làm mới bản mã bằng cách đánh giá đồng cấu hàm giải mã — mã hóa chính việc giải mã. Cách làm bootstrapping của chúng tôi nhắm độ sâu mạch tối thiểu cần cho phép toán cơ sở dữ liệu, không phải tính toán đa năng.
+
+## ZapDB: lưu cơ sở dữ liệu đã mã hóa
+
+ZapDB là lớp ứng dụng trên thư viện FHE. Đó là kho khóa-giá trị đã mã hóa, trong đó:
+
+- Giá trị được lưu dưới dạng bản mã FHE
+- Truy vấn chạy trên dữ liệu đã mã hóa
+- Máy chủ cơ sở dữ liệu không bao giờ thấy giá trị bản rõ
+- Kết quả trả về dưới dạng bản mã mà chỉ người giữ khóa giải được
+
+Với một cơ sở dữ liệu chuỗi khối, người vận hành nút có thể lưu và truy vấn trạng thái mà không bao giờ thấy giá trị trạng thái thật. Riêng tư không phải chính sách — đó là bảo đảm toán học.
+
+Mô hình truy vấn hẹp hơn một cơ sở dữ liệu đa năng. Có thể kiểm tra bằng nhau, truy vấn khoảng và gộp số học. Không thể làm SQL tùy ý. Đây là giới hạn gốc của các phép mà lược đồ FHE hỗ trợ, không phải tính năng còn thiếu.
+
+## C FFI và liên kết Rust
+
+Thư viện lõi là Go. Các vòng trong then chốt về hiệu năng — NTT, rút gọn đa thức, lấy mẫu nhiễu — có bản C mà Go gọi qua CGO. Mã C là nơi các hàm nội tại SIMD sống.
+
+Liên kết Rust bọc giao diện C bằng kiểu Rust an toàn. Nhờ đó chúng tôi có thư viện Go để gắn nút Lux, thư viện C cho hiệu năng thô, và liên kết Rust cho mọi thứ khác trong chồng của chúng tôi được viết bằng Rust.
+
+```go
+// Go interface
+ct := fhe.Encrypt(pk, plaintext)
+result := fhe.Add(ct1, ct2)
+decrypted := fhe.Decrypt(sk, result)
+// decrypted == plaintext1 + plaintext2
+```
+
+## Vì sao tự xây mới đáng
+
+Khi dùng thư viện FHE của người khác, bạn tin cách họ chọn tham số, cách họ quản ngân sách nhiễu, RNG của họ, cách họ giảm kênh bên. Với một ứng dụng mà dữ liệu mã hóa là trạng thái tài chính trên chuỗi khối công khai — mọi người vận hành nút trên thế giới đều thấy — bề mặt tấn công không còn là lý thuyết.
+
+Xây từ đầu nghĩa là hiểu từng lựa chọn tham số. Chúng tôi biết vì sao N là 4096 chứ không phải 2048 (lề an toàn). Chúng tôi biết vì sao mô-đun hệ số được dựng thành một chuỗi số nguyên tố (biểu diễn RNS cho số học mô-đun hiệu quả). Chúng tôi biết ngân sách nhiễu đi đâu và có thể xâu bao nhiêu phép trước bootstrapping.
+
+Hiểu biết này không có trong tài liệu của một thư viện. Nó đến từ việc hiện thực số học trường, gỡ mạch bootstrapping, và đo tăng trưởng nhiễu bằng thực nghiệm. Mã chính là sự hiểu.
+
+---
+
+*zeekay — mật mã lưới của chúng tôi, FHE của chúng tôi, cơ sở dữ liệu mã hóa của chúng tôi. từng bit đều được hiểu.*
