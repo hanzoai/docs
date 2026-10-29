@@ -1,0 +1,79 @@
+---
+title: Erlang
+description: ZAP का Erlang SDK — OTP-संगत बाइंडिंग
+---
+
+# Erlang बाइंडिंग
+
+Erlang बाइंडिंग ZAP संचार के लिए OTP-संगत प्रोसेस देती है।
+
+## इंस्टॉलेशन
+
+`rebar.config` में जोड़ें:
+
+```erlang
+{deps, [
+    {zap, {git, "https://github.com/zap-proto/erlang.git", {tag, "0.1.0"}}}
+]}.
+```
+
+## त्वरित शुरुआत
+
+```erlang
+-module(my_agent).
+-export([start/0]).
+
+start() ->
+    {ok, Client} = zap:connect("zap://localhost:9000"),
+
+    {ok, Server} = zap:init(Client, #{
+        name => <<"my-agent">>,
+        version => <<"1.0.0">>
+    }),
+    io:format("Connected to: ~s v~s~n", [
+        maps:get(name, Server),
+        maps:get(version, Server)
+    ]),
+
+    {ok, Tools} = zap:list_tools(Client),
+    lists:foreach(fun(Tool) ->
+        io:format("  ~s - ~s~n", [
+            maps:get(name, Tool),
+            maps:get(description, Tool)
+        ])
+    end, Tools),
+
+    {ok, Result} = zap:call_tool(Client, #{
+        id => <<"call-1">>,
+        name => <<"read_file">>,
+        args => <<"{\"path\": \"/etc/hosts\"}">>
+    }),
+
+    case maps:get(error, Result, undefined) of
+        undefined ->
+            io:format("Result: ~s~n", [maps:get(content, Result)]);
+        Error ->
+            io:format("Error: ~s~n", [Error])
+    end,
+
+    zap:close(Client).
+```
+
+## OTP एकीकरण
+
+```erlang
+-module(zap_agent).
+-behaviour(gen_server).
+
+init([Url]) ->
+    {ok, Client} = zap:connect(Url),
+    {ok, #{client => Client}}.
+
+handle_call({call_tool, Call}, _From, #{client := Client} = State) ->
+    Result = zap:call_tool(Client, Call),
+    {reply, Result, State}.
+```
+
+## दस्तावेज़
+
+पूरा दस्तावेज़: [zap-proto/erlang](https://github.com/zap-proto/erlang).

@@ -1,0 +1,81 @@
+---
+title: Haskell
+description: ZAP Haskell SDK — 순수 함수형 바인딩
+---
+
+# Haskell 바인딩
+
+Haskell 바인딩은 강한 타입을 갖춘 순수 함수형 인터페이스를 제공합니다.
+
+## 설치
+
+`package.yaml`에 추가합니다:
+
+```yaml
+dependencies:
+  - zap >= 0.1
+```
+
+또는 `cabal`:
+
+```yaml
+build-depends: zap >= 0.1
+```
+
+## 빠른 시작
+
+```haskell
+{-# LANGUAGE OverloadedStrings #-}
+
+module Main where
+
+import Zap
+import qualified Data.Text.IO as TIO
+
+main :: IO ()
+main = do
+    client <- connect "zap://localhost:9000"
+
+    let info = ClientInfo { name = "my-agent", version = "1.0.0" }
+    server <- initialize client info
+    TIO.putStrLn $ "Connected to: " <> serverName server <> " v" <> serverVersion server
+
+    tools <- listTools client
+    mapM_ printTool tools
+
+    let call = ToolCall
+            { toolCallId = "call-1"
+            , toolCallName = "read_file"
+            , toolCallArgs = "{\"path\": \"/etc/hosts\"}"
+            , toolCallMetadata = []
+            }
+    result <- callTool client call
+
+    case toolResultError result of
+        Just err -> TIO.putStrLn $ "Error: " <> err
+        Nothing  -> TIO.putStrLn $ "Result: " <> toolResultContent result
+
+    close client
+  where
+    printTool tool = TIO.putStrLn $ "  " <> toolName tool <> " - " <> toolDescription tool
+```
+
+## 모나드 인터페이스
+
+```haskell
+import Zap.Monad
+
+runZap :: ZapM ()
+runZap = do
+    server <- initialize ClientInfo { name = "my-agent", version = "1.0.0" }
+    tools <- listTools
+    results <- mapM callToolWithDefaults tools
+    return ()
+
+main :: IO ()
+main = runZapWith "zap://localhost:9000" runZap
+```
+
+## 문서
+
+전체 문서: [zap-proto/haskell](https://github.com/zap-proto/haskell).

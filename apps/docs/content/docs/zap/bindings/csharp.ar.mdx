@@ -1,0 +1,57 @@
+---
+title: C#
+description: حزمة ZAP للغة C# — ربط .NET مع دعم async
+---
+
+# ربط C#
+
+يوفر ربط C# تكاملاً مع .NET ودعم async/await.
+
+## التثبيت
+
+```bash
+dotnet add package Zap.Protocol
+```
+
+## البداية السريعة
+
+```csharp
+using Zap;
+
+var client = await Zap.ConnectAsync("zap://localhost:9000");
+
+var server = await client.InitAsync(new ClientInfo
+{
+    Name = "my-agent",
+    Version = "1.0.0"
+});
+Console.WriteLine($"Connected to: {server.Name} v{server.Version}");
+
+var tools = await client.ListToolsAsync();
+foreach (var tool in tools)
+{
+    Console.WriteLine($"  {tool.Name} - {tool.Description}");
+}
+
+var result = await client.CallToolAsync(new ToolCall
+{
+    Id = Guid.NewGuid().ToString(),
+    Name = "read_file",
+    Args = "{\"path\": \"/etc/hosts\"}"
+});
+
+if (result.Error != null)
+{
+    Console.Error.WriteLine($"Error: {result.Error}");
+}
+else
+{
+    Console.WriteLine($"Result: {result.Content}");
+}
+
+await client.CloseAsync();
+```
+
+## التوثيق
+
+التوثيق الكامل على [zap-proto/cs](https://github.com/zap-proto/cs).

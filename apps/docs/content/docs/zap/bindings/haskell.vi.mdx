@@ -1,0 +1,81 @@
+---
+title: Haskell
+description: SDK Haskell của ZAP — liên kết hàm thuần
+---
+
+# Liên kết Haskell
+
+Liên kết Haskell cung cấp giao diện hàm thuần với kiểu mạnh.
+
+## Cài đặt
+
+Thêm vào `package.yaml`:
+
+```yaml
+dependencies:
+  - zap >= 0.1
+```
+
+Hoặc với `cabal`:
+
+```yaml
+build-depends: zap >= 0.1
+```
+
+## Bắt đầu nhanh
+
+```haskell
+{-# LANGUAGE OverloadedStrings #-}
+
+module Main where
+
+import Zap
+import qualified Data.Text.IO as TIO
+
+main :: IO ()
+main = do
+    client <- connect "zap://localhost:9000"
+
+    let info = ClientInfo { name = "my-agent", version = "1.0.0" }
+    server <- initialize client info
+    TIO.putStrLn $ "Connected to: " <> serverName server <> " v" <> serverVersion server
+
+    tools <- listTools client
+    mapM_ printTool tools
+
+    let call = ToolCall
+            { toolCallId = "call-1"
+            , toolCallName = "read_file"
+            , toolCallArgs = "{\"path\": \"/etc/hosts\"}"
+            , toolCallMetadata = []
+            }
+    result <- callTool client call
+
+    case toolResultError result of
+        Just err -> TIO.putStrLn $ "Error: " <> err
+        Nothing  -> TIO.putStrLn $ "Result: " <> toolResultContent result
+
+    close client
+  where
+    printTool tool = TIO.putStrLn $ "  " <> toolName tool <> " - " <> toolDescription tool
+```
+
+## Giao diện monad
+
+```haskell
+import Zap.Monad
+
+runZap :: ZapM ()
+runZap = do
+    server <- initialize ClientInfo { name = "my-agent", version = "1.0.0" }
+    tools <- listTools
+    results <- mapM callToolWithDefaults tools
+    return ()
+
+main :: IO ()
+main = runZapWith "zap://localhost:9000" runZap
+```
+
+## Tài liệu
+
+Tài liệu đầy đủ tại [zap-proto/haskell](https://github.com/zap-proto/haskell).

@@ -1,0 +1,79 @@
+---
+title: Erlang
+description: ZAP Erlang SDK — 兼容 OTP 的绑定
+---
+
+# Erlang 绑定
+
+Erlang 绑定提供与 OTP 兼容的进程，用于与 ZAP 通信。
+
+## 安装
+
+添加到 `rebar.config`：
+
+```erlang
+{deps, [
+    {zap, {git, "https://github.com/zap-proto/erlang.git", {tag, "0.1.0"}}}
+]}.
+```
+
+## 快速开始
+
+```erlang
+-module(my_agent).
+-export([start/0]).
+
+start() ->
+    {ok, Client} = zap:connect("zap://localhost:9000"),
+
+    {ok, Server} = zap:init(Client, #{
+        name => <<"my-agent">>,
+        version => <<"1.0.0">>
+    }),
+    io:format("Connected to: ~s v~s~n", [
+        maps:get(name, Server),
+        maps:get(version, Server)
+    ]),
+
+    {ok, Tools} = zap:list_tools(Client),
+    lists:foreach(fun(Tool) ->
+        io:format("  ~s - ~s~n", [
+            maps:get(name, Tool),
+            maps:get(description, Tool)
+        ])
+    end, Tools),
+
+    {ok, Result} = zap:call_tool(Client, #{
+        id => <<"call-1">>,
+        name => <<"read_file">>,
+        args => <<"{\"path\": \"/etc/hosts\"}">>
+    }),
+
+    case maps:get(error, Result, undefined) of
+        undefined ->
+            io:format("Result: ~s~n", [maps:get(content, Result)]);
+        Error ->
+            io:format("Error: ~s~n", [Error])
+    end,
+
+    zap:close(Client).
+```
+
+## OTP 集成
+
+```erlang
+-module(zap_agent).
+-behaviour(gen_server).
+
+init([Url]) ->
+    {ok, Client} = zap:connect(Url),
+    {ok, #{client => Client}}.
+
+handle_call({call_tool, Call}, _From, #{client := Client} = State) ->
+    Result = zap:call_tool(Client, Call),
+    {reply, Result, State}.
+```
+
+## 文档
+
+完整文档见 [zap-proto/erlang](https://github.com/zap-proto/erlang).

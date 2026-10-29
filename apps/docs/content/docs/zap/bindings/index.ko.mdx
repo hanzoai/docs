@@ -1,0 +1,130 @@
+---
+title: 언어 바인딩
+description: 지원하는 모든 언어의 ZAP SDK 문서
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# 언어 바인딩
+
+ZAP은 11개 프로그래밍 언어용 네이티브 바인딩을 제공합니다. 각 바인딩은 해당 언어의 Cap'n Proto 참조 구현 위에 만들어집니다.
+
+## 지원 언어
+
+<Cards>
+  <Card title="Rust" description="async를 완전히 지원하는 참조 구현" href="/docs/zap/bindings/rust" />
+  <Card title="Go" description="고루틴에 안전한 클라이언트를 갖춘 관용적 Go" href="/docs/zap/bindings/go" />
+  <Card title="Python" description="pycapnp 기반 async/await API" href="/docs/zap/bindings/python" />
+  <Card title="JavaScript" description="Node.js와 브라우저 지원" href="/docs/zap/bindings/javascript" />
+  <Card title="C++" description="고성능 네이티브 바인딩" href="/docs/zap/bindings/cpp" />
+  <Card title="C" description="임베디드용 최소 C API" href="/docs/zap/bindings/c" />
+  <Card title="Java" description="Netty 전송을 쓰는 JVM 바인딩" href="/docs/zap/bindings/java" />
+  <Card title="C#" description="async를 지원하는 .NET 바인딩" href="/docs/zap/bindings/csharp" />
+  <Card title="Erlang" description="OTP 호환 바인딩" href="/docs/zap/bindings/erlang" />
+  <Card title="OCaml" description="Lwt 기반 함수형 바인딩" href="/docs/zap/bindings/ocaml" />
+  <Card title="Haskell" description="순수 함수형 바인딩" href="/docs/zap/bindings/haskell" />
+</Cards>
+
+## 구현 상태
+
+| 언어 | 클라이언트 | 서버 | Gateway | PQ-TLS | 합의 |
+|---|---|---|---|---|---|
+| Rust | 예 | 예 | 예 | 예 | 예 |
+| Go | 예 | 예 | 예 | 예 | 예 |
+| Python | 예 | 예 | 예 | 부분적 | 예정 |
+| JavaScript | 예 | 부분적 | 예 | 아니오 | 예정 |
+| C++ | 예 | 예 | 예 | 예 | 부분적 |
+| C | 예 | 부분적 | 아니오 | 아니오 | 아니오 |
+| Java | 예 | 예 | 부분적 | 부분적 | 예정 |
+| C# | 예 | 부분적 | 아니오 | 아니오 | 아니오 |
+| Erlang | 예 | 예 | 부분적 | 아니오 | 예정 |
+| OCaml | 예 | 부분적 | 아니오 | 아니오 | 아니오 |
+| Haskell | 예 | 부분적 | 아니오 | 아니오 | 아니오 |
+
+## 공통 패턴
+
+### 클라이언트 만들기
+
+모든 바인딩은 비슷한 패턴을 따릅니다:
+
+```rust
+// Rust
+let client = Zap::connect("zap://localhost:9000").await?;
+```
+
+```go
+// Go
+client, err := zap.Connect(ctx, "zap://localhost:9000")
+```
+
+```python
+# Python
+client = await Zap.connect("zap://localhost:9000")
+```
+
+```typescript
+// JavaScript
+const client = await Zap.connect('zap://localhost:9000');
+```
+
+### 오류 처리
+
+각 바인딩은 그 언어다운 오류 처리를 사용합니다:
+
+- **Rust**: `Result<T, Error>` `?` 연산자와 함께
+- **Go**: 여러 반환 값 `(result, error)`
+- **Python**: async 컨텍스트의 예외
+- **JavaScript**: try/catch 또는 `.catch()`를 쓰는 Promise
+
+### Async/Await
+
+대부분의 바인딩은 async 연산을 지원합니다:
+
+```rust
+// Rust (tokio)
+let tools = client.list_tools().await?;
+```
+
+```go
+// Go (goroutines)
+tools, err := client.ListTools(ctx)
+```
+
+```python
+# Python (asyncio)
+tools = await client.list_tools()
+```
+
+```typescript
+// JavaScript (Promises)
+const tools = await client.listTools();
+```
+
+## 스키마에서 코드 생성
+
+ZAP 스키마에서 바인딩을 생성합니다:
+
+```bash
+# Clone the schema
+git clone https://github.com/zap-proto/zap
+cd zap/schema
+
+# Generate for your language
+capnp compile -o rust zap.capnp
+capnp compile -o go zap.capnp
+capnp compile -o c++ zap.capnp
+```
+
+코드 생성의 자세한 절차는 언어별 페이지를 보세요.
+
+## 기여
+
+언어 바인딩은 별도의 저장소에서 유지됩니다:
+
+- [zap-proto/rust](https://github.com/zap-proto/rust) - Rust
+- [zap-proto/go](https://github.com/zap-proto/go) - Go
+- [zap-proto/py](https://github.com/zap-proto/py) - Python
+- [zap-proto/js](https://github.com/zap-proto/js) - JavaScript
+
+기여를 환영합니다! 지침은 각 저장소의 CONTRIBUTING.md를 보세요.

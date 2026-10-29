@@ -1,0 +1,57 @@
+---
+title: C#
+description: ZAP C# SDK — async를 지원하는 .NET 바인딩
+---
+
+# C# 바인딩
+
+C# 바인딩은 async/await를 지원하는 .NET 통합을 제공합니다.
+
+## 설치
+
+```bash
+dotnet add package Zap.Protocol
+```
+
+## 빠른 시작
+
+```csharp
+using Zap;
+
+var client = await Zap.ConnectAsync("zap://localhost:9000");
+
+var server = await client.InitAsync(new ClientInfo
+{
+    Name = "my-agent",
+    Version = "1.0.0"
+});
+Console.WriteLine($"Connected to: {server.Name} v{server.Version}");
+
+var tools = await client.ListToolsAsync();
+foreach (var tool in tools)
+{
+    Console.WriteLine($"  {tool.Name} - {tool.Description}");
+}
+
+var result = await client.CallToolAsync(new ToolCall
+{
+    Id = Guid.NewGuid().ToString(),
+    Name = "read_file",
+    Args = "{\"path\": \"/etc/hosts\"}"
+});
+
+if (result.Error != null)
+{
+    Console.Error.WriteLine($"Error: {result.Error}");
+}
+else
+{
+    Console.WriteLine($"Result: {result.Content}");
+}
+
+await client.CloseAsync();
+```
+
+## 문서
+
+전체 문서: [zap-proto/cs](https://github.com/zap-proto/cs).

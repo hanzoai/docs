@@ -1,0 +1,81 @@
+---
+title: Haskell
+description: ZAP Haskell SDK — 纯函数式绑定
+---
+
+# Haskell 绑定
+
+Haskell 绑定提供带强类型的纯函数式接口。
+
+## 安装
+
+添加到 `package.yaml`：
+
+```yaml
+dependencies:
+  - zap >= 0.1
+```
+
+或使用 `cabal`：
+
+```yaml
+build-depends: zap >= 0.1
+```
+
+## 快速开始
+
+```haskell
+{-# LANGUAGE OverloadedStrings #-}
+
+module Main where
+
+import Zap
+import qualified Data.Text.IO as TIO
+
+main :: IO ()
+main = do
+    client <- connect "zap://localhost:9000"
+
+    let info = ClientInfo { name = "my-agent", version = "1.0.0" }
+    server <- initialize client info
+    TIO.putStrLn $ "Connected to: " <> serverName server <> " v" <> serverVersion server
+
+    tools <- listTools client
+    mapM_ printTool tools
+
+    let call = ToolCall
+            { toolCallId = "call-1"
+            , toolCallName = "read_file"
+            , toolCallArgs = "{\"path\": \"/etc/hosts\"}"
+            , toolCallMetadata = []
+            }
+    result <- callTool client call
+
+    case toolResultError result of
+        Just err -> TIO.putStrLn $ "Error: " <> err
+        Nothing  -> TIO.putStrLn $ "Result: " <> toolResultContent result
+
+    close client
+  where
+    printTool tool = TIO.putStrLn $ "  " <> toolName tool <> " - " <> toolDescription tool
+```
+
+## 单子接口
+
+```haskell
+import Zap.Monad
+
+runZap :: ZapM ()
+runZap = do
+    server <- initialize ClientInfo { name = "my-agent", version = "1.0.0" }
+    tools <- listTools
+    results <- mapM callToolWithDefaults tools
+    return ()
+
+main :: IO ()
+main = runZapWith "zap://localhost:9000" runZap
+```
+
+## 文档
+
+完整文档见 [zap-proto/haskell](https://github.com/zap-proto/haskell).

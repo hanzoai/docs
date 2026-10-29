@@ -1,0 +1,130 @@
+---
+title: Enlaces de lenguaje
+description: Documentación del SDK de ZAP para todos los lenguajes compatibles
+index: true
+---
+
+import { Card, Cards } from '@hanzo/docs-base-ui/components/card';
+
+# Enlaces de lenguaje
+
+ZAP ofrece enlaces nativos para 11 lenguajes de programación. Cada enlace se construye sobre la implementación de referencia de Cap'n Proto para ese lenguaje.
+
+## Lenguajes compatibles
+
+<Cards>
+  <Card title="Rust" description="Implementación de referencia con soporte async completo" href="/docs/zap/bindings/rust" />
+  <Card title="Go" description="Go idiomático con clientes seguros para goroutines" href="/docs/zap/bindings/go" />
+  <Card title="Python" description="API async/await con pycapnp" href="/docs/zap/bindings/python" />
+  <Card title="JavaScript" description="Compatibilidad con Node.js y el navegador" href="/docs/zap/bindings/javascript" />
+  <Card title="C++" description="Enlace nativo de alto rendimiento" href="/docs/zap/bindings/cpp" />
+  <Card title="C" description="API de C mínima para sistemas embebidos" href="/docs/zap/bindings/c" />
+  <Card title="Java" description="Enlace para la JVM con transporte Netty" href="/docs/zap/bindings/java" />
+  <Card title="C#" description="Enlace .NET con soporte async" href="/docs/zap/bindings/csharp" />
+  <Card title="Erlang" description="Enlace compatible con OTP" href="/docs/zap/bindings/erlang" />
+  <Card title="OCaml" description="Enlace funcional con Lwt" href="/docs/zap/bindings/ocaml" />
+  <Card title="Haskell" description="Enlace funcional puro" href="/docs/zap/bindings/haskell" />
+</Cards>
+
+## Estado de la implementación
+
+| Idioma | Cliente | Servidor | Gateway | PQ-TLS | Consenso |
+|---|---|---|---|---|---|
+| Rust | Sí | Sí | Sí | Sí | Sí |
+| Go | Sí | Sí | Sí | Sí | Sí |
+| Python | Sí | Sí | Sí | Parcial | Planificado |
+| JavaScript | Sí | Parcial | Sí | No | Planificado |
+| C++ | Sí | Sí | Sí | Sí | Parcial |
+| C | Sí | Parcial | No | No | No |
+| Java | Sí | Sí | Parcial | Parcial | Planificado |
+| C# | Sí | Parcial | No | No | No |
+| Erlang | Sí | Sí | Parcial | No | Planificado |
+| OCaml | Sí | Parcial | No | No | No |
+| Haskell | Sí | Parcial | No | No | No |
+
+## Patrones comunes
+
+### Creación del cliente
+
+Todos los enlaces siguen un patrón parecido:
+
+```rust
+// Rust
+let client = Zap::connect("zap://localhost:9000").await?;
+```
+
+```go
+// Go
+client, err := zap.Connect(ctx, "zap://localhost:9000")
+```
+
+```python
+# Python
+client = await Zap.connect("zap://localhost:9000")
+```
+
+```typescript
+// JavaScript
+const client = await Zap.connect('zap://localhost:9000');
+```
+
+### Manejo de errores
+
+Cada enlace usa el manejo de errores propio del lenguaje:
+
+- **Rust**: `Result<T, Error>` con el operador `?`
+- **Go**: Varios valores de retorno `(result, error)`
+- **Python**: Excepciones con contexto async
+- **JavaScript**: Promesas con try/catch o `.catch()`
+
+### Async/Await
+
+La mayoría de los enlaces admiten operaciones async:
+
+```rust
+// Rust (tokio)
+let tools = client.list_tools().await?;
+```
+
+```go
+// Go (goroutines)
+tools, err := client.ListTools(ctx)
+```
+
+```python
+# Python (asyncio)
+tools = await client.list_tools()
+```
+
+```typescript
+// JavaScript (Promises)
+const tools = await client.listTools();
+```
+
+## Generación de código a partir del esquema
+
+Genera enlaces a partir del esquema de ZAP:
+
+```bash
+# Clone the schema
+git clone https://github.com/zap-proto/zap
+cd zap/schema
+
+# Generate for your language
+capnp compile -o rust zap.capnp
+capnp compile -o go zap.capnp
+capnp compile -o c++ zap.capnp
+```
+
+Consulta las páginas de cada lenguaje para las instrucciones detalladas de generación de código.
+
+## Contribuir
+
+Los enlaces de lenguaje se mantienen en repositorios separados:
+
+- [zap-proto/rust](https://github.com/zap-proto/rust) - Rust
+- [zap-proto/go](https://github.com/zap-proto/go) - Go
+- [zap-proto/py](https://github.com/zap-proto/py) - Python
+- [zap-proto/js](https://github.com/zap-proto/js) - JavaScript
+
+¡Se aceptan contribuciones! Consulta el CONTRIBUTING.md de cada repositorio para las pautas.

@@ -1,0 +1,51 @@
+---
+title: OCaml
+description: ZAP OCaml SDK — Lwt 기반 함수형 바인딩
+---
+
+# OCaml 바인딩
+
+OCaml 바인딩은 Lwt 기반 async I/O를 갖춘 함수형 인터페이스를 제공합니다.
+
+## 설치
+
+```bash
+opam install zap
+```
+
+## 빠른 시작
+
+```ocaml
+open Zap
+open Lwt.Infix
+
+let () =
+  Lwt_main.run begin
+    Zap.connect "zap://localhost:9000" >>= fun client ->
+
+    let info = { name = "my-agent"; version = "1.0.0" } in
+    Zap.init client info >>= fun server ->
+    Lwt_io.printf "Connected to: %s v%s\n" server.name server.version >>= fun () ->
+
+    Zap.list_tools client >>= fun tools ->
+    Lwt_list.iter_s (fun tool ->
+      Lwt_io.printf "  %s - %s\n" tool.name tool.description
+    ) tools >>= fun () ->
+
+    let call = {
+      id = "call-1";
+      name = "read_file";
+      args = {|{"path": "/etc/hosts"}|};
+      metadata = [];
+    } in
+    Zap.call_tool client call >>= fun result ->
+
+    match result.error with
+    | Some err -> Lwt_io.eprintf "Error: %s\n" err
+    | None -> Lwt_io.printf "Result: %s\n" result.content
+  end
+```
+
+## 문서
+
+전체 문서: [zap-proto/ocaml](https://github.com/zap-proto/ocaml).
