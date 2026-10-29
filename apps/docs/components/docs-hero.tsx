@@ -58,7 +58,7 @@ const PATHS = [
     id: 'api',
     eyebrow: 'Lower level',
     title: 'Build with API',
-    body: 'Over 400 models behind one REST endpoint. One bearer token works across every service we run.',
+    body: '500+ models behind one REST endpoint. One bearer token works across every service we run.',
     href: '/docs/openapi',
     external: false,
     cta: 'Read the API reference',
@@ -81,7 +81,7 @@ function BrandIcon({ name, className = 'size-4' }: { name: string; className?: s
 
 export function DocsHero({
   title = 'Build Anything with Hanzo',
-  description = 'Over 400 models, one platform. Pick how much you want to type.',
+  description = '500+ models, one platform. Pick how much you want to type.',
 }: {
   title?: string;
   description?: string;
@@ -212,7 +212,7 @@ export function DocsHero({
           Enso
         </span>
         <span className="text-sm font-medium text-fd-foreground">
-          Our frontier model, and the default on every surface
+          A small language model that also routes, at a fixed price per token
         </span>
         <span className="text-sm text-fd-muted-foreground">
           Zen stays open weights.{' '}

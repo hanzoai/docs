@@ -5,24 +5,19 @@ description: The org is the one tenancy boundary. How a credential becomes a ten
 
 import { Callout } from '@hanzo/docs-base-ui/components/callout'
 
-**After this page you know which org a call will act on, and why you cannot
-change that from the client.**
+The question this page answers is a practical one. When your code makes a call, which organization's data does it touch, and can a client talk the platform into a different answer? The edge decides, once, from the credential. Everything behind the edge trusts that decision and does not have a second opinion. The rest of the page is why, and where people get it wrong. Getting it wrong is a security bug, not a style preference, so it is worth slowing down for.
 
 ## One primitive: the org
 
-An **org** is the tenant. It is the boundary every store is isolated on — for
-most capabilities, physically: a different org is a different database file. A
-**member** is a person's membership row in an org. A **project** is a scope
-inside one.
+An **org** is the tenant. For most capabilities the isolation is physical: a different org is a different database file. A **member** is a person's membership row in that org. A **project** is a scope inside the org.
 
-There is no second tenancy concept. A team, a workspace and a project are all
-scopes *inside* an org, never alternatives to it.
+There is no second kind of tenant. A team, a workspace, and a project are all scopes *inside* an org. They are not other names for the org itself, which is the mistake the vocabulary invites. If the last product you used called the top-level thing a "workspace" or a "team," translate it on the way in. Here, that thing is the org.
 
 ## How a request becomes a tenant
 
-At the edge, and only there. The edge deletes every identity header the client
-sent, validates the credential against [IAM](/docs/openapi/iam), and mints a
-fresh set from verified claims. Nothing behind the edge re-decides it.
+At the edge, and only there. This is the part that feels like overkill until you have watched a client-supplied header become an impersonation.
+
+The edge deletes every identity header the client sent, validates the credential against [IAM](/docs/openapi/iam), and mints a fresh set from verified claims. Nothing behind the edge re-decides it. A service deeper in the building is not having a debate about who you are. It was told, by the only component allowed to know.
 
 | Header | What it means |
 |---|---|

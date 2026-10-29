@@ -5,14 +5,11 @@ description: An agent is a definition; a session is a run you can steer and repl
 
 import { Callout } from '@hanzo/docs-base-ui/components/callout'
 
-**After this page you can define an agent, watch it work, and steer it while it
-runs.**
+An agent and a session are different records. The agent is the definition: a model, a system prompt, and a set of tool names. The session is one run of that definition. This page is how to write the definition, start a run, watch it, and steer it while it is going. A run you cannot see is a run you cannot correct.
 
 ## Two nouns
 
-An **agent** is a definition: a model, a system prompt, and a set of tool names.
-A **session** is a live run — the row every surface hangs its activity off,
-whether that surface is the CLI, the console, chat or a bot.
+An **agent** is a definition: a model, a system prompt, and a set of tool names. It sits still. A **session** is a live run — the row every surface hangs its activity off, whether that surface is the CLI, the console, chat, or a bot. You edit the definition rarely. You open sessions often. A change meant for one run, written onto the definition, changes every future run.
 
 ```bash
 curl -X POST https://api.hanzo.ai/v1/agents \
@@ -32,6 +29,8 @@ than at 3am on the first run. An agent that runs continuously must carry a
 five-field cron schedule, and counts against a per-org cap.
 
 ## One flow is one tree
+
+A fan-out feels, from the outside, like many independent jobs. It is more useful to see it as one tree. The parent is the question you asked. The children are the pieces of work it spawned. You can read the whole graph in one call, which is the difference between debugging a run and guessing at it.
 
 ```bash
 curl -X POST https://api.hanzo.ai/v1/agents/sessions \

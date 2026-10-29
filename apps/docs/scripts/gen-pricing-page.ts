@@ -235,7 +235,7 @@ const project = (p: Pricing, meta: Pricing['meta']): Pricing => ({
 
 // ------------------------------------------------------------------ render
 
-/** The three Enso tiers, cheapest first — the order you should try them in. */
+/** Enso tiers, cheaper rates first. */
 function ensoTiers(models: Model[]): Model[] {
   return models
     .filter((m) => isEnso(m.name) && !UNLISTED.has(m.name))
@@ -265,7 +265,7 @@ function render(p: Pricing): string {
     'icon: CircleDollarSign',
     'title: Pricing',
     `description: ${yamlString(
-      'What a request costs — the three Enso tiers, per-token billing for every other model, and the per-call rates for tools, images and audio.',
+      'What a request costs — Enso at a fixed price per token, the same for every other model, and per-call rates for tools, images and audio.',
     )}`,
     '---',
     '',
@@ -275,12 +275,22 @@ function render(p: Pricing): string {
     '',
     '# Pricing',
     '',
-    '**After this page you can work out what a request will cost before you send',
-    'it, and pick the tier that makes that number worth paying.**',
+    'Read this before you send a large request. The table is the per-token price.',
+    'The fee on top of that price is the next section.',
     '',
     'You are billed for what you use — tokens for a chat model, calls for a tool,',
     'images for an image model. There is no seat licence and no minimum: an',
     'account that sends nothing is charged nothing.',
+    '',
+    '## What you pay on top',
+    '',
+    "Hanzo's own models, including Enso, carry only a payment processing fee:",
+    '3.5% by credit card, or 3% in crypto. There is no routing fee on them.',
+    'Third-party models follow [OpenRouter](https://openrouter.ai/pricing).',
+    'On the standard plan that is 5.5% by credit card, or 5% in crypto. The',
+    'Business plan is 8% on credit purchases. Enterprise fees are not published;',
+    'contact sales. Bring-your-own-key includes $25,000 of list-price inference',
+    'a month with no fee, then 5%.',
     '',
     'Every rate below is per **million tokens** unless the table says otherwise,',
     'in US dollars.',
@@ -292,9 +302,11 @@ function render(p: Pricing): string {
     w(
       '## The Enso tiers',
       '',
-      'Enso is Hanzo\'s own family and the default for serious work. The three',
-      'tiers are one price/quality contract each — same endpoint, same request',
-      'shape, and moving between them is a one-string change to `model`.',
+      'Enso is Hanzo\'s small language model, and it also routes. Each tier is a',
+      'fixed price per token — same endpoint, same request shape, and moving',
+      'between them is a one-string change to `model`. Enso is a Hanzo model, so',
+      'the fee on it is the first-party line under What you pay on top: 3.5% by',
+      'credit card, or 3% in crypto, and no routing fee.',
       '',
       '| Model | GPQA-Diamond | Context | Input | Output |',
       '|---|---|---|---|---|',
@@ -318,15 +330,22 @@ function render(p: Pricing): string {
     if (cheapest) {
       w(
         `<Callout title="Start at \`${cheapest.name}\`.">`,
-        `It is the cheapest tier and the one most work never needs to leave. Move`,
+        `It is a cheaper tier. Move`,
         `up when a smaller model has actually disappointed you — not before,`,
         `because moving up costs you one word of a diff.`,
         '</Callout>',
         '',
       );
     }
-    for (const m of tiers) {
-      if (m.description) w(`- \`${text(m.name)}\` — ${text(m.description)}`);
+    const described = tiers.filter((m) => m.description);
+    if (described.length) {
+      w(
+        'The lines below are the gateway\'s own one-line descriptions, copied',
+        'through rather than rewritten here. The paragraph above is the product:',
+        'a small model that routes, billed at the rate in the table.',
+        '',
+      );
+      for (const m of described) w(`- \`${text(m.name)}\` — ${text(m.description)}`);
     }
     w('', '[What each tier is for, in depth →](/docs/enso)', '');
   }
@@ -435,7 +454,7 @@ function render(p: Pricing): string {
     '',
     '<Cards>',
     '  <Card icon={<Boxes />} title="Models" href="/docs/models" description="The live catalogue — every model id and its current rate." />',
-    '  <Card icon={<Sparkle />} title="Enso" href="/docs/enso" description="What the three tiers are and how to pick between them." />',
+    '  <Card icon={<Sparkle />} title="Enso" href="/docs/enso" description="The small model that also routes, and how to pick a tier." />',
     '  <Card icon={<Key />} title="API keys" href="/docs/api-keys" description="Mint the key these requests are billed against." />',
     '  <Card icon={<Code />} title="Pricing API" href="/docs/openapi/pricing" description="Every pricing endpoint, generated from the spec." />',
     '</Cards>',

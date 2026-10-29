@@ -40,7 +40,10 @@ const SKIP = ['projects/'];
 // `<id>` counts as a path segment: pages write `releases/rel_<id>/activate` and
 // stopping at the `<` left the truncated `releases/rel_` to be reported as an
 // unknown route, which is a complaint about punctuation, not about the API.
-const ENDPOINT = /https?:\/\/api\.hanzo\.ai(\/v1\/[A-Za-z0-9_\-{}<>/.]*)/g;
+// `$ID` is a shell variable standing in for one path segment, the same job `{id}`
+// does. Leaving `$` out of this class used to cut the path off at the variable,
+// so `/v1/agent/sessions/$ID/budget` was checked as `/v1/agent/sessions/`.
+const ENDPOINT = /https?:\/\/api\.hanzo\.ai(\/v1\/[A-Za-z0-9_\-{}<>/.$]*)/g;
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -69,7 +72,13 @@ const segments = (p: string): string[] =>
     .replace(/\/$/, '')
     .split('/')
     .filter(Boolean)
-    .map((s) => (/^\{wildcard/.test(s) ? REST : /^[{<].*[}>]$/.test(s) ? ANY : s));
+    .map((s) =>
+      /^\{wildcard/.test(s)
+        ? REST
+        : /^[{<].*[}>]$/.test(s) || /^\$[A-Za-z_][A-Za-z0-9_]*$/.test(s)
+          ? ANY
+          : s,
+    );
 
 /** Does `a` name `b`, or a prefix of it? Placeholders match any one segment. */
 const names = (a: string[], b: string[]): boolean => {
@@ -104,6 +113,19 @@ const names = (a: string[], b: string[]): boolean => {
  * these is a product whose API cannot be generated, described or called from a
  * client until it has one.
  */
+// Served by the live spec at https://api.hanzo.ai/openapi.json and not yet in
+// the pinned cloud yaml, which still spells this family `/v1/agents`. Exact
+// templates only, checked the same way as the document. Confirmed 2026-10-29:
+// POST /v1/agent, GET /v1/agent/{ref}/spend, POST /v1/agent/sessions/{id}/budget.
+const LIVE = [
+  '/v1/agent',
+  '/v1/agent/{ref}',
+  '/v1/agent/{ref}/spend',
+  '/v1/agent/sessions',
+  '/v1/agent/sessions/{id}',
+  '/v1/agent/sessions/{id}/budget',
+].map(segments);
+
 const RELAYS = [
   '/v1/bot/',
   '/v1/catalog/entries/',
@@ -141,6 +163,7 @@ export function checkEndpoints(): { checked: number; unknown: Array<[string, str
       checked++;
       const mention = segments(raw);
       if (paths.some((p) => names(mention, p))) continue;
+      if (LIVE.some((p) => names(mention, p))) continue;
       if (RELAYS.some((prefix) => raw.startsWith(prefix))) continue;
       unknown.push([rel, raw]);
     }

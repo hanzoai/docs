@@ -1,7 +1,7 @@
 ---
 icon: Circle
 title: Meet Enso
-description: Hanzo's own model family — enso, enso-flash, and enso-ultra. What each one is for, and how to pick.
+description: Hanzo's small language model. It also routes. Fixed per-token prices by tier, and only a payment processing fee.
 ---
 
 import { Callout } from '@hanzo/docs-base-ui/components/callout'
@@ -9,13 +9,13 @@ import { Tabs, Tab } from '@hanzo/docs-base-ui/components/tabs'
 
 # Meet enso
 
-**After this page you can pick the right enso model for a job, switch between
-them with a one-string change, and work out what a request will cost before you
-send it.**
+Enso is Hanzo's small language model, and it also routes. You talk to it the way you talk to any other model on the gateway: one endpoint, one key, one request shape. The only thing you change is the `model` string.
 
-enso is Hanzo's own model family. There are three of them. They share one
-endpoint, one key, and one request shape — the only thing that changes between
-them is the `model` string.
+Each tier is a different trade of effort, speed, and intelligence, at a fixed price per million tokens. Name a tier when you know which trade you want. Name `enso` when you want the gateway to choose. A request that names no tier is billed at the `enso-flash` rate. If nothing pays for the tier that would have answered, the request is served by `enso-free`, at no charge.
+
+Hanzo's own models, including Enso, carry only a payment processing fee: 3.5% by credit card, or 3% in crypto. There is no routing fee on them. Third-party models follow [OpenRouter](https://openrouter.ai/pricing). On the standard plan that is 5.5% by credit card, or 5% in crypto. The Business plan is 8% on credit purchases. Enterprise fees are not published; contact sales. Bring-your-own-key includes $25,000 of list-price inference a month with no fee, then 5%.
+
+`enso-auto` and `hanzo/enso` are spellings of `enso`, not extra models.
 
 ## See them for yourself
 
@@ -27,53 +27,27 @@ curl -s https://api.hanzo.ai/v1/models \
   | jq '.data[] | select(.id | startswith("enso"))'
 ```
 
-Each entry carries the `id` you pass as `model`, the `owned_by` that trained it,
-a `premium` flag, `pricing.input` / `pricing.output`, and — for the enso tiers —
-`context_window`. The gateway is the source of truth for all of it, so if this
-page and that command ever disagree, believe the command. Current rates are on
-[Pricing](/docs/pricing), which is generated from the gateway rather than typed
-by hand.
+Each entry carries the `id` you pass as `model`, `owned_by`, `context_window`, and `pricing.input_per_million` / `pricing.output_per_million`. Per-token rates, if you need them, are `pricing.prompt` and `pricing.completion`. If this page and that command ever disagree, believe the command. [Pricing](/docs/pricing) is generated from the gateway rather than typed by hand.
 
 ## Which one
 
-<Callout title="Start with enso-flash.">
-It is the cheapest tier, and most work never needs more than it. Reach for a
-bigger model when flash actually disappoints you, not before.
+<Callout title="Start on the cheaper rate.">
+`enso` and `enso-flash` are $0.33 in and $1.65 out per million tokens. `enso-pro` and `enso-ultra` cost more because they spend more effort. Move up when the cheaper tier has disappointed you on a prompt you care about. Switching is one word in the request.
 </Callout>
+
+Token prices below are the billing rates for each tier. Context windows are `data[].context_window` from `GET /v1/models`, read on 29 October 2026. Per-million prices on that response are `pricing.input_per_million` and `pricing.output_per_million`.
 
 | Model | Context | In / Out (per 1M tokens) | Reach for it when |
 |---|---|---|---|
-| `enso-flash` | 262,144 | $2 / $4 | Default. High volume, everyday work, anything you send a lot of. |
-| `enso` | 1,000,000 | $4 / $20 | The answer's quality matters more than its cost — hard reasoning, long documents, code that has to be right. |
-| `enso-ultra` | 1,000,000 | $5 / $25 | Being right matters more than being cheap. |
+| `enso-free` | 1,000,000 | $0 / $0 | Nothing is paying for the request. |
+| `enso-flash` | 900,000 | $0.33 / $1.65 | Cheaper and faster, for everyday work. |
+| `enso` | 900,000 | $0.33 / $1.65 | The router. A request that names no tier is billed here. |
+| `enso-pro` | 1,000,000 | $4.40 / $22 | More effort and intelligence than flash. |
+| `enso-ultra` | 1,000,000 | $5.50 / $27.50 | The most effort, for the hardest work. |
 
-Those figures are the gateway's own, read from `/v1/models`. Across the range
-that is 2.5x on input and about 6x on output — a narrower spread than the tier
-names suggest, so trading up costs less than it sounds like it should. On the
-mixed request priced at the bottom of this page, the three come to $0.006,
-$0.018 and $0.0225: 1x, 3x and 3.75x, not the order of magnitude "ultra"
-implies.
+`enso-auto` and `hanzo/enso` return the same description, context, and price as `enso`. They are spellings of the router, not extra models.
 
-`enso-flash` is also the one tier that does **not** carry the million-token
-window. If your input is large, that — not price — is the reason to move up.
-
-Note that the columns above are about **cost**, not speed. Price and latency are
-independent here, and not in the direction the names suggest — measure before
-you assume, using the next section.
-
-### What makes enso-ultra different
-
-`enso` is a model. `enso-ultra` is a *strategy*. Instead of answering directly,
-it probes with a model sized to the task, escalates to a panel of models only
-when the task turns out to be hard, then verifies the candidate answers and
-selects the best one.
-
-You pay for that in money rather than in context: ultra carries the same
-million-token window `enso` does, so moving up from `enso` costs you nothing in
-input size. The tier that cannot take your whole codebase in one prompt is
-`enso-flash`, at 262,144 tokens. The panel is billed by the token like anything
-else, which puts ultra a quarter above `enso` per million — $5/$25 against
-$4/$20, not a different order of cost.
+The columns are **cost**, not speed. A cheaper tier is not a promise of a faster answer. The next section is how to measure that yourself.
 
 ## Measure them yourself
 
@@ -116,11 +90,7 @@ question never reaches the panel. And **`enso-flash` was the least consistent** 
 its slowest round was four times its fastest, so a single timing tells you very
 little about the next one.
 
-Take that as a method, not as a league table. The prompt above is an easy one,
-and these numbers describe that prompt in that moment — a harder question can
-reorder them, because difficulty is what decides how much work `enso-ultra` does.
-Time the tiers on *your* prompt, on the kind of question you actually plan to
-ask, and re-time them when that changes.
+Take that as a method, not as a league table. The prompt above is an easy one, and these numbers describe that prompt at that time. A different prompt can reorder them. The loop does not include `enso-pro` or `enso-free`; add them when those are the tiers you intend to use. Time the ids on the kind of question you actually plan to ask, and re-time them when that changes.
 
 ## What an answer looks like
 
@@ -132,11 +102,7 @@ Same prompt, sent to `enso-ultra`, printed exactly as it came back:
 > ensuring that only authorized users can make requests and helping track usage
 > for billing or rate-limiting purposes.
 
-That request billed 275 input tokens and 70 output tokens — the `usage` object
-in the response says so, and at ultra's $5/$25 per million that is about
-**$0.003**. The same traffic through `enso-flash` would cost under a tenth of a
-cent. Read `usage` rather than estimating: it is the number you are actually
-charged for.
+That request billed 275 input tokens and 70 output tokens — the `usage` object in the response says so. At ultra's $5.50 / $27.50 per million that is about **$0.0034**. The same traffic through `enso-flash`, at $0.33 / $1.65, is about **$0.0002**. Read `usage` rather than estimating: it is the number you are actually charged for.
 
 ## Switching between them
 
@@ -167,7 +133,7 @@ from hanzoai import Hanzo
 client = Hanzo(api_key=os.environ["HANZO_API_KEY"])
 
 answer = client.chat.completions.create(
-    model="enso-flash",                      # -> "enso" or "enso-ultra"
+    model="enso-flash",                      # or "enso", "enso-pro", "enso-ultra"
     messages=[{"role": "user", "content": "Name three uses for a paperclip."}],
 )
 print(answer.choices[0].message.content)
@@ -183,7 +149,7 @@ import Hanzo from '@hanzo/ai';
 const client = new Hanzo({ apiKey: process.env.HANZO_API_KEY });
 
 const answer = await client.chat.completions.create({
-  model: 'enso-flash',                       // -> 'enso' or 'enso-ultra'
+  model: 'enso-flash',                       // or 'enso', 'enso-pro', 'enso-ultra'
   messages: [{ role: 'user', content: 'Name three uses for a paperclip.' }],
 });
 console.log(answer.choices[0].message.content);
@@ -193,10 +159,7 @@ console.log(answer.choices[0].message.content);
 
 </Tabs>
 
-That is the whole migration path between tiers. It is also why you should start
-cheap: moving up costs you one word of a diff, so there is no reason to pay for
-a bigger model until a smaller one has actually failed you. Every model in our
-catalog answers on that one path.
+That is the whole change between tiers. Start on the cheaper rate — `enso` or `enso-flash` — and move up when that tier has failed the prompt you care about. Every model in the catalogue answers on that same path.
 
 ### If you already have an HTTP client
 
@@ -213,9 +176,10 @@ answer:
 
 | Model | Input | Output | Total |
 |---|---|---|---|
-| `enso-flash` | 2,000 x $2/1M = $0.004 | 500 x $4/1M = $0.002 | **$0.006** |
-| `enso` | 2,000 x $4/1M = $0.008 | 500 x $20/1M = $0.010 | **$0.018** |
-| `enso-ultra` | 2,000 x $5/1M = $0.010 | 500 x $25/1M = $0.0125 | **$0.0225** |
+| `enso-free` | 2,000 x $0/1M = $0 | 500 x $0/1M = $0 | **$0** |
+| `enso-flash`, `enso` | 2,000 x $0.33/1M = $0.00066 | 500 x $1.65/1M = $0.000825 | **$0.001485** |
+| `enso-pro` | 2,000 x $4.40/1M = $0.0088 | 500 x $22/1M = $0.011 | **$0.0198** |
+| `enso-ultra` | 2,000 x $5.50/1M = $0.011 | 500 x $27.50/1M = $0.01375 | **$0.02475** |
 
 A token is roughly three quarters of a word, so "2,000 tokens" is about three
 pages. The response you get back reports exactly what you were charged for in

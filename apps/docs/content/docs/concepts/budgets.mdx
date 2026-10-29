@@ -5,14 +5,11 @@ description: An agent is quoted before it spends and refused when it would breac
 
 import { Callout } from '@hanzo/docs-base-ui/components/callout'
 
-**After this page you can cap what an agent spends, read what it has spent, and
-tell a budget refusal from a model failure.**
+A budget is the ceiling on what an agent may spend. This page is how to set that ceiling, how to read what has already been spent, and how to tell a budget refusal from a model failure. They look similar in a log. A model failure can be retried. A budget refusal will refuse again, because the next call is still over the ceiling.
 
 ## What a budget is
 
-Every model call and every priced tool call an agent makes is **quoted before it
-is made** — an upper bound on what the call could cost — and that quote is
-checked, in this order, against four things:
+Every model call and every priced tool call an agent makes is **quoted before it is made** — an upper bound on what the call could cost — and that quote is checked, in this order, against four things:
 
 1. **your organization's balance** — can it be paid for at all
 2. **the agent's period cap** — `cap_micro_usd`, less what this period spent
@@ -24,10 +21,7 @@ a model only through the gate.
 
 ## Money is integer micro-USD
 
-Every amount is an integer number of micro-USD, in a field suffixed
-`_micro_usd`. **1,000,000 is one dollar**, so `11902000` is $11.902 and `250` is
-a fortieth of a cent. A call costs fractions of a cent; a cap kept in cents
-could not see one.
+Every amount is an integer number of micro-USD, in a field suffixed `_micro_usd`. **1,000,000 is one dollar**, so `11902000` is $11.902 and `250` is a fortieth of a cent. This looks fussy. It is the opposite. A call costs fractions of a cent, and a cap kept in cents could not see one — it would round the thing you are trying to measure into invisibility. Integers also mean two services cannot disagree about a rounding mode. The number is the number.
 
 ## Stating a budget
 
@@ -127,10 +121,10 @@ gate compares the ceiling of the next call, not its likely cost.
 
 ## A session's own budget
 
-A session may carry a ceiling of its own, under the agent's:
+A session may carry a ceiling of its own, under the agent's. The live API documents that write as `POST /v1/agent/sessions/{id}/budget`:
 
 ```bash
-curl -X POST https://api.hanzo.ai/v1/agent/sessions/$ID/budget \
+curl -X POST https://api.hanzo.ai/v1/agent/sessions/{id}/budget \
   -H "Authorization: Bearer $HANZO_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"budget_micro_usd": 2000000}'
@@ -149,12 +143,11 @@ Each of those refuses with `409` rather than quietly doing something else.
 ## An agent defined before budgets existed
 
 It carries a cap of zero and is **not capped** — its spend is still tallied and
-readable at `/spend`, and an update gives it a cap. Refusing every agent defined
+readable at `GET /v1/agent/{ref}/spend`, and an update gives it a cap. Refusing every agent defined
 before the feature shipped would be an outage, not a policy.
 
 ## Next
 
 - **[Agents](/docs/concepts/agents)** — the definition a budget hangs on.
 - **[Agents reference](/docs/openapi/agents)** — every operation, generated.
-- **[Pricing](https://hanzo.ai/pricing)** — what the platform charges, and what
-  the fee on a model call is.
+- **[Pricing](https://hanzo.ai/pricing)** — what the platform charges for a model call, at a fixed price per token.
