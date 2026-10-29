@@ -1,0 +1,57 @@
+---
+title: SSS
+description: Hanzo Dev hakkında sık sorulan sorular.
+---
+
+## Hangi modeller desteklenir?
+
+GPT-5.2’yi saran yerleşik hazır ayarları öneririz (ör. `code-gpt-5.2-codex`). Varsayılan akıl yürütme düzeyi medium’dur — karmaşık işler için `/model` ile high’a çıkın.
+
+Diğer modelleri API kimlik doğrulaması ve `--model` bayrağıyla da kullanabilirsiniz.
+
+## Hanzo Dev’in dosyalarımı düzenlemesini nasıl durdururum?
+
+Varsayılan olarak Hanzo Dev çalışma dizininizdeki dosyaları değiştirebilir (Auto modu). Düzenlemeyi engellemek için salt okunur çalıştırın:
+
+```bash
+dev --sandbox read-only
+```
+
+Ya da konuşmanın ortasında onay düzeyini `/approvals` ile değiştirin.
+
+## Windows’ta çalışır mı?
+
+Doğrudan Windows’ta çalışması mümkün olabilir ama resmi olarak desteklenmez. [Windows Subsystem for Linux (WSL2)](https://learn.microsoft.com/en-us/windows/wsl/install) öneririz.
+
+## Hanzo Dev Windows’ta ajanlarımı neden bulamıyor?
+
+Windows’ta ajan keşfi PATH ve dosya uzantılarından etkilenebilir. Çözümler:
+
+### Mutlak yollar kullanın (önerilir)
+
+```toml
+[[agents]]
+name = "claude"
+command = "C:\\Users\\YourUser\\AppData\\Roaming\\npm\\claude.cmd"
+enabled = true
+```
+
+### npm genel kurulum konumunu bulun
+
+```cmd
+npm config get prefix
+```
+
+### PATH’in npm dizinini içerdiğini doğrulayın
+
+```powershell
+$env:PATH -split ';' | Select-String "npm"
+```
+
+### Dosya uzantılarını kontrol edin
+
+Windows’ta Hanzo Dev şu uzantılı yürütülebilir dosyaları arar: `.exe`, `.cmd`, `.bat`, `.com`. Mutlak yol kullanırken doğru uzantıyı ekleyin.
+
+## OpenAI Codex ile ilişkisi nedir?
+
+Hanzo Dev, Rust’ta yazılmış ajanlı bir geliştirme CLI’sidir: çoklu ajan orkestrasyonu, MCP istemcisi ve sunucusu, kum havuzlu yürütme ilkesi ve Hanzo AI altyapısıyla doğrudan bütünleşme. Ad, Mart 2023’te kullanımdan kaldırılan OpenAI’nin 2021 Codex modeliyle ilgili değildir.

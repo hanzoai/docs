@@ -1,0 +1,57 @@
+---
+title: FAQ
+description: Häufige Fragen zu Hanzo Dev.
+---
+
+## Welche Modelle werden unterstützt?
+
+Wir empfehlen die eingebauten Presets, die GPT-5.2 umhüllen (z. B. `code-gpt-5.2-codex`). Die Standard-Reasoning-Stufe ist medium — für komplexe Aufgaben mit `/model` auf high stellen.
+
+Andere Modelle gehen auch über API-Authentifizierung mit dem Flag `--model`.
+
+## Wie verhindere ich, dass Hanzo Dev meine Dateien ändert?
+
+Standardmäßig darf Hanzo Dev Dateien im Arbeitsverzeichnis ändern (Auto-Modus). Um Änderungen zu verhindern, starte den Nur-Lese-Modus:
+
+```bash
+dev --sandbox read-only
+```
+
+Oder ändere die Freigabestufe mitten im Gespräch mit `/approvals`.
+
+## Läuft es unter Windows?
+
+Direkt unter Windows kann es laufen, ist aber nicht offiziell unterstützt. Wir empfehlen [Windows Subsystem for Linux (WSL2)](https://learn.microsoft.com/en-us/windows/wsl/install).
+
+## Warum findet Hanzo Dev meine Agenten unter Windows nicht?
+
+Die Agentensuche unter Windows hängt von PATH und Dateiendungen ab. Lösungen:
+
+### Absolute Pfade verwenden (empfohlen)
+
+```toml
+[[agents]]
+name = "claude"
+command = "C:\\Users\\YourUser\\AppData\\Roaming\\npm\\claude.cmd"
+enabled = true
+```
+
+### Den globalen npm-Installationsort finden
+
+```cmd
+npm config get prefix
+```
+
+### Prüfen, ob PATH das npm-Verzeichnis enthält
+
+```powershell
+$env:PATH -split ';' | Select-String "npm"
+```
+
+### Dateiendungen prüfen
+
+Unter Windows sucht Hanzo Dev ausführbare Dateien mit den Endungen `.exe`, `.cmd`, `.bat` und `.com`. Bei absoluten Pfaden die richtige Endung angeben.
+
+## Was hat das mit OpenAI Codex zu tun?
+
+Hanzo Dev ist eine in Rust geschriebene agentische Entwicklungs-CLI: Multi-Agenten-Orchestrierung, MCP-Client und -Server, eine Sandbox-Ausführungsrichtlinie und direkte Anbindung an die Hanzo-AI-Infrastruktur. Der Name hat nichts mit OpenAIs Codex-Modell von 2021 zu tun, das im März 2023 eingestellt wurde.

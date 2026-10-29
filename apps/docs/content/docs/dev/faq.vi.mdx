@@ -1,0 +1,57 @@
+---
+title: Câu hỏi thường gặp
+description: Câu hỏi thường gặp về Hanzo Dev.
+---
+
+## Những mô hình nào được hỗ trợ?
+
+Chúng tôi khuyên các preset dựng sẵn bọc GPT-5.2 (ví dụ `code-gpt-5.2-codex`). Mức suy luận mặc định là medium — nâng lên high cho việc phức tạp bằng `/model`.
+
+Bạn cũng có thể dùng mô hình khác qua xác thực API với cờ `--model`.
+
+## Làm sao để Hanzo Dev không sửa tệp của tôi?
+
+Mặc định, Hanzo Dev có thể sửa tệp trong thư mục làm việc (chế độ Auto). Để chặn sửa, chạy ở chế độ chỉ đọc:
+
+```bash
+dev --sandbox read-only
+```
+
+Hoặc đổi mức phê duyệt giữa cuộc hội thoại bằng `/approvals`.
+
+## Có chạy trên Windows không?
+
+Chạy trực tiếp trên Windows có thể được, nhưng không được hỗ trợ chính thức. Chúng tôi khuyên [Windows Subsystem for Linux (WSL2)](https://learn.microsoft.com/en-us/windows/wsl/install).
+
+## Vì sao Hanzo Dev không tìm thấy tác tử của tôi trên Windows?
+
+Việc tìm tác tử trên Windows có thể bị ảnh hưởng bởi PATH và phần mở rộng tệp. Cách xử lý:
+
+### Dùng đường dẫn tuyệt đối (khuyên dùng)
+
+```toml
+[[agents]]
+name = "claude"
+command = "C:\\Users\\YourUser\\AppData\\Roaming\\npm\\claude.cmd"
+enabled = true
+```
+
+### Tìm vị trí cài npm toàn cục
+
+```cmd
+npm config get prefix
+```
+
+### Kiểm tra PATH có chứa thư mục npm
+
+```powershell
+$env:PATH -split ';' | Select-String "npm"
+```
+
+### Kiểm tra phần mở rộng tệp
+
+Trên Windows, Hanzo Dev tìm tệp thực thi với phần mở rộng `.exe`, `.cmd`, `.bat` và `.com`. Khi dùng đường dẫn tuyệt đối, hãy ghi đúng phần mở rộng.
+
+## Quan hệ với OpenAI Codex là gì?
+
+Hanzo Dev là CLI phát triển tác tử viết bằng Rust: điều phối nhiều tác tử, máy khách và máy chủ MCP, chính sách thực thi trong hộp cát, và tích hợp trực tiếp với hạ tầng Hanzo AI. Tên không liên quan tới mô hình Codex năm 2021 của OpenAI, đã ngừng vào tháng 3 năm 2023.

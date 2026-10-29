@@ -1,0 +1,57 @@
+---
+title: FAQ
+description: Questions fréquentes sur Hanzo Dev.
+---
+
+## Quels modèles sont pris en charge ?
+
+Nous recommandons les préréglages intégrés qui enveloppent GPT-5.2 (p. ex. `code-gpt-5.2-codex`). Le niveau de raisonnement par défaut est medium — passez à high pour les tâches complexes avec `/model`.
+
+Vous pouvez aussi utiliser d’autres modèles via une authentification par API avec l’option `--model`.
+
+## Comment empêcher Hanzo Dev de modifier mes fichiers ?
+
+Par défaut, Hanzo Dev peut modifier les fichiers du répertoire de travail (mode Auto). Pour interdire les modifications, lancez-le en lecture seule :
+
+```bash
+dev --sandbox read-only
+```
+
+Ou changez le niveau d’approbation en cours de conversation avec `/approvals`.
+
+## Est-ce que cela fonctionne sous Windows ?
+
+L’exécution directe sous Windows peut marcher, mais elle n’est pas officiellement prise en charge. Nous recommandons [Windows Subsystem for Linux (WSL2)](https://learn.microsoft.com/en-us/windows/wsl/install).
+
+## Pourquoi Hanzo Dev ne trouve-t-il pas mes agents sous Windows ?
+
+La découverte d’agents sous Windows peut dépendre de PATH et des extensions de fichiers. Solutions :
+
+### Utilisez des chemins absolus (recommandé)
+
+```toml
+[[agents]]
+name = "claude"
+command = "C:\\Users\\YourUser\\AppData\\Roaming\\npm\\claude.cmd"
+enabled = true
+```
+
+### Trouvez l’emplacement de l’installation globale npm
+
+```cmd
+npm config get prefix
+```
+
+### Vérifiez que PATH contient le répertoire npm
+
+```powershell
+$env:PATH -split ';' | Select-String "npm"
+```
+
+### Vérifiez les extensions de fichiers
+
+Sous Windows, Hanzo Dev cherche des exécutables portant les extensions `.exe`, `.cmd`, `.bat` et `.com`. Indiquez la bonne extension lorsque vous utilisez un chemin absolu.
+
+## Quel rapport avec OpenAI Codex ?
+
+Hanzo Dev est une CLI de développement agentique native en Rust : orchestration multi-agents, client et serveur MCP, politique d’exécution en bac à sable, et intégration directe à l’infrastructure Hanzo AI. Le nom n’a aucun lien avec le modèle Codex d’OpenAI de 2021, retiré en mars 2023.

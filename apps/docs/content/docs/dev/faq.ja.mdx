@@ -1,0 +1,57 @@
+---
+title: よくある質問
+description: Hanzo Dev についてのよくある質問。
+---
+
+## どのモデルに対応しているか
+
+GPT-5.2 を包む組み込みプリセットを勧める（例: `code-gpt-5.2-codex`）。推論レベルは既定で medium。複雑な作業は `/model` で high に上げる。
+
+API 認証と `--model` フラグで、ほかのモデルも使える。
+
+## ファイルを編集させないには
+
+既定では Hanzo Dev は作業ディレクトリのファイルを変更できる（Auto モード）。編集を止めるには読み取り専用で起動する。
+
+```bash
+dev --sandbox read-only
+```
+
+会話の途中なら `/approvals` で承認レベルを変える。
+
+## Windows で動くか
+
+Windows 上で直接動くことはあるが、公式には対応していない。[Windows Subsystem for Linux (WSL2)](https://learn.microsoft.com/en-us/windows/wsl/install) を勧める。
+
+## Windows でエージェントが見つからない
+
+Windows でのエージェント検出は PATH と拡張子に左右される。対処:
+
+### 絶対パスを使う（推奨）
+
+```toml
+[[agents]]
+name = "claude"
+command = "C:\\Users\\YourUser\\AppData\\Roaming\\npm\\claude.cmd"
+enabled = true
+```
+
+### npm のグローバルインストール先を探す
+
+```cmd
+npm config get prefix
+```
+
+### PATH に npm のディレクトリがあるか確認する
+
+```powershell
+$env:PATH -split ';' | Select-String "npm"
+```
+
+### 拡張子を確認する
+
+Windows では Hanzo Dev は `.exe`、`.cmd`、`.bat`、`.com` の実行ファイルを探す。絶対パスには正しい拡張子を付ける。
+
+## OpenAI Codex との関係
+
+Hanzo Dev は Rust で書いたエージェント型開発 CLI だ。複数エージェントの編成、MCP のクライアントとサーバー、サンドボックス付き実行ポリシー、Hanzo AI 基盤への直接接続を持つ。名前は、2023 年 3 月に廃止された OpenAI の 2021 年 Codex モデルとは無関係だ。
