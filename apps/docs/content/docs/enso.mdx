@@ -1,7 +1,7 @@
 ---
 icon: Circle
 title: Meet Enso
-description: Hanzo's small language model. It also routes. The tier prices are base prices; the fee is separate.
+description: Hanzo's small language model. It also routes. The table is what a call costs.
 ---
 
 import { Callout } from '@hanzo/docs-base-ui/components/callout'
@@ -13,7 +13,7 @@ Enso is Hanzo's small language model, and it also routes. You talk to it the way
 
 Each tier is a different trade of effort, speed, and intelligence, at a fixed price per million tokens. Name a tier when you know which trade you want. Name `enso` when you want the gateway to choose. A request that names no tier is billed at the `enso-flash` rate. If nothing pays for the tier that would have answered, the request is served by `enso-free`, at no charge.
 
-The prices on this page are the base price. The fee is not inside them. It is charged when you buy credits, as its own line on the checkout and on the receipt or invoice. The rates are in [What you pay on top](/docs/pricing#what-you-pay-on-top).
+The prices on this page are what a call costs.
 
 `enso-auto` and `hanzo/enso` are spellings of `enso`, not extra models.
 
@@ -35,15 +35,15 @@ Each entry carries the `id` you pass as `model`, `owned_by`, `context_window`, a
 `enso` and `enso-flash` are $0.33 in and $1.65 out per million tokens. `enso-pro` and `enso-ultra` cost more because they spend more effort. Move up when the cheaper tier has disappointed you on a prompt you care about. Switching is one word in the request.
 </Callout>
 
-The token prices below are base prices. The fee is not included. Context windows are `data[].context_window` from `GET /v1/models`, read on 29 October 2026. Per-million prices on that response are `pricing.input_per_million` and `pricing.output_per_million`.
+Context windows are `data[].context_window` from `GET /v1/models`, read on 29 October 2026. Per-million prices on that response are `pricing.input_per_million` and `pricing.output_per_million`.
 
 | Model | Context | In / Out (per 1M tokens) | Reach for it when |
 |---|---|---|---|
 | `enso-free` | 1,000,000 | $0 / $0 | Nothing is paying for the request. |
 | `enso-flash` | 900,000 | $0.33 / $1.65 | Cheaper and faster, for everyday work. |
 | `enso` | 900,000 | $0.33 / $1.65 | The router. A request that names no tier is billed here. |
-| `enso-pro` | 1,000,000 | $4.40 / $22 | More effort and intelligence than flash. |
-| `enso-ultra` | 1,000,000 | $5.50 / $27.50 | The most effort, for the hardest work. |
+| `enso-pro` | 1,000,000 | $3.30 / $16.50 | More effort and intelligence than flash. |
+| `enso-ultra` | 1,000,000 | $5.236 / $26.18 | The most effort, for the hardest work. |
 
 `enso-auto` and `hanzo/enso` return the same description, context, and price as `enso`. They are spellings of the router, not extra models.
 
@@ -102,7 +102,7 @@ Same prompt, sent to `enso-ultra`, printed exactly as it came back:
 > ensuring that only authorized users can make requests and helping track usage
 > for billing or rate-limiting purposes.
 
-That request billed 275 input tokens and 70 output tokens — the `usage` object in the response says so. At ultra's $5.50 / $27.50 per million that is about **$0.0034**. The same traffic through `enso-flash`, at $0.33 / $1.65, is about **$0.0002**. Read `usage` rather than estimating: it is the number you are actually charged for.
+That request billed 275 input tokens and 70 output tokens — the `usage` object in the response says so. At ultra's $5.236 / $26.18 per million that is about **$0.0034**. The same traffic through `enso-flash`, at $0.33 / $1.65, is about **$0.0002**. Read `usage` rather than estimating: it is the number you are actually charged for.
 
 ## Switching between them
 
@@ -178,8 +178,8 @@ answer:
 |---|---|---|---|
 | `enso-free` | 2,000 x $0/1M = $0 | 500 x $0/1M = $0 | **$0** |
 | `enso-flash`, `enso` | 2,000 x $0.33/1M = $0.00066 | 500 x $1.65/1M = $0.000825 | **$0.001485** |
-| `enso-pro` | 2,000 x $4.40/1M = $0.0088 | 500 x $22/1M = $0.011 | **$0.0198** |
-| `enso-ultra` | 2,000 x $5.50/1M = $0.011 | 500 x $27.50/1M = $0.01375 | **$0.02475** |
+| `enso-pro` | 2,000 x $3.30/1M = $0.0066 | 500 x $16.50/1M = $0.00825 | **$0.01485** |
+| `enso-ultra` | 2,000 x $5.236/1M = $0.010472 | 500 x $26.18/1M = $0.01309 | **$0.023562** |
 
 A token is roughly three quarters of a word, so "2,000 tokens" is about three
 pages. The response you get back reports exactly what you were charged for in

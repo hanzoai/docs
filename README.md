@@ -1,12 +1,12 @@
 # Hanzo Docs
 
-The documentation framework for Hanzo AI, Lux Network, Zoo Labs Foundation, and Zen LM.
+The documentation framework for Hanzo AI — the source of docs.hanzo.ai — and for other Hanzo documentation sites.
 
-A powerful React.js documentation framework built for the Hanzo ecosystem.
+A React documentation framework used across the Hanzo ecosystem.
 
 ## Features
 
-- **Multi-Brand Support**: Unified framework supporting Hanzo, Lux, Zoo, and Zen documentation
+- **Multi-brand support**: Unified framework with white-label brand presets for Hanzo documentation sites
 - **Next.js 15+**: Built on the latest Next.js with App Router
 - **MDX**: Write documentation in MDX with full component support
 - **Search**: Built-in search with Orama and Algolia support
