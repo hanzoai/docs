@@ -1,0 +1,26 @@
+name: CI/CD
+
+# Tests and publishes docs.hanzo.ai through hanzoai/ci, which reads hanzo.yml:
+# `test:` must pass, then `site:` builds apps/docs/out and publishes it to the
+# Sites plane (project docs-hanzo-ai).
+
+on:
+  push:
+    branches: [main, publish-docs]
+  workflow_dispatch:
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  cicd:
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+    uses: hanzoai/ci/.github/workflows/build.yml@v2
+    with:
+      submodules: recursive
+      class: xl
+    secrets: inherit
