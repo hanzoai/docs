@@ -1,0 +1,173 @@
+---
+icon: Bot
+title: Agentic commerce
+description: Buy plans and credit headless, with shared payment tokens or stablecoins.
+---
+
+An agent can read what is for sale, open a checkout, pay it and read the order back in JSON,
+with no browser. Everything is in US dollars. Payment is a Stripe shared payment token the
+buyer granted the agent, or a stablecoin deposit.
+
+All paths are under `https://api.hanzo.ai/v1/billing`. Except the catalog and discovery,
+every call carries the buyer's bearer token: the checkout belongs to that buyer and credit
+lands in that buyer's wallet.
+
+## Discover and read the catalog
+
+```bash
+curl https://api.hanzo.ai/v1/billing/discovery
+curl https://api.hanzo.ai/v1/billing/catalog
+```
+
+`discovery` names the lifecycle, the payment types and the renewal rule. `catalog` lists:
+
+```json
+{
+  "version": "1",
+  "currency": "usd",
+  "plans": [{ "slug": "pro", "price": 2000, "interval": "month" }],
+  "creditPacks": [{ "id": "credit-2500", "usdCents": 2500 }],
+  "payment": [
+    { "type": "shared_payment_token", "processor": "stripe", "currency": "usd", "recurring": true },
+    { "type": "stablecoin", "processor": "stripe", "currency": "usd", "networks": ["base", "solana", "tempo"] }
+  ],
+  "links": { "checkouts": "/v1/billing/checkouts", "orders": "/v1/billing/orders" }
+}
+```
+
+A payment type appears only when the account can take it now.
+
+## Checkout
+
+A checkout sells one item: USD credit, or a plan's first period at its monthly price. The
+server prices it from the catalog; an amount you send for a plan is never used.
+
+```bash
+B=https://api.hanzo.ai/v1/billing
+
+# create
+curl -X POST $B/checkouts -H "Authorization: Bearer $TOKEN" \
+  -d '{"items":[{"kind":"credit","usdCents":2500}]}'
+# {"id":"chk_...","status":"open","totalCents":2500,"items":[...]}
+
+# change it while it is open
+curl -X PATCH $B/checkouts/chk_... -H "Authorization: Bearer $TOKEN" \
+  -d '{"items":[{"kind":"plan","plan":"pro"}]}'
+
+# read it
+curl $B/checkouts/chk_... -H "Authorization: Bearer $TOKEN"
+```
+
+## Complete with a shared payment token
+
+```bash
+curl -X POST $B/checkouts/chk_.../complete \
+  -H "Authorization: Bearer $TOKEN" -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"payment":{"type":"shared_payment_token","token":"spt_..."}}'
+```
+
+The `Idempotency-Key` is required. The charge is bound to the checkout, the buyer and the
+key: repeating the call with the same key returns the same order and charges nothing; another
+key on a completed checkout is `409`.
+
+Before any charge the token is read and checked. A refusal is `402` with a code to branch on,
+and the checkout stays usable: complete it again with a good token.
+
+| `error.code` | Meaning |
+| --- | --- |
+| `token_wrong_merchant` | The token was not granted to this seller. |
+| `token_wrong_mode` | A test token on a live account, or the reverse. |
+| `token_wrong_currency` | The token is not in dollars. |
+| `token_expired` | Past its expiry. |
+| `token_revoked` | Revoked, or already used up. |
+| `token_over_limit` | More than the token has left. |
+| `token_not_recurring` | A renewal was tried on a one-time token. |
+| `authentication_required` | The card's bank wants the buyer. `next` carries the intent and client secret. |
+
+A completed checkout answers `200` with the order:
+
+```json
+{ "status": "complete", "order": { "id": "chk_...", "status": "paid", "creditedCents": 2500, "paymentId": "..." } }
+```
+
+`GET /v1/billing/orders/:id` reads the order again.
+
+## Subscriptions on a token
+
+Complete a plan checkout with a token whose usage limits carry a recurring interval of
+`month` and a maximum of at least the plan's price, and the token renews the subscription.
+A recurring token's maximum is spent by every charge made on it, so read the room:
+
+```json
+{ "order": { "subscriptionId": "...", "token": {
+  "remainingCents": 3000, "maxCents": 4500, "renewalCents": 1500,
+  "covers": true, "recurringInterval": "month", "expiresAt": "2027-01-01T00:00:00Z" } } }
+```
+
+`GET /v1/billing/subscriptions/:id` carries the same `token` object.
+
+A token without a recurring interval pays the first period only. It is not kept, and the
+subscription cannot renew on it.
+
+### When a renewal cannot be covered
+
+Three days before a renewal, if the token's room is less than the renewal or it expires first,
+the event `renewal.action_required` is emitted once:
+
+```json
+{ "code": "token_over_limit", "subscriptionId": "...",
+  "action": { "type": "supply_token", "method": "POST",
+              "path": "/v1/billing/subscriptions/{id}/agent-token",
+              "requires": { "recurringInterval": "month", "minRemainingCents": 1500 } } }
+```
+
+POST `{"token":"spt_..."}` to that path and the subscription renews on the fresh token. If the
+renewal is attempted anyway and the token is expired, revoked or over its limit, the invoice
+stays open, the subscription is `past_due`, and the same event names the invoice path
+`POST /v1/billing/invoices/{id}/agent-token`. A token that covers the invoice pays it and
+becomes the subscription's method.
+
+## Top up with stablecoins
+
+```bash
+curl -X POST $B/topup/crypto -H "Authorization: Bearer $TOKEN" \
+  -d '{"amountCents":2500,"network":"base"}'
+```
+
+```json
+{ "intentId": "pi_...", "amountCents": 2500, "currency": "usd", "usdOnly": true,
+  "status": "awaiting_deposit",
+  "addresses": [{ "network": "base", "address": "0x...", "tokens": [{ "currency": "usdc", "contract": "0x..." }] }] }
+```
+
+Send the amount in a listed token to the address. Stablecoin payments are in USD only, on
+Base, Solana and Tempo. Credit lands once, when the deposit is confirmed on chain and the
+payment is reported succeeded; nothing is credited before. Poll
+`GET /v1/billing/topup/intent/:id` for `credited`.
+
+A credit checkout can be paid the same way: complete it with
+`{"payment":{"type":"stablecoin","network":"solana"}}`. The answer is `202` with
+`next.type = "send_deposit"` and the addresses; the checkout becomes `complete` when the
+deposit is credited.
+
+## Subscriptions paid in stablecoins
+
+Complete a plan checkout with `{"payment":{"type":"stablecoin"}}`. The answer is `202` with a
+deposit for the plan's price. The subscription opens when the deposit succeeds, and the
+checkout becomes `complete` with its `subscriptionId`.
+
+Each renewal is paid on the buyer's side, because a stablecoin cannot be charged without the
+payer. When a renewal falls due an invoice is raised as for a card, the subscription is
+`past_due`, and `renewal.action_required` carries a deposit for the invoice's exact amount:
+
+```json
+{ "code": "deposit_required", "invoiceId": "...",
+  "action": { "type": "send_deposit", "pay": {
+    "intentId": "pi_...", "amountCents": 2000, "currency": "usd",
+    "expiresAt": "2026-12-01T00:00:00Z",
+    "addresses": [{ "network": "base", "address": "0x...", "tokens": [{ "currency": "usdc", "contract": "0x..." }] }] } } }
+```
+
+Pay it from a wallet. The billing period starts only after the deposit succeeds, once. An
+unpaid deposit leaves the subscription past due under the same rules as a card; an unpaid
+deposit is cancelled after eight days.
