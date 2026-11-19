@@ -64,38 +64,17 @@ ARG APP=docs
 # every pageview under $public, which this org cannot read, and ingest answers
 # 200 either way. Refuse the artifact instead.
 ARG PUBLISHABLE_KEY=
-ENV NEXT_PUBLIC_PUBLISHABLE_KEY=$PUBLISHABLE_KEY
-RUN case "$PUBLISHABLE_KEY" in \
-      pk-*) : ;; \
-      '')   echo "PUBLISHABLE_KEY is empty - pass --build-arg PUBLISHABLE_KEY=<pk-...> (KMS deploy/PUBLISHABLE_KEY, env prod)" >&2; exit 1 ;; \
-      *)    echo "PUBLISHABLE_KEY is not a publishable key (expected a pk- prefix)" >&2; exit 1 ;; \
-    esac
-# Install, build, and drop every intermediate IN ONE LAYER. Only `out/` survives.
-#
-# The single `&&` chain is the whole point, and it is a disk budget rather than
-# tidiness. A RUN is a layer, and a layer stores what existed when it ended — so
-# installing in one RUN and deleting in a later one frees NOTHING: node_modules
-# is still in the earlier layer, on disk, for the rest of the build. Only files
-# that never outlive their own layer cost nothing.
-#
-# What that saves here: node_modules for a 21-app / 36-package workspace, plus
-# .next (~6.9G), plus the turbo cache (~2.4G), plus the pnpm store. The runner's
-# docker storage is a 38Gi emptyDir and this build wanted more than all of it.
-#
-# Over that line the kubelet EVICTS the runner pod --
-#   Evicted: Usage of EmptyDir volume "docker-storage" exceeds the limit "38Gi"
-# -- which looks nothing like a build failure. The pod restarts, so dockerd
-# restarts, so the job log truncates with no error and the run sits in_progress.
-# It reads exactly like an OOM and is not one; MemoryPressure stays False and
-# node memory sits near 7%. Check `kubectl -n hanzo get events | grep -i evict`
-# before believing anything the build log implies about why it stopped.
-#
-# Splitting this chain back into separate RUNs will reintroduce the eviction
-# without changing a line of application code.
-#
-# Nothing downstream needs the toolchain: the export gate reads `out/` with sh,
-# and the serving stage copies `out/` alone.
+# Install, resolve the publishable ingest key (explicit --build-arg wins; empty
+# falls back to @hanzo/event's keyring for docs.hanzo.ai so delegated BuildKit
+# builds that mount no KMS still bake the verified org key and fail closed if
+# absent), build, and drop every intermediate IN ONE LAYER. Only `out/` survives.
 RUN pnpm install --frozen-lockfile \
+ && NEXT_PUBLIC_PUBLISHABLE_KEY="${PUBLISHABLE_KEY:-$(cd packages/analytics && node --input-type=module -e "import { keyFor } from '@hanzo/event'; process.stdout.write(keyFor('docs.hanzo.ai') ?? '')")}" \
+ && case "$NEXT_PUBLIC_PUBLISHABLE_KEY" in \
+      pk-*) export NEXT_PUBLIC_PUBLISHABLE_KEY ;; \
+      '')   echo "PUBLISHABLE_KEY is empty and @hanzo/event resolved none for docs.hanzo.ai" >&2; exit 1 ;; \
+      *)    echo "PUBLISHABLE_KEY is not a publishable key (expected a pk- prefix)" >&2; exit 1 ;; \
+    esac \
  && pnpm build --filter="${APP}" \
  && rm -rf node_modules apps/*/node_modules packages/*/node_modules \
            "apps/${APP}/.next" .turbo \
