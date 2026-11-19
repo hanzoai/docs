@@ -43,14 +43,17 @@ images:
     build_secrets: [PUBLISHABLE_KEY]
 
 test:
-  - name: unit
-    # vitest over packages/* and apps/docs. The apps/docs project is what pins
-    # the four surfaces: the SDK method names the docs print are openapi-
-    # generator's own derivation, and the MCP tool names are MCP's own, both
-    # asserted against real generated clients and a real tools/list answer. A
-    # drift in either naming rule fails here rather than teaching a call that
-    # does not exist.
-    run: pnpm install --frozen-lockfile && pnpm test
+  - name: docs
+    # The vitest project for apps/docs, against the workspace packages it
+    # imports, built first because their package exports resolve to dist/. It
+    # pins the surfaces the site prints: the SDK method names (openapi-
+    # generator's own derivation) and the MCP tool names, asserted against real
+    # generated clients and a real tools/list answer. A drift in either naming
+    # rule fails here rather than teaching a call that does not exist.
+    run: >-
+      pnpm install --frozen-lockfile &&
+      pnpm turbo run build --filter='docs^...' &&
+      pnpm vitest run --project docs --testTimeout=30000
 
 # NOTE — the export gate is not declared here, and not because it was forgotten.
 #

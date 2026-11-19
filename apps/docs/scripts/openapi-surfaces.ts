@@ -417,15 +417,22 @@ export function server(p: Product, d: Door): Server | undefined {
   return best ? { tool: best, named } : undefined;
 }
 
+/** The operations declared directly on a grouped tool's `op` enum. */
+export const toolOps = (t: Pick<McpTool, 'inputSchema'>): string[] => {
+  const e = t.inputSchema?.properties?.op?.enum;
+  return Array.isArray(e) ? e.map(String) : [];
+};
+
 /**
  * Every tool MCP lists, resolved to the operations it names. A tool absent
  * from the map names none the document describes.
  */
 export function toolOperations(doc: Document, tools: Iterable<McpTool>): Map<string, Operation[]> {
+  const byId = doc.byId ?? new Map(doc.operations.map((o) => [o.id, o]));
   const out = new Map<string, Operation[]>();
   for (const t of tools) {
     const hit = ops(t)
-      .map((o) => doc.byId.get(o))
+      .map((o) => byId.get(o))
       .filter((o): o is Operation => Boolean(o));
     if (hit.length) out.set(t.name, hit);
   }

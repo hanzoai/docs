@@ -387,6 +387,7 @@ const ACTIONS = new Set([
   'export', 'import', 'search', 'query', 'resolve', 'validate', 'preview',
   'publish', 'deploy', 'launch', 'run', 'invoke', 'claim', 'redeem', 'login',
   'logout', 'signin', 'signup', 'connect', 'disconnect', 'enable', 'disable',
+  'list', 'get', 'create', 'update', 'delete', 'remove', 'add',
 ]);
 
 /**
@@ -402,7 +403,7 @@ const ACTIONS = new Set([
  * segment gives the subject. Measured over the whole document — 2,253
  * operations, longest name 33 characters, mean 13, none over 40.
  */
-function opTitle(op: Operation, taken: Set<string>): string {
+function opName(op: Operation): string {
   const address = `${op.method.toUpperCase()} ${op.path}`;
   const segs = op.path.replace(/^\/v1\//, '').split('/').filter(Boolean);
   const words = segs.filter((s) => !s.startsWith('{')).map((s) => s.replace(/[-_]/g, ' '));
@@ -434,11 +435,12 @@ function opTitle(op: Operation, taken: Set<string>): string {
     if (!verb) return address;
     name = `${verb} ${subject}`;
   }
+  return name;
+}
 
-  // Two operations under one product can land on one name (POST and PUT on the
-  // same item). The address disambiguates, exactly as it did for summaries.
-  const key = name.toLowerCase();
-  return taken.has(key) ? `${name} — ${address}` : name;
+function opTitle(op: Operation, shared: Set<string>): string {
+  const name = opName(op);
+  return shared.has(name.toLowerCase()) ? `${name} — ${op.method.toUpperCase()} ${op.path}` : name;
 }
 
 /**
@@ -905,14 +907,14 @@ function writePages(
     fs.mkdirSync(folder, { recursive: true });
     fs.writeFileSync(path.join(folder, 'index.mdx'), renderProduct(p, doc, table, d, hips));
 
-    // Summaries that repeat inside one product get the address appended, so no
+    // Names that repeat inside one product get the address appended, so no
     // two pages here carry the same title.
     const seen = new Set<string>();
     const dup = new Set<string>();
     for (const op of p.operations) {
-      const k = firstSentence(op.summary.replace(/\s+/g, ' ').trim(), 80).toLowerCase();
-      if (k && seen.has(k)) dup.add(k);
-      if (k) seen.add(k);
+      const k = opName(op).toLowerCase();
+      if (seen.has(k)) dup.add(k);
+      seen.add(k);
     }
 
     const slugs = new Set<string>();
