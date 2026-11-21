@@ -1,5 +1,7 @@
 # Hanzo Docs
 
+[![Open in Hanzo](https://hanzo.app/badges/open-in-hanzo.svg)](https://hanzo.app/dev/open?repo=github.com/hanzoai/docs&ref=main&action=open) [![Edit with Hanzo](https://hanzo.app/badges/edit-with-hanzo.svg)](https://hanzo.app/dev/open?repo=github.com/hanzoai/docs&ref=main&action=edit) [![Deploy with Hanzo](https://hanzo.app/badges/deploy-with-hanzo.svg)](https://hanzo.app/dev/open?repo=github.com/hanzoai/docs&ref=main&action=deploy)
+
 The documentation framework for Hanzo AI, Lux Network, Zoo Labs Foundation, and Zen LM.
 
 A powerful React.js documentation framework built for the Hanzo ecosystem.
