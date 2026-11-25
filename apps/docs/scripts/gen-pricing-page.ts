@@ -6,7 +6,7 @@ import { text, yamlString } from './mdx';
 // THE PRICING PAGE, generated from the billing API.
 //
 // `GET https://api.hanzo.ai/v1/pricing` is the shape of the bill — the tool
-// rates, the free-model count, the provider count, which models exist and what
+// rates, the provider count, which models exist and what
 // each one is for. Every figure on /docs/pricing is read out of a response.
 // Nothing is typed by hand, because a hand-typed price is wrong the first time a
 // rate moves and nobody notices until a bill does.
@@ -21,9 +21,11 @@ import { text, yamlString } from './mdx';
 // /v1/pricing, and a pricing response that has lost the Enso family is treated
 // as no answer at all (see fetchPricing).
 //
-// The ONE exception is declared and attributed inline: GPQA-Diamond scores. The
-// catalogue carries prices and context windows but no benchmark, so the quality
-// half of each tier's contract comes from hanzo.ai/enso. See GPQA below.
+// The Enso section is the catalogue's alone: the four paid tiers and their
+// rates as `/v1/models` lists them. /v1/pricing's Enso rows are a frozen
+// snapshot whose tiers, descriptions and windows no longer exist, so none of it
+// is printed. What only /docs/enso says (cache rates, the chain behind
+// each tier, fast mode, how `enso-auto` picks) is linked, not copied.
 //
 // Snapshot, like the document and the MCP server: fetched when reachable, and the
 // committed copy when not, so a builder with no egress still renders a truthful
@@ -45,12 +47,12 @@ export const PRICING_ENDPOINT = 'https://api.hanzo.ai/v1/pricing';
 export const MODELS_ENDPOINT = 'https://api.hanzo.ai/v1/models';
 
 /**
- * Enso engines that exist but are never a model you name. They are reached only
- * as a vision fallback from inside another tier, so listing them would publish a
- * price for a string nobody can send. `/v1/models` already omits them; this is
- * the guard for the day /v1/pricing does not.
+ * The rows of the Enso table: the four paid tiers. `enso-auto`, the fifth Enso
+ * model and the default, bills at the tier that answers, so it has no rate of its
+ * own to print and the page says so in prose. Any other Enso id the catalogue
+ * still answers (a retired one, during a cutover) is not printed.
  */
-const UNLISTED = new Set(['enso-vl', 'enso-vl-pro']);
+const TIERS = new Set(['enso-flash', 'enso-pro', 'enso-max', 'enso-ultra']);
 
 /** USD per million tokens, or per unit when `pricingUnit` says otherwise. */
 interface Rate {
@@ -77,44 +79,50 @@ interface Tool {
   price: number;
 }
 
+/**
+ * What the docs landing prints about the gateway's catalogue, read off
+ * `GET /v1/models` with the rates: how many models it serves (each id once),
+ * how many makers they come from (`owned_by`, without OpenRouter's `~` alias
+ * mark), and Kai's rate, the one price the landing states.
+ */
+interface Catalogue {
+  models: number;
+  makers: number;
+  kai: Rate;
+  captured: string;
+}
+
+/** An Enso id as `/v1/models` lists it: USD per million tokens. */
+interface EnsoRate {
+  id: string;
+  input: number;
+  output: number | null;
+}
+
 interface Pricing {
   updated?: string;
+  enso?: EnsoRate[];
   summary?: Record<string, number>;
   hanzoModels?: Model[];
   tools?: Tool[];
-  freeModels?: string[];
   providers?: Record<string, { total: number; free: number; paid: number }>;
+  catalogue?: Catalogue;
   meta?: { captured: string; source: 'live' | 'snapshot' };
 }
 
-/**
- * GPQA-Diamond, as published on hanzo.ai/enso.
- *
- * The ONLY figures on this page that are not read off /v1/pricing: the
- * catalogue has no benchmark field, and a price tier without a quality number
- * is half a contract. Attributed on the page itself.
- *
- * hanzo.ai/enso also quotes per-token prices, and they DISAGREE with what the
- * gateway bills. The gateway wins here — it is the thing that charges you — and
- * /docs/enso already publishes the same gateway figures.
- */
-const GPQA: Record<string, string> = {
-  'enso-flash': '92.9%',
-  enso: '96.0%',
-  'enso-ultra': '98.0%',
-};
 
 // ------------------------------------------------------------------ format
 
 /**
- * A rate in USD. Sub-cent rates keep their precision — $0.005 per web search is
- * not $0.01 — but nothing prints with a single decimal, because `$0.2` reads as
- * a truncation bug rather than twenty cents.
+ * A rate in USD, as exact as the gateway states it. Sub-cent rates keep their
+ * precision — $0.005 per web search is not $0.01 — and so does a rate past the
+ * cent ($5.236 is not $5.24), but nothing prints with a single decimal, because
+ * `$0.2` reads as a truncation bug rather than twenty cents.
  */
 const usd = (v: number | null | undefined): string => {
   if (v == null) return '—';
   if (v === 0) return 'Free';
-  if (v >= 1) return `$${v.toFixed(2)}`;
+  if (v >= 1) return `$${Number(v.toFixed(2)) === v ? v.toFixed(2) : String(v)}`;
   const trimmed = v.toFixed(3).replace(/0+$/, '');
   const decimals = trimmed.split('.')[1] ?? '';
   return `$${decimals.length >= 2 ? trimmed : v.toFixed(2)}`;
@@ -130,7 +138,7 @@ const ctx = (n: number | null | undefined): string => {
 
 // ------------------------------------------------------------------- fetch
 
-const isEnso = (name: string): boolean => /^enso(-|$)/.test(name);
+const isEnso = (name: string): boolean => /^(hanzo\/)?enso(-|$)/.test(name);
 
 /** The billing API's own answer. Null when it does not give a usable one. */
 async function fetchPricing(): Promise<Pricing | null> {
@@ -165,9 +173,15 @@ async function fetchPricing(): Promise<Pricing | null> {
   }
 }
 
-/** The gateway catalogue, keyed by the id you pass as `model`. */
-async function fetchCatalogue(): Promise<Map<string, Rate & { context: number | null }>> {
-  const out = new Map<string, Rate & { context: number | null }>();
+type Rates = Map<string, Rate & { context: number | null }>;
+
+/**
+ * The gateway catalogue: each id's rate, keyed by the id you pass as `model`,
+ * and the landing's summary of it. The summary is null when the catalogue gave
+ * no answer, so a build that cannot reach it keeps the committed one.
+ */
+async function fetchCatalogue(): Promise<{ rates: Rates; summary: Catalogue | null; enso: EnsoRate[] | null }> {
+  const rates: Rates = new Map();
   try {
     const r = await fetch(MODELS_ENDPOINT, {
       headers: { Accept: 'application/json' },
@@ -175,19 +189,47 @@ async function fetchCatalogue(): Promise<Map<string, Rate & { context: number | 
     });
     if (!r.ok) {
       console.warn(`[pricing] catalogue answered ${r.status}`);
-      return out;
+      return { rates, summary: null, enso: null };
     }
+    // `pricing.prompt`/`completion` are USD per token; the per-million rates this
+    // page prints sit under `input_per_million`/`output_per_million`.
     const d = (await r.json()) as {
-      data?: Array<{ id: string; context_window?: number | null; pricing?: Rate }>;
+      data?: Array<{
+        id: string;
+        owned_by?: string;
+        family?: string;
+        context_window?: number | null;
+        pricing?: { input_per_million?: number; output_per_million?: number };
+      }>;
     };
-    for (const m of d.data ?? []) {
-      if (m.pricing?.input == null) continue;
-      out.set(m.id, { ...m.pricing, context: m.context_window ?? null });
+    const rows = d.data ?? [];
+    for (const m of rows) {
+      const input = m.pricing?.input_per_million;
+      if (input == null) continue;
+      rates.set(m.id, { input, output: m.pricing?.output_per_million ?? null, context: m.context_window ?? null });
     }
+    const enso: EnsoRate[] = [];
+    for (const m of rows) {
+      const input = m.pricing?.input_per_million;
+      if (!TIERS.has(m.id) || input == null) continue;
+      enso.push({ id: m.id, input, output: m.pricing?.output_per_million ?? null });
+    }
+    const kai = rows.find((m) => m.family === 'kai' && m.pricing?.input_per_million != null);
+    if (!rows.length || !kai) {
+      console.warn('[pricing] catalogue answered without Kai');
+      return { rates, summary: null, enso: enso.length ? enso : null };
+    }
+    const summary: Catalogue = {
+      models: new Set(rows.map((m) => m.id)).size,
+      makers: new Set(rows.map((m) => (m.owned_by ?? '').replace(/^~/, '').toLowerCase()).filter(Boolean)).size,
+      kai: { input: kai.pricing!.input_per_million, output: kai.pricing!.output_per_million ?? null },
+      captured: new Date().toISOString().slice(0, 10),
+    };
+    return { rates, summary, enso: enso.length ? enso : null };
   } catch (e) {
     console.warn(`[pricing] catalogue unreachable: ${(e as Error).message}`);
+    return { rates, summary: null, enso: null };
   }
-  return out;
 }
 
 /**
@@ -196,7 +238,7 @@ async function fetchCatalogue(): Promise<Map<string, Rate & { context: number | 
  * figure to be about, and overwriting one with the other prints a rate that
  * nobody is charged.
  */
-function applyCatalogue(p: Pricing, catalogue: Awaited<ReturnType<typeof fetchCatalogue>>): number {
+function applyCatalogue(p: Pricing, catalogue: Rates): number {
   let changed = 0;
   for (const m of p.hanzoModels ?? []) {
     const c = catalogue.get(m.name);
@@ -223,24 +265,27 @@ function load(): Pricing {
  * sync with no change to the page, and bury a real Enso price change in noise.
  * A section that starts being rendered gets added here at the same time.
  */
-const project = (p: Pricing, meta: Pricing['meta']): Pricing => ({
+const project = (
+  p: Pricing,
+  catalogue: Catalogue | undefined,
+  enso: EnsoRate[] | undefined,
+  meta: Pricing['meta'],
+): Pricing => ({
   updated: p.updated,
+  enso,
   summary: p.summary,
   hanzoModels: p.hanzoModels,
   tools: p.tools,
-  freeModels: p.freeModels,
   providers: p.providers,
+  catalogue,
   meta,
 });
 
 // ------------------------------------------------------------------ render
 
-/** Enso tiers, cheaper rates first. */
-function ensoTiers(models: Model[]): Model[] {
-  return models
-    .filter((m) => isEnso(m.name) && !UNLISTED.has(m.name))
-    .sort((a, b) => (a.pricing?.input ?? 0) - (b.pricing?.input ?? 0));
-}
+/** The paid Enso tiers, cheapest first. */
+const ensoTiers = (enso: EnsoRate[]): EnsoRate[] =>
+  enso.filter((t) => t.input > 0).sort((a, b) => a.input - b.input);
 
 /** Hanzo-served models billed per call/image/clip rather than per token. */
 function perUnit(models: Model[]): Model[] {
@@ -251,10 +296,9 @@ function perUnit(models: Model[]): Model[] {
 
 function render(p: Pricing): string {
   const models = p.hanzoModels ?? [];
-  const tiers = ensoTiers(models);
+  const tiers = ensoTiers(p.enso ?? []);
   const units = perUnit(models);
   const tools = p.tools ?? [];
-  const free = (p.freeModels ?? []).length;
   const captured = p.meta?.captured ?? 'an unrecorded date';
 
   const L: string[] = [];
@@ -265,55 +309,22 @@ function render(p: Pricing): string {
     'icon: CircleDollarSign',
     'title: Pricing',
     `description: ${yamlString(
-      'What a request costs — Enso at a fixed price per token, the same for every other model, and per-call rates for tools, images and audio.',
+      'What a request costs — the Enso tiers, per-token billing for every other model, and the per-call rates for tools, images and audio.',
     )}`,
     '---',
     '',
-    "import { Callout } from '@hanzo/docs-base-ui/components/callout'",
-    "import { Cards, Card } from '@hanzo/docs-base-ui/components/card'",
-    "import { Sparkle, Boxes, Key, Code } from 'lucide-react'",
     '',
     '# Pricing',
+    '',
+    '**After this page you can work out what a request will cost before you send',
+    'it, and pick the tier that makes that number worth paying.**',
     '',
     'You are billed for what you use — tokens for a chat model, calls for a tool,',
     'images for an image model. There is no seat licence and no minimum: an',
     'account that sends nothing is charged nothing.',
     '',
-    'Every rate on this page is a **base price**. The fee is not inside it.',
-    'A model call draws the base price down from your credit balance.',
-    '',
-    '## What you pay on top',
-    '',
-    'The fee is charged when you buy credits, not when a model answers.',
-    'Checkout shows it as its own line. The receipt or invoice shows the same',
-    'line, under the same name. The credits line is what lands in your balance.',
-    'The fee line is extra, on top of that. This is the only place the rates',
-    'are written down. Other pages link here.',
-    '',
-    '| Credits are for | Credit card | Crypto |',
-    '|---|---|---|',
-    '| Hanzo\'s own models, including Enso | Payment processing fee, 3.5% of the credits. No routing fee. | Payment processing fee, 3% of the credits. No routing fee. |',
-    '| Third-party models, standard plan | Platform fee, 5.5% of the credits. | Platform fee, 5% of the credits. |',
-    '| Third-party models, Business plan | Platform fee, 8% of the credits. | Not published. Contact sales. |',
-    '| Enterprise | Not published. Contact sales. | Not published. Contact sales. |',
-    '',
-    'A purchase that adds credits for both Hanzo models and third-party models',
-    'is two credit lines and two fee lines. Each fee is calculated on its own',
-    'credit amount. The two rates are not averaged into one.',
-    '',
-    'The line names are `Credits`, `Payment processing fee` (Hanzo\'s own',
-    'models), and `Platform fee` (third-party models). Tax, where a jurisdiction',
-    'requires it, is a further line of its own. It is not part of the model',
-    'price and not part of the fee.',
-    '',
-    'Bring-your-own-key is not a credit purchase. The provider bills the',
-    'inference. Hanzo charges no fee on the first $25,000 of list-price',
-    'inference in a month. Above that, the fee is 5% of the list price, taken',
-    'from your Hanzo credits. Enterprise allowances are not published; contact',
-    'sales.',
-    '',
-    'Every rate below is a base price, per **million tokens** unless the table',
-    'says otherwise, in US dollars. The fee above is not included.',
+    'Every rate below is per **million tokens** unless the table says otherwise,',
+    'in US dollars.',
     '',
   );
 
@@ -322,52 +333,25 @@ function render(p: Pricing): string {
     w(
       '## The Enso tiers',
       '',
-      'Enso is Hanzo\'s small language model, and it also routes. Each tier is a',
-      'fixed price per token — same endpoint, same request shape, and moving',
-      'between them is a one-string change to `model`. The rates in the table are',
-      'base prices. The fee is not included. It is charged when you buy credits:',
-      '[What you pay on top](#what-you-pay-on-top).',
+      'Enso is Hanzo\'s own family. Each paid tier runs a chain of frontier',
+      'models under one id and one price, and a call bills that price whichever',
+      'model answered it. `enso-auto`, the default, picks a tier per request and',
+      'bills at the tier that answers.',
       '',
-      '| Model | GPQA-Diamond | Context | Input | Output |',
-      '|---|---|---|---|---|',
+      '| Model | Input | Output |',
+      '|---|---|---|',
     );
-    for (const m of tiers) {
-      w(
-        `| \`${text(m.name)}\` | ${GPQA[m.name] ?? '—'} | ${ctx(m.context)} | ` +
-          `${usd(m.pricing?.input)} | ${usd(m.pricing?.output)} |`,
-      );
-    }
+    for (const t of tiers) w(`| \`${text(t.id)}\` | ${usd(t.input)} | ${usd(t.output)} |`);
+    w('');
     w(
+      'Fast mode, `"fast": true` in the body or the header `X-Fast: 1`, bills 2x',
+      'on `enso-auto` and `enso-flash`, 3x on `enso-pro` and `enso-max`, and 4x on',
+      '`enso-ultra`, always from prepaid balance.',
       '',
-      'Prices and context windows are the gateway\'s own, read from',
-      '`/v1/models` — the same answer you get for the id you pass as `model`.',
-      'The GPQA-Diamond column is the exception — the catalogue carries no',
-      'benchmark field, so those figures come from',
-      '[hanzo.ai/enso](https://hanzo.ai/enso), where they are published.',
+      'Cache read and write rates, the models behind each tier, and a worked',
+      'cost for an agent turn: [Enso](/docs/enso).',
       '',
     );
-    const cheapest = tiers[0];
-    if (cheapest) {
-      w(
-        `<Callout title="Start at \`${cheapest.name}\`.">`,
-        `It is a cheaper tier. Move`,
-        `up when a smaller model has actually disappointed you — not before,`,
-        `because moving up costs you one word of a diff.`,
-        '</Callout>',
-        '',
-      );
-    }
-    const described = tiers.filter((m) => m.description);
-    if (described.length) {
-      w(
-        'The lines below are the gateway\'s own one-line descriptions, copied',
-        'through rather than rewritten here. The paragraph above is the product:',
-        'a small model that routes, billed at the rate in the table.',
-        '',
-      );
-      for (const m of described) w(`- \`${text(m.name)}\` — ${text(m.description)}`);
-    }
-    w('', '[What each tier is for, in depth →](/docs/enso)', '');
   }
 
   // --- Everything else ----------------------------------------------------
@@ -375,8 +359,8 @@ function render(p: Pricing): string {
     '## Every other model',
     '',
     'Alongside the Enso and Zen families the gateway carries models from outside',
-    'labs, on the same key and the same endpoint. Each published rate is a base',
-    'price. The fee is not inside it.',
+    'labs, on the same key and the same endpoint. Each is billed at its own',
+    'published rate.',
     '',
     'Those rates move as providers change theirs, so they are not reprinted here.',
     'The catalogue at [**Models**](/docs/models) fetches them in your browser as',
@@ -384,19 +368,6 @@ function render(p: Pricing): string {
     'the price there, next to the model id you are about to paste.',
     '',
   );
-  if (free) {
-    w(
-      `**${free} of them cost nothing** — billed at $0 in and $0 out, subject to`,
-      'rate limits. They are not named by a common convention, so list them from',
-      'the API rather than guessing at the id:',
-      '',
-      '```bash',
-      `curl -s ${PRICING_ENDPOINT} | jq -r '.freeModels[]'`,
-      '```',
-      '',
-    );
-  }
-
   // --- Not per token ------------------------------------------------------
   if (tools.length) {
     w(
@@ -462,24 +433,24 @@ function render(p: Pricing): string {
     'nothing the endpoint will not:',
     '',
     '```bash',
-    `curl -s ${PRICING_ENDPOINT} | jq '.hanzoModels[] | select(.name | startswith("enso"))'`,
+    `curl -s ${MODELS_ENDPOINT} | jq '.data[] | select(.id | test("^enso-")) | {id, pricing}'`,
     '```',
     '',
     'It needs no key. `/v1/pricing` returns the Hanzo family, the third-party',
-    'rates, the free-model list, the tool table, and the provider breakdown in one',
-    'document; `/v1/models` returns the same rates alongside the model ids you',
-    'pass as `model`.',
+    'rates, the tool table, and the provider breakdown in one document;',
+    '`/v1/models` returns the same rates alongside the model ids you pass as',
+    '`model`.',
     '',
     '## Next',
     '',
     '<Cards>',
-    '  <Card icon={<Boxes />} title="Models" href="/docs/models" description="The live catalogue — every model id and its current rate." />',
-    '  <Card icon={<Sparkle />} title="Enso" href="/docs/enso" description="The small model that also routes, and how to pick a tier." />',
-    '  <Card icon={<Key />} title="API keys" href="/docs/api-keys" description="Mint the key these requests are billed against." />',
-    '  <Card icon={<Code />} title="Pricing API" href="/docs/openapi/pricing" description="Every pricing endpoint, generated from the spec." />',
+    '  <Card icon="Boxes" title="Models" href="/docs/models" description="The live catalogue — every model id and its current rate." />',
+    '  <Card icon="Sparkle" title="Enso" href="/docs/enso" description="The Enso tiers: what each costs, cached tokens included, and the models behind it." />',
+    '  <Card icon="Key" title="API keys" href="/docs/api-keys" description="Mint the key these requests are billed against." />',
+    '  <Card icon="Code" title="Pricing API" href="/docs/openapi/pricing" description="Every pricing endpoint, generated from the spec." />',
     '</Cards>',
     '',
-    `*Per-token rates and context windows read from \`/v1/models\`. Everything` +
+    `*Per-token rates read from \`/v1/models\`. Everything` +
       ` else captured from \`/v1/pricing\` on ${captured}.*`,
     '',
   );
@@ -490,12 +461,17 @@ function render(p: Pricing): string {
 // -------------------------------------------------------------------- main
 
 export async function genPricingPage(): Promise<void> {
-  const [live, catalogue] = await Promise.all([fetchPricing(), fetchCatalogue()]);
+  const [live, { rates, summary, enso: liveEnso }] = await Promise.all([fetchPricing(), fetchCatalogue()]);
   const have = fs.existsSync(VENDORED) ? load() : null;
+  const catalogue = summary ?? have?.catalogue;
+  const enso = liveEnso ?? have?.enso;
+  if (!liveEnso) console.log(`[pricing] no Enso rates from /v1/models — the page states the snapshot's`);
+  if (!catalogue) throw new Error(`[pricing] catalogue unreachable and no snapshot at ${VENDORED}`);
+  if (!summary) console.log(`[pricing] no usable /v1/models — the landing states the catalogue as of ${catalogue.captured}`);
 
   let pricing: Pricing;
   if (live) {
-    pricing = project(live, { captured: new Date().toISOString().slice(0, 10), source: 'live' });
+    pricing = project(live, catalogue, enso, { captured: new Date().toISOString().slice(0, 10), source: 'live' });
   } else {
     if (!have) throw new Error(`[pricing] api unreachable and no snapshot at ${VENDORED}`);
     // Say it in the build log, loudly: this build's page states the rates as
@@ -503,9 +479,9 @@ export async function genPricingPage(): Promise<void> {
     console.log(
       `[pricing] no usable /v1/pricing — rendering the vendored copy captured ${have.meta?.captured ?? '(undated)'}`,
     );
-    pricing = project(have, { ...have.meta!, source: 'snapshot' });
+    pricing = project(have, catalogue, enso, { ...have.meta!, source: 'snapshot' });
   }
-  const corrected = applyCatalogue(pricing, catalogue);
+  const corrected = applyCatalogue(pricing, rates);
   if (corrected) console.log(`[pricing] ${corrected} rate(s) corrected from ${MODELS_ENDPOINT}`);
   fs.writeFileSync(VENDORED, JSON.stringify(pricing, null, 2) + '\n');
 
@@ -513,9 +489,9 @@ export async function genPricingPage(): Promise<void> {
   const s = pricing.summary ?? {};
   console.log(
     `[pricing] ${path.relative(APP_ROOT, OUT)} from ${pricing.meta!.source}: ` +
-      `${ensoTiers(pricing.hanzoModels ?? []).length} Enso tiers, ` +
+      `${ensoTiers(pricing.enso ?? []).length} Enso tiers, ` +
       `${(pricing.tools ?? []).length} tools, ` +
-      `${(pricing.freeModels ?? []).length} free of ${s.totalModels ?? '?'} models`,
+      `${s.totalModels ?? '?'} models`,
   );
 }
 
