@@ -1,73 +1,163 @@
 ---
 icon: Sparkles
-title: Skills & CLAUDE.md
-description: Progressively load 1,477+ plain-markdown skills and browse 2,800+ public Forge OSS repositories without bloating agent context.
+title: Skills, MCP & CLAUDE.md
+description: Complete progressive setup for Claude Code, Codex, Cursor, Windsurf, Gemini CLI, Antigravity, Hanzo Dev, and Hanzo Bot — covering Hanzo MCP, the Browser Extension, 1,477+ skills, and 2,800+ Forge OSS repos.
 ---
 
-import { Callout } from '@hanzo/docs-base-ui/components/callout'
+> **Canonical drop-in `CLAUDE.md` / `AGENTS.md`**: [hanzoskills.com/CLAUDE.md](https://hanzoskills.com/CLAUDE.md) · [hanzo.ai/CLAUDE.md](https://hanzo.ai/CLAUDE.md) · [hanzoskills.com/AGENTS.md](https://hanzoskills.com/AGENTS.md)
 
 [hanzoskills.com](https://hanzoskills.com) publishes **1,477+ plain-markdown skills** across 14 categories and a progressive index of **2,800+ public open-source repositories** hosted on [forge.hanzo.ai](https://forge.hanzo.ai) — over plain HTTPS, with zero authentication required.
 
-Everything is built around **3-tier progressive disclosure**: an agent loads a compact Tier-0 index (~2–4 KB) up front, drills into a single category or organization at Tier 1 only when relevant, and fetches one `SKILL.md` or clones one repository at Tier 2 on demand.
+Everything uses **3-tier progressive disclosure**: an agent loads a compact Tier-0 index (~6–8 KB) up front, drills into a single category or organization at Tier 1 only when needed, and fetches one `SKILL.md` or clones one repository at Tier 2 on demand.
 
-<Callout type="info">
-Canonical drop-in `CLAUDE.md` / `AGENTS.md`: [hanzoskills.com/CLAUDE.md](https://hanzoskills.com/CLAUDE.md) · [hanzo.ai/CLAUDE.md](https://hanzo.ai/CLAUDE.md)
-</Callout>
+## 1. Universal Copy-Paste Setup Prompt
 
-## Quick install (`CLAUDE.md` / `AGENTS.md`)
+Paste this directly into **Claude Code, Codex, Cursor, Windsurf, Gemini CLI, Antigravity, or any AI agent** so it configures its own native files, Hanzo MCP, CLI, Dev, Bot, Browser Extension, and progressive skills:
 
-Append the canonical progressive instructions to any repository or your global agent config:
+```text
+Configure this machine and workspace to use the entire Hanzo platform fluently using my agent's native config format and 3-tier progressive disclosure (never load the full skill corpus into context):
+
+1. Native instructions file — fetch https://hanzoskills.com/CLAUDE.md and install it in my agent's native location:
+   - Claude Code: append to ./CLAUDE.md and ~/.claude/CLAUDE.md (save on-demand skills to ~/.claude/skills/<id>/SKILL.md)
+   - Codex: append https://hanzoskills.com/AGENTS.md to ./AGENTS.md and ~/.codex/AGENTS.md
+   - Cursor: write .cursor/rules/hanzo.mdc (alwaysApply: true) and on-demand .cursor/rules/<id>.mdc (alwaysApply: false)
+   - Windsurf: write .windsurf/rules/hanzo.md (or .windsurfrules)
+   - Gemini CLI / Antigravity: append to ./GEMINI.md and ~/.gemini/GEMINI.md (skills in ~/.gemini/antigravity/skills/<id>/SKILL.md)
+   - GitHub Copilot: write .github/copilot-instructions.md
+   - Hanzo Dev / Hanzo Bot: use <repo>/.agents/skills/ or ~/.agents/skills/ (Bot: ~/.hanzo/bot/skills/)
+
+2. Native Hanzo MCP — wire the unified Hanzo MCP server (13 HIP-0300 tools + cloud connectors):
+   - Claude Code: `claude mcp add --scope user hanzo -- npx -y hanzo mcp`
+   - Codex: `codex mcp add hanzo -- npx -y hanzo mcp`
+   - Cursor / Claude Desktop / Windsurf / Gemini CLI / Antigravity: add {"mcpServers":{"hanzo":{"command":"npx","args":["-y","hanzo","mcp"]}}} to the native MCP config
+   - Hosted Streamable HTTP option (zero local setup): https://api.hanzo.ai/v1/mcp (Bearer $HANZO_API_KEY)
+
+3. Hanzo CLI, Hanzo Dev & Hanzo Bot agents:
+   - Install native stack (CLI, Dev agent, MCP server, local inference): `curl -fsSL https://hanzo.sh | sh` (or `npm i -g hanzo`)
+   - Authenticate: `hanzo auth login` (or headless agent wallet signup with free API key via https://hanzoskills.com/hanzo.md)
+   - Coding agents: `hanzo dev`, `hanzo code claude`, `hanzo code codex`, `hanzo engine serve <model>`, `hanzo up`
+   - Resident multi-channel bots (Slack, Discord, Telegram, WhatsApp, iMessage + sandbox browser/terminal/cron): https://hanzo.bot (CLI: `hanzo bot runs list`, local open-source daemon: `npm i -g @hanzo/bot && hanzo-bot onboard --install-daemon`)
+
+4. Hanzo Browser Extension (Chrome, Firefox, Safari, Edge):
+   - Guide me to install from https://hanzo.ai/extension (or https://hanzo.ai/chrome / https://github.com/hanzoai/extension/releases/latest) and sign in via https://hanzo.id so Hanzo MCP browser/computer tools bridge live tabs over ZAP/CDP.
+
+5. Platform fluency (https://api.hanzo.ai/v1):
+   - Discover every capability with zero auth via GET https://api.hanzo.ai/v1 and /v1/openapi.json.
+   - Use Enso (`enso-auto`), Zen (`zen-*`), Kai typed decisions (`POST /v1/decisions`), IAM (`hanzo.id`), KMS, Base, SQL, KV, Vector, S3, PubSub, Tasks, Pipelines, Sandbox, Deploy, Billing/USDC, CRM, CMS, and Post/Social over one key.
+
+6. Progressive skills & Forge OSS (never load /all.md):
+   - Skills: https://hanzoskills.com/llms.txt -> /categories/<slug>.md -> /skills/<id>/SKILL.md
+   - Forge OSS (2,800+ public repos): https://hanzoskills.com/oss/index.md -> /oss/<org>.md -> `git clone https://forge.hanzo.ai/<org>/<repo>.git`
+
+Docs: https://docs.hanzo.ai/docs/skills · Skills: https://hanzoskills.com · Platform: https://hanzo.ai · Forge: https://forge.hanzo.ai
+```
+
+## 2. Native Per-Agent Configuration
+
+Every agent should use its own native instructions file, skills directory, and MCP server registration so nothing fights the host harness:
+
+| Agent | Native Instructions | Native Skills Path | Native MCP Wiring |
+| --- | --- | --- | --- |
+| **Claude Code** | `./CLAUDE.md` & `~/.claude/CLAUDE.md` | `~/.claude/skills/<id>/SKILL.md` | `claude mcp add --scope user hanzo -- npx -y hanzo mcp` |
+| **Codex** | `./AGENTS.md` & `~/.codex/AGENTS.md` | `~/.codex/skills/<id>/SKILL.md` | `codex mcp add hanzo -- npx -y hanzo mcp` |
+| **Cursor** | `.cursor/rules/hanzo.mdc` (`alwaysApply: true`) | `.cursor/rules/<id>.mdc` (`alwaysApply: false`) | `.cursor/mcp.json` |
+| **Windsurf** | `.windsurf/rules/hanzo.md` / `.windsurfrules` | `.windsurf/rules/<id>.md` | `~/.codeium/windsurf/mcp_config.json` |
+| **Gemini CLI / Antigravity** | `./GEMINI.md` & `~/.gemini/GEMINI.md` | `~/.gemini/antigravity/skills/<id>/SKILL.md` | `~/.gemini/settings.json` |
+| **GitHub Copilot** | `.github/copilot-instructions.md` | `.github/instructions/<id>.instructions.md` | `.vscode/mcp.json` |
+| **Hanzo Dev** | Native (`CLAUDE.md` / `AGENTS.md`) | `<repo>/.agents/skills/` or `~/.agents/skills/` | Built-in native MCP + ZAP |
+| **Hanzo Bot** | Native (`hanzo.bot`) | `<workspace>/skills/` or `~/.hanzo/bot/skills/` | Built-in native MCP + sandbox browser |
+
+Quick terminal installs:
 
 ```bash
-# Project-level (Claude Code, Cursor, Windsurf, Antigravity)
+# Project-level CLAUDE.md
 curl -fsSL https://hanzoskills.com/CLAUDE.md >> CLAUDE.md
 
-# Global for Claude Code (applies to every repo)
+# Global Claude Code (~/.claude/CLAUDE.md)
 mkdir -p ~/.claude && curl -fsSL https://hanzoskills.com/CLAUDE.md >> ~/.claude/CLAUDE.md
 
-# Codex / AGENTS.md-compatible agents
+# Codex / AGENTS.md
 curl -fsSL https://hanzoskills.com/AGENTS.md >> AGENTS.md
 ```
 
-Every public open-source repository on [forge.hanzo.ai](https://forge.hanzo.ai) also exposes a progressive `CLAUDE.md` directly — repositories that do not commit their own `CLAUDE.md` automatically serve a tailored progressive fallback pointing to `hanzoskills.com/CLAUDE.md` without modifying upstream mirrors.
+## 3. Hanzo MCP (Unified Local & Hosted Server)
 
-## Universal copy-paste prompt
+Add the native Rust Hanzo MCP server over stdio with one command (no pre-install required):
 
-Paste this into Claude Code, Codex, Cursor, Windsurf, Gemini CLI, Antigravity, or any AI agent:
+```bash
+# Claude Code (user scope — available in every repo)
+claude mcp add --scope user hanzo -- npx -y hanzo mcp
 
-```text
-Configure this workspace to use Hanzo Skills with 3-tier progressive disclosure (never load the entire catalog into context):
-
-1. Fetch https://hanzoskills.com/CLAUDE.md and append it to ./CLAUDE.md (and ./AGENTS.md if used) or ~/.claude/CLAUDE.md for global use.
-2. Tier 0 — fetch https://hanzoskills.com/llms.txt (~4 KB) to see the 14 skill categories.
-3. Tier 1 — fetch ONLY the category matching the current task: https://hanzoskills.com/categories/<slug>.md
-4. Tier 2 — fetch ONLY the specific skill needed: https://hanzoskills.com/skills/<id>/SKILL.md (for Claude Code, install on demand to ~/.claude/skills/<id>/SKILL.md). Never load /all.md into active context.
-5. Forge OSS — to discover Hanzo/Lux/Zoo/Zen/ZAP open-source repos on https://forge.hanzo.ai, start with https://hanzoskills.com/oss/index.md, fetch only /oss/<org>.md on demand, and clone only the repo you need.
-
-Reference docs: https://docs.hanzo.ai/docs/skills · Platform: https://hanzo.ai · Skills: https://hanzoskills.com
+# Codex
+codex mcp add hanzo -- npx -y hanzo mcp
 ```
 
-## How 3-tier progressive disclosure works
+For JSON-configured MCP clients (**Cursor**, **Claude Desktop**, **Windsurf**, **Gemini CLI**, **Antigravity**, **VS Code**):
 
-| Tier | Endpoint | Size | When to load |
+```json
+{
+  "mcpServers": {
+    "hanzo": {
+      "command": "npx",
+      "args": ["-y", "hanzo", "mcp"]
+    }
+  }
+}
+```
+
+- **Hosted Cloud MCP (Streamable HTTP, zero local setup)**: `https://api.hanzo.ai/v1/mcp` with `Authorization: Bearer $HANZO_API_KEY`.
+- **13 HIP-0300 unified tools**: `fs`, `exec`, `code`, `git`, `fetch`, `workspace`, `computer`, `think`, `memory`, `hanzo`, `plan`, `tasks`, `ui` plus linked cloud connectors (GitHub, Slack, Google, Discord, X).
+- **Progressive MCP schemas**: [`hanzoskills.com/mcp/index.json`](https://hanzoskills.com/mcp/index.json) → `/mcp/<tool>.json`. See [MCP](/docs/mcp).
+
+## 4. Hanzo Browser Extension (Chrome, Firefox, Safari, Edge)
+
+Install the Hanzo Browser Extension so your agent can inspect, navigate, snapshot, click, type, screenshot, and automate live browser tabs over the ZAP/MCP bridge:
+
+1. Download or install from **[hanzo.ai/extension](https://hanzo.ai/extension)**, **[hanzo.ai/chrome](https://hanzo.ai/chrome)**, or the latest release zips at **[github.com/hanzoai/extension/releases/latest](https://github.com/hanzoai/extension/releases/latest)**.
+2. **Unpacked Chrome / Chromium load**: download `hanzo-ai-chrome-*.zip`, unzip it, open `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select the unzipped folder.
+3. Click the Hanzo extension icon and sign in with **Hanzo ID** (`https://hanzo.id`). Once connected, Hanzo MCP's `computer` / browser tools automatically control tabs through the ZAP bridge.
+
+## 5. Hanzo CLI, Hanzo Dev & Hanzo Bot Agents
+
+Install the unified native stack (`hanzo` CLI, `hanzo dev`, `hanzo mcp`, `hanzo engine`, `hanzo up`):
+
+```bash
+curl -fsSL https://hanzo.sh | sh   # or: npm i -g hanzo
+hanzo auth login                    # or headless wallet signup: https://hanzoskills.com/hanzo.md
+```
+
+- **Hanzo Dev (coding agents)**:
+  ```bash
+  hanzo dev                         # native Rust coding agent
+  hanzo code claude                 # run Claude Code wired to Hanzo
+  hanzo code codex                  # run Codex wired to Hanzo
+  hanzo engine serve <model>        # local open-weight inference
+  hanzo up                          # run Hanzo Cloud locally
+  ```
+- **Hanzo Bot (always-on autonomous resident agents)**:
+  - **Cloud**: unlimited resident bots with dedicated Chromium browser, bash terminal, isolated filesystem, memory, and cron across Slack, Discord, Telegram, WhatsApp, and iMessage at **[hanzo.bot](https://hanzo.bot)** (`hanzo bot runs list`).
+  - **Local open-source daemon**:
+    ```bash
+    npm install -g @hanzo/bot
+    hanzo-bot onboard --install-daemon
+    ```
+  - Full Bot docs: **[docs.hanzo.bot](https://docs.hanzo.bot)** · Skill: [`hanzo-bot/SKILL.md`](https://hanzoskills.com/skills/hanzo-bot/SKILL.md).
+
+## 6. Full Platform Fluency (`https://api.hanzo.ai/v1`)
+
+Every Hanzo service shares one OpenAI-compatible API, one key, and the same `/v1/<capability>` route contract in the cloud and locally:
+
+- **Zero-auth discovery**: `GET https://api.hanzo.ai/v1`, `GET /v1/<capability>`, `GET /v1/openapi.json`
+- **AI & Decisions**: `/v1/chat/completions` (`enso-auto`, `zen-free`, `zen-*`, 500+ models), **Kai** typed calibrated decisions (`POST /v1/decisions`), embeddings, audio/image/video
+- **Cloud & Data**: IAM (`hanzo.id`), KMS (`/v1/kms`), Base realtime DB (`/v1/base`), SQL (`/v1/sql`), KV (`/v1/kv`), Vector (`/v1/vector`), Storage/S3 (`/v1/storage`), PubSub, Tasks, Pipelines, Sandboxes, Deploy, Billing/USDC top-up, CRM, CMS, and Post/Social
+- **Headless agent onboarding (wallet signup, free API key, USDC top-up)**: [`hanzoskills.com/hanzo.md`](https://hanzoskills.com/hanzo.md) · [Agents](/docs/agents)
+
+## 7. 3-Tier Progressive Disclosure & Forge OSS Index
+
+| Tier | Skills Endpoint | Forge OSS Endpoint | Size |
 | --- | --- | --- | --- |
-| **Tier 0** | [`/CLAUDE.md`](https://hanzoskills.com/CLAUDE.md), [`/llms.txt`](https://hanzoskills.com/llms.txt), [`/catalog.json`](https://hanzoskills.com/catalog.json) | ~2.5–11 KB | Once per session or repo setup |
-| **Tier 1** | [`/categories/<slug>.md`](https://hanzoskills.com/categories/hanzo.md) or `POST https://api.hanzo.ai/v1/tool/detect` | ~3–25 KB | Only when a task enters that domain |
-| **Tier 2** | [`/skills/<id>/SKILL.md`](https://hanzoskills.com/skills/hanzo/SKILL.md) (or `/<id>.md`) | ~2–15 KB | Only the single skill needed right now |
+| **Tier 0** | [`/CLAUDE.md`](https://hanzoskills.com/CLAUDE.md), [`/llms.txt`](https://hanzoskills.com/llms.txt), [`/catalog.json`](https://hanzoskills.com/catalog.json) | [`/oss/index.md`](https://hanzoskills.com/oss/index.md), [`/oss/index.json`](https://hanzoskills.com/oss/index.json) | ~6–12 KB |
+| **Tier 1** | [`/categories/<slug>.md`](https://hanzoskills.com/categories/hanzo.md) | [`/oss/<org>.md`](https://hanzoskills.com/oss/hanzoai.md) | ~3–25 KB |
+| **Tier 2** | [`/skills/<id>/SKILL.md`](https://hanzoskills.com/skills/hanzo/SKILL.md) | `git clone https://forge.hanzo.ai/<org>/<repo>.git` | Single item |
 
-## Forge OSS progressive index
-
-Instead of dumping thousands of repository URLs into context, agents browse [forge.hanzo.ai](https://forge.hanzo.ai) in three tiers:
-
-1. **Tier 0 — Org directory**: `curl -fsSL https://hanzoskills.com/oss/index.md` (or [`/oss/index.json`](https://hanzoskills.com/oss/index.json)) lists every public organization (`hanzoai`, `hanzoskill`, `luxfi`, `hanzo-community`, `hanzo-apps`, `zenlm`, `zooai`, `zap-proto`, and more) with repository counts.
-2. **Tier 1 — Single organization**: `curl -fsSL https://hanzoskills.com/oss/<org>.md` (or `/oss/<org>.json`) lists the repositories in that org with descriptions and Forge clone URLs.
-3. **Tier 2 — Single repository**: `git clone https://forge.hanzo.ai/<org>/<repo>.git`
-
-## Related links
-
-- **[hanzoskills.com](https://hanzoskills.com)** — interactive progressive skill browser and WebMCP discovery
-- **[hanzo.ai/skills](https://hanzo.ai/skills)** — overview of gateway skills and context efficiency
-- **[hanzo.ai/agents](https://hanzo.ai/agents)** — headless agent signup, CLI, MCP, and wallet-based API keys
-- **[forge.hanzo.ai](https://forge.hanzo.ai)** — Hanzo open-source Git forge
-- **[Coding agents](/docs/coding)** — run Hanzo Dev, Claude Code, or Codex from `hanzo code`
-- **[MCP](/docs/mcp)** — connect any agent to `api.hanzo.ai/v1/mcp`
+Every public open-source repository on **[forge.hanzo.ai](https://forge.hanzo.ai)** also exposes a progressive `CLAUDE.md` directly at `/<owner>/<repo>/CLAUDE.md` without modifying upstream mirrors.
