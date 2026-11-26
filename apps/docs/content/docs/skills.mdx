@@ -1,0 +1,73 @@
+---
+icon: Sparkles
+title: Skills & CLAUDE.md
+description: Progressively load 1,477+ plain-markdown skills and browse 2,800+ public Forge OSS repositories without bloating agent context.
+---
+
+import { Callout } from '@hanzo/docs-base-ui/components/callout'
+
+[hanzoskills.com](https://hanzoskills.com) publishes **1,477+ plain-markdown skills** across 14 categories and a progressive index of **2,800+ public open-source repositories** hosted on [forge.hanzo.ai](https://forge.hanzo.ai) — over plain HTTPS, with zero authentication required.
+
+Everything is built around **3-tier progressive disclosure**: an agent loads a compact Tier-0 index (~2–4 KB) up front, drills into a single category or organization at Tier 1 only when relevant, and fetches one `SKILL.md` or clones one repository at Tier 2 on demand.
+
+<Callout type="info">
+Canonical drop-in `CLAUDE.md` / `AGENTS.md`: [hanzoskills.com/CLAUDE.md](https://hanzoskills.com/CLAUDE.md) · [hanzo.ai/CLAUDE.md](https://hanzo.ai/CLAUDE.md)
+</Callout>
+
+## Quick install (`CLAUDE.md` / `AGENTS.md`)
+
+Append the canonical progressive instructions to any repository or your global agent config:
+
+```bash
+# Project-level (Claude Code, Cursor, Windsurf, Antigravity)
+curl -fsSL https://hanzoskills.com/CLAUDE.md >> CLAUDE.md
+
+# Global for Claude Code (applies to every repo)
+mkdir -p ~/.claude && curl -fsSL https://hanzoskills.com/CLAUDE.md >> ~/.claude/CLAUDE.md
+
+# Codex / AGENTS.md-compatible agents
+curl -fsSL https://hanzoskills.com/AGENTS.md >> AGENTS.md
+```
+
+Every public open-source repository on [forge.hanzo.ai](https://forge.hanzo.ai) also exposes a progressive `CLAUDE.md` directly — repositories that do not commit their own `CLAUDE.md` automatically serve a tailored progressive fallback pointing to `hanzoskills.com/CLAUDE.md` without modifying upstream mirrors.
+
+## Universal copy-paste prompt
+
+Paste this into Claude Code, Codex, Cursor, Windsurf, Gemini CLI, Antigravity, or any AI agent:
+
+```text
+Configure this workspace to use Hanzo Skills with 3-tier progressive disclosure (never load the entire catalog into context):
+
+1. Fetch https://hanzoskills.com/CLAUDE.md and append it to ./CLAUDE.md (and ./AGENTS.md if used) or ~/.claude/CLAUDE.md for global use.
+2. Tier 0 — fetch https://hanzoskills.com/llms.txt (~4 KB) to see the 14 skill categories.
+3. Tier 1 — fetch ONLY the category matching the current task: https://hanzoskills.com/categories/<slug>.md
+4. Tier 2 — fetch ONLY the specific skill needed: https://hanzoskills.com/skills/<id>/SKILL.md (for Claude Code, install on demand to ~/.claude/skills/<id>/SKILL.md). Never load /all.md into active context.
+5. Forge OSS — to discover Hanzo/Lux/Zoo/Zen/ZAP open-source repos on https://forge.hanzo.ai, start with https://hanzoskills.com/oss/index.md, fetch only /oss/<org>.md on demand, and clone only the repo you need.
+
+Reference docs: https://docs.hanzo.ai/docs/skills · Platform: https://hanzo.ai · Skills: https://hanzoskills.com
+```
+
+## How 3-tier progressive disclosure works
+
+| Tier | Endpoint | Size | When to load |
+| --- | --- | --- | --- |
+| **Tier 0** | [`/CLAUDE.md`](https://hanzoskills.com/CLAUDE.md), [`/llms.txt`](https://hanzoskills.com/llms.txt), [`/catalog.json`](https://hanzoskills.com/catalog.json) | ~2.5–11 KB | Once per session or repo setup |
+| **Tier 1** | [`/categories/<slug>.md`](https://hanzoskills.com/categories/hanzo.md) or `POST https://api.hanzo.ai/v1/tool/detect` | ~3–25 KB | Only when a task enters that domain |
+| **Tier 2** | [`/skills/<id>/SKILL.md`](https://hanzoskills.com/skills/hanzo/SKILL.md) (or `/<id>.md`) | ~2–15 KB | Only the single skill needed right now |
+
+## Forge OSS progressive index
+
+Instead of dumping thousands of repository URLs into context, agents browse [forge.hanzo.ai](https://forge.hanzo.ai) in three tiers:
+
+1. **Tier 0 — Org directory**: `curl -fsSL https://hanzoskills.com/oss/index.md` (or [`/oss/index.json`](https://hanzoskills.com/oss/index.json)) lists every public organization (`hanzoai`, `hanzoskill`, `luxfi`, `hanzo-community`, `hanzo-apps`, `zenlm`, `zooai`, `zap-proto`, and more) with repository counts.
+2. **Tier 1 — Single organization**: `curl -fsSL https://hanzoskills.com/oss/<org>.md` (or `/oss/<org>.json`) lists the repositories in that org with descriptions and Forge clone URLs.
+3. **Tier 2 — Single repository**: `git clone https://forge.hanzo.ai/<org>/<repo>.git`
+
+## Related links
+
+- **[hanzoskills.com](https://hanzoskills.com)** — interactive progressive skill browser and WebMCP discovery
+- **[hanzo.ai/skills](https://hanzo.ai/skills)** — overview of gateway skills and context efficiency
+- **[hanzo.ai/agents](https://hanzo.ai/agents)** — headless agent signup, CLI, MCP, and wallet-based API keys
+- **[forge.hanzo.ai](https://forge.hanzo.ai)** — Hanzo open-source Git forge
+- **[Coding agents](/docs/coding)** — run Hanzo Dev, Claude Code, or Codex from `hanzo code`
+- **[MCP](/docs/mcp)** — connect any agent to `api.hanzo.ai/v1/mcp`
