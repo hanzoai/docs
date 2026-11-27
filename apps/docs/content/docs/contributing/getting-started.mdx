@@ -43,21 +43,24 @@ hanzo stop                  # gracefully stop the local runtime and reclaim reso
 To run the single static Cloud binary ([`hanzoai/cloud`](https://github.com/hanzoai/cloud)) and local open-weight model inference ([`hanzoai/engine`](https://github.com/hanzoai/engine)) directly on localhost:
 
 ```bash
-# Terminal 1 — OSS Cloud core (encrypted SQLite /v1/base, /v1/tasks, /v1/kms, /mcp)
+# Terminal 1 — OSS Cloud core + loopback plugins (HTTP :8080, /healthz, /v1/base, /v1/mcp, /v1/openapi.json)
 git clone https://github.com/hanzoai/cloud.git && cd cloud
-make dev
+make boot
 
 # Terminal 2 — Local open-weight LLM & embeddings on :1234 (includes built-in /ui chat)
 hanzo pull zen-nano
 hanzo engine serve zen-nano -- --host 127.0.0.1 -p 1234 --no-advertise
 
 # Terminal 3 — Verify both services answer cleanly
-curl -sS http://127.0.0.1:9090/healthz
+curl -sS http://127.0.0.1:8080/healthz
+curl -sS http://127.0.0.1:8080/v1/base/health
 curl -sS http://127.0.0.1:1234/v1/models
-curl -sS -X POST http://127.0.0.1:8080/v1/base/collections/notes \
+curl -sS -X POST http://127.0.0.1:8080/v1/mcp \
   -H "Content-Type: application/json" \
-  -d '{"doc":{"title":"local-stack-ready"}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
+
+*(Stop the loopback Cloud server anytime with `make dev-stop`.)*
 
 See [Self-Hosting & Air-Gapped](/docs/self-hosting) to add local OIDC identity ([`hanzoai/iam`](https://github.com/hanzoai/iam)) or deploy offline.
 
@@ -214,7 +217,7 @@ export function GrowthHqPane() {
 ### Step 3: Mount Into the Siderail & Pair With Plugins or Skills
 
 1. Register `growthHqMod` in your `@hanzo/app` shell so its icon (`Rocket`) and route (`/growth-hq`) appear in the left siderail alongside Chat, Dev, Studio, and Team.
-2. Run against your local Cloud (`hanzo up` or `make dev` in `hanzoai/cloud`) and test live tool calls.
+2. Run against your local Cloud (`hanzo up` or `make boot` in `hanzoai/cloud`) and test live tool calls.
 3. Add an **in-process TypeScript plugin** for external SaaS connectors and a repo-local **`.hanzo/skills/<name>/SKILL.md`** so your agents can operate your custom app autonomously.
 
 Full architecture, plugin contract, and marketplace publishing steps live in **[Building Apps & Mods](/docs/apps/mods)**.
@@ -228,7 +231,7 @@ Paste this directly into **Hanzo Dev, Claude Code, Codex, Cursor, Windsurf, Gemi
 ```text
 Read https://docs.hanzo.ai/docs/contributing/getting-started.md and https://hanzoskills.com/CLAUDE.md, then help me step by step:
 
-1. Verify `hanzo` CLI, Hanzo MCP (`npx -y hanzo mcp`), and my local runtime (`hanzo start`, `hanzo up`, `hanzo ps`, `hanzo doctor`) — or boot local `hanzoai/cloud` (`make dev`) + `hanzoai/engine` (`hanzo pull zen-nano && hanzo engine serve zen-nano`).
+1. Verify `hanzo` CLI, Hanzo MCP (`npx -y hanzo mcp`), and my local runtime (`hanzo start`, `hanzo up`, `hanzo ps`, `hanzo doctor`) — or boot local `hanzoai/cloud` (`make boot`) + `hanzoai/engine` (`hanzo pull zen-nano && hanzo engine serve zen-nano`).
 2. Help me launch the core Hanzo apps I need (Desktop, Mobile, Dev, Chat, Team, Bot, Browser Extension) pointed at my local stack.
 3. Ask which business workflows I want to set up first (commerce/billing, brand/studio, social posting/marketing, scheduling/mail, or building a custom `@hanzo/mod` app into the `@hanzo/app` siderail) and build + test them with me.
 4. Whenever we hit a bug, missing test, or rough edge in any `hanzoai/*` repo, fix it cleanly, run the repo's full test suite, and help me open a PR.
