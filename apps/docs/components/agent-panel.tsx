@@ -253,16 +253,20 @@ export function AgentPanel() {
   );
 }
 
-function AgentBody({
+export function AgentBody({
   pendingPrompt,
   consumePendingPrompt,
   onClose,
   mobile = false,
+  hideHeader = false,
+  autoFocus = false,
 }: {
   pendingPrompt: string | null;
   consumePendingPrompt: () => string | null;
   onClose: () => void;
   mobile?: boolean;
+  hideHeader?: boolean;
+  autoFocus?: boolean;
 }) {
   const pathname = usePathname();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -272,6 +276,12 @@ function AgentBody({
   const scroller = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (!autoFocus) return;
+    const id = requestAnimationFrame(() => inputRef.current?.focus());
+    return () => cancelAnimationFrame(id);
+  }, [autoFocus]);
 
   useEffect(() => {
     const el = scroller.current;
@@ -512,38 +522,40 @@ function AgentBody({
   return (
     <YStack flex={1} minH={0} height="100%" bg="$background">
       {/* Header aligned flush with the 56px top bar */}
-      <XStack
-        height={BAR}
-        px={14}
-        gap={8}
-        items="center"
-        justify="space-between"
-        borderBottomWidth={1}
-        borderColor="$borderColor"
-        shrink={0}
-      >
-        <XStack items="center" gap={8} minW={0}>
-          <HanzoMark size={18} />
-          <Text fontSize="$3" fontWeight="600" color="$color12" numberOfLines={1}>
-            Hanzo Agent
-          </Text>
+      {!hideHeader && (
+        <XStack
+          height={BAR}
+          px={14}
+          gap={8}
+          items="center"
+          justify="space-between"
+          borderBottomWidth={1}
+          borderColor="$borderColor"
+          shrink={0}
+        >
+          <XStack items="center" gap={8} minW={0}>
+            <HanzoMark size={18} />
+            <Text fontSize="$3" fontWeight="600" color="$color12" numberOfLines={1}>
+              Hanzo Agent
+            </Text>
+          </XStack>
+          <XStack items="center" gap={2} shrink={0}>
+            {messages.length > 0 && (
+              <>
+                <Tool label="Copy conversation" onPress={() => void copyTranscript()}>
+                  {copied ? <Check size={15} color="$color12" /> : <Copy size={15} color="$color10" />}
+                </Tool>
+                <Tool label="Clear conversation" onPress={reset}>
+                  <RotateCcw size={15} color="$color10" />
+                </Tool>
+              </>
+            )}
+            <Tool label="Close Hanzo Agent" onPress={onClose}>
+              {mobile ? <X size={16} color="$color10" /> : <ChevronsRight size={16} color="$color10" />}
+            </Tool>
+          </XStack>
         </XStack>
-        <XStack items="center" gap={2} shrink={0}>
-          {messages.length > 0 && (
-            <>
-              <Tool label="Copy conversation" onPress={() => void copyTranscript()}>
-                {copied ? <Check size={15} color="$color12" /> : <Copy size={15} color="$color10" />}
-              </Tool>
-              <Tool label="Clear conversation" onPress={reset}>
-                <RotateCcw size={15} color="$color10" />
-              </Tool>
-            </>
-          )}
-          <Tool label="Close Hanzo Agent" onPress={onClose}>
-            {mobile ? <X size={16} color="$color10" /> : <ChevronsRight size={16} color="$color10" />}
-          </Tool>
-        </XStack>
-      </XStack>
+      )}
 
       {/* Body */}
       <div
