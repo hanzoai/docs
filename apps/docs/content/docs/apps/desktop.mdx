@@ -49,23 +49,25 @@ Developer Program membership. See [Apple's developer account overview](https://d
 
 ## Local Cloud & Custom API Endpoint
 
-To point Hanzo Desktop at a local Cloud stack (`make up` in `hanzo-inc/universe` on `http://127.0.0.1:8000`), Devnet (`https://api-dev.hanzo.ai`), or any custom endpoint:
+To point Hanzo Desktop at a local Cloud stack (`hanzo up` or `make dev` in [`hanzoai/cloud`](https://github.com/hanzoai/cloud) on `http://127.0.0.1:8080`), Devnet (`https://api-dev.hanzo.ai`), or any custom endpoint:
 
 1. Open **Settings → Environments & Machines → Cloud API Endpoint** (or **Settings → Advanced → Local services**).
-2. Select **`Local Cloud (make up)`** (`http://127.0.0.1:8000`), click **Test** to verify `/v1/health`, and click **Apply & Reload** (or launch from the terminal with `HANZO_CLOUD_API=http://127.0.0.1:8000 hanzo-desktop`).
+2. Select **`Local Cloud`** (`http://127.0.0.1:8080`), click **Test** to verify `/v1/health`, and click **Apply & Reload** (or launch from the terminal with `HANZO_CLOUD_API=http://127.0.0.1:8080 hanzo-desktop`).
 
-## Build from source
+## Build from source (Open Source)
 
-These commands run from the root of the [Hanzo app repository](https://github.com/hanzo-inc/app).
-You need access to that repository. On macOS, install Apple's Command Line Tools
-with `xcode-select --install` if they are missing.
+Core desktop clients are open source under [`github.com/hanzoai`](https://github.com/hanzoai):
+
+- **Hanzo Desktop** ([`hanzoai/desktop`](https://github.com/hanzoai/desktop)) — Chat, local inference, and workspace shell for macOS, Windows, and Linux.
+- **Hanzo Dev Desktop** ([`hanzoai/dev`](https://github.com/hanzoai/dev)) — Standalone open-source coding workspace and Tauri desktop app:
 
 ```bash
-make deps       # installs OS build deps (Ubuntu/Debian/Fedora/Arch/WSL2, macOS, Windows notes) + pnpm workspace
-make desktop    # builds desktop/src-tauri/target/release/hanzo-desktop (or macOS Hanzo.app)
-make install    # installs ~/.local/bin/hanzo-desktop + Dock launcher (or /Applications/Hanzo.app) and launches
-make linux-pkg  # packages distributable .deb and .rpm bundles
+git clone https://github.com/hanzoai/dev.git && cd dev
+pnpm install
+pnpm run build:desktop
 ```
+
+To build custom modular apps that mount into the Hanzo shell on top of the same IAM, AI, and MCP primitives, use the **`@hanzo/mod` App SDK** — see [Building Apps & Mods](/docs/apps/mods). On macOS, install Apple's Command Line Tools with `xcode-select --install` if they are missing.
 
 ## Desktop or the CLI?
 

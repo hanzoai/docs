@@ -39,16 +39,18 @@ Configure this machine and workspace so you can operate the entire Hanzo AI Oper
    - Prompt me to open chrome://extensions -> enable Developer mode -> Load unpacked -> select ~/.hanzo/browser-extension -> sign in via https://hanzo.id (Firefox/Safari/Edge & IDE .vsix plugins are at https://hanzo.ai/extension and https://hanzo.ai/download).
    - Once linked, use Hanzo MCP's `computer`/browser tools over ZAP/CDP for live tabs, DOM snapshots, click/type, screenshots, and social automation.
 
-4. Wire Hanzo CLI, Hanzo Desktop, Hanzo Dev, Hanzo Bot & Live Usage Visibility:
+4. Wire Hanzo CLI, Local Runtime Lifecycle, Desktop, Mobile, Dev, Bot & Live Usage Visibility:
    - Install native CLI + Dev + MCP + local inference engine: `curl -fsSL https://hanzo.sh | sh` (or `npm i -g hanzo`)
-   - Sign in with `hanzo login` (or headless wallet signup + free API key via https://hanzoskills.com/hanzo.md) and export HANZO_API_KEY.
-   - Install Hanzo Desktop from https://hanzo.ai/download (or https://hanzo.ai/desktop) and sign in with the same Hanzo ID so ALL local & cloud agents, sessions, bot runs, and spend show up in one control plane.
+   - Sign in with `hanzo auth login` (or headless wallet signup + free API key via https://hanzoskills.com/hanzo.md) and export HANZO_API_KEY.
+   - Canonical local CLI lifecycle: `hanzo start` / `hanzo stop` / `hanzo restart` control the local runtime (VM, k3s, containerd); `hanzo up` / `hanzo down` control Hanzo Cloud & app workloads (keeping k3s and image caches warm on `down`); `hanzo ps`, `hanzo status`, `hanzo doctor`, `hanzo reset` inspect and reset local state.
+   - Install Hanzo Desktop & Mobile from https://hanzo.ai/download (docs: /docs/apps/desktop & /docs/apps/mobile) and sign in with the same Hanzo ID so ALL local & cloud agents, sessions, bot runs, and spend show up in one control plane.
    - Launch agents through the Hanzo CLI (`hanzo dev`, `hanzo --claude`, `hanzo --codex`, `hanzo --cursor`, `hanzo --agy`, `hanzo --gemini`; add `--cloud` to run model calls on your Hanzo plan) so every session and tool call registers in Hanzo Desktop & CLI automatically.
    - Verify live access & usage now: run `hanzo billing tier`, `hanzo billing balance`, and `hanzo usage summary`.
    - Hanzo Bot (always-on autonomous agents for Slack/Discord/Telegram/WhatsApp/iMessage + browser/terminal/cron): cloud at https://hanzo.bot (`hanzo bot runs list`) or local daemon `npm i -g @hanzo/bot && hanzo-bot onboard --install-daemon`.
 
-5. Business AI Operating System (Deploy OSS Apps on Hanzo Cloud or Self-Host):
+5. Business AI Operating System & App SDK (Deploy OSS Apps or Build Custom Mods):
    - Org & KMS bootstrap: follow https://docs.hanzo.ai/docs/run-your-org (`hanzo kms put` for secrets, scoped org API keys).
+   - Core OSS Stack (github.com/hanzoai/* & forge.hanzo.ai/hanzoai/*): `hanzoai/cli`, `hanzoai/gen`, `hanzoai/cloud`, `hanzoai/node`, `hanzoai/vm`, `hanzoai/engine`, `hanzoai/dev`, `hanzoai/desktop`, `hanzoai/mobile`, `hanzoai/chat`, `hanzoai/extension`, `hanzoai/mcp`. Build custom apps against `@hanzo/mod` (https://docs.hanzo.ai/docs/apps/mods).
    - Deploy or connect OSS business apps from https://forge.hanzo.ai/hanzoai/* (`hanzo deploy .` or self-host):
      * Web Analytics: forge.hanzo.ai/hanzoai/analytics (skill: /skills/hanzo-analytics/SKILL.md)
      * Product Insights & Feature Flags: forge.hanzo.ai/hanzoai/insights (skill: /skills/hanzo-insights/SKILL.md)
@@ -131,9 +133,20 @@ hanzo login                           # or headless wallet signup: https://hanzo
 ```
 
 - **Download Hanzo Desktop** (macOS / Windows / Linux): **[hanzo.ai/download](https://hanzo.ai/download)** (or **[hanzo.ai/desktop](https://hanzo.ai/desktop)**) and sign in with the same Hanzo ID.
+- **Canonical local CLI lifecycle** (runtime vs. workload separation):
+  ```bash
+  hanzo start                 # start local runtime (VM, k3s, containerd)
+  hanzo up                    # start Hanzo Cloud & configured apps (auto-starts runtime)
+  hanzo ps                    # show local runtime, k3s, Cloud, hanzod & sandboxes
+  hanzo down                  # stop Cloud & apps, keeping k3s + image cache warm
+  hanzo stop                  # stop local runtime and reclaim resources
+  hanzo restart               # restart runtime and restore workloads
+  hanzo status && hanzo doctor # inspect and diagnose local environment
+  hanzo reset                 # explicitly reset local environment state
+  ```
 - **Launch any coding agent via Hanzo CLI** so sessions, tool calls, and spend register automatically in Hanzo Desktop & CLI:
   ```bash
-  hanzo dev                   # native Rust coding agent
+  hanzo dev                   # native coding agent (hanzoai/dev + hanzoai/gen)
   hanzo --claude              # Claude Code (keeps your Claude plan + attaches Hanzo MCP & session tracking)
   hanzo --claude --cloud      # Claude Code running model calls on your Hanzo plan
   hanzo --codex               # Codex (or add --cloud)
@@ -141,8 +154,8 @@ hanzo login                           # or headless wallet signup: https://hanzo
   hanzo --agy                 # Antigravity
   hanzo --gemini              # Gemini CLI
   hanzo engine serve <model>  # local open-weight inference
-  hanzo up                    # run Hanzo Cloud locally
   ```
+- **Core OSS clients & App SDK**: [Hanzo Desktop](/docs/apps/desktop) (`hanzoai/desktop`), [Hanzo Mobile](/docs/apps/mobile) (`hanzoai/mobile`), [Hanzo Dev Desktop](/docs/dev) (`hanzoai/dev`), and custom apps via the [`@hanzo/mod` App SDK](/docs/apps/mods).
 - **Live usage, plan & balance**:
   ```bash
   hanzo usage summary         # token & request usage across agents and models

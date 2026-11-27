@@ -234,9 +234,30 @@ curl -X POST https://api.hanzo.ai/v1/graph/resolve \
 The assert answers `{"recorded":1,…}`; the resolve answers `"known":true` with
 the assertion as `winner`. [Graph](/docs/openapi/graph) is the rest of it.
 
-## 6. Run the cloud locally
+## 6. Run Hanzo locally (Canonical CLI Lifecycle)
 
-To run the open-source local cloud server ([`hanzoai/cloud`](https://github.com/hanzoai/cloud)) on your own machine with zero external services (requires Go `1.26.5`+ and `openssl`):
+The `hanzo` CLI separates the **local runtime** (VM, k3s, containerd, `hanzod`) from **platform & app workloads** (Hanzo Cloud, Engine, and your apps), so you can stop and rebuild workloads without restarting Kubernetes:
+
+| Command | Layer | What it does |
+|---|---|---|
+| `hanzo start` | Runtime | Boot the local Hanzo runtime (VM, k3s, containerd) without starting workloads (`--cpus`, `--memory`, `--disk`) |
+| `hanzo stop` | Runtime | Gracefully drain workloads, stop k3s and the VM, and reclaim CPU, memory, and ports |
+| `hanzo restart` | Runtime | Restart the local runtime and restore previously running workloads |
+| `hanzo up` | Platform & Apps | Start Hanzo Cloud and configured apps (implicitly runs `hanzo start` if stopped; supports `--cloud-only`, `--ai-only`) |
+| `hanzo down` | Platform & Apps | Stop Cloud and app workloads while keeping k3s, image caches, and volumes warm (`--vm` also stops the runtime) |
+| `hanzo ps` | Status | Show live status of the local runtime, k3s, Hanzo Cloud, `hanzod`, and cloud sandboxes |
+| `hanzo dev` | Coding | Launch the open-source coding agent (`hanzoai/dev` / `hanzoai/gen`) |
+| `hanzo status` / `hanzo doctor` | Diagnostics | Inspect system health and diagnose local runtime or credential issues |
+| `hanzo reset` | State | Explicitly reset local environment state (`--all` clears cached runtime images and volumes) |
+
+```bash
+hanzo up            # boot local runtime (if needed) + Hanzo Cloud
+hanzo ps            # inspect local runtime, k3s, Cloud & sandboxes
+hanzo down          # stop Cloud workloads, keep k3s + image cache warm
+hanzo stop          # shut down local runtime and reclaim resources
+```
+
+To run the open-source Cloud binary ([`hanzoai/cloud`](https://github.com/hanzoai/cloud)) directly on loopback with zero Kubernetes or external services (requires Go `1.26.5`+ and `openssl`):
 
 ```bash
 git clone https://github.com/hanzoai/cloud && cd cloud
@@ -252,7 +273,7 @@ curl -sS -X POST http://127.0.0.1:8080/v1/base/collections/notes \
   -d '{"doc":{"title":"hello"}}'
 ```
 
-To add local open-weight model inference ([`hanzoai/engine`](https://github.com/hanzoai/engine)), local OIDC identity ([`hanzoai/iam`](https://github.com/hanzoai/iam)), or stage an offline bundle, see [Self-Hosting & Air-Gapped](/docs/self-hosting). `hanzo up` boots k3s in a microVM when you need a local Kubernetes cluster; see [The Network](/docs/network) for joining `hanzod` compute nodes.
+To add local open-weight model inference ([`hanzoai/engine`](https://github.com/hanzoai/engine)), local OIDC identity ([`hanzoai/iam`](https://github.com/hanzoai/iam)), desktop/mobile clients ([Desktop](/docs/apps/desktop) · [Mobile](/docs/apps/mobile)), or build custom apps with the [`@hanzo/mod` App SDK](/docs/apps/mods), see [Self-Hosting & Air-Gapped](/docs/self-hosting). See [The Network](/docs/network) for joining `hanzod` compute nodes.
 
 ## Where to go next
 
