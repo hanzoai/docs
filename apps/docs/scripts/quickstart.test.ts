@@ -54,7 +54,23 @@ const code = PAGES.flatMap((page) => {
 const words = (line: string) => [...line.matchAll(/'[^']*'|"[^"]*"|\S+/g)].map((m) => m[0]);
 
 /** The CLI's own commands, which are not capabilities and are not in the table. */
-const NATIVE = new Set(['auth', 'version', 'up', 'run', 'dev', 'code', 'host']);
+const NATIVE = new Set([
+  'auth',
+  'version',
+  'start',
+  'stop',
+  'restart',
+  'up',
+  'down',
+  'ps',
+  'status',
+  'doctor',
+  'reset',
+  'run',
+  'dev',
+  'code',
+  'host',
+]);
 
 const lines = code
   .filter((b) => b.shell)
