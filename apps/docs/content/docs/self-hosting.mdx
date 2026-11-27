@@ -68,53 +68,51 @@ Browser / OpenAI SDK / hanzo-bot / curl
 ```bash
 git clone https://github.com/hanzoai/cloud
 cd cloud
-make dev
+make boot
 ```
 
-What `make dev` does on first boot:
-1. Compiles `./cloud` with `CGO_ENABLED=0` (pure-Go SQLite + SQLCipher encryption, zero C dependencies).
-2. Generates a 32-byte encryption key at `.dev/master.key` (`0600`) and stores encrypted state under `.dev/data`.
-3. Binds **loopback only** (`127.0.0.1:8080` for HTTP and the embedded console, `127.0.0.1:9090` for health/metrics, `127.0.0.1:9653` for ZAP) and enables staged local functions (`CLOUD_ENABLE_STAGED=functions`).
+What `make boot` does on first boot:
+1. Compiles `./bin/cloud` and the core loopback plugins (`base`, `kms`, `iam`, `o11y`, `audit`) with `CGO_ENABLED=0` (pure-Go SQLite, zero C dependencies).
+2. Generates a 32-byte encryption key at `.dev/master.key` (`0600`) and stores state under `.dev/data`.
+3. Binds **loopback only** (`127.0.0.1:8080` for HTTP, `/healthz`, `/v1/*`, `/v1/mcp`, and `/v1/openapi.json`; `127.0.0.1:9653` for ZAP) and writes logs to `.dev/cloud.log`. Stop anytime with `make dev-stop`.
 
 To run without `make` (for example in a systemd unit or air-gapped startup script):
 
 ```bash
-CGO_ENABLED=0 go build -o cloud ./cmd/cloud
-mkdir -p .dev && (umask 077 && openssl rand -base64 32 > .dev/master.key)
+CGO_ENABLED=0 go build -tags "sqlite_fts5 sqlite_math_functions" -o bin/cloud ./cmd/cloud
+CGO_ENABLED=0 go build -tags "sqlite_fts5 sqlite_math_functions" -o bin/base ./plugin/base
+mkdir -p .dev/data && (umask 077 && openssl rand -base64 32 > .dev/master.key)
 CLOUD_LISTEN=127.0.0.1:8080 \
   CLOUD_DATA_DIR=.dev/data \
-  CLOUD_ENABLE_STAGED=functions \
   CLOUD_KMS_MASTER_KEY_REF="$(cat .dev/master.key)" \
-  ./cloud
+  ./bin/cloud
 ```
 
 ### Smoke-test the installation
 
-From a second terminal, run these four checks to confirm health, encrypted storage, MCP tool discovery, and the OpenAPI contract:
+From a second terminal, run these four checks to confirm health, Base liveness, MCP tool discovery, and the OpenAPI contract:
 
 ```bash
-# 1. Liveness check (answers on port 9090)
-curl -sS http://127.0.0.1:9090/healthz
+# 1. Liveness check (answers on port 8080)
+curl -sS http://127.0.0.1:8080/healthz
 
-# 2. Write a JSON document to the embedded SQLCipher store (/v1/base)
-curl -sS -X POST http://127.0.0.1:8080/v1/base/collections/notes \
-  -H "Content-Type: application/json" \
-  -d '{"doc":{"title":"airgap-smoke-test"}}'
+# 2. Verify the Base subsystem is healthy
+curl -sS http://127.0.0.1:8080/v1/base/health
 
-# 3. Read the collection back
-curl -sS http://127.0.0.1:8080/v1/base/collections/notes
-
-# 4. Verify the MCP JSON-RPC server exposes the registered tools
-curl -sS -X POST http://127.0.0.1:8080/mcp \
+# 3. Verify the MCP JSON-RPC server exposes the projected capability tools
+curl -sS -X POST http://127.0.0.1:8080/v1/mcp \
   -H "Content-Type: application/json" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+
+# 4. Inspect the live OpenAPI specification
+curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/v1/openapi.json
 ```
 
 Expected responses:
-- `/healthz` returns `{"status":"ok"}`.
-- `POST /v1/base/collections/notes` returns the stored record with generated `id` and timestamps.
-- `GET /v1/base/collections/notes` returns `{"records":[...]}` containing your document.
-- `POST /mcp` returns `"tools":[...]` built from the exact same typed operation registry as `http://127.0.0.1:8080/v1/openapi.json`.
+- `/healthz` returns JSON with `"status":"ok"`.
+- `/v1/base/health` returns `200 OK`.
+- `POST /v1/mcp` returns `"tools":[...]` built from the exact same typed operation registry as `http://127.0.0.1:8080/v1/openapi.json`.
+- `GET /v1/openapi.json` returns `200`.
 
 <Callout type="warn">
 **Loopback & unauthenticated namespace:** Without an `Authorization: Bearer <jwt>` header, `cloud` writes to a dedicated local namespace so single-developer testing works with zero setup. Never change `CLOUD_LISTEN` from `127.0.0.1` to `0.0.0.0` until you place [Hanzo IAM](#5-optional-add-local-identity--kms-secrets-hanzoaiiam) in front of it. Also keep `.dev/master.key` safe — encrypted SQLite stores can only be opened by the key that created them (or set `CLOUD_DEV_UNENCRYPTED=1` for unencrypted scratch runs).
