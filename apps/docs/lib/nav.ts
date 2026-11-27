@@ -1,7 +1,7 @@
 /**
- * The docs top nav: the way in for an agent, the whole thing, the guided path
- * through it, then the surfaces a reader writes against. On-site only —
- * nothing here leaves for hanzo.ai mid-page.
+ * The docs top nav: the whole thing, the guided path through it, then the
+ * surfaces a reader writes against. On-site only — nothing here leaves for
+ * hanzo.ai mid-page.
  *
  * CLI points at /docs/cli, the `hanzo` binary. `exact` is for /docs, which
  * prefixes every page and would otherwise stay lit everywhere.
@@ -13,7 +13,6 @@ export interface Nav {
 }
 
 export const nav: Nav[] = [
-  { text: 'Agents', url: '/docs/agents' },
   { text: 'Docs', url: '/docs', exact: true },
   { text: 'Guides', url: '/docs/guides' },
   { text: 'Deploy', url: '/docs/deploy-button' },
