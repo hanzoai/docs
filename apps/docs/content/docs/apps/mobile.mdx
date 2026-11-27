@@ -1,0 +1,193 @@
+---
+title: Mobile
+description: Hanzo Mobile for iOS and Android — direct Android APK and ADB install, building and installing over USB with Xcode on macOS, USB sideloading to iOS from a Linux desktop, and the instant web app.
+---
+
+# Hanzo Mobile
+
+**Hanzo Mobile brings Chat, Voice Mode, Agents, and paired desktop sessions to iPhone, iPad, and Android** — backed by the same Hanzo account, models, and MCP tools as [Hanzo Desktop](/docs/apps/desktop) and [hanzo.app](https://hanzo.app).
+
+<Callout type="warn" title="iOS TestFlight is currently full">
+  Hanzo's iOS TestFlight beta has reached Apple's **10,000-tester cap** while public App Store review completes. Until new TestFlight slots open, install Hanzo on iOS by building over USB with **[Xcode on macOS](#ios-macos-xcode)**, sideloading the prebuilt unsigned **[`hanzo-ios.ipa` over USB from a Linux desktop](#ios-linux-usb)**, or adding **[hanzo.app](https://hanzo.app) to your Home Screen** in Safari ([`#pwa`](#pwa)). On **Android**, install the signed **[`hanzo-android.apk`](#android)** directly in one tap.
+</Callout>
+
+<Cards>
+  <Card title="Android (APK & ADB)" href="/docs/apps/mobile#android" description="One-tap signed APK download, ADB over USB, or Expo release build" />
+  <Card title="iOS via macOS + Xcode" href="/docs/apps/mobile#ios-macos-xcode" description="Build and install over USB with a free Apple ID ($0) or paid team" />
+  <Card title="iOS from a Linux Desktop" href="/docs/apps/mobile#ios-linux-usb" description="Pair over USB with usbmuxd and sideload hanzo-ios.ipa — no Mac required" />
+  <Card title="Instant Web App (PWA)" href="/docs/apps/mobile#pwa" description="Add hanzo.app to your Home Screen in Safari or Chrome with zero setup" />
+</Cards>
+
+## Android (Direct APK & ADB) [#android]
+
+Every release of [`hanzoai/mobile`](https://github.com/hanzoai/mobile) publishes a universal, self-signed release APK (`arm64-v8a` + `armeabi-v7a`) alongside SHA-256 checksums:
+
+- **Direct download:** **[Download `hanzo-android.apk` (Latest Release)](https://github.com/hanzoai/mobile/releases/latest/download/hanzo-android.apk)**
+- **Release notes & SHA-256 checksums:** [`github.com/hanzoai/mobile/releases/latest`](https://github.com/hanzoai/mobile/releases/latest)
+- **All downloads page:** [`hanzo.ai/download#mobile`](https://hanzo.ai/download#mobile) (also mirrored at [`hanzo.app/download#mobile`](https://hanzo.app/download#mobile))
+
+### Install over the air on your phone
+
+1. Open **[hanzo.ai/download#mobile](https://hanzo.ai/download#mobile)** on your Android phone and tap **Android (APK)**.
+2. Allow your browser to install unknown apps if prompted by Android, confirm **Install**, and open **Hanzo**.
+3. Tap **Sign in with Hanzo** (or paste an `sk-` [API key](/docs/api-keys)).
+
+### Install over USB from Linux, macOS, or Windows (`adb`)
+
+With **USB debugging** enabled on your Android device (**Settings → Developer options → USB debugging**):
+
+```bash
+curl -fLO https://github.com/hanzoai/mobile/releases/latest/download/hanzo-android.apk
+adb install -r hanzo-android.apk
+```
+
+### Build Android from source
+
+```bash
+git clone https://github.com/hanzoai/mobile.git && cd mobile
+pnpm install
+npx expo run:android --variant release
+```
+
+<div id="ios" />
+
+## iOS from macOS: Build & Install over USB with Xcode [#ios-macos-xcode]
+
+Because iOS TestFlight is at capacity, the fastest native install on macOS is building [`github.com/hanzoai/mobile`](https://github.com/hanzoai/mobile) locally with **Xcode 16+** and deploying directly to your iPhone or iPad over USB. No paid Apple Developer membership is required.
+
+### One-time device prep on iPhone or iPad
+
+1. Connect your iPhone or iPad to your Mac with a USB-C or Lightning cable, unlock the screen, and tap **Trust This Computer** (confirm with your device passcode).
+2. Enable **Developer Mode**: open **Settings → Privacy & Security → Developer Mode**, toggle it **On**, reboot your device, and tap **Turn On** when prompted after restart.
+
+### Option A: Free Apple ID (Personal Team — $0, no paid developer membership)
+
+Apple's free **Personal Team** provisioning profiles require a globally unique bundle identifier and do not support `App Groups` (`group.ai.hanzo.mobile`) or WidgetKit extensions. Setting `HANZO_IOS_PERSONAL_TEAM=1` configures a clean single-target Xcode project that builds and signs cleanly with any free Apple ID:
+
+```bash
+git clone https://github.com/hanzoai/mobile.git
+cd mobile
+pnpm install
+
+# Generate the Xcode workspace with your own unique reverse-DNS bundle ID
+HANZO_IOS_PERSONAL_TEAM=1 \
+HANZO_IOS_BUNDLE_ID="com.$(whoami).hanzo" \
+npx expo prebuild --platform ios --clean
+
+open ios/*.xcworkspace
+```
+
+Inside **Xcode 16+**:
+
+1. Open **Xcode → Settings → Accounts**, click **`+` → Apple ID**, and sign in with any Apple ID.
+2. In the left Project Navigator, select **`Hanzo`**, choose the **`Hanzo`** target, and open the **Signing & Capabilities** tab.
+3. Check **Automatically manage signing** and select **`<Your Name> (Personal Team)`** under **Team**.
+4. Select your connected iPhone or iPad (not a Simulator) in the top toolbar's device selector.
+5. For a **standalone Release build** — which bundles JavaScript into the app so it keeps working unplugged without Metro running — open **Product → Scheme → Edit Scheme → Run → Info → Build Configuration**, switch **`Debug` → `Release`**, and press **`⌘R`**. Or build and install straight from the terminal:
+
+```bash
+HANZO_IOS_PERSONAL_TEAM=1 \
+HANZO_IOS_BUNDLE_ID="com.$(whoami).hanzo" \
+npx expo run:ios --device --configuration Release
+```
+
+6. On your first Personal Team install, trust your certificate on your iPhone: open **Settings → General → VPN & Device Management → Developer App**, tap your Apple ID, and tap **Trust**. Then launch **Hanzo** from your Home Screen.
+
+> **7-day Personal Team renewal.** Apple's free Personal Team provisioning profiles expire after 7 days. Reconnect over USB and press `⌘R` in Xcode (or re-run `npx expo run:ios --device --configuration Release`) to refresh your app in place without losing local state, or use a paid Apple Developer Team for 1-year signing.
+
+### Option B: Paid Apple Developer Program ($99/yr — WidgetKit Home Screen Widget + 1-Year Signing)
+
+Paid Apple Developer Teams support `App Groups`, the native `HanzoWidget` Home Screen widget, and 1-year provisioning profiles:
+
+```bash
+HANZO_IOS_BUNDLE_ID="com.<your-org>.hanzo" \
+npx expo prebuild --platform ios --clean
+npx expo run:ios --device --configuration Release
+```
+
+If you customize `HANZO_IOS_BUNDLE_ID`, update the App Group identifier under **Signing & Capabilities** to `group.com.<your-org>.hanzo` on both the **`Hanzo`** and **`HanzoWidget`** targets in Xcode.
+
+### Hanzo Dev Mobile (`hanzoai/dev`)
+
+Developers building the dedicated **[Hanzo Dev](/docs/dev)** coding-agent mobile app ([`github.com/hanzoai/dev`](https://github.com/hanzoai/dev), `apps/mobile`) over USB with a free Personal Team can use the equivalent Personal Team flags:
+
+```bash
+git clone https://github.com/hanzoai/dev.git
+cd dev/apps/mobile
+HANZO_DEV_IOS_PERSONAL_TEAM=1 \
+HANZO_DEV_IOS_PERSONAL_TEAM_BUNDLE_ID="com.$(whoami).hanzodev" \
+vp run ios:release
+```
+
+## iOS from a Linux Desktop: USB Sideloading (No Mac Required) [#ios-linux-usb]
+
+Apple's iOS SDK (`xcodebuild`) only runs on macOS, **so Hanzo prebuilds an unsigned Release `hanzo-ios.ipa` on GitHub Actions (`macos-15`) for every release** at **[`github.com/hanzoai/mobile/releases/latest/download/hanzo-ios.ipa`](https://github.com/hanzoai/mobile/releases/latest/download/hanzo-ios.ipa)**.
+
+From any Linux desktop (`x86_64` or `arm64`), pair your iPhone or iPad over USB with `usbmuxd`, sign `hanzo-ios.ipa` locally, and install it directly onto your device — no Mac or Xcode needed.
+
+### Step 1: Pair your iPhone over USB on Linux
+
+Install `usbmuxd`, `libimobiledevice`, and `ideviceinstaller`, then pair your unlocked iPhone over USB:
+
+```bash
+# Ubuntu / Debian (or install usbmuxd libimobiledevice ideviceinstaller on Fedora / Arch)
+sudo apt update && sudo apt install -y usbmuxd libimobiledevice6 libimobiledevice-utils ideviceinstaller
+sudo systemctl enable --now usbmuxd
+
+# Plug in iPhone via USB, unlock screen, tap "Trust", then pair:
+idevicepair pair
+idevice_id -l   # prints your connected iPhone/iPad UDID
+```
+
+Make sure **Settings → Privacy & Security → Developer Mode** is enabled on iOS 16+ before launching sideloaded apps.
+
+### Method 1: Free Apple ID over USB on Linux (`AltServer-Linux` / `SideStore`)
+
+Download `hanzo-ios.ipa` alongside [`AltServer-Linux`](https://github.com/NyaMisty/AltServer-Linux/releases) (`x86_64` or `aarch64`) and an Anisette companion (`anisette-server` or `netmuxd`), then sign and install directly to your paired iPhone UDID:
+
+```bash
+curl -fLO https://github.com/hanzoai/mobile/releases/latest/download/hanzo-ios.ipa
+
+# Authenticate with your Apple ID and sideload directly to your paired iPhone UDID:
+UDID="$(idevice_id -l | head -n1)"
+./AltServer -u "$UDID" -a "you@example.com" -p "$APPLE_ID_PASSWORD" hanzo-ios.ipa
+```
+
+After installation finishes, trust your Apple ID on your iPhone under **Settings → General → VPN & Device Management → Developer App**.
+
+> **Tip: Refresh over Wi-Fi with SideStore.** Sideload [SideStore](https://sidestore.io) once from Linux over USB and import `hanzo-ios.ipa` inside SideStore so the 7-day free certificate refreshes on-device over Wi-Fi without plugging back into USB.
+
+### Method 2: Paid Apple Developer Certificate on Linux (`zsign` + `ideviceinstaller` — 1-Year Validity, under 5s)
+
+If you have an Apple Developer `.p12` signing certificate and `.mobileprovision` profile (with your iPhone's UDID registered in the Apple Developer portal), sign and install in seconds with [`zsign`](https://github.com/zhlynn/zsign) and `ideviceinstaller`:
+
+```bash
+curl -fLO https://github.com/hanzoai/mobile/releases/latest/download/hanzo-ios.ipa
+zsign -k developer.p12 -p "$P12_PASSWORD" -m profile.mobileprovision -o hanzo-signed.ipa hanzo-ios.ipa
+ideviceinstaller -i hanzo-signed.ipa
+```
+
+## Instant Web App on iOS & Android (Zero USB / Zero Xcode) [#pwa]
+
+If you want Hanzo on your phone right now with no cable, Xcode, or signing certificate:
+
+1. Open **[hanzo.app](https://hanzo.app)** in **Safari** (iOS 17+ / 18+) or **Chrome** (Android).
+2. Tap **Share → Add to Home Screen** in Safari (or **⋮ → Add to Home screen / Install app** in Chrome).
+3. Launch **Hanzo** from your Home Screen for full-screen standalone mode, Voice Mode, and live paired desktop environments.
+
+## Pairing Mobile with Your Mac or Linux Desktop (`hanzod`) [#pair-desktop]
+
+Hanzo Mobile works both standalone against [Hanzo Cloud](https://platform.hanzo.ai) and paired with your own workstation:
+
+1. Sign in with the same **Hanzo** account on Mobile and on [Hanzo Desktop](/docs/apps/desktop) or the [Hanzo CLI](/docs/cli) (`hanzo login`), or connect directly to your machine under **Settings → Environments & Machines**.
+2. Start or attach to your desktop daemon (`hanzod`) on macOS, a Linux workstation, or an NVIDIA DGX node.
+3. Steer live coding, terminal, and research sessions from your phone through the unified `gen` harness, with tool approvals and diffs synced in real time.
+
+> **One identity, everywhere.** Sign in with Hanzo ([IAM](/docs/openapi/iam) OAuth) or paste an `sk-` [API key](/docs/api-keys). The same account carries your models, tools, and usage across Mobile, Desktop, Web, and CLI.
+
+## Related
+
+- [hanzo.ai/download#mobile](https://hanzo.ai/download#mobile) — direct Android APK, iOS release artifacts, and desktop installers
+- [github.com/hanzoai/mobile/releases/latest](https://github.com/hanzoai/mobile/releases/latest) — `hanzo-android.apk`, unsigned `hanzo-ios.ipa`, and SHA-256 checksums
+- [Desktop](/docs/apps/desktop) — Hanzo Desktop for macOS, Windows, and Linux
+- [Hanzo Dev](/docs/dev) — the coding agent and daemon (`hanzod`) that Mobile pairs with
