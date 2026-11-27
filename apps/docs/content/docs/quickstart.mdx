@@ -257,21 +257,24 @@ hanzo down          # stop Cloud workloads, keep k3s + image cache warm
 hanzo stop          # shut down local runtime and reclaim resources
 ```
 
-To run the open-source Cloud binary ([`hanzoai/cloud`](https://github.com/hanzoai/cloud)) directly on loopback with zero Kubernetes or external services (requires Go `1.26.5`+ and `openssl`):
+To run the open-source Cloud server ([`hanzoai/cloud`](https://github.com/hanzoai/cloud)) directly on loopback with zero Kubernetes or external services (requires Go `1.26.5`+ and `openssl`):
 
 ```bash
 git clone https://github.com/hanzoai/cloud && cd cloud
-make dev
+make boot
 ```
 
-In a second shell, verify health and write a document to the encrypted local SQLite store:
+In a second shell, verify health, the Base subsystem, and the MCP tool server:
 
 ```bash
-curl -sS http://127.0.0.1:9090/healthz
-curl -sS -X POST http://127.0.0.1:8080/v1/base/collections/notes \
+curl -sS http://127.0.0.1:8080/healthz
+curl -sS http://127.0.0.1:8080/v1/base/health
+curl -sS -X POST http://127.0.0.1:8080/v1/mcp \
   -H "Content-Type: application/json" \
-  -d '{"doc":{"title":"hello"}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
 ```
+
+Stop the loopback server with `make dev-stop`.
 
 To add local open-weight model inference ([`hanzoai/engine`](https://github.com/hanzoai/engine)), local OIDC identity ([`hanzoai/iam`](https://github.com/hanzoai/iam)), desktop/mobile clients ([Desktop](/docs/apps/desktop) · [Mobile](/docs/apps/mobile)), or build custom apps with the [`@hanzo/mod` App SDK](/docs/apps/mods), see [Self-Hosting & Air-Gapped](/docs/self-hosting). See [The Network](/docs/network) for joining `hanzod` compute nodes.
 
