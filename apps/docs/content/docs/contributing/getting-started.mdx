@@ -1,0 +1,315 @@
+---
+title: Build & Run With Hanzo OSS
+description: Step-by-step guide for builders, founders, and open-source enthusiasts — run the entire Hanzo AI Operating System locally, launch your brand, commerce, marketing, and social stack with AI agents, build your first app into the @hanzo/app siderail, and earn bounties.
+icon: Compass
+---
+
+Everything in Hanzo's core stack is **open source under [`github.com/hanzoai`](https://github.com/hanzoai)**. Whether you are launching a company, automating marketing and operations, building custom AI apps, or contributing pull requests for bounties, you can run the entire AI Operating System locally on your machine and work through every step alongside your AI agents.
+
+<Callout type="tip" title="Work through this guide with your AI agent">
+  Every page on `docs.hanzo.ai` is built for both humans and agents:
+  - Click **Use agent** (top right) to **Ask Hanzo Agent about this page**, **Copy / Download Markdown** (`.md`), **Open in Hanzo CLI**, or open directly in **Claude** or **ChatGPT**.
+  - Click the **Chat** widget (bottom right) on any page for live answers grounded in the docs.
+  - Fetch any page as clean Markdown by appending `.md` (for example [`/docs/contributing/getting-started.md`](/docs/contributing/getting-started.md)), or index the whole site from [`/llms.txt`](/llms.txt) and [`/llms-full.txt`](/llms-full.txt).
+</Callout>
+
+---
+
+## 1. Boot Your Local AI Operating System (10 Minutes)
+
+Install the unified `hanzo` CLI, Dev coding agent, MCP server, and local model engine:
+
+```bash
+curl -fsSL https://hanzo.sh | sh
+hanzo version
+hanzo auth login
+```
+
+### Canonical CLI Lifecycle (3-Layer Model)
+
+Hanzo separates the **local runtime** (microVM or native runtime, `k3s`, `containerd`, `hanzod`) from **platform & app workloads** (Hanzo Cloud, Engine, and your apps), so you can rebuild and iterate on apps in seconds without restarting Kubernetes:
+
+```bash
+hanzo start                 # boot local runtime (VM, k3s, containerd)
+hanzo up                    # start Hanzo Cloud & configured local workloads
+hanzo ps                    # inspect Runtime, k3s, Cloud, hanzod & sandboxes
+hanzo doctor                # diagnose local runtime, ports & credentials
+hanzo down                  # stop Cloud & apps while keeping k3s + image cache warm
+hanzo stop                  # gracefully stop the local runtime and reclaim resources
+```
+
+### Fast Loopback Mode (Zero Kubernetes Required)
+
+To run the single static Cloud binary ([`hanzoai/cloud`](https://github.com/hanzoai/cloud)) and local open-weight model inference ([`hanzoai/engine`](https://github.com/hanzoai/engine)) directly on localhost:
+
+```bash
+# Terminal 1 — OSS Cloud core (encrypted SQLite /v1/base, /v1/tasks, /v1/kms, /mcp)
+git clone https://github.com/hanzoai/cloud.git && cd cloud
+make dev
+
+# Terminal 2 — Local open-weight LLM & embeddings on :1234 (includes built-in /ui chat)
+hanzo pull zen-nano
+hanzo engine serve zen-nano -- --host 127.0.0.1 -p 1234 --no-advertise
+
+# Terminal 3 — Verify both services answer cleanly
+curl -sS http://127.0.0.1:9090/healthz
+curl -sS http://127.0.0.1:1234/v1/models
+curl -sS -X POST http://127.0.0.1:8080/v1/base/collections/notes \
+  -H "Content-Type: application/json" \
+  -d '{"doc":{"title":"local-stack-ready"}}'
+```
+
+See [Self-Hosting & Air-Gapped](/docs/self-hosting) to add local OIDC identity ([`hanzoai/iam`](https://github.com/hanzoai/iam)) or deploy offline.
+
+---
+
+## 2. Run the Core Apps You Live In Every Day
+
+Connect your local Cloud (`:8080`) and Engine (`:1234`) to the full open-source client and agent suite:
+
+### Hanzo Desktop & Hanzo Dev Desktop
+- **Install prebuilt desktop apps** (macOS, Windows, Linux): **[hanzo.ai/download](https://hanzo.ai/download)** — see [Desktop](/docs/apps/desktop) to point **Settings → Environments & Machines → Cloud API Endpoint** at `http://127.0.0.1:8080`.
+- **Build standalone Hanzo Dev Desktop from source** ([`hanzoai/dev`](https://github.com/hanzoai/dev)):
+  ```bash
+  git clone https://github.com/hanzoai/dev.git && cd dev
+  pnpm install
+  pnpm run build:desktop
+  ```
+
+### Hanzo Mobile (iOS & Android)
+Install the signed Android APK directly, deploy over USB with ADB or Xcode, or sideload from Linux — see **[Mobile](/docs/apps/mobile)** and [`hanzoai/mobile`](https://github.com/hanzoai/mobile).
+
+### Hanzo Bot (24/7 Autonomous Agents Across Your Channels)
+Run always-on agents connected to Slack, Discord, Telegram, WhatsApp, and iMessage — backed by your local Engine and Cloud:
+
+```bash
+npm install -g @hanzo/bot
+hanzo-bot onboard --install-daemon
+```
+
+Source: [`hanzoai/bot`](https://github.com/hanzoai/bot).
+
+### Hanzo Chat & Hanzo Team
+```bash
+# Multi-model AI chat web app wired to your local engine
+git clone https://github.com/hanzoai/chat.git && cd chat
+pnpm install
+VITE_HANZO_API=http://127.0.0.1:1234 pnpm dev
+
+# Shared workspace for humans, bots, and agents
+git clone https://github.com/hanzoai/team.git && cd team
+pnpm install && pnpm dev
+```
+
+### Wire Your Coding Agents (MCP, Browser Extension & Progressive Skills)
+Give Claude Code, Codex, Cursor, Windsurf, Gemini CLI, Antigravity, or Hanzo Dev full access to your local stack and 1,477+ skills without bloating context:
+
+```bash
+# 1. Load Tier-0 progressive instructions (< 8 KB — never dumps all skills up front)
+curl -fsSL https://hanzoskills.com/CLAUDE.md >> ~/.claude/CLAUDE.md
+
+# 2. Attach Hanzo MCP (13 HIP-0300 unified tools over stdio)
+claude mcp add --scope user hanzo -- npx -y hanzo mcp   # or: codex mcp add hanzo -- npx -y hanzo mcp
+
+# 3. Install the Hanzo Browser Extension for live tab inspection & automation
+mkdir -p ~/.hanzo/browser-extension && cd ~/.hanzo/browser-extension
+URL=$(curl -fsSL https://api.github.com/repos/hanzoai/extension/releases/latest \
+  | grep -oE 'https://[^"]*hanzo-ai-chrome[^"]*\.zip' | head -1)
+curl -fsSL "$URL" -o ext.zip && unzip -oq ext.zip && rm ext.zip
+```
+
+Load `~/.hanzo/browser-extension` in Chrome/Brave/Arc/Edge via `chrome://extensions` → **Developer mode** → **Load unpacked**. See [Skills, MCP & Desktop](/docs/skills) for every agent's native config.
+
+---
+
+## 3. Build & Run Your Business End-to-End (Make Money, Brand, Market & Operate)
+
+You can stand up every core system an average business needs to launch, develop its brand, attract customers, close deals, and collect revenue — all open source and operable by your AI agents. Start by configuring your org & KMS secrets in **[Run Your Org](/docs/run-your-org)**, then roll out the modules you need:
+
+### Make Money: Commerce, Subscriptions, Storefronts & Contracts
+- **Orders, subscriptions, invoices, metered usage & credit ledger:** [`hanzoai/commerce`](https://github.com/hanzoai/commerce) + [`hanzoai/billing`](https://github.com/hanzoai/billing)
+- **Connect existing e-commerce stores (catalog, inventory, promos, storefront pixels):** [`hanzoai/shopify`](https://github.com/hanzoai/shopify) · [`hanzoai/woocommerce`](https://github.com/hanzoai/woocommerce)
+- **Close customer agreements & manage equity:** [`hanzoai/esign`](https://github.com/hanzoai/esign) (self-hosted DocuSign alternative) · [`hanzoai/captable`](https://github.com/hanzoai/captable) (open-source cap table)
+
+### Develop Your Brand & Creative Assets
+- **Visual AI node & creative studio (posters, product imagery, brand kits, slides):** [`hanzoai/studio`](https://github.com/hanzoai/studio)
+- **Brand marks, design tokens & cross-platform UI components:** [`hanzoai/logo`](https://github.com/hanzoai/logo) · [`hanzoai/ui`](https://github.com/hanzoai/ui) · [`hanzoai/gui`](https://github.com/hanzoai/gui)
+
+### Market, Advertise & Publish Across Social Channels
+- **Multi-channel social scheduling & auto-publishing:** [`hanzoai/post`](https://github.com/hanzoai/post)
+- **Agent-driven SEO, conversion optimization, copywriting & ad campaigns:** Load the growth category on demand at [`hanzoskills.com/categories/growth-product.md`](https://hanzoskills.com/categories/growth-product.md) (`marketing-strategy`, `ai-seo`, `programmatic-seo`, `page-cro`, `cold-email`, `ad-creative`) and let `hanzo dev` or `hanzo-bot` draft, schedule, and test campaigns.
+
+### Operate Your Company: Team, Scheduling, Mail, Workflows & Observability
+- **Team collaboration & customer booking:** [`hanzoai/team`](https://github.com/hanzoai/team) · [`hanzoai/cal`](https://github.com/hanzoai/cal) (native scheduling on `/v1/base`)
+- **Self-hosted business email (SMTP, IMAP, webmail, DKIM/SPF/DMARC):** [`hanzoai/mail`](https://github.com/hanzoai/mail)
+- **Visual agent workflows & 24/7 ops bots:** [`hanzoai/flow`](https://github.com/hanzoai/flow) · [`hanzoai/bot`](https://github.com/hanzoai/bot)
+- **Metrics, traces, logs & identity/secrets:** [`hanzoai/o11y`](https://github.com/hanzoai/o11y) · [`hanzoai/iam`](https://github.com/hanzoai/iam) · [`hanzoai/kms`](https://github.com/hanzoai/kms)
+
+---
+
+## 4. Build Your First Custom App Into the `@hanzo/app` Siderail
+
+Every Hanzo app is a **100% static client-side App Mod (`@hanzo/mod`)** that mounts directly into the [`@hanzo/app`](https://github.com/hanzoai/app) host shell — inheriting the left siderail, authenticated IAM session, model picker, keyboard shortcuts, and `/v1` platform APIs with zero backend boilerplate.
+
+### Step 1: Export a `Mod` Descriptor
+
+```tsx title="src/mods/growth-hq/index.tsx"
+import type { Mod } from '@hanzo/mod';
+import { Rocket } from 'lucide-react';
+import { GrowthHqPane } from './Pane';
+import { GrowthHqBar } from './Bar';
+
+export const growthHqMod: Mod = {
+  id: 'growth-hq',
+  title: 'Growth HQ',
+  icon: Rocket,
+  path: '/growth-hq',
+  Pane: GrowthHqPane,
+  Bar: GrowthHqBar,
+  capabilities: ['web', 'mcp'],
+};
+
+export default growthHqMod;
+```
+
+### Step 2: Connect IAM, AI & Tools Inside Your Pane
+
+```tsx title="src/mods/growth-hq/Pane.tsx"
+import { useState } from 'react';
+import { useIam } from '@hanzo/iam/react';
+import { useAi } from '@hanzo/ai/react';
+import { Button, YStack, Text } from '@hanzo/ui';
+
+export function GrowthHqPane() {
+  const { org } = useIam();
+  const { chat } = useAi();
+  const [plan, setPlan] = useState<string>('');
+
+  const draftLaunch = async () => {
+    const res = await chat({
+      model: 'enso',
+      messages: [
+        {
+          role: 'user',
+          content: 'Draft a 7-day product launch checklist with social posts, landing page copy, and email outreach.',
+        },
+      ],
+      tools: ['builtin:exec', 'builtin:fs'],
+    });
+    setPlan(String(res?.choices?.[0]?.message?.content ?? 'Done'));
+  };
+
+  return (
+    <YStack flex={1} p="$4" gap="$3">
+      <Text fontSize="$5" fontWeight="600">
+        Growth HQ — {org?.name ?? 'Local Workspace'}
+      </Text>
+      <Button onPress={draftLaunch}>Generate Launch Plan</Button>
+      {plan ? <Text>{plan}</Text> : null}
+    </YStack>
+  );
+}
+```
+
+### Step 3: Mount Into the Siderail & Pair With Plugins or Skills
+
+1. Register `growthHqMod` in your `@hanzo/app` shell so its icon (`Rocket`) and route (`/growth-hq`) appear in the left siderail alongside Chat, Dev, Studio, and Team.
+2. Run against your local Cloud (`hanzo up` or `make dev` in `hanzoai/cloud`) and test live tool calls.
+3. Add an **in-process TypeScript plugin** for external SaaS connectors and a repo-local **`.hanzo/skills/<name>/SKILL.md`** so your agents can operate your custom app autonomously.
+
+Full architecture, plugin contract, and marketplace publishing steps live in **[Building Apps & Mods](/docs/apps/mods)**.
+
+---
+
+## 5. Copy-Paste Agent Prompt (Walk Through Everything With Your AI Agent)
+
+Paste this directly into **Hanzo Dev, Claude Code, Codex, Cursor, Windsurf, Gemini CLI, or Antigravity** to have your agent guide you step-by-step through installing, testing, automating, and building your first app:
+
+```text
+Read https://docs.hanzo.ai/docs/contributing/getting-started.md and https://hanzoskills.com/CLAUDE.md, then help me step by step:
+
+1. Verify `hanzo` CLI, Hanzo MCP (`npx -y hanzo mcp`), and my local runtime (`hanzo start`, `hanzo up`, `hanzo ps`, `hanzo doctor`) — or boot local `hanzoai/cloud` (`make dev`) + `hanzoai/engine` (`hanzo pull zen-nano && hanzo engine serve zen-nano`).
+2. Help me launch the core Hanzo apps I need (Desktop, Mobile, Dev, Chat, Team, Bot, Browser Extension) pointed at my local stack.
+3. Ask which business workflows I want to set up first (commerce/billing, brand/studio, social posting/marketing, scheduling/mail, or building a custom `@hanzo/mod` app into the `@hanzo/app` siderail) and build + test them with me.
+4. Whenever we hit a bug, missing test, or rough edge in any `hanzoai/*` repo, fix it cleanly, run the repo's full test suite, and help me open a PR.
+```
+
+---
+
+## 6. Automate Tasks, Fix Bugs, Test Everything & Earn Bounties
+
+Use the Hanzo CLI harness and Kata to automate work across any repository:
+
+```bash
+hanzo dev                                              # native coding agent
+hanzo --claude "add unit tests for edge cases"         # Claude Code + Hanzo MCP
+hanzo --codex "reproduce and fix the test race"        # Codex + Hanzo MCP
+kata run --suite tests/unit                            # closed-loop test repair (hanzoai/kata)
+```
+
+### Pull Request Checklist
+1. Branch cleanly from `main` in `github.com/hanzoai/<repo>` and keep PRs small and focused.
+2. Run the repo's full tests & linters (`go test -race ./...`, `cargo test --locked && cargo clippy --all-targets -- -D warnings`, `pnpm test`, or `pytest`) and paste the output into your PR description.
+3. Fix any unclear setup steps in `README.md`, `Makefile`, or `hanzoai/docs` as you go.
+4. Link your issue (`Closes #<number>`) so reviews and rewards track automatically.
+
+### Open Contributor Bounties
+- **Browse all open bounty issues across `hanzoai`:** **[`org:hanzoai is:open label:bounty`](https://github.com/issues?q=is%3Aopen+is%3Aissue+org%3Ahanzoai+label%3Abounty)**
+- **Rewards & standings:** **[hanzo.ai/bounty](https://hanzo.ai/bounty)** · **[hanzo.ai/leaderboard](https://hanzo.ai/leaderboard)**
+- **Community & live help:** Join **[Discord](https://discord.gg/XthHQQj)** (`#general`, `#docs`, `#hips`).
+
+---
+
+## 7. Top 50 Public Open-Source Repositories (Clone by Track)
+
+Every repository below is public under [`github.com/hanzoai`](https://github.com/hanzoai):
+
+### Track A — Runtime, CLI & Agent Harness (8 Repos)
+`cli` · `gen` · `node` · `vm` · `visor` · `vfs` · `zap` · `kata`
+
+```bash
+mkdir -p ~/hanzo-oss && cd ~/hanzo-oss
+for r in cli gen node vm visor vfs zap kata; do
+  git clone "https://github.com/hanzoai/$r.git"
+done
+```
+
+### Track B — Cloud Core, Data & Storage (12 Repos)
+`cloud` · `base` · `iam` · `kms` · `commerce` · `ai` · `s3` · `datastore` · `sql` · `kv` · `tasks` · `index`
+
+```bash
+mkdir -p ~/hanzo-oss && cd ~/hanzo-oss
+for r in cloud base iam kms commerce ai s3 datastore sql kv tasks index; do
+  git clone "https://github.com/hanzoai/$r.git"
+done
+```
+
+### Track C — AI Engine, ML, Agents & MCP (8 Repos)
+`engine` · `ml` · `mcp` · `bot` · `agent` · `flow` · `studio` · `cyber`
+
+```bash
+mkdir -p ~/hanzo-oss && cd ~/hanzo-oss
+for r in engine ml mcp bot agent flow studio cyber; do
+  git clone "https://github.com/hanzoai/$r.git"
+done
+```
+
+### Track D — Desktop, Mobile, Web & IDE Clients (10 Repos)
+`dev` · `desktop` · `mobile` · `chat` · `app` · `gui` · `ui` · `extension` · `browser` · `ide`
+
+```bash
+mkdir -p ~/hanzo-oss && cd ~/hanzo-oss
+for r in dev desktop mobile chat app gui ui extension browser ide; do
+  git clone "https://github.com/hanzoai/$r.git"
+done
+```
+
+### Track E — Business OS Apps, SDKs, Docs & Skills (12 Repos)
+`team` · `billing` · `cal` · `mail` · `post` · `esign` · `captable` · `o11y` · `python-sdk` · `js-sdk` · `docs` · `skills`
+
+```bash
+mkdir -p ~/hanzo-oss && cd ~/hanzo-oss
+for r in team billing cal mail post esign captable o11y python-sdk js-sdk docs skills; do
+  git clone "https://github.com/hanzoai/$r.git"
+done
+```

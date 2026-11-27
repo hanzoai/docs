@@ -42,6 +42,18 @@ export function Agent() {
     setTimeout(() => setDone(false), 1600);
   };
   const go = (url: string) => window.open(url, '_blank', 'noopener,noreferrer');
+  const downloadMd = async () => {
+    const text = await fetch(md).then((r) => r.text());
+    const slug = (pathname.replace(/^\/+|\/+$/g, '').split('/').pop() || 'hanzo-docs') + '.md';
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/markdown;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = slug;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <DropdownMenu
@@ -71,6 +83,7 @@ export function Agent() {
         { type: 'label', label: 'Use with any agent' },
         { key: 'prompt', label: 'Copy prompt', onSelect: () => copy(prompt(here())) },
         { key: 'copy', label: 'Copy page as Markdown', onSelect: () => copy(fetch(md).then((r) => r.text())) },
+        { key: 'download', label: 'Download Markdown (.md)', onSelect: () => void downloadMd() },
         { key: 'view', label: 'View as Markdown', onSelect: () => window.location.assign(md) },
         { type: 'separator' },
         { key: 'chatgpt', label: 'Open in ChatGPT', onSelect: () => go(`https://chatgpt.com/?${new URLSearchParams({ hints: 'search', q: prompt(here()) })}`) },
