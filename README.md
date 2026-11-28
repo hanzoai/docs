@@ -31,3 +31,13 @@ Hanzo OS is an agentic operating system designed to orchestrate autonomous stack
 
 ---
 *Legacy documentation has been archived.*
+
+
+## Verification & Audits
+
+Validate documentation guides, link resolution, and onboarding command copy-paste integrity:
+
+```bash
+npm run validate:guides
+npm run audit:onboarding
+```
